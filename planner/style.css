@@ -1,0 +1,1457 @@
+#mount {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+#mount > .content {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    height: calc(100% - 20px);
+    max-height: calc(100% - 20px);
+    padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#mount > .content > .title {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+}
+#mount > .content > .title > .logo {
+    padding: 10px;
+
+    font-size: 25px;
+
+    background-color: transparent;
+
+    cursor: pointer;
+}
+#mount > .content > .title > .nav {
+    align-self: stretch;
+    flex-basis: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .content > .title > .nav > button {
+    padding: 10px 20px;
+
+    gap: 10px;
+}
+#mount > .content > .title > .nav > .input {
+    padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+#mount > .content > .title > .nav > .input > input {
+    width: 200px;
+}
+#mount > .content > .title > #save {
+    margin-right: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+#mount > .content > .title > #save > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+}
+#mount > .content > .title > button:not(.override) {
+    --bg: transparent;
+    --bgd: transparent;
+
+    align-self: stretch;
+
+    padding: 5px;
+    aspect-ratio: 1 / 1;
+}
+#mount > .content > .title > button:not(.override).this {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a3);
+    --fgd: var(--v6);
+}
+#mount > .content > .title > button:not(.override):last-child {
+    border-radius: 0px 10px 10px 0px;
+}
+#mount > .content > .main {
+    position: relative;
+
+    flex-basis: 100%;
+
+    width: 100%;
+}
+#mount > .content > .main > .page {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: opacity var(--t), visibility var(--t);
+}
+#mount > .content > .main > .page.this {
+    opacity: 100%;
+    visibility: inherit;
+}
+
+#TITLEPAGE > .title {
+    font-size: 50px;
+}
+#TITLEPAGE > .title > span:first-child {
+    color: var(--a);
+}
+#TITLEPAGE > .title > span:last-child {
+    color: var(--v8);
+}
+#TITLEPAGE > .subtitle {
+    color: var(--v7);
+
+    font-size: 16px;
+}
+#TITLEPAGE > .nav {
+    width: min(300px, 100%);
+    margin-top: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#TITLEPAGE > .nav > button {
+    position: relative;
+
+    padding: 10px 30px;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+}
+#TITLEPAGE > .nav > button.special {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+}
+#TITLEPAGE > .nav > button > ion-icon {
+    position: absolute;
+    top: 50%;
+    right: 0%;
+    transform: translateY(-50%) translateX(-0px);
+
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: transform var(--t), opacity var(--t), visibility var(--t);
+}
+#TITLEPAGE > .nav > button:not(:disabled):hover > ion-icon {
+    transform: translateY(-50%) translateX(-10px);
+
+    opacity: 100%;
+    visibility: inherit;
+}
+
+#PROJECTSPAGE {
+    width: calc(100% - 320px) !important;
+    max-width: calc(100% - 320px) !important;
+    padding: 0px 160px !important;
+
+    justify-content: flex-start !important;
+
+    align-items: stretch !important;
+}
+#PROJECTSPAGE > .title {
+    margin-top: 20px;
+
+    color: var(--v8);
+
+    text-align: left;
+    font-size: 50px;
+}
+#PROJECTSPAGE > .nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+}
+#PROJECTSPAGE > .nav > .nav {
+    flex-basis: 75%;
+}
+#PROJECTSPAGE > .nav > .nav > button {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+
+    width: max-content;
+    padding: 10px 20px;
+
+    gap: 10px;
+
+    border-radius: 10px;
+}
+#PROJECTSPAGE > .nav > .search {
+    flex-basis: 25%;
+
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v8);
+    border-radius: 10px;
+}
+#PROJECTSPAGE > .nav > .search > input {
+    flex-basis: 100%;
+
+    padding: 5px;
+
+    background-color: transparent;
+    color: var(--v1);
+}
+#PROJECTSPAGE > .nav > .search > input::placeholder {
+    color: var(--v6);
+}
+#PROJECTSPAGE > .nav > .search > button {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--a);
+    --fgh: var(--v8);
+    --bgd: var(--v8);
+    --fgd: var(--v4);
+
+    aspect-ratio: 1 / 1;
+}
+#PROJECTSPAGE > .content {
+    padding: 2px;
+    margin-top: 20px;
+
+    flex-basis: 100%;
+
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .content > .empty {
+    color: var(--v2);
+
+    text-align: center;
+    font-style: italic;
+}
+#PROJECTSPAGE > .content > .item {
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+    outline: 2px solid var(--v4-0);
+
+    transition: outline var(--t);
+}
+#PROJECTSPAGE > .content > .item:hover {
+    outline: 2px solid var(--v4);
+}
+#PROJECTSPAGE > .content > .item > .image {
+    height: 100px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--v1-4);
+    border-radius: 10px;
+
+    background-image: none;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+}
+#PROJECTSPAGE > .content > .item > .info {
+    flex-basis: 100%;
+
+    padding-left: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .content > .item > .info > .name {
+    color: var(--v8);
+}
+#PROJECTSPAGE > .content > .item > .info > .time {
+    color: var(--v4);
+}
+#PROJECTSPAGE > .content > .item > .nav {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 10px;
+}
+#PROJECTSPAGE > .content > .item > .nav > button {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+
+    padding: 10px 20px;
+
+    gap: 10px;
+
+    border-radius: 10px;
+}
+
+#PROJECTPAGE {
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 0px !important;
+}
+#PROJECTPAGE > .divider {
+    padding: 0px 5px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    cursor: ew-resize;
+}
+#PROJECTPAGE > .divider::before {
+    content: "";
+
+    width: 2px;
+    height: 20px;
+
+    background-color: var(--v4);
+    border-radius: 2px;
+
+    transition: height var(--t), background-color var(--t);
+}
+#PROJECTPAGE > .divider:hover::before {
+    background-color: var(--v8);
+}
+#PROJECTPAGE > .divider.this::before {
+    height: 100%;
+
+    background-color: var(--a);
+}
+#PROJECTPAGE > .display {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    border: 2px solid var(--v2);
+    outline: none;
+    border-radius: 10px;
+}
+#PROJECTPAGE > .display > .blockage {
+    z-index: 1;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 200vw;
+    height: 200vh;
+
+    background-color: var(--v0-8);
+    visibility: hidden;
+    
+    pointer-events: none;
+}
+#PROJECTPAGE > .display.choose > .blockage {
+    visibility: inherit;
+    
+    pointer-events: auto;
+}
+#PROJECTPAGE > .display > .render {
+    z-index: 2;
+
+    position: relative;
+
+    overflow: hidden;
+
+    background-color: var(--v1);
+    border: 2px solid var(--v4);
+}
+#PROJECTPAGE > .display > .render > .info {
+    z-index: 2;
+
+    position: absolute;
+    left: 10px;
+    top: 10px;
+
+    color: var(--v6);
+    visibility: hidden;
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display.choose > .render > .info {
+    visibility: inherit;
+}
+#PROJECTPAGE > .display > .render > .nav {
+    z-index: 2;
+
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    visibility: hidden;
+}
+#PROJECTPAGE > .display.choose > .render > .nav {
+    visibility: inherit;
+}
+#PROJECTPAGE > .display > .render > .nav > button {
+    padding: 5px 10px;
+
+    border-radius: 10px;
+}
+#PROJECTPAGE > .display > .render > .nav > button#donebtn {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+}
+#PROJECTPAGE > .display > .render > .nav > button#cancelbtn {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
+}
+#PROJECTPAGE > .display > .render > .grid {
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+
+    background-color: var(--v2);
+    opacity: 100%;
+}
+#PROJECTPAGE > .display > .render > .grid.x {
+    transform: translateY(50%);
+
+    width: 100%;
+    height: 2px;
+}
+#PROJECTPAGE > .display > .render > .grid.y {
+    transform: translateX(-50%);
+
+    height: 100%;
+    width: 2px;
+}
+#PROJECTPAGE > .display > .render > .item {
+    position: absolute;
+    bottom: 0%;
+    left: 0%;
+}
+.global.item {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+}
+#PROJECTPAGE > .display > .render > .item.pathindex {
+    bottom: 10px;
+
+    padding: 5px 15px;
+
+    background-color: var(--cg-8);
+    color: var(--v8);
+
+    font-size: 20px;
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display > .render > .item.pathindex::before {
+    content: "";
+
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateY(5px);
+
+    border-style: solid;
+    border-width: 10px 10px 0 10px;
+    border-color: var(--cg-8) transparent transparent transparent;
+}
+#PROJECTPAGE > .display > .render > .item.pathline {
+    --dist: 0px;
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display > .render > .item.pathline::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+
+    width: calc(var(--dist) - 40px);
+    height: 10px;
+
+    background-color: var(--cg-8);
+}
+#PROJECTPAGE > .display > .render > .item.select {
+    outline: 5px solid var(--v8);
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display > .render > .item.selectable,
+.global.item.selectable {
+    outline: 0px solid var(--v8);
+    border-radius: 100%;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.this,
+.global.item.selectable.this {
+    z-index: 1;
+
+    outline: 5px solid var(--v8);
+}
+#PROJECTPAGE > .display > .render > .item.selectable > button,
+.global.item.selectable > .button {
+    padding: 0px;
+    aspect-ratio: 1 / 1;
+
+    border-radius: 100%;
+
+    cursor: move;
+}
+.global.item.selectable > .button {
+    cursor: inherit;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node {
+    --dir-vel: 0deg;
+    --dir-head: 0deg;
+    --dist: 0px;
+    --body-w: 0px;
+    --body-h: 0px;
+}
+.global.item.selectable.node {
+    --dir-vel: 0deg;
+    --dir-head: 0deg;
+    --dist: 50px;
+    --body-w: 50px;
+    --body-h: 50px;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node > button:first-child {
+    --bg: var(--cb);
+    --fg: var(--v8);
+    --bgh: var(--cb5);
+    --fgh: var(--v8);
+    --bgd: var(--cb2);
+    --fgd: var(--v6);
+
+    width: 20px;
+}
+.global.item.selectable.node > .button {
+    background-color: var(--cb);
+    color: var(--v8);
+
+    width: 20px;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node > button.arrow {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--a);
+    --fgh: var(--v8);
+    --bgd: var(--v6);
+    --fgd: var(--v1);
+
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translateY(-50%) rotate(var(--dir-vel)) translateX(var(--dist));
+
+    width: 15px;
+    aspect-ratio: 1 / 1;
+    border-radius: 100%;
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), opacity var(--t), visibility var(--t);
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node.this.velocity > button.arrow {
+    opacity: 50%;
+    visibility: inherit;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node.this.velocity > button.arrow:not(:disabled):hover {
+    opacity: 100%;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node > button.arrow::before {
+    content: "";
+    
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-100%, -50%);
+
+    width: calc(var(--dist) - 7.5px - 10px);
+    height: 5px;
+
+    background-color: var(--v8);
+
+    pointer-events: none;
+}
+.global.item.selectable.node > .arrow {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(var(--dist), -50%);
+
+    width: 15px;
+    aspect-ratio: 1 / 1;
+    border-radius: 100%;
+
+    background-color: var(--v8);
+    color: var(--v1);
+}
+.global.item.selectable.node > .arrow::before {
+    content: "";
+    
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-100%, -50%);
+
+    width: calc(var(--dist) - 7.5px - 10px);
+    height: 5px;
+
+    background-color: var(--v8);
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node > button.body {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--a);
+    --fgh: var(--v8);
+    --bgd: var(--v6);
+    --fgd: var(--v1);
+
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translateY(-50%) rotate(var(--dir-head)) translateX(calc(var(--body-w) / 2 + 2.5px));
+
+    width: 15px;
+    aspect-ratio: 1 / 1;
+    border-radius: 100%;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node > button.body::before {
+    z-index: -1;
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translate(5px, -50%);
+
+    width: var(--body-w);
+    height: var(--body-h);
+
+    opacity: 50%;
+    outline: 5px solid var(--v8);
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node > .body {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translateY(-50%) rotate(var(--dir-head)) translateX(calc(var(--body-w) / 2 + 2.5px));
+
+    width: 15px;
+    aspect-ratio: 1 / 1;
+    border-radius: 100%;
+
+    background-color: var(--v8);
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node > .body::before {
+    z-index: -1;
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translate(5px, -50%);
+
+    width: var(--body-w);
+    height: var(--body-h);
+
+    opacity: 50%;
+    outline: 5px solid var(--v8);
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.obstacle,
+.global.item.selectable.obstacle {
+    --radius: 25px;
+    --dir: 0deg;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.obstacle > button:first-child {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--cr5);
+    --fgh: var(--v8);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
+
+    width: calc(var(--radius) * 2);
+}
+.global.item.selectable.obstacle > .button {
+    background-color: var(--cr);
+    color: var(--v8);
+
+    width: calc(var(--radius) * 2);
+}
+#PROJECTPAGE > .display > .render > .item.selectable.obstacle > .radius,
+.global.item.selectable.obstacle > .radius {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translateY(-50%);
+
+    width: var(--radius);
+    height: 5px;
+
+    background-color: var(--v8);
+}
+.global.item.selectable.obstacle > .radius {
+    height: 2px !important;
+}
+#PROJECTPAGE > .display > .render > .item.selectable.obstacle > button.radiusdrag {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--a);
+    --fgh: var(--v8);
+    --bgd: var(--v6);
+    --fgd: var(--v1);
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(calc(var(--radius) - 50%), -50%);
+
+    width: 15px;
+    aspect-ratio: 1 / 1;
+
+    border-radius: 100%;
+
+    cursor: move;
+}
+.global.item.selectable.obstacle > .button.radiusdrag {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(calc(var(--radius) - 50%), -50%);
+
+    width: 10px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--v8);
+    color: var(--v1);
+    border-radius: 100%;
+
+    cursor: inherit;
+}
+#PROJECTPAGE > .display > .axis {
+    z-index: 2;
+
+    position: absolute;
+
+    color: var(--v4);
+}
+#PROJECTPAGE > .display > .axis > div {
+    position: absolute;
+}
+#PROJECTPAGE > .display > .axis > div::before {
+    content: "";
+
+    position: absolute;
+
+    background-color: var(--v4);
+}
+#PROJECTPAGE > .display > .axis.x > div::before {
+    top: 50%;
+    right: -10px;
+    transform: translateY(-50%);
+
+    width: 5px;
+    height: 2px;
+}
+#PROJECTPAGE > .display > .axis.y > div::before {
+    left: 50%;
+    top: -10px;
+    transform: translateX(-50%);
+
+    width: 2px;
+    height: 5px;
+}
+#PROJECTPAGE > .edit {
+    max-height: calc(100% - 20px);
+    padding: 10px;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+}
+#PROJECTPAGE > .edit > .options {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#PROJECTPAGE > .edit > .options > .title {
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    background-color: transparent;
+    color: var(--v8);
+
+    text-transform: uppercase;
+    font-size: 14px;
+    font-weight: 700;
+
+    transition: color var(--t);
+}
+#PROJECTPAGE > .edit > .options > .title:disabled {
+    color: var(--v6);
+}
+#PROJECTPAGE > .edit > .options > .title > ion-icon {
+    transform: rotate(0deg);
+
+    transition: transform var(--t);
+}
+#PROJECTPAGE > .edit > .options.this > .title > ion-icon {
+    transform: rotate(90deg);
+}
+#PROJECTPAGE > .edit > .options > .content {
+    max-height: 0px;
+    overflow: hidden;
+
+    transition: max-height var(--t);
+}
+#PROJECTPAGE > .edit > .options.this > .content {
+    max-height: 100%;
+}
+#PROJECTPAGE > .edit > .options > .content > .inner {
+    padding: 30px 10px;
+    padding-left: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 10px;
+}
+#PROJECTPAGE > .edit > .options > .content > .inner > .header {
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    color: var(--v8);
+
+    font-size: 14px;
+}
+#PROJECTPAGE > .edit > .options > .content > .inner > .header > span:first-child {
+    flex-basis: 100%;
+}
+#PROJECTPAGE > .edit > .options > .content > .inner > .header > span.units {
+    min-width: max-content;
+
+    color: var(--v6);
+
+    font-style: italic;
+}
+
+#mapoptions #spawnbox {
+    align-self: stretch;
+
+    position: relative;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 5px;
+}
+#mapoptions #spawnbox > button.delete {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--cr5);
+    --fgh: var(--v8);
+    --bgd: var(--cr3);
+    --fgd: var(--v6);
+    
+    z-index: 1;
+
+    position: absolute;
+    top: 0%;
+    left: 0%;
+    transform-origin: 0% 0%;
+    transform: scale(0%);
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    border-radius: 10px;
+
+    font-size: 30px;
+
+    transition: --btn-c-size-v var(--t), transform var(--t), background var(--t), color var(--t);
+}
+#mapoptions #spawnbox.delete > .delete {
+    transform: scale(100%);
+}
+#mapoptions #spawnbox > button.item {
+    transform: translateY(-0px);
+
+    width: 100px;
+    padding: 0px;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: stretch;
+
+    background-color: var(--v2);
+    border: 2px solid var(--v3);
+    border-radius: 10px;
+    filter: drop-shadow(0px 0px 0px var(--v1-8));
+
+    cursor: grab;
+
+    transition: transform var(--t), filter var(--t);
+}
+#mapoptions #spawnbox > button.item:not(:disabled):hover {
+    transform: translateY(-5px);
+
+    filter: drop-shadow(0px 5px 5px var(--v1-8));
+}
+#mapoptions #spawnbox > button.item > .icon {
+    flex-basis: 100%;
+
+    position: relative;
+}
+#mapoptions #spawnbox > button.item > .name {
+    padding: 5px;
+
+    background-color: var(--v3);
+    color: var(--v8);
+
+    transition: color var(--t);
+}
+#mapoptions #spawnbox > button.item:disabled > .name {
+    color: var(--v6);
+}
+#mapoptions #size,
+#mapoptions #robotsize,
+#mapoptions #robotmass {
+    align-self: stretch;
+
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#mapoptions #size > input,
+#mapoptions #robotsize > input,
+#mapoptions #robotmass > input {
+    flex-basis: 100%;
+}
+
+#trajectoryoptions #momentofinertia,
+#trajectoryoptions #efficiency {
+    align-self: stretch;
+
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#trajectoryoptions #momentofinertia > input,
+#trajectoryoptions #efficiency > input {
+    flex-basis: 100%;
+}
+#trajectoryoptions #trajectoryscript {
+    align-self: stretch;
+
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 10px;
+}
+#trajectoryoptions #trajectoryscript > div.filedialog {
+    flex-basis: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#trajectoryoptions #trajectoryscript > div.filedialog > input {
+    flex-basis: 100%;
+
+    color: var(--cg);
+    border-radius: 0px;
+}
+#trajectoryoptions #trajectoryscript > div.filedialog > button {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+
+    padding: 10px;
+}
+#trajectoryoptions #trajectorygeneration {
+    align-self: stretch;
+}
+#trajectoryoptions #trajectorygeneration {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#trajectoryoptions #trajectorygeneration > button {
+    --bg: var(--cg3);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cg2);
+    --fgd: var(--v6);
+
+    flex-basis: 100%;
+
+    padding: 10px;
+
+    border-radius: 10px;
+}
+
+#pathoptions #pathsbox {
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+
+    max-height: 300px;
+    overflow: auto;
+}
+#pathoptions #pathsbox > button.item {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    border-radius: 10px;
+    border: 2px solid var(--v2);
+}
+#pathoptions #pathsbox > button.item.this {
+    border: 2px solid var(--cg);
+}
+#pathoptions #pathsbox > button.item#addbtn {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+}
+#pathoptions #pathsbox > button.item > input {
+    flex-basis: 100%;
+
+    background-color: transparent;
+    color: var(--fg);
+
+    transition: color var(--t);
+}
+#pathoptions #pathsbox > button.item:not(:disabled):hover > input {
+    color: var(--fgh);
+}
+#pathoptions #pathsbox > button.item:disabled > input {
+    color: var(--fgd);
+}
+#pathoptions #pathsbox > button.item > input::placeholder {
+    color: var(--v5);
+
+    font-style: italic;
+}
+#pathoptions #patheditbox {
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#pathoptions #patheditbox > button {
+    flex-basis: 100%;
+
+    padding: 10px;
+
+    border-radius: 10px;
+}
+#pathoptions #patheditbox > button#removebtn {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
+}
+#pathoptions #patheditbox > button#editbtn {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+}
+
+#itemoptions .fornode:not(.this),
+#itemoptions .forobstacle:not(.this) {
+    display: none !important;
+}
+#itemoptions #position {
+    align-self: stretch;
+
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#itemoptions #position > input {
+    flex-basis: 100%;
+}
+#itemoptions #radius {
+    align-self: stretch;
+
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#itemoptions #radius > input {
+    flex-basis: 100%;
+}
+#itemoptions #heading {
+    --dir: 0deg;
+
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#itemoptions #heading > .dragbox {
+    z-index: 0;
+    position: relative;
+
+    max-width: 150px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--v1);
+    border-radius: 100%;
+}
+#itemoptions #heading > .dragbox::before {
+    content: "";
+    z-index: -1;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    height: 2px;
+
+    background-color: var(--v2-8);
+}
+#itemoptions #heading > .dragbox::after {
+    content: "";
+    z-index: -1;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 2px;
+    height: 100%;
+
+    background-color: var(--v2-8);
+}
+#itemoptions #heading > .dragbox > div {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0% 50%;
+    transform: rotate(var(--dir)) translateY(-50%);
+
+    width: 50%;
+}
+#itemoptions #heading > .dragbox > div::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translateY(-50%);
+
+    width: calc(100% - 5px);
+    height: 2px;
+
+    background-color: var(--v8);
+}
+#itemoptions #heading > .dragbox > div > button {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--a);
+    --fgh: var(--v8);
+    --bgd: var(--v6);
+    --fgd: var(--v1);
+
+    position: absolute;
+    top: 50%;
+    right: 0%;
+    transform: translate(50%, -50%);
+
+    width: 10px;
+    aspect-ratio: 1 / 1;
+    padding: 0px;
+
+    border-radius: 100%;
+}
+#itemoptions #velocity,
+#itemoptions #velocityrot {
+    align-self: stretch;
+
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#itemoptions #velocity > input,
+#itemoptions #velocityrot > input {
+    flex-basis: 100%;
+}
+#itemoptions #itemcontrols {
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#itemoptions #itemcontrols > button {
+    flex-basis: 100%;
+
+    padding: 10px;
+
+    border-radius: 10px;
+}
+#itemoptions #itemcontrols > button#removebtn {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
+}
+
+#drag {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    transform: translate(-50%, -50%);
+
+    filter: drop-shadow(0px 5px 5px var(--v1-8));
+}

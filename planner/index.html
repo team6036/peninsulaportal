@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+    <head>
+		<title>Peninsula Planner</title>
+		<meta charset="UTF-8">
+        <style id="dynamicstyle"></style>
+		<script type="module">
+			import App from "./app.js";
+			const app = new App();
+			app.start();
+		</script>
+    </head>
+    <body>
+		<div id="mount">
+			<div class="content">
+				<div class="title">
+					<button id="titlebtn" class="override logo">
+						<div class="title introtitle noanimation"><div><div>p</div><div>eninsula</div></div><div>Planner</div></div>
+					</button>
+					<div class="nav">
+						<button id="filebtn">File</button>
+						<button id="editbtn">Edit</button>
+						<div id="nameinput" class="input">
+							<input type="text" placeholder="Project Name..." autocomplete="off" spellcheck="false">
+						</div>
+					</div>
+					<div id="save">
+						<button></button>
+					</div>
+					<button id="projectsbtn">
+						<ion-icon name="folder"></ion-icon>
+					</button>
+					<button id="createbtn">
+						<ion-icon name="add"></ion-icon>
+					</button>
+				</div>
+				<div class="main">
+					<div id="TITLEPAGE" class="page">
+						<div class="title"><span>Peninsula</span><span>Planner</span></div>
+						<div class="subtitle">The tool for planning trajectories</div>
+						<div class="nav">
+							<button id="createbtn" class="special">Create<ion-icon name="add"></ion-icon></button>
+							<button id="projectsbtn">Projects<ion-icon name="chevron-forward"></ion-icon></button>
+						</div>
+					</div>
+					<div id="PROJECTSPAGE" class="page">
+						<div class="title">Projects</div>
+						<div class="nav">
+							<div class="nav">
+								<button id="createbtn">Create<ion-icon name="add"></ion-icon></button>
+							</div>
+							<div class="search">
+								<input type="text" placeholder="Search..." autocomplete="off" spellcheck="false">
+								<button>
+									<ion-icon name="search"></ion-icon>
+								</button>
+							</div>
+						</div>
+						<div class="content">
+							<div class="loading"></div>
+							<div class="empty">No projects here yet!</div>
+						</div>
+					</div>
+					<div id="PROJECTPAGE" class="page">
+						<div class="display" tabindex="0">
+							<div class="blockage"></div>
+							<div class="render">
+								<div class="info">
+									Pick nodes in order...
+								</div>
+								<div class="nav">
+									<button id="donebtn">Done</button>
+									<button id="cancelbtn">Cancel</button>
+								</div>
+							</div>
+							<div class="axis x"></div>
+							<div class="axis y"></div>
+						</div>
+						<div class="divider"></div>
+						<div class="edit">
+							<div id="mapoptions" class="options">
+								<button class="title override"><ion-icon name="chevron-forward"></ion-icon>Map Options</button>
+								<div class="content">
+									<div class="inner">
+										<div class="header"><span>Drag Items</span></div>
+										<div id="spawnbox">
+											<button class="delete">
+												<ion-icon name="trash"></ion-icon>
+											</button>
+											<button id="spawnnode" class="item override">
+												<div class="icon">
+													<div class="global item selectable node">
+														<div class="button"></div>
+													</div>
+												</div>
+												<div class="name">Node</div>
+											</button>
+											<button id="spawnobstacle" class="item override">
+												<div class="icon">
+													<div class="global item selectable obstacle">
+														<div class="button"></div>
+														<div class="radius"></div>
+														<div class="button radiusdrag"></div>
+													</div>
+												</div>
+												<div class="name">Obstacle</div>
+											</button>
+										</div>
+										<div class="header"><span>Map Size</span><span class="units">m</span></div>
+										<div id="size">
+											<input class="w" type="number" placeholder="Width" min="0">
+											<input class="h" type="number" placeholder="Height" min="0">
+										</div>
+										<div class="header"><span>Robot Size</span><span class="units">m</span></div>
+										<div id="robotsize">
+											<input class="w" type="number" placeholder="..." min="0">
+											<!--input class="h" type="number" placeholder="Height" min="0"-->
+										</div>
+										<div class="header"><span>Robot Mass</span><span class="units">kg</span></div>
+										<div id="robotmass">
+											<input type="number" placeholder="..." min="0">
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="trajectoryoptions" class="options">
+								<button class="title override"><ion-icon name="chevron-forward"></ion-icon>Trajectory Options</button>
+								<div class="content">
+									<div class="inner">
+										<div class="header"><span>Moment of Inertia</span><span class="units">kg-m</span></div>
+										<div id="momentofinertia">
+											<input type="number" placeholder="..." min="0">
+										</div>
+										<div class="header"><span>Efficiency</span><span class="units">%</span></div>
+										<div id="efficiency">
+											<input type="number" placeholder="..." min="0">
+										</div>
+										<div class="header fornode"><span>12 Motor Mode</span>
+											<label id="is12motormode" class="switch"><input type="checkbox"><span></span></label>
+										</div>
+										<div class="header"><span>Trajectory Generator Script</span><span class="units">.py</span></div>
+										<div id="trajectoryscript">
+											<div class="filedialog">
+												<input type="text" placeholder="Choose a file..." autocomplete="off" spellcheck="false">
+												<button>Browse</button>
+											</div>
+										</div>
+										<div class="header"><span>Trajectory Generation</span></div>
+										<div id="trajectorygeneration">
+											<button>Generate</button>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="pathoptions" class="options">
+								<button class="title override"><ion-icon name="chevron-forward"></ion-icon>Path Options</button>
+								<div class="content">
+									<div class="inner">
+										<div class="header"><span>Paths</span></div>
+										<div id="pathsbox">
+											<button id="addbtn" class="item">
+												<ion-icon name="add"></ion-icon>
+											</button>
+										</div>
+										<div class="header"><span>Path Editor</span></div>
+										<div id="patheditbox">
+											<button id="removebtn">Remove</button>
+											<button id="editbtn">Edit</button>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="itemoptions" class="options">
+								<button class="title override"><ion-icon name="chevron-forward"></ion-icon>Item Options</button>
+								<div class="content">
+									<div class="inner">
+										<div class="header"><span>Position</span><span class="units">m</span></div>
+										<div id="position">
+											<input class="x" type="number" placeholder="X" min="0">
+											<input class="y" type="number" placeholder="Y" min="0">
+										</div>
+										<div class="header fornode"><span>Robot Heading</span><span class="units">rad</span></div>
+										<div id="heading" class="fornode">
+											<input type="number" placeholder="Angle" min="0" max="360">
+											<div class="dragbox">
+												<div><button></button></div>
+											</div>
+										</div>
+										<div class="header fornode"><span>Robot Velocity</span><span class="units">m/s</span>
+											<label id="velocityuse" class="switch"><input type="checkbox"><span></span></label>
+										</div>
+										<div id="velocity" class="fornode">
+											<input class="x" type="number" placeholder="X">
+											<input class="y" type="number" placeholder="Y">
+										</div>
+										<div class="header fornode"><span>Robot Rotational Velocity</span><span class="units">rad/s</span></div>
+										<div id="velocityrot" class="fornode">
+											<input type="number" placeholder="...">
+										</div>
+										<div class="header forobstacle"><span>Radius</span><span class="units">m</span></div>
+										<div id="radius" class="forobstacle">
+											<input type="number" placeholder="..." min="0">
+										</div>
+										<div class="header"><span>Controls</span></div>
+										<div id="itemcontrols">
+											<button id="removebtn">Remove</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="drag"></div>
+		<div id="loading">
+			<div class="title introtitle"><div><div>p</div><div>eninsula</div></div><div>Planner</div></div>
+		</div>
+    </body>
+</html>

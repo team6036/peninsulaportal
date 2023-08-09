@@ -1,0 +1,106 @@
+#TITLEPAGE {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+#TITLEPAGE > .background {
+    --x: 50%;
+    --y: 50%;
+
+    z-index: -1;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateY(5%) scale(200%);
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+
+    background: radial-gradient(
+        circle at var(--x) var(--y),
+        var(--v2) 0%,
+        var(--v2-0) 25%
+    );
+    opacity: 50%;
+    -webkit-mask: url("../assets/logo.svg");
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    -webkit-mask-position: center;
+}
+#TITLEPAGE > .inner {
+    height: 100%;
+    max-height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#TITLEPAGE > .inner > .title {
+    font-size: 50px;
+    font-weight: 500;
+}
+#TITLEPAGE > .inner > .subtitle {
+    color: var(--v7);
+
+    text-align: center;
+    font-size: 16px;
+}
+#TITLEPAGE > .inner > .nav {
+    --n: 4;
+
+    width: min(calc(var(--n)*100px + (var(--n)-1)*10px), calc(100vw - 20px));
+    margin-top: 30px;
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#TITLEPAGE > .inner > .nav > button.item {
+    width: 100px;
+    aspect-ratio: 1 / 1;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+}
+#TITLEPAGE > .inner > .nav > button.item > ion-icon {
+    font-size: 32px;
+}
+#TITLEPAGE > .info {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: flex-start;
+    align-content: center;
+
+    color: var(--v2);
+    font-size: 12px;
+}

@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "start": "electron ."
+  },
+  "main": "main.js",
+  "dependencies": {
+    "electron": "^24.1.0",
+    "fuse": "^0.4.0",
+    "ionicons": "^7.1.2"
+  },
+  "devDependencies": {
+    "electron-packager": "^17.1.1"
+  }
+}

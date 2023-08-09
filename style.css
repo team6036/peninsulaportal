@@ -1,0 +1,813 @@
+:root {
+    --WIN-TITLEBAR-TOP: 40px;
+
+    --t: 0.25s;
+}
+
+@font-face {
+    font-family: REM;
+    src: url("./assets/REM.ttf");
+}
+
+* {
+    font-family: REM, Arial, Helvetica, sans-serif;
+}
+
+body {
+    margin: 0px;
+    padding: 0px;
+
+    background-color: #000;
+}
+
+button {
+    outline: none;
+    border: none;
+}
+@property --btn-c-size-v {
+    syntax: "<percentage>";
+    inherits: true;
+    initial-value: 0%;
+}
+button:not(.override) {
+    --bg: var(--v2);
+    --fg: var(--v7);
+    --bgh: var(--v3);
+    --fgh: var(--v8);
+    --bgd: var(--v2);
+    --fgd: var(--v5);
+    --btn-c-size: 125%;
+    --btn-c-size-v: 0%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    background: radial-gradient(
+        circle,
+        var(--bgh) 0%,
+        var(--bgh) var(--btn-c-size-v),
+        transparent var(--btn-c-size-v),
+        transparent 500%
+    ), var(--bg);
+    color: var(--fg);
+
+    transition: --btn-c-size-v var(--t), background var(--t), color var(--t);
+}
+button:not(.override):not(:disabled):hover,
+button:not(.override):not(:disabled).hover {
+    --btn-c-size-v: var(--btn-c-size);
+    
+    color: var(--fgh);
+}
+button:not(.override):disabled,
+button:not(.override).disabled {
+    --btn-c-size-v: 0%;
+
+    background: radial-gradient(
+        circle,
+        var(--bgh) 0%,
+        var(--bgh) var(--btn-c-size-v),
+        transparent var(--btn-c-size-v),
+        transparent 500%
+    ), var(--bgd);
+    color: var(--fgd);
+}
+button:not(.override).icon {
+    padding: 5px;
+
+    border-radius: 100%;
+}
+
+input {
+    min-width: 0px;
+
+    outline: none;
+    border: none;
+}
+input:not(.override) {
+    padding: 10px;
+
+    background-color: var(--v1);
+    color: var(--v8);
+    border-radius: 10px;
+
+    transition: background-color var(--t), color var(--t);
+}
+input:not(.override)::placeholder {
+    color: var(--v4);
+
+    font-style: italic;
+}
+input[type="number"]:not(.override) {
+    color: var(--cg);
+}
+input[type="number"]:not(.override):disabled {
+    color: var(--cg2);
+}
+input[type="number"]:not(.override)::-webkit-outer-spin-button,
+input[type="number"]:not(.override)::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0px;
+}
+
+/*
+::-webkit-scrollbar {
+    width: 5px;
+}
+::-webkit-scrollbar-track {
+    background-color: var(--v1-4);
+}
+::-webkit-scrollbar-thumb {
+    margin: 2px;
+
+    background-color: var(--v3);
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--v4);
+}
+*/
+
+label.filedialog {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v1);
+}
+label.filedialog > input[type="file"] {
+    display: none;
+}
+label.filedialog > .value {
+    flex-basis: 100%;
+
+    padding: 10px;
+
+    color: var(--cg);
+}
+label.filedialog > .value.empty {
+    color: var(--v4);
+
+    font-style: italic;
+}
+label.filedialog > button {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+
+    padding: 10px;
+}
+label.filedialog > button::before {
+    content: "Browse";
+}
+
+label.switch {
+    position: relative;
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 15px;
+    max-height: 15px;
+
+    display: inline-block;
+}
+label.switch > input[type="checkbox"] {
+    width: 0px;
+    height: 0px;
+
+    opacity: 0%;
+}
+label.switch > span {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+
+    background-color: var(--cr);
+    border-radius: 15px;
+
+    cursor: pointer;
+
+    transition: background-color var(--t);
+}
+label.switch > span::before {
+    content: "";
+
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    transform: translateX(0px);
+
+    width: 11px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--v8);
+    border-radius: 100%;
+
+    transition: transform var(--t);
+}
+label.switch > input[type="checkbox"]:checked + span {
+    background-color: var(--cg);
+}
+label.switch > input[type="checkbox"]:checked + span::before {
+    transform: translateX(15px);
+}
+
+#titlebar {
+    position: absolute;
+    top: 0%;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    height: calc(var(--WIN-TITLEBAR-TOP) - 20px);
+    max-height: calc(var(--WIN-TITLEBAR-TOP) - 20px);
+    padding: 10px;
+    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2);
+    color: var(--v5);
+
+    -webkit-app-region: drag;
+}
+#titlebar button {
+    -webkit-app-region: no-drag;
+}
+
+#mount {
+    position: absolute;
+    top: var(--WIN-TITLEBAR-TOP);
+    left: 50%;
+    transform: translateX(-50%);
+    
+    width: 100%;
+    max-width: 100%;
+    height: calc(100% - var(--WIN-TITLEBAR-TOP));
+    max-height: calc(100% - var(--WIN-TITLEBAR-TOP));
+    overflow: hidden;
+
+    background-color: var(--v1);
+}
+#mount > .page {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+}
+
+:has(> .tooltip) {
+    position: relative;
+}
+@property --tooltip-size-v {
+    syntax: "<percentage>";
+    inherits: true;
+    initial-value: 0%;
+}
+.tooltip {
+    --bg: var(--v1);
+    --space: 10px;
+    --tooltip-size-v: 100%;
+
+    z-index: 1;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: max-content;
+    height: max-content;
+    padding: 10px 20px;
+
+    background-color: var(--bg);
+    color: var(--v8);
+    filter: drop-shadow(0px 0px 5px var(--v8-2));
+
+    font-size: 14px;
+
+    transition: --tooltip-size-v var(--t), transform var(--t), background-color var(--t);
+}
+.tooltip::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+
+    width: 10px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--bg);
+
+    transition: background-color var(--t);
+}
+.tooltip.hov {
+    --tooltip-size-v: 0%;
+}
+:hover > .tooltip.hov {
+    --tooltip-size-v: 100%;
+}
+.tooltip.nex {
+    top: 0%;
+    left: 100%;
+    transform-origin: 100% 100%;
+    transform: translateY(calc(-1*var(--space))) translate(-100%, -100%) scale(var(--tooltip-size-v));
+}
+.tooltip.nx {
+    top: 0%;
+    left: 50%;
+    transform-origin: 50% 100%;
+    transform: translateY(calc(-1*var(--space))) translate(-50%, -100%) scale(var(--tooltip-size-v));
+}
+.tooltip.nwx {
+    top: 0%;
+    left: 0%;
+    transform-origin: 0% 100%;
+    transform: translateY(calc(-1*var(--space))) translate(0%, -100%) scale(var(--tooltip-size-v));
+}
+.tooltip.sex {
+    top: 100%;
+    left: 100%;
+    transform-origin: 100% 0%;
+    transform: translateY(calc(+1*var(--space))) translate(-100%, 0%) scale(var(--tooltip-size-v));
+}
+.tooltip.sx {
+    top: 100%;
+    left: 50%;
+    transform-origin: 50% 0%;
+    transform: translateY(calc(+1*var(--space))) translate(-50%, 0%) scale(var(--tooltip-size-v));
+}
+.tooltip.swx {
+    top: 100%;
+    left: 0%;
+    transform-origin: 0% 0%;
+    transform: translateY(calc(+1*var(--space))) translate(0%, 0%) scale(var(--tooltip-size-v));
+}
+.tooltip.ney {
+    top: 0%;
+    left: 100%;
+    transform-origin: 0% 0%;
+    transform: translateX(calc(+1*var(--space))) translate(0%, 0%) scale(var(--tooltip-size-v));
+}
+.tooltip.ey {
+    top: 50%;
+    left: 100%;
+    transform-origin: 0% 50%;
+    transform: translateX(calc(+1*var(--space))) translate(0%, -50%) scale(var(--tooltip-size-v));
+}
+.tooltip.sey {
+    top: 100%;
+    left: 100%;
+    transform-origin: 0% 100%;
+    transform: translateX(calc(+1*var(--space))) translate(0%, -100%) scale(var(--tooltip-size-v));
+}
+.tooltip.nwy {
+    top: 0%;
+    left: 0%;
+    transform-origin: 100% 0%;
+    transform: translateX(calc(-1*var(--space))) translate(-100%, 0%) scale(var(--tooltip-size-v));
+}
+.tooltip.wy {
+    top: 50%;
+    left: 0%;
+    transform-origin: 100% 50%;
+    transform: translateX(calc(-1*var(--space))) translate(-100%, -50%) scale(var(--tooltip-size-v));
+}
+.tooltip.swy {
+    top: 100%;
+    left: 0%;
+    transform-origin: 100% 100%;
+    transform: translateX(calc(-1*var(--space))) translate(-100%, -100%) scale(var(--tooltip-size-v));
+}
+.tooltip.nex::before {
+    content: "";
+
+    top: 100%;
+    left: calc(100% - 10px);
+}
+.tooltip.nx::before {
+    content: "";
+
+    top: 100%;
+    left: 50%;
+}
+.tooltip.nwx::before {
+    content: "";
+
+    top: 100%;
+    left: calc(0% + 10px);
+}
+.tooltip.sex::before {
+    content: "";
+
+    top: 0%;
+    left: calc(100% - 10px);
+}
+.tooltip.sx::before {
+    content: "";
+
+    top: 0%;
+    left: 50%;
+}
+.tooltip.swx::before {
+    content: "";
+
+    top: 0%;
+    left: calc(0% + 10px);
+}
+.tooltip.ney::before {
+    content: "";
+
+    top: calc(0% + 10px);
+    left: 0%;
+}
+.tooltip.ey::before {
+    content: "";
+
+    top: 50%;
+    left: 0%;
+}
+.tooltip.sey::before {
+    content: "";
+
+    top: calc(100% - 10px);
+    left: 0%;
+}
+.tooltip.nwy::before {
+    content: "";
+
+    top: calc(0% + 10px);
+    left: 100%;
+}
+.tooltip.wy::before {
+    content: "";
+
+    top: 50%;
+    left: 100%;
+}
+.tooltip.swy::before {
+    content: "";
+
+    top: calc(100% - 10px);
+    left: 100%;
+}
+
+.loading {
+    --size: 10px;
+    --color: var(--v8);
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+.loading > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: calc(var(--size) * 0.5);
+}
+.loading > div > div {
+    width: var(--size);
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--color);
+    border-radius: 100%;
+
+    animation: loading-inter 1s infinite;
+}
+.loading > div > div:first-child {
+    animation: loading-first 1s infinite;
+}
+.loading > div > div:last-child {
+    animation: loading-last 1s infinite;
+}
+@keyframes loading-inter {
+    0% { transform: translateX(calc(var(--size) * 1.5 / 2)) translateX(calc(var(--size) * -1.5)); }
+    100% { transform: translateX(calc(var(--size) * 1.5 / 2)) translateX(calc(var(--size) * 0)); }
+}
+@keyframes loading-first {
+    0% { transform: translateX(calc(var(--size) * 1.5 / 2)) scale(0%); }
+    100% { transform: translateX(calc(var(--size) * 1.5 / 2)) scale(100%); }
+}
+@keyframes loading-last {
+    0% { transform: translateX(calc(var(--size) * -1.5 / 2)) scale(100%); }
+    100% { transform: translateX(calc(var(--size) * -1.5 / 2)) scale(0%); }
+}
+
+.introtitle {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    text-align: center;
+}
+.introtitle > div:first-child {
+    transform: translateX(0.04em);
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    color: var(--a);
+}
+.introtitle > div:first-child > div:last-child {
+    overflow: hidden;
+
+    animation: introtitle-name-shrink 0s forwards;
+}
+.introtitle:not(.noanimation) > div:first-child > div:last-child {
+    animation: introtitle-name-shrink 1s 0.25s forwards;
+}
+.introtitle > div:last-child {
+    transform: translateX(-0.04em);
+
+    color: var(--v8);
+}
+@keyframes introtitle-name-shrink {
+    0% { max-width: 9em; }
+    100% { max-width: 0px; }
+}
+
+#loading {
+    --transform: scale(0%);
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    
+    background-color: var(--v1-0);
+    visibility: hidden;
+
+    font-size: 75px;
+    font-weight: 500;
+
+    transition: background-color var(--t), visibility var(--t);
+}
+#loading.this {
+    background-color: var(--v1);
+
+    visibility: inherit;
+}
+#loading > .introtitle {
+    transform: var(--transform);
+
+    transition: transform var(--t);
+}
+#loading.this > .introtitle {
+    transform: none;
+}
+
+.popup {
+    position: absolute;
+    top: var(--WIN-TITLEBAR-TOP);
+    left: 50%;
+    transform: translateX(-50%);
+    
+    width: 100%;
+    max-width: 100%;
+    height: calc(100% - var(--WIN-TITLEBAR-TOP));
+    max-height: calc(100% - var(--WIN-TITLEBAR-TOP));
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    background-color: var(--v1-8);
+}
+.popup > .inner {
+    position: relative;
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+    filter: drop-shadow(0px 5px 5px var(--v0-8));
+}
+.popup.custom > .inner > button.close {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+
+    position: absolute;
+    top: 10px;
+    right: 10px;
+
+    padding: 5px;
+    aspect-ratio: 1 / 1;
+
+    border-radius: 100%;
+}
+.popup.custom > .inner > .title {
+    padding: 0px 40px;
+
+    color: var(--v8);
+
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+}
+.popup.custom > .inner > .content {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    color: var(--v8);
+}
+.popup.alert > .inner,
+.popup.confirm > .inner,
+.popup.prompt > .inner {
+    max-width: 250px;
+}
+.popup.alert > .inner > .icon,
+.popup.confirm > .inner > .icon,
+.popup.prompt > .inner > .icon {
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    text-align: center;
+    font-size: 50px;
+}
+.popup.alert > .inner > .content,
+.popup.confirm > .inner > .content,
+.popup.prompt > .inner > .content {
+    color: var(--v8);
+    
+    text-align: center;
+}
+.popup.alert > .inner > button,
+.popup.confirm > .inner > button,
+.popup.prompt > .inner > button {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+
+    padding: 5px 75px;
+
+    border-radius: 10px;
+}
+.popup.alert > .inner > button.special,
+.popup.confirm > .inner > button.special,
+.popup.prompt > .inner > button.special {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+}
+.popup.prompt > .inner > input {
+    width: 300px;
+}
+
+div.contextmenu {
+    z-index: 1000;
+
+    position: absolute;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: flex-start;
+
+    filter: drop-shadow(0px 5px 5px var(--v1-8));
+}
+div.contextmenu .item {
+    position: relative;
+
+    padding: 10px;
+
+    min-width: max-content;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 0px;
+
+    background-color: var(--v2);
+    color: var(--v8);
+
+    font-size: 12px;
+    user-select: none;
+}
+div.contextmenu .item:not(.divider):hover {
+    background-color: var(--v3);
+}
+div.contextmenu .item:not(.divider) > ion-icon.icon {
+    min-width: 12px;
+    margin-right: 5px;
+}
+div.contextmenu .item:not(.divider) > .label {
+    flex-basis: 100%;
+}
+div.contextmenu .item:not(.divider) > .shortcut {
+    margin-right: 5px;
+    margin-left: 15px;
+
+    color: var(--v5);
+}
+div.contextmenu .item:not(.divider) > ion-icon.dropdown {
+    color: var(--v6);
+
+    font-size: 16px;
+}
+div.contextmenu .item:not(.divider) > div.dropdown {
+    position: absolute;
+    top: 0%;
+    left: 100%;
+
+    visibility: hidden;
+}
+div.contextmenu .item:not(.divider):hover > div.dropdown {
+    visibility: inherit;
+}
+div.contextmenu .item.divider {
+    padding: 0px;
+
+    height: 2px;
+}
+div.contextmenu .item.divider::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: calc(100% - 20px);
+    height: 2px;
+
+    background-color: var(--v4);
+}
+div.contextmenu .item.divider > * {
+    display: none;
+}
