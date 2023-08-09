@@ -1,0 +1,7 @@
+planner:
+- remake main.js
+- execution of trajectory script
+
+all:
+- find way to disable reload if possible (without key shortcuts)
+- peninsula playground?
