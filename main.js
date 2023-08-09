@@ -377,10 +377,17 @@ Portal.Feature = class PortalFeature extends core.Target {
         this.portal = null;
         return this;
     }
+    
+    get dataPath() {
+        if (!this.canOperateFS) return null;
+        return path.join(this.portal.dataPath, this.name.toLowerCase());
+    }
 
     async affirm() {
-        if (!this.hasPortal()) return false;
+        if (!this.canOperateFS) return false;
         await this.portal.affirm();
+        let hasFeatureData = await this.portal.hasFeatureData(this.dataPath);
+        if (!hasFeatureData) await this.portal.dirMake(this.dataPath);
         return true;
     }
 
@@ -392,7 +399,7 @@ Portal.Feature = class PortalFeature extends core.Target {
     }
     convertPath(pth) {
         if (!this.canOperateFS) return null;
-        return path.join(this.portal.dataPath, this.name.toLowerCase(), pth);
+        return path.join(this.dataPath, pth);
     }
 
     async fileHas(pth) {
