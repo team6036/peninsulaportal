@@ -386,7 +386,7 @@ Portal.Feature = class PortalFeature extends core.Target {
     async affirm() {
         if (!this.canOperateFS) return false;
         await this.portal.affirm();
-        let hasFeatureData = await this.portal.hasFeatureData(this.dataPath);
+        let hasFeatureData = await this.portal.dirHas(this.dataPath);
         if (!hasFeatureData) await this.portal.dirMake(this.dataPath);
         return true;
     }
@@ -404,35 +404,43 @@ Portal.Feature = class PortalFeature extends core.Target {
 
     async fileHas(pth) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.fileHas(this.convertPath(pth));
     }
     async fileRead(pth) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.fileRead(this.convertPath(pth));
     }
     async fileWrite(pth, content) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.fileWrite(this.convertPath(pth), content);
     }
     async fileDelete(pth) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.fileDelete(this.convertPath(pth));
     }
 
     async dirHas(pth) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.dirHas(this.convertPath(pth));
     }
     async dirList(pth) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.dirList(this.convertPath(pth));
     }
     async dirMake(pth) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.dirMake(this.convertPath(pth));
     }
     async dirDelete(pth) {
         if (!this.canOperateFS) return null;
+        await this.affirm();
         return await this.portal.dirDelete(this.convertPath(pth));
     }
 
