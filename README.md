@@ -66,7 +66,7 @@ Here is what the python script should expect as input and what it should output:
    "state": [
        {
            "x": 0, "y": 0, // position
-           "velo_x": 0, "velo_y": 0, // velocity
+           "vx": 0, "vy": 0, // velocity
            "theta": 0 // heading angle
        }
        /* ... */
