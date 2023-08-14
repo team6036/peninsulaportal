@@ -293,10 +293,11 @@ class RenderItem extends core.Target {
     update() {
         this.post("update", null);
         let globalScale = this.hasApp() ? this.app.globalScale : 1;
+        let scale = this.applyGlobalToScale ? globalScale : 1;
         this.elem.style.transform = [
-            "translate("+(this.x * (this.applyGlobalToPos?globalScale:1))+"px, "+(-this.y * (this.applyGlobalToPos?globalScale:1))+"px)",
+            "translate("+(this.x * scale)+"px, "+(-this.y * scale)+"px)",
             "translate("+(this.alignX<0?-100:this.alignX>0?0:-50)+"%, "+(this.alignY<0?100:this.alignY>0?0:50)+"%)",
-            "scale("+this.scale.mul(this.applyGlobalToScale?globalScale:1).xy.join(",")+")",
+            "scale("+this.scale.mul(scale).xy.join(",")+")",
             "rotate("+(-this.dir)+"deg)",
         ].join(" ");
         this.elem.style.visibility = this.show ? "inherit" : "hidden";
@@ -316,6 +317,36 @@ class RenderItem extends core.Target {
         x *= (this.hasApp() && this.app.hasProject()) ? this.app.project.w : 0;
         y *= (this.hasApp() && this.app.hasProject()) ? this.app.project.h : 0;
         return new V(x, y);
+    }
+}
+
+class RIBackground extends RenderItem {
+    #img;
+
+    constructor(src) {
+        super();
+
+        this.elem.classList.add("background");
+
+        this.#img = document.createElement("img");
+        this.elem.appendChild(this.img);
+
+        this.img.src = "../assets/field.png";
+
+        this.src = src;
+    }
+
+    get img() { return this.#img; }
+
+    get src() { return this.img.src; }
+    set src(v) {
+        /*
+        if (v == null) this.img.style.visibility = "hidden";
+        else {
+            this.img.style.visibility = "inherit";
+            this.img.src = "../assets/field.png";
+        }
+        */
     }
 }
 
@@ -390,16 +421,16 @@ class RIPathLine extends RenderItem {
 }
 class RIPathVisual extends RenderItem {
     #dt;
-    #points;
+    #nodes;
 
     #canvas;
     #ctx;
 
-    constructor(dt, points) {
+    constructor(dt, nodes) {
         super();
 
         this.#dt = 0;
-        this.#points = [];
+        this.#nodes = [];
 
         this.elem.classList.add("pathvisual");
 
@@ -417,13 +448,13 @@ class RIPathVisual extends RenderItem {
             canvas.style.width = size.x+"px";
             canvas.style.height = size.y+"px";
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = style.getPropertyValue("--cg");
+            ctx.strokeStyle = style.getPropertyValue("--cg-8");
             ctx.lineWidth = scale*10;
             ctx.lineCap = "butt";
             ctx.lineJoin = "round";
             ctx.beginPath();
-            this.points.forEach((pos, i) => {
-                pos = new V(pos).div(10);
+            this.nodes.forEach((node, i) => {
+                let pos = new V(node.pos);
                 pos.y = size.y - pos.y;
                 pos.imul(scale);
                 if (i > 0) ctx.lineTo(...pos.xy);
@@ -433,9 +464,7 @@ class RIPathVisual extends RenderItem {
         });
 
         this.dt = dt;
-        this.points = points;
-
-        console.log(points);
+        this.nodes = nodes;
     }
 
     get dt() { return this.#dt; }
@@ -445,14 +474,85 @@ class RIPathVisual extends RenderItem {
         this.#dt = v;
     }
 
-    get points() { return [...this.#points]; }
-    set points(v) {
+    get nodes() { return [...this.#nodes]; }
+    set nodes(v) {
         v = util.ensure(v, "arr");
-        this.#points = v.map(v => new V(v));
+        this.#nodes = v.map(v => new subcore.Project.Node(v));
     }
 
     get canvas() { return this.#canvas; }
     get ctx() { return this.#ctx; }
+}
+class RIPathVisualItem extends RenderItem {
+    #visual;
+    #interp;
+
+    constructor(visual) {
+        super();
+
+        this.#visual = null;
+        this.#interp = 0;
+
+        this.elem.classList.add("pathvisualitem");
+
+        this.elem.classList.add("selectable");
+
+        this.elem.classList.add("this");
+
+        this.elem.innerHTML = "<button></button>";
+
+        this.elem.classList.add("node");
+
+        this.elem.classList.add("velocity");
+
+        const eArrow = document.createElement("button");
+        this.elem.appendChild(eArrow);
+        eArrow.classList.add("arrow");
+
+        const eBody = document.createElement("button");
+        this.elem.appendChild(eBody);
+        eBody.classList.add("body");
+
+        this.addHandler("update", data => {
+            this.elem.style.setProperty("--body-w", ((this.hasApp() && this.app.hasProject()) ? this.app.project.robotW : 0)+"px");
+            this.elem.style.setProperty("--body-h", ((this.hasApp() && this.app.hasProject()) ? this.app.project.robotW : 0)+"px");
+            if (!this.hasVisual()) return;
+            let p = this.interp;
+            let nodes = this.visual.nodes;
+            let i = Math.floor((nodes.length-1)*p);
+            let j = Math.min(i+1, nodes.length-1);
+            let ni = nodes[i], nj = nodes[j];
+            p = ((nodes.length-1)*p) - i;
+            let node = new subcore.Project.Node(
+                util.lerp(ni.pos, nj.pos, p),
+                ni.heading + util.angleRel(ni.heading, nj.heading)*p,
+                util.lerp(ni.velocity, nj.velocity),
+                0,
+                true,
+            );
+            this.pos = node.pos;
+            this.elem.style.setProperty("--dir-vel", (180-node.velocity.towards())+"deg");
+            this.elem.style.setProperty("--dist", node.velocity.dist()+"px");
+            this.elem.style.setProperty("--dir-head", (-(180/Math.PI)*node.heading)+"deg");
+        });
+
+        this.visual = visual;
+    }
+
+    get visual() { return this.#visual; }
+    set visual(v) {
+        v = (v instanceof RIPathVisual) ? v : null;
+        if (this.visual == v) return;
+        this.#visual = v;
+    }
+    hasVisual() { return this.visual instanceof RIPathVisual; }
+
+    get interp() { return this.#interp; }
+    set interp(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (this.interp == v) return;
+        this.#interp = v;
+    }
 }
 
 class RISelect extends RenderItem {
@@ -812,14 +912,15 @@ export default class App extends core.App {
                     if (this.changes.length <= 0) return;
                     this.syncFilesWith();
                 });
-            this.addHandler("change", data => {
-                if (this.hasESaveBtn()) this.eSaveBtn.textContent = "Save";
-            });
-            this.addHandler("change-clear", data => {
-                if (this.hasESaveBtn()) this.eSaveBtn.textContent = "Saved";
-            });
+            let saving = false;
             this.addHandler("sync-files-with", data => {
-                if (this.hasESaveBtn()) this.eSaveBtn.textContent = "Saving";
+                saving = true;
+            });
+            this.addHandler("synced-files-with", data => {
+                saving = false;
+            });
+            this.addHandler("update", data => {
+                if (this.hasESaveBtn()) this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
             });
 
             const update = () => {
@@ -917,8 +1018,10 @@ export default class App extends core.App {
     }
     async syncFilesWith() {
         await this.post("sync-files-with", null);
+        let changes = new Set(this.changes);
+        this.clearChanges();
         // console.log("CHANGES:", this.changes);
-        if (this.hasChange("*all")) {
+        if (changes.has("*all")) {
             // console.log("CHANGE:*all > updating global list");
             let projectIds = this.projects;
             let projectIdsContent = JSON.stringify(projectIds, null, "\t");
@@ -949,7 +1052,7 @@ export default class App extends core.App {
             }
             for (let i = 0; i < projectIds.length; i++) {
                 let id = projectIds[i];
-                if (!this.hasChange("proj:"+id)) continue;
+                if (!changes.has("proj:"+id)) continue;
                 // console.log("CHANGE:proj:"+id+" > creating/updating project id:"+id);
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
@@ -957,7 +1060,6 @@ export default class App extends core.App {
                 let projectContent = JSON.stringify(project, null, "\t");
                 await window.api.fileWrite("projects/"+id+".json", projectContent);
             }
-            let changes = this.changes;
             for (let i = 0; i < changes.length; i++) {
                 let change = changes[i];
                 if (!change.startsWith("proj:")) continue;
@@ -969,7 +1071,6 @@ export default class App extends core.App {
                 } catch (e) {}
             }
         }
-        this.clearChanges();
         await this.post("synced-files-with", null);
     }
     get projects() { return Object.keys(this.#projects); }
@@ -1413,10 +1514,15 @@ export default class App extends core.App {
                 this.addHandler("project-set", data => {
                     state.post("refresh-options", null);
                 });
-                let oldW = null, oldH = null, padding = 20;
+                const background = new RIBackground();
+                let oldW = null, oldH = null, padding = 40;
                 this.addHandler("update", data => {
+                    this.addRenderItem(background);
                     let w = this.hasProject() ? this.project.w : 0;
                     let h = this.hasProject() ? this.project.h : 0;
+                    background.src = this.hasProject() ? this.project.meta.backgroundImage : null;
+                    background.pos = this.hasProject() ? this.project.meta.backgroundPos : 0;
+                    background.scale = this.hasProject() ? this.project.meta.backgroundScale : 0;
                     let newW = false, newH = false;
                     if (oldW != w) [oldW, newW] = [w, true];
                     if (oldH != h) [oldH, newH] = [h, true];
@@ -1754,6 +1860,12 @@ export default class App extends core.App {
                                 o.eRobotSizeHInput.disabled = !has;
                             if (o.eRobotMassInput instanceof HTMLInputElement)
                                 o.eRobotMassInput.disabled = !has;
+                            if (o.eBackgroundXInput instanceof HTMLInputElement)
+                                o.eBackgroundXInput.disabled = !has;
+                            if (o.eBackgroundYInput instanceof HTMLInputElement)
+                                o.eBackgroundYInput.disabled = !has;
+                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
+                                o.eBackgroundScaleInput.disabled = !has;
                         });
                         state.addHandler("refresh-options", data => {
                             let has = this.hasProject();
@@ -1767,6 +1879,12 @@ export default class App extends core.App {
                                 o.eRobotSizeHInput.value = has ? this.project.robotH/100 : "";
                             if (o.eRobotMassInput instanceof HTMLInputElement)
                                 o.eRobotMassInput.value = has ? this.project.robotMass : "";
+                            if (o.eBackgroundXInput instanceof HTMLInputElement)
+                                o.eBackgroundXInput.value = has ? this.project.meta.backgroundX/100 : "";
+                            if (o.eBackgroundYInput instanceof HTMLInputElement)
+                                o.eBackgroundYInput.value = has ? this.project.meta.backgroundY/100 : "";
+                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
+                                o.eBackgroundScaleInput.value = has ? this.project.meta.backgroundScale*100 : "";
                         });
                         o.eSpawnBox = elem.querySelector(":scope #spawnbox");
                         if (o.eSpawnBox instanceof HTMLDivElement) {
@@ -1918,6 +2036,46 @@ export default class App extends core.App {
                                     state.post("refresh-options", null);
                                 });
                         }
+                        o.eBackgroundBox = elem.querySelector(":scope #background");
+                        if (o.eBackgroundBox instanceof HTMLDivElement) {
+                            o.eBackgroundXInput = o.eBackgroundBox.querySelector(":scope > div > input.x");
+                            if (o.eBackgroundXInput instanceof HTMLInputElement)
+                                o.eBackgroundXInput.addEventListener("change", e => {
+                                    let v = o.eBackgroundXInput.value;
+                                    if (v.length > 0) {
+                                        v = util.ensure(parseFloat(v), "num");
+                                        if (this.hasProject()) {
+                                            this.project.meta.backgroundX = v*100;
+                                            this.project.post("change", null);
+                                        }
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                            o.eBackgroundYInput = o.eBackgroundBox.querySelector(":scope > div > input.y");
+                            if (o.eBackgroundYInput instanceof HTMLInputElement)
+                                o.eBackgroundYInput.addEventListener("change", e => {
+                                    let v = o.eBackgroundYInput.value;
+                                    if (v.length > 0) {
+                                        v = util.ensure(parseFloat(v), "num");
+                                        if (this.hasProject()) {
+                                            this.project.meta.backgroundY = v*100;
+                                            this.project.post("change", null);
+                                        }
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                            o.eBackgroundScaleInput = o.eBackgroundBox.querySelector(":scope > input");
+                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
+                                o.eBackgroundScaleInput.addEventListener("change", e => {
+                                    let v = o.eBackgroundScaleInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject())
+                                            this.project.meta.backgroundScale = v/100;
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                        }
                     },
                     trajectory: (o, elem) => {
                         let generating = false;
@@ -1942,6 +2100,7 @@ export default class App extends core.App {
                                 o.eScriptInput.disabled = !has;
                             if (o.eScriptBrowse instanceof HTMLInputElement)
                                 o.eScriptBrowse.disabled = !has;
+                            o.checkPathVisual();
                         });
                         state.addHandler("refresh-options", data => {
                             let has = this.hasProject();
@@ -2021,31 +2180,167 @@ export default class App extends core.App {
                                     dialog.click();
                                 });
                         }
+                        let time = null, paused = null;
+                        const getTotalTime = () => {
+                            if (pathVisual == null) return null;
+                            return pathVisual.item.nodes.length*pathVisual.item.dt;
+                        };
+                        const getTime = () => ((pathVisual == null) ? null : time);
+                        const setTime = v => {
+                            v = util.ensure(v, "num");
+                            v = (pathVisual == null) ? null : Math.min(getTotalTime(), Math.max(0, v));
+                            if (getTime() == v) return true;
+                            time = v;
+                            if (o.eProgress instanceof HTMLDivElement)
+                                o.eProgress.style.setProperty("--progress", (100*((time == null) ? 0 : (getTime()/getTotalTime())))+"%");
+                            if (pathVisual != null)
+                                pathVisual.item2.interp = getTime()/getTotalTime();
+                            return true;
+                        };
+                        const getPaused = () => paused;
+                        const setPaused = v => {
+                            v = !!v;
+                            if (getPaused() == v) return true;
+                            paused = v;
+                            refreshProgressBtn();
+                            return true;
+                        };
+                        const refreshProgressBtn = () => {
+                            if (!(o.eProgressBtn instanceof HTMLButtonElement)) return false;
+                            if (!(o.eProgressBtn.children[0] instanceof HTMLElement)) return false;
+                            o.eProgressBtn.children[0].setAttribute("name", (pathVisual == null) ? "help" : (getTime() >= getTotalTime()) ? "refresh" : paused ? "play" : "pause");
+                        };
+                        if (state.eRender instanceof HTMLDivElement) {
+                            o.eProgress = state.eRender.querySelector(":scope > .progress");
+                            if (o.eProgress instanceof HTMLDivElement) {
+                                o.eProgressBtn = o.eProgress.querySelector(":scope > button");
+                                if (o.eProgressBtn instanceof HTMLButtonElement)
+                                    o.eProgressBtn.addEventListener("click", e => {
+                                        if (pathVisual == null) return;
+                                        if (getTime() >= getTotalTime()) {
+                                            setTime(0);
+                                            setPaused(false);
+                                        } else setPaused(!getPaused());
+                                    });
+                                o.eProgressTimeNow = o.eProgress.querySelector(":scope > .time.now");
+                                o.eProgressTimeTotal = o.eProgress.querySelector(":scope > .time.total");
+                                o.eProgressBar = o.eProgress.querySelector(":scope > .bar");
+                                if (o.eProgressBar instanceof HTMLDivElement)
+                                    o.eProgressBar.addEventListener("mousedown", e => {
+                                        if (getChoosing()) return;
+                                        if (e.button != 0) return;
+                                        e.stopPropagation();
+                                        const mouseup = () => {
+                                            document.body.removeEventListener("mouseup", mouseup);
+                                            document.body.removeEventListener("mousemove", mousemove);
+                                        };
+                                        const mousemove = e => {
+                                            let r = o.eProgressBar.getBoundingClientRect();
+                                            let p = (e.pageX-r.left) / r.width;
+                                            setTime(getTotalTime() * p);
+                                        };
+                                        document.body.addEventListener("mouseup", mouseup);
+                                        document.body.addEventListener("mousemove", mousemove);
+                                    });
+                            }
+                        }
+                        let t = 0;
                         let pathVisual = null;
+                        this.addHandler("update", data => {
+                            let deltaTime = util.getTime()-t;
+                            t += deltaTime;
+                            if (pathVisual == null) {
+                                if (state.eDisplay instanceof HTMLDivElement)
+                                    state.eDisplay.classList.remove("progress");
+                                return;
+                            }
+                            if (state.eDisplay instanceof HTMLDivElement)
+                                state.eDisplay.classList.add("progress");
+                            refreshProgressBtn();
+                            if (getTime() < getTotalTime() && !getPaused())
+                                setTime(getTime() + deltaTime);
+                            if (o.eProgressTimeNow instanceof HTMLDivElement) {
+                                let split = util.splitTimeUnits(getTime());
+                                split[0] = Math.round(split[0]);
+                                while (split.length > 3) {
+                                    if (split.at(-1) > 0) break;
+                                    split.pop();
+                                }
+                                split = split.map((v, i) => {
+                                    v = String(v);
+                                    if (i >= split.length-1) return v;
+                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
+                                    while (v.length < l) v = "0"+v;
+                                    return v;
+                                });
+                                o.eProgressTimeNow.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+                            }
+                            if (o.eProgressTimeTotal instanceof HTMLDivElement) {
+                                let split = util.splitTimeUnits(getTotalTime());
+                                split[0] = Math.round(split[0]);
+                                while (split.length > 3) {
+                                    if (split.at(-1) > 0) break;
+                                    split.pop();
+                                }
+                                split = split.map((v, i) => {
+                                    v = String(v);
+                                    if (i >= split.length-1) return v;
+                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
+                                    while (v.length < l) v = "0"+v;
+                                    return v;
+                                });
+                                o.eProgressTimeTotal.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+                            }
+                        });
+                        o.checkPathVisual = async () => {
+                            if (pathVisual != null) {
+                                this.remRenderItem(pathVisual.item);
+                                this.remRenderItem(pathVisual.item2);
+                            }
+                            pathVisual = null;
+                            if (!this.hasProject()) return null;
+                            try {
+                                let dataOut = await window.api.ask("exec-get", [this.project.config.script]);
+                                if (!dataOut) return null;
+                                pathVisual = { projectId: this.projectId };
+                                pathVisual.item = this.addRenderItem(new RIPathVisual(dataOut.dt*1000, util.ensure(dataOut.state, "arr").map(v => {
+                                    v = util.ensure(v, "obj");
+                                    return new subcore.Project.Node(new V(v.x, v.y).mul(100), v.theta, new V(v.vx || v.velo_x, v.vy || v.velo_y).mul(100), 0, true);
+                                })));
+                                pathVisual.item2 = this.addRenderItem(new RIPathVisualItem(pathVisual.item));
+                                setTime(0);
+                                setPaused(false);
+                                return pathVisual;
+                            } catch (e) {}
+                            return null;
+                        };
+                        setPaused(false);
                         o.eGenerationBox = elem.querySelector(":scope #trajectorygeneration");
                         if (o.eGenerationBox instanceof HTMLDivElement) {
                             o.eGenerationBtn = o.eGenerationBox.querySelector(":scope > button");
                             if (o.eGenerationBtn instanceof HTMLButtonElement)
                                 o.eGenerationBtn.addEventListener("click", e => {
-                                    if (!this.hasProject()) return;
+                                    let projectId = this.projectId;
+                                    if (!this.hasProject(projectId)) return;
+                                    let project = this.getProject(projectId);
                                     if (getSelectedPaths().length <= 0) return;
                                     let id = getSelectedPaths()[0];
-                                    if (!this.project.hasPath(id)) return;
-                                    let path = this.project.getPath(id);
+                                    if (!project.hasPath(id)) return;
+                                    let path = project.getPath(id);
                                     e.stopPropagation();
                                     let dataIn = {};
                                     dataIn.config = {
-                                        map_w: this.project.w/100, map_h: this.project.h/100,
-                                        side_length: this.project.robotW/100,
-                                        mass: this.project.robotMass,
-                                        moment_of_inertia: this.project.config.momentOfInertia,
-                                        efficiency_percent: this.project.config.efficiency,
-                                        "12_motor_mode": this.project.config.is12MotorMode,
+                                        map_w: project.w/100, map_h: project.h/100,
+                                        side_length: project.robotW/100,
+                                        mass: project.robotMass,
+                                        moment_of_inertia: project.config.momentOfInertia,
+                                        efficiency_percent: project.config.efficiency,
+                                        "12_motor_mode": project.config.is12MotorMode,
                                     };
                                     dataIn.nodes = [];
                                     dataIn.obstacles = [];
                                     path.nodes.forEach(id => {
-                                        let itm = this.project.getItem(id);
+                                        let itm = project.getItem(id);
                                         dataIn.nodes.push({
                                             x: itm.x/100, y: itm.y/100,
                                             vx: itm.useVelocity ? itm.velocityX/100 : null,
@@ -2054,8 +2349,8 @@ export default class App extends core.App {
                                             theta: itm.heading,
                                         });
                                     });
-                                    this.project.items.forEach(id => {
-                                        let itm = this.project.getItem(id);
+                                    project.items.forEach(id => {
+                                        let itm = project.getItem(id);
                                         if (!(itm instanceof subcore.Project.Obstacle)) return;
                                         dataIn.obstacles.push({
                                             x: itm.x/100, y: itm.y/100,
@@ -2065,17 +2360,14 @@ export default class App extends core.App {
                                     o.setGenerating(false);
                                     (async () => {
                                         o.setGenerating(true);
-                                        let dataOut = null;
                                         try {
-                                            dataOut = await window.api.ask("exec", [this.project.config.script, dataIn]);
+                                            await window.api.ask("exec", [project.config.script, dataIn]);
+                                            await o.checkPathVisual();
+                                            o.setGenerating(false);
                                         } catch (e) {
                                             o.setGenerating(false);
                                             return console.log("ERROR:", e);
                                         }
-                                        o.setGenerating(false);
-                                        console.log(dataOut);
-                                        this.remRenderItem(pathVisual);
-                                        pathVisual = this.addRenderItem(new RIPathVisual(dataOut.dt, util.ensure(dataOut.state, "arr").map(v => new V(v).mul(100))));
                                     })();
                                 });
                         }

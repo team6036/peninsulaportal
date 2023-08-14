@@ -82,7 +82,7 @@
     align-content: center;
     gap: 10px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 
     font-size: 16px;
 }

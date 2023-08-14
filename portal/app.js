@@ -99,6 +99,7 @@ export default class App extends core.App {
             btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => window.api.ask("spawn", ["PANEL"]));
             btn = this.addNavToolButton(new FeatureButton("Planner", "analytics"));
+            // btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => window.api.ask("spawn", ["PLANNER"]));
             btn = this.addNavToolButton(new FeatureButton("Pursuit", "flash"));
             btn.tooltip = "Coming soon!";

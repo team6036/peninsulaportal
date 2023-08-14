@@ -240,7 +240,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         this.#portal = null;
 
         name = String(name).toUpperCase();
-        this.#name = ["PORTAL", "PLANNER"].includes(name) ? name : null;
+        this.#name = ["PORTAL", "PANEL", "PLANNER"].includes(name) ? name : null;
         
         this.#window = null;
         this.#perm = false;
@@ -283,6 +283,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         return new Promise((res, rej) => {
             this.window.webContents.send("perm");
             ipc.once("perm", (e, given) => {
+                if (!this.window || !this.window.webContents) return;
                 if (e.sender.id != this.window.webContents.id) return;
                 res(!!given);
             });
@@ -481,10 +482,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                     let has = await this.portal.fileHas(script);
                     if (!has) return null;
                     let root = path.dirname(script);
-                    let content = "";
-                    try {
-                        content = JSON.stringify(data, null, "\t");
-                    } catch (e) {}
+                    let content = JSON.stringify(data, null, "\t");
                     console.log("REMOVE data.out");
                     if (await this.portal.fileHas(path.join(root, "data.out")))
                         await this.portal.fileDelete(path.join(root, "data.out"));
@@ -495,24 +493,28 @@ Portal.Feature = class PortalFeature extends core.Target {
                         const process = cp.spawn("python3", [script], { cwd: root });
                         process.on("exit", async code => {
                             console.log("SPAWN exit: "+code);
-                            let content = "";
-                            try {
-                                content = await this.portal.fileRead(path.join(root, "data.out"));
-                            } catch (e) { console.log("ERR: read data.out - ", e); }
-                            let data = null;
-                            try {
-                                data = JSON.parse(content);
-                            } catch (e) { console.log("ERR: parse data.out - ", e); }
-                            res(data);
+                            res(code);
                         });
                         process.on("error", err => {
                             console.log("SPAWN err");
                             rej(err);
                         });
                     });
-                }
-            }
+                },
+                exec_get: async script => {
+                    if (!this.hasPortal()) return false;
+                    if (script == null) return false;
+                    script = String(script);
+                    let has = await this.portal.fileHas(script);
+                    if (!has) return null;
+                    let root = path.dirname(script);
+                    let content = await this.portal.fileRead(path.join(root, "data.out"));
+                    let data = JSON.parse(content);
+                    return data;
+                },
+            },
         };
+        cmd = String(cmd).replace("-", "_");
         if (namefs._) await namefs._();
         if (namefs[this.name]) {
             let fs = namefs[this.name];
@@ -537,7 +539,10 @@ app.on("activate", () => {
 
 app.on("window-all-closed", async () => {
     console.log("# all-closed");
-    let quit = await portal.stop();
+    let quit = true;
+    try {
+        quit = await portal.stop();
+    } catch (e) {}
     if (!quit) return;
     app.quit();
 });

@@ -30,7 +30,7 @@
     align-content: center;
 
     background-color: var(--v2);
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #mount > .content > .title > .logo {
     padding: 10px;
@@ -103,7 +103,7 @@
     --fgd: var(--v6);
 }
 #mount > .content > .title > button:not(.override):last-child {
-    border-radius: 0px 10px 10px 0px;
+    border-radius: 0px var(--b) var(--b) 0px;
 }
 #mount > .content > .main {
     position: relative;
@@ -172,7 +172,7 @@
 
     padding: 10px 30px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 
     font-size: 16px;
 }
@@ -243,7 +243,7 @@
 
     gap: 10px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #PROJECTSPAGE > .nav > .search {
     flex-basis: 25%;
@@ -258,7 +258,7 @@
     align-content: center;
 
     background-color: var(--v8);
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #PROJECTSPAGE > .nav > .search > input {
     flex-basis: 100%;
@@ -317,7 +317,7 @@
     align-content: center;
 
     background-color: var(--v2);
-    border-radius: 10px;
+    border-radius: var(--b);
     outline: 2px solid var(--v4-0);
 
     transition: outline var(--t);
@@ -330,7 +330,7 @@
     aspect-ratio: 1 / 1;
 
     background-color: var(--v1-4);
-    border-radius: 10px;
+    border-radius: var(--b);
 
     background-image: none;
     background-repeat: no-repeat;
@@ -364,7 +364,7 @@
     align-items: stretch;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #PROJECTSPAGE > .content > .item > .nav > button {
     --bg: var(--v3);
@@ -375,7 +375,7 @@
 
     gap: 10px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 
 #PROJECTPAGE {
@@ -426,7 +426,7 @@
 
     border: 2px solid var(--v2);
     outline: none;
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #PROJECTPAGE > .display > .blockage {
     z-index: 1;
@@ -497,7 +497,7 @@
 #PROJECTPAGE > .display > .render > .nav > button {
     padding: 5px 10px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #PROJECTPAGE > .display > .render > .nav > button#donebtn {
     --bg: var(--a);
@@ -515,13 +515,117 @@
     --bgd: var(--cr2);
     --fgd: var(--v6);
 }
+#PROJECTPAGE > .display > .render > .progress {
+    --progress: 0%;
+
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    transform: translateY(-10px);
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    background: linear-gradient(180deg, var(--v1-c) 0%, var(--v1-8) 50%, var(--v1-0) 100%);
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: transform var(--t), opacity var(--t), visibility var(--t);
+}
+#PROJECTPAGE > .display:not(.choose).progress > .render:hover > .progress {
+    transform: translateY(0px);
+
+    opacity: 100%;
+    visibility: inherit;
+}
+#PROJECTPAGE > .display > .render > .progress > button {
+    --ionicon-stroke-width: 64px;
+
+    min-width: max-content;
+    aspect-ratio: 1 / 1;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    background-color: transparent;
+    color: var(--v8);
+
+    font-size: 20px;
+
+    cursor: pointer;
+}
+#PROJECTPAGE > .display > .render > .progress > .time {
+    min-width: max-content;
+
+    color: var(--v8);
+
+    font-family: monospace;
+}
+#PROJECTPAGE > .display > .render > .progress > .bar {
+    flex-basis: 100%;
+
+    position: relative;
+
+    height: 5px;
+    margin: 0px 5px;
+
+    background-color: var(--v4);
+}
+#PROJECTPAGE > .display > .render > .progress > .bar::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translateY(-50%);
+
+    width: var(--progress);
+    height: 100%;
+
+    background-color: var(--cr);
+}
+#PROJECTPAGE > .display > .render > .progress > .bar > div {
+    position: absolute;
+    top: 50%;
+    left: var(--progress);
+    transform: translate(-50%, -50%);
+
+    padding: 0px;
+
+    height: 0px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--cr);
+    border-radius: 100%;
+
+    transition: height var(--t);
+}
+#PROJECTPAGE > .display > .render > .progress > .bar:hover > div {
+    height: 10px;
+}
 #PROJECTPAGE > .display > .render > .grid {
+    z-index: -3;
+
     position: absolute;
     bottom: 0px;
     left: 0px;
 
     background-color: var(--v2);
     opacity: 100%;
+
+    pointer-events: none;
 }
 #PROJECTPAGE > .display > .render > .grid.x {
     transform: translateY(50%);
@@ -545,6 +649,21 @@
     bottom: 50%;
     left: 50%;
     transform: translate(-50%, 50%);
+}
+#PROJECTPAGE > .display > .render > .item.background {
+    z-index: -2;
+
+    opacity: 25%;
+
+    pointer-events: none;
+
+    mix-blend-mode: difference;
+}
+#PROJECTPAGE > .display > .render > .item.background > img {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    transform: translate(-50%, -50%);
 }
 #PROJECTPAGE > .display > .render > .item.pathindex {
     bottom: 10px;
@@ -587,6 +706,16 @@
     height: 10px;
 
     background-color: var(--cg-8);
+}
+#PROJECTPAGE > .display > .render > .item.pathvisual {
+    z-index: -1;
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .display > .render > .item.pathvisualitem {
+    z-index: -1;
+
+    pointer-events: none;
 }
 #PROJECTPAGE > .display > .render > .item.select {
     outline: 5px solid var(--v8);
@@ -897,7 +1026,7 @@
     align-content: center;
 
     background-color: var(--v2);
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #PROJECTPAGE > .edit > .options {
     display: flex;
@@ -1024,7 +1153,7 @@
     align-items: center;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 
     font-size: 30px;
 
@@ -1050,7 +1179,7 @@
 
     background-color: var(--v2);
     border: 2px solid var(--v3);
-    border-radius: 10px;
+    border-radius: var(--b);
     filter: drop-shadow(0px 0px 0px var(--v1-8));
 
     cursor: grab;
@@ -1080,7 +1209,8 @@
 }
 #mapoptions #size,
 #mapoptions #robotsize,
-#mapoptions #robotmass {
+#mapoptions #robotmass,
+#mapoptions #background > div {
     align-self: stretch;
 
     max-width: 100%;
@@ -1095,8 +1225,22 @@
 }
 #mapoptions #size > input,
 #mapoptions #robotsize > input,
-#mapoptions #robotmass > input {
+#mapoptions #robotmass > input,
+#mapoptions #background > div > input {
     flex-basis: 100%;
+}
+#mapoptions #background {
+    align-self: stretch;
+
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
 }
 
 #trajectoryoptions #momentofinertia,
@@ -1129,7 +1273,7 @@
     align-items: stretch;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #trajectoryoptions #trajectoryscript > div.filedialog {
     flex-basis: 100%;
@@ -1178,7 +1322,7 @@
 
     padding: 10px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 
 #pathoptions #pathsbox {
@@ -1209,7 +1353,7 @@
     align-items: center;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: var(--b);
     border: 2px solid var(--v2);
 }
 #pathoptions #pathsbox > button.item.this {
@@ -1258,7 +1402,7 @@
 
     padding: 10px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #pathoptions #patheditbox > button#removebtn {
     --bg: var(--cr);
@@ -1409,7 +1553,7 @@
     max-width: 100%;
 
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: stretch;
@@ -1436,7 +1580,7 @@
 
     padding: 10px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 #itemoptions #itemcontrols > button#removebtn {
     --bg: var(--cr);
