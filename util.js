@@ -139,6 +139,26 @@ export function angleRel(a, b) {
 export function getTime() {
     return new Date().getTime();
 }
+export const UNITVALUES = {
+    ms: 1,
+    s: 1000,
+    min: 60,
+    hr: 60,
+    d: 24,
+    yr: 365,
+};
+export function splitTimeUnits(t) {
+    t = Math.max(0, ensure(t, "num"));
+    let units = Object.keys(UNITVALUES);
+    let values = new Array(units.length).fill(0);
+    values[0] = t;
+    units.forEach((unit, i) => {
+        if (i <= 0) return;
+        values[i] += Math.floor(values[i-1]/UNITVALUES[unit]);
+        values[i-1] -= values[i]*UNITVALUES[unit];
+    });
+    return values;
+}
 
 export function loadImage(src) {
     return new Promise((res, rej) => {

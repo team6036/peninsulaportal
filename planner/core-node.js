@@ -357,6 +357,10 @@ Project.Meta = class ProjectMeta extends core.Target {
     #created;
     #thumb;
 
+    #backgroundImage;
+    #backgroundPos;
+    #backgroundScale;
+
     constructor(...a) {
         super();
 
@@ -365,24 +369,30 @@ Project.Meta = class ProjectMeta extends core.Target {
         this.#created = 0;
         this.#thumb = null;
 
-        if (a.length <= 0 || a.length > 4) a = [null];
+        this.#backgroundImage = null;
+        this.#backgroundPos = new V();
+        this.#backgroundScale = 1;
+
+        if (a.length <= 0 || [5, 6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb];
+            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
             else if (util.is(a, "arr")) {
                 a = new Project.Meta(...a);
-                a = [a.name, a.modified, a.created, a.thumb];
+                a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
             }
             else if (util.is(a, "str")) a = [a, 0, 0, null];
-            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
+            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
             else a = [null, 0, 0, null];
         }
         if (a.length == 2)
             a = [a[0], 0, a[1]];
         if (a.length == 3)
             a = [...a, null];
+        if (a.length == 4)
+            a = [...a, null, 0, 1];
         
-        [this.name, this.modified, this.created, this.thumb] = a;
+        [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundPos, this.backgroundScale] = a;
     }
 
     get name() { return this.#name; }
@@ -397,7 +407,7 @@ Project.Meta = class ProjectMeta extends core.Target {
         v = util.ensure(v, "num");
         if (this.modified == v) return;
         this.#modified = v;
-        this.post("change", null);
+        // this.post("change", null);
     }
     get created() { return this.#created; }
     set created(v) {
@@ -411,6 +421,27 @@ Project.Meta = class ProjectMeta extends core.Target {
         v = (v == null) ? null : String(v);
         if (this.thumb == v) return;
         this.#thumb = v;
+        // this.post("change", null);
+    }
+
+    get backgroundImage() { return this.#backgroundImage; }
+    set backgroundImage(v) {
+        v = (v == null) ? null : String(v);
+        if (this.backgroundImage == v) return;
+        this.#backgroundImage = v;
+        this.post("change", null);
+    }
+    get backgroundPos() { return this.#backgroundPos; }
+    set backgroundPos(v) { this.#backgroundPos.set(v); }
+    get backgroundX() { return this.backgroundPos.x; }
+    set backgroundX(v) { this.backgroundPos.x = v; }
+    get backgroundY() { return this.backgroundPos.y; }
+    set backgroundY(v) { this.backgroundPos.y = v; }
+    get backgroundScale() { return this.#backgroundScale; }
+    set backgroundScale(v) {
+        v = Math.max(0, util.ensure(v, "num"));
+        if (this.backgroundScale == v) return;
+        this.#backgroundScale = v;
         this.post("change", null);
     }
 
@@ -418,7 +449,7 @@ Project.Meta = class ProjectMeta extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.name, this.modified, this.created, this.thumb],
+            "%ARGS": [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundPos, this.backgroundScale],
         };
     }
 }

@@ -5,7 +5,7 @@
   "main": "main.js",
   "dependencies": {
     "electron": "^24.1.0",
-    "fuse": "^0.4.0",
+    "fuse": "^0.0.8",
     "ionicons": "^7.1.2"
   },
   "devDependencies": {

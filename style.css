@@ -2,6 +2,8 @@
     --WIN-TITLEBAR-TOP: 40px;
 
     --t: 0.25s;
+
+    --b: 10px;
 }
 
 @font-face {
@@ -93,7 +95,7 @@ input:not(.override) {
 
     background-color: var(--v1);
     color: var(--v8);
-    border-radius: 10px;
+    border-radius: var(--b);
 
     transition: background-color var(--t), color var(--t);
 }
@@ -558,6 +560,89 @@ label.switch > input[type="checkbox"]:checked + span::before {
     100% { max-width: 0px; }
 }
 
+.logo {
+    --t: 2s;
+    --size: 32px;
+
+    position: relative;
+
+    padding: calc(var(--size));
+
+    color: var(--v8);
+
+    font-size: var(--size);
+}
+.logo > ion-icon {
+    position: absolute;
+
+    visibility: hidden;
+}
+.logo > ion-icon:nth-child(1),
+.logo > ion-icon:nth-child(2) {
+    top: calc(50% - 0.415em - var(--size)/2);
+}
+.logo > ion-icon:nth-child(1) {
+    left: calc(50% - 0.7em - var(--size)/2);
+
+    animation: logo-animation var(--t) calc(0 * var(--t)) infinite;
+}
+.logo > ion-icon:nth-child(2) {
+    left: calc(50% + 0.273em - var(--size)/2);
+
+    animation: logo-animation var(--t) calc(0.125 * var(--t)) infinite;
+}
+.logo > ion-icon:nth-child(3),
+.logo > ion-icon:nth-child(4) {
+    top: calc(50% + 0.415em - var(--size)/2);
+}
+.logo > ion-icon:nth-child(3) {
+    left: calc(50% - 0.225em - var(--size)/2);
+
+    animation: logo-animation var(--t) calc(0.25 * var(--t)) infinite;
+}
+.logo > ion-icon:nth-child(4) {
+    left: calc(50% + 0.75em - var(--size)/2);
+
+    animation: logo-animation var(--t) calc(0.375 * var(--t)) infinite;
+}
+.logo > ion-icon:nth-child(1),
+.logo > ion-icon:nth-child(3) {
+    --dir-in: -60deg;
+    --dir-out: 0deg;
+}
+.logo > ion-icon:nth-child(2),
+.logo > ion-icon:nth-child(4) {
+    --dir-in: 0deg;
+    --dir-out: -60deg;
+}
+@keyframes logo-animation {
+    0% {
+        transform: rotate(calc(-1*var(--dir-in))) translateX(calc(-1*var(--size)/2)) scale(0%, 50%) rotate(var(--dir-in));
+
+        visibility: inherit;
+    }
+    12.5% {
+        transform: rotate(calc(-1*var(--dir-in))) translateX(0px) scale(100%, 100%) rotate(var(--dir-in));
+    
+        visibility: inherit;
+    }
+    50% {
+        transform: rotate(calc(-1*var(--dir-out))) translateX(0px) scale(100%, 100%) rotate(var(--dir-out));
+    
+        visibility: inherit;
+    }
+    62.5% {
+        transform: rotate(calc(-1*var(--dir-out))) translateX(calc(+1*var(--size)/2)) scale(0%, 50%) rotate(var(--dir-out));
+
+        visibility: inherit;
+    }
+    100% {
+        transform: rotate(calc(-1*var(--dir-out))) translateX(calc(+1*var(--size)/2)) scale(0%, 50%) rotate(var(--dir-out));
+    
+        visibility: inherit;
+    }
+}
+
 #loading {
     --transform: scale(0%);
 
@@ -635,7 +720,7 @@ label.switch > input[type="checkbox"]:checked + span::before {
     gap: 10px;
 
     background-color: var(--v2);
-    border-radius: 10px;
+    border-radius: var(--b);
     filter: drop-shadow(0px 5px 5px var(--v0-8));
 }
 .popup.custom > .inner > button.close {
@@ -708,7 +793,7 @@ label.switch > input[type="checkbox"]:checked + span::before {
 
     padding: 5px 75px;
 
-    border-radius: 10px;
+    border-radius: var(--b);
 }
 .popup.alert > .inner > button.special,
 .popup.confirm > .inner > button.special,

@@ -4,6 +4,7 @@
 		<title>Peninsula Planner</title>
 		<meta charset="UTF-8">
         <style id="dynamicstyle"></style>
+		<script src="../assets/fuse.js"></script>
 		<script type="module">
 			import App from "./app.js";
 			const app = new App();
@@ -72,6 +73,14 @@
 									<button id="donebtn">Done</button>
 									<button id="cancelbtn">Cancel</button>
 								</div>
+								<div class="progress">
+									<button class="override"><ion-icon name="play"></ion-icon></button>
+									<div class="time now"></div>
+									<div class="bar">
+										<div></div>
+									</div>
+									<div class="time total"></div>
+								</div>
 							</div>
 							<div class="axis x"></div>
 							<div class="axis y"></div>
@@ -119,6 +128,14 @@
 										<div class="header"><span>Robot Mass</span><span class="units">kg</span></div>
 										<div id="robotmass">
 											<input type="number" placeholder="..." min="0">
+										</div>
+										<div class="header"><span>Background</span><span class="units">m</span></div>
+										<div id="background">
+											<div>
+												<input class="x" type="number" placeholder="X">
+												<input class="y" type="number" placeholder="Y">
+											</div>
+											<input type="number" placeholder="Scale (%)">
 										</div>
 									</div>
 								</div>

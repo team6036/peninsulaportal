@@ -161,6 +161,12 @@ export class App extends Target {
                     if (e.altKey && (e.ctrlKey || e.metaKey))
                         e.preventDefault();
             });
+            /*
+            window.addEventListener("beforeunload", e => {
+                e.preventDefault();
+                return "NO";
+            });
+            */
         }
 
         this.#setupDone = false;
