@@ -231,7 +231,8 @@ label.switch > input[type="checkbox"]:checked + span::before {
     max-width: calc(100% - 20px);
     height: calc(var(--WIN-TITLEBAR-TOP) - 20px);
     max-height: calc(var(--WIN-TITLEBAR-TOP) - 20px);
-    padding: 10px;
+    padding: min(10px, calc(var(--WIN-TITLEBAR-TOP) / 2));
+    overflow: hidden;
     
     display: flex;
     flex-direction: row;

@@ -525,7 +525,7 @@ class RIPathVisualItem extends RenderItem {
             p = ((nodes.length-1)*p) - i;
             let node = new subcore.Project.Node(
                 util.lerp(ni.pos, nj.pos, p),
-                ni.heading + util.angleRel(ni.heading, nj.heading)*p,
+                ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p,
                 util.lerp(ni.velocity, nj.velocity),
                 0,
                 true,
@@ -2112,8 +2112,11 @@ export default class App extends core.App {
                                 o.eIs12MotorModeInput.checked = has ? this.project.config.is12MotorMode : false;
                             if (o.eScriptInput instanceof HTMLInputElement)
                                 o.eScriptInput.value = has ? this.project.config.script : "";
-                            if (o.eGenerationBtn instanceof HTMLButtonElement)
-                                o.eGenerationBtn.disabled = !has || getSelectedPaths().length <= 0 || o.getGenerating();
+                            if (o.eGenerationBtn instanceof HTMLButtonElement) {
+                                o.eGenerationBtn.disabled = !o.getGenerating() && (!has || getSelectedPaths().length <= 0);
+                                o.eGenerationBtn.textContent = o.getGenerating() ? "Terminate" : "Generate";
+                                o.getGenerating() ? o.eGenerationBtn.classList.add("term") : o.eGenerationBtn.classList.remove("term");
+                            }
                         });
                         o.eMomentOfInertiaBox = elem.querySelector(":scope #momentofinertia");
                         if (o.eMomentOfInertiaBox instanceof HTMLDivElement) {
@@ -2320,6 +2323,10 @@ export default class App extends core.App {
                             o.eGenerationBtn = o.eGenerationBox.querySelector(":scope > button");
                             if (o.eGenerationBtn instanceof HTMLButtonElement)
                                 o.eGenerationBtn.addEventListener("click", e => {
+                                    if (o.getGenerating()) {
+                                        window.api.ask("exec-term");
+                                        return;
+                                    }
                                     let projectId = this.projectId;
                                     if (!this.hasProject(projectId)) return;
                                     let project = this.getProject(projectId);
@@ -2963,7 +2970,7 @@ export default class App extends core.App {
         state = this.#pages[this.page];
         namefs = {
             PROJECT: async () => {
-                this.markChange("proj:"+this.projectId);
+                this.markChange("*all");
                 await this.syncFilesWith();
                 this.project = null;
             },
@@ -3002,6 +3009,36 @@ export default class App extends core.App {
                 else {
                     this.project = new subcore.Project();
                     this.project.meta.created = this.project.meta.modified = util.getTime();
+                    let hasTemplate = await window.api.fileHas("template.json");
+                    if (!hasTemplate) return console.log("no template found");
+                    let templateContent = null;
+                    try {
+                        templateContent = await window.api.fileRead("template.json");
+                    } catch (e) {}
+                    if (templateContent == null) return console.log("invalid template content");
+                    let template = null;
+                    try {
+                        template = JSON.parse(templateContent);
+                    } catch (e) {}
+                    if (template == null) return console.log("error parsing template");
+                    template = util.ensure(template, "obj");
+                    for (let k in template) {
+                        let v = template[k];
+                        k = String(k).split(".");
+                        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+                        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+                        let obj = this.project;
+                        while (k.length > 1) {
+                            if (!util.is(obj, "obj")) {
+                                obj = null;
+                                break;
+                            }
+                            obj = obj[k.shift()];
+                        }
+                        if (obj == null || k.length != 1) continue;
+                        obj[k] = v;
+                    }
+                    state.post("refresh-options", null);
                 }
             },
         };

@@ -17,22 +17,26 @@ const V = util.V;
 
 const core = require("./core-node");
 
-const _log = console.log;
 let n = 0;
-console.log = (...a) => {
-    n++;
-    return _log(n, ...a);
+const log = (...a) => {
+    return console.log(++n, ...a);
 };
 
+const FEATURES = ["LOAD", "PORTAL", "PANEL", "PLANNER"];
+
 class Portal extends core.Target {
+    #started;
+
     #features;
 
     constructor() {
         super();
 
+        this.#started = false;
+
         this.#features = new Set();
 
-        console.log("*");
+        this.log();
     }
 
     get features() { return [...this.#features]; }
@@ -65,28 +69,26 @@ class Portal extends core.Target {
     async remFeature(feat) {
         if (!(feat instanceof Portal.Feature)) return false;
         if (!this.hasFeature(feat)) return false;
-        console.log(`[${feat.name}] REM`);
+        feat.log("REM");
         if (feat.started) {
-            console.log(`[${feat.name}] REM - not stopped`);
+            feat.log("REM - not stopped");
             let r = await feat.stop();
-            console.log(`[${feat.name}] REM - stop: ${!!r}`);
+            feat.log(`REM - stop: ${!!r}`);
             return r;
         }
-        console.log(`[${feat.name}] REM - already stopped`);
+        feat.log("REM - already stopped");
         this.#features.delete(feat);
         feat.portal = null;
         this.post("feature-stop", { feat: feat });
         return feat;
     }
 
+    get started() { return this.#started; }
     start() {
-        let hasPortal = false;
-        this.features.forEach(feat => {
-            if (feat.name != "PORTAL") return;
-            hasPortal = true;
-        });
-        if (hasPortal) return false;
-        console.log("* START");
+        if (this.started) return false;
+        this.#started = true;
+
+        this.log("START");
 
         ipc.handle("os", async () => {
             return {
@@ -164,10 +166,12 @@ class Portal extends core.Target {
         this.affirm();
         this.post("start", null);
 
-        return this.addFeature(new Portal.Feature("PORTAL"));
+        this.addFeature(new Portal.Feature("LOAD"));
+        this.addFeature(new Portal.Feature("PORTAL"));
+        return true;
     }
     async stop() {
-        console.log("* STOP");
+        this.log("STOP");
         await this.post("stop", null);
         let feats = this.features;
         let all = true;
@@ -223,6 +227,14 @@ class Portal extends core.Target {
         if (!hasAppData) await this.dirMake(this.dataPath);
         return true;
     }
+
+    update() {
+        this.features.forEach(feat => feat.update());
+    }
+
+    log(...a) {
+        log("*", ...a);
+    }
 }
 Portal.Feature = class PortalFeature extends core.Target {
     #portal;
@@ -240,14 +252,14 @@ Portal.Feature = class PortalFeature extends core.Target {
         this.#portal = null;
 
         name = String(name).toUpperCase();
-        this.#name = ["PORTAL", "PANEL", "PLANNER"].includes(name) ? name : null;
+        this.#name = FEATURES.includes(name) ? name : null;
         
         this.#window = null;
         this.#perm = false;
 
         this.#started = false;
 
-        console.log(`[${this.name}]`);
+        this.log();
     }
 
     get portal() { return this.#portal; }
@@ -276,11 +288,11 @@ Portal.Feature = class PortalFeature extends core.Target {
     get perm() { return this.#perm; }
     set perm(v) { this.#perm = !!v; }
 
-    getPerm() {
+    async getPerm() {
         if (!this.started) return true;
         if (!this.hasName()) return false;
-        console.log(`[${this.name}] GET PERM`);
-        return new Promise((res, rej) => {
+        this.log("GET PERM");
+        let perm = await new Promise((res, rej) => {
             this.window.webContents.send("perm");
             ipc.once("perm", (e, given) => {
                 if (!this.window || !this.window.webContents) return;
@@ -289,15 +301,22 @@ Portal.Feature = class PortalFeature extends core.Target {
             });
             setTimeout(() => res(true), 5000);
         });
+        let namefs = {
+        };
+        if (this.name in namefs) perm &&= namefs[this.name]();
+        return perm;
     }
 
     get started() { return this.#started; }
     start() {
         if (this.started) return false;
         if (!this.hasName()) return false;
-        console.log(`[${this.name}] START`);
+        this.log("START");
         this.#started = true;
-        const window = this.#window = new electron.BrowserWindow({
+
+        let namefs;
+
+        let options = {
             width: 1250,
             height: 750,
             show: false,
@@ -307,8 +326,23 @@ Portal.Feature = class PortalFeature extends core.Target {
             webPreferences: {
                 preload: path.join(__dirname, "preload.js"),
             },
+        };
+        namefs = {
+            LOAD: () => {
+                options.width = 750;
+                options.height = 450;
+                options.resizable = false;
+                options.frame = false;
+                delete options.titleBarStyle;
+                delete options.trafficLightPosition;
+            },
+        };
+        if (this.name in namefs) namefs[this.name]();
+        const window = this.#window = new electron.BrowserWindow(options);
+        window.once("ready-to-show", () => {
+            window.show();
+            this.post("show", null);
         });
-        window.once("ready-to-show", () => window.show());
 
         window.on("unresponsive", () => {});
         window.webContents.on("did-fail-load", () => window.close());
@@ -321,22 +355,116 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         this.perm = false;
         window.on("close", e => {
-            console.log(`[${this.name}] CLOSE`);
-            if (this.perm) return console.log(`[${this.name}] CLOSE - yes perm`);
-            console.log(`[${this.name}] CLOSE - no perm`);
+            this.log("CLOSE");
+            if (this.perm) return this.log("CLOSE - yes perm");
+            this.log("CLOSE - no perm");
             e.preventDefault();
             this.stop();
         });
 
         window.loadURL("file://"+path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
-        let namefs = {
+        namefs = {
+            LOAD: () => {
+                window.setAlwaysOnTop(true);
+                let t = 0, lock = false, nTimes = 0;
+                const host = "https://peninsula-db.jfancode.repl.co";
+                let info = {};
+                this.addHandler("update", async data => {
+                    if (!this.hasPortal()) return;
+                    this.window.webContents.send("ask", "info-set", [Object.values(info)]);
+                    if (lock) return;
+                    lock = true;
+                    let success = await (async () => {
+                        let tNow = util.getTime();
+                        if (tNow-t < 1000) return false;
+                        t = tNow;
+                        const fetch = (await import("node-fetch")).default;
+                        info._ = "Contacting Database";
+                        try {
+                            await fetch(host);
+                        } catch (e) {
+                            this.log("POLL db ERROR");
+                            return false;
+                        }
+                        delete info._;
+                        await Promise.all(FEATURES.map(async name => {
+                            const root = host+"/"+name.toLowerCase();
+                            info[name] = "Searching for feature: "+name;
+                            let resp = null;
+                            try {
+                                resp = await fetch(root+"/confirm.json");
+                            } catch (e) {}
+                            if (resp == null || resp.status != 200) {
+                                delete info[name];
+                                return;
+                            }
+                            info[name] = "Updating feature: "+name;
+                            this.log("FOUND FEATURE: "+name);
+                            let namefs = {
+                                PLANNER: async () => {
+                                    let funcs = [
+                                        async () => {
+                                            info[name+"_template-json"] = `[${name}] template.json`;
+                                            this.log(name+" : template.json");
+                                            try {
+                                                let resp = await fetch(root+"/template.json");
+                                                if (resp.status == 200) {
+                                                    await new Promise((res, rej) => {
+                                                        const file = fs.createWriteStream(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"));
+                                                        resp.body.pipe(file);
+                                                        resp.body.on("end", () => res(true));
+                                                        resp.body.on("error", e => rej(e));
+                                                    });
+                                                }
+                                            } catch (e) {}
+                                            delete info[name+"_template-json"];
+                                        },
+                                        async () => {
+                                            info[name+"_template-png"] = `[${name}] template.png`;
+                                            this.log(name+" : template.png");
+                                            try {
+                                                let resp = await fetch(root+"/template.png");
+                                                if (resp.status == 200) {
+                                                    await new Promise((res, rej) => {
+                                                        const file = fs.createWriteStream(path.join(this.portal.dataPath, name.toLowerCase(), "template.png"));
+                                                        resp.body.pipe(file);
+                                                        resp.body.on("end", () => res(true));
+                                                        resp.body.on("error", e => rej(e));
+                                                    });
+                                                }
+                                            } catch (e) {}
+                                            delete info[name+"_template-png"];
+                                        },
+                                    ];
+                                    await Promise.all(funcs.map(f => f()));
+                                },
+                            };
+                            if (name in namefs) await namefs[name]();
+                            delete info[name];
+                        }));
+                        info = {};
+                        info._ = "Complete";
+                        return true;
+                    })();
+                    if (success || nTimes >= 5) {
+                        if (this.hasPortal()) {
+                            let feats = this.portal.features;
+                            let hasPortal = false;
+                            feats.forEach(feat => ((feat.name == "PORTAL") ? (hasPortal = true) : null));
+                            if (!hasPortal) this.portal.addFeature(new Portal.Feature("PORTAL"));
+                        }
+                        await this.stop();
+                    } else nTimes++;
+                    lock = false;
+                });
+            },
             PORTAL: () => {
                 const checkForShow = () => {
                     if (!this.hasPortal()) return;
                     let feats = this.portal.features;
                     let nFeats = 0;
-                    feats.forEach(feat => (feat.name == "PORTAL" ? null : nFeats++));
+                    feats.forEach(feat => (["LOAD", "PORTAL"].includes(feat.name) ? null : nFeats++));
                     if (this.window instanceof electron.BrowserWindow)
                         (nFeats > 0) ? this.window.hide() : this.window.show();
                 };
@@ -355,6 +483,8 @@ Portal.Feature = class PortalFeature extends core.Target {
                 hook();
                 checkForShow();
             },
+            PLANNER: () => {
+            },
         };
 
         if (namefs[this.name]) namefs[this.name]();
@@ -364,12 +494,12 @@ Portal.Feature = class PortalFeature extends core.Target {
     async stop() {
         if (!this.started) return false;
         if (!this.hasName()) return false;
-        console.log(`[${this.name}] STOP`);
+        this.log("STOP");
         if (!this.perm) {
-            console.log(`[${this.name}] STOP - no perm > get perm`);
+            this.log("STOP - no perm > get perm");
             this.perm = await this.getPerm();
         }
-        console.log(`[${this.name}] STOP - perm: ${this.perm}`);
+        this.log(`STOP - perm: ${this.perm}`);
         if (!this.perm) return false;
         this.#started = false;
         if (this.window instanceof electron.BrowserWindow)
@@ -450,7 +580,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (!this.hasName()) return;
         cmd = String(cmd);
         args = Array.isArray(args) ? Array.from(args) : [];
-        console.log(`[${this.name}] ASK - ${cmd}(${args.join(', ')})`);
+        this.log(`ASK - ${cmd}(${args.join(', ')})`);
         let namefs = {
             _: async () => {
                 if (this.name == "PORTAL") return;
@@ -458,6 +588,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             },
             PORTAL: {
                 spawn: async name => {
+                    name = String(name);
                     if (!this.hasPortal()) return;
                     let feats = this.portal.features;
                     let hasFeat = null;
@@ -469,8 +600,8 @@ Portal.Feature = class PortalFeature extends core.Target {
                         hasFeat.window.show();
                         return;
                     }
+                    if (!FEATURES.includes(name)) return;
                     let feat = new Portal.Feature(name);
-                    if (feat.name != name) return;
                     this.portal.addFeature(feat);
                 },
             },
@@ -483,23 +614,40 @@ Portal.Feature = class PortalFeature extends core.Target {
                     if (!has) return null;
                     let root = path.dirname(script);
                     let content = JSON.stringify(data, null, "\t");
-                    console.log("REMOVE data.out");
+                    this.log("REMOVE data.out");
                     if (await this.portal.fileHas(path.join(root, "data.out")))
                         await this.portal.fileDelete(path.join(root, "data.out"));
-                    console.log("CREATE data.in");
+                    this.log("CREATE data.in");
                     await this.portal.fileWrite(path.join(root, "data.in"), content);
                     return new Promise((res, rej) => {
-                        console.log("SPAWN");
-                        const process = cp.spawn("python3", [script], { cwd: root });
+                        this.log("SPAWN");
+                        const process = this.process = cp.spawn("python3", [script], { cwd: root });
+                        this.process_res = res;
+                        this.process_rej = rej;
                         process.on("exit", async code => {
-                            console.log("SPAWN exit: "+code);
+                            this.log("SPAWN exit: "+code);
+                            delete this.process;
+                            delete this.process_res;
+                            delete this.process_rej;
                             res(code);
                         });
                         process.on("error", err => {
-                            console.log("SPAWN err");
+                            this.log("SPAWN err");
+                            delete this.process;
+                            delete this.process_res;
+                            delete this.process_rej;
                             rej(err);
                         });
                     });
+                },
+                exec_term: async () => {
+                    if (!("process" in this)) return;
+                    this.log("SPAWN term");
+                    this.process.kill("SIGTERM");
+                    this.process_res(null);
+                    delete this.process;
+                    delete this.process_res;
+                    delete this.process_rej;
                 },
                 exec_get: async script => {
                     if (!this.hasPortal()) return false;
@@ -523,22 +671,30 @@ Portal.Feature = class PortalFeature extends core.Target {
         }
         return null;
     }
+
+    update() {
+        this.post("update", null);
+    }
+
+    log(...a) {
+        log(`[${this.name}]`, ...a);
+    }
 } 
 
 const portal = new Portal();
 
 app.on("ready", () => {
-    console.log("# ready");
+    log("# ready");
     portal.start();
 });
 
 app.on("activate", () => {
-    console.log("# activate");
+    log("# activate");
     portal.start();
 });
 
 app.on("window-all-closed", async () => {
-    console.log("# all-closed");
+    log("# all-closed");
     let quit = true;
     try {
         quit = await portal.stop();
@@ -547,5 +703,7 @@ app.on("window-all-closed", async () => {
     app.quit();
 });
 app.on("quit", () => {
-    console.log("# quit");
+    log("# quit");
 });
+
+setInterval(() => portal.update(), 10);
