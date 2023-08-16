@@ -135,6 +135,20 @@ export function angleRel(a, b) {
     if (r > 180) r -= 360;
     return r;
 }
+export function angleRelRadians(a, b) {
+    const fullTurn = 2*Math.PI;
+    a = ensure(a, "num");
+    b = ensure(b, "num");
+    while (a >= fullTurn) a -= fullTurn;
+    while (a < 0) a += fullTurn;
+    while (b >= fullTurn) b -= fullTurn;
+    while (b < 0) b += fullTurn;
+    let r = b - a;
+    while (r >= fullTurn) r -= fullTurn;
+    while (r < 0) r += fullTurn;
+    if (r > fullTurn/2) r -= fullTurn;
+    return r;
+}
 
 export function getTime() {
     return new Date().getTime();
@@ -166,6 +180,32 @@ export function loadImage(src) {
         img.addEventListener("load", e => res(img));
         img.addEventListener("error", e => rej(e));
         img.src = src;
+    });
+}
+
+export function promiseTimeout(v, time) {
+    time = Math.max(0, ensure(time, "num"));
+    return new Promise((res, rej) => {
+        setTimeout(() => rej("timeout"), time);
+        if (typeof(v) == "function") {
+            if (v.constructor.name == "AsyncFunction") (async () => {
+                try {
+                    res(await f());
+                } catch (e) { rej(e); }
+            })();
+            else (() => {
+                try {
+                    res(f());
+                } catch (e) { rej(e); }
+            })();
+            return;
+        }
+        if (v instanceof Promise) return (async () => {
+            try {
+                res(await f);
+            } catch (e) { rej(e); }
+        });
+        res(v);
     });
 }
 

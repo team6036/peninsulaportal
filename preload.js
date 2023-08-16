@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("api", {
     onPerm: f => ipcRenderer.on("perm", f),
     sendPerm: perm => ipcRenderer.send("perm", perm),
 
+    on: f => ipcRenderer.on("ask", f),
+
     getFeature: () => ipcRenderer.invoke("get-feature"),
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
