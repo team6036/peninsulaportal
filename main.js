@@ -163,11 +163,13 @@ class Portal extends core.Target {
             return await feat.ask(cmd, args);
         });
 
-        this.affirm();
-        this.post("start", null);
+        (async () => {
+            await this.affirm();
+            await this.post("start", null);
 
-        this.addFeature(new Portal.Feature("LOAD"));
-        this.addFeature(new Portal.Feature("PORTAL"));
+            this.addFeature(new Portal.Feature("LOAD"));
+            this.addFeature(new Portal.Feature("PORTAL"));
+        })();
         return true;
     }
     async stop() {
@@ -181,6 +183,7 @@ class Portal extends core.Target {
     }
 
     async fileHas(pth) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         try {
             await fs.promises.access(pth);
             return true;
@@ -188,16 +191,20 @@ class Portal extends core.Target {
         return false;
     }
     async fileRead(pth) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         return await fs.promises.readFile(pth, { encoding: "utf-8" });
     }
     async fileWrite(pth, content) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         return await fs.promises.writeFile(pth, content, { encoding: "utf-8" });
     }
     async fileDelete(pth) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         return await fs.promises.unlink(pth);
     }
 
     async dirHas(pth) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         try {
             await fs.promises.access(pth);
             return true;
@@ -205,6 +212,7 @@ class Portal extends core.Target {
         return false;
     }
     async dirList(pth) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         let dirents = await fs.promises.readdir(pth, { withFileTypes: true });
         return dirents.map(dirent => {
             return {
@@ -214,9 +222,11 @@ class Portal extends core.Target {
         });
     }
     async dirMake(pth) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         return await fs.promises.mkdir(pth);
     }
     async dirDelete(pth) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         return await fs.promises.rmdir(pth);
     }
 
@@ -403,6 +413,8 @@ Portal.Feature = class PortalFeature extends core.Target {
                             this.log("FOUND FEATURE: "+name);
                             let namefs = {
                                 PLANNER: async () => {
+                                    if (!(await this.portal.dirHas(path.join(this.portal.dataPath, name.toLowerCase()))))
+                                        await this.portal.dirMake(path.join(this.portal.dataPath, name.toLowerCase()));
                                     let funcs = [
                                         async () => {
                                             info[name+"_template-json"] = `[${name}] template.json`;
@@ -412,12 +424,24 @@ Portal.Feature = class PortalFeature extends core.Target {
                                                 if (resp.status == 200) {
                                                     await new Promise((res, rej) => {
                                                         const file = fs.createWriteStream(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"));
-                                                        resp.body.pipe(file);
-                                                        resp.body.on("end", () => res(true));
-                                                        resp.body.on("error", e => rej(e));
+                                                        file.on("open", () => {
+                                                            resp.body.pipe(file);
+                                                            resp.body.on("end", () => res(true));
+                                                            resp.body.on("error", e => rej(e));
+                                                        });
                                                     });
                                                 }
                                             } catch (e) {}
+                                            if (await this.portal.fileHas(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"))) {
+                                                let content = await this.portal.fileRead(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"));
+                                                try {
+                                                    let data = JSON.parse(content);
+                                                    if (!util.is(data, "obj")) throw "";
+                                                    data[".meta.backgroundImage"] = path.join(this.portal.dataPath, name.toLowerCase(), "template.png");
+                                                    content = JSON.stringify(data);
+                                                    await this.portal.fileWrite(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"), content);
+                                                } catch (e) {}
+                                            }
                                             delete info[name+"_template-json"];
                                         },
                                         async () => {
@@ -428,9 +452,11 @@ Portal.Feature = class PortalFeature extends core.Target {
                                                 if (resp.status == 200) {
                                                     await new Promise((res, rej) => {
                                                         const file = fs.createWriteStream(path.join(this.portal.dataPath, name.toLowerCase(), "template.png"));
-                                                        resp.body.pipe(file);
-                                                        resp.body.on("end", () => res(true));
-                                                        resp.body.on("error", e => rej(e));
+                                                        file.on("open", () => {
+                                                            resp.body.pipe(file);
+                                                            resp.body.on("end", () => res(true));
+                                                            resp.body.on("error", e => rej(e));
+                                                        });
                                                     });
                                                 }
                                             } catch (e) {}
@@ -530,7 +556,7 @@ Portal.Feature = class PortalFeature extends core.Target {
     }
     convertPath(pth) {
         if (!this.canOperateFS) return null;
-        return path.join(this.dataPath, pth);
+        return path.join(this.dataPath, ...(util.is(pth, "arr") ? pth : [pth]));
     }
 
     async fileHas(pth) {
@@ -606,37 +632,102 @@ Portal.Feature = class PortalFeature extends core.Target {
                 },
             },
             PLANNER: {
-                exec: async (script, data) => {
+                exec: async (id, pathId) => {
+                    id = String(id);
+                    pathId = String(pathId);
+
+                    const subcore = require("./planner/core-node");
+
                     if (!this.hasPortal()) return false;
+                    let hasProjectContent = await this.fileHas(["projects", id+".json"]);
+                    if (!hasProjectContent) return false;
+                    let projectContent = await this.fileRead(["projects", id+".json"]);
+                    let project = null;
+                    try {
+                        project = JSON.parse(projectContent, subcore.REVIVER.f);
+                    } catch (e) {}
+                    if (!(project instanceof subcore.Project)) return false;
+                    if (!project.hasPath(pathId)) return;
+                    let pth = project.getPath(pathId);
+
+                    let script = project.config.script;
                     if (script == null) return false;
                     script = String(script);
-                    let has = await this.portal.fileHas(script);
-                    if (!has) return null;
+                    let hasScript = await this.portal.fileHas(script);
+                    if (!hasScript) return null;
                     let root = path.dirname(script);
-                    let content = JSON.stringify(data, null, "\t");
-                    this.log("REMOVE data.out");
+
+                    let dataIn = { config: {}, nodes: [], obstacles: [] };
+                    dataIn.config.map_w = project.w;
+                    dataIn.config.map_h = project.h;
+                    dataIn.config.side_length = project.robotW;
+                    dataIn.config.mass = project.robotMass;
+                    dataIn.config.moment_of_inertia = project.config.momentOfInertia;
+                    dataIn.config.efficiency_percent = project.config.efficiency;
+                    dataIn.config["12_motor_mode"] = project.config.is12MotorMode;
+                    pth.nodes.forEach(id => {
+                        if (!project.hasItem(id)) return;
+                        let itm = project.getItem(id);
+                        if (!(itm instanceof subcore.Project.Node)) return;
+                        dataIn.nodes.push({
+                            x: itm.x/100, y: itm.y/100,
+                            vx: itm.useVelocity ? itm.velocityX/100 : null,
+                            vy: itm.useVelocity ? itm.velocityY/100 : null,
+                            vt: itm.useVelocity ? itm.velocityRot : null,
+                            theta: itm.useHeading ? itm.heading : null,
+                        });
+                    });
+                    project.items.forEach(id => {
+                        let itm = project.getItem(id);
+                        if (!(itm instanceof subcore.Project.Obstacle)) return;
+                        dataIn.obstacles.push({
+                            x: itm.x/100, y: itm.y/100,
+                            radius: itm.radius,
+                        });
+                    });
+                    let contentIn = JSON.stringify(dataIn, null, "\t");
+
+                    this.log("REMOVE data.in/data.out");
+                    if (await this.portal.fileHas(path.join(root, "data.in")))
+                        await this.portal.fileDelete(path.join(root, "data.in"));
                     if (await this.portal.fileHas(path.join(root, "data.out")))
                         await this.portal.fileDelete(path.join(root, "data.out"));
                     this.log("CREATE data.in");
-                    await this.portal.fileWrite(path.join(root, "data.in"), content);
+                    await this.portal.fileWrite(path.join(root, "data.in"), contentIn);
                     return new Promise((res, rej) => {
                         this.log("SPAWN");
                         const process = this.process = cp.spawn("python3", [script], { cwd: root });
-                        this.process_res = res;
-                        this.process_rej = rej;
+                        const finish = async () => {
+                            let hasProjectDir = await this.portal.dirHas(path.join(root, project.meta.name));
+                            if (!hasProjectDir) await this.portal.dirMake(path.join(root, project.meta.name));
+                            let hasPathDir = await this.portal.dirHas(path.join(root, project.meta.name, pth.name));
+                            if (!hasPathDir) await this.portal.dirMake(path.join(root, project.meta.name, pth.name));
+                            let hasDataIn = await this.portal.fileHas(path.join(root, "data.in"));
+                            if (hasDataIn) await fs.promises.rename(path.join(root, "data.in"), path.join(root, project.meta.name, pth.name, "data.in"));
+                            let hasDataOut = await this.portal.fileHas(path.join(root, "data.out"));
+                            if (hasDataOut) await fs.promises.rename(path.join(root, "data.out"), path.join(root, project.meta.name, pth.name, "data.out"));
+                        };
+                        this.process_res = async (...a) => {
+                            await finish();
+                            return res(...a);
+                        };
+                        this.process_rej = async (...a) => {
+                            await finish();
+                            return rej(...a);
+                        };
                         process.on("exit", async code => {
                             this.log("SPAWN exit: "+code);
+                            this.process_res(code);
                             delete this.process;
                             delete this.process_res;
                             delete this.process_rej;
-                            res(code);
                         });
                         process.on("error", err => {
                             this.log("SPAWN err");
+                            this.process_rej(err);
                             delete this.process;
                             delete this.process_res;
                             delete this.process_rej;
-                            rej(err);
                         });
                     });
                 },
@@ -649,16 +740,58 @@ Portal.Feature = class PortalFeature extends core.Target {
                     delete this.process_res;
                     delete this.process_rej;
                 },
-                exec_get: async script => {
+                exec_get: async id => {
+                    id = String(id);
+
+                    const subcore = require("./planner/core-node");
+
                     if (!this.hasPortal()) return false;
+                    let hasProjectContent = await this.fileHas(["projects", id+".json"]);
+                    if (!hasProjectContent) return false;
+                    let projectContent = await this.fileRead(["projects", id+".json"]);
+                    let project = null;
+                    try {
+                        project = JSON.parse(projectContent, subcore.REVIVER.f);
+                    } catch (e) {}
+                    if (!(project instanceof subcore.Project)) return false;
+
+                    let script = project.config.script;
                     if (script == null) return false;
                     script = String(script);
                     let has = await this.portal.fileHas(script);
                     if (!has) return null;
                     let root = path.dirname(script);
+
+                    let datas = {};
+                    let hasProjectDir = await this.portal.dirHas(path.join(root, project.meta.name));
+                    if (!hasProjectDir) return datas;
+                    let pathNames = project.paths.map(id => project.getPath(id).name);
+                    let pathList = await this.portal.dirList(path.join(root, project.meta.name));
+                    pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
+                    for (let i = 0; i < pathList.length; i++) {
+                        let name = pathList[i];
+                        let pathId = null;
+                        project.paths.forEach(id => {
+                            let pth = project.getPath(id);
+                            if (pth.name == name) pathId = id;
+                        });
+                        let contentOut = "";
+                        try {
+                            contentOut = await this.portal.fileRead(path.join(root, project.meta.name, name, "data.out"));
+                        } catch (e) {}
+                        let dataOut = null;
+                        try {
+                            dataOut = JSON.parse(contentOut);
+                        } catch (e) {}
+                        if (dataOut == null) continue;
+                        datas[pathId] = dataOut;
+                    }
+                    return datas;
+                    /*
                     let content = await this.portal.fileRead(path.join(root, "data.out"));
                     let data = JSON.parse(content);
                     return data;
+                    */
                 },
             },
         };
