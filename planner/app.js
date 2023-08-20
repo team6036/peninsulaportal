@@ -107,6 +107,8 @@ class PathButton extends core.Target {
     #app;
 
     #path;
+    #showIndices;
+    #showLines;
 
     #elem;
     #eName;
@@ -117,6 +119,8 @@ class PathButton extends core.Target {
         this.#app = null;
 
         this.#path = null;
+        this.#showIndices = true;
+        this.#showLines = true;
 
         this.#elem = document.createElement("button");
         this.elem.classList.add("item");
@@ -166,9 +170,11 @@ class PathButton extends core.Target {
             for (let i = 0; i < nodes.length; i++) {
                 let id = nodes[i];
                 let node = this.app.project.getItem(id);
-                pthItems.push(this.app.addRenderItem(new RIPathIndex(node)));
-                pthItems.at(-1).value = i+1;
-                if (i > 0) {
+                if (this.showIndices) {
+                    pthItems.push(this.app.addRenderItem(new RIPathIndex(node)));
+                    pthItems.at(-1).value = i+1;
+                }
+                if (i > 0 && this.showLines) {
                     let id2 = nodes[i-1];
                     let node2 = this.app.project.getItem(id2);
                     pthItems.push(this.app.addRenderItem(new RIPathLine(node, node2)));
@@ -195,6 +201,18 @@ class PathButton extends core.Target {
         this.post("set", { v: v });
     }
     hasPath() { return this.path instanceof subcore.Project.Path; }
+    get showIndices() { return this.#showIndices; }
+    set showIndices(v) {
+        v = !!v;
+        if (this.showIndices == v) return;
+        this.#showIndices = v;
+    }
+    get showLines() { return this.#showLines; }
+    set showLines(v) {
+        v = !!v;
+        if (this.showLines == v) return;
+        this.#showLines = v;
+    }
 
     get selected() { return this.elem.classList.contains("this"); }
     set selected(v) { v ? this.elem.classList.add("this") : this.elem.classList.remove("this"); }
@@ -2750,6 +2768,7 @@ export default class App extends core.App {
                         this.addHandler("update", data => {
                             let pthsUsed = new Set();
                             this.getPathButtons().forEach(btn => {
+                                btn.showLines = btn.hasPath() ? !this.hasPathVisual(btn.path.id) : true;
                                 btn.update();
                                 if (!this.hasProject() || !this.project.hasPath(btn.path))
                                     btn.path = null;
