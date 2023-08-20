@@ -22,7 +22,7 @@ const log = (...a) => {
     return console.log(++n, ...a);
 };
 
-const FEATURES = ["LOAD", "PORTAL", "PLANNER"];
+const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PLANNER"];
 
 class Portal extends core.Target {
     #started;
