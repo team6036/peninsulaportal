@@ -417,6 +417,9 @@ export class App extends Target {
         document.body.removeChild(pop.elem);
         return pop;
     }
+    alert(...a) { return this.addPopup(new App.Alert(...a)); }
+    confirm(...a) { return this.addPopup(new App.Confirm(...a)); }
+    prompt(...a) { return this.addPopup(new App.Prompt(...a)); }
 
     get contextMenu() { return this.#contextMenu; }
     set contextMenu(v) {
@@ -506,9 +509,10 @@ App.Popup = class AppPopup extends App.PopupBase {
 App.Alert = class AppAlert extends App.PopupBase {
     #eIcon;
     #eContent;
+    #eInfo;
     #eButton;
 
-    constructor(content, icon="alert-circle", button="OK") {
+    constructor(content, icon="alert-circle", button="OK", info=null) {
         super();
 
         this.elem.classList.add("alert");
@@ -520,6 +524,8 @@ App.Alert = class AppAlert extends App.PopupBase {
         this.#eContent = document.createElement("div");
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
+        this.#eInfo = document.createElement("pre");
+        this.eInfo.classList.add("info");
         this.#eButton = document.createElement("button");
         this.inner.appendChild(this.eButton);
         this.eButton.classList.add("special");
@@ -529,12 +535,15 @@ App.Alert = class AppAlert extends App.PopupBase {
         this.content = content;
         this.icon = icon;
         this.button = button;
+        this.hasInfo = (info != null);
+        this.info = info;
 
         this.iconColor = "var(--v5)";
     }
 
     get eIcon() { return this.#eIcon; }
     get eContent() { return this.#eContent; }
+    get eInfo() { return this.#eInfo; }
     get eButton() { return this.#eButton; }
 
     get icon() { return this.eIcon.children[0].getAttribute("name"); }
@@ -544,6 +553,16 @@ App.Alert = class AppAlert extends App.PopupBase {
     
     get content() { return this.eContent.textContent; }
     set content(v) { this.eContent.textContent = v; }
+
+    get hasInfo() { return this.elem.contains(this.eInfo); }
+    set hasInfo(v) {
+        v = !!v;
+        if (this.hasInfo == v) return;
+        if (v) this.inner.insertBefore(this.eInfo, this.eButton);
+        else this.inner.removeChild(this.eInfo);
+    }
+    get info() { return this.eInfo.innerHTML; }
+    set info(v) { this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
 
     get button() { return this.eButton.textContent; }
     set button(v) { this.eButton.textContent = v; }
