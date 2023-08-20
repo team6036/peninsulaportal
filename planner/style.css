@@ -875,7 +875,16 @@
 
     width: 10px;
     aspect-ratio: 1 / 1;
+
     border-radius: 100%;
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), opacity var(--t), visibility var(--t);
+}
+#PROJECTPAGE > .display > .render > .item.selectable.node.heading > button.body {
+    opacity: 100%;
+    visibility: inherit;
 }
 #PROJECTPAGE > .display > .render > .item.selectable.node > button.body::before {
     z-index: -1;
