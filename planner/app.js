@@ -672,6 +672,7 @@ class RIPathVisualItem extends RenderItem {
 
         this.elem.classList.add("node");
 
+        this.elem.classList.add("heading");
         this.elem.classList.add("velocity");
 
         const eArrow = document.createElement("button");
@@ -831,6 +832,8 @@ class RISelectable extends RenderItem {
                 
                 const update = data => {
                     this.pos = this.item.pos;
+                    if (this.item.useHeading) this.elem.classList.add("heading");
+                    else this.elem.classList.remove("heading");
                     if (this.item.useVelocity) this.elem.classList.add("velocity");
                     else this.elem.classList.remove("velocity");
                     this.elem.style.setProperty("--dir-vel", (180-this.item.velocity.towards())+"deg");
