@@ -658,9 +658,9 @@ Portal.Feature = class PortalFeature extends core.Target {
                     let root = path.dirname(script);
 
                     let dataIn = { config: {}, nodes: [], obstacles: [] };
-                    dataIn.config.map_w = project.w;
-                    dataIn.config.map_h = project.h;
-                    dataIn.config.side_length = project.robotW;
+                    dataIn.config.map_w = project.w / 100;
+                    dataIn.config.map_h = project.h / 100;
+                    dataIn.config.side_length = project.robotW / 100;
                     dataIn.config.mass = project.robotMass;
                     dataIn.config.moment_of_inertia = project.config.momentOfInertia;
                     dataIn.config.efficiency_percent = project.config.efficiency;
