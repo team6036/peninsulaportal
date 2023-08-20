@@ -682,7 +682,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                         if (!(itm instanceof subcore.Project.Obstacle)) return;
                         dataIn.obstacles.push({
                             x: itm.x/100, y: itm.y/100,
-                            radius: itm.radius,
+                            radius: itm.radius/100,
                         });
                     });
                     let contentIn = JSON.stringify(dataIn, null, "\t");
