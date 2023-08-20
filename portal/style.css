@@ -33,6 +33,14 @@
     -webkit-mask-size: contain;
     -webkit-mask-position: center;
 }
+#TITLEPAGE > #canvas {
+    z-index: -1;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
 #TITLEPAGE > .inner {
     height: 100%;
     max-height: 100%;

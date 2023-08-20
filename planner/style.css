@@ -254,7 +254,7 @@
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    align-items: stretch;
+    align-items: center;
     align-content: center;
 
     background-color: var(--v8);
@@ -274,12 +274,17 @@
 #PROJECTSPAGE > .nav > .search > button {
     --bg: var(--v8);
     --fg: var(--v1);
-    --bgh: var(--a);
-    --fgh: var(--v8);
+    --bgh: var(--v7);
+    --fgh: var(--v1);
     --bgd: var(--v8);
     --fgd: var(--v4);
 
-    aspect-ratio: 1 / 1;
+    width: 25px;
+    min-width: 25px;
+    height: 25px;
+    margin-right: 5px;
+
+    border-radius: 100%;
 }
 #PROJECTSPAGE > .content {
     padding: 2px;

@@ -1416,6 +1416,21 @@ export default class App extends core.App {
                     this.getProjectButtons().forEach(btn => btn.update());
                 });
                 if (!(state.elem instanceof HTMLDivElement)) return;
+                state.eSearchBox = state.elem.querySelector(":scope > .nav > .search");
+                if (state.eSearchBox instanceof HTMLDivElement) {
+                    state.eSearchInput = state.eSearchBox.querySelector(":scope > input");
+                    if (state.eSearchInput instanceof HTMLInputElement)
+                        state.eSearchInput.addEventListener("input", e => {
+                            state.refresh();
+                        });
+                    state.eSearchButton = state.eSearchBox.querySelector(":scope > button");
+                    if (state.eSearchButton instanceof HTMLButtonElement)
+                        state.eSearchButton.addEventListener("click", e => {
+                            if (state.eSearchInput instanceof HTMLInputElement)
+                                state.eSearchInput.value = "";
+                            state.refresh();
+                        });
+                }
                 state.eCreate = state.elem.querySelector(":scope > .nav > .nav > button#createbtn");
                 if (state.eCreate instanceof HTMLButtonElement)
                     state.eCreate.addEventListener("click", e => {
@@ -1431,10 +1446,24 @@ export default class App extends core.App {
                     await this.syncWithFiles();
                     if (state.eLoading instanceof HTMLDivElement) state.eLoading.style.display = "none";
                     if (this.projects.length > 0) {
+                        let projects = this.projects.map(id => this.getProject(id));
+                        let query = (state.eSearchInput instanceof HTMLInputElement) ? state.eSearchInput.value : "";
+                        if (query.length > 0) {
+                            const fuse = new Fuse(projects, {
+                                isCaseSensitive: false,
+                                keys: [
+                                    "meta.name",
+                                ],
+                            });
+                            projects = fuse.search(query).map(item => item.item);
+                        }
+                        projects.forEach(project => this.addProjectButton(new ProjectButton(project)));
+                        /*
                         this.projects.forEach(id => {
                             let project = this.getProject(id);
                             this.addProjectButton(new ProjectButton(project));
                         });
+                        */
                     } else {
                         if (state.eEmpty instanceof HTMLDivElement) state.eEmpty.style.display = "block";
                     }
