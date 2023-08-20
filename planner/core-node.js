@@ -504,6 +504,7 @@ Project.Item = class ProjectItem extends core.Target {
 }
 Project.Node = class ProjectNode extends Project.Item {
     #heading;
+    #useHeading
     #velocity;
     #velocityRot;
     #useVelocity;
@@ -512,20 +513,21 @@ Project.Node = class ProjectNode extends Project.Item {
         super();
 
         this.#heading = 0;
+        this.#useHeading = false;
         this.#velocity = new V();
         this.#velocityRot = 0;
         this.#useVelocity = true;
 
-        if (a.length <= 0 || a.length > 5) a = [null];
+        if (a.length <= 0 || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Node) a = [a.pos, a.heading, a.velocity, a.useVelocity];
+            if (a instanceof Project.Node) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity];
             else if (a instanceof Project.Item) a = [a.pos, 0];
             else if (util.is(a, "arr")) {
                 a = new Project.Node(...a);
-                a = [a.pos, a.heading, a.velocity, a.useVelocity];
+                a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity];
             }
-            else if (util.is(a, "obj")) a = [a.pos, a.heading, a.velocity, a.useVelocity];
+            else if (util.is(a, "obj")) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity];
             else a = [a, 0];
         }
         if (a.length == 2)
@@ -533,9 +535,11 @@ Project.Node = class ProjectNode extends Project.Item {
         if (a.length == 3)
             a = [...a, true];
         if (a.length == 4)
-            a = [...a.slice(0, 3), 0, a[3]];
+            a = [...a.slice(0, 3), 0, ...a.slice(3)];
+        if (a.length == 5)
+            a = [...a.slice(0, 2), true, ...a.slice(2)];
         
-        [this.pos, this.heading, this.velocity, this.velocityRot, this.useVelocity] = a;
+        [this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity] = a;
     }
 
     get heading() { return this.#heading; }
@@ -546,6 +550,13 @@ Project.Node = class ProjectNode extends Project.Item {
         while (v < 0) v += fullTurn;
         if (this.heading == v) return;
         this.#heading = v;
+        this.post("change", null);
+    }
+    get useHeading() { return this.#useHeading; }
+    set useHeading(v) {
+        v = !!v;
+        if (this.useHeading == v) return;
+        this.#useHeading = v;
         this.post("change", null);
     }
     get velocity() { return this.#velocity; }
@@ -562,13 +573,18 @@ Project.Node = class ProjectNode extends Project.Item {
         this.post("change", null);
     }
     get useVelocity() { return this.#useVelocity; }
-    set useVelocity(v) { this.#useVelocity = !!v; }
+    set useVelocity(v) {
+        v = !!v;
+        if (this.useVelocity == v) return;
+        this.#useVelocity = v;
+        this.post("change", null);
+    }
 
     toJSON() {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.pos, this.heading, this.velocity, this.velocityRot, this.useVelocity],
+            "%ARGS": [this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity],
         };
     }
 }
