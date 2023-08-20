@@ -571,7 +571,7 @@ class RIPathVisual extends RenderItem {
                     c = (c.at(0) == "(" && c.at(-1) == ")") ? c.slice(1, c.length-1) : null;
                     if (c == null) c = [0, 0, 0];
                     else {
-                        c = c.split(",").map(v => v.replace(" ", ""));
+                        c = c.split(",").map(v => v.replaceAll(" ", ""));
                         if (![3, 4].includes(c.length)) c = [0, 0, 0];
                         else {
                             if (c.length > 3) c.pop();
@@ -923,7 +923,14 @@ export default class App extends core.App {
         this.#page = null;
 
         this.addHandler("setup", async data => {
-            await this.syncWithFiles();
+            try {
+                await this.syncWithFiles();
+            } catch (e) {
+                let alert = this.alert("There was an error loading your projects!", "warning");
+                alert.hasInfo = true;
+                alert.info = String(e);
+                alert.iconColor = "var(--cr)";
+            }
         })
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#mount > .content > .title > .logo > .title");
@@ -976,8 +983,15 @@ export default class App extends core.App {
                     menu.addItem(new core.App.ContextMenu.Divider());
                     itm = menu.addItem(new core.App.ContextMenu.Item("Save"));
                     itm.shortcut = "⌘S";
-                    itm.addHandler("trigger", data => {
-                        this.syncFilesWith();
+                    itm.addHandler("trigger", async data => {
+                        try {
+                            await this.syncFilesWith();
+                        } catch (e) {
+                            let alert = this.alert("There was an error saving your projects!", "warning");
+                            alert.hasInfo = true;
+                            alert.info = String(e);
+                            alert.iconColor = "var(--cr)";
+                        }
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy"));;
                     itm.shortcut = "⇧⌘S";
@@ -1061,9 +1075,16 @@ export default class App extends core.App {
             this.#eNameInput = document.querySelector("#nameinput > input");
             this.#eSaveBtn = document.querySelector("#save > button");
             if (this.hasESaveBtn())
-                this.eSaveBtn.addEventListener("click", e => {
+                this.eSaveBtn.addEventListener("click", async e => {
                     if (this.changes.length <= 0) return;
-                    this.syncFilesWith();
+                    try {
+                        await this.syncFilesWith();
+                    } catch (e) {
+                        let alert = this.alert("There was an error saving your projects!", "warning");
+                        alert.hasInfo = true;
+                        alert.info = String(e);
+                        alert.iconColor = "var(--cr)";
+                    }
                 });
             let saving = false;
             this.addHandler("sync-files-with", data => {
@@ -1113,16 +1134,13 @@ export default class App extends core.App {
         return changes;
     }
     async syncWithFiles() {
-        await this.post("sync-with-files", null);
+        try {
+            await this.post("sync-with-files", null);
+        } catch (e) {}
         let hasProjectIds = await window.api.fileHas("projects.json");
         if (!hasProjectIds) {
             // console.log("no projects.json found > creating");
-            await window.api.fileWrite("projects.json", "");
-        }
-        let hasProjectsDir = await window.api.dirHas("projects");
-        if (!hasProjectsDir) {
-            // console.log("no projects directory found > creating");
-            await window.api.dirMake("projects");
+            await window.api.fileWrite("projects.json", "[]");
         }
         let projectIdsContent = "";
         try {
@@ -1142,6 +1160,11 @@ export default class App extends core.App {
         }
         projectIds = util.ensure(projectIds, "arr").map(id => String(id));
         // console.log("projects.json: ", projectIds);
+        let hasProjectsDir = await window.api.dirHas("projects");
+        if (!hasProjectsDir) {
+            // console.log("no projects directory found > creating");
+            await window.api.dirMake("projects");
+        }
         let projects = {};
         for (let i = 0; i < projectIds.length; i++) {
             let id = projectIds[i];
@@ -1163,22 +1186,18 @@ export default class App extends core.App {
             }
             if (!(project instanceof subcore.Project)) continue;
             // console.log("projects/"+id+".json: ", project);
-
-            /* TODO: remove this after hotfix has projects updated */
-            if (project.meta.created < 1692199213644) {
-                let template = JSON.parse(await window.api.fileRead("template.json"));
-                project.meta.backgroundImage = template[".meta.backgroundImage"];
-            }
-            /* */
-
             projects[id] = project;
         }
         this.projects = projects;
         this.clearChanges();
-        await this.post("synced-with-files", null);
+        try {
+            await this.post("synced-with-files", null);
+        } catch (e) {}
     }
     async syncFilesWith() {
-        await this.post("sync-files-with", null);
+        try {
+            await this.post("sync-files-with", null);
+        } catch (e) {}
         let changes = new Set(this.changes);
         this.clearChanges();
         // console.log("CHANGES:", this.changes);
@@ -1233,7 +1252,9 @@ export default class App extends core.App {
                     await window.api.fileDelete(["projects", id+".json"]);
             }
         }
-        await this.post("synced-files-with", null);
+        try {
+            await this.post("synced-files-with", null);
+        } catch (e) {}
     }
     get projects() { return Object.keys(this.#projects); }
     set projects(v) {
@@ -1443,7 +1464,14 @@ export default class App extends core.App {
                     this.clearProjectButtons();
                     if (state.eLoading instanceof HTMLDivElement) state.eLoading.style.display = "block";
                     if (state.eEmpty instanceof HTMLDivElement) state.eEmpty.style.display = "none";
-                    await this.syncWithFiles();
+                    try {
+                        await this.syncWithFiles();
+                    } catch (e) {
+                        let alert = this.alert("There was an error loading your projects!", "warning");
+                        alert.hasInfo = true;
+                        alert.info = String(e);
+                        alert.iconColor = "var(--cr)";
+                    }
                     if (state.eLoading instanceof HTMLDivElement) state.eLoading.style.display = "none";
                     if (this.projects.length > 0) {
                         let projects = this.projects.map(id => this.getProject(id));
@@ -1458,12 +1486,6 @@ export default class App extends core.App {
                             projects = fuse.search(query).map(item => item.item);
                         }
                         projects.forEach(project => this.addProjectButton(new ProjectButton(project)));
-                        /*
-                        this.projects.forEach(id => {
-                            let project = this.getProject(id);
-                            this.addProjectButton(new ProjectButton(project));
-                        });
-                        */
                     } else {
                         if (state.eEmpty instanceof HTMLDivElement) state.eEmpty.style.display = "block";
                     }
@@ -1472,32 +1494,72 @@ export default class App extends core.App {
             PROJECT: () => {
                 this.addHandler("perm", async data => {
                     this.markChange("*all");
-                    await this.syncFilesWith();
+                    try {
+                        await this.syncFilesWith();
+                    } catch (e) {
+                        let alert = this.alert("There was an error saving your projects!", "warning");
+                        alert.hasInfo = true;
+                        alert.info = String(e);
+                        alert.iconColor = "var(--cr)";
+                        return false;
+                    }
                     return true;
                 });
-                setInterval(() => {
-                    this.syncFilesWith();
+                let lock = false;
+                setInterval(async () => {
+                    if (lock) return;
+                    lock = true;
+                    try {
+                        await this.syncFilesWith();
+                    } catch (e) {
+                        let alert = this.alert("There was an error saving your projects!", "warning");
+                        alert.hasInfo = true;
+                        alert.info = String(e);
+                        alert.iconColor = "var(--cr)";
+                    }
+                    lock = false;
                 }, 10000);
-                document.body.addEventListener("keydown", e => {
+                document.body.addEventListener("keydown", async e => {
                     if (this.page != "PROJECT") return;
                     if (e.code == "KeyS")
                         if (e.ctrlKey || e.metaKey) {
                             if (e.shiftKey) {
                                 let project = new subcore.Project(this.project);
                                 project.meta.name += " copy";
-                                (async () => {
-                                    await this.setPage("PROJECT", { project: project });
+                                await this.setPage("PROJECT", { project: project });
+                                try {
                                     await this.syncFilesWith();
-                                })();
+                                } catch (e) {
+                                    let alert = this.alert("There was an error saving your projects!", "warning");
+                                    alert.hasInfo = true;
+                                    alert.info = String(e);
+                                    alert.iconColor = "var(--cr)";
+                                }
                             }
-                            else this.syncFilesWith();
+                            else {
+                                try {
+                                    await this.syncFilesWith();
+                                } catch (e) {
+                                    let alert = this.alert("There was an error saving your projects!", "warning");
+                                    alert.hasInfo = true;
+                                    alert.info = String(e);
+                                    alert.iconColor = "var(--cr)";
+                                }
+                            }
                         }
                     if (e.code == "KeyN")
                         if (e.ctrlKey || e.metaKey)
                             this.page = "PROJECT";
                 });
                 state.refresh = async () => {
-                    await this.syncWithFiles();
+                    try {
+                        await this.syncWithFiles();
+                    } catch (e) {
+                        let alert = this.alert("There was an error loading your projects!", "warning");
+                        alert.hasInfo = true;
+                        alert.info = String(e);
+                        alert.iconColor = "var(--cr)";
+                    }
                     if (util.is(state.options, "obj")) {
                         for (let name in state.options) {
                             let o = state.options[name];
@@ -2401,126 +2463,6 @@ export default class App extends core.App {
                                     dialog.click();
                                 });
                         }
-                        /*
-                        let time = null, paused = null;
-                        const getTotalTime = () => {
-                            if (pathVisual == null) return null;
-                            return pathVisual.item.nodes.length*pathVisual.item.dt;
-                        };
-                        const getTime = () => ((pathVisual == null) ? null : time);
-                        const setTime = v => {
-                            v = util.ensure(v, "num");
-                            v = (pathVisual == null) ? null : Math.min(getTotalTime(), Math.max(0, v));
-                            if (getTime() == v) return true;
-                            time = v;
-                            if (o.eProgress instanceof HTMLDivElement)
-                                o.eProgress.style.setProperty("--progress", (100*((time == null) ? 0 : (getTime()/getTotalTime())))+"%");
-                            if (pathVisual != null)
-                                pathVisual.item2.interp = getTime()/getTotalTime();
-                            return true;
-                        };
-                        const getPaused = () => paused;
-                        const setPaused = v => {
-                            v = !!v;
-                            if (getPaused() == v) return true;
-                            paused = v;
-                            refreshProgressBtn();
-                            return true;
-                        };
-                        const refreshProgressBtn = () => {
-                            if (!(o.eProgressBtn instanceof HTMLButtonElement)) return false;
-                            if (!(o.eProgressBtn.children[0] instanceof HTMLElement)) return false;
-                            o.eProgressBtn.children[0].setAttribute("name", (pathVisual == null) ? "help" : (getTime() >= getTotalTime()) ? "refresh" : paused ? "play" : "pause");
-                        };
-                        if (state.eRender instanceof HTMLDivElement) {
-                            o.eProgress = state.eRender.querySelector(":scope > .progress");
-                            if (o.eProgress instanceof HTMLDivElement) {
-                                o.eProgressBtn = o.eProgress.querySelector(":scope > button");
-                                if (o.eProgressBtn instanceof HTMLButtonElement)
-                                    o.eProgressBtn.addEventListener("click", e => {
-                                        if (pathVisual == null) return;
-                                        if (getTime() >= getTotalTime()) {
-                                            setTime(0);
-                                            setPaused(false);
-                                        } else setPaused(!getPaused());
-                                    });
-                                o.eProgressTimeNow = o.eProgress.querySelector(":scope > .time.now");
-                                o.eProgressTimeTotal = o.eProgress.querySelector(":scope > .time.total");
-                                o.eProgressBar = o.eProgress.querySelector(":scope > .bar");
-                                if (o.eProgressBar instanceof HTMLDivElement)
-                                    o.eProgressBar.addEventListener("mousedown", e => {
-                                        if (getChoosing()) return;
-                                        if (e.button != 0) return;
-                                        e.stopPropagation();
-                                        const mouseup = () => {
-                                            document.body.removeEventListener("mouseup", mouseup);
-                                            document.body.removeEventListener("mousemove", mousemove);
-                                        };
-                                        const mousemove = e => {
-                                            let r = o.eProgressBar.getBoundingClientRect();
-                                            let p = (e.pageX-r.left) / r.width;
-                                            setTime(getTotalTime() * p);
-                                        };
-                                        document.body.addEventListener("mouseup", mouseup);
-                                        document.body.addEventListener("mousemove", mousemove);
-                                    });
-                            }
-                        }
-                        let t = 0;
-                        let pathVisual = null;
-                        this.addHandler("update", data => {
-                            let deltaTime = util.getTime()-t;
-                            t += deltaTime;
-                            if (pathVisual == null) {
-                                if (state.eDisplay instanceof HTMLDivElement)
-                                    state.eDisplay.classList.remove("progress");
-                                return;
-                            }
-                            if (state.eDisplay instanceof HTMLDivElement)
-                                state.eDisplay.classList.add("progress");
-                            refreshProgressBtn();
-                            if (getTime() < getTotalTime() && !getPaused())
-                                setTime(getTime() + deltaTime);
-                            if (o.eProgressTimeNow instanceof HTMLDivElement) {
-                                let split = util.splitTimeUnits(getTime());
-                                split[0] = Math.round(split[0]);
-                                while (split.length > 3) {
-                                    if (split.at(-1) > 0) break;
-                                    split.pop();
-                                }
-                                split = split.map((v, i) => {
-                                    v = String(v);
-                                    if (i >= split.length-1) return v;
-                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                                    while (v.length < l) {
-                                        if (i > 0) v = "0"+v;
-                                        else v += "0";
-                                    }
-                                    return v;
-                                });
-                                o.eProgressTimeNow.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-                            }
-                            if (o.eProgressTimeTotal instanceof HTMLDivElement) {
-                                let split = util.splitTimeUnits(getTotalTime());
-                                split[0] = Math.round(split[0]);
-                                while (split.length > 3) {
-                                    if (split.at(-1) > 0) break;
-                                    split.pop();
-                                }
-                                split = split.map((v, i) => {
-                                    v = String(v);
-                                    if (i >= split.length-1) return v;
-                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                                    while (v.length < l) {
-                                        if (i > 0) v = "0"+v;
-                                        else v += "0";
-                                    }
-                                    return v;
-                                });
-                                o.eProgressTimeTotal.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-                            }
-                        });
-                        */
                         if (state.eRender instanceof HTMLDivElement) {
                             o.eProgress = state.eRender.querySelector(":scope > .progress");
                             if (o.eProgress instanceof HTMLDivElement) {
@@ -2694,7 +2636,12 @@ export default class App extends core.App {
                                         return node;
                                     });
                                 }
-                            } catch (e) {}
+                            } catch (e) {
+                                let alert = this.alert("There was an error checking for generated trajectories!", "warning");
+                                alert.hasInfo = true;
+                                alert.info = String(e);
+                                alert.iconColor = "var(--cr)";
+                            }
                         };
                         o.eGenerationBox = elem.querySelector(":scope #trajectorygeneration");
                         if (o.eGenerationBox instanceof HTMLDivElement) {
@@ -2716,9 +2663,16 @@ export default class App extends core.App {
                                     o.setGenerating(false);
                                     (async () => {
                                         o.setGenerating(true);
+                                        this.markChange("*all");
                                         try {
-                                            this.markChange("*all");
                                             await this.syncFilesWith();
+                                        } catch (e) {
+                                            let alert = this.alert("There was an error saving your projects!", "warning");
+                                            alert.hasInfo = true;
+                                            alert.info = String(e);
+                                            alert.iconColor = "var(--cr)";
+                                        }
+                                        try {
                                             await window.api.ask("exec", [project.id, path.id]);
                                             await o.checkPathVisual();
                                             this.getPathVisuals().forEach(id => {
@@ -2729,7 +2683,10 @@ export default class App extends core.App {
                                             o.setGenerating(false);
                                         } catch (e) {
                                             o.setGenerating(false);
-                                            return console.log("ERROR:", e);
+                                            let alert = this.alert("There was an error executing the generation script!", "warning");
+                                            alert.hasInfo = true;
+                                            alert.info = String(e);
+                                            alert.iconColor = "var(--cr)";
                                         }
                                     })();
                                 });
@@ -3366,7 +3323,14 @@ export default class App extends core.App {
         namefs = {
             PROJECT: async () => {
                 this.markChange("*all");
-                await this.syncFilesWith();
+                try {
+                    await this.syncFilesWith();
+                } catch (e) {
+                    let alert = this.alert("There was an error saving your projects!", "warning");
+                    alert.hasInfo = true;
+                    alert.info = String(e);
+                    alert.iconColor = "var(--cr)";
+                }
                 this.project = null;
             },
         };

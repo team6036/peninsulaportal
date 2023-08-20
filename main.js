@@ -130,6 +130,11 @@ class Portal extends core.Target {
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
             return await feat.fileWrite(pth, content);
         });
+        ipc.handle("file-append", async (e, pth, content) => {
+            let feat = identifyFeature(e);
+            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+            return await feat.fileAppend(pth, content);
+        });
         ipc.handle("file-delete", async (e, pth, content) => {
             let feat = identifyFeature(e);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
@@ -197,6 +202,10 @@ class Portal extends core.Target {
     async fileWrite(pth, content) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
         return await fs.promises.writeFile(pth, content, { encoding: "utf-8" });
+    }
+    async fileAppend(pth, content) {
+        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        return await fs.promises.appendFile(pth, content, { encoding: "utf-8" });
     }
     async fileDelete(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
@@ -574,6 +583,11 @@ Portal.Feature = class PortalFeature extends core.Target {
         await this.affirm();
         return await this.portal.fileWrite(this.convertPath(pth), content);
     }
+    async fileAppend(pth, content) {
+        if (!this.canOperateFS) return null;
+        await this.affirm();
+        return await this.portal.fileAppend(this.convertPath(pth), content);
+    }
     async fileDelete(pth) {
         if (!this.canOperateFS) return null;
         await this.affirm();
@@ -638,23 +652,23 @@ Portal.Feature = class PortalFeature extends core.Target {
 
                     const subcore = require("./planner/core-node");
 
-                    if (!this.hasPortal()) return false;
+                    if (!this.hasPortal()) throw "No linked portal";
                     let hasProjectContent = await this.fileHas(["projects", id+".json"]);
-                    if (!hasProjectContent) return false;
+                    if (!hasProjectContent) throw "Nonexistent project with id: "+id;
                     let projectContent = await this.fileRead(["projects", id+".json"]);
                     let project = null;
                     try {
                         project = JSON.parse(projectContent, subcore.REVIVER.f);
                     } catch (e) {}
-                    if (!(project instanceof subcore.Project)) return false;
-                    if (!project.hasPath(pathId)) return;
+                    if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
+                    if (!project.hasPath(pathId)) throw "Nonexistent path with id: "+pathId+" for project id: "+id;
                     let pth = project.getPath(pathId);
 
                     let script = project.config.script;
-                    if (script == null) return false;
+                    if (script == null) throw "No script for project with id: "+id;
                     script = String(script);
                     let hasScript = await this.portal.fileHas(script);
-                    if (!hasScript) return null;
+                    if (!hasScript) throw "Script ("+script+") does not exist for project id: "+id;
                     let root = path.dirname(script);
 
                     let dataIn = { config: {}, nodes: [], obstacles: [] };
@@ -692,9 +706,18 @@ Portal.Feature = class PortalFeature extends core.Target {
                         await this.portal.fileDelete(path.join(root, "data.in"));
                     if (await this.portal.fileHas(path.join(root, "data.out")))
                         await this.portal.fileDelete(path.join(root, "data.out"));
+                    this.log("REMOVE stdout.log/stderr.log");
+                    if (await this.portal.fileHas(path.join(root, "stdout.log")))
+                        await this.portal.fileDelete(path.join(root, "stdout.log"));
+                    if (await this.portal.fileHas(path.join(root, "stderr.log")))
+                        await this.portal.fileDelete(path.join(root, "stderr.log"));
                     this.log("CREATE data.in");
                     await this.portal.fileWrite(path.join(root, "data.in"), contentIn);
+                    this.log("CREATE stdout.log/stderr.log");
+                    await this.portal.fileWrite(path.join(root, "stdout.log"), "");
+                    await this.portal.fileWrite(path.join(root, "stderr.log"), "");
                     return new Promise((res, rej) => {
+                        if ("process" in this) return rej("Existing process has not terminated");
                         this.log("SPAWN");
                         const process = this.process = cp.spawn("python3", [script], { cwd: root });
                         const finish = async () => {
@@ -706,6 +729,10 @@ Portal.Feature = class PortalFeature extends core.Target {
                             if (hasDataIn) await fs.promises.rename(path.join(root, "data.in"), path.join(root, project.meta.name, pth.name, "data.in"));
                             let hasDataOut = await this.portal.fileHas(path.join(root, "data.out"));
                             if (hasDataOut) await fs.promises.rename(path.join(root, "data.out"), path.join(root, project.meta.name, pth.name, "data.out"));
+                            let hasOutLog = await this.portal.fileHas(path.join(root, "stdout.log"));
+                            if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, project.meta.name, pth.name, "stdout.log"));
+                            let hasErrLog = await this.portal.fileHas(path.join(root, "stderr.log"));
+                            if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, project.meta.name, pth.name, "stderr.log"));
                         };
                         this.process_res = async (...a) => {
                             await finish();
@@ -715,14 +742,29 @@ Portal.Feature = class PortalFeature extends core.Target {
                             await finish();
                             return rej(...a);
                         };
-                        process.on("exit", async code => {
-                            this.log("SPAWN exit: "+code);
-                            this.process_res(code);
+                        process.stdout.on("data", data => {
+                            if (!("process" in this)) return;
+                            this.portal.fileAppend(path.join(root, "stdout.log"), data);
+                        });
+                        process.stderr.on("data", data => {
+                            if (!("process" in this)) return;
+                            this.portal.fileAppend(path.join(root, "stderr.log"), data);
+                            this.log("SPAWN err");
+                            this.process_rej(data);
                             delete this.process;
                             delete this.process_res;
                             delete this.process_rej;
                         });
+                        process.on("exit", async code => {
+                            if (!("process" in this)) return;
+                            this.log("SPAWN exit: "+code);
+                            this.process_res(code);
+                            delete this.process;
+                            delete this.process_res;
+                            delete this.process_rej; 
+                        });
                         process.on("error", err => {
+                            if (!("process" in this)) return;
                             this.log("SPAWN err");
                             this.process_rej(err);
                             delete this.process;
@@ -745,21 +787,21 @@ Portal.Feature = class PortalFeature extends core.Target {
 
                     const subcore = require("./planner/core-node");
 
-                    if (!this.hasPortal()) return false;
+                    if (!this.hasPortal()) throw "No linked portal";
                     let hasProjectContent = await this.fileHas(["projects", id+".json"]);
-                    if (!hasProjectContent) return false;
+                    if (!hasProjectContent) throw "Nonexistent project with id: "+id;
                     let projectContent = await this.fileRead(["projects", id+".json"]);
                     let project = null;
                     try {
                         project = JSON.parse(projectContent, subcore.REVIVER.f);
                     } catch (e) {}
-                    if (!(project instanceof subcore.Project)) return false;
+                    if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
 
                     let script = project.config.script;
-                    if (script == null) return false;
+                    if (script == null) throw "No script for project with id: "+id;
                     script = String(script);
                     let has = await this.portal.fileHas(script);
-                    if (!has) return null;
+                    if (!has) throw "Script ("+script+") does not exist for project id: "+id;
                     let root = path.dirname(script);
 
                     let datas = {};

@@ -763,6 +763,9 @@ label.switch > input[type="checkbox"]:checked + span::before {
 .popup.prompt > .inner {
     max-width: 250px;
 }
+.popup.alert > .inner:has(> .info) {
+    max-width: 500px;
+}
 .popup.alert > .inner > .icon,
 .popup.confirm > .inner > .icon,
 .popup.prompt > .inner > .icon {
@@ -805,6 +808,19 @@ label.switch > input[type="checkbox"]:checked + span::before {
     --fgh: var(--v1);
     --bgd: var(--a2);
     --fgd: var(--v6);
+}
+.popup.alert > .inner > .info {
+    max-height: 250px;
+    padding: 10px;
+    overflow: auto;
+
+    background-color: var(--v1);
+    color: var(--v8);
+    border-radius: 10px;
+
+    font-family: monospace;
+    word-wrap: break-word;
+    white-space: pre-wrap;
 }
 .popup.prompt > .inner > input {
     width: 300px;
