@@ -22,7 +22,7 @@ const log = (...a) => {
     return console.log(++n, ...a);
 };
 
-const FEATURES = ["LOAD", "PORTAL", "PANEL", "PLANNER"];
+const FEATURES = ["LOAD", "PORTAL", "PLANNER"];
 
 class Portal extends core.Target {
     #started;
@@ -837,6 +837,15 @@ app.on("window-all-closed", async () => {
 });
 app.on("quit", () => {
     log("# quit");
+});
+
+app.on("browser-window-focus", function () {
+    electron.globalShortcut.register("CommandOrControl+R", () => {});
+    electron.globalShortcut.register("F5", () => {});
+});
+app.on('browser-window-blur', function () {
+    electron.globalShortcut.unregister("CommandOrControl+R");
+    electron.globalShortcut.unregister("F5");
 });
 
 setInterval(() => portal.update(), 10);
