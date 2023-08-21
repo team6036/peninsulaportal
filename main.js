@@ -48,6 +48,95 @@ class Portal extends core.Target {
         this.#features = new Set();
 
         this.log();
+
+        return;
+        const template = [
+            {
+                label: app.name,
+                submenu: [
+                    { role: "about" },
+                    { type: "separator" },
+                    { role: "hide" },
+                    { role: "hideOthers" },
+                    { role: "unhide" },
+                    { type: "separator" },
+                    { role: "quit" },
+                ],
+            },
+            {
+                label: "Edit",
+                submenu: [
+                    { role: "undo" },
+                    { role: "redo" },
+                    { type: "separator" },
+                    { role: "cut" },
+                    { role: "copy" },
+                    { role: "paste" },
+                    ...(
+                        (process.platform == "darwin") ?
+                        [
+                            { role: "pasteAndMatchStyle" },
+                            { role: "delete" },
+                            { role: "selectAll" },
+                            { type: "separator" },
+                            {
+                                label: "Speech",
+                                submenu: [
+                                    { role: "startSpeaking" },
+                                    { role: "stopSpeaking" },
+                                ],
+                            },
+                        ] :
+                        [
+                            { role: "delete" },
+                            { type: "separator" },
+                            { role: "selectAll" },
+                        ]
+                    ),
+                ],
+            },
+            {
+                label: "View",
+                submenu: [
+                    { role: "reload" },
+                    { role: "forceReload" },
+                    { role: "toggleDevTools" },
+                    { type: "separator" },
+                    { role: "resetZoom" },
+                    { role: "zoomIn" },
+                    { role: "zoomOut" },
+                    { type: "separator" },
+                    { role: "togglefullscreen" },
+                ],
+            },
+            {
+                label: "Window",
+                submenu: [
+                    { role: "minimize" },
+                    { role: "zoom" },
+                    ...(
+                        (process.platform == "darwin") ?
+                        [
+                            { type: "separator" },
+                            { role: "front" },
+                            { type: "separator" },
+                            { role: "window" },
+                        ] :
+                        [
+                            { role: "close" },
+                        ]
+                    ),
+                ],
+            },
+        ];
+        const menu = electron.Menu.buildFromTemplate(template);
+        const dfs = (m, i=0) => {
+            if (m.label) console.log(new Array(i).fill("\t").join("")+m.label);
+            if (m.items) m.items.forEach(m => dfs(m, i));
+            if (m.submenu) dfs(m.submenu, i+1);
+        };
+        dfs(menu);
+        electron.Menu.setApplicationMenu(menu);
     }
 
     get features() { return [...this.#features]; }
@@ -828,7 +917,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                     } catch (e) {}
                     if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
 
-                    let script = project.config.script;
+                    let script = project.config.scriptUseDefault ? this.convertPath(["solver", "solver.py"]) : project.config.script;
                     if (script == null) return {}; // throw "No script for project with id: "+id;
                     script = String(script);
                     let has = await this.portal.fileHas(script);

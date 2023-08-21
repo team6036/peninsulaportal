@@ -1,4 +1,6 @@
 {
+  "name": "Pensinula",
+  "productName": "Pensinula",
   "scripts": {
     "start": "electron ."
   },
