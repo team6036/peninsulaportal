@@ -27,5 +27,7 @@ contextBridge.exposeInMainWorld("api", {
     dirMake: path => ipcRenderer.invoke("dir-make", path),
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
 
+    menuChange: changes => ipcRenderer.invoke("menu-change", changes),
+
     ask: (cmd, args) => ipcRenderer.invoke("ask", cmd, args),
 });

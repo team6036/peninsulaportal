@@ -1,8 +1,6 @@
 import * as util from "./util.js";
 import { V } from "./util.js";
 
-// https://www.svgrepo.com/collection/untitled-ui-oval-interface-icons
-
 const DEVELOPER = true;
 
 export const LOGOMESHDATA = (() => {
@@ -161,12 +159,6 @@ export class App extends Target {
                     if (e.altKey && (e.ctrlKey || e.metaKey))
                         e.preventDefault();
             });
-            /*
-            window.addEventListener("beforeunload", e => {
-                e.preventDefault();
-                return "NO";
-            });
-            */
         }
 
         this.#setupDone = false;
@@ -219,6 +211,12 @@ export class App extends Target {
                 let perm = await this.getPerm();
                 window.api.sendPerm(perm);
             })();
+        });
+        window.api.on((_, cmd, args) => {
+            cmd = String(cmd);
+            args = util.ensure(args, "arr");
+            this.post("cmd", { cmd: cmd, args: args });
+            this.post("cmd-"+cmd, args);
         });
 
         const coreStyle = this.#eCoreStyle = document.createElement("link");
@@ -298,7 +296,6 @@ export class App extends Target {
         });
         while (base.length > 9) base.shift();
         while (base.length < 9) base.unshift([0, 0, 0]);
-        // base = base.map(v => new Array(3).fill((v[0]+v[1]+v[2])/3))
         for (let color in data) {
             let rgb = util.ensure(data[color], "arr");
             while (rgb.length > 3) rgb.pop();
