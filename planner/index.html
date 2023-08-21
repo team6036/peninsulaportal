@@ -122,18 +122,18 @@
 										</div>
 										<div class="header"><span>Robot Size</span><span class="units">m</span></div>
 										<div id="robotsize">
-											<input class="w" type="number" placeholder="..." min="0">
+											<input class="w" type="number" placeholder="..." min="0" step="0.1">
 											<!--input class="h" type="number" placeholder="Height" min="0"-->
 										</div>
 										<div class="header"><span>Robot Mass</span><span class="units">kg</span></div>
 										<div id="robotmass">
-											<input type="number" placeholder="..." min="0">
+											<input type="number" placeholder="..." min="0" step="0.1">
 										</div>
 										<div class="header"><span>Background</span><span class="units">m</span></div>
 										<div id="background">
 											<div>
-												<input class="x" type="number" placeholder="X">
-												<input class="y" type="number" placeholder="Y">
+												<input class="x" type="number" placeholder="X" step="0.1">
+												<input class="y" type="number" placeholder="Y" step="0.1">
 											</div>
 											<input type="number" placeholder="Scale (%)">
 										</div>
@@ -146,13 +146,13 @@
 									<div class="inner">
 										<div class="header"><span>Moment of Inertia</span><span class="units">kg-m</span></div>
 										<div id="momentofinertia">
-											<input type="number" placeholder="..." min="0">
+											<input type="number" placeholder="..." min="0" step="0.1">
 										</div>
 										<div class="header"><span>Efficiency</span><span class="units">%</span></div>
 										<div id="efficiency">
 											<input type="number" placeholder="..." min="0">
 										</div>
-										<div class="header fornode"><span>12 Motor Mode</span>
+										<div class="header"><span>12 Motor Mode</span>
 											<label id="is12motormode" class="switch"><input type="checkbox"><span></span></label>
 										</div>
 										<div class="header"><span>Trajectory Generator Script</span><span class="units">.py</span></div>
@@ -162,7 +162,10 @@
 												<button>Browse</button>
 											</div>
 										</div>
-										<div class="header"><span>Trajectory Generation</span></div>
+										<div class="header"><span>Default Generator Script</span>
+											<label id="trajectorydefault" class="switch"><input type="checkbox"><span></span></label>
+										</div>
+										<!--div class="header"><span>Trajectory Generation</span></div-->
 										<div id="trajectorygeneration">
 											<button></button>
 										</div>
@@ -193,8 +196,8 @@
 									<div class="inner">
 										<div class="header"><span>Position</span><span class="units">m</span></div>
 										<div id="position">
-											<input class="x" type="number" placeholder="X" min="0">
-											<input class="y" type="number" placeholder="Y" min="0">
+											<input class="x" type="number" placeholder="X" min="0" step="0.1">
+											<input class="y" type="number" placeholder="Y" min="0" step="0.1">
 										</div>
 										<div class="header fornode"><span>Robot Heading</span><span class="units">rad</span>
 											<label id="headinguse" class="switch"><input type="checkbox"><span></span></label>
@@ -209,8 +212,8 @@
 											<label id="velocityuse" class="switch"><input type="checkbox"><span></span></label>
 										</div>
 										<div id="velocity" class="fornode">
-											<input class="x" type="number" placeholder="X">
-											<input class="y" type="number" placeholder="Y">
+											<input class="x" type="number" placeholder="X" step="0.1">
+											<input class="y" type="number" placeholder="Y" step="0.1">
 										</div>
 										<div class="header fornode"><span>Robot Rotational Velocity</span><span class="units">rad/s</span></div>
 										<div id="velocityrot" class="fornode">
@@ -218,7 +221,7 @@
 										</div>
 										<div class="header forobstacle"><span>Radius</span><span class="units">m</span></div>
 										<div id="radius" class="forobstacle">
-											<input type="number" placeholder="..." min="0">
+											<input type="number" placeholder="..." min="0" step="0.1">
 										</div>
 										<div class="header"><span>Controls</span></div>
 										<div id="itemcontrols">
