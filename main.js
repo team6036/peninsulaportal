@@ -420,7 +420,10 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         let build = {
             about: [
-                { role: "about" },
+                {
+                    label: "About Peninsula "+this.name[0].toUpperCase()+this.name.slice(1).toLowerCase(),
+                    click: () => this.window.webContents.send("ask", "about"),
+                },
             ],
             hide: [
                 { role: "hide" },
@@ -456,7 +459,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         };
         let template = [
             {
-                label: app.name,
+                label: this.name[0].toUpperCase()+this.name.slice(1).toLowerCase(),
                 submenu: [
                     ...build.about,
                     build.div,

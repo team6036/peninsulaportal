@@ -201,6 +201,16 @@ export class App extends Target {
 
     start() { this.post("start", null); }
 
+    async getAbout() {
+        let os = await window.version.os();
+        return {
+            node: window.version.node(),
+            chrome: window.version.chrome(),
+            electron: window.version.electron(),
+            os: os,
+        };
+    }
+
     async setup() {
         if (this.setupDone) return false;
 
@@ -217,6 +227,27 @@ export class App extends Target {
             args = util.ensure(args, "arr");
             this.post("cmd", { cmd: cmd, args: args });
             this.post("cmd-"+cmd, args);
+        });
+        this.addHandler("cmd-about", async args => {
+            let name = String(await window.api.getFeature());
+            let about = await this.getAbout();
+            let pop = this.alert();
+            pop.eIcon.setAttribute("src", "../assets/logo.svg");
+            pop.iconColor = "var(--a)";
+            pop.content = "Peninsula "+name[0].toUpperCase()+name.slice(1).toLowerCase();
+            let lines = new Array(4).fill("");
+            lines[0] = "NodeJS: "+about.node;
+            lines[1] = "Chrome: "+about.chrome;
+            lines[2] = "Electron: "+about.electron;
+            lines[3] = "OS: "+about.os.platform+" "+about.os.arch;
+            if (about.os.cpus.length > 0) {
+                let models = [...new Set(about.os.cpus.map(obj => obj.model))];
+                lines[3] += " / ";
+                if (models.length > 1) lines[3] += "CPUS: "+models.join(", ");
+                else lines[3] += models[0];
+            }
+            pop.info = lines.join("\n");
+            pop.hasInfo = true;
         });
 
         const coreStyle = this.#eCoreStyle = document.createElement("link");
