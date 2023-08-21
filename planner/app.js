@@ -2212,6 +2212,19 @@ export default class App extends core.App {
                         if (getChoosing()) return;
                         let itm;
                         let menu = new core.App.ContextMenu();
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
+                        itm.addHandler("trigger", data => {
+                            this.post("cmd-addnode", null);
+                        });
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Add Obstacle", "add"));
+                        itm.addHandler("trigger", data => {
+                            this.post("cmd-addobstacle", null);
+                        });
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Add Path", "add"));
+                        itm.addHandler("trigger", data => {
+                            this.post("cmd-addpath", null);
+                        });
+                        menu.addItem(new core.App.ContextMenu.Divider());
                         itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
                         itm.shortcut = "⌘X";
                         itm.addHandler("trigger", data => {
