@@ -1246,8 +1246,8 @@ export default class App extends core.App {
                 await this.post("cmd-save", null);
             });
             this.addHandler("cmd-delete", id => {
-                if (!this.hasProject(id)) id = this.projectId;
-                if (!this.hasProject(id)) return;
+                if (!this.hasProject(String(id))) id = this.projectId;
+                if (!this.hasProject(String(id))) return;
                 let pop = this.confirm();
                 pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
                 pop.addHandler("result", async data => {
