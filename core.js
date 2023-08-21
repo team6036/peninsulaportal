@@ -465,6 +465,7 @@ export class App extends Target {
         if (!this.hasContextMenu()) return false;
         this.contextMenu.elem.style.left = v.x+"px";
         this.contextMenu.elem.style.top = v.y+"px";
+        this.contextMenu.fix();
         return this.contextMenu;
     }
 
@@ -777,6 +778,16 @@ App.ContextMenu = class AppContextMenu extends Target {
     }
 
     get elem() { return this.#elem; }
+
+    fix() {
+        let r = this.elem.getBoundingClientRect();
+        let ox = 0, oy = 0;
+        if (r.right > window.innerWidth) ox = window.innerWidth-r.right;
+        if (r.left < 0) ox = 0-r.left;
+        if (r.bottom > window.innerHeight) oy = window.innerHeight-r.bottom;
+        if (r.top < 0) oy = 0-r.top;
+        this.elem.style.transform = "translate("+ox+"px, "+oy+"px)";
+    }
 };
 App.ContextMenu.Item = class AppContextMenuItem extends Target {
     #items;
@@ -812,6 +823,7 @@ App.ContextMenu.Item = class AppContextMenuItem extends Target {
         this.elem.appendChild(this.eDropdown);
         this.eDropdown.classList.add("dropdown");
 
+        this.elem.addEventListener("mouseenter", e => this.fix());
         this.elem.addEventListener("click", e => this.post("trigger", null));
 
         this.icon = icon;
@@ -874,6 +886,16 @@ App.ContextMenu.Item = class AppContextMenuItem extends Target {
     set shortcut(v) {
         this.eShortcut.textContent = v;
         this.eShortcut.style.display = (this.eShortcut.textContent.length > 0) ? "" : "none";
+    }
+
+    fix() {
+        let r = this.eDropdown.getBoundingClientRect();
+        let ox = 0, oy = 0;
+        if (r.right > window.innerWidth) ox = window.innerWidth-r.right;
+        if (r.left < 0) ox = 0-r.left;
+        if (r.bottom > window.innerHeight) oy = window.innerHeight-r.bottom;
+        if (r.top < 0) oy = 0-r.top;
+        this.eDropdown.style.transform = "translate("+ox+"px, "+oy+"px)";
     }
 };
 App.ContextMenu.Divider = class AppContextMenuDivider extends App.ContextMenu.Item {
