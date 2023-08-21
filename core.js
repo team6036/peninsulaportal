@@ -232,7 +232,9 @@ export class App extends Target {
             let name = String(await window.api.getFeature());
             let about = await this.getAbout();
             let pop = this.alert();
-            pop.eIcon.setAttribute("src", "../assets/logo.svg");
+            pop.eIcon.children[0].removeAttribute("name");
+            pop.eIcon.children[0].setAttribute("src", "../assets/logo.svg");
+            pop.eIcon.children[0].style.transform = "scale(175%)";
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+name[0].toUpperCase()+name.slice(1).toLowerCase();
             let lines = new Array(4).fill("");
