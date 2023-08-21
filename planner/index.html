@@ -19,13 +19,14 @@
 						<div class="title introtitle noanimation"><div><div>p</div><div>eninsula</div></div><div>Planner</div></div>
 					</button>
 					<div class="nav">
-						<button id="filebtn">File</button>
-						<button id="editbtn">Edit</button>
-						<div id="nameinput" class="input">
+						<button class="forproject" id="filebtn">File</button>
+						<button class="forproject" id="editbtn">Edit</button>
+						<button class="forproject" id="viewbtn">View</button>
+						<div id="nameinput" class="forproject input">
 							<input type="text" placeholder="Project Name..." autocomplete="off" spellcheck="false">
 						</div>
 					</div>
-					<div id="save">
+					<div class="forproject" id="save">
 						<button></button>
 					</div>
 					<button id="projectsbtn">
@@ -84,6 +85,9 @@
 							</div>
 							<div class="axis x"></div>
 							<div class="axis y"></div>
+							<div class="nav">
+								<button id="maxminbtn"><ion-icon></ion-icon></button>
+							</div>
 						</div>
 						<div class="divider"></div>
 						<div class="edit">
@@ -165,7 +169,6 @@
 										<div class="header"><span>Default Generator Script</span>
 											<label id="trajectorydefault" class="switch"><input type="checkbox"><span></span></label>
 										</div>
-										<!--div class="header"><span>Trajectory Generation</span></div-->
 										<div id="trajectorygeneration">
 											<button></button>
 										</div>

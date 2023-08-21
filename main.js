@@ -49,7 +49,7 @@ class Portal extends core.Target {
 
         this.log();
 
-        return;
+        /*
         const template = [
             {
                 label: app.name,
@@ -61,6 +61,20 @@ class Portal extends core.Target {
                     { role: "unhide" },
                     { type: "separator" },
                     { role: "quit" },
+                ],
+            },
+            {
+                label: "File",
+                submenu: [
+                    {
+                        label: "Open Feature",
+                        submenu: [
+                            { label: "Planner" },
+                        ],
+                    },
+                    { type: "separator" },
+                    { label: "Close All Features", accelerator: process.platform == "darwin" ? "Shift+Cmd+W" : "Shift+Ctrl+W" },
+                    { role: "close" },
                 ],
             },
             {
@@ -98,14 +112,6 @@ class Portal extends core.Target {
             {
                 label: "View",
                 submenu: [
-                    { role: "reload" },
-                    { role: "forceReload" },
-                    { role: "toggleDevTools" },
-                    { type: "separator" },
-                    { role: "resetZoom" },
-                    { role: "zoomIn" },
-                    { role: "zoomOut" },
-                    { type: "separator" },
                     { role: "togglefullscreen" },
                 ],
             },
@@ -119,12 +125,8 @@ class Portal extends core.Target {
                         [
                             { type: "separator" },
                             { role: "front" },
-                            { type: "separator" },
-                            { role: "window" },
                         ] :
-                        [
-                            { role: "close" },
-                        ]
+                        []
                     ),
                 ],
             },
@@ -137,6 +139,7 @@ class Portal extends core.Target {
         };
         dfs(menu);
         electron.Menu.setApplicationMenu(menu);
+        */
     }
 
     get features() { return [...this.#features]; }

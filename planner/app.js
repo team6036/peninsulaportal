@@ -49,6 +49,7 @@ class ProjectButton extends core.Target {
         this.eNav.appendChild(this.eEdit);
         this.eEdit.innerHTML = "Edit <ion-icon name='arrow-forward'></ion-icon>";
 
+        this.elem.addEventListener("contextmenu", e => this.post("contextmenu", { e: e }));
         this.eEdit.addEventListener("click", e => this.post("edit"));
 
         this.project = project;
@@ -578,7 +579,6 @@ class RIPathVisual extends RenderItem {
             canvas.style.width = size.x+"px";
             canvas.style.height = size.y+"px";
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // ctx.strokeStyle = style.getPropertyValue("--cg-8");
             ctx.lineWidth = scale*5;
             ctx.lineCap = "butt";
             ctx.lineJoin = "round";
@@ -931,6 +931,7 @@ export default class App extends core.App {
     #eCreateBtn;
     #eFileBtn;
     #eEditBtn;
+    #eViewBtn;
     #eNameInput;
     #eSaveBtn;
 
@@ -990,7 +991,7 @@ export default class App extends core.App {
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Delete", ""));
                     itm.addHandler("trigger", data => {
-                        let pop = this.addPopup(new core.App.Confirm());
+                        let pop = this.confirm();
                         pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
                         pop.addHandler("result", data => {
                             let v = !!util.ensure(data, "obj").v;
@@ -1096,6 +1097,31 @@ export default class App extends core.App {
                     let r = this.eEditBtn.getBoundingClientRect();
                     this.placeContextMenu(r.left, r.bottom);
                 });
+            this.#eViewBtn = document.getElementById("viewbtn");
+            if (this.hasEViewBtn())
+                this.eViewBtn.addEventListener("click", e => {
+                    let itm;
+                    let menu = new core.App.ContextMenu();
+                    let state = this.#pages["PROJECT"];
+                    itm = menu.addItem(new core.App.ContextMenu.Item((util.is(state, "obj") && state.getMaximized) ? state.getMaximized() ? "Minimize" : "Maximize" : "?"));
+                    itm.shortcut = "F";
+                    itm.addHandler("trigger", data => {
+                        let state = this.#pages["PROJECT"];
+                        if (!util.is(state, "obj")) return;
+                        if (!state.setMaximized || !state.getMaximized) return;
+                        state.setMaximized(!state.getMaximized());
+                    });
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Reset Divider"));
+                    itm.addHandler("trigger", data => {
+                        let state = this.#pages["PROJECT"];
+                        if (!util.is(state, "obj")) return;
+                        if (!state.setDivPos) return;
+                        state.setDivPos(0.75);
+                    });
+                    this.contextMenu = menu;
+                    let r = this.eViewBtn.getBoundingClientRect();
+                    this.placeContextMenu(r.left, r.bottom);
+                });
             this.#eNameInput = document.querySelector("#nameinput > input");
             this.#eSaveBtn = document.querySelector("#save > button");
             if (this.hasESaveBtn())
@@ -1158,35 +1184,36 @@ export default class App extends core.App {
         return changes;
     }
     async syncWithFiles() {
+        const log = () => {}; // console.log;
         try {
             await this.post("sync-with-files", null);
         } catch (e) {}
         let hasProjectIds = await window.api.fileHas("projects.json");
         if (!hasProjectIds) {
-            // console.log("no projects.json found > creating");
+            log("no projects.json found > creating");
             await window.api.fileWrite("projects.json", "[]");
         }
         let projectIdsContent = "";
         try {
             projectIdsContent = await window.api.fileRead("projects.json");
         } catch (e) {
-            // console.log("error reading projects.json:");
-            // console.log(e);
+            log("error reading projects.json:");
+            log(e);
             projectIdsContent = "";
         }
         let projectIds = null;
         try {
             projectIds = JSON.parse(projectIdsContent, subcore.REVIVER.f);
         } catch (e) {
-            // console.log("error parsing projects.json:", projectIdsContent);
-            // console.log(e);
+            log("error parsing projects.json:", projectIdsContent);
+            log(e);
             projectIds = null;
         }
         projectIds = util.ensure(projectIds, "arr").map(id => String(id));
-        // console.log("projects.json: ", projectIds);
+        log("projects.json: ", projectIds);
         let hasProjectsDir = await window.api.dirHas("projects");
         if (!hasProjectsDir) {
-            // console.log("no projects directory found > creating");
+            log("no projects directory found > creating");
             await window.api.dirMake("projects");
         }
         let projects = {};
@@ -1196,20 +1223,20 @@ export default class App extends core.App {
             try {
                 projectContent = await window.api.fileRead(["projects", id+".json"]);
             } catch (e) {
-                // console.log("error reading projects/"+id+".json:");
-                // console.log(e);
+                log("error reading projects/"+id+".json:");
+                log(e);
                 projectContent = "";
             }
             let project = null;
             try {
                 project = JSON.parse(projectContent, subcore.REVIVER.f);
             } catch (e) {
-                // console.log("error parsing projects/"+id+".json:", projectContent);
-                // console.log(e);
+                log("error parsing projects/"+id+".json:", projectContent);
+                log(e);
                 project = null;
             }
             if (!(project instanceof subcore.Project)) continue;
-            // console.log("projects/"+id+".json: ", project);
+            log("projects/"+id+".json: ", project);
             projects[id] = project;
         }
         this.projects = projects;
@@ -1219,20 +1246,21 @@ export default class App extends core.App {
         } catch (e) {}
     }
     async syncFilesWith() {
+        const log = () => {}; // console.log;
         try {
             await this.post("sync-files-with", null);
         } catch (e) {}
         let changes = new Set(this.changes);
         this.clearChanges();
-        // console.log("CHANGES:", this.changes);
+        log("CHANGES:", [...changes]);
         if (changes.has("*all")) {
-            // console.log("CHANGE:*all > updating global list");
+            log("CHANGE:*all > updating global list");
             let projectIds = this.projects;
             let projectIdsContent = JSON.stringify(projectIds, null, "\t");
             await window.api.fileWrite("projects.json", projectIdsContent);
             for (let i = 0; i < projectIds.length; i++) {
                 let id = projectIds[i];
-                // console.log("CHANGE:*all > creating/updating project id:"+id);
+                log("CHANGE:*all > creating/updating project id:"+id);
                 let project = this.getProject(id);
                 project.meta.thumb = this.generateRepresentation(project);
                 let projectContent = JSON.stringify(project, null, "\t");
@@ -1245,33 +1273,33 @@ export default class App extends core.App {
                     if (dirent.type != "file") continue;
                     let id = dirent.name.split(".")[0];
                     if (this.hasProject(id)) continue;
-                    // console.log("CHANGE:*all > removing project id:"+id);
+                    log("CHANGE:*all > removing project id:"+id);
                     await window.api.fileDelete(["projects", id+".json"]);
                 }
             }
         } else {
             let projectIds = this.projects;
-            if (this.hasChange("*")) {
-                // console.log("CHANGE:* > updating global list");
+            if (changes.has("*")) {
+                log("CHANGE:* > updating global list");
                 let projectIdsContent = JSON.stringify(projectIds, null, "\t");
                 await window.api.fileWrite("projects.json", projectIdsContent);
             }
             for (let i = 0; i < projectIds.length; i++) {
                 let id = projectIds[i];
                 if (!changes.has("proj:"+id)) continue;
-                // console.log("CHANGE:proj:"+id+" > creating/updating project id:"+id);
+                log("CHANGE:proj:"+id+" > creating/updating project id:"+id);
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
                 project.meta.thumb = this.generateRepresentation(project);
                 let projectContent = JSON.stringify(project, null, "\t");
                 await window.api.fileWrite(["projects", id+".json"], projectContent);
             }
-            for (let i = 0; i < changes.length; i++) {
-                let change = changes[i];
+            for (let i = 0; i < [...changes].length; i++) {
+                let change = [...changes][i];
                 if (!change.startsWith("proj:")) continue;
                 let id = change.substring(5);
                 if (this.hasProject(id)) continue;
-                // console.log("CHANGE:proj:"+id+" > removing project id:"+id);
+                log("CHANGE:proj:"+id+" > removing project id:"+id);
                 if (await window.api.fileHas(["project", id+".json"]))
                     await window.api.fileDelete(["projects", id+".json"]);
             }
@@ -1439,9 +1467,62 @@ export default class App extends core.App {
                     if (!(btn instanceof ProjectButton)) return false;
                     if (this.hasProjectButton(btn)) return false;
                     buttons.add(btn);
+                    btn._onContextMenu = data => {
+                        let e = util.ensure(util.ensure(data, "obj").e, "obj");
+                        let itm;
+                        let menu = new core.App.ContextMenu();
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
+                        itm.addHandler("trigger", data => {
+                            btn._onEdit();
+                        });
+                        menu.addItem(new core.App.ContextMenu.Divider());
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
+                        itm.addHandler("trigger", data => {
+                            let pop = this.confirm();
+                            pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
+                            pop.addHandler("result", async data => {
+                                let v = !!util.ensure(data, "obj").v;
+                                if (v) {
+                                    this.remProject(btn.project.id);
+                                    try {
+                                        await this.syncFilesWith();
+                                    } catch (e) {
+                                        let alert = this.alert("There was an error saving your projects!", "warning");
+                                        alert.hasInfo = true;
+                                        alert.info = String(e);
+                                        alert.iconColor = "var(--cr)";
+                                        return false;
+                                    }
+                                    await state.refresh();
+                                }
+                            });
+                        });
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Duplicate"));
+                        itm.addHandler("trigger", async data => {
+                            let project = new subcore.Project(btn.project);
+                            project.meta.name += " copy";
+                            let id;
+                            do {
+                                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(64*Math.random())]).join("");
+                            } while (this.hasProject(id));
+                            this.addProject(id, project);
+                            try {
+                                await this.syncFilesWith();
+                            } catch (e) {
+                                let alert = this.alert("There was an error saving your projects!", "warning");
+                                alert.hasInfo = true;
+                                alert.info = String(e);
+                                alert.iconColor = "var(--cr)";
+                            }
+                            await state.refresh();
+                        });
+                        this.contextMenu = menu;
+                        this.placeContextMenu(e.pageX, e.pageY);
+                    };
                     btn._onEdit = () => {
                         this.setPage("PROJECT", { id: btn.project.id });
                     };
+                    btn.addHandler("contextmenu", btn._onContextMenu);
                     btn.addHandler("edit", btn._onEdit);
                     btn.app = this;
                     if (state.eContent instanceof HTMLDivElement) state.eContent.appendChild(btn.elem);
@@ -1451,7 +1532,9 @@ export default class App extends core.App {
                     if (!(btn instanceof ProjectButton)) return false;
                     if (!this.hasProjectButton(btn)) return false;
                     buttons.delete(btn);
+                    btn.remHandler("edit", btn._onContextMenu);
                     btn.remHandler("edit", btn._onEdit);
+                    delete btn._onContextMenu;
                     delete btn._onEdit;
                     btn.app = null;
                     if (state.eContent instanceof HTMLDivElement) state.eContent.removeChild(btn.elem);
@@ -1987,6 +2070,9 @@ export default class App extends core.App {
                                 e.preventDefault();
                                 state.paste();
                             }
+                        } else if (e.code == "KeyF") {
+                            if (!state.setMaximized || !state.getMaximized) return;
+                            state.setMaximized(!state.getMaximized());
                         }
                     });
                 }
@@ -2057,7 +2143,53 @@ export default class App extends core.App {
                 };
                 const getDragData = () => dragData;
                 state.eRender = state.elem.querySelector(":scope > .display > .render");
-                if (state.eRender instanceof HTMLDivElement)
+                if (state.eRender instanceof HTMLDivElement) {
+                    state.eRender.addEventListener("contextmenu", e => {
+                        let itm;
+                        let menu = new core.App.ContextMenu();
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
+                        itm.shortcut = "⌘X";
+                        itm.addHandler("trigger", data => {
+                            let state = this.#pages["PROJECT"];
+                            if (!util.is(state, "obj")) return;
+                            state.cut();
+                        });
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Copy"));
+                        itm.shortcut = "⌘C";
+                        itm.addHandler("trigger", data => {
+                            let state = this.#pages["PROJECT"];
+                            if (!util.is(state, "obj")) return;
+                            state.copy();
+                        });
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Paste"));
+                        itm.shortcut = "⌘V";
+                        itm.addHandler("trigger", data => {
+                            let state = this.#pages["PROJECT"];
+                            if (!util.is(state, "obj")) return;
+                            state.paste();
+                        });
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Select All"));
+                        itm.shortcut = "⌘A";
+                        itm.addHandler("trigger", data => {
+                            let state = this.#pages["PROJECT"];
+                            if (!util.is(state, "obj")) return;
+                            if (!this.hasProject()) return;
+                            state.setSelected(this.project.items);
+                        });
+                        menu.addItem(new core.App.ContextMenu.Divider());
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Edit"));
+                        itm.addHandler("trigger", data => {
+                            state.options.item.show();
+                        });
+                        itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
+                        itm.shortcut = "⌫";
+                        itm.addHandler("trigger", data => {
+                            getSelected().forEach(id => this.project.remItem(id));
+                            setSelected(getSelected());
+                        });
+                        this.contextMenu = menu;
+                        this.placeContextMenu(e.pageX, e.pageY);
+                    });
                     state.eRender.addEventListener("mousedown", e => {
                         if (getChoosing()) return;
                         if (e.button != 0) return;
@@ -2109,18 +2241,61 @@ export default class App extends core.App {
                             document.body.addEventListener("mousemove", mousemove);
                         }
                     });
+                }
                 state.eXAxis = state.elem.querySelector(":scope > .display > .axis.x");
                 state.eYAxis = state.elem.querySelector(":scope > .display > .axis.y");
+                state.eDisplayNav = state.elem.querySelector(":scope > .display > .nav");
+                if (state.eDisplayNav instanceof HTMLDivElement) {
+                    state.eMaxMinBtn = state.eDisplayNav.querySelector("button#maxminbtn");
+                    if (state.eMaxMinBtn instanceof HTMLButtonElement)
+                        state.eMaxMinBtn.addEventListener("click", e => {
+                            state.setMaximized(!state.getMaximized());
+                        });
+                }
+                state.updateFormat = () => {
+                    if (state.eMaxMinBtn instanceof HTMLButtonElement)
+                        if (state.eMaxMinBtn.children[0] instanceof HTMLElement)
+                            state.eMaxMinBtn.children[0].setAttribute("name", state.getMaximized() ? "contract" : "expand");
+                    if (state.getMaximized()) {
+                        if (state.eDisplay instanceof HTMLDivElement)
+                            state.eDisplay.style.width = "100%";
+                        if (state.eEdit instanceof HTMLDivElement)
+                            state.eEdit.style.display = "none";
+                        if (state.eDivider instanceof HTMLDivElement)
+                            state.eDivider.style.display = "none";
+                    } else {
+                        if (state.eDisplay instanceof HTMLDivElement)
+                            state.eDisplay.style.width = "calc("+(state.getDivPos()*100)+"% - 6px)";
+                        if (state.eEdit instanceof HTMLDivElement) {
+                            state.eEdit.style.display = "";
+                            state.eEdit.style.width = "calc("+((1-state.getDivPos())*100)+"% - 6px)";
+                        }
+                        if (state.eDivider instanceof HTMLDivElement)
+                            state.eDivider.style.display = "";
+                    }
+                };
                 state.eEdit = state.elem.querySelector(":scope > .edit");
+                let maximized = null;
+                state.getMaximized = () => maximized;
+                state.setMaximized = v => {
+                    v = !!v;
+                    if (state.getMaximized() == v) return true;
+                    maximized = v;
+                    state.updateFormat();
+                    return true;
+                };
+                state.getMinimized = () => !state.getMaximized();
+                state.setMinimized = v => state.setMaximized(!v);
+                state.maximize = () => state.setMaximized(true);
+                state.minimize = () => state.setMinimized(true);
                 let divPos = null;
                 state.getDivPos = () => divPos;
                 state.setDivPos = v => {
                     v = Math.min(1, Math.max(0, util.ensure(v, "num")));
                     if (state.getDivPos() == v) return true;
-                    if (state.eDisplay instanceof HTMLDivElement)
-                        state.eDisplay.style.width = "calc("+(v*100)+"% - 6px)";
-                    if (state.eEdit instanceof HTMLDivElement)
-                        state.eEdit.style.width = "calc("+((1-v)*100)+"% - 6px)";
+                    divPos = v;
+                    state.updateFormat();
+                    return true;
                 };
                 state.eDivider = state.elem.querySelector(":scope > .divider");
                 if (state.eDivider instanceof HTMLDivElement)
@@ -2676,6 +2851,7 @@ export default class App extends core.App {
                                     });
                                 }
                             } catch (e) {
+                                return;
                                 let alert = this.alert("There was an error checking for generated trajectories!", "warning");
                                 alert.hasInfo = true;
                                 alert.info = String(e);
@@ -3321,6 +3497,7 @@ export default class App extends core.App {
                     });
                     f(o, elem);
                 }
+                state.setMaximized(false);
                 state.setDivPos(0.75);
                 setChoosing(false);
                 setDragging(false);
@@ -3382,25 +3559,16 @@ export default class App extends core.App {
         namefs = {
             TITLE: async () => {
                 if (this.hasEProjectsBtn()) this.eProjectsBtn.classList.remove("this");
-                if (this.hasEFileBtn()) this.eFileBtn.style.visibility = "hidden";
-                if (this.hasEEditBtn()) this.eEditBtn.style.visibility = "hidden";
-                if (this.hasENameInput()) this.eNameInput.style.visibility = "hidden";
-                if (this.hasESaveBtn()) this.eSaveBtn.style.visibility = "hidden";
+                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.visibility = "hidden"; });
             },
             PROJECTS: async () => {
                 if (this.hasEProjectsBtn()) this.eProjectsBtn.classList.add("this");
-                if (this.hasEFileBtn()) this.eFileBtn.style.visibility = "hidden";
-                if (this.hasEEditBtn()) this.eEditBtn.style.visibility = "hidden";
-                if (this.hasENameInput()) this.eNameInput.style.visibility = "hidden";
-                if (this.hasESaveBtn()) this.eSaveBtn.style.visibility = "hidden";
+                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.visibility = "hidden"; });
                 if (state.refresh) await state.refresh();
             },
             PROJECT: async () => {
                 if (this.hasEProjectsBtn()) this.eProjectsBtn.classList.remove("this");
-                if (this.hasEFileBtn()) this.eFileBtn.style.visibility = "";
-                if (this.hasEEditBtn()) this.eEditBtn.style.visibility = "";
-                if (this.hasENameInput()) this.eNameInput.style.visibility = "";
-                if (this.hasESaveBtn()) this.eSaveBtn.style.visibility = "";
+                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.visibility = ""; });
                 if (state.refresh) await state.refresh();
                 if (state.eDisplay instanceof HTMLDivElement) state.eDisplay.focus();
                 if (this.hasProject(data.id)) this.project = this.getProject(data.id);
@@ -3456,6 +3624,8 @@ export default class App extends core.App {
     hasEFileBtn() { return this.eFileBtn instanceof HTMLButtonElement; }
     get eEditBtn() { return this.#eEditBtn; }
     hasEEditBtn() { return this.eEditBtn instanceof HTMLButtonElement; }
+    get eViewBtn() { return this.#eViewBtn; }
+    hasEViewBtn() { return this.eViewBtn instanceof HTMLButtonElement; }
     get eNameInput() { return this.#eNameInput; }
     hasENameInput() { return this.eNameInput instanceof HTMLInputElement; }
     get eSaveBtn() { return this.#eSaveBtn; }
