@@ -1009,6 +1009,32 @@
     width: 2px;
     height: 5px;
 }
+#PROJECTPAGE > .display > .nav {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+
+    display: flex;
+    flex-direction: row-reverse;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .display > .nav > button {
+    --bg: transparent;
+    --fg: var(--v3);
+    --bgh: transparent;
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v2);
+
+    padding: 0px;
+    aspect-ratio: 1 / 1;
+
+    font-size: 16px;
+}
 #PROJECTPAGE > .edit {
     max-height: calc(100% - 20px);
     padding: 10px;
