@@ -281,6 +281,7 @@ export class Project extends core.Target {
 }
 Project.Config = class ProjectConfig extends core.Target {
     #script;
+    #scriptUseDefault;
 
     #momentOfInertia;
     #efficiency;
@@ -290,25 +291,28 @@ Project.Config = class ProjectConfig extends core.Target {
         super();
 
         this.#script = null;
+        this.#scriptUseDefault = false;
 
         this.#momentOfInertia = 0;
         this.#efficiency = 0;
         this.#is12MotorMode = false;
 
-        if (a.length <= 0 || ![1, 4].includes(a.length)) a = [null];
+        if (a.length <= 0 || ![1, 4, 5].includes(a.length)) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Config) a = [a.script, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+            if (a instanceof Project.Config) a = [a.script, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
             else if (util.is(a, "arr")) {
                 a = new Project.Config(...a);
-                a = [a.script, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+                a = [a.script, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
             }
             else if (util.is(a, "str")) a = [a, null, null, null];
-            else if (util.is(a, "obj")) a = [a.script, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+            else if (util.is(a, "obj")) a = [a.script, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
             else a = [null, 0, 0, false];
         }
+        if (a.length == 4)
+            a = [...a.slice(0, 1), false, ...a.slice(1)];
 
-        [this.script, this.momentOfInertia, this.efficiency, this.is12MotorMode] = a;
+        [this.script, this.scriptUseDefault, this.momentOfInertia, this.efficiency, this.is12MotorMode] = a;
     }
 
     get script() { return this.#script; }
@@ -316,6 +320,13 @@ Project.Config = class ProjectConfig extends core.Target {
         v = (v == null) ? null : String(v);
         if (this.script == v) return;
         this.#script = v;
+        this.post("change", null);
+    }
+    get scriptUseDefault() { return this.#scriptUseDefault; }
+    set scriptUseDefault(v) {
+        v = !!v;
+        if (this.scriptUseDefault == v) return;
+        this.#scriptUseDefault = v;
         this.post("change", null);
     }
 
@@ -347,7 +358,7 @@ Project.Config = class ProjectConfig extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.script, this.momentOfInertia, this.efficiency, this.is12MotorMode],
+            "%ARGS": [this.script, this.scriptUseDefault, this.momentOfInertia, this.efficiency, this.is12MotorMode],
         };
     }
 }

@@ -17,9 +17,20 @@ const V = util.V;
 
 const core = require("./core-node");
 
-let n = 0;
 const log = (...a) => {
-    return console.log(++n, ...a);
+    let now = new Date();
+    let year = now.getFullYear();
+    let month = String(now.getMonth()+1);
+    let date = String(now.getDate());
+    let hours = String(now.getHours());
+    let minutes = String(now.getMinutes());
+    let seconds = String(now.getSeconds());
+    while (month.length < 2) month = "0"+month;
+    while (date.length < 2) date = "0"+date;
+    while (hours.length < 2) hours = "0"+hours;
+    while (minutes.length < 2) minutes = "0"+minutes;
+    while (seconds.length < 2) seconds = "0"+seconds;
+    return console.log(`[${year}-${month}-${date}/${hours}:${minutes}:${seconds}]`, ...a);
 };
 
 const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PLANNER"];
@@ -400,8 +411,12 @@ Portal.Feature = class PortalFeature extends core.Target {
                         t = tNow;
                         const fetch = (await import("node-fetch")).default;
                         info._ = "Contacting Database";
+                        this.log("POLL db");
                         try {
-                            await fetch(host);
+                            await new Promise((res, rej) => {
+                                setTimeout(() => rej("timeout"), 1000);
+                                fetch(host).then(res()).catch(err => rej(err));
+                            });
                         } catch (e) {
                             this.log("POLL db ERROR");
                             return false;
@@ -420,11 +435,27 @@ Portal.Feature = class PortalFeature extends core.Target {
                             }
                             info[name] = "Updating feature: "+name;
                             this.log("FOUND FEATURE: "+name);
+                            const dataPath = path.join(this.portal.dataPath, name.toLowerCase());
                             let namefs = {
                                 PLANNER: async () => {
-                                    if (!(await this.portal.dirHas(path.join(this.portal.dataPath, name.toLowerCase()))))
-                                        await this.portal.dirMake(path.join(this.portal.dataPath, name.toLowerCase()));
+                                    if (!(await this.portal.dirHas(dataPath)))
+                                        await this.portal.dirMake(dataPath);
                                     let funcs = [
+                                        async () => {
+                                            info[name+"_solver"] = `[${name}] solver`;
+                                            this.log(name+" : solver");
+                                            if (await this.portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver"))) {
+                                                if (!(await this.portal.dirHas(path.join(dataPath, "solver"))))
+                                                    await this.portal.dirMake(path.join(dataPath, "solver"));
+                                                let dirents = await this.portal.dirList(path.join(__dirname, name.toLowerCase(), "solver"));
+                                                await Promise.all(dirents.map(async dirent => {
+                                                    if (dirent.type != "file") return;
+                                                    let content = await this.portal.fileRead(path.join(__dirname, name.toLowerCase(), "solver", dirent.name));
+                                                    await this.portal.fileWrite(path.join(dataPath, "solver", dirent.name), content);
+                                                }));
+                                            }
+                                            delete info[name+"_solver"];
+                                        },
                                         async () => {
                                             info[name+"_template-json"] = `[${name}] template.json`;
                                             this.log(name+" : template.json");
@@ -432,7 +463,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                                                 let resp = await fetch(root+"/template.json");
                                                 if (resp.status == 200) {
                                                     await new Promise((res, rej) => {
-                                                        const file = fs.createWriteStream(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"));
+                                                        const file = fs.createWriteStream(path.join(dataPath, "template.json"));
                                                         file.on("open", () => {
                                                             resp.body.pipe(file);
                                                             resp.body.on("end", () => res(true));
@@ -442,13 +473,13 @@ Portal.Feature = class PortalFeature extends core.Target {
                                                 }
                                             } catch (e) {}
                                             if (await this.portal.fileHas(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"))) {
-                                                let content = await this.portal.fileRead(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"));
+                                                let content = await this.portal.fileRead(path.join(dataPath, "template.json"));
                                                 try {
                                                     let data = JSON.parse(content);
                                                     if (!util.is(data, "obj")) throw "";
-                                                    data[".meta.backgroundImage"] = path.join(this.portal.dataPath, name.toLowerCase(), "template.png");
+                                                    data[".meta.backgroundImage"] = path.join(dataPath, "template.png");
                                                     content = JSON.stringify(data);
-                                                    await this.portal.fileWrite(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"), content);
+                                                    await this.portal.fileWrite(path.join(dataPath, "template.json"), content);
                                                 } catch (e) {}
                                             }
                                             delete info[name+"_template-json"];
@@ -460,7 +491,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                                                 let resp = await fetch(root+"/template.png");
                                                 if (resp.status == 200) {
                                                     await new Promise((res, rej) => {
-                                                        const file = fs.createWriteStream(path.join(this.portal.dataPath, name.toLowerCase(), "template.png"));
+                                                        const file = fs.createWriteStream(path.join(dataPath, "template.png"));
                                                         file.on("open", () => {
                                                             resp.body.pipe(file);
                                                             resp.body.on("end", () => res(true));
@@ -664,7 +695,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                     if (!project.hasPath(pathId)) throw "Nonexistent path with id: "+pathId+" for project id: "+id;
                     let pth = project.getPath(pathId);
 
-                    let script = project.config.script;
+                    let script = project.config.scriptUseDefault ? this.convertPath(["solver", "solver.py"]) : project.config.script;
                     if (script == null) throw "No script for project with id: "+id;
                     script = String(script);
                     let hasScript = await this.portal.fileHas(script);
@@ -798,15 +829,15 @@ Portal.Feature = class PortalFeature extends core.Target {
                     if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
 
                     let script = project.config.script;
-                    if (script == null) throw "No script for project with id: "+id;
+                    if (script == null) return {}; // throw "No script for project with id: "+id;
                     script = String(script);
                     let has = await this.portal.fileHas(script);
                     if (!has) throw "Script ("+script+") does not exist for project id: "+id;
                     let root = path.dirname(script);
 
-                    let datas = {};
                     let hasProjectDir = await this.portal.dirHas(path.join(root, project.meta.name));
-                    if (!hasProjectDir) return datas;
+                    if (!hasProjectDir) return {};
+                    let datas = {};
                     let pathNames = project.paths.map(id => project.getPath(id).name);
                     let pathList = await this.portal.dirList(path.join(root, project.meta.name));
                     pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
@@ -829,11 +860,6 @@ Portal.Feature = class PortalFeature extends core.Target {
                         datas[pathId] = dataOut;
                     }
                     return datas;
-                    /*
-                    let content = await this.portal.fileRead(path.join(root, "data.out"));
-                    let data = JSON.parse(content);
-                    return data;
-                    */
                 },
             },
         };
@@ -854,7 +880,7 @@ Portal.Feature = class PortalFeature extends core.Target {
     log(...a) {
         log(`[${this.name}]`, ...a);
     }
-} 
+}
 
 const portal = new Portal();
 

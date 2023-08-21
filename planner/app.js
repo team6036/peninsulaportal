@@ -157,16 +157,19 @@ class PathButton extends core.Target {
             this.post("udpate", null);
         });
         let prevPath = "";
+        let prevShowIndicies = null, prevShowLines = null;
         let pthItems = [];
         this.addHandler("udpate", data => {
             if (!this.hasApp()) return;
             if (!this.app.hasProject()) return;
             let nodes = (show && this.hasPath()) ? this.path.nodes : [];
             let path = nodes.join("");
-            if (prevPath == path) return;
+            if (prevPath == path && prevShowIndicies == this.showIndices && prevShowLines == this.showLines) return;
             pthItems.forEach(itm => this.app.remRenderItem(itm));
             pthItems = [];
             prevPath = path;
+            prevShowIndicies = this.showIndices;
+            prevShowLines = this.showLines;
             for (let i = 0; i < nodes.length; i++) {
                 let id = nodes[i];
                 let node = this.app.project.getItem(id);
@@ -2397,10 +2400,8 @@ export default class App extends core.App {
                                 o.eEfficiencyInput.disabled = !has;
                             if (o.eIs12MotorModeInput instanceof HTMLInputElement)
                                 o.eIs12MotorModeInput.disabled = !has;
-                            if (o.eScriptInput instanceof HTMLInputElement)
-                                o.eScriptInput.disabled = !has;
-                            if (o.eScriptBrowse instanceof HTMLInputElement)
-                                o.eScriptBrowse.disabled = !has;
+                            if (o.eScriptDefault instanceof HTMLInputElement)
+                                o.eScriptDefault.disabled = !has;
                             o.checkPathVisual();
                         });
                         state.addHandler("refresh-options", data => {
@@ -2411,8 +2412,14 @@ export default class App extends core.App {
                                 o.eEfficiencyInput.value = has ? this.project.config.efficiency*100 : "";
                             if (o.eIs12MotorModeInput instanceof HTMLInputElement)
                                 o.eIs12MotorModeInput.checked = has ? this.project.config.is12MotorMode : false;
-                            if (o.eScriptInput instanceof HTMLInputElement)
+                            if (o.eScriptInput instanceof HTMLInputElement) {
                                 o.eScriptInput.value = has ? this.project.config.script : "";
+                                o.eScriptInput.disabled = !has || this.project.config.scriptUseDefault;
+                            }
+                            if (o.eScriptBrowse instanceof HTMLInputElement)
+                                o.eScriptBrowse.disabled = !has || this.project.config.scriptUseDefault;
+                            if (o.eScriptDefault instanceof HTMLInputElement)
+                                o.eScriptDefault.checked = has ? this.project.config.scriptUseDefault : false;
                             if (o.eGenerationBtn instanceof HTMLButtonElement) {
                                 o.eGenerationBtn.disabled = !o.getGenerating() && (!has || getSelectedPaths().length <= 0);
                                 o.eGenerationBtn.textContent = o.getGenerating() ? "Terminate" : "Generate";
@@ -2482,6 +2489,17 @@ export default class App extends core.App {
                                         }
                                     });
                                     dialog.click();
+                                });
+                        }
+                        o.eScriptDefaultBox = elem.querySelector(":scope #trajectorydefault");
+                        if (o.eScriptDefaultBox instanceof HTMLLabelElement) {
+                            o.eScriptDefault = o.eScriptDefaultBox.querySelector("input[type='checkbox']");
+                            if (o.eScriptDefault instanceof HTMLInputElement)
+                                o.eScriptDefault.addEventListener("change", e => {
+                                    let v = o.eScriptDefault.checked;
+                                    if (this.hasProject())
+                                        this.project.config.scriptUseDefault = v;
+                                    state.post("refresh-options", null);
                                 });
                         }
                         if (state.eRender instanceof HTMLDivElement) {
