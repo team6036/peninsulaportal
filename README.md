@@ -34,42 +34,41 @@ Here is what the python script should expect as input and what it should output:
 ```json
 {
    "config": {
-       "map_w": 0, "map_h": 0, // map size
-       "side_length": 0, // robot side length - assume square
-       "mass": 0, // robot mass
+       "map_w": 0, "map_h": 0,
+       "side_length": 0,
+       "mass": 0,
        "moment_of_inertia": 0,
        "efficiency_percent": 0,
        "12_motor_mode": false
    },
    "nodes": [
        {
-           "x": 0, "y": 0, // position
-           "vx": 0, "vy": 0, // wanted velocity (if null, ignore velocity override)
-           "vt": 0, // wanted rotational velocity (if null, ignore velocity override)
-           "theta": 0 // wanted heading angle
+           "x": 0, "y": 0,
+           "vx": 0, "vy": 0,
+           "vt": 0,
+           "theta": 0
        }
-       /* ... */
    ],
    "obstacles": [
        {
-           "x": 0, "y": 0, // position
-           "radius": 0 // radius
+           "x": 0, "y": 0,
+           "radius": 0
        }
-       /* ... */
    ]
 }
 ```
 `data.out`
 ```json
 {
-   "dt": 0, // time difference per state
+   "dt": 0,
    "state": [
        {
-           "x": 0, "y": 0, // position
-           "vx": 0, "vy": 0, // velocity
-           "theta": 0 // heading angle
+           "x": 0, "y": 0,
+           "vx": 0, "vy": 0,
+           "theta": 0
        }
-       /* ... */
    ]
 }
 ```
+### **REMINDER**
+`vx`, `vy`, `vt`, and `theta` of `data.in` can be `null` to ignore a velocity or angle override. Adjust your script accordingly.

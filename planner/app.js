@@ -984,76 +984,44 @@ export default class App extends core.App {
                 this.eFileBtn.addEventListener("click", e => {
                     let itm;
                     let menu = new core.App.ContextMenu();
-                    itm = menu.addItem(new core.App.ContextMenu.Item("New", "document"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "document"));
                     itm.shortcut = "⌘N";
                     itm.addHandler("trigger", data => {
-                        this.page = "PROJECT";
+                        this.post("cmd-newproject", null);
                     });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Delete", ""));
+                    menu.addItem(new core.App.ContextMenu.Divider());
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
                     itm.addHandler("trigger", data => {
-                        let pop = this.confirm();
-                        pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
-                        pop.addHandler("result", data => {
-                            let v = !!util.ensure(data, "obj").v;
-                            if (v) {
-                                this.remProject(this.projectId);
-                                this.page = "PROJECTS";
-                            }
-                        });
+                        this.post("cmd-addnode", null);
                     });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Close", "close"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Add Obstacle", "add"));
                     itm.addHandler("trigger", data => {
-                        this.page = "PROJECTS";
+                        this.post("cmd-addobstacle", null);
+                    });
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Add Path", "add"));
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-addpath", null);
                     });
                     menu.addItem(new core.App.ContextMenu.Divider());
                     itm = menu.addItem(new core.App.ContextMenu.Item("Save"));
                     itm.shortcut = "⌘S";
                     itm.addHandler("trigger", async data => {
-                        try {
-                            await this.syncFilesWith();
-                        } catch (e) {
-                            let alert = this.alert("There was an error saving your projects!", "warning");
-                            alert.hasInfo = true;
-                            alert.info = String(e);
-                            alert.iconColor = "var(--cr)";
-                        }
+                        this.post("cmd-save", null);
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy"));;
                     itm.shortcut = "⇧⌘S";
                     itm.addHandler("trigger", data => {
-                        let project = new subcore.Project(this.project);
-                        project.meta.name += " copy";
-                        this.setPage("PROJECT", { project: project });
+                        this.post("cmd-savecopy", null);
                     });
                     menu.addItem(new core.App.ContextMenu.Divider());
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
                     itm.addHandler("trigger", data => {
-                        let state = this.#pages["PROJECT"];
-                        if (!util.is(state, "obj")) return;
-                        if (!util.is(state.options, "obj")) return;
-                        if (!util.is(state.options.map, "obj")) return;
-                        if (!util.is(state.options.map.spawns, "obj")) return;
-                        if (!util.is(state.options.map.spawns["node"], "obj")) return;
-                        state.options.map.spawns["node"].trigger();
+                        this.post("cmd-delete", null);
                     });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Add Obstacle", "add"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
+                    itm.shortcut = "⇧⌘W";
                     itm.addHandler("trigger", data => {
-                        let state = this.#pages["PROJECT"];
-                        if (!util.is(state, "obj")) return;
-                        if (!util.is(state.options, "obj")) return;
-                        if (!util.is(state.options.map, "obj")) return;
-                        if (!util.is(state.options.map.spawns, "obj")) return;
-                        if (!util.is(state.options.map.spawns["obstacle"], "obj")) return;
-                        state.options.map.spawns["obstacle"].trigger();
-                    });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Add Path", "add"));
-                    itm.addHandler("trigger", data => {
-                        let state = this.#pages["PROJECT"];
-                        if (!util.is(state, "obj")) return;
-                        if (!util.is(state.options, "obj")) return;
-                        if (!util.is(state.options.path, "obj")) return;
-                        if (!util.is(state.options.path.ePathAdd, "obj")) return;
-                        state.options.path.ePathAdd.click();
+                        this.post("cmd-close", null);
                     });
                     this.contextMenu = menu;
                     let r = this.eFileBtn.getBoundingClientRect();
@@ -1102,21 +1070,14 @@ export default class App extends core.App {
                 this.eViewBtn.addEventListener("click", e => {
                     let itm;
                     let menu = new core.App.ContextMenu();
-                    let state = this.#pages["PROJECT"];
-                    itm = menu.addItem(new core.App.ContextMenu.Item((util.is(state, "obj") && state.getMaximized) ? state.getMaximized() ? "Minimize" : "Maximize" : "?"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Maximized"));
                     itm.shortcut = "F";
                     itm.addHandler("trigger", data => {
-                        let state = this.#pages["PROJECT"];
-                        if (!util.is(state, "obj")) return;
-                        if (!state.setMaximized || !state.getMaximized) return;
-                        state.setMaximized(!state.getMaximized());
+                        this.post("cmd-maxmin", null);
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Reset Divider"));
                     itm.addHandler("trigger", data => {
-                        let state = this.#pages["PROJECT"];
-                        if (!util.is(state, "obj")) return;
-                        if (!state.setDivPos) return;
-                        state.setDivPos(0.75);
+                        this.post("cmd-resetdivider", null);
                     });
                     this.contextMenu = menu;
                     let r = this.eViewBtn.getBoundingClientRect();
@@ -1126,15 +1087,7 @@ export default class App extends core.App {
             this.#eSaveBtn = document.querySelector("#save > button");
             if (this.hasESaveBtn())
                 this.eSaveBtn.addEventListener("click", async e => {
-                    if (this.changes.length <= 0) return;
-                    try {
-                        await this.syncFilesWith();
-                    } catch (e) {
-                        let alert = this.alert("There was an error saving your projects!", "warning");
-                        alert.hasInfo = true;
-                        alert.info = String(e);
-                        alert.iconColor = "var(--cr)";
-                    }
+                    this.post("cmd-save", null);
                 });
             let saving = false;
             this.addHandler("sync-files-with", data => {
@@ -1153,6 +1106,180 @@ export default class App extends core.App {
             };
 
             this.clearChanges();
+
+            this.addHandler("cmd-newproject", () => {
+                this.page = "PROJECT";
+            });
+            const cmdAdd = name => {
+                name = String(name);
+                if (this.page != "PROJECT") return;
+                let state = this.#pages["PROJECT"];
+                if (!util.is(state, "obj")) return;
+                if (!util.is(state.options, "obj")) return;
+                if (!util.is(state.options.map, "obj")) return;
+                let o = state.options.map;
+                if (state.getChoosing()) return;
+                if (state.getDragging()) return;
+                if (!this.hasProject()) return;
+                state.setDragging(true);
+                let dragData = state.getDragData();
+                dragData.name = name;
+                if (dragData.elem instanceof HTMLDivElement)
+                    dragData.elem.innerHTML = {
+                        node: "<div class='global item selectable node'><div class='button'></div></div>",
+                        obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
+                    }[name];
+                if (e instanceof MouseEvent)
+                    state.placeDrag(e.pageX, e.pageY);
+                let prevOver = false;
+                let ghostItem = null;
+                let item = {
+                    node: new subcore.Project.Node(
+                        0,
+                        0, true,
+                        0, 0, false,
+                    ),
+                    obstacle: new subcore.Project.Obstacle(0, 100),
+                }[name];
+                dragData.addHandler("place", data => {
+                    if (!(state.eRender instanceof HTMLDivElement)) return;
+                    let pos = new V(util.ensure(data, "obj").pos);
+                    let r, over;
+                    r = state.eRender.getBoundingClientRect();
+                    over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                    if (prevOver != over) {
+                        prevOver = over;
+                        if (over) {
+                            ghostItem = this.addRenderItem(new RISelectable(item));
+                            ghostItem.ghost = true;
+                            if (dragData.elem instanceof HTMLDivElement)
+                                if (dragData.elem.children[0] instanceof HTMLDivElement)
+                                    dragData.elem.children[0].style.visibility = "hidden";
+                        } else {
+                            this.remRenderItem(ghostItem);
+                            ghostItem = null;
+                            if (dragData.elem instanceof HTMLDivElement)
+                                if (dragData.elem.children[0] instanceof HTMLDivElement)
+                                    dragData.elem.children[0].style.visibility = "inherit";
+                        }
+                    }
+                    if (ghostItem instanceof RISelectable)
+                        if (ghostItem.hasItem())
+                            ghostItem.item.pos.set(ghostItem.pageToMap(pos));
+                    if (!(o.eSpawnDelete instanceof HTMLButtonElement)) return;
+                    r = o.eSpawnDelete.getBoundingClientRect();
+                    over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                    if (over) o.eSpawnDelete.classList.add("hover");
+                    else o.eSpawnDelete.classList.remove("hover");
+                });
+                dragData.addHandler("stop", data => {
+                    this.remRenderItem(ghostItem);
+                    if (dragData.elem instanceof HTMLDivElement)
+                        dragData.elem.innerHTML = "";
+                    if (ghostItem instanceof RISelectable)
+                        if (ghostItem.hasItem())
+                            if (this.hasProject())
+                                this.project.addItem(ghostItem.item);
+                    o.eSpawnBox.classList.remove("delete");
+                });
+                o.eSpawnBox.classList.add("delete");
+            };
+            this.addHandler("cmd-addnode", () => cmdAdd("node"));
+            this.addHandler("cmd-addobstacle", () => cmdAdd("obstacle"));
+            this.addHandler("cmd-addpath", () => {
+                if (this.page != "PROJECT") return;
+                let state = this.#pages["PROJECT"];
+                if (!util.is(state, "obj")) return;
+                if (state.getChoosing()) return;
+                if (!this.hasProject()) return;
+                state.setChoosing(true);
+                let chooseData = state.getChooseData();
+                chooseData.path = new subcore.Project.Path();
+                chooseData.addHandler("choose", data => {
+                    if (!(chooseData.path instanceof subcore.Project.Path)) return;
+                    let path = chooseData.path;
+                    data = util.ensure(data, "obj");
+                    let itm = data.itm;
+                    if (!(itm instanceof subcore.Project.Node)) return;
+                    if (path.hasNode(itm)) path.remNode(itm);
+                    else path.addNode(itm);
+                    util.ensure(chooseData.temp, "arr").forEach(itm => this.remRenderItem(itm));
+                    chooseData.temp = [];
+                    let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
+                    for (let i = 0; i < nodes.length; i++) {
+                        let id = nodes[i];
+                        let node = this.project.getItem(id);
+                        chooseData.temp.push(this.addRenderItem(new RIPathIndex(node)));
+                        chooseData.temp.at(-1).value = i+1;
+                        if (i > 0) {
+                            let id2 = nodes[i-1];
+                            let node2 = this.project.getItem(id2);
+                            chooseData.temp.push(this.addRenderItem(new RIPathLine(node, node2)));
+                        }
+                    }
+                });
+                chooseData.addHandler("done", data => {
+                    if (!(chooseData.path instanceof subcore.Project.Path)) return;
+                    let path = chooseData.path;
+                    if (!this.hasProject()) return;
+                    this.project.addPath(path);
+                });
+                chooseData.addHandler("cancel", data => {
+                });
+            });
+            this.addHandler("cmd-save", async () => {
+                try {
+                    await this.syncFilesWith();
+                } catch (e) {
+                    let alert = this.alert("There was an error saving your projects!", "warning");
+                    alert.hasInfo = true;
+                    alert.info = String(e);
+                    alert.iconColor = "var(--cr)";
+                }
+            });
+            this.addHandler("cmd-savecopy", async source => {
+                if (!(source instanceof subcore.Project)) source = this.project;
+                if (!(source instanceof subcore.Project)) return;
+                let project = new subcore.Project(source);
+                project.meta.name += " copy";
+                await this.setPage("PROJECT", { project: project });
+                await this.post("cmd-save", null);
+            });
+            this.addHandler("cmd-delete", id => {
+                if (!this.hasProject(id)) id = this.projectId;
+                if (!this.hasProject(id)) return;
+                let pop = this.confirm();
+                pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
+                pop.addHandler("result", async data => {
+                    let v = !!util.ensure(data, "obj").v;
+                    if (v) {
+                        this.remProject(id);
+                        await this.post("cmd-save", null);
+                        this.page = "PROJECTS";
+                    }
+                });
+            });
+            this.addHandler("cmd-close", () => {
+                if (this.page != "PROJECT") return;
+                if (!this.hasProject()) return;
+                this.page = "PROJECTS";
+            });
+            this.addHandler("cmd-maxmin", () => {
+                if (this.page != "PROJECT") return;
+                let state = this.#pages["PROJECT"];
+                if (!util.is(state, "obj")) return;
+                if (state.getChoosing()) return;
+                if (!state.getMaximized || !state.setMaximized) return;
+                state.setMaximized(!state.getMaximized());
+            });
+            this.addHandler("cmd-resetdivider", () => {
+                if (this.page != "PROJECT") return;
+                let state = this.#pages["PROJECT"];
+                if (!util.is(state, "obj")) return;
+                if (state.getChoosing()) return;
+                if (!state.setDivPos) return;
+                state.setDivPos(0.75);
+            });
 
             this.addPage("TITLE", document.getElementById("TITLEPAGE"));
             this.addPage("PROJECTS", document.getElementById("PROJECTSPAGE"));
@@ -1478,43 +1605,11 @@ export default class App extends core.App {
                         menu.addItem(new core.App.ContextMenu.Divider());
                         itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
                         itm.addHandler("trigger", data => {
-                            let pop = this.confirm();
-                            pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
-                            pop.addHandler("result", async data => {
-                                let v = !!util.ensure(data, "obj").v;
-                                if (v) {
-                                    this.remProject(btn.project.id);
-                                    try {
-                                        await this.syncFilesWith();
-                                    } catch (e) {
-                                        let alert = this.alert("There was an error saving your projects!", "warning");
-                                        alert.hasInfo = true;
-                                        alert.info = String(e);
-                                        alert.iconColor = "var(--cr)";
-                                        return false;
-                                    }
-                                    await state.refresh();
-                                }
-                            });
+                            this.post("cmd-delete", btn.project.id);
                         });
                         itm = menu.addItem(new core.App.ContextMenu.Item("Duplicate"));
-                        itm.addHandler("trigger", async data => {
-                            let project = new subcore.Project(btn.project);
-                            project.meta.name += " copy";
-                            let id;
-                            do {
-                                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(64*Math.random())]).join("");
-                            } while (this.hasProject(id));
-                            this.addProject(id, project);
-                            try {
-                                await this.syncFilesWith();
-                            } catch (e) {
-                                let alert = this.alert("There was an error saving your projects!", "warning");
-                                alert.hasInfo = true;
-                                alert.info = String(e);
-                                alert.iconColor = "var(--cr)";
-                            }
-                            await state.refresh();
+                        itm.addHandler("trigger", data => {
+                            this.post("cmd-savecopy", btn.project);
                         });
                         this.contextMenu = menu;
                         this.placeContextMenu(e.pageX, e.pageY);
@@ -1567,18 +1662,12 @@ export default class App extends core.App {
                 state.eContent = state.elem.querySelector(":scope > .content");
                 state.eLoading = state.elem.querySelector(":scope > .content > .loading");
                 state.eEmpty = state.elem.querySelector(":scope > .content > .empty");
+                this.addHandler("synced-files-with", () => state.refresh());
+                this.addHandler("synced-with-files", () => state.refresh());
                 state.refresh = async () => {
                     this.clearProjectButtons();
                     if (state.eLoading instanceof HTMLDivElement) state.eLoading.style.display = "block";
                     if (state.eEmpty instanceof HTMLDivElement) state.eEmpty.style.display = "none";
-                    try {
-                        await this.syncWithFiles();
-                    } catch (e) {
-                        let alert = this.alert("There was an error loading your projects!", "warning");
-                        alert.hasInfo = true;
-                        alert.info = String(e);
-                        alert.iconColor = "var(--cr)";
-                    }
                     if (state.eLoading instanceof HTMLDivElement) state.eLoading.style.display = "none";
                     if (this.projects.length > 0) {
                         let projects = this.projects.map(id => this.getProject(id));
@@ -1616,47 +1705,23 @@ export default class App extends core.App {
                 setInterval(async () => {
                     if (lock) return;
                     lock = true;
-                    try {
-                        await this.syncFilesWith();
-                    } catch (e) {
-                        let alert = this.alert("There was an error saving your projects!", "warning");
-                        alert.hasInfo = true;
-                        alert.info = String(e);
-                        alert.iconColor = "var(--cr)";
-                    }
+                    await this.post("cmd-save", null);
                     lock = false;
                 }, 10000);
                 document.body.addEventListener("keydown", async e => {
                     if (this.page != "PROJECT") return;
                     if (e.code == "KeyS")
                         if (e.ctrlKey || e.metaKey) {
-                            if (e.shiftKey) {
-                                let project = new subcore.Project(this.project);
-                                project.meta.name += " copy";
-                                await this.setPage("PROJECT", { project: project });
-                                try {
-                                    await this.syncFilesWith();
-                                } catch (e) {
-                                    let alert = this.alert("There was an error saving your projects!", "warning");
-                                    alert.hasInfo = true;
-                                    alert.info = String(e);
-                                    alert.iconColor = "var(--cr)";
-                                }
-                            }
-                            else {
-                                try {
-                                    await this.syncFilesWith();
-                                } catch (e) {
-                                    let alert = this.alert("There was an error saving your projects!", "warning");
-                                    alert.hasInfo = true;
-                                    alert.info = String(e);
-                                    alert.iconColor = "var(--cr)";
-                                }
-                            }
+                            if (e.shiftKey) await this.post("cmd-savecopy", null);
+                            else await this.post("cmd-save", null);
                         }
                     if (e.code == "KeyN")
                         if (e.ctrlKey || e.metaKey)
                             this.page = "PROJECT";
+                    if (e.code == "KeyW")
+                        if (e.ctrlKey || e.metaKey)
+                            if (e.shiftKey)
+                                this.post("cmd-close");
                 });
                 state.refresh = async () => {
                     try {
@@ -2071,15 +2136,14 @@ export default class App extends core.App {
                                 state.paste();
                             }
                         } else if (e.code == "KeyF") {
-                            if (!state.setMaximized || !state.getMaximized) return;
-                            state.setMaximized(!state.getMaximized());
+                            this.post("cmd-maxmin", null);
                         }
                     });
                 }
                 let chooseData = null;
                 let choosing = null;
-                const getChoosing = () => choosing;
-                const setChoosing = v => {
+                const getChoosing = state.getChoosing = () => choosing;
+                const setChoosing = state.setChoosing = v => {
                     v = !!v;
                     if (getChoosing() == v) return true;
                     clearSelected();
@@ -2090,7 +2154,7 @@ export default class App extends core.App {
                     choosing ? state.eDisplay.classList.add("choose") : state.eDisplay.classList.remove("choose");
                     return true;
                 };
-                const getChooseData = () => chooseData;
+                const getChooseData = state.getChooseData = () => chooseData;
                 state.eChooseDoneBtn = state.elem.querySelector(":scope > .display > .render > .nav > button#donebtn");
                 state.eChooseCancelBtn = state.elem.querySelector(":scope > .display > .render > .nav > button#cancelbtn");
                 if (state.eChooseDoneBtn instanceof HTMLButtonElement)
@@ -2109,8 +2173,8 @@ export default class App extends core.App {
                     });
                 let dragData = null;
                 let dragging = null;
-                const getDragging = () => dragging;
-                const setDragging = v => {
+                const getDragging = state.getDragging = () => dragging;
+                const setDragging = state.setDragging = v => {
                     v = !!v;
                     if (getDragging() == v) return true;
                     dragging = v;
@@ -2131,7 +2195,7 @@ export default class App extends core.App {
                         document.body.addEventListener("mousemove", mousemove);
                     }
                 };
-                const placeDrag = (...v) => {
+                const placeDrag = state.placeDrag = (...v) => {
                     v = new V(...v);
                     if (!getDragging()) return false;
                     if (dragData.elem instanceof HTMLDivElement) {
@@ -2141,10 +2205,11 @@ export default class App extends core.App {
                     dragData.post("place", { pos: v });
                     return true;
                 };
-                const getDragData = () => dragData;
+                const getDragData = state.getDragData = () => dragData;
                 state.eRender = state.elem.querySelector(":scope > .display > .render");
                 if (state.eRender instanceof HTMLDivElement) {
                     state.eRender.addEventListener("contextmenu", e => {
+                        if (getChoosing()) return;
                         let itm;
                         let menu = new core.App.ContextMenu();
                         itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
@@ -2249,7 +2314,7 @@ export default class App extends core.App {
                     state.eMaxMinBtn = state.eDisplayNav.querySelector("button#maxminbtn");
                     if (state.eMaxMinBtn instanceof HTMLButtonElement)
                         state.eMaxMinBtn.addEventListener("click", e => {
-                            state.setMaximized(!state.getMaximized());
+                            this.post("cmd-maxmin", null);
                         });
                 }
                 state.updateFormat = () => {
@@ -2370,70 +2435,7 @@ export default class App extends core.App {
                                 if (btn instanceof HTMLButtonElement) {
                                     btn.trigger = e => {
                                         if (getChoosing()) return;
-                                        if (getDragging()) return;
-                                        setDragging(true);
-                                        let dragData = getDragData();
-                                        dragData.name = name;
-                                        if (dragData.elem instanceof HTMLDivElement)
-                                            dragData.elem.innerHTML = {
-                                                node: "<div class='global item selectable node'><div class='button'></div></div>",
-                                                obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
-                                            }[name];
-                                        if (e instanceof MouseEvent)
-                                            placeDrag(e.pageX, e.pageY);
-                                        let prevOver = false;
-                                        let ghostItem = null;
-                                        let item = {
-                                            node: new subcore.Project.Node(
-                                                0,
-                                                0, true,
-                                                0, 0, false,
-                                            ),
-                                            obstacle: new subcore.Project.Obstacle(0, 100),
-                                        }[name];
-                                        dragData.addHandler("place", data => {
-                                            if (!(state.eRender instanceof HTMLDivElement)) return;
-                                            let pos = new V(util.ensure(data, "obj").pos);
-                                            let r, over;
-                                            r = state.eRender.getBoundingClientRect();
-                                            over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
-                                            if (prevOver != over) {
-                                                prevOver = over;
-                                                if (over) {
-                                                    ghostItem = this.addRenderItem(new RISelectable(item));
-                                                    ghostItem.ghost = true;
-                                                    if (dragData.elem instanceof HTMLDivElement)
-                                                        if (dragData.elem.children[0] instanceof HTMLDivElement)
-                                                            dragData.elem.children[0].style.visibility = "hidden";
-                                                } else {
-                                                    this.remRenderItem(ghostItem);
-                                                    ghostItem = null;
-                                                    if (dragData.elem instanceof HTMLDivElement)
-                                                        if (dragData.elem.children[0] instanceof HTMLDivElement)
-                                                            dragData.elem.children[0].style.visibility = "inherit";
-                                                }
-                                            }
-                                            if (ghostItem instanceof RISelectable)
-                                                if (ghostItem.hasItem())
-                                                    ghostItem.item.pos.set(ghostItem.pageToMap(pos));
-                                            if (!(o.eSpawnDelete instanceof HTMLButtonElement)) return;
-                                            r = o.eSpawnDelete.getBoundingClientRect();
-                                            over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
-                                            if (over) o.eSpawnDelete.classList.add("hover");
-                                            else o.eSpawnDelete.classList.remove("hover");
-                                            
-                                        });
-                                        dragData.addHandler("stop", data => {
-                                            this.remRenderItem(ghostItem);
-                                            if (dragData.elem instanceof HTMLDivElement)
-                                                dragData.elem.innerHTML = "";
-                                            if (ghostItem instanceof RISelectable)
-                                                if (ghostItem.hasItem())
-                                                    if (this.hasProject())
-                                                        this.project.addItem(ghostItem.item);
-                                            o.eSpawnBox.classList.remove("delete");
-                                        });
-                                        o.eSpawnBox.classList.add("delete");
+                                        this.post("cmd-add"+name, null);
                                     };
                                     btn.addEventListener("mousedown", btn.trigger);
                                 }
@@ -2879,14 +2881,7 @@ export default class App extends core.App {
                                     (async () => {
                                         o.setGenerating(true);
                                         this.markChange("*all");
-                                        try {
-                                            await this.syncFilesWith();
-                                        } catch (e) {
-                                            let alert = this.alert("There was an error saving your projects!", "warning");
-                                            alert.hasInfo = true;
-                                            alert.info = String(e);
-                                            alert.iconColor = "var(--cr)";
-                                        }
+                                        await this.post("cmd-save", null);
                                         try {
                                             await window.api.ask("exec", [project.id, path.id]);
                                             await o.checkPathVisual();
@@ -3540,23 +3535,30 @@ export default class App extends core.App {
         namefs = {
             PROJECT: async () => {
                 this.markChange("*all");
-                try {
-                    await this.syncFilesWith();
-                } catch (e) {
-                    let alert = this.alert("There was an error saving your projects!", "warning");
-                    alert.hasInfo = true;
-                    alert.info = String(e);
-                    alert.iconColor = "var(--cr)";
-                }
+                await this.post("cmd-save", null);
                 this.project = null;
             },
         };
+        if ("_" in namefs) await namefs._();
         if (this.page in namefs) await namefs[this.page]();
 
         this.#page = name;
 
         state = this.#pages[this.page];
         namefs = {
+            _: async () => {
+                let projectOnly = [
+                    "addnode", "addobstacle", "addpath",
+                    "savecopy",
+                    "delete", "close",
+                    "maxmin", "resetdivider",
+                ];
+                let changes = {};
+                projectOnly.forEach(id => {
+                    changes[id] = { ".enabled": this.page == "PROJECT" };
+                });
+                await window.api.menuChange(changes);
+            },
             TITLE: async () => {
                 if (this.hasEProjectsBtn()) this.eProjectsBtn.classList.remove("this");
                 Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.visibility = "hidden"; });
@@ -3609,6 +3611,7 @@ export default class App extends core.App {
                 }
             },
         };
+        if ("_" in namefs) await namefs._();
         if (this.page in namefs) await namefs[this.page]();
 
         this.pages.forEach(name => this.getPage(name).classList[(name == this.page ? "add" : "remove")]("this"));

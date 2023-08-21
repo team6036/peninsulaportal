@@ -35,6 +35,8 @@ const log = (...a) => {
 
 const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PLANNER"];
 
+const PLAFORM = process.platform;
+
 class Portal extends core.Target {
     #started;
 
@@ -48,98 +50,6 @@ class Portal extends core.Target {
         this.#features = new Set();
 
         this.log();
-
-        /*
-        const template = [
-            {
-                label: app.name,
-                submenu: [
-                    { role: "about" },
-                    { type: "separator" },
-                    { role: "hide" },
-                    { role: "hideOthers" },
-                    { role: "unhide" },
-                    { type: "separator" },
-                    { role: "quit" },
-                ],
-            },
-            {
-                label: "File",
-                submenu: [
-                    {
-                        label: "Open Feature",
-                        submenu: [
-                            { label: "Planner" },
-                        ],
-                    },
-                    { type: "separator" },
-                    { label: "Close All Features", accelerator: process.platform == "darwin" ? "Shift+Cmd+W" : "Shift+Ctrl+W" },
-                    { role: "close" },
-                ],
-            },
-            {
-                label: "Edit",
-                submenu: [
-                    { role: "undo" },
-                    { role: "redo" },
-                    { type: "separator" },
-                    { role: "cut" },
-                    { role: "copy" },
-                    { role: "paste" },
-                    ...(
-                        (process.platform == "darwin") ?
-                        [
-                            { role: "pasteAndMatchStyle" },
-                            { role: "delete" },
-                            { role: "selectAll" },
-                            { type: "separator" },
-                            {
-                                label: "Speech",
-                                submenu: [
-                                    { role: "startSpeaking" },
-                                    { role: "stopSpeaking" },
-                                ],
-                            },
-                        ] :
-                        [
-                            { role: "delete" },
-                            { type: "separator" },
-                            { role: "selectAll" },
-                        ]
-                    ),
-                ],
-            },
-            {
-                label: "View",
-                submenu: [
-                    { role: "togglefullscreen" },
-                ],
-            },
-            {
-                label: "Window",
-                submenu: [
-                    { role: "minimize" },
-                    { role: "zoom" },
-                    ...(
-                        (process.platform == "darwin") ?
-                        [
-                            { type: "separator" },
-                            { role: "front" },
-                        ] :
-                        []
-                    ),
-                ],
-            },
-        ];
-        const menu = electron.Menu.buildFromTemplate(template);
-        const dfs = (m, i=0) => {
-            if (m.label) console.log(new Array(i).fill("\t").join("")+m.label);
-            if (m.items) m.items.forEach(m => dfs(m, i));
-            if (m.submenu) dfs(m.submenu, i+1);
-        };
-        dfs(menu);
-        electron.Menu.setApplicationMenu(menu);
-        */
     }
 
     get features() { return [...this.#features]; }
@@ -166,6 +76,17 @@ class Portal extends core.Target {
         this.#features.add(feat);
         feat.portal = this;
         feat.start();
+        let window = feat.window;
+        feat._onFocus = () => {
+            if (feat.hasMenu()) {
+                if (PLAFORM == "darwin")
+                    electron.Menu.setApplicationMenu(feat.menu);
+                return;
+            }
+            window.removeListener("focus", feat._onFocus);
+            delete feat._onFocus;
+        };
+        window.on("focus", feat._onFocus);
         this.post("feature-start", { feat: feat });
         return feat;
     }
@@ -263,6 +184,12 @@ class Portal extends core.Target {
             let feat = identifyFeature(e);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
             return await feat.dirDelete(pth);
+        });
+
+        ipc.handle("menu-change", (e, changes) => {
+            let feat = identifyFeature(e);
+            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+            return feat.menuChange(changes);
         });
 
         ipc.handle("ask", async (e, cmd, args) => {
@@ -364,6 +291,7 @@ Portal.Feature = class PortalFeature extends core.Target {
     #name;
 
     #window;
+    #menu;
     #perm;
 
     #started;
@@ -377,6 +305,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         this.#name = FEATURES.includes(name) ? name : null;
         
         this.#window = null;
+        this.#menu = null;
         this.#perm = false;
 
         this.#started = false;
@@ -407,6 +336,8 @@ Portal.Feature = class PortalFeature extends core.Target {
 
     get window() { return this.#window; }
     hasWindow() { return this.window instanceof electron.BrowserWindow; }
+    get menu() { return this.#menu; }
+    hasMenu() { return this.menu instanceof electron.Menu; }
     get perm() { return this.#perm; }
     set perm(v) { this.#perm = !!v; }
 
@@ -459,6 +390,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                 delete options.trafficLightPosition;
             },
         };
+        if ("_" in namefs) namefs._();
         if (this.name in namefs) namefs[this.name]();
         const window = this.#window = new electron.BrowserWindow(options);
         window.once("ready-to-show", () => {
@@ -486,8 +418,93 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         window.loadURL("file://"+path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
+        let build = {
+            about: [
+                { role: "about" },
+            ],
+            hide: [
+                { role: "hide" },
+                { role: "hideOthers" },
+                { role: "unhide" },
+            ],
+            quit: [
+                { role: "quit" },
+            ],
+            close: [
+                { role: "close" },
+            ],
+            undoredo: [
+                { role: "undo" },
+                { role: "redo" },
+            ],
+            cutcopypaste: [
+                { role: "cut" },
+                { role: "copy" },
+                { role: "paste" },
+            ],
+            fullscreen: [
+                { role: "togglefullscreen" },
+            ],
+            window: [
+                { role: "minimize" },
+                { role: "zoom" },
+            ],
+            front: [
+                { role: "front" },
+            ],
+            div: { type: "separator" },
+        };
+        let template = [
+            {
+                label: app.name,
+                submenu: [
+                    ...build.about,
+                    build.div,
+                    ...build.hide,
+                    build.div,
+                    ...build.quit,
+                ],
+            },
+            {
+                label: "File",
+                submenu: [
+                    ...build.close,
+                ],
+            },
+            {
+                label: "Edit",
+                submenu: [
+                    ...build.undoredo,
+                    build.div,
+                    ...build.cutcopypaste,
+                ],
+            },
+            {
+                label: "View",
+                submenu: [
+                    ...build.fullscreen,
+                ],
+            },
+            {
+                label: "Window",
+                submenu: [
+                    ...build.window,
+                    ...(
+                        (PLAFORM == "darwin") ?
+                        [
+                            { type: "separator" },
+                            { role: "front" },
+                        ] :
+                        []
+                    ),
+                    { role: "toggleDevTools" },
+                ],
+            },
+        ];
+
         namefs = {
             LOAD: () => {
+                while (template.length > 1) template.pop();
                 window.setAlwaysOnTop(true);
                 let t = 0, lock = false, nTimes = 0;
                 const host = "https://peninsula-db.jfancode.repl.co";
@@ -642,10 +659,80 @@ Portal.Feature = class PortalFeature extends core.Target {
                 checkForShow();
             },
             PLANNER: () => {
+                template[1].submenu.unshift(
+                    {
+                        id: "newproject",
+                        label: "New Project",
+                        accelerator: "CmdOrCtrl+N",
+                        click: () => this.window.webContents.send("ask", "newproject"),
+                    },
+                    build.div,
+                    {
+                        id: "addnode",
+                        label: "Add Node",
+                        click: () => this.window.webContents.send("ask", "addnode"),
+                    },
+                    {
+                        id: "addobstacle",
+                        label: "Add Obstacle",
+                        click: () => this.window.webContents.send("ask", "addobstacle"),
+                    },
+                    {
+                        id: "addpath",
+                        label: "Add Path",
+                        click: () => this.window.webContents.send("ask", "addpath"),
+                    },
+                    build.div,
+                    {
+                        id: "save",
+                        label: "Save",
+                        accelerator: "CmdOrCtrl+S",
+                        click: () => this.window.webContents.send("ask", "save"),
+                    },
+                    {
+                        id: "savecopy",
+                        label: "Save as copy",
+                        accelerator: "CmdOrCtrl+Shift+S",
+                        click: () => this.window.webContents.send("ask", "savecopy"),
+                    },
+                    build.div,
+                    {
+                        id: "delete",
+                        label: "Delete Project",
+                        click: () => this.window.webContents.send("ask", "delete"),
+                    },
+                    {
+                        id: "close",
+                        label: "Close Project",
+                        accelerator: "CmdOrCtrl+Shift+W",
+                        click: () => this.window.webContents.send("ask", "close"),
+                    },
+                );
+                // template[2].submenu[3].click = () => console.log("cut"); // this.window.webContents.send("ask", "cut");
+                // template[2].submenu[4].click = () => console.log("copy"); // this.window.webContents.send("ask", "copy");
+                // template[2].submenu[5].click = () => console.log("paste"); // this.window.webContents.send("ask", "paste");
+                template[3].submenu.unshift(
+                    {
+                        id: "maxmin",
+                        label: "Toggle Maximized",
+                        accelerator: "F",
+                        click: () => this.window.webContents.send("ask", "maxmin"),
+                    },
+                    {
+                        id: "resetdivider",
+                        label: "Reset Divider",
+                        click: () => this.window.webContents.send("ask", "resetdivider"),
+                    },
+                    build.div,
+                );
             },
         };
 
         if (namefs[this.name]) namefs[this.name]();
+
+        this.#menu = electron.Menu.buildFromTemplate(template);
+        if (PLAFORM == "linux" || PLAFORM == "win32")
+            this.window.setMenu(this.menu);
 
         return this;
     }
@@ -663,6 +750,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (this.window instanceof electron.BrowserWindow)
             this.window.close();
         this.#window = null;
+        this.#menu = null;
         this.portal = null;
         return this;
     }
@@ -736,6 +824,32 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (!this.canOperateFS) return null;
         await this.affirm();
         return await this.portal.dirDelete(this.convertPath(pth));
+    }
+
+    menuChange(changes) {
+        if (!this.hasMenu()) return false;
+        changes = util.ensure(changes, "obj");
+        for (let id in changes) {
+            let change = util.ensure(changes[id], "obj");
+            let menu = this.menu.getMenuItemById(id);
+            if (!(menu instanceof electron.MenuItem)) continue;
+            for (let k in change) {
+                let v = change[k];
+                k = String(k).split(".");
+                while (k.length > 0 && k.at(0).length <= 0) k.shift();
+                while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+                let obj = menu;
+                while (k.length > 1) {
+                    if (!util.is(obj, "obj")) {
+                        obj = null;
+                        break;
+                    }
+                    obj = obj[k.shift()];
+                }
+                if (obj == null || k.length != 1) continue;
+                obj[k] = v;
+            }
+        }
     }
 
     async ask(cmd, args) {
@@ -1000,11 +1114,11 @@ app.on("quit", () => {
 });
 
 app.on("browser-window-focus", function () {
-    electron.globalShortcut.register("CommandOrControl+R", () => {});
+    electron.globalShortcut.register("CmdOrCtrl+R", () => {});
     electron.globalShortcut.register("F5", () => {});
 });
 app.on('browser-window-blur', function () {
-    electron.globalShortcut.unregister("CommandOrControl+R");
+    electron.globalShortcut.unregister("CmdOrCtrl+R");
     electron.globalShortcut.unregister("F5");
 });
 

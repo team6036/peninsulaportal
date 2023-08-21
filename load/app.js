@@ -10,22 +10,15 @@ export default class App extends core.App {
 
         let info = document.body.querySelector("#mount > .info");
 
-        window.api.on((_, cmd, args) => {
-            cmd = String(cmd).replace("-", "_");
-            args = util.ensure(args, "arr");
-            let cmdfs = {
-                info_set: data => {
-                    data = util.ensure(data, "arr");
-                    if (!(info instanceof HTMLDivElement)) return;
-                    info.innerHTML = "";
-                    data.forEach(line => {
-                        let eLine = document.createElement("div");
-                        info.appendChild(eLine);
-                        eLine.textContent = line;
-                    });
-                },
-            };
-            if (cmd in cmdfs) cmdfs[cmd](...args);
+        this.addHandler("cmd-info-set", args => {
+            let data = util.ensure(util.ensure(args, "arr")[0], "arr");
+            if (!(info instanceof HTMLDivElement)) return;
+            info.innerHTML = "";
+            data.forEach(line => {
+                let eLine = document.createElement("div");
+                info.appendChild(eLine);
+                eLine.textContent = line;
+            });
         });
     }
 }
