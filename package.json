@@ -12,6 +12,6 @@
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {
-    "electron-packager": "^17.1.1"
+    "electron-packager": "^17.1.2"
   }
 }
