@@ -411,7 +411,7 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         window.on("unresponsive", () => {});
         window.webContents.on("did-fail-load", () => window.close());
-        window.webContents.on("will-navigate", (_, url) => {
+        window.webContents.on("will-navigate", (e, url) => {
             if (url != e.sender.getURL()) {
                 e.preventDefault();
                 electron.shell.openExternal(url);
