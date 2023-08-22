@@ -1,7 +1,7 @@
 import * as util from "./util.js";
 import { V } from "./util.js";
 
-const DEVELOPER = true;
+const DEVELOPER = false;
 
 export const LOGOMESHDATA = (() => {
     let loadState = 0;
@@ -153,6 +153,18 @@ export class App extends Target {
 
         if (DEVELOPER) {
             window.app = this;
+            window.colors = () => {
+                "roygbpm_".split("").forEach(c => {
+                    let out = [new Array(9).fill("%c...").join("")];
+                    for (let i = 0; i <= 8; i++) {
+                        let rgb;
+                        if (c == "_") rgb = getComputedStyle(document.body).getPropertyValue("--v"+i);
+                        else rgb = getComputedStyle(document.body).getPropertyValue("--c"+c+i);
+                        out.push("padding:10px;background:"+rgb+";");
+                    }
+                    console.log(...out);
+                });
+            };
         } else {
             document.body.addEventListener("keydown", e => {
                 if (e.code == "KeyI")
