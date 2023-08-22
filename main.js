@@ -17,20 +17,22 @@ const V = util.V;
 
 const core = require("./core-node");
 
-const log = (...a) => {
+const log = async (...a) => {
     let now = new Date();
-    let year = now.getFullYear();
-    let month = String(now.getMonth()+1);
-    let date = String(now.getDate());
-    let hours = String(now.getHours());
-    let minutes = String(now.getMinutes());
-    let seconds = String(now.getSeconds());
-    while (month.length < 2) month = "0"+month;
-    while (date.length < 2) date = "0"+date;
-    while (hours.length < 2) hours = "0"+hours;
-    while (minutes.length < 2) minutes = "0"+minutes;
-    while (seconds.length < 2) seconds = "0"+seconds;
-    return console.log(`[${year}-${month}-${date}/${hours}:${minutes}:${seconds}]`, ...a);
+    let yr = now.getFullYear();
+    let mon = String(now.getMonth()+1);
+    let d = String(now.getDate());
+    let hr = String(now.getHours());
+    let min = String(now.getMinutes());
+    let s = String(now.getSeconds());
+    let ms = String(now.getMilliseconds());
+    while (mon.length < 2) mon = "0"+mon;
+    while (d.length < 2) d = "0"+d;
+    while (hr.length < 2) hr = "0"+hr;
+    while (min.length < 2) min = "0"+min;
+    while (s.length < 2) s = "0"+s;
+    while (ms.length < 3) ms += "0";
+    return console.log(`[${yr}-${mon}-${d}/${hr}:${min}:${s}.${ms}]`, ...a);
 };
 
 const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PLANNER"];
@@ -219,6 +221,7 @@ class Portal extends core.Target {
 
     async fileHas(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:file-has ${pth}`);
         try {
             await fs.promises.access(pth);
             return true;
@@ -227,23 +230,28 @@ class Portal extends core.Target {
     }
     async fileRead(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:file-read ${pth}`);
         return await fs.promises.readFile(pth, { encoding: "utf-8" });
     }
     async fileWrite(pth, content) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:file-write ${pth}`);
         return await fs.promises.writeFile(pth, content, { encoding: "utf-8" });
     }
     async fileAppend(pth, content) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:file-append ${pth}`);
         return await fs.promises.appendFile(pth, content, { encoding: "utf-8" });
     }
     async fileDelete(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:file-delete ${pth}`);
         return await fs.promises.unlink(pth);
     }
 
     async dirHas(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:dir-has ${pth}`);
         try {
             await fs.promises.access(pth);
             return true;
@@ -252,6 +260,7 @@ class Portal extends core.Target {
     }
     async dirList(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:dir-list ${pth}`);
         let dirents = await fs.promises.readdir(pth, { withFileTypes: true });
         return dirents.map(dirent => {
             return {
@@ -262,10 +271,12 @@ class Portal extends core.Target {
     }
     async dirMake(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:dir-make ${pth}`);
         return await fs.promises.mkdir(pth);
     }
     async dirDelete(pth) {
         pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+        this.log(`fs:dir-delete ${pth}`);
         return await fs.promises.rmdir(pth);
     }
 
@@ -282,7 +293,7 @@ class Portal extends core.Target {
     }
 
     log(...a) {
-        log("*", ...a);
+        return log("*", ...a);
     }
 }
 Portal.Feature = class PortalFeature extends core.Target {
@@ -711,9 +722,6 @@ Portal.Feature = class PortalFeature extends core.Target {
                         click: () => this.window.webContents.send("ask", "close"),
                     },
                 );
-                // template[2].submenu[3].click = () => console.log("cut"); // this.window.webContents.send("ask", "cut");
-                // template[2].submenu[4].click = () => console.log("copy"); // this.window.webContents.send("ask", "copy");
-                // template[2].submenu[5].click = () => console.log("paste"); // this.window.webContents.send("ask", "paste");
                 template[3].submenu.unshift(
                     {
                         id: "maxmin",
@@ -1087,7 +1095,7 @@ Portal.Feature = class PortalFeature extends core.Target {
     }
 
     log(...a) {
-        log(`[${this.name}]`, ...a);
+        return log(`[${this.name}]`, ...a);
     }
 }
 

@@ -143,21 +143,75 @@ function angleRel(a, b) {
     return r;
 }
 exports.angleRel = angleRel;
+function angleRelRadians(a, b) {
+    const fullTurn = 2*Math.PI;
+    a = ensure(a, "num");
+    b = ensure(b, "num");
+    while (a >= fullTurn) a -= fullTurn;
+    while (a < 0) a += fullTurn;
+    while (b >= fullTurn) b -= fullTurn;
+    while (b < 0) b += fullTurn;
+    let r = b - a;
+    while (r >= fullTurn) r -= fullTurn;
+    while (r < 0) r += fullTurn;
+    if (r > fullTurn/2) r -= fullTurn;
+    return r;
+}
+exports.angleRelRadians = angleRelRadians;
 
 function getTime() {
     return new Date().getTime();
 }
 exports.getTime = getTime;
+const UNITVALUES = {
+    ms: 1,
+    s: 1000,
+    min: 60,
+    hr: 60,
+    d: 24,
+    yr: 365,
+};
+exports.UNITVALUES = UNITVALUES;
+function splitTimeUnits(t) {
+    t = Math.max(0, ensure(t, "num"));
+    let units = Object.keys(UNITVALUES);
+    let values = new Array(units.length).fill(0);
+    values[0] = t;
+    units.forEach((unit, i) => {
+        if (i <= 0) return;
+        values[i] += Math.floor(values[i-1]/UNITVALUES[unit]);
+        values[i-1] -= values[i]*UNITVALUES[unit];
+    });
+    return values;
+}
+exports.splitTimeUnits = splitTimeUnits;
 
-function loadImage(src) {
+function promiseTimeout(v, time) {
+    time = Math.max(0, ensure(time, "num"));
     return new Promise((res, rej) => {
-        let img = new Image();
-        img.addEventListener("load", e => res(img));
-        img.addEventListener("error", e => rej(e));
-        img.src = src;
+        setTimeout(() => rej("timeout"), time);
+        if (typeof(v) == "function") {
+            if (v.constructor.name == "AsyncFunction") (async () => {
+                try {
+                    res(await f());
+                } catch (e) { rej(e); }
+            })();
+            else (() => {
+                try {
+                    res(f());
+                } catch (e) { rej(e); }
+            })();
+            return;
+        }
+        if (v instanceof Promise) return (async () => {
+            try {
+                res(await f);
+            } catch (e) { rej(e); }
+        });
+        res(v);
     });
 }
-exports.loadImage = loadImage;
+exports.promiseTimeout = promiseTimeout;
 
 const ease = {
     // https://easings.net/
