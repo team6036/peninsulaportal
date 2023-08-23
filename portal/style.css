@@ -23,6 +23,8 @@
     height: calc(100% + var(--WIN-TITLEBAR-TOP));
     max-height: calc(100% + var(--WIN-TITLEBAR-TOP));
 
+    background: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
+    /*
     background: radial-gradient(
         circle at center,
         var(--v1-0) 0%,
@@ -35,6 +37,7 @@
         var(--v2-0) 25%
     );
     visibility: hidden;
+    */
 }
 #TITLEPAGE > .background > ion-icon {
     --x: 0px;

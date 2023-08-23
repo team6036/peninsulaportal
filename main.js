@@ -37,7 +37,7 @@ const log = async (...a) => {
 
 const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PLANNER"];
 
-const PLAFORM = process.platform;
+const PLATFORM = process.platform;
 
 class Portal extends core.Target {
     #started;
@@ -81,7 +81,7 @@ class Portal extends core.Target {
         let window = feat.window;
         feat._onFocus = () => {
             if (feat.hasMenu()) {
-                if (PLAFORM == "darwin")
+                if (PLATFORM == "darwin")
                     electron.Menu.setApplicationMenu(feat.menu);
                 return;
             }
@@ -392,6 +392,12 @@ Portal.Feature = class PortalFeature extends core.Target {
             },
         };
         namefs = {
+            _: () => {
+                if (PLATFORM == "win32")
+                    options.icon = "./assets/icon.ico";
+                if (PLATFORM == "linux")
+                    options.icon = "./assets/icon.png";
+            },
             LOAD: () => {
                 options.width = 750;
                 options.height = 450;
@@ -504,14 +510,14 @@ Portal.Feature = class PortalFeature extends core.Target {
                 submenu: [
                     ...build.window,
                     ...(
-                        (PLAFORM == "darwin") ?
+                        (PLATFORM == "darwin") ?
                         [
                             { type: "separator" },
                             { role: "front" },
                         ] :
                         []
                     ),
-                    { role: "toggleDevTools" },
+                    // { role: "toggleDevTools" },
                 ],
             },
         ];
@@ -742,7 +748,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (namefs[this.name]) namefs[this.name]();
 
         this.#menu = electron.Menu.buildFromTemplate(template);
-        if (PLAFORM == "linux" || PLAFORM == "win32")
+        if (PLATFORM == "linux" || PLATFORM == "win32")
             this.window.setMenu(this.menu);
 
         return this;
