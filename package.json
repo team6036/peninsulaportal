@@ -3,7 +3,7 @@
   "productName": "Pensinula",
   "scripts": {
     "start": "electron .",
-    "package": "electron-packager . Peninsula --platform=win32 --arch=arm64 --out ./build --overwrite && electron-packager . Peninsula --platform=win32 --arch=x64 --out ./build --overwrite && electron-packager . Peninsula --platform=darwin --arch=arm64 --out ./build --overwrite && electron-packager . Peninsula --platform=darwin --arch=x64 --out ./build --overwrite && electron-packager . Peninsula --platform=linux --arch=arm64 --out ./build --overwrite && electron-packager . Peninsula --platform=linux --arch=x64 --out ./build --overwrite"
+    "package": "electron-packager . Peninsula --platform='win32' --arch='arm64' --out='./build' --overwrite --icon='./assets/icon.ico' && electron-packager . Peninsula --platform='win32' --arch='x64' --out='./build' --overwrite --icon='./assets/icon.ico' && electron-packager . Peninsula --platform='darwin' --arch='arm64' --out='./build' --overwrite --icon='./assets/icon.icns' && electron-packager . Peninsula --platform='darwin' --arch='x64' --out='./build' --overwrite --icon='./assets/icon.icns' && electron-packager . Peninsula --platform='linux' --arch='arm64' --out='./build' --overwrite && electron-packager . Peninsula --platform='linux' --arch='x64' --out='./build' --overwrite"
   },
   "main": "main.js",
   "dependencies": {

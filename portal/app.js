@@ -73,7 +73,7 @@ export default class App extends core.App {
         let ctx = null;
         this.addHandler("start-complete", data => {
             this.#eBackground = document.querySelector("#TITLEPAGE > .background");
-            if (this.hasEBackground()) {
+            if (this.hasEBackground() && 0) {
                 let size = 50;
                 this.eBackground.style.setProperty("--size", size+"px");
                 let w = Math.ceil(window.screen.width / (Math.sqrt(3) * size))-5;
