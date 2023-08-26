@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("api", {
     on: f => ipcRenderer.on("ask", f),
 
     getFeature: () => ipcRenderer.invoke("get-feature"),
+    getFullScreen: () => ipcRenderer.invoke("ask", "get-fullscreen"),
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
     fileRead: path => ipcRenderer.invoke("file-read", path),

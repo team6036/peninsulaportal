@@ -1,7 +1,7 @@
 import * as util from "./util.js";
 import { V } from "./util.js";
 
-const DEVELOPER = false;
+const DEVELOPER = true;
 
 export const LOGOMESHDATA = (() => {
     let loadState = 0;
@@ -263,6 +263,11 @@ export class App extends Target {
             pop.info = lines.join("\n");
             pop.hasInfo = true;
         });
+        this.addHandler("cmd-set-fullscreen", async args => {
+            args = util.ensure(args, "arr");
+            let is = args[0];
+            document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
+        });
 
         const coreStyle = this.#eCoreStyle = document.createElement("link");
         document.head.appendChild(coreStyle);
@@ -278,17 +283,14 @@ export class App extends Target {
         document.head.appendChild(dynamicStyle);
         dynamicStyle.innerHTML = "#mount{animation: mount-in 0.25s forwards;}@keyframes mount-in{0%{visibility:hidden;}99%{visibility:hidden;}100%{visibility:inherit;}}";
 
-        const titleBar = this.#eTitleBar = document.createElement("div");
+        if (document.getElementById("titlebar") instanceof HTMLDivElement) this.#eTitleBar = document.getElementById("titlebar");
+        else this.#eTitleBar = document.createElement("div");
+        const titleBar = this.#eTitleBar;
         document.body.appendChild(titleBar);
         titleBar.id = "titlebar";
-        const titleBarText = document.createElement("div");
-        titleBar.appendChild(titleBarText);
-        titleBarText.style.flexBasis = "100%";
-        titleBarText.style.textAlign = "center";
 
         this.#eLoading = document.getElementById("loading");
         if (this.hasELoading()) this.eLoading.classList.add("this");
-        let t = util.getTime();
 
         const ionicons1 = document.createElement("script");
         document.body.appendChild(ionicons1);
@@ -300,8 +302,6 @@ export class App extends Target {
         ionicons2.src = "../node_modules/ionicons/dist/ionicons/ionicons.js";
 
         const updatePage = () => {
-            let title = document.head.querySelector("title");
-            titleBarText.textContent = (title instanceof HTMLTitleElement) ? title.textContent : window.location.toString();
             Array.from(document.querySelectorAll(".loading")).forEach(elem => {
                 if (elem.innerHTML.length > 0) return;
                 elem.innerHTML = "<div>"+new Array(4).fill("<div></div>").join("")+"</div>";
@@ -328,6 +328,14 @@ export class App extends Target {
         };
         setInterval(updatePage, 500);
         updatePage();
+
+        if (this.hasELoadingTo())
+            this.eLoadingTo.style.visibility = "hidden";
+        
+        let t = util.getTime();
+
+        let is = await window.api.getFullScreen();
+        document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
 
         let resp = await fetch("../theme.json");
         let data = await resp.json();
@@ -395,7 +403,6 @@ export class App extends Target {
                 this.eLoading.classList.remove("this");
                 let introTitle = this.eLoading.querySelector(":scope > .introtitle");
                 if (this.hasELoadingTo() && (introTitle instanceof HTMLElement)) {
-                    this.eLoadingTo.style.visibility = "hidden";
                     let r1 = introTitle.getBoundingClientRect();
                     let r2 = this.eLoadingTo.getBoundingClientRect();
                     let x1 = r1.left + r1.width/2;
