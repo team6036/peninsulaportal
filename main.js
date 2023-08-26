@@ -35,7 +35,7 @@ const log = async (...a) => {
     return console.log(`[${yr}-${mon}-${d}/${hr}:${min}:${s}.${ms}]`, ...a);
 };
 
-const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PLANNER"];
+const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PANEL", "PLANNER"];
 
 const PLATFORM = process.platform;
 
@@ -386,7 +386,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             show: false,
             resizable: true,
             titleBarStyle: "hidden",
-            trafficLightPosition: { x: 12, y: 12 },
+            trafficLightPosition: { x: 17, y: 17 },
             webPreferences: {
                 preload: path.join(__dirname, "preload.js"),
             },
@@ -424,6 +424,9 @@ Portal.Feature = class PortalFeature extends core.Target {
             }
         });
 
+        window.on("enter-full-screen", () => { window.webContents.send("ask", "set-fullscreen", [true]); });
+        window.on("leave-full-screen", () => { window.webContents.send("ask", "set-fullscreen", [false]); });
+
         this.perm = false;
         window.on("close", e => {
             this.log("CLOSE");
@@ -439,7 +442,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             about: [
                 {
                     label: "About Peninsula "+this.name[0].toUpperCase()+this.name.slice(1).toLowerCase(),
-                    click: () => this.window.webContents.send("ask", "about"),
+                    click: () => window.webContents.send("ask", "about"),
                 },
             ],
             hide: [
@@ -517,7 +520,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                         ] :
                         []
                     ),
-                    // { role: "toggleDevTools" },
+                    { role: "toggleDevTools" },
                 ],
             },
         ];
@@ -531,7 +534,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                 let info = {};
                 this.addHandler("update", async data => {
                     if (!this.hasPortal()) return;
-                    this.window.webContents.send("ask", "info-set", [Object.values(info)]);
+                    window.webContents.send("ask", "info-set", [Object.values(info)]);
                     if (lock) return;
                     lock = true;
                     let success = await (async () => {
@@ -660,8 +663,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                     let feats = this.portal.features;
                     let nFeats = 0;
                     feats.forEach(feat => (["LOAD", "PORTAL"].includes(feat.name) ? null : nFeats++));
-                    if (this.window instanceof electron.BrowserWindow)
-                        (nFeats > 0) ? this.window.hide() : this.window.show();
+                    (nFeats > 0) ? window.hide() : window.show();
                 };
                 const hook = () => {
                     if (!this.hasPortal()) return;
@@ -684,48 +686,48 @@ Portal.Feature = class PortalFeature extends core.Target {
                         id: "newproject",
                         label: "New Project",
                         accelerator: "CmdOrCtrl+N",
-                        click: () => this.window.webContents.send("ask", "newproject"),
+                        click: () => window.webContents.send("ask", "newproject"),
                     },
                     build.div,
                     {
                         id: "addnode",
                         label: "Add Node",
-                        click: () => this.window.webContents.send("ask", "addnode"),
+                        click: () => window.webContents.send("ask", "addnode"),
                     },
                     {
                         id: "addobstacle",
                         label: "Add Obstacle",
-                        click: () => this.window.webContents.send("ask", "addobstacle"),
+                        click: () => window.webContents.send("ask", "addobstacle"),
                     },
                     {
                         id: "addpath",
                         label: "Add Path",
-                        click: () => this.window.webContents.send("ask", "addpath"),
+                        click: () => window.webContents.send("ask", "addpath"),
                     },
                     build.div,
                     {
                         id: "save",
                         label: "Save",
                         accelerator: "CmdOrCtrl+S",
-                        click: () => this.window.webContents.send("ask", "save"),
+                        click: () => window.webContents.send("ask", "save"),
                     },
                     {
                         id: "savecopy",
                         label: "Save as copy",
                         accelerator: "CmdOrCtrl+Shift+S",
-                        click: () => this.window.webContents.send("ask", "savecopy"),
+                        click: () => window.webContents.send("ask", "savecopy"),
                     },
                     build.div,
                     {
                         id: "delete",
                         label: "Delete Project",
-                        click: () => this.window.webContents.send("ask", "delete"),
+                        click: () => window.webContents.send("ask", "delete"),
                     },
                     {
                         id: "close",
                         label: "Close Project",
                         accelerator: "CmdOrCtrl+Shift+W",
-                        click: () => this.window.webContents.send("ask", "close"),
+                        click: () => window.webContents.send("ask", "close"),
                     },
                 );
                 template[3].submenu.unshift(
@@ -733,12 +735,12 @@ Portal.Feature = class PortalFeature extends core.Target {
                         id: "maxmin",
                         label: "Toggle Maximized",
                         accelerator: "F",
-                        click: () => this.window.webContents.send("ask", "maxmin"),
+                        click: () => window.webContents.send("ask", "maxmin"),
                     },
                     {
                         id: "resetdivider",
                         label: "Reset Divider",
-                        click: () => this.window.webContents.send("ask", "resetdivider"),
+                        click: () => window.webContents.send("ask", "resetdivider"),
                     },
                     build.div,
                 );
@@ -749,7 +751,7 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         this.#menu = electron.Menu.buildFromTemplate(template);
         if (PLATFORM == "linux" || PLATFORM == "win32")
-            this.window.setMenu(this.menu);
+            window.setMenu(this.menu);
 
         return this;
     }
@@ -975,18 +977,20 @@ Portal.Feature = class PortalFeature extends core.Target {
                         this.log("SPAWN");
                         const process = this.process = cp.spawn("python3", [script], { cwd: root });
                         const finish = async () => {
-                            let hasProjectDir = await this.portal.dirHas(path.join(root, project.meta.name));
-                            if (!hasProjectDir) await this.portal.dirMake(path.join(root, project.meta.name));
-                            let hasPathDir = await this.portal.dirHas(path.join(root, project.meta.name, pth.name));
-                            if (!hasPathDir) await this.portal.dirMake(path.join(root, project.meta.name, pth.name));
+                            let hasMainDir = await this.portal.dirHas(path.join(root, "paths"));
+                            if (!hasMainDir) await this.portal.dirMake(path.join(root, "paths"));
+                            let hasProjectDir = await this.portal.dirHas(path.join(root, "paths", project.meta.name));
+                            if (!hasProjectDir) await this.portal.dirMake(path.join(root, "paths", project.meta.name));
+                            let hasPathDir = await this.portal.dirHas(path.join(root, "paths", project.meta.name, pth.name));
+                            if (!hasPathDir) await this.portal.dirMake(path.join(root, "paths", project.meta.name, pth.name));
                             let hasDataIn = await this.portal.fileHas(path.join(root, "data.in"));
-                            if (hasDataIn) await fs.promises.rename(path.join(root, "data.in"), path.join(root, project.meta.name, pth.name, "data.in"));
+                            if (hasDataIn) await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
                             let hasDataOut = await this.portal.fileHas(path.join(root, "data.out"));
-                            if (hasDataOut) await fs.promises.rename(path.join(root, "data.out"), path.join(root, project.meta.name, pth.name, "data.out"));
+                            if (hasDataOut) await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
                             let hasOutLog = await this.portal.fileHas(path.join(root, "stdout.log"));
-                            if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, project.meta.name, pth.name, "stdout.log"));
+                            if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, "paths", project.meta.name, pth.name, "stdout.log"));
                             let hasErrLog = await this.portal.fileHas(path.join(root, "stderr.log"));
-                            if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, project.meta.name, pth.name, "stderr.log"));
+                            if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, "paths", project.meta.name, pth.name, "stderr.log"));
                         };
                         this.process_res = async (...a) => {
                             await finish();
@@ -1058,11 +1062,13 @@ Portal.Feature = class PortalFeature extends core.Target {
                     if (!has) throw "Script ("+script+") does not exist for project id: "+id;
                     let root = path.dirname(script);
 
-                    let hasProjectDir = await this.portal.dirHas(path.join(root, project.meta.name));
+                    let hasMainDir = await this.portal.dirHas(path.join(root, "paths"));
+                    if (!hasMainDir) return {};
+                    let hasProjectDir = await this.portal.dirHas(path.join(root, "paths", project.meta.name));
                     if (!hasProjectDir) return {};
                     let datas = {};
                     let pathNames = project.paths.map(id => project.getPath(id).name);
-                    let pathList = await this.portal.dirList(path.join(root, project.meta.name));
+                    let pathList = await this.portal.dirList(path.join(root, "paths", project.meta.name));
                     pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
                     for (let i = 0; i < pathList.length; i++) {
                         let name = pathList[i];
@@ -1073,7 +1079,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                         });
                         let contentOut = "";
                         try {
-                            contentOut = await this.portal.fileRead(path.join(root, project.meta.name, name, "data.out"));
+                            contentOut = await this.portal.fileRead(path.join(root, "paths", project.meta.name, name, "data.out"));
                         } catch (e) {}
                         let dataOut = null;
                         try {
@@ -1087,12 +1093,14 @@ Portal.Feature = class PortalFeature extends core.Target {
             },
         };
         cmd = String(cmd).replace("-", "_");
-        if (namefs._) await namefs._();
-        if (namefs[this.name]) {
-            let fs = namefs[this.name];
-            if (fs._) await fs._();
-            if (fs[cmd]) return await fs[cmd](...args);
-        }
+        if (cmd == "back")
+            if (this.name != "PORTAL")
+                return await this.stop();
+        if (cmd == "get-fullscreen")
+            return this.hasWindow() && this.window.isFullScreen();
+        if (namefs[this.name])
+            if (namefs[this.name][cmd])
+                return await namefs[this.name][cmd](...args);
         return null;
     }
 

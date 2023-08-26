@@ -958,7 +958,7 @@ export default class App extends core.App {
             }
         })
         this.addHandler("start-begin", data => {
-            this.eLoadingTo = document.querySelector("#mount > .content > .title > .logo > .title");
+            this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
         this.addHandler("start-complete", data => {
             this.addBackButton();
@@ -968,23 +968,24 @@ export default class App extends core.App {
                 this.eTitleBtn.addEventListener("click", e => {
                     this.page = "TITLE";
                 });
-            this.#eProjectsBtn = document.getElementById("projectsbtn");
+            this.#eProjectsBtn = document.querySelector("#titlebar > button.nav#projectsbtn");
+            console.log(this.eProjectsBtn);
             if (this.hasEProjectsBtn())
                 this.eProjectsBtn.addEventListener("click", e => {
                     this.page = "PROJECTS";
                 });
-            this.#eCreateBtn = document.getElementById("createbtn");
+            this.#eCreateBtn = document.querySelector("#titlebar > button.nav#createbtn");
             if (this.hasECreateBtn())
                 this.eCreateBtn.addEventListener("click", e => {
                     this.page = "PROJECT";
                 });
 
-            this.#eFileBtn = document.getElementById("filebtn");
+            this.#eFileBtn = document.querySelector("#titlebar > button.nav#filebtn");
             if (this.hasEFileBtn())
                 this.eFileBtn.addEventListener("click", e => {
                     let itm;
                     let menu = new core.App.ContextMenu();
-                    itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "document"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "create"));
                     itm.shortcut = "⌘N";
                     itm.addHandler("trigger", data => {
                         this.post("cmd-newproject", null);
@@ -1003,12 +1004,12 @@ export default class App extends core.App {
                         this.post("cmd-addpath", null);
                     });
                     menu.addItem(new core.App.ContextMenu.Divider());
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Save"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document"));
                     itm.shortcut = "⌘S";
                     itm.addHandler("trigger", async data => {
                         this.post("cmd-save", null);
                     });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy"));;
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents"));
                     itm.shortcut = "⇧⌘S";
                     itm.addHandler("trigger", data => {
                         this.post("cmd-savecopy", null);
@@ -1027,7 +1028,7 @@ export default class App extends core.App {
                     let r = this.eFileBtn.getBoundingClientRect();
                     this.placeContextMenu(r.left, r.bottom);
                 });
-            this.#eEditBtn = document.getElementById("editbtn");
+            this.#eEditBtn = document.querySelector("#titlebar > button.nav#editbtn");
             if (this.hasEEditBtn())
                 this.eEditBtn.addEventListener("click", e => {
                     let itm;
@@ -1065,7 +1066,7 @@ export default class App extends core.App {
                     let r = this.eEditBtn.getBoundingClientRect();
                     this.placeContextMenu(r.left, r.bottom);
                 });
-            this.#eViewBtn = document.getElementById("viewbtn");
+            this.#eViewBtn = document.querySelector("#titlebar > button.nav#viewbtn");
             if (this.hasEViewBtn())
                 this.eViewBtn.addEventListener("click", e => {
                     let itm;
@@ -1084,7 +1085,7 @@ export default class App extends core.App {
                     this.placeContextMenu(r.left, r.bottom);
                 });
             this.#eNameInput = document.querySelector("#nameinput > input");
-            this.#eSaveBtn = document.querySelector("#save > button");
+            this.#eSaveBtn = document.querySelector("#save");
             if (this.hasESaveBtn())
                 this.eSaveBtn.addEventListener("click", async e => {
                     this.post("cmd-save", null);
@@ -3574,16 +3575,16 @@ export default class App extends core.App {
             },
             TITLE: async () => {
                 if (this.hasEProjectsBtn()) this.eProjectsBtn.classList.remove("this");
-                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.visibility = "hidden"; });
+                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
             },
             PROJECTS: async () => {
                 if (this.hasEProjectsBtn()) this.eProjectsBtn.classList.add("this");
-                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.visibility = "hidden"; });
+                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
                 if (state.refresh) await state.refresh();
             },
             PROJECT: async () => {
                 if (this.hasEProjectsBtn()) this.eProjectsBtn.classList.remove("this");
-                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.visibility = ""; });
+                Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
                 if (state.refresh) await state.refresh();
                 if (state.eDisplay instanceof HTMLDivElement) state.eDisplay.focus();
                 if (this.hasProject(data.id)) this.project = this.getProject(data.id);

@@ -14,28 +14,6 @@
     <body>
 		<div id="mount">
 			<div class="content">
-				<div class="title">
-					<button id="titlebtn" class="override logo">
-						<div class="title introtitle noanimation"><div><div>p</div><div>eninsula</div></div><div>Planner</div></div>
-					</button>
-					<div class="nav">
-						<button class="forproject" id="filebtn">File</button>
-						<button class="forproject" id="editbtn">Edit</button>
-						<button class="forproject" id="viewbtn">View</button>
-						<div id="nameinput" class="forproject input">
-							<input type="text" placeholder="Project Name..." autocomplete="off" spellcheck="false">
-						</div>
-					</div>
-					<div class="forproject" id="save">
-						<button></button>
-					</div>
-					<button id="projectsbtn">
-						<ion-icon name="folder"></ion-icon>
-					</button>
-					<button id="createbtn">
-						<ion-icon name="add"></ion-icon>
-					</button>
-				</div>
 				<div class="main">
 					<div id="TITLEPAGE" class="page">
 						<div class="title"><span>Peninsula</span><span>Planner</span></div>
@@ -241,6 +219,25 @@
 		<div id="drag"></div>
 		<div id="loading">
 			<div class="title introtitle"><div><div>p</div><div>eninsula</div></div><div>Planner</div></div>
+		</div>
+		<div id="titlebar">
+			<button id="titlebtn" class="override logo">
+				<div class="title introtitle noanimation"><div><div>p</div><div>eninsula</div></div><div>Planner</div></div>
+			</button>
+			<button id="filebtn" class="nav forproject">File</button>
+			<button id="editbtn" class="nav forproject">Edit</button>
+			<button id="viewbtn" class="nav forproject">View</button>
+			<div id="nameinput" class="forproject">
+				<input type="text" placeholder="Project Name..." autocomplete="off" spellcheck="false">
+			</div>
+			<div class="space"></div>
+			<button id="save" class="forproject"></button>
+			<button id="projectsbtn" class="nav">
+				<ion-icon name="folder"></ion-icon>
+			</button>
+			<button id="createbtn" class="nav">
+				<ion-icon name="add"></ion-icon>
+			</button>
 		</div>
     </body>
 </html>

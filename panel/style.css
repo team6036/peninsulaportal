@@ -1,0 +1,354 @@
+#mount {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    height: calc(100% - var(--TOP) - 20px);
+    max-height: calc(100% - var(--TOP) - 20px);
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .side {
+    width: 15%;
+    max-width: 15%;
+}
+#mount > .side {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 10px;
+}
+#mount > .side > .section {
+    --h: 100px;
+    width: 100%;
+    max-width: 100%;
+    height: 22px;
+    max-height: 22px;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    transition: height var(--t), max-height var(--t);
+}
+#mount > .side > .section.this {
+    height: var(--h);
+    max-height: var(--h);
+}
+#mount > .side > .section > button {
+    padding: 5px;
+    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    background-color: transparent;
+    color: var(--v7);
+
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+
+    transition: color var(--t);
+}
+#mount > .side > .section > button:not(:disabled):hover {
+    color: var(--v8);
+}
+#mount > .side > .section > button:disabled {
+    color: var(--v4);
+}
+#mount > .side > .section > button > ion-icon {
+    transform: rotate(0deg);
+
+    transition: transform var(--t);
+}
+#mount > .side > .section.this > button > ion-icon {
+    transform: rotate(90deg);
+}
+#mount > .side > .section > .content {
+    max-width: 100%;
+    max-height: 0px;
+    overflow: auto;
+
+    transition: max-height var(--t);
+}
+#mount > .side > .section.this > .content {
+    max-height: calc(var(--h) - 22px);
+}
+#mount > .side > .section#browser > .content {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .side > .section#browser > .content .item {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .side > .section#browser > .content .item > button.display {
+    --bg: transparent;
+    --fg: var(--v7);
+    --bgh: var(--v2);
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v4);
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    border-radius: 10px;
+
+    font-size: 14px;
+}
+#mount > .side > .section#browser > .content .item > button.display > ion-icon {
+    margin-right: 5px;
+}
+#mount > .side > .section#browser > .content .item > .content {
+    position: relative;
+
+    margin-left: 20px;
+
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .side > .section#browser > .content .item.this > .content {
+    display: flex;
+}
+#mount > .side > .section#browser > .content .item > .content > button.side {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    transform: translateX(-100%);
+
+    width: 20px;
+    height: 100%;
+    padding: 0px;
+
+    background-color: transparent;
+}
+#mount > .side > .section#browser > .content .item > .content > button.side::before {
+    content: "";
+
+    position: absolute;
+    right: 5px;
+    top: 0px;
+
+    width: 2px;
+    height: 100%;
+
+    background-color: var(--v2);
+
+    transition: background-color var(--t);
+}
+#mount > .side > .section#browser > .content .item > .content > button.side:not(:disabled):hover::before {
+    background-color: var(--a);
+}
+#mount > .side > .section#browser > .content .item > .content > button.side:disabled::before {
+    background-color: var(--v2-0);
+}
+#mount > .content {
+    width: 85%;
+    max-width: 85%;
+    
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 10px;
+}
+#mount > .content > .item {
+    --w: 0px;
+    --h: 0px;
+}
+#mount > .content .item.container {
+    width: var(--w);
+    max-width: var(--w);
+    height: var(--h);
+    max-height: var(--h);
+
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .content .item.container.x {
+    flex-direction: row;
+}
+#mount > .content .item.container.y {
+    flex-direction: column;
+}
+#mount > .content .item.container > .divider {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+#mount > .content .item.container.x > .divider {
+    padding: 0px 5px;
+    
+    flex-direction: row;
+
+    cursor: ew-resize;
+}
+#mount > .content .item.container.y > .divider {
+    padding: 5px 0px;
+
+    flex-direction: column;
+
+    cursor: ns-resize;
+}
+#mount > .content .item.container > .divider::before {
+    content: "";
+
+    background-color: var(--v4);
+    border-radius: 2px;
+
+    transition: width var(--t), height var(--t), background-color var(--t);
+}
+#mount > .content .item.container > .divider:hover::before {
+    background-color: var(--v8);
+}
+#mount > .content .item.container > .divider.this::before {
+    background-color: var(--a);
+}
+#mount > .content .item.container.x > .divider::before {
+    width: 2px;
+    height: 20px;
+}
+#mount > .content .item.container.x > .divider.this::before {
+    height: 100%;
+}
+#mount > .content .item.container.y > .divider::before {
+    width: 20px;
+    height: 2px;
+}
+#mount > .content .item.container.y > .divider.this::before {
+    width: 100%;
+}
+#mount > .content .item.panel {
+    --tab: 40px;
+
+    position: relative;
+
+    width: calc(var(--w) - 4px);
+    max-width: calc(var(--w) - 4px);
+    height: calc(var(--h) - 4px);
+    max-height: calc(var(--h) - 4px);
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    border: 2px solid var(--v2);
+    border-radius: 10px;
+}
+#mount > .content .item.panel > button.close {
+    --bg: var(--v2);
+    --bgh: var(--v2);
+    --bgd: var(--v2);
+
+    position: absolute;
+    top: calc(var(--tab) / 2);
+    right: 10px;
+    transform: translateY(-50%);
+}
+#mount > .content .item.panel > .top {
+    width: calc(100% - 50px);
+    max-width: calc(100% - 50px);
+    height: calc(var(--tab) - 10px);
+    max-height: calc(var(--tab) - 10px);
+    padding: 10px 40px 0px 10px;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-end;
+    align-content: center;
+
+    background-color: var(--v2);
+}
+#mount > .content .item.panel > .top > .item {
+    padding: 7.5px 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    background-color: var(--v1-8);
+    color: var(--v7);
+    border-radius: 10px 10px 0px 0px;
+    border: 2px solid var(--v2);
+    border-bottom: 2px solid var(--v2);
+
+    font-size: 12px;
+    user-select: none;
+
+    transition: color var(--t);
+}
+#mount > .content .item.panel > .top > .item:hover {
+    color: var(--v8);
+}
+#mount > .content .item.panel > .top > .item.this {
+    background-color: var(--v1);
+    border-bottom: 2px solid var(--v1);
+}
+#mount > .content .item.panel > .top > .item > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 0px;
+}
+#mount > .content .item.panel > .content {
+    width: 100%;
+    max-width: 100%;
+    height: calc(100% - var(--tab));
+    max-height: calc(100% - var(--tab));
+}

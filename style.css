@@ -1,5 +1,6 @@
 :root {
-    --WIN-TITLEBAR-TOP: 40px;
+    --TOP: 50px;
+    --LEFT: 80px;
 
     --t: 0.25s;
 
@@ -229,11 +230,12 @@ label.switch > input[type="checkbox"]:checked + span::before {
     left: 50%;
     transform: translateX(-50%);
 
-    width: calc(100% - 20px);
-    max-width: calc(100% - 20px);
-    height: calc(var(--WIN-TITLEBAR-TOP) - 20px);
-    max-height: calc(var(--WIN-TITLEBAR-TOP) - 20px);
-    padding: min(10px, calc(var(--WIN-TITLEBAR-TOP) / 2));
+    width: calc(100% - var(--LEFT) - 10px);
+    max-width: calc(100% - var(--LEFT) - 10px);
+    height: var(--TOP);
+    max-height: var(--TOP);
+    padding: 0px 10px;
+    padding-left: var(--LEFT);
     overflow: hidden;
     
     display: flex;
@@ -249,20 +251,21 @@ label.switch > input[type="checkbox"]:checked + span::before {
 
     -webkit-app-region: drag;
 }
-#titlebar button {
+#titlebar button,
+#titlebar input {
     -webkit-app-region: no-drag;
 }
 
 #mount {
     position: absolute;
-    top: var(--WIN-TITLEBAR-TOP);
+    top: var(--TOP);
     left: 50%;
     transform: translateX(-50%);
     
     width: 100%;
     max-width: 100%;
-    height: calc(100% - var(--WIN-TITLEBAR-TOP));
-    max-height: calc(100% - var(--WIN-TITLEBAR-TOP));
+    height: calc(100% - var(--TOP));
+    max-height: calc(100% - var(--TOP));
     overflow: hidden;
 
     background-color: var(--v1);
@@ -649,6 +652,8 @@ label.switch > input[type="checkbox"]:checked + span::before {
 #loading {
     --transform: scale(0%);
 
+    z-index: 1000;
+
     position: absolute;
     top: 50%;
     left: 50%;
@@ -690,14 +695,14 @@ label.switch > input[type="checkbox"]:checked + span::before {
 
 .popup {
     position: absolute;
-    top: var(--WIN-TITLEBAR-TOP);
+    top: var(--TOP);
     left: 50%;
     transform: translateX(-50%);
     
     width: 100%;
     max-width: 100%;
-    height: calc(100% - var(--WIN-TITLEBAR-TOP));
-    max-height: calc(100% - var(--WIN-TITLEBAR-TOP));
+    height: calc(100% - var(--TOP));
+    max-height: calc(100% - var(--TOP));
     overflow: auto;
 
     display: flex;

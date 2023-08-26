@@ -1,3 +1,70 @@
+#titlebar {
+    gap: 0px;
+}
+#titlebar > .logo {
+    padding: 10px;
+
+    font-size: 16px;
+
+    background-color: transparent;
+
+    cursor: pointer;
+}
+#titlebar > button.nav {
+    align-self: stretch;
+
+    padding: 10px 20px;
+
+    gap: 10px;
+
+    font-size: 12px;
+}
+#titlebar > #nameinput {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+}
+#titlebar > #nameinput > input {
+    padding: 5px;
+
+    border-radius: 5px;
+
+    font-size: 12px;
+}
+#titlebar > .space {
+    flex-basis: 100%;
+}
+#titlebar > #save {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 10px;
+
+    font-size: 12px;
+}
+#titlebar > button.nav:not(.forproject) {
+    --bg: transparent;
+    --bgd: transparent;
+
+    padding: 10px;
+    aspect-ratio: 1 / 1;
+}
+#titlebar > button.nav:not(.forproject).this {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a3);
+    --fgd: var(--v6);
+}
+#titlebar > :last-child {
+    margin-left: 10px;
+}
+
 #mount {
     display: flex;
     flex-direction: column;
@@ -20,90 +87,6 @@
     align-items: stretch;
     align-content: center;
     gap: 10px;
-}
-#mount > .content > .title {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-
-    background-color: var(--v2);
-    border-radius: var(--b);
-}
-#mount > .content > .title > .logo {
-    padding: 10px;
-
-    font-size: 25px;
-
-    background-color: transparent;
-
-    cursor: pointer;
-}
-#mount > .content > .title > .nav {
-    align-self: stretch;
-    flex-basis: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-#mount > .content > .title > .nav > button {
-    padding: 10px 20px;
-
-    gap: 10px;
-}
-#mount > .content > .title > .nav > .input {
-    padding: 10px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-}
-#mount > .content > .title > .nav > .input > input {
-    width: 200px;
-}
-#mount > .content > .title > #save {
-    margin-right: 10px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-}
-#mount > .content > .title > #save > button {
-    --bg: transparent;
-    --bgh: transparent;
-    --bgd: transparent;
-}
-#mount > .content > .title > button:not(.override) {
-    --bg: transparent;
-    --bgd: transparent;
-
-    align-self: stretch;
-
-    padding: 5px;
-    aspect-ratio: 1 / 1;
-}
-#mount > .content > .title > button:not(.override).this {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--a3);
-    --fgd: var(--v6);
-}
-#mount > .content > .title > button:not(.override):last-child {
-    border-radius: 0px var(--b) var(--b) 0px;
 }
 #mount > .content > .main {
     position: relative;
