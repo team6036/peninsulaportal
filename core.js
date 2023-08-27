@@ -190,6 +190,11 @@ export class App extends Target {
                     this.post("start-begin", null);
                     await this.setup();
                     this.post("start-complete", null);
+                    const update = () => {
+                        this.post("update", null);
+                        window.requestAnimationFrame(update);
+                    };
+                    update();
                 })();
             }, 10);
         });

@@ -8,7 +8,10 @@ Tools include:
 * Perception - <kbd>WIP</kbd>
 
 ### **USAGE**
-No binaries yet
+Check the releases for different packages  
+Darwin requires running a few more commands to authorize the application - otherwise application will be marked as "damaged"
+1. `cd` to the directory containing the application
+2. `xattr -cr Peninsula.app`
 
 ### **DEVELOPING**
 - [Install NPM](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
