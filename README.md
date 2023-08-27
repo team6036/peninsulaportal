@@ -21,7 +21,7 @@ npm install
 npm start
 ```
 
-# Planner
+## Planner
 A path planning software which provides a visual way to edit and create paths
 - Easy navigable UI
     - Project management
@@ -30,7 +30,17 @@ A path planning software which provides a visual way to edit and create paths
 - Nodes (waypoints) can be configured with a velocity (movement / rotational) and heading
 - Obstacles can be configured with a radius
 - Allows for multiple paths per project, including naming / editing specific paths
-### **DEVELOPMENT DOCUMENTATION**
+### FAQ
+> How can I reset the divider to it's original position?  
+
+On the view menu of the app, click "Reset divider"
+> How can I delete nodes when creating or editing a path?  
+
+When clicking a node, hold down <kbd>shift</kbd> to remove it instead
+> How can I select multiple nodes or obstacles at once?
+
+By dragging on the display area, you can create a rectangular seletion. This allows you to select multiple objects at once. Additionally, holding down <kbd>shift</kbd> while clicking adds or removes objects to your selection
+### DEVELOPMENT DOCUMENTATION
 This program does not generate the trajectory by itself. It relies on a python file, which you can change, to generate the path.
 Here is what the python script should expect as input and what it should output:  
 `data.in`
@@ -73,5 +83,5 @@ Here is what the python script should expect as input and what it should output:
    ]
 }
 ```
-### **REMINDER**
+### REMINDER
 `vx`, `vy`, `vt`, and `theta` of `data.in` can be `null` to ignore a velocity or angle override. Adjust your script accordingly.
