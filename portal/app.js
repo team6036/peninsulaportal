@@ -136,12 +136,6 @@ export default class App extends core.App {
             btn = this.addNavToolButton(new FeatureButton("Perception", "eye"));
             btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => window.api.ask("spawn", ["PERCEPTION"]));
-
-            const update = () => {
-                this.post("update", null);
-                window.requestAnimationFrame(update);
-            };
-            window.requestAnimationFrame(update);
         });
     }
 

@@ -701,7 +701,7 @@ Project.Path = class ProjectPath extends core.Target {
         return false;
     }
     addNode(node) {
-        if (this.hasNode(node)) this.remNode(node);
+        // if (this.hasNode(node)) this.remNode(node);
         if (util.is(node, "str")) {
             this.#nodes.push(node);
             this.post("change", null);
@@ -713,7 +713,7 @@ Project.Path = class ProjectPath extends core.Target {
     remNode(node) {
         if (!this.hasNode(node)) return false;
         if (util.is(node, "str")) {
-            this.#nodes.splice(this.#nodes.indexOf(node), 1);
+            this.#nodes.splice(this.#nodes.lastIndexOf(node), 1);
             this.post("change", null);
             return node;
         }

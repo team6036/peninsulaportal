@@ -159,15 +159,15 @@ class PathButton extends core.Target {
         });
         let prevPath = "";
         let prevShowIndicies = null, prevShowLines = null;
-        let pthItems = [];
+        let pthItems = {};
         this.addHandler("udpate", data => {
             if (!this.hasApp()) return;
             if (!this.app.hasProject()) return;
             let nodes = (show && this.hasPath()) ? this.path.nodes : [];
             let path = nodes.join("");
             if (prevPath == path && prevShowIndicies == this.showIndices && prevShowLines == this.showLines) return;
-            pthItems.forEach(itm => this.app.remRenderItem(itm));
-            pthItems = [];
+            for (let id in pthItems) this.app.remRenderItem(pthItems[id]);
+            pthItems = {};
             prevPath = path;
             prevShowIndicies = this.showIndices;
             prevShowLines = this.showLines;
@@ -175,13 +175,17 @@ class PathButton extends core.Target {
                 let id = nodes[i];
                 let node = this.app.project.getItem(id);
                 if (this.showIndices) {
-                    pthItems.push(this.app.addRenderItem(new RIPathIndex(node)));
-                    pthItems.at(-1).value = i+1;
+                    if (id in pthItems) {
+                        pthItems[id].value += ", "+(i+1);
+                    } else {
+                        pthItems[id] = this.app.addRenderItem(new RIPathIndex(node));
+                        pthItems[id].value = i+1;
+                    }
                 }
                 if (i > 0 && this.showLines) {
                     let id2 = nodes[i-1];
                     let node2 = this.app.project.getItem(id2);
-                    pthItems.push(this.app.addRenderItem(new RIPathLine(node, node2)));
+                    pthItems[id+"~"+id2] = this.app.addRenderItem(new RIPathLine(node, node2));
                 }
             }
         });
@@ -1101,11 +1105,6 @@ export default class App extends core.App {
                 if (this.hasESaveBtn()) this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
             });
 
-            const update = () => {
-                this.post("update", null);
-                window.requestAnimationFrame(update);
-            };
-
             this.clearChanges();
 
             this.addHandler("cmd-newproject", () => {
@@ -1200,22 +1199,26 @@ export default class App extends core.App {
                     if (!(chooseData.path instanceof subcore.Project.Path)) return;
                     let path = chooseData.path;
                     data = util.ensure(data, "obj");
-                    let itm = data.itm;
+                    let itm = data.itm, shift = data.shift;
                     if (!(itm instanceof subcore.Project.Node)) return;
-                    if (path.hasNode(itm)) path.remNode(itm);
+                    if (shift) path.remNode(itm);
                     else path.addNode(itm);
-                    util.ensure(chooseData.temp, "arr").forEach(itm => this.remRenderItem(itm));
-                    chooseData.temp = [];
+                    for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
+                    chooseData.temp = {};
                     let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
                     for (let i = 0; i < nodes.length; i++) {
                         let id = nodes[i];
                         let node = this.project.getItem(id);
-                        chooseData.temp.push(this.addRenderItem(new RIPathIndex(node)));
-                        chooseData.temp.at(-1).value = i+1;
+                        if (id in chooseData.temp) {
+                            chooseData.temp[id].value += ", "+(i+1);
+                        } else {
+                            chooseData.temp[id] = this.addRenderItem(new RIPathIndex(node));
+                            chooseData.temp[id].value = i+1;
+                        }
                         if (i > 0) {
                             let id2 = nodes[i-1];
                             let node2 = this.project.getItem(id2);
-                            chooseData.temp.push(this.addRenderItem(new RIPathLine(node, node2)));
+                            chooseData.temp[id+"~"+id2] = this.addRenderItem(new RIPathLine(node, node2));
                         }
                     }
                 });
@@ -1288,8 +1291,6 @@ export default class App extends core.App {
 
             this.projectId = null;
             this.page = "TITLE";
-
-            window.requestAnimationFrame(update);
         });
     }
 
@@ -1805,7 +1806,7 @@ export default class App extends core.App {
                     if (itm instanceof RISelectable) {
                         itm._onTrigger = data => {
                             if (getChoosing()) {
-                                getChooseData().post("choose", { itm: itm.item });
+                                getChooseData().post("choose", { itm: itm.item, shift: util.ensure(data, "obj").shift });
                             } else {
                                 if (util.ensure(data, "obj").shift) {
                                     if (isSelected(itm)) remSelected(itm);
@@ -2150,8 +2151,7 @@ export default class App extends core.App {
                     clearSelected();
                     choosing = v;
                     chooseData = choosing ? new core.Target() : null;
-                    if (choosing)
-                        chooseData.temp = [];
+                    if (choosing) chooseData.temp = {};
                     choosing ? state.eDisplay.classList.add("choose") : state.eDisplay.classList.remove("choose");
                     return true;
                 };
@@ -2161,14 +2161,14 @@ export default class App extends core.App {
                 if (state.eChooseDoneBtn instanceof HTMLButtonElement)
                     state.eChooseDoneBtn.addEventListener("click", e => {
                         let chooseData = util.ensure(getChooseData(), "obj");
-                        util.ensure((chooseData.temp), "arr").forEach(itm => this.remRenderItem(itm));
+                        for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
                         chooseData.post("done", null);
                         setChoosing(false);
                     });
                 if (state.eChooseCancelBtn instanceof HTMLButtonElement)
                     state.eChooseCancelBtn.addEventListener("click", e => {
                         let chooseData = util.ensure(getChooseData(), "obj");
-                        util.ensure((chooseData.temp), "arr").forEach(itm => this.remRenderItem(itm));
+                        for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
                         chooseData.post("cancel", null);
                         setChoosing(false);
                     });
@@ -3024,22 +3024,26 @@ export default class App extends core.App {
                                         if (!(chooseData.path instanceof subcore.Project.Path)) return;
                                         let path = chooseData.path;
                                         data = util.ensure(data, "obj");
-                                        let itm = data.itm;
+                                        let itm = data.itm, shift = data.shift;
                                         if (!(itm instanceof subcore.Project.Node)) return;
-                                        if (path.hasNode(itm)) path.remNode(itm);
+                                        if (shift) path.remNode(itm);
                                         else path.addNode(itm);
-                                        util.ensure(chooseData.temp, "arr").forEach(itm => this.remRenderItem(itm));
-                                        chooseData.temp = [];
+                                        for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
+                                        chooseData.temp = {};
                                         let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
                                         for (let i = 0; i < nodes.length; i++) {
                                             let id = nodes[i];
                                             let node = this.project.getItem(id);
-                                            chooseData.temp.push(this.addRenderItem(new RIPathIndex(node)));
-                                            chooseData.temp.at(-1).value = i+1;
+                                            if (id in chooseData.temp) {
+                                                chooseData.temp[id].value += ", "+(i+1);
+                                            } else {
+                                                chooseData.temp[id] = this.addRenderItem(new RIPathIndex(node));
+                                                chooseData.temp[id].value = i+1;
+                                            }
                                             if (i > 0) {
                                                 let id2 = nodes[i-1];
                                                 let node2 = this.project.getItem(id2);
-                                                chooseData.temp.push(this.addRenderItem(new RIPathLine(node, node2)));
+                                                chooseData.temp[id+"~"+id2] = this.addRenderItem(new RIPathLine(node, node2));
                                             }
                                         }
                                     });
@@ -3080,22 +3084,26 @@ export default class App extends core.App {
                                         if (!(chooseData.path instanceof subcore.Project.Path)) return;
                                         let path = chooseData.path;
                                         data = util.ensure(data, "obj");
-                                        let itm = data.itm;
+                                        let itm = data.itm, shift = data.shift;
                                         if (!(itm instanceof subcore.Project.Node)) return;
-                                        if (path.hasNode(itm)) path.remNode(itm);
+                                        if (shift) path.remNode(itm);
                                         else path.addNode(itm);
-                                        util.ensure(chooseData.temp, "arr").forEach(itm => this.remRenderItem(itm));
-                                        chooseData.temp = [];
+                                        for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
+                                        chooseData.temp = {};
                                         let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
                                         for (let i = 0; i < nodes.length; i++) {
                                             let id = nodes[i];
                                             let node = this.project.getItem(id);
-                                            chooseData.temp.push(this.addRenderItem(new RIPathIndex(node)));
-                                            chooseData.temp.at(-1).value = i+1;
+                                            if (id in chooseData.temp) {
+                                                chooseData.temp[id].value += ", "+(i+1);
+                                            } else {
+                                                chooseData.temp[id] = this.addRenderItem(new RIPathIndex(node));
+                                                chooseData.temp[id].value = i+1;
+                                            }
                                             if (i > 0) {
                                                 let id2 = nodes[i-1];
                                                 let node2 = this.project.getItem(id2);
-                                                chooseData.temp.push(this.addRenderItem(new RIPathLine(node, node2)));
+                                                chooseData.temp[id+"~"+id2] = this.addRenderItem(new RIPathLine(node, node2));
                                             }
                                         }
                                     });
