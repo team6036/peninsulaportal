@@ -987,6 +987,7 @@ export default class App extends core.App {
             this.#eFileBtn = document.querySelector("#titlebar > button.nav#filebtn");
             if (this.hasEFileBtn())
                 this.eFileBtn.addEventListener("click", e => {
+                    e.stopPropagation();
                     let itm;
                     let menu = new core.App.ContextMenu();
                     itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "create"));
@@ -1035,6 +1036,7 @@ export default class App extends core.App {
             this.#eEditBtn = document.querySelector("#titlebar > button.nav#editbtn");
             if (this.hasEEditBtn())
                 this.eEditBtn.addEventListener("click", e => {
+                    e.stopPropagation();
                     let itm;
                     let menu = new core.App.ContextMenu();
                     itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
@@ -1073,6 +1075,7 @@ export default class App extends core.App {
             this.#eViewBtn = document.querySelector("#titlebar > button.nav#viewbtn");
             if (this.hasEViewBtn())
                 this.eViewBtn.addEventListener("click", e => {
+                    e.stopPropagation();
                     let itm;
                     let menu = new core.App.ContextMenu();
                     itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Maximized"));
@@ -1092,6 +1095,7 @@ export default class App extends core.App {
             this.#eSaveBtn = document.querySelector("#save");
             if (this.hasESaveBtn())
                 this.eSaveBtn.addEventListener("click", async e => {
+                    e.stopPropagation();
                     this.post("cmd-save", null);
                 });
             let saving = false;
@@ -2160,6 +2164,7 @@ export default class App extends core.App {
                 state.eChooseCancelBtn = state.elem.querySelector(":scope > .display > .render > .nav > button#cancelbtn");
                 if (state.eChooseDoneBtn instanceof HTMLButtonElement)
                     state.eChooseDoneBtn.addEventListener("click", e => {
+                        e.stopPropagation();
                         let chooseData = util.ensure(getChooseData(), "obj");
                         for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
                         chooseData.post("done", null);
@@ -2167,6 +2172,7 @@ export default class App extends core.App {
                     });
                 if (state.eChooseCancelBtn instanceof HTMLButtonElement)
                     state.eChooseCancelBtn.addEventListener("click", e => {
+                        e.stopPropagation();
                         let chooseData = util.ensure(getChooseData(), "obj");
                         for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
                         chooseData.post("cancel", null);
@@ -2328,6 +2334,7 @@ export default class App extends core.App {
                     state.eMaxMinBtn = state.eDisplayNav.querySelector("button#maxminbtn");
                     if (state.eMaxMinBtn instanceof HTMLButtonElement)
                         state.eMaxMinBtn.addEventListener("click", e => {
+                            e.stopPropagation();
                             this.post("cmd-maxmin", null);
                         });
                 }
@@ -2354,6 +2361,8 @@ export default class App extends core.App {
                     }
                 };
                 state.eEdit = state.elem.querySelector(":scope > .edit");
+                if (state.eEdit instanceof HTMLDivElement)
+                    state.eEdit.addEventListener("click", e => e.stopPropagation());
                 let maximized = null;
                 state.getMaximized = () => maximized;
                 state.setMaximized = v => {
@@ -3489,7 +3498,6 @@ export default class App extends core.App {
                     let o = state.options[name] = new core.Target();
                     btn.addEventListener("click", e => {
                         if (getChoosing()) return;
-                        e.stopPropagation();
                         o.setShown(!o.getShown());
                     });
                     o.btn = btn;
