@@ -415,6 +415,8 @@
     border: 2px solid var(--v2);
     outline: none;
     border-radius: var(--b);
+
+    user-select: none;
 }
 #PROJECTPAGE > .display > .blockage {
     z-index: 1;
@@ -1019,8 +1021,13 @@
     font-size: 16px;
 }
 #PROJECTPAGE > .edit {
+    --bottom: 85px;
+
+    /*
     max-height: calc(100% - 20px);
     padding: 10px;
+    */
+    max-height: 100%;
     overflow: auto;
 
     display: flex;
@@ -1033,7 +1040,60 @@
     background-color: var(--v2);
     border-radius: var(--b);
 }
-#PROJECTPAGE > .edit > .options {
+#PROJECTPAGE > .edit > .nav {
+    height: var(--bottom);
+    max-height: var(--bottom);
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v1-8);
+}
+#PROJECTPAGE > .edit > .nav > button {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    background-color: transparent;
+    color: var(--v7);
+
+    font-size: 14px;
+
+    transition: color var(--t);
+}
+#PROJECTPAGE > .edit > .nav > button:not(:disabled):hover {
+    color: var(--v8);
+}
+#PROJECTPAGE > .edit > .nav > button:disabled {
+    color: var(--v6);
+}
+#PROJECTPAGE > .edit > .nav > button.this {
+    color: var(--a);
+}
+#PROJECTPAGE > .edit > .nav > button.this:not(:disabled):hover {
+    color: var(--a6);
+}
+#PROJECTPAGE > .edit > .nav > button.this:disabled {
+    color: var(--a2);
+}
+#PROJECTPAGE > .edit > .nav > button > ion-icon {
+    font-size: 20px;
+}
+#PROJECTPAGE > .edit > .content {
+    position: relative;
+
+    height: calc(100% - var(--bottom));
+    max-height: calc(100% - var(--bottom));
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -1041,60 +1101,36 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .edit > .options > .title {
-    padding: 10px;
+#PROJECTPAGE > .edit > .content > .page {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 10px;
-
-    background-color: transparent;
-    color: var(--v8);
-
-    text-transform: uppercase;
-    font-size: 14px;
-    font-weight: 700;
-
-    transition: color var(--t);
-}
-#PROJECTPAGE > .edit > .options > .title:disabled {
-    color: var(--v6);
-}
-#PROJECTPAGE > .edit > .options > .title > ion-icon {
-    transform: rotate(0deg);
-
-    transition: transform var(--t);
-}
-#PROJECTPAGE > .edit > .options.this > .title > ion-icon {
-    transform: rotate(90deg);
-}
-#PROJECTPAGE > .edit > .options > .content {
-    max-height: 0px;
-    overflow: hidden;
-
-    transition: max-height var(--t);
-}
-#PROJECTPAGE > .edit > .options.this > .content {
-    max-height: 100%;
-}
-#PROJECTPAGE > .edit > .options > .content > .inner {
-    padding: 30px 10px;
-    padding-left: 20px;
+    width: calc(100% - 40px);
+    max-width: calc(100% - 40px);
+    height: calc(100% - 40px);
+    max-height: calc(100% - 40px);
+    padding: 20px;
+    overflow: auto;
 
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    align-items: flex-start;
-    align-content: flex-start;
+    align-items: stretch;
+    align-content: center;
     gap: 10px;
+
+    visibility: hidden;
 }
-#PROJECTPAGE > .edit > .options > .content > .inner > .header {
+#PROJECTPAGE > .edit > .content > .page.this {
+    visibility: inherit;
+}
+#PROJECTPAGE > .edit > .content > .page > .header {
     align-self: stretch;
+
+    margin-top: 10px;
 
     display: flex;
     flex-direction: row;
@@ -1107,21 +1143,22 @@
     color: var(--v8);
 
     font-size: 14px;
+    font-weight: 550;
 }
-#PROJECTPAGE > .edit > .options > .content > .inner > .header > span:first-child {
+#PROJECTPAGE > .edit > .content > .page > .header.sub {
+    font-weight: 400;
+}
+#PROJECTPAGE > .edit > .content > .page > .header > span:first-child {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .edit > .options > .content > .inner > .header > span.units {
+#PROJECTPAGE > .edit > .content > .page > .header > span.units {
     min-width: max-content;
 
     color: var(--v6);
 
     font-style: italic;
 }
-
-#mapoptions #spawnbox {
-    align-self: stretch;
-
+#objectspanel > #spawnbox {
     position: relative;
 
     display: flex;
@@ -1132,7 +1169,7 @@
     align-content: flex-start;
     gap: 5px;
 }
-#mapoptions #spawnbox > button.delete {
+#objectspanel > #spawnbox > button.delete {
     --bg: var(--cr);
     --fg: var(--v8);
     --bgh: var(--cr5);
@@ -1164,10 +1201,10 @@
 
     transition: --btn-c-size-v var(--t), transform var(--t), background var(--t), color var(--t);
 }
-#mapoptions #spawnbox.delete > .delete {
+#objectspanel >  #spawnbox.delete > button.delete {
     transform: scale(100%);
 }
-#mapoptions #spawnbox > button.item {
+#objectspanel > #spawnbox > button.item {
     transform: translateY(-0px);
 
     width: 100px;
@@ -1191,17 +1228,17 @@
 
     transition: transform var(--t), filter var(--t);
 }
-#mapoptions #spawnbox > button.item:not(:disabled):hover {
+#objectspanel > #spawnbox > button.item:not(:disabled):hover {
     transform: translateY(-5px);
 
     filter: drop-shadow(0px 5px 5px var(--v1-8));
 }
-#mapoptions #spawnbox > button.item > .icon {
+#objectspanel > #spawnbox > button.item > .icon {
     flex-basis: 100%;
 
     position: relative;
 }
-#mapoptions #spawnbox > button.item > .name {
+#objectspanel > #spawnbox > button.item > .name {
     padding: 5px;
 
     background-color: var(--v3);
@@ -1209,230 +1246,15 @@
 
     transition: color var(--t);
 }
-#mapoptions #spawnbox > button.item:disabled > .name {
+#objectspanel > #spawnbox > button.item:disabled > .name {
     color: var(--v6);
 }
-#mapoptions #size,
-#mapoptions #robotsize,
-#mapoptions #robotmass,
-#mapoptions #background > div {
-    align-self: stretch;
-
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#mapoptions #size > input,
-#mapoptions #robotsize > input,
-#mapoptions #robotmass > input,
-#mapoptions #background > div > input {
-    flex-basis: 100%;
-}
-#mapoptions #background {
-    align-self: stretch;
-
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-
-#trajectoryoptions #momentofinertia,
-#trajectoryoptions #efficiency {
-    align-self: stretch;
-
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#trajectoryoptions #momentofinertia > input,
-#trajectoryoptions #efficiency > input {
-    flex-basis: 100%;
-}
-#trajectoryoptions #trajectoryscript {
-    align-self: stretch;
-
-    overflow: hidden;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-
-    border-radius: var(--b);
-}
-#trajectoryoptions #trajectoryscript > div.filedialog {
-    flex-basis: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-#trajectoryoptions #trajectoryscript > div.filedialog > input {
-    flex-basis: 100%;
-
-    color: var(--cg);
-    border-radius: 0px;
-}
-#trajectoryoptions #trajectoryscript > div.filedialog > button {
-    --bg: var(--v3);
-    --bgh: var(--v4);
-    --bgd: var(--v3);
-
-    padding: 10px;
-}
-#trajectoryoptions #trajectorygeneration {
-    align-self: stretch;
-}
-#trajectoryoptions #trajectorygeneration {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#trajectoryoptions #trajectorygeneration > button {
-    --bg: var(--cg3);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--cg2);
-    --fgd: var(--v6);
-
-    flex-basis: 100%;
-
-    padding: 10px;
-
-    border-radius: var(--b);
-}
-#trajectoryoptions #trajectorygeneration > button.term {
-    --bg: var(--cr);
-    --bgh: var(--v8);
-    --bgd: var(--cr3);
-}
-
-#pathoptions #pathsbox {
-    align-self: stretch;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-
-    max-height: 300px;
-    overflow: auto;
-}
-#pathoptions #pathsbox > button.item {
-    --bg: var(--v3);
-    --bgh: var(--v4);
-    --bgd: var(--v3);
-
-    padding: 10px;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-
-    border-radius: var(--b);
-    border: 2px solid var(--v2);
-}
-#pathoptions #pathsbox > button.item.this {
-    border: 2px solid var(--cg);
-}
-#pathoptions #pathsbox > button.item#addbtn {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--a2);
-    --fgd: var(--v6);
-}
-#pathoptions #pathsbox > button.item > input {
-    flex-basis: 100%;
-
-    background-color: transparent;
-    color: var(--fg);
-
-    transition: color var(--t);
-}
-#pathoptions #pathsbox > button.item:not(:disabled):hover > input {
-    color: var(--fgh);
-}
-#pathoptions #pathsbox > button.item:disabled > input {
-    color: var(--fgd);
-}
-#pathoptions #pathsbox > button.item > input::placeholder {
-    color: var(--v5);
-
-    font-style: italic;
-}
-#pathoptions #patheditbox {
-    align-self: stretch;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 10px;
-}
-#pathoptions #patheditbox > button {
-    flex-basis: 100%;
-
-    padding: 10px;
-
-    border-radius: var(--b);
-}
-#pathoptions #patheditbox > button#removebtn {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--cr2);
-    --fgd: var(--v6);
-}
-#pathoptions #patheditbox > button#editbtn {
-    --bg: var(--v3);
-    --bgh: var(--v4);
-    --bgd: var(--v3);
-}
-
-#itemoptions .fornode:not(.this),
-#itemoptions .forobstacle:not(.this) {
+#objectspanel .forany:not(.this),
+#objectspanel .fornode:not(.this),
+#objectspanel .forobstacle:not(.this) {
     display: none !important;
 }
-#itemoptions #position {
+#objectspanel > #position {
     align-self: stretch;
 
     max-width: 100%;
@@ -1445,10 +1267,10 @@
     align-content: center;
     gap: 5px;
 }
-#itemoptions #position > input {
+#objectspanel > #position > input {
     flex-basis: 100%;
 }
-#itemoptions #radius {
+#objectspanel > #radius {
     align-self: stretch;
 
     max-width: 100%;
@@ -1461,10 +1283,10 @@
     align-content: center;
     gap: 5px;
 }
-#itemoptions #radius > input {
+#objectspanel > #radius > input {
     flex-basis: 100%;
 }
-#itemoptions #heading {
+#objectspanel > #heading {
     --dir: 0deg;
 
     align-self: stretch;
@@ -1477,7 +1299,7 @@
     align-content: center;
     gap: 10px;
 }
-#itemoptions #heading > .dragbox {
+#objectspanel > #heading > .dragbox {
     z-index: 0;
     position: relative;
 
@@ -1487,7 +1309,7 @@
     background-color: var(--v1);
     border-radius: 100%;
 }
-#itemoptions #heading > .dragbox::before {
+#objectspanel > #heading > .dragbox::before {
     content: "";
     z-index: -1;
 
@@ -1501,7 +1323,7 @@
 
     background-color: var(--v2-8);
 }
-#itemoptions #heading > .dragbox::after {
+#objectspanel > #heading > .dragbox::after {
     content: "";
     z-index: -1;
 
@@ -1515,7 +1337,7 @@
 
     background-color: var(--v2-8);
 }
-#itemoptions #heading > .dragbox > div {
+#objectspanel > #heading > .dragbox > div {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1524,7 +1346,7 @@
 
     width: 50%;
 }
-#itemoptions #heading > .dragbox > div::before {
+#objectspanel > #heading > .dragbox > div::before {
     content: "";
 
     position: absolute;
@@ -1537,7 +1359,7 @@
 
     background-color: var(--v8);
 }
-#itemoptions #heading > .dragbox > div > button {
+#objectspanel > #heading > .dragbox > div > button {
     --bg: var(--v8);
     --fg: var(--v1);
     --bgh: var(--a);
@@ -1556,8 +1378,164 @@
 
     border-radius: 100%;
 }
-#itemoptions #velocity,
-#itemoptions #velocityrot {
+#objectspanel > #velocity,
+#objectspanel > #velocityrot {
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#objectspanel > #velocity > input,
+#objectspanel > #velocityrot > input {
+    flex-basis: 100%;
+}
+#objectspanel > #itemcontrols {
+    align-self: stretch;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#objectspanel > #itemcontrols > button {
+    flex-basis: 100%;
+
+    padding: 10px;
+
+    border-radius: var(--b);
+}
+#objectspanel > #itemcontrols > button#removebtn {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
+}
+#pathspanel #pathaddbtn {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+}
+#pathspanel > #pathsbox {
+    flex-basis: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#pathspanel > #pathsbox > .item {
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v3);
+    border-radius: 10px;
+    border: 2px solid var(--v2);
+}
+#pathspanel > #pathsbox > .item.this {
+    border: 2px solid var(--cg);
+}
+#pathspanel > #pathsbox > .item > input {
+    flex-basis: 100%;
+
+    padding: 0px;
+
+    background-color: transparent;
+    border-radius: 0px;
+}
+#pathspanel > #pathsbox > .item > input::placeholder {
+    color: var(--v4);
+}
+#pathspanel > #pathsbox > .item > button {
+    padding: 0px;
+
+    background-color: transparent;
+    color: var(--v7);
+
+    transition: color var(--t);
+}
+#pathspanel > #pathsbox > .item > button:not(:disabled):hover {
+    color: var(--v8);
+}
+#pathspanel > #pathsbox > .item > button:disabled {
+    color: var(--v4);
+}
+#pathspanel > button#activatebtn {
+    padding: 10px;
+
+    border-radius: 10px;
+}
+#pathspanel > button#activatebtn.on {
+    --bg: var(--cg3);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cg2);
+    --fgd: var(--v6);
+}
+#pathspanel > button#activatebtn.off {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
+}
+#optionspanel > #size,
+#optionspanel > #robotsize,
+#optionspanel > #robotmass,
+#optionspanel > #background > div {
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#optionspanel > #size > input,
+#optionspanel > #robotsize > input,
+#optionspanel > #robotmass > input,
+#optionspanel > #background > div > input {
+    flex-basis: 100%;
+}
+#optionspanel > #background {
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#optionspanel > #momentofinertia,
+#optionspanel > #efficiency {
     align-self: stretch;
 
     max-width: 100%;
@@ -1570,12 +1548,24 @@
     align-content: center;
     gap: 5px;
 }
-#itemoptions #velocity > input,
-#itemoptions #velocityrot > input {
+#optionspanel > #momentofinertia > input,
+#optionspanel > #efficiency > input {
     flex-basis: 100%;
 }
-#itemoptions #itemcontrols {
-    align-self: stretch;
+#optionspanel > #script {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: var(--b);
+}
+#optionspanel > #script > div.filedialog {
+    flex-basis: 100%;
+
+    overflow: hidden;
 
     display: flex;
     flex-direction: row;
@@ -1583,22 +1573,21 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 10px;
+
+    border-radius: 10px;
 }
-#itemoptions #itemcontrols > button {
+#optionspanel > #script > div.filedialog > input {
     flex-basis: 100%;
 
-    padding: 10px;
-
-    border-radius: var(--b);
+    color: var(--cg);
+    border-radius: 0px;
 }
-#itemoptions #itemcontrols > button#removebtn {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--cr2);
-    --fgd: var(--v6);
+#optionspanel > #script > div.filedialog > button {
+    --bg: var(--v3);
+    --bgh: var(--v4);
+    --bgd: var(--v3);
+
+    padding: 10px;
 }
 
 #drag {
