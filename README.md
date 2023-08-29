@@ -1,4 +1,4 @@
-<div><img src="./assets/icon.png" width="200px" style="filter: drop-shadow(0px 5px 5px #0008)"></div>
+<img src="./assets/icon.png" width="200px" style="filter: drop-shadow(0px 5px 5px #0008)"><br>
 # Peninsula Portal
 A toolbox of all apps developed by 6036
 
