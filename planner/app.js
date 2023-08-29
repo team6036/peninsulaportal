@@ -113,6 +113,8 @@ class PathButton extends core.Target {
 
     #elem;
     #eName;
+    #eEdit;
+    #eRemove;
 
     constructor(path) {
         super();
@@ -123,19 +125,32 @@ class PathButton extends core.Target {
         this.#showIndices = true;
         this.#showLines = true;
 
-        this.#elem = document.createElement("button");
+        this.#elem = document.createElement("div");
         this.elem.classList.add("item");
         this.#eName = document.createElement("input");
         this.elem.appendChild(this.eName);
-        this.eName.classList.add("override")
         this.eName.type = "text";
         this.eName.placeholder = "Path Name";
         this.eName.autocomplete = "off";
         this.eName.spellcheck = "false";
+        this.#eEdit = document.createElement("button");
+        this.elem.appendChild(this.eEdit);
+        this.eEdit.innerHTML = "<ion-icon name='pencil'></ion-icon>";
+        this.#eRemove = document.createElement("button");
+        this.elem.appendChild(this.eRemove);
+        this.eRemove.innerHTML = "<ion-icon name='trash'></ion-icon>";
 
         this.elem.addEventListener("click", e => {
             e.stopPropagation();
             this.post("trigger", null);
+        });
+        this.eEdit.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("edit", null);
+        });
+        this.eRemove.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("remove", null);
         });
 
         this.eName.addEventListener("change", e => {
@@ -227,6 +242,8 @@ class PathButton extends core.Target {
 
     get elem() { return this.#elem; }
     get eName() { return this.#eName; }
+    get eEdit() { return this.#eEdit; }
+    get eRemove() { return this.#eRemove; }
 
     update() {
         this.post("udpate", null);
@@ -973,7 +990,6 @@ export default class App extends core.App {
                     this.page = "TITLE";
                 });
             this.#eProjectsBtn = document.querySelector("#titlebar > button.nav#projectsbtn");
-            console.log(this.eProjectsBtn);
             if (this.hasEProjectsBtn())
                 this.eProjectsBtn.addEventListener("click", e => {
                     this.page = "PROJECTS";
@@ -1119,9 +1135,6 @@ export default class App extends core.App {
                 if (this.page != "PROJECT") return;
                 let state = this.#pages["PROJECT"];
                 if (!util.is(state, "obj")) return;
-                if (!util.is(state.options, "obj")) return;
-                if (!util.is(state.options.map, "obj")) return;
-                let o = state.options.map;
                 if (state.getChoosing()) return;
                 if (state.getDragging()) return;
                 if (!this.hasProject()) return;
@@ -1170,6 +1183,9 @@ export default class App extends core.App {
                     if (ghostItem instanceof RISelectable)
                         if (ghostItem.hasItem())
                             ghostItem.item.pos.set(ghostItem.pageToMap(pos));
+                    if (!util.is(state.panels, "obj")) return;
+                    if (!util.is(state.panels.objects, "obj")) return;
+                    let o = state.panels.objects;
                     if (!(o.eSpawnDelete instanceof HTMLButtonElement)) return;
                     r = o.eSpawnDelete.getBoundingClientRect();
                     over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
@@ -1184,8 +1200,14 @@ export default class App extends core.App {
                         if (ghostItem.hasItem())
                             if (this.hasProject())
                                 this.project.addItem(ghostItem.item);
+                    if (!util.is(state.panels, "obj")) return;
+                    if (!util.is(state.panels.objects, "obj")) return;
+                    let o = state.panels.objects;
                     o.eSpawnBox.classList.remove("delete");
                 });
+                if (!util.is(state.panels, "obj")) return;
+                if (!util.is(state.panels.objects, "obj")) return;
+                let o = state.panels.objects;
                 o.eSpawnBox.classList.add("delete");
             };
             this.addHandler("cmd-addnode", () => cmdAdd("node"));
@@ -1714,21 +1736,6 @@ export default class App extends core.App {
                     await this.post("cmd-save", null);
                     lock = false;
                 }, 10000);
-                document.body.addEventListener("keydown", async e => {
-                    if (this.page != "PROJECT") return;
-                    if (e.code == "KeyS")
-                        if (e.ctrlKey || e.metaKey) {
-                            if (e.shiftKey) await this.post("cmd-savecopy", null);
-                            else await this.post("cmd-save", null);
-                        }
-                    if (e.code == "KeyN")
-                        if (e.ctrlKey || e.metaKey)
-                            this.page = "PROJECT";
-                    if (e.code == "KeyW")
-                        if (e.ctrlKey || e.metaKey)
-                            if (e.shiftKey)
-                                this.post("cmd-close");
-                });
                 state.refresh = async () => {
                     try {
                         await this.syncWithFiles();
@@ -1738,13 +1745,7 @@ export default class App extends core.App {
                         alert.info = String(e);
                         alert.iconColor = "var(--cr)";
                     }
-                    if (util.is(state.options, "obj")) {
-                        for (let name in state.options) {
-                            let o = state.options[name];
-                            if (name == "map") o.show();
-                            else o.hide();
-                        }
-                    }
+                    state.setPanel("objects");
                 };
                 if (this.hasENameInput())
                     this.eNameInput.addEventListener("change", e => {
@@ -2141,8 +2142,6 @@ export default class App extends core.App {
                                 e.preventDefault();
                                 state.paste();
                             }
-                        } else if (e.code == "KeyF") {
-                            this.post("cmd-maxmin", null);
                         }
                     });
                 }
@@ -2264,7 +2263,8 @@ export default class App extends core.App {
                         menu.addItem(new core.App.ContextMenu.Divider());
                         itm = menu.addItem(new core.App.ContextMenu.Item("Edit"));
                         itm.addHandler("trigger", data => {
-                            state.options.item.show();
+                            // state.panels.objects.show();
+                            state.setPanel("objects");
                         });
                         itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
                         itm.shortcut = "⌫";
@@ -2360,9 +2360,11 @@ export default class App extends core.App {
                             state.eDivider.style.display = "";
                     }
                 };
-                state.eEdit = state.elem.querySelector(":scope > .edit");
-                if (state.eEdit instanceof HTMLDivElement)
-                    state.eEdit.addEventListener("click", e => e.stopPropagation());
+                state.eEdit = elem.querySelector(":scope > .edit");
+                state.eEditContent = elem.querySelector(":scope > .edit > .content");
+                state.eEditNav = elem.querySelector(":scope > .edit > .nav");
+                if (state.eEditNav instanceof HTMLDivElement)
+                    state.eEditNav.addEventListener("click", e => e.stopPropagation());
                 let maximized = null;
                 state.getMaximized = () => maximized;
                 state.setMaximized = v => {
@@ -2405,729 +2407,11 @@ export default class App extends core.App {
                         document.body.addEventListener("mousemove", mousemove);
                         state.eDivider.classList.add("this");
                     });
-                state.options = {
-                    map: (o, elem) => {
+                state.panels = {
+                    objects: (o, elem) => {
                         this.addHandler("project-set", data => {
                             let has = this.hasProject();
                             o.btn.disabled = !has;
-                            if (util.is(o.spawns, "obj"))
-                                for (let name in o.spawns)
-                                    o.spawns[name].disabled = !has;
-                            if (o.eSizeWInput instanceof HTMLInputElement)
-                                o.eSizeWInput.disabled = !has;
-                            if (o.eSizeHInput instanceof HTMLInputElement)
-                                o.eSizeHInput.disabled = !has;
-                            if (o.eRobotSizeWInput instanceof HTMLInputElement)
-                                o.eRobotSizeWInput.disabled = !has;
-                            if (o.eRobotSizeHInput instanceof HTMLInputElement)
-                                o.eRobotSizeHInput.disabled = !has;
-                            if (o.eRobotMassInput instanceof HTMLInputElement)
-                                o.eRobotMassInput.disabled = !has;
-                            if (o.eBackgroundXInput instanceof HTMLInputElement)
-                                o.eBackgroundXInput.disabled = !has;
-                            if (o.eBackgroundYInput instanceof HTMLInputElement)
-                                o.eBackgroundYInput.disabled = !has;
-                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
-                                o.eBackgroundScaleInput.disabled = !has;
-                        });
-                        state.addHandler("refresh-options", data => {
-                            let has = this.hasProject();
-                            if (o.eSizeWInput instanceof HTMLInputElement)
-                                o.eSizeWInput.value = has ? this.project.w/100 : "";
-                            if (o.eSizeHInput instanceof HTMLInputElement)
-                                o.eSizeHInput.value = has ? this.project.h/100 : "";
-                            if (o.eRobotSizeWInput instanceof HTMLInputElement)
-                                o.eRobotSizeWInput.value = has ? this.project.robotW/100 : "";
-                            if (o.eRobotSizeHInput instanceof HTMLInputElement)
-                                o.eRobotSizeHInput.value = has ? this.project.robotH/100 : "";
-                            if (o.eRobotMassInput instanceof HTMLInputElement)
-                                o.eRobotMassInput.value = has ? this.project.robotMass : "";
-                            if (o.eBackgroundXInput instanceof HTMLInputElement)
-                                o.eBackgroundXInput.value = has ? this.project.meta.backgroundX/100 : "";
-                            if (o.eBackgroundYInput instanceof HTMLInputElement)
-                                o.eBackgroundYInput.value = has ? this.project.meta.backgroundY/100 : "";
-                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
-                                o.eBackgroundScaleInput.value = has ? this.project.meta.backgroundScale*100 : "";
-                        });
-                        o.eSpawnBox = elem.querySelector(":scope #spawnbox");
-                        if (o.eSpawnBox instanceof HTMLDivElement) {
-                            o.eSpawnDelete = o.eSpawnBox.querySelector(":scope > button.delete");
-                            o.spawns = {};
-                            ["node", "obstacle"].forEach(name => {
-                                let btn = o.spawns[name] = o.eSpawnBox.querySelector(":scope > button.item#spawn"+name);
-                                if (btn instanceof HTMLButtonElement) {
-                                    btn.trigger = e => {
-                                        if (getChoosing()) return;
-                                        this.post("cmd-add"+name, null);
-                                    };
-                                    btn.addEventListener("mousedown", btn.trigger);
-                                }
-                            });
-                        }
-                        o.eSizeBox = elem.querySelector(":scope #size");
-                        if (o.eSizeBox instanceof HTMLDivElement) {
-                            o.eSizeWInput = o.eSizeBox.querySelector(":scope > input.w");
-                            o.eSizeHInput = o.eSizeBox.querySelector(":scope > input.h");
-                            if (o.eSizeWInput instanceof HTMLInputElement)
-                                o.eSizeWInput.addEventListener("change", e => {
-                                    let v = o.eSizeWInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.max(util.ensure(parseFloat(v), "num"));
-                                        if (this.hasProject()) {
-                                            this.project.w = v*100;
-                                            this.project.post("change", null);
-                                            state.post("refresh-selectitem");
-                                        }
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                            if (o.eSizeHInput instanceof HTMLInputElement)
-                                o.eSizeHInput.addEventListener("change", e => {
-                                    let v = o.eSizeHInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.max(util.ensure(parseFloat(v), "num"));
-                                        if (this.hasProject()) {
-                                            this.project.h = v*100;
-                                            this.project.post("change", null);
-                                            state.post("refresh-selectitem");
-                                        }
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                        o.eRobotSizeBox = elem.querySelector(":scope #robotsize");
-                        if (o.eRobotSizeBox instanceof HTMLDivElement) {
-                            o.eRobotSizeWInput = o.eRobotSizeBox.querySelector(":scope > input.w");
-                            o.eRobotSizeHInput = o.eRobotSizeBox.querySelector(":scope > input.h");
-                            if (o.eRobotSizeWInput instanceof HTMLInputElement)
-                                o.eRobotSizeWInput.addEventListener("change", e => {
-                                    let v = o.eRobotSizeWInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                                        if (this.hasProject()) {
-                                            this.project.robotW = v*100;
-                                            this.project.post("change", null);
-                                            state.post("refresh-selectitem");
-                                        }
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                            if (o.eRobotSizeHInput instanceof HTMLInputElement)
-                                o.eRobotSizeHInput.addEventListener("change", e => {
-                                    let v = o.eRobotSizeHInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                                        if (this.hasProject()) {
-                                            this.project.robotH = v*100;
-                                            this.project.post("change", null);
-                                        }
-                                        state.post("refresh-selectitem");
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                        o.eRobotMassBox = elem.querySelector(":scope #robotmass");
-                        if (o.eRobotMassBox instanceof HTMLDivElement) {
-                            o.eRobotMassInput = o.eRobotMassBox.querySelector(":scope > input");
-                            if (o.eRobotMassInput instanceof HTMLInputElement)
-                                o.eRobotMassInput.addEventListener("change", e => {
-                                    let v = o.eRobotMassInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                                        if (this.hasProject())
-                                            this.project.robotMass = v;
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                        o.eBackgroundBox = elem.querySelector(":scope #background");
-                        if (o.eBackgroundBox instanceof HTMLDivElement) {
-                            o.eBackgroundXInput = o.eBackgroundBox.querySelector(":scope > div > input.x");
-                            if (o.eBackgroundXInput instanceof HTMLInputElement)
-                                o.eBackgroundXInput.addEventListener("change", e => {
-                                    let v = o.eBackgroundXInput.value;
-                                    if (v.length > 0) {
-                                        v = util.ensure(parseFloat(v), "num");
-                                        if (this.hasProject()) {
-                                            this.project.meta.backgroundX = v*100;
-                                            this.project.post("change", null);
-                                        }
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                            o.eBackgroundYInput = o.eBackgroundBox.querySelector(":scope > div > input.y");
-                            if (o.eBackgroundYInput instanceof HTMLInputElement)
-                                o.eBackgroundYInput.addEventListener("change", e => {
-                                    let v = o.eBackgroundYInput.value;
-                                    if (v.length > 0) {
-                                        v = util.ensure(parseFloat(v), "num");
-                                        if (this.hasProject()) {
-                                            this.project.meta.backgroundY = v*100;
-                                            this.project.post("change", null);
-                                        }
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                            o.eBackgroundScaleInput = o.eBackgroundBox.querySelector(":scope > input");
-                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
-                                o.eBackgroundScaleInput.addEventListener("change", e => {
-                                    let v = o.eBackgroundScaleInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                                        if (this.hasProject())
-                                            this.project.meta.backgroundScale = v/100;
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                    },
-                    trajectory: (o, elem) => {
-                        let generating = false;
-                        o.getGenerating = () => generating;
-                        o.setGenerating = v => {
-                            v = !!v;
-                            if (v == o.getGenerating()) return true;
-                            generating = v;
-                            state.post("refresh-options", null);
-                            return true;
-                        };
-                        this.addHandler("project-set", data => {
-                            let has = this.hasProject();
-                            o.btn.disabled = !has;
-                            if (o.eMomentOfInertiaInput instanceof HTMLInputElement)
-                                o.eMomentOfInertiaInput.disabled = !has;
-                            if (o.eEfficiencyInput instanceof HTMLInputElement)
-                                o.eEfficiencyInput.disabled = !has;
-                            if (o.eIs12MotorModeInput instanceof HTMLInputElement)
-                                o.eIs12MotorModeInput.disabled = !has;
-                            if (o.eScriptDefault instanceof HTMLInputElement)
-                                o.eScriptDefault.disabled = !has;
-                            o.checkPathVisual();
-                        });
-                        state.addHandler("refresh-options", data => {
-                            let has = this.hasProject();
-                            if (o.eMomentOfInertiaInput instanceof HTMLInputElement)
-                                o.eMomentOfInertiaInput.value = has ? this.project.config.momentOfInertia : "";
-                            if (o.eEfficiencyInput instanceof HTMLInputElement)
-                                o.eEfficiencyInput.value = has ? this.project.config.efficiency*100 : "";
-                            if (o.eIs12MotorModeInput instanceof HTMLInputElement)
-                                o.eIs12MotorModeInput.checked = has ? this.project.config.is12MotorMode : false;
-                            if (o.eScriptInput instanceof HTMLInputElement) {
-                                o.eScriptInput.value = has ? this.project.config.script : "";
-                                o.eScriptInput.disabled = !has || this.project.config.scriptUseDefault;
-                            }
-                            if (o.eScriptBrowse instanceof HTMLInputElement)
-                                o.eScriptBrowse.disabled = !has || this.project.config.scriptUseDefault;
-                            if (o.eScriptDefault instanceof HTMLInputElement)
-                                o.eScriptDefault.checked = has ? this.project.config.scriptUseDefault : false;
-                            if (o.eGenerationBtn instanceof HTMLButtonElement) {
-                                o.eGenerationBtn.disabled = !o.getGenerating() && (!has || getSelectedPaths().length <= 0);
-                                o.eGenerationBtn.textContent = o.getGenerating() ? "Terminate" : "Generate";
-                                o.getGenerating() ? o.eGenerationBtn.classList.add("term") : o.eGenerationBtn.classList.remove("term");
-                            }
-                        });
-                        o.eMomentOfInertiaBox = elem.querySelector(":scope #momentofinertia");
-                        if (o.eMomentOfInertiaBox instanceof HTMLDivElement) {
-                            o.eMomentOfInertiaInput = o.eMomentOfInertiaBox.querySelector(":scope > input");
-                            if (o.eMomentOfInertiaInput instanceof HTMLInputElement)
-                                o.eMomentOfInertiaInput.addEventListener("change", e => {
-                                    let v = o.eMomentOfInertiaInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                                        if (this.hasProject())
-                                            this.project.config.momentOfInertia = v;
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                        o.eEfficiencyBox = elem.querySelector(":scope #efficiency");
-                        if (o.eEfficiencyBox instanceof HTMLDivElement) {
-                            o.eEfficiencyInput = o.eEfficiencyBox.querySelector(":scope > input");
-                            if (o.eEfficiencyInput instanceof HTMLInputElement)
-                                o.eEfficiencyInput.addEventListener("change", e => {
-                                    let v = o.eEfficiencyInput.value;
-                                    if (v.length > 0) {
-                                        v = Math.min(100, Math.max(0, util.ensure(parseFloat(v), "num")));
-                                        if (this.hasProject())
-                                            this.project.config.efficiency = v/100;
-                                    }
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                        o.eIs12MotorModeBox = elem.querySelector(":scope #is12motormode");
-                        if (o.eIs12MotorModeBox instanceof HTMLLabelElement) {
-                            o.eIs12MotorModeInput = o.eIs12MotorModeBox.querySelector("input[type='checkbox']");
-                            if (o.eIs12MotorModeInput instanceof HTMLInputElement)
-                                o.eIs12MotorModeInput.addEventListener("change", e => {
-                                    let v = o.eIs12MotorModeInput.checked;
-                                    this.project.config.is12MotorMode = v;
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                        o.eScriptBox = elem.querySelector(":scope #trajectoryscript");
-                        if (o.eScriptBox instanceof HTMLDivElement) {
-                            o.eScriptInput = o.eScriptBox.querySelector(":scope > .filedialog > input");
-                            if (o.eScriptInput instanceof HTMLInputElement)
-                                o.eScriptInput.addEventListener("change", e => {
-                                    let v = o.eScriptInput.value;
-                                    if (this.hasProject())
-                                        this.project.config.script = (v.length > 0) ? v : null;
-                                    state.post("refresh-options", null);
-                                });
-                            o.eScriptBrowse = o.eScriptBox.querySelector(":scope > .filedialog > button");
-                            if (o.eScriptBrowse instanceof HTMLButtonElement)
-                                o.eScriptBrowse.addEventListener("click", e => {
-                                    let dialog = document.createElement("input");
-                                    dialog.type = "file";
-                                    dialog.accept = ".py";
-                                    dialog.addEventListener("change", e => {
-                                        if (o.eScriptInput instanceof HTMLInputElement) {
-                                            let v = o.eScriptInput.value = (dialog.files[0] instanceof File) ? dialog.files[0].path : "";
-                                            if (this.hasProject())
-                                                this.project.config.script = (v.length > 0) ? v : null;
-                                            state.post("refresh-options", null);
-                                        }
-                                    });
-                                    dialog.click();
-                                });
-                        }
-                        o.eScriptDefaultBox = elem.querySelector(":scope #trajectorydefault");
-                        if (o.eScriptDefaultBox instanceof HTMLLabelElement) {
-                            o.eScriptDefault = o.eScriptDefaultBox.querySelector("input[type='checkbox']");
-                            if (o.eScriptDefault instanceof HTMLInputElement)
-                                o.eScriptDefault.addEventListener("change", e => {
-                                    let v = o.eScriptDefault.checked;
-                                    if (this.hasProject())
-                                        this.project.config.scriptUseDefault = v;
-                                    state.post("refresh-options", null);
-                                });
-                        }
-                        if (state.eRender instanceof HTMLDivElement) {
-                            o.eProgress = state.eRender.querySelector(":scope > .progress");
-                            if (o.eProgress instanceof HTMLDivElement) {
-                                o.eProgressBtn = o.eProgress.querySelector(":scope > button");
-                                if (o.eProgressBtn instanceof HTMLButtonElement)
-                                    o.eProgressBtn.addEventListener("click", e => {
-                                        let visuals = this.getPathVisuals().filter(id => isPathSelected(id));
-                                        if (visuals.length <= 0) return;
-                                        let id = visuals[0];
-                                        let visual = this.getPathVisual(id);
-                                        if (visual.isFinished) {
-                                            visual.nowTime = 0;
-                                            visual.play();
-                                        } else visual.paused = !visual.paused;
-                                    });
-                                o.eProgressTimeNow = o.eProgress.querySelector(":scope > .time.now");
-                                o.eProgressTimeTotal = o.eProgress.querySelector(":scope > .time.total");
-                                o.eProgressBar = o.eProgress.querySelector(":scope > .bar");
-                                if (o.eProgressBar instanceof HTMLDivElement)
-                                    o.eProgressBar.addEventListener("mousedown", e => {
-                                        if (getChoosing()) return;
-                                        if (e.button != 0) return;
-                                        e.stopPropagation();
-                                        const mouseup = () => {
-                                            document.body.removeEventListener("mouseup", mouseup);
-                                            document.body.removeEventListener("mousemove", mousemove);
-                                        };
-                                        const mousemove = e => {
-                                            let r = o.eProgressBar.getBoundingClientRect();
-                                            let p = (e.pageX-r.left) / r.width;
-                                            let visuals = this.getPathVisuals().filter(id => isPathSelected(id));
-                                            if (visuals.length <= 0) return;
-                                            let id = visuals[0];
-                                            let visual = this.getPathVisual(id);
-                                            visual.nowTime = visual.totalTime*p;
-                                        };
-                                        mousemove(e);
-                                        document.body.addEventListener("mouseup", mouseup);
-                                        document.body.addEventListener("mousemove", mousemove);
-                                    });
-                            }
-                        }
-                        let pathVisuals = {};
-                        this.getPathVisuals = () => Object.keys(pathVisuals);
-                        this.setPathVisuals = v => {
-                            v = util.ensure(v, "obj");
-                            this.clearPathVisuals();
-                            for (let id in v) this.addPathVisual(id, v[id]);
-                            return true;
-                        };
-                        this.clearPathVisuals = () => {
-                            let ids = this.getPathVisuals();
-                            ids.forEach(id => this.remPathVisual(id));
-                            return ids;
-                        };
-                        this.hasPathVisual = v => {
-                            if (util.is(v, "str")) return v in pathVisuals;
-                            if (v instanceof PathVisual) return this.hasPathVisual(v.id);
-                            return false;
-                        };
-                        this.getPathVisual = id => {
-                            id = String(id);
-                            if (!this.hasPathVisual(id)) return null;
-                            return pathVisuals[id];
-                        };
-                        this.addPathVisual = (id, visual) => {
-                            id = String(id);
-                            if (!(visual instanceof PathVisual)) return false;
-                            if (visual.app != null || visual.id != null) return false;
-                            if (this.hasPathVisual(id) || this.hasPathVisual(visual)) return false;
-                            pathVisuals[id] = visual;
-                            visual.id = id;
-                            visual.app = this;
-                            return visual;
-                        };
-                        this.remPathVisual = v => {
-                            if (util.is(v, "str")) {
-                                if (!this.hasPathVisual(v)) return false;
-                                let visual = pathVisuals[v];
-                                delete pathVisuals[v];
-                                visual.id = null;
-                                visual.app = null;
-                                return visual;
-                            }
-                            if (v instanceof PathVisual) return this.remPathVisual(v.id);
-                            return false;
-                        };
-                        this.addHandler("update", data => {
-                            let visuals = [];
-                            this.getPathVisuals().forEach(id => {
-                                let visual = this.getPathVisual(id);
-                                visual.show = isPathSelected(id);
-                                if (visual.show) visuals.push(id);
-                                visual.update();
-                                if (!this.hasProject() || !this.project.hasPath(id))
-                                    this.remPathVisual(id);
-                            });
-                            if (visuals.length <= 0) {
-                                if (state.eDisplay instanceof HTMLDivElement)
-                                    state.eDisplay.classList.remove("progress");
-                                return;
-                            }
-                            if (state.eDisplay instanceof HTMLDivElement)
-                                state.eDisplay.classList.add("progress");
-                            let id = visuals[0];
-                            let visual = this.getPathVisual(id);
-                            if (o.eProgress instanceof HTMLDivElement)
-                                o.eProgress.style.setProperty("--progress", (100*visual.item.interp)+"%");
-                            if (o.eProgressBtn instanceof HTMLButtonElement)
-                                if (o.eProgressBtn.children[0] instanceof HTMLElement)
-                                    o.eProgressBtn.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
-                            if (o.eProgressTimeNow instanceof HTMLDivElement) {
-                                let split = util.splitTimeUnits(visual.nowTime);
-                                split[0] = Math.round(split[0]);
-                                while (split.length > 3) {
-                                    if (split.at(-1) > 0) break;
-                                    split.pop();
-                                }
-                                split = split.map((v, i) => {
-                                    v = String(v);
-                                    if (i >= split.length-1) return v;
-                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                                    while (v.length < l) {
-                                        if (i > 0) v = "0"+v;
-                                        else v += "0";
-                                    }
-                                    return v;
-                                });
-                                o.eProgressTimeNow.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-                            }
-                            if (o.eProgressTimeTotal instanceof HTMLDivElement) {
-                                let split = util.splitTimeUnits(visual.totalTime);
-                                split[0] = Math.round(split[0]);
-                                while (split.length > 3) {
-                                    if (split.at(-1) > 0) break;
-                                    split.pop();
-                                }
-                                split = split.map((v, i) => {
-                                    v = String(v);
-                                    if (i >= split.length-1) return v;
-                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                                    while (v.length < l) {
-                                        if (i > 0) v = "0"+v;
-                                        else v += "0";
-                                    }
-                                    return v;
-                                });
-                                o.eProgressTimeTotal.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-                            }
-                        });
-                        o.checkPathVisual = async () => {
-                            this.clearPathVisuals();
-                            if (!this.hasProject()) return;
-                            try {
-                                let datas = await window.api.ask("exec-get", [this.projectId]);
-                                if (!util.is(datas, "obj")) return;
-                                for (let id in datas) {
-                                    let data = datas[id];
-                                    if (!util.is(data, "obj")) continue;
-                                    console.log(data);
-                                    let visual = this.addPathVisual(id, new PathVisual());
-                                    visual.visual.dt = data.dt*1000;
-                                    visual.visual.nodes = util.ensure(data.state, "arr").map(node => {
-                                        node = util.ensure(node, "obj");
-                                        node = new subcore.Project.Node(
-                                            new V(node.x, node.y).mul(100),
-                                            node.theta, true,
-                                            new V(node.vx, node.vy).mul(100),
-                                            0, true,
-                                        );
-                                        return node;
-                                    });
-                                }
-                            } catch (e) {
-                                return;
-                                let alert = this.alert("There was an error checking for generated trajectories!", "warning");
-                                alert.hasInfo = true;
-                                alert.info = String(e);
-                                alert.iconColor = "var(--cr)";
-                            }
-                        };
-                        o.eGenerationBox = elem.querySelector(":scope #trajectorygeneration");
-                        if (o.eGenerationBox instanceof HTMLDivElement) {
-                            o.eGenerationBtn = o.eGenerationBox.querySelector(":scope > button");
-                            if (o.eGenerationBtn instanceof HTMLButtonElement)
-                                o.eGenerationBtn.addEventListener("click", e => {
-                                    if (o.getGenerating()) {
-                                        window.api.ask("exec-term");
-                                        return;
-                                    }
-                                    let projectId = this.projectId;
-                                    if (!this.hasProject(projectId)) return;
-                                    let project = this.getProject(projectId);
-                                    if (getSelectedPaths().length <= 0) return;
-                                    let id = getSelectedPaths()[0];
-                                    if (!project.hasPath(id)) return;
-                                    let path = project.getPath(id);
-                                    e.stopPropagation();
-                                    o.setGenerating(false);
-                                    (async () => {
-                                        o.setGenerating(true);
-                                        this.markChange("*all");
-                                        await this.post("cmd-save", null);
-                                        try {
-                                            await window.api.ask("exec", [project.id, path.id]);
-                                            await o.checkPathVisual();
-                                            this.getPathVisuals().forEach(id => {
-                                                let visual = this.getPathVisual(id);
-                                                if (!isPathSelected(id)) return;
-                                                visual.play();
-                                            });
-                                            o.setGenerating(false);
-                                        } catch (e) {
-                                            o.setGenerating(false);
-                                            let alert = this.alert("There was an error executing the generation script!", "warning");
-                                            alert.hasInfo = true;
-                                            alert.info = String(e);
-                                            alert.iconColor = "var(--cr)";
-                                        }
-                                    })();
-                                });
-                        }
-                    },
-                    path: (o, elem) => {
-                        let buttons = new Set();
-                        document.body.addEventListener("click", e => {
-                            if (getChoosing()) return;
-                            if (state.eRender instanceof HTMLDivElement && state.eRender.contains(e.target)) return;
-                            clearSelectedPaths();
-                        });
-                        this.getPathButtons = () => [...buttons];
-                        this.setPathButtons = v => {
-                            v = util.ensure(v, "arr");
-                            this.clearPathButtons();
-                            v.forEach(v => this.addPathButton(v));
-                        };
-                        this.clearPathButtons = () => {
-                            let pths = this.getPathButtons();
-                            pths.forEach(btn => this.remPathButton(btn));
-                            return pths;
-                        };
-                        this.hasPathButton = btn => {
-                            if (!(btn instanceof PathButton)) return false;
-                            return buttons.has(btn);
-                        };
-                        this.addPathButton = btn => {
-                            if (!(btn instanceof PathButton)) return false;
-                            if (this.hasPathButton(btn)) return false;
-                            buttons.add(btn);
-                            btn.app = this;
-                            btn._onTrigger = () => {
-                                clearSelectedPaths();
-                                addSelectedPath(btn);
-                            };
-                            btn._onChange = () => {
-                                state.post("refresh-selectitem", null);
-                                state.post("refresh-options", null);
-                            };
-                            btn.addHandler("trigger", btn._onTrigger);
-                            btn.addHandler("change", btn._onChange);
-                            if (o.ePathsBox instanceof HTMLDivElement) o.ePathsBox.appendChild(btn.elem);
-                            state.post("refresh-options", null);
-                            return btn;
-                        };
-                        this.remPathButton = btn => {
-                            if (!(btn instanceof PathButton)) return false;
-                            if (!this.hasPathButton(btn)) return false;
-                            buttons.delete(btn);
-                            btn.remHandler(btn._onTrigger);
-                            btn.remHandler(btn._onChange);
-                            delete btn._onTrigger;
-                            delete btn._onChange;
-                            btn.post("rem", null);
-                            if (o.ePathsBox instanceof HTMLDivElement) o.ePathsBox.removeChild(btn.elem);
-                            btn.app = null;
-                            state.post("refresh-options", null);
-                            return btn;
-                        };
-                        this.addHandler("update", data => {
-                            let pthsUsed = new Set();
-                            this.getPathButtons().forEach(btn => {
-                                btn.showLines = btn.hasPath() ? !this.hasPathVisual(btn.path.id) : true;
-                                btn.update();
-                                if (!this.hasProject() || !this.project.hasPath(btn.path))
-                                    btn.path = null;
-                                if (btn.hasPath()) {
-                                    pthsUsed.add(btn.path.id);
-                                    btn.selected = isPathSelected(btn);
-                                } else this.remPathButton(btn);
-                            });
-                            if (this.hasProject()) {
-                                let need;
-                                need = new Set(this.project.paths);
-                                if (pthsUsed.size < need.size) {
-                                    pthsUsed.forEach(id => need.delete(id));
-                                    need.forEach(id => this.addPathButton(new PathButton(this.project.getPath(id))));
-                                }
-                            }
-                        });
-                        this.addHandler("project-set", data => {
-                            let has = this.hasProject();
-                            o.btn.disabled = !has;
-                            if (o.ePathAdd instanceof HTMLButtonElement)
-                                o.ePathAdd.disabled = !has;
-                        });
-                        state.addHandler("refresh-options", data => {
-                            let has = this.hasProject();
-                            if (o.ePathRem instanceof HTMLButtonElement)
-                                o.ePathRem.disabled = !has || (getSelectedPaths().length <= 0);
-                            if (o.ePathEdit instanceof HTMLButtonElement)
-                                o.ePathEdit.disabled = !has || (getSelectedPaths().length <= 0);
-                            this.getPathButtons().forEach(btn => {
-                                btn.post("set", data);
-                                if (isPathSelected(btn)) btn.post("add", null);
-                                else btn.post("rem", null);
-                            });
-                        });
-                        o.ePathsBox = elem.querySelector(":scope #pathsbox");
-                        if (o.ePathsBox instanceof HTMLDivElement) {
-                            o.ePathAdd = o.ePathsBox.querySelector(":scope > button.item#addbtn");
-                            if (o.ePathAdd instanceof HTMLButtonElement)
-                                o.ePathAdd.addEventListener("click", e => {
-                                    if (getChoosing()) return;
-                                    if (!this.hasProject()) return;
-                                    setChoosing(true);
-                                    let chooseData = getChooseData();
-                                    chooseData.path = new subcore.Project.Path();
-                                    chooseData.addHandler("choose", data => {
-                                        if (!(chooseData.path instanceof subcore.Project.Path)) return;
-                                        let path = chooseData.path;
-                                        data = util.ensure(data, "obj");
-                                        let itm = data.itm, shift = data.shift;
-                                        if (!(itm instanceof subcore.Project.Node)) return;
-                                        if (shift) path.remNode(itm);
-                                        else path.addNode(itm);
-                                        for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
-                                        chooseData.temp = {};
-                                        let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
-                                        for (let i = 0; i < nodes.length; i++) {
-                                            let id = nodes[i];
-                                            let node = this.project.getItem(id);
-                                            if (id in chooseData.temp) {
-                                                chooseData.temp[id].value += ", "+(i+1);
-                                            } else {
-                                                chooseData.temp[id] = this.addRenderItem(new RIPathIndex(node));
-                                                chooseData.temp[id].value = i+1;
-                                            }
-                                            if (i > 0) {
-                                                let id2 = nodes[i-1];
-                                                let node2 = this.project.getItem(id2);
-                                                chooseData.temp[id+"~"+id2] = this.addRenderItem(new RIPathLine(node, node2));
-                                            }
-                                        }
-                                    });
-                                    chooseData.addHandler("done", data => {
-                                        if (!(chooseData.path instanceof subcore.Project.Path)) return;
-                                        let path = chooseData.path;
-                                        if (!this.hasProject()) return;
-                                        this.project.addPath(path);
-                                    });
-                                    chooseData.addHandler("cancel", data => {
-                                    });
-                                });
-                        }
-                        o.ePathEditBox = elem.querySelector(":scope #patheditbox");
-                        if (o.ePathEditBox instanceof HTMLDivElement) {
-                            o.ePathRem = o.ePathEditBox.querySelector(":scope > button#removebtn");
-                            if (o.ePathRem instanceof HTMLButtonElement)
-                                o.ePathRem.addEventListener("click", e => {
-                                    if (getChoosing()) return;
-                                    if (!this.hasProject()) return;
-                                    getSelectedPaths().forEach(id => this.project.remPath(id));
-                                });
-                            o.ePathEdit = o.ePathEditBox.querySelector(":scope > button#editbtn");
-                            if (o.ePathEdit instanceof HTMLButtonElement)
-                                o.ePathEdit.addEventListener("click", e => {
-                                    if (getChoosing()) return;
-                                    if (!this.hasProject()) return;
-                                    let pths = getSelectedPaths();
-                                    if (pths.length <= 0) return;
-                                    let id = pths[0];
-                                    if (!this.project.hasPath(id)) return;
-                                    let pth = this.project.getPath(id);
-                                    setChoosing(true);
-                                    let chooseData = getChooseData();
-                                    chooseData.path = pth;
-                                    let nodes = pth.nodes;
-                                    chooseData.addHandler("choose", data => {
-                                        if (!(chooseData.path instanceof subcore.Project.Path)) return;
-                                        let path = chooseData.path;
-                                        data = util.ensure(data, "obj");
-                                        let itm = data.itm, shift = data.shift;
-                                        if (!(itm instanceof subcore.Project.Node)) return;
-                                        if (shift) path.remNode(itm);
-                                        else path.addNode(itm);
-                                        for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
-                                        chooseData.temp = {};
-                                        let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
-                                        for (let i = 0; i < nodes.length; i++) {
-                                            let id = nodes[i];
-                                            let node = this.project.getItem(id);
-                                            if (id in chooseData.temp) {
-                                                chooseData.temp[id].value += ", "+(i+1);
-                                            } else {
-                                                chooseData.temp[id] = this.addRenderItem(new RIPathIndex(node));
-                                                chooseData.temp[id].value = i+1;
-                                            }
-                                            if (i > 0) {
-                                                let id2 = nodes[i-1];
-                                                let node2 = this.project.getItem(id2);
-                                                chooseData.temp[id+"~"+id2] = this.addRenderItem(new RIPathLine(node, node2));
-                                            }
-                                        }
-                                    });
-                                    chooseData.addHandler("done", data => {
-                                    });
-                                    chooseData.addHandler("cancel", data => {
-                                        if (!(chooseData.path instanceof subcore.Project.Path)) return;
-                                        chooseData.path.nodes = nodes;
-                                    });
-                                });
-                        }
-                    },
-                    item: (o, elem) => {
-                        this.addHandler("project-set", data => {
-                            let has = this.hasProject();
                             if (o.ePositionXInput instanceof HTMLButtonElement)
                                 o.ePositionXInput.disabled = !has;
                             if (o.ePositionYInput instanceof HTMLButtonElement)
@@ -3137,15 +2421,16 @@ export default class App extends core.App {
                         });
                         state.addHandler("refresh-options", data => {
                             let has = this.hasProject();
+                            let forAny = Array.from(elem.querySelectorAll(":scope .forany"));
                             let forNode = Array.from(elem.querySelectorAll(":scope .fornode"));
                             let forObstacle = Array.from(elem.querySelectorAll(":scope .forobstacle"));
                             let itms = getSelected().filter(id => has && this.project.hasItem(id)).map(id => this.project.getItem(id));
-                            o.btn.disabled = !has || itms.length <= 0;
                             let allNode = (itms.length > 0), allObstacle = (itms.length > 0);
                             itms.forEach(itm => {
                                 if (!(itm instanceof subcore.Project.Node)) allNode = false;
                                 if (!(itm instanceof subcore.Project.Obstacle)) allObstacle = false;
                             });
+                            forAny.forEach(elem => (itms.length > 0) ? elem.classList.add("this") : elem.classList.remove("this"));
                             forNode.forEach(elem => (allNode ? elem.classList.add("this") : elem.classList.remove("this")));
                             forObstacle.forEach(elem => (allObstacle ? elem.classList.add("this") : elem.classList.remove("this")));
                             if (o.ePositionXInput instanceof HTMLInputElement) {
@@ -3288,6 +2573,21 @@ export default class App extends core.App {
                                 } else o.eRadiusInput.value = "";
                             }
                         });
+                        o.eSpawnBox = elem.querySelector(":scope #spawnbox");
+                        if (o.eSpawnBox instanceof HTMLDivElement) {
+                            o.eSpawnDelete = o.eSpawnBox.querySelector(":scope > button.delete");
+                            o.spawns = {};
+                            ["node", "obstacle"].forEach(name => {
+                                let btn = o.spawns[name] = o.eSpawnBox.querySelector(":scope > button.item#spawn"+name);
+                                if (btn instanceof HTMLButtonElement) {
+                                    btn.trigger = e => {
+                                        if (getChoosing()) return;
+                                        this.post("cmd-add"+name, null);
+                                    };
+                                    btn.addEventListener("mousedown", btn.trigger);
+                                }
+                            });
+                        }
                         o.ePositionBox = elem.querySelector(":scope #position");
                         if (o.ePositionBox instanceof HTMLDivElement) {
                             o.ePositionXInput = o.ePositionBox.querySelector(":scope > input.x");
@@ -3488,18 +2788,719 @@ export default class App extends core.App {
                                 });
                         }
                     },
+                    paths: (o, elem) => {
+                        let generating = false;
+                        o.getGenerating = () => generating;
+                        o.setGenerating = v => {
+                            v = !!v;
+                            if (v == o.getGenerating()) return true;
+                            generating = v;
+                            state.post("refresh-options", null);
+                            return true;
+                        };
+                        let buttons = new Set();
+                        document.body.addEventListener("click", e => {
+                            if (getChoosing()) return;
+                            if (state.eRender instanceof HTMLDivElement && state.eRender.contains(e.target)) return;
+                            clearSelectedPaths();
+                        });
+                        this.getPathButtons = () => [...buttons];
+                        this.setPathButtons = v => {
+                            v = util.ensure(v, "arr");
+                            this.clearPathButtons();
+                            v.forEach(v => this.addPathButton(v));
+                        };
+                        this.clearPathButtons = () => {
+                            let pths = this.getPathButtons();
+                            pths.forEach(btn => this.remPathButton(btn));
+                            return pths;
+                        };
+                        this.hasPathButton = btn => {
+                            if (!(btn instanceof PathButton)) return false;
+                            return buttons.has(btn);
+                        };
+                        this.addPathButton = btn => {
+                            if (!(btn instanceof PathButton)) return false;
+                            if (this.hasPathButton(btn)) return false;
+                            buttons.add(btn);
+                            btn.app = this;
+                            btn._onTrigger = () => {
+                                clearSelectedPaths();
+                                addSelectedPath(btn);
+                            };
+                            btn._onEdit = () => {
+                                btn._onTrigger();
+                                if (getChoosing()) return;
+                                if (!this.hasProject()) return;
+                                let pths = getSelectedPaths();
+                                if (pths.length <= 0) return;
+                                let id = pths[0];
+                                if (!this.project.hasPath(id)) return;
+                                let pth = this.project.getPath(id);
+                                setChoosing(true);
+                                let chooseData = getChooseData();
+                                chooseData.path = pth;
+                                let nodes = pth.nodes;
+                                chooseData.addHandler("choose", data => {
+                                    if (!(chooseData.path instanceof subcore.Project.Path)) return;
+                                    let path = chooseData.path;
+                                    data = util.ensure(data, "obj");
+                                    let itm = data.itm, shift = data.shift;
+                                    if (!(itm instanceof subcore.Project.Node)) return;
+                                    if (shift) path.remNode(itm);
+                                    else path.addNode(itm);
+                                    for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
+                                    chooseData.temp = {};
+                                    let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
+                                    for (let i = 0; i < nodes.length; i++) {
+                                        let id = nodes[i];
+                                        let node = this.project.getItem(id);
+                                        if (id in chooseData.temp) {
+                                            chooseData.temp[id].value += ", "+(i+1);
+                                        } else {
+                                            chooseData.temp[id] = this.addRenderItem(new RIPathIndex(node));
+                                            chooseData.temp[id].value = i+1;
+                                        }
+                                        if (i > 0) {
+                                            let id2 = nodes[i-1];
+                                            let node2 = this.project.getItem(id2);
+                                            chooseData.temp[id+"~"+id2] = this.addRenderItem(new RIPathLine(node, node2));
+                                        }
+                                    }
+                                });
+                                chooseData.addHandler("done", data => {
+                                });
+                                chooseData.addHandler("cancel", data => {
+                                    if (!(chooseData.path instanceof subcore.Project.Path)) return;
+                                    chooseData.path.nodes = nodes;
+                                });
+                            };
+                            btn._onRemove = () => {
+                                btn._onTrigger();
+                                if (getChoosing()) return;
+                                if (!this.hasProject()) return;
+                                getSelectedPaths().forEach(id => this.project.remPath(id));
+                                setSelectedPaths(getSelectedPaths());
+                            };
+                            btn._onChange = () => {
+                                state.post("refresh-selectitem", null);
+                                state.post("refresh-options", null);
+                            };
+                            btn.addHandler("trigger", btn._onTrigger);
+                            btn.addHandler("edit", btn._onEdit);
+                            btn.addHandler("remove", btn._onRemove);
+                            btn.addHandler("change", btn._onChange);
+                            if (o.ePathsBox instanceof HTMLDivElement) o.ePathsBox.appendChild(btn.elem);
+                            state.post("refresh-options", null);
+                            return btn;
+                        };
+                        this.remPathButton = btn => {
+                            if (!(btn instanceof PathButton)) return false;
+                            if (!this.hasPathButton(btn)) return false;
+                            buttons.delete(btn);
+                            btn.remHandler("trigger", btn._onTrigger);
+                            btn.remHandler("edit", btn._onEdit);
+                            btn.remHandler("remove", btn._onRemove);
+                            btn.remHandler("change", btn._onChange);
+                            delete btn._onTrigger;
+                            delete btn._onEdit;
+                            delete btn._onRemove;
+                            delete btn._onChange;
+                            btn.post("rem", null);
+                            if (o.ePathsBox instanceof HTMLDivElement) o.ePathsBox.removeChild(btn.elem);
+                            btn.app = null;
+                            state.post("refresh-options", null);
+                            return btn;
+                        };
+                        this.addHandler("update", data => {
+                            let pthsUsed = new Set();
+                            this.getPathButtons().forEach(btn => {
+                                btn.showLines = btn.hasPath() ? !this.hasPathVisual(btn.path.id) : true;
+                                btn.update();
+                                if (!this.hasProject() || !this.project.hasPath(btn.path))
+                                    btn.path = null;
+                                if (btn.hasPath()) {
+                                    pthsUsed.add(btn.path.id);
+                                    btn.selected = isPathSelected(btn);
+                                } else this.remPathButton(btn);
+                            });
+                            if (this.hasProject()) {
+                                let need;
+                                need = new Set(this.project.paths);
+                                if (pthsUsed.size < need.size) {
+                                    pthsUsed.forEach(id => need.delete(id));
+                                    need.forEach(id => this.addPathButton(new PathButton(this.project.getPath(id))));
+                                }
+                            }
+                        });
+                        this.addHandler("project-set", data => {
+                            let has = this.hasProject();
+                            o.btn.disabled = !has;
+                            if (o.ePathAdd instanceof HTMLButtonElement)
+                                o.ePathAdd.disabled = !has;
+                            o.checkPathVisual();
+                        });
+                        state.addHandler("refresh-options", data => {
+                            let has = this.hasProject();
+                            if (o.ePathRem instanceof HTMLButtonElement)
+                                o.ePathRem.disabled = !has || (getSelectedPaths().length <= 0);
+                            if (o.ePathEdit instanceof HTMLButtonElement)
+                                o.ePathEdit.disabled = !has || (getSelectedPaths().length <= 0);
+                            if (o.eActivateBtn instanceof HTMLButtonElement) {
+                                o.eActivateBtn.disabled = !o.getGenerating() && (!has || getSelectedPaths().length <= 0);
+                                o.eActivateBtn.textContent = o.getGenerating() ? "Terminate" : "Generate";
+                                o.eActivateBtn.classList.remove("on");
+                                o.eActivateBtn.classList.remove("off");
+                                o.getGenerating() ? o.eActivateBtn.classList.add("off") : o.eActivateBtn.classList.add("on");
+                            }
+                            this.getPathButtons().forEach(btn => {
+                                btn.post("set", data);
+                                if (isPathSelected(btn)) btn.post("add", null);
+                                else btn.post("rem", null);
+                            });
+                        });
+                        o.ePathAdd = elem.querySelector(":scope #pathaddbtn");
+                        if (o.ePathAdd instanceof HTMLButtonElement)
+                            o.ePathAdd.addEventListener("click", e => {
+                                if (getChoosing()) return;
+                                if (!this.hasProject()) return;
+                                setChoosing(true);
+                                let chooseData = getChooseData();
+                                chooseData.path = new subcore.Project.Path();
+                                chooseData.addHandler("choose", data => {
+                                    if (!(chooseData.path instanceof subcore.Project.Path)) return;
+                                    let path = chooseData.path;
+                                    data = util.ensure(data, "obj");
+                                    let itm = data.itm, shift = data.shift;
+                                    if (!(itm instanceof subcore.Project.Node)) return;
+                                    if (shift) path.remNode(itm);
+                                    else path.addNode(itm);
+                                    for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
+                                    chooseData.temp = {};
+                                    let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
+                                    for (let i = 0; i < nodes.length; i++) {
+                                        let id = nodes[i];
+                                        let node = this.project.getItem(id);
+                                        if (id in chooseData.temp) {
+                                            chooseData.temp[id].value += ", "+(i+1);
+                                        } else {
+                                            chooseData.temp[id] = this.addRenderItem(new RIPathIndex(node));
+                                            chooseData.temp[id].value = i+1;
+                                        }
+                                        if (i > 0) {
+                                            let id2 = nodes[i-1];
+                                            let node2 = this.project.getItem(id2);
+                                            chooseData.temp[id+"~"+id2] = this.addRenderItem(new RIPathLine(node, node2));
+                                        }
+                                    }
+                                });
+                                chooseData.addHandler("done", data => {
+                                    if (!(chooseData.path instanceof subcore.Project.Path)) return;
+                                    let path = chooseData.path;
+                                    if (!this.hasProject()) return;
+                                    this.project.addPath(path);
+                                });
+                                chooseData.addHandler("cancel", data => {
+                                });
+                            });
+                        o.ePathsBox = elem.querySelector(":scope #pathsbox");
+                        if (state.eRender instanceof HTMLDivElement) {
+                            o.eProgress = state.eRender.querySelector(":scope > .progress");
+                            if (o.eProgress instanceof HTMLDivElement) {
+                                o.eProgressBtn = o.eProgress.querySelector(":scope > button");
+                                if (o.eProgressBtn instanceof HTMLButtonElement)
+                                    o.eProgressBtn.addEventListener("click", e => {
+                                        let visuals = this.getPathVisuals().filter(id => isPathSelected(id));
+                                        if (visuals.length <= 0) return;
+                                        let id = visuals[0];
+                                        let visual = this.getPathVisual(id);
+                                        if (visual.isFinished) {
+                                            visual.nowTime = 0;
+                                            visual.play();
+                                        } else visual.paused = !visual.paused;
+                                    });
+                                o.eProgressTimeNow = o.eProgress.querySelector(":scope > .time.now");
+                                o.eProgressTimeTotal = o.eProgress.querySelector(":scope > .time.total");
+                                o.eProgressBar = o.eProgress.querySelector(":scope > .bar");
+                                if (o.eProgressBar instanceof HTMLDivElement)
+                                    o.eProgressBar.addEventListener("mousedown", e => {
+                                        if (getChoosing()) return;
+                                        if (e.button != 0) return;
+                                        e.stopPropagation();
+                                        const mouseup = () => {
+                                            document.body.removeEventListener("mouseup", mouseup);
+                                            document.body.removeEventListener("mousemove", mousemove);
+                                        };
+                                        const mousemove = e => {
+                                            let r = o.eProgressBar.getBoundingClientRect();
+                                            let p = (e.pageX-r.left) / r.width;
+                                            let visuals = this.getPathVisuals().filter(id => isPathSelected(id));
+                                            if (visuals.length <= 0) return;
+                                            let id = visuals[0];
+                                            let visual = this.getPathVisual(id);
+                                            visual.nowTime = visual.totalTime*p;
+                                        };
+                                        mousemove(e);
+                                        document.body.addEventListener("mouseup", mouseup);
+                                        document.body.addEventListener("mousemove", mousemove);
+                                    });
+                            }
+                        }
+                        let pathVisuals = {};
+                        this.getPathVisuals = () => Object.keys(pathVisuals);
+                        this.setPathVisuals = v => {
+                            v = util.ensure(v, "obj");
+                            this.clearPathVisuals();
+                            for (let id in v) this.addPathVisual(id, v[id]);
+                            return true;
+                        };
+                        this.clearPathVisuals = () => {
+                            let ids = this.getPathVisuals();
+                            ids.forEach(id => this.remPathVisual(id));
+                            return ids;
+                        };
+                        this.hasPathVisual = v => {
+                            if (util.is(v, "str")) return v in pathVisuals;
+                            if (v instanceof PathVisual) return this.hasPathVisual(v.id);
+                            return false;
+                        };
+                        this.getPathVisual = id => {
+                            id = String(id);
+                            if (!this.hasPathVisual(id)) return null;
+                            return pathVisuals[id];
+                        };
+                        this.addPathVisual = (id, visual) => {
+                            id = String(id);
+                            if (!(visual instanceof PathVisual)) return false;
+                            if (visual.app != null || visual.id != null) return false;
+                            if (this.hasPathVisual(id) || this.hasPathVisual(visual)) return false;
+                            pathVisuals[id] = visual;
+                            visual.id = id;
+                            visual.app = this;
+                            return visual;
+                        };
+                        this.remPathVisual = v => {
+                            if (util.is(v, "str")) {
+                                if (!this.hasPathVisual(v)) return false;
+                                let visual = pathVisuals[v];
+                                delete pathVisuals[v];
+                                visual.id = null;
+                                visual.app = null;
+                                return visual;
+                            }
+                            if (v instanceof PathVisual) return this.remPathVisual(v.id);
+                            return false;
+                        };
+                        this.addHandler("update", data => {
+                            let visuals = [];
+                            this.getPathVisuals().forEach(id => {
+                                let visual = this.getPathVisual(id);
+                                visual.show = isPathSelected(id);
+                                if (visual.show) visuals.push(id);
+                                visual.update();
+                                if (!this.hasProject() || !this.project.hasPath(id))
+                                    this.remPathVisual(id);
+                            });
+                            if (visuals.length <= 0) {
+                                if (state.eDisplay instanceof HTMLDivElement)
+                                    state.eDisplay.classList.remove("progress");
+                                return;
+                            }
+                            if (state.eDisplay instanceof HTMLDivElement)
+                                state.eDisplay.classList.add("progress");
+                            let id = visuals[0];
+                            let visual = this.getPathVisual(id);
+                            if (o.eProgress instanceof HTMLDivElement)
+                                o.eProgress.style.setProperty("--progress", (100*visual.item.interp)+"%");
+                            if (o.eProgressBtn instanceof HTMLButtonElement)
+                                if (o.eProgressBtn.children[0] instanceof HTMLElement)
+                                    o.eProgressBtn.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
+                            if (o.eProgressTimeNow instanceof HTMLDivElement) {
+                                let split = util.splitTimeUnits(visual.nowTime);
+                                split[0] = Math.round(split[0]);
+                                while (split.length > 3) {
+                                    if (split.at(-1) > 0) break;
+                                    split.pop();
+                                }
+                                split = split.map((v, i) => {
+                                    v = String(v);
+                                    if (i >= split.length-1) return v;
+                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
+                                    while (v.length < l) {
+                                        if (i > 0) v = "0"+v;
+                                        else v += "0";
+                                    }
+                                    return v;
+                                });
+                                o.eProgressTimeNow.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+                            }
+                            if (o.eProgressTimeTotal instanceof HTMLDivElement) {
+                                let split = util.splitTimeUnits(visual.totalTime);
+                                split[0] = Math.round(split[0]);
+                                while (split.length > 3) {
+                                    if (split.at(-1) > 0) break;
+                                    split.pop();
+                                }
+                                split = split.map((v, i) => {
+                                    v = String(v);
+                                    if (i >= split.length-1) return v;
+                                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
+                                    while (v.length < l) {
+                                        if (i > 0) v = "0"+v;
+                                        else v += "0";
+                                    }
+                                    return v;
+                                });
+                                o.eProgressTimeTotal.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+                            }
+                        });
+                        o.checkPathVisual = async () => {
+                            this.clearPathVisuals();
+                            if (!this.hasProject()) return;
+                            try {
+                                let datas = await window.api.ask("exec-get", [this.projectId]);
+                                if (!util.is(datas, "obj")) return;
+                                for (let id in datas) {
+                                    let data = datas[id];
+                                    if (!util.is(data, "obj")) continue;
+                                    let visual = this.addPathVisual(id, new PathVisual());
+                                    visual.visual.dt = data.dt*1000;
+                                    visual.visual.nodes = util.ensure(data.state, "arr").map(node => {
+                                        node = util.ensure(node, "obj");
+                                        node = new subcore.Project.Node(
+                                            new V(node.x, node.y).mul(100),
+                                            node.theta, true,
+                                            new V(node.vx, node.vy).mul(100),
+                                            0, true,
+                                        );
+                                        return node;
+                                    });
+                                }
+                            } catch (e) {
+                                return;
+                                let alert = this.alert("There was an error checking for generated trajectories!", "warning");
+                                alert.hasInfo = true;
+                                alert.info = String(e);
+                                alert.iconColor = "var(--cr)";
+                            }
+                        };
+                        o.eActivateBtn = elem.querySelector(":scope #activatebtn");
+                        if (o.eActivateBtn instanceof HTMLButtonElement)
+                            o.eActivateBtn.addEventListener("click", e => {
+                                e.stopPropagation();
+                                if (o.getGenerating()) {
+                                    window.api.ask("exec-term");
+                                    return;
+                                }
+                                let projectId = this.projectId;
+                                if (!this.hasProject(projectId)) return;
+                                let project = this.getProject(projectId);
+                                if (getSelectedPaths().length <= 0) return;
+                                let id = getSelectedPaths()[0];
+                                if (!project.hasPath(id)) return;
+                                let path = project.getPath(id);
+                                e.stopPropagation();
+                                o.setGenerating(false);
+                                (async () => {
+                                    o.setGenerating(true);
+                                    this.markChange("*all");
+                                    await this.post("cmd-save", null);
+                                    try {
+                                        await window.api.ask("exec", [project.id, path.id]);
+                                        await o.checkPathVisual();
+                                        this.getPathVisuals().forEach(id => {
+                                            let visual = this.getPathVisual(id);
+                                            if (!isPathSelected(id)) return;
+                                            visual.play();
+                                        });
+                                        o.setGenerating(false);
+                                    } catch (e) {
+                                        o.setGenerating(false);
+                                        let alert = this.alert("There was an error executing the generation script!", "warning");
+                                        alert.hasInfo = true;
+                                        alert.info = String(e);
+                                        alert.iconColor = "var(--cr)";
+                                    }
+                                })();
+                            });
+                    },
+                    options: (o, elem) => {
+                        this.addHandler("project-set", data => {
+                            let has = this.hasProject();
+                            o.btn.disabled = !has;
+                            if (util.is(o.spawns, "obj"))
+                                for (let name in o.spawns)
+                                    o.spawns[name].disabled = !has;
+                            if (o.eSizeWInput instanceof HTMLInputElement)
+                                o.eSizeWInput.disabled = !has;
+                            if (o.eSizeHInput instanceof HTMLInputElement)
+                                o.eSizeHInput.disabled = !has;
+                            if (o.eRobotSizeWInput instanceof HTMLInputElement)
+                                o.eRobotSizeWInput.disabled = !has;
+                            if (o.eRobotSizeHInput instanceof HTMLInputElement)
+                                o.eRobotSizeHInput.disabled = !has;
+                            if (o.eRobotMassInput instanceof HTMLInputElement)
+                                o.eRobotMassInput.disabled = !has;
+                            if (o.eBackgroundXInput instanceof HTMLInputElement)
+                                o.eBackgroundXInput.disabled = !has;
+                            if (o.eBackgroundYInput instanceof HTMLInputElement)
+                                o.eBackgroundYInput.disabled = !has;
+                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
+                                o.eBackgroundScaleInput.disabled = !has;
+                            if (o.eMomentOfInertiaInput instanceof HTMLInputElement)
+                                o.eMomentOfInertiaInput.disabled = !has;
+                            if (o.eEfficiencyInput instanceof HTMLInputElement)
+                                o.eEfficiencyInput.disabled = !has;
+                            if (o.eIs12MotorModeInput instanceof HTMLInputElement)
+                                o.eIs12MotorModeInput.disabled = !has;
+                            if (o.eScriptDefault instanceof HTMLInputElement)
+                                o.eScriptDefault.disabled = !has;
+                        });
+                        state.addHandler("refresh-options", data => {
+                            let has = this.hasProject();
+                            if (o.eSizeWInput instanceof HTMLInputElement)
+                                o.eSizeWInput.value = has ? this.project.w/100 : "";
+                            if (o.eSizeHInput instanceof HTMLInputElement)
+                                o.eSizeHInput.value = has ? this.project.h/100 : "";
+                            if (o.eRobotSizeWInput instanceof HTMLInputElement)
+                                o.eRobotSizeWInput.value = has ? this.project.robotW/100 : "";
+                            if (o.eRobotSizeHInput instanceof HTMLInputElement)
+                                o.eRobotSizeHInput.value = has ? this.project.robotH/100 : "";
+                            if (o.eRobotMassInput instanceof HTMLInputElement)
+                                o.eRobotMassInput.value = has ? this.project.robotMass : "";
+                            if (o.eBackgroundXInput instanceof HTMLInputElement)
+                                o.eBackgroundXInput.value = has ? this.project.meta.backgroundX/100 : "";
+                            if (o.eBackgroundYInput instanceof HTMLInputElement)
+                                o.eBackgroundYInput.value = has ? this.project.meta.backgroundY/100 : "";
+                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
+                                o.eBackgroundScaleInput.value = has ? this.project.meta.backgroundScale*100 : "";
+                            if (o.eMomentOfInertiaInput instanceof HTMLInputElement)
+                                o.eMomentOfInertiaInput.value = has ? this.project.config.momentOfInertia : "";
+                            if (o.eEfficiencyInput instanceof HTMLInputElement)
+                                o.eEfficiencyInput.value = has ? this.project.config.efficiency*100 : "";
+                            if (o.eIs12MotorModeInput instanceof HTMLInputElement)
+                                o.eIs12MotorModeInput.checked = has ? this.project.config.is12MotorMode : false;
+                            if (o.eScriptInput instanceof HTMLInputElement) {
+                                o.eScriptInput.value = has ? this.project.config.script : "";
+                                o.eScriptInput.disabled = !has || this.project.config.scriptUseDefault;
+                            }
+                            if (o.eScriptBrowse instanceof HTMLInputElement)
+                                o.eScriptBrowse.disabled = !has || this.project.config.scriptUseDefault;
+                            if (o.eScriptDefault instanceof HTMLInputElement)
+                                o.eScriptDefault.checked = has ? this.project.config.scriptUseDefault : false;
+                        });
+                        o.eSizeBox = elem.querySelector(":scope #size");
+                        if (o.eSizeBox instanceof HTMLDivElement) {
+                            o.eSizeWInput = o.eSizeBox.querySelector(":scope > input.w");
+                            o.eSizeHInput = o.eSizeBox.querySelector(":scope > input.h");
+                            if (o.eSizeWInput instanceof HTMLInputElement)
+                                o.eSizeWInput.addEventListener("change", e => {
+                                    let v = o.eSizeWInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject()) {
+                                            this.project.w = v*100;
+                                            this.project.post("change", null);
+                                            state.post("refresh-selectitem");
+                                        }
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                            if (o.eSizeHInput instanceof HTMLInputElement)
+                                o.eSizeHInput.addEventListener("change", e => {
+                                    let v = o.eSizeHInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject()) {
+                                            this.project.h = v*100;
+                                            this.project.post("change", null);
+                                            state.post("refresh-selectitem");
+                                        }
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                        o.eRobotSizeBox = elem.querySelector(":scope #robotsize");
+                        if (o.eRobotSizeBox instanceof HTMLDivElement) {
+                            o.eRobotSizeWInput = o.eRobotSizeBox.querySelector(":scope > input.w");
+                            o.eRobotSizeHInput = o.eRobotSizeBox.querySelector(":scope > input.h");
+                            if (o.eRobotSizeWInput instanceof HTMLInputElement)
+                                o.eRobotSizeWInput.addEventListener("change", e => {
+                                    let v = o.eRobotSizeWInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject()) {
+                                            this.project.robotW = v*100;
+                                            this.project.post("change", null);
+                                            state.post("refresh-selectitem");
+                                        }
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                            if (o.eRobotSizeHInput instanceof HTMLInputElement)
+                                o.eRobotSizeHInput.addEventListener("change", e => {
+                                    let v = o.eRobotSizeHInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject()) {
+                                            this.project.robotH = v*100;
+                                            this.project.post("change", null);
+                                        }
+                                        state.post("refresh-selectitem");
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                        o.eRobotMassBox = elem.querySelector(":scope #robotmass");
+                        if (o.eRobotMassBox instanceof HTMLDivElement) {
+                            o.eRobotMassInput = o.eRobotMassBox.querySelector(":scope > input");
+                            if (o.eRobotMassInput instanceof HTMLInputElement)
+                                o.eRobotMassInput.addEventListener("change", e => {
+                                    let v = o.eRobotMassInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject())
+                                            this.project.robotMass = v;
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                        o.eBackgroundBox = elem.querySelector(":scope #background");
+                        if (o.eBackgroundBox instanceof HTMLDivElement) {
+                            o.eBackgroundXInput = o.eBackgroundBox.querySelector(":scope > div > input.x");
+                            if (o.eBackgroundXInput instanceof HTMLInputElement)
+                                o.eBackgroundXInput.addEventListener("change", e => {
+                                    let v = o.eBackgroundXInput.value;
+                                    if (v.length > 0) {
+                                        v = util.ensure(parseFloat(v), "num");
+                                        if (this.hasProject()) {
+                                            this.project.meta.backgroundX = v*100;
+                                            this.project.post("change", null);
+                                        }
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                            o.eBackgroundYInput = o.eBackgroundBox.querySelector(":scope > div > input.y");
+                            if (o.eBackgroundYInput instanceof HTMLInputElement)
+                                o.eBackgroundYInput.addEventListener("change", e => {
+                                    let v = o.eBackgroundYInput.value;
+                                    if (v.length > 0) {
+                                        v = util.ensure(parseFloat(v), "num");
+                                        if (this.hasProject()) {
+                                            this.project.meta.backgroundY = v*100;
+                                            this.project.post("change", null);
+                                        }
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                            o.eBackgroundScaleInput = o.eBackgroundBox.querySelector(":scope > input");
+                            if (o.eBackgroundScaleInput instanceof HTMLInputElement)
+                                o.eBackgroundScaleInput.addEventListener("change", e => {
+                                    let v = o.eBackgroundScaleInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject())
+                                            this.project.meta.backgroundScale = v/100;
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                        o.eMomentOfInertiaBox = elem.querySelector(":scope #momentofinertia");
+                        if (o.eMomentOfInertiaBox instanceof HTMLDivElement) {
+                            o.eMomentOfInertiaInput = o.eMomentOfInertiaBox.querySelector(":scope > input");
+                            if (o.eMomentOfInertiaInput instanceof HTMLInputElement)
+                                o.eMomentOfInertiaInput.addEventListener("change", e => {
+                                    let v = o.eMomentOfInertiaInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                                        if (this.hasProject())
+                                            this.project.config.momentOfInertia = v;
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                        o.eEfficiencyBox = elem.querySelector(":scope #efficiency");
+                        if (o.eEfficiencyBox instanceof HTMLDivElement) {
+                            o.eEfficiencyInput = o.eEfficiencyBox.querySelector(":scope > input");
+                            if (o.eEfficiencyInput instanceof HTMLInputElement)
+                                o.eEfficiencyInput.addEventListener("change", e => {
+                                    let v = o.eEfficiencyInput.value;
+                                    if (v.length > 0) {
+                                        v = Math.min(100, Math.max(0, util.ensure(parseFloat(v), "num")));
+                                        if (this.hasProject())
+                                            this.project.config.efficiency = v/100;
+                                    }
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                        o.eIs12MotorModeBox = elem.querySelector(":scope #is12motormode");
+                        if (o.eIs12MotorModeBox instanceof HTMLLabelElement) {
+                            o.eIs12MotorModeInput = o.eIs12MotorModeBox.querySelector("input[type='checkbox']");
+                            if (o.eIs12MotorModeInput instanceof HTMLInputElement)
+                                o.eIs12MotorModeInput.addEventListener("change", e => {
+                                    let v = o.eIs12MotorModeInput.checked;
+                                    this.project.config.is12MotorMode = v;
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                        o.eScriptBox = elem.querySelector(":scope #script");
+                        if (o.eScriptBox instanceof HTMLDivElement) {
+                            o.eScriptInput = o.eScriptBox.querySelector(":scope > .filedialog > input");
+                            if (o.eScriptInput instanceof HTMLInputElement)
+                                o.eScriptInput.addEventListener("change", e => {
+                                    let v = o.eScriptInput.value;
+                                    if (this.hasProject())
+                                        this.project.config.script = (v.length > 0) ? v : null;
+                                    state.post("refresh-options", null);
+                                });
+                            o.eScriptBrowse = o.eScriptBox.querySelector(":scope > .filedialog > button");
+                            if (o.eScriptBrowse instanceof HTMLButtonElement)
+                                o.eScriptBrowse.addEventListener("click", e => {
+                                    let dialog = document.createElement("input");
+                                    dialog.type = "file";
+                                    dialog.accept = ".py";
+                                    dialog.addEventListener("change", e => {
+                                        if (o.eScriptInput instanceof HTMLInputElement) {
+                                            let v = o.eScriptInput.value = (dialog.files[0] instanceof File) ? dialog.files[0].path : "";
+                                            if (this.hasProject())
+                                                this.project.config.script = (v.length > 0) ? v : null;
+                                            state.post("refresh-options", null);
+                                        }
+                                    });
+                                    dialog.click();
+                                });
+                        }
+                        o.eScriptDefaultBox = elem.querySelector(":scope #scriptdefault");
+                        if (o.eScriptDefaultBox instanceof HTMLLabelElement) {
+                            o.eScriptDefault = o.eScriptDefaultBox.querySelector("input[type='checkbox']");
+                            if (o.eScriptDefault instanceof HTMLInputElement)
+                                o.eScriptDefault.addEventListener("change", e => {
+                                    let v = o.eScriptDefault.checked;
+                                    if (this.hasProject())
+                                        this.project.config.scriptUseDefault = v;
+                                    state.post("refresh-options", null);
+                                });
+                        }
+                    },
                 };
-                for (let name in state.options) {
-                    let f = state.options[name];
-                    let elem = document.getElementById(name+"options");
-                    if (!(elem instanceof HTMLDivElement)) continue;
-                    let btn = elem.querySelector(":scope > .title");
-                    if (!(btn instanceof HTMLButtonElement)) continue;
-                    let o = state.options[name] = new core.Target();
-                    btn.addEventListener("click", e => {
-                        if (getChoosing()) return;
-                        o.setShown(!o.getShown());
-                    });
+                state.setPanel = name => {
+                    name = String(name);
+                    for (let name2 in state.panels)
+                        state.panels[name2].setShown(name2 == name);
+                    return name in state;
+                };
+                for (let name in state.panels) {
+                    let f = state.panels[name];
+                    let elem = document.getElementById(name+"panel");
+                    let btn = document.getElementById("editnav"+name);
+                    let o = state.panels[name] = new core.Target();
+                    if (btn instanceof HTMLButtonElement) // {
+                        btn.addEventListener("click", e => {
+                            if (getChoosing()) return;
+                            state.setPanel(name);
+                        });
+                        // new MutationObserver(() => o.post("show-change")).observe(btn, { attributes: true });
+                    // }
                     o.btn = btn;
                     let shown = null;
                     o.getShown = () => shown;
@@ -3514,14 +3515,22 @@ export default class App extends core.App {
                     o.setHidden = v => o.setShown(!v);
                     o.show = () => o.setShown(true);
                     o.hide = () => o.setHidden(true);
-                    new MutationObserver(() => o.post("show-change")).observe(btn, { attributes: true });
                     o.addHandler("show-change", data => {
-                        let show = o.getShown() && !btn.disabled;
-                        if (show) elem.classList.add("this");
-                        else elem.classList.remove("this");
+                        let show = o.getShown(); // && !btn.disabled;
+                        if (elem instanceof HTMLDivElement) {
+                            if (show) elem.classList.add("this");
+                            else elem.classList.remove("this");
+                        }
+                        if (btn instanceof HTMLButtonElement) {
+                            if (show) btn.classList.add("this");
+                            else btn.classList.remove("this");
+                        }
                     });
+                    if (!(elem instanceof HTMLDivElement)) continue;
+                    if (!(btn instanceof HTMLButtonElement)) continue;
                     f(o, elem);
                 }
+                state.setPanel("objects");
                 state.setMaximized(false);
                 state.setDivPos(0.75);
                 setChoosing(false);
