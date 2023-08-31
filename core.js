@@ -249,9 +249,7 @@ export class App extends Target {
             let name = String(await window.api.getFeature());
             let about = await this.getAbout();
             let pop = this.alert();
-            pop.eIcon.children[0].removeAttribute("name");
-            pop.eIcon.children[0].setAttribute("src", "../assets/logo.svg");
-            pop.eIcon.children[0].style.transform = "scale(175%)";
+            pop.iconSrc = "../assets/icon.svg";
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+name[0].toUpperCase()+name.slice(1).toLowerCase();
             let lines = new Array(4).fill("");
@@ -602,7 +600,15 @@ App.Alert = class AppAlert extends App.PopupBase {
     get eButton() { return this.#eButton; }
 
     get icon() { return this.eIcon.children[0].getAttribute("name"); }
-    set icon(v) { this.eIcon.children[0].setAttribute("name", v); }
+    set icon(v) {
+        this.eIcon.children[0].removeAttribute("src");
+        this.eIcon.children[0].setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.children[0].removeAttribute("name");
+        this.eIcon.children[0].setAttribute("src", v);
+    }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
     
@@ -673,7 +679,15 @@ App.Confirm = class AppConfirm extends App.PopupBase {
     get eConfirm() { return this.#eConfirm; }
 
     get icon() { return this.eIcon.children[0].getAttribute("name"); }
-    set icon(v) { this.eIcon.children[0].setAttribute("name", v); }
+    set icon(v) {
+        this.eIcon.children[0].removeAttribute("src");
+        this.eIcon.children[0].setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.children[0].removeAttribute("name");
+        this.eIcon.children[0].setAttribute("src", v);
+    }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -743,7 +757,15 @@ App.Prompt = class AppPrompt extends App.PopupBase {
     get eConfirm() { return this.#eConfirm; }
 
     get icon() { return this.eIcon.children[0].getAttribute("name"); }
-    set icon(v) { this.eIcon.children[0].setAttribute("name", v); }
+    set icon(v) {
+        this.eIcon.children[0].removeAttribute("src");
+        this.eIcon.children[0].setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.children[0].removeAttribute("name");
+        this.eIcon.children[0].setAttribute("src", v);
+    }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -898,7 +920,17 @@ App.ContextMenu.Item = class AppContextMenuItem extends Target {
     get eDropdown() { return this.#eDropdown; }
 
     get icon() { return this.eIcon.getAttribute("name"); }
-    set icon(v) { this.eIcon.setAttribute("name", v); }
+    set icon(v) {
+        this.eIcon.removeAttribute("src");
+        this.eIcon.setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
+    get iconColor() { return this.eIcon.style.color; }
+    set iconColor(v) { this.eIcon.style.color = v; }
 
     get label() { return this.eLabel.textContent; }
     set label(v) { this.eLabel.textContent = v; }

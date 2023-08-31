@@ -994,10 +994,24 @@ Portal.Feature = class PortalFeature extends core.Target {
                         };
                         this.process_res = async (...a) => {
                             await finish();
+                            if (!this.window.isVisible() || !this.window.isFocused()) {
+                                const notif = new electron.Notification({
+                                    title: "Script Process Finished",
+                                    body: "Your script finished executing with no errors!",
+                                });
+                                notif.show();
+                            }
                             return res(...a);
                         };
                         this.process_rej = async (...a) => {
                             await finish();
+                            if (!this.window.isVisible() || !this.window.isFocused()) {
+                                const notif = new electron.Notification({
+                                    title: "Script Process Finished",
+                                    body: "Your script finished executing with an error!",
+                                });
+                                notif.show();
+                            }
                             return rej(...a);
                         };
                         process.stdout.on("data", data => {
