@@ -132,7 +132,7 @@ class PathButton extends core.Target {
         this.eName.type = "text";
         this.eName.placeholder = "Path Name";
         this.eName.autocomplete = "off";
-        this.eName.spellcheck = "false";
+        this.eName.spellcheck = false;
         this.#eEdit = document.createElement("button");
         this.elem.appendChild(this.eEdit);
         this.eEdit.innerHTML = "<ion-icon name='pencil'></ion-icon>";

@@ -1,3 +1,121 @@
+.browser {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+.browser .item,
+.browseritem {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+.browser .item > button.display,
+.browseritem > button.display {
+    --bg: transparent;
+    --fg: var(--v7);
+    --bgh: var(--v2);
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v4);
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    border-radius: 10px;
+
+    font-size: 14px;
+}
+.browser .item > button.display > ion-icon,
+.browseritem > button.display > ion-icon {
+    margin-right: 5px;
+
+    min-width: 14px;
+}
+.browser .item > button.display > .tag,
+.browseritem > button.display > .tag {
+    margin-left: 10px;
+
+    color: var(--v4);
+
+    font-size: 12px;
+    font-family: monospace;
+
+    transition: color var(--t);
+}
+.browser .item > button.display:not(:disabled):hover > .tag,
+.browseritem > button.display:not(:disabled):hover > .tag {
+    color: var(--v6);
+}
+.browser .item > button.display:disabled > .tag,
+.browseritem > button.display:disabled > .tag {
+    color: var(--v2);
+}
+.browser .item > .content,
+.browseritem > .content {
+    position: relative;
+
+    margin-left: 20px;
+
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+.browser .item.this > .content,
+.browseritem.this > .content {
+    display: flex;
+}
+.browser .item > .content > button.side,
+.browseritem > .content > button.side {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    transform: translateX(-100%);
+
+    width: 20px;
+    height: 100%;
+    padding: 0px;
+
+    background-color: transparent;
+}
+.browser .item > .content > button.side::before,
+.browseritem > .content > button.side::before {
+    content: "";
+
+    position: absolute;
+    right: 5px;
+    top: 0px;
+
+    width: 2px;
+    height: 100%;
+
+    background-color: var(--v2);
+
+    transition: background-color var(--t);
+}
+.browser .item > .content > button.side:not(:disabled):hover::before,
+.browseritem > .content > button.side:not(:disabled):hover::before {
+    background-color: var(--a);
+}
+.browser .item > .content > button.side:disabled::before,
+.browseritem > .content > button.side:disabled::before {
+    background-color: var(--v2-0);
+}
+
 #mount {
     width: calc(100% - 20px);
     max-width: calc(100% - 20px);
@@ -91,93 +209,6 @@
 #mount > .side > .section.this > .content {
     max-height: calc(var(--h) - 22px);
 }
-#mount > .side > .section#browser > .content {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-#mount > .side > .section#browser > .content .item {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-#mount > .side > .section#browser > .content .item > button.display {
-    --bg: transparent;
-    --fg: var(--v7);
-    --bgh: var(--v2);
-    --fgh: var(--v8);
-    --bgd: transparent;
-    --fgd: var(--v4);
-
-    padding: 10px;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-
-    border-radius: 10px;
-
-    font-size: 14px;
-}
-#mount > .side > .section#browser > .content .item > button.display > ion-icon {
-    margin-right: 5px;
-}
-#mount > .side > .section#browser > .content .item > .content {
-    position: relative;
-
-    margin-left: 20px;
-
-    display: none;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-#mount > .side > .section#browser > .content .item.this > .content {
-    display: flex;
-}
-#mount > .side > .section#browser > .content .item > .content > button.side {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    transform: translateX(-100%);
-
-    width: 20px;
-    height: 100%;
-    padding: 0px;
-
-    background-color: transparent;
-}
-#mount > .side > .section#browser > .content .item > .content > button.side::before {
-    content: "";
-
-    position: absolute;
-    right: 5px;
-    top: 0px;
-
-    width: 2px;
-    height: 100%;
-
-    background-color: var(--v2);
-
-    transition: background-color var(--t);
-}
-#mount > .side > .section#browser > .content .item > .content > button.side:not(:disabled):hover::before {
-    background-color: var(--a);
-}
-#mount > .side > .section#browser > .content .item > .content > button.side:disabled::before {
-    background-color: var(--v2-0);
-}
 #mount > .content {
     width: 85%;
     max-width: 85%;
@@ -190,6 +221,9 @@
     align-content: center;
 
     border-radius: 10px;
+}
+#mount > .content:empty {
+    border: 2px solid var(--v2);
 }
 #mount > .content > .item {
     --w: 0px;
@@ -206,6 +240,9 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+}
+#mount > .content .item.container:empty {
+    border: 2px solid var(--v2);
 }
 #mount > .content .item.container.x {
     flex-direction: row;
@@ -310,6 +347,9 @@
 
     background-color: var(--v2);
 }
+#mount > .content .item.panel > .top::-webkit-scrollbar {
+    display: none;
+}
 #mount > .content .item.panel > .top > .item {
     padding: 7.5px 10px;
 
@@ -339,16 +379,336 @@
     background-color: var(--v1);
     border-bottom: 2px solid var(--v1);
 }
+#mount > .content .item.panel > .top > .item > ion-icon {
+    order: 0;
+}
+#mount > .content .item.panel > .top > .item > div {
+    order: 1;
+}
 #mount > .content .item.panel > .top > .item > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    order: 2;
+
+    padding: 0px;
+}
+#mount > .content .item.panel > .content {
+    position: relative;
+
+    width: 100%;
+    max-width: 100%;
+    height: calc(100% - var(--tab));
+    max-height: calc(100% - var(--tab));
+    overflow: hidden;
+}
+#mount > .content .item.panel > .content > .item {
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: auto;
+
+    visibility: hidden;
+}
+#mount > .content .item.panel > .content > .item.this {
+    visibility: inherit;
+}
+#mount > .content .item.panel > .content > .item.browser_ {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: stretch;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .path {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    padding: 10px;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    color: var(--v4);
+
+    font-size: 12px;
+    user-select: none;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .path > button.back {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
 
     padding: 0px;
 }
-#mount > .content .item.panel > .content {
+#mount > .content .item.panel > .content > .item.browser_ > .path > .divider {
+    user-select: none;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .path > button.item {
+    padding: 0px;
+
+    background-color: transparent;
+    color: var(--v6);
+
+    transition: color var(--t);
+}
+#mount > .content .item.panel > .content > .item.browser_ > .path > button.item:not(:disabled):hover {
+    color: var(--v8);
+}
+#mount > .content .item.panel > .content > .item.browser_ > .path > button.item:disabled {
+    color: var(--v4);
+}
+#mount > .content .item.panel > .content > .item.browser_ > .browser,
+#mount > .content .item.panel > .content > .item.browser_ > .display {
+    position: absolute;
+    top: 32px;
+    left: 0px;
+
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    height: calc(100% - 20px - 32px);
+    max-height: calc(100% - 20px - 32px);
+    padding: 10px;
+    overflow: auto;
+
+    visibility: hidden;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .browser.this,
+#mount > .content .item.panel > .content > .item.browser_ > .display.this {
+    visibility: inherit;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .display {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: stretch;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .display:not(.array) > .item {
+    flex-basis: 100%;
+
+    padding: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    border-radius: 10px;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .display.array > .type {
+    margin-bottom: 10px;
+
+    color: var(--v8);
+
+    font-size: 14px;
+    font-family: monospace;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .display.array > .type * {
+    font-size: 14px;
+    font-family: monospace;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .display.array > button.item {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    padding: 5px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 10px;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .display.array > button.item > .index {
+    padding: 10px;
+
+    color: var(--v4);
+
+    font-size: 14px;
+    font-family: monospace;
+}
+#mount > .content .item.panel > .content > .item.browser_ > .display.array > button.item > .value {
+    flex-basis: 100%;
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    border-radius: 10px;
+}
+#mount > .content .item.panel > .content > .item.add {
+    padding: 20px;
+    max-width: calc(100% - 40px);
+    max-height: calc(100% - 40px);
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#mount > .content .item.panel > .content > .item.add > .search {
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+}
+#mount > .content .item.panel > .content > .item.add > .search > .tags {
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#mount > .content .item.panel > .content > .item.add > .search > .tags:empty {
+    padding: 5px;
+}
+#mount > .content .item.panel > .content > .item.add > .search > .tags > .item {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    color: var(--v7);
+
+    font-size: 12px;
+}
+#mount > .content .item.panel > .content > .item.add > .search > input {
+    flex-basis: 100%;
+
+    padding: 10px 0px;
+
+    background-color: transparent;
+    border-radius: 0px;
+}
+#mount > .content .item.panel > .content > .item.add > .search > button {
+    aspect-ratio: 1 / 1;
+}
+#mount > .content .item.panel > .content > .item.add > .content {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .content .item.panel > .content > .item.add > .content > .header {
+    padding: 5px 10px;
+
+    color: var(--v4);
+
+    font-size: 12px;
+    font-weight: 550;
+    text-transform: uppercase;
+    user-select: none;
+}
+#mount > .content .item.panel > .content > .item.add > .content > .divider {
+    height: 2px;
+
+    background-color: var(--v2);
+}
+#mount > .content .item.panel > .content > .item.add > .content > .item {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .content .item.panel > .content > .item.add > .content > .item > button {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    border-radius: 10px;
+}
+#mount > .content .item.panel > .content > .item.add > .content > .item > button > ion-icon {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+#mount > .content .item.panel > .content > .item.add > .content > .item > button > .info {
+    opacity: 50%;
+
+    flex-basis: 100%;
+}
+#overlay {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+
     width: 100%;
-    max-width: 100%;
-    height: calc(100% - var(--tab));
-    max-height: calc(100% - var(--tab));
+    height: 100%;
+    overflow: hidden;
+
+    pointer-events: none;
+}
+#overlay > #panelsection {
+    position: absolute;
+
+    background-color: var(--a-4);
+    border: 2px solid var(--a);
+    border-radius: 10px;
+    visibility: hidden;
+
+    user-select: none;
 }
