@@ -1,8 +1,6 @@
 import * as util from "./util.js";
 import { V } from "./util.js";
 
-const DEVELOPER = true;
-
 export const LOGOMESHDATA = (() => {
     let loadState = 0;
 
@@ -151,28 +149,6 @@ export class App extends Target {
     constructor() {
         super();
 
-        if (DEVELOPER) {
-            window.app = this;
-            window.colors = () => {
-                "roygbpm_".split("").forEach(c => {
-                    let out = [new Array(9).fill("%c...").join("")];
-                    for (let i = 0; i <= 8; i++) {
-                        let rgb;
-                        if (c == "_") rgb = getComputedStyle(document.body).getPropertyValue("--v"+i);
-                        else rgb = getComputedStyle(document.body).getPropertyValue("--c"+c+i);
-                        out.push("padding:10px;background:"+rgb+";");
-                    }
-                    console.log(...out);
-                });
-            };
-        } else {
-            document.body.addEventListener("keydown", e => {
-                if (e.code == "KeyI")
-                    if (e.altKey && (e.ctrlKey || e.metaKey))
-                        e.preventDefault();
-            });
-        }
-
         this.#setupDone = false;
 
         this.#popups = [];
@@ -266,10 +242,36 @@ export class App extends Target {
             pop.info = lines.join("\n");
             pop.hasInfo = true;
         });
+        const onFullScreenState = is => {
+            document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
+        };
         this.addHandler("cmd-set-fullscreen", async args => {
             args = util.ensure(args, "arr");
-            let is = args[0];
-            document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
+            onFullScreenState(!!args[0]);
+        });
+        const onDevModeState = is => {
+            if (is) {
+                window.app = this;
+                window.colors = () => {
+                    "roygbpm_".split("").forEach(c => {
+                        let out = [new Array(9).fill("%c...").join("")];
+                        for (let i = 0; i <= 8; i++) {
+                            let rgb;
+                            if (c == "_") rgb = getComputedStyle(document.body).getPropertyValue("--v"+i);
+                            else rgb = getComputedStyle(document.body).getPropertyValue("--c"+c+i);
+                            out.push("padding:10px;background:"+rgb+";");
+                        }
+                        console.log(...out);
+                    });
+                };
+            } else {
+                if (window.app == this) delete window.app;
+                delete window.colors;
+            }
+        };
+        this.addHandler("cmd-devmode", async args => {
+            args = util.ensure(args, "arr");
+            onDevModeState(!!args[0]);
         });
 
         const coreStyle = this.#eCoreStyle = document.createElement("link");
@@ -336,9 +338,9 @@ export class App extends Target {
             this.eLoadingTo.style.visibility = "hidden";
         
         let t = util.getTime();
-
-        let is = await window.api.getFullScreen();
-        document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
+        
+        onFullScreenState(await window.api.getFullScreen());
+        onDevModeState(await window.api.getDevMode());
 
         let resp = await fetch("../theme.json");
         let data = await resp.json();

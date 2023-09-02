@@ -1746,6 +1746,10 @@ export default class App extends core.App {
                         alert.iconColor = "var(--cr)";
                     }
                     state.setPanel("objects");
+                    state.setMaximized(false);
+                    state.setDivPos(0.75);
+                    setChoosing(false);
+                    setDragging(false);
                 };
                 if (this.hasENameInput())
                     this.eNameInput.addEventListener("change", e => {
@@ -3530,11 +3534,6 @@ export default class App extends core.App {
                     if (!(btn instanceof HTMLButtonElement)) continue;
                     f(o, elem);
                 }
-                state.setPanel("objects");
-                state.setMaximized(false);
-                state.setDivPos(0.75);
-                setChoosing(false);
-                setDragging(false);
             },
         };
         if (name in namefs) namefs[name]();

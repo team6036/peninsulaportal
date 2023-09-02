@@ -535,6 +535,7 @@ label.switch > input[type="checkbox"]:checked + span::before {
     align-content: center;
 
     text-align: center;
+    user-select: none;
 }
 .introtitle > div:first-child {
     transform: translateX(0.04em);

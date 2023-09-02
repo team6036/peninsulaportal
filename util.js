@@ -797,6 +797,7 @@ export class Rect extends Shape {
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Rect) a = [a.x, a.y, a.w, a.h];
+            else if (a instanceof DOMRect) a = [a.left, a.top, a.width, a.height];
             else if (is(a, "arr")) {
                 a = new Rect(...a);
                 a = [a.x, a.y, a.w, a.h];
