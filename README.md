@@ -27,7 +27,7 @@ MacOS (Darwin) requires running a few more commands to authorize the application
 2. `xattr -cr Peninsula.app`
 
 ### Development
-- [Install NPM](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- [Install NPM / Node](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 - Navigate to the project directory within terminal
 ```shell
 npm install

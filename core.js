@@ -139,6 +139,9 @@ export class App extends Target {
 
     #contextMenu;
 
+    #dragging;
+    #dragState;
+
     #eCoreStyle;
     #eStyle;
     #eDynamicStyle;
@@ -157,6 +160,9 @@ export class App extends Target {
         document.body.addEventListener("click", e => {
             this.contextMenu = null;
         }, { capture: true });
+
+        this.#dragging = false;
+        this.#dragState = null;
 
         this.addHandler("start", data => {
             let id = setInterval(() => {
@@ -177,20 +183,6 @@ export class App extends Target {
     }
 
     get setupDone() { return this.#setupDone; }
-
-    get eCoreStyle() { return this.#eCoreStyle; }
-    get eStyle() { return this.#eStyle; }
-    get eDynamicStyle() { return this.#eDynamicStyle; }
-    get eTitleBar() { return this.#eTitleBar; }
-    get eLoading() { return this.#eLoading; }
-    hasELoading() { return this.eLoading instanceof HTMLDivElement; }
-    get eLoadingTo() { return this.#eLoadingTo; }
-    set eLoadingTo(v) {
-        v = (v instanceof HTMLElement) ? v : null;
-        if (this.eLoadingTo == v) return;
-        this.#eLoadingTo = v;
-    }
-    hasELoadingTo() { return this.eLoadingTo instanceof HTMLElement; }
 
     start() { this.post("start", null); }
 
@@ -495,6 +487,38 @@ export class App extends Target {
         return this.contextMenu;
     }
 
+    get dragging() { return this.#dragging; }
+    set dragging(v) {
+        v = !!v;
+        if (this.dragging == v) return;
+        this.#dragging = v;
+        if (this.dragging) {
+            this.#dragState = new Target();
+            const mouseup = e => {
+                this.dragState.post("submit", e);
+                this.dragState.post("stop", null);
+            };
+            const mousemove = e => {
+                this.dragState.post("move", e);
+            };
+            this.dragState.addHandler("stop", data => {
+                this.dragState._already = true;
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+                this.dragging = false;
+            });
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        } else {
+            if (!this.dragState._already) {
+                this.dragState.post("cancel", null);
+                this.dragState.post("stop", null);
+            }
+            this.#dragState = null;
+        }
+    }
+    get dragState() { return this.#dragState; }
+
     addBackButton() {
         if (!(this.eTitleBar instanceof HTMLDivElement)) return false;
         let btn = document.createElement("button");
@@ -508,6 +532,20 @@ export class App extends Target {
         });
         return btn;
     }
+
+    get eCoreStyle() { return this.#eCoreStyle; }
+    get eStyle() { return this.#eStyle; }
+    get eDynamicStyle() { return this.#eDynamicStyle; }
+    get eTitleBar() { return this.#eTitleBar; }
+    get eLoading() { return this.#eLoading; }
+    hasELoading() { return this.eLoading instanceof HTMLDivElement; }
+    get eLoadingTo() { return this.#eLoadingTo; }
+    set eLoadingTo(v) {
+        v = (v instanceof HTMLElement) ? v : null;
+        if (this.eLoadingTo == v) return;
+        this.#eLoadingTo = v;
+    }
+    hasELoadingTo() { return this.eLoadingTo instanceof HTMLElement; }
 }
 App.PopupBase = class AppPopupBase extends Target {
     #elem;
