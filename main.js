@@ -54,6 +54,8 @@ class Portal extends core.Target {
         this.log();
     }
 
+    async isDevMode() { return true; }
+
     get features() { return [...this.#features]; }
     set features(v) {
         v = Array.isArray(v) ? Array.from(v) : [];
@@ -140,6 +142,15 @@ class Portal extends core.Target {
             if (!(feat instanceof Portal.Feature)) return null;
             return feat.name;
         });
+        ipc.handle("get-fullscreen", async e => {
+            let feat = identifyFeature(e);
+            if (!(feat instanceof Portal.Feature)) return null;
+            if (!feat.hasWindow()) return null;
+            return feat.window.isFullScreen();
+        });
+        ipc.handle("get-devmode", async e => {
+            return await this.isDevMode();
+        });
 
         ipc.handle("file-has", async (e, pth) => {
             let feat = identifyFeature(e);
@@ -200,6 +211,35 @@ class Portal extends core.Target {
             return await feat.ask(cmd, args);
         });
 
+        /*
+        let lock = false, t0 = 0;
+        this.addHandler("update", async data => {
+            if (lock) return;
+            let t1 = util.getTime();
+            if (t1-t0 < 1000) return;
+            t0 = t1;
+            lock = true;
+            await this.affirm();
+            let stateContent = "";
+            try {
+                stateContent = await this.fileRead([this.dataPath, "state.json"]);
+            } catch (e) {}
+            let state = null;
+            try {
+                state = JSON.parse(stateContent);
+            } catch (e) {}
+            state = util.ensure(state, "obj");
+            this.features.forEach(feat => {
+                if (!feat.hasName()) return;
+                if (!feat.hasWindow()) return;
+                if (!util.is(state[feat.name], "obj")) state[feat.name] = {};
+                state[feat.name].bounds = feat.window.getBounds();
+            });
+            await this.fileWrite([this.dataPath, "state.json"], JSON.stringify(state, null, "\t"));
+            lock = false;
+        });
+        */
+
         (async () => {
             await this.affirm();
             await this.post("start", null);
@@ -207,6 +247,7 @@ class Portal extends core.Target {
             this.addFeature(new Portal.Feature("LOAD"));
             this.addFeature(new Portal.Feature("PORTAL"));
         })();
+
         return true;
     }
     async stop() {
@@ -289,6 +330,7 @@ class Portal extends core.Target {
     }
 
     update() {
+        this.post("update", null);
         this.features.forEach(feat => feat.update());
     }
 
@@ -322,6 +364,11 @@ Portal.Feature = class PortalFeature extends core.Target {
         this.#started = false;
 
         this.log();
+    }
+
+    async isDevMode() {
+        if (!this.hasPortal()) return false;
+        return await this.portal.isDevMode();
     }
 
     get portal() { return this.#portal; }
@@ -520,7 +567,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                         ] :
                         []
                     ),
-                    { role: "toggleDevTools" },
+                    { id: "toggleDevTools", role: "toggleDevTools" },
                 ],
             },
         ];
@@ -747,11 +794,45 @@ Portal.Feature = class PortalFeature extends core.Target {
             },
         };
 
+        let lock = false, t0 = 0;
+        this.addHandler("update", async data => {
+            if (lock) return;
+            let t1 = util.getTime();
+            if (t1-t0 < 100) return;
+            lock = true;
+            t0 = t1;
+            let is = await this.isDevMode();
+            this.menuChange({ toggleDevTools: { ".enabled": is } });
+            lock = false;
+        });
+
         if (namefs[this.name]) namefs[this.name]();
 
         this.#menu = electron.Menu.buildFromTemplate(template);
         if (PLATFORM == "linux" || PLATFORM == "win32")
             window.setMenu(this.menu);
+        
+        (async () => {
+            if (!this.hasName()) return;
+            if (this.name == "LOAD") return;
+            if (!this.hasPortal()) return;
+            await this.portal.affirm();
+            let stateContent = "";
+            try {
+                stateContent = await this.portal.fileRead([this.portal.dataPath, "state.json"]);
+            } catch (e) {}
+            let state = null;
+            try {
+                state = JSON.parse(stateContent);
+            } catch (e) {}
+            state = util.ensure(state, "obj");
+            if (!(this.name in state)) return;
+            state = state[this.name];
+            if (!("bounds" in state)) return;
+            let bounds = state.bounds;
+            if (!this.hasWindow()) return;
+            this.window.setContentBounds(bounds);
+        })();
 
         return this;
     }
@@ -766,6 +847,21 @@ Portal.Feature = class PortalFeature extends core.Target {
         this.log(`STOP - perm: ${this.perm}`);
         if (!this.perm) return false;
         this.#started = false;
+        if (this.hasPortal()) {
+            await this.portal.affirm();
+            let stateContent = "";
+            try {
+                stateContent = await this.portal.fileRead([this.portal.dataPath, "state.json"]);
+            } catch (e) {}
+            let state = null;
+            try {
+                state = JSON.parse(stateContent);
+            } catch (e) {}
+            state = util.ensure(state, "obj");
+            if (!util.is(state[this.name], "obj")) state[this.name] = {};
+            state[this.name].bounds = this.window.getBounds();
+            await this.portal.fileWrite([this.portal.dataPath, "state.json"], JSON.stringify(state, null, "\t"));
+        }
         if (this.window instanceof electron.BrowserWindow)
             this.window.close();
         this.#window = null;
@@ -1110,17 +1206,13 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (cmd == "back")
             if (this.name != "PORTAL")
                 return await this.stop();
-        if (cmd == "get-fullscreen")
-            return this.hasWindow() && this.window.isFullScreen();
         if (namefs[this.name])
             if (namefs[this.name][cmd])
                 return await namefs[this.name][cmd](...args);
         return null;
     }
 
-    update() {
-        this.post("update", null);
-    }
+    update() { this.post("update", null); }
 
     log(...a) {
         return log(`[${this.name}]`, ...a);
@@ -1130,17 +1222,17 @@ Portal.Feature = class PortalFeature extends core.Target {
 const portal = new Portal();
 
 app.on("ready", () => {
-    log("# ready");
+    log("> ready");
     portal.start();
 });
 
 app.on("activate", () => {
-    log("# activate");
+    log("> activate");
     portal.start();
 });
 
 app.on("window-all-closed", async () => {
-    log("# all-closed");
+    log("> all-closed");
     let quit = true;
     try {
         quit = await portal.stop();
@@ -1149,7 +1241,7 @@ app.on("window-all-closed", async () => {
     app.quit();
 });
 app.on("quit", () => {
-    log("# quit");
+    log("> quit");
 });
 
 app.on("browser-window-focus", function () {

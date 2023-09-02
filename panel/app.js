@@ -682,8 +682,9 @@ class Panel extends Widget {
     #pages;
     #pageIndex;
 
-    #eTop;
     #eClose;
+    #eTop;
+    #eAdd;
     #eContent;
 
     constructor(pages) {
@@ -701,6 +702,9 @@ class Panel extends Widget {
         this.#eTop = document.createElement("div");
         this.elem.appendChild(this.eTop);
         this.eTop.classList.add("top");
+        this.#eAdd = document.createElement("button");
+        this.eTop.appendChild(this.eAdd);
+        this.eAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
@@ -708,6 +712,9 @@ class Panel extends Widget {
         this.eClose.addEventListener("click", e => {
             if (this.hasAppParent()) return this.parent.rootWidget = null;
             if (this.hasParent()) return this.parent.remChild(this);
+        });
+        this.eAdd.addEventListener("click", e => {
+            this.addPage(new Panel.AddPage());
         });
 
         this.#pageIndex = null;
@@ -783,6 +790,7 @@ class Panel extends Widget {
         this.pages.forEach((page, i) => {
             page.eTab.style.order = i;
         });
+        this.eAdd.style.order = this.pages.length;
     }
     collapse() {
         if (this.pages.length > 0) return;
@@ -790,8 +798,9 @@ class Panel extends Widget {
         if (this.hasParent()) this.parent.remChild(this);
     }
 
-    get eTop() { return this.#eTop; }
     get eClose() { return this.#eClose; }
+    get eTop() { return this.#eTop; }
+    get eAdd() { return this.#eAdd; }
     get eContent() { return this.#eContent; }
 }
 Panel.Page = class PanelPage extends core.Target {
@@ -938,18 +947,13 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
 
-        // this.eContent.appendChild(new Panel.AddPage.Header("Header").elem);
-        // this.eContent.appendChild(new Panel.AddPage.Button("Tables", "folder-outline").elem);
-        // this.eContent.appendChild(new Panel.AddPage.Button("Topics", "document-outline").elem);
-        // this.eContent.appendChild(new Panel.AddPage.Divider().elem);
-
         this.eSearchInput.addEventListener("keydown", e => {
             if (!["Backspace", "Delete"].includes(e.code)) return;
             if (this.eSearchInput.value.length > 0) return;
             this.searchPart = null;
         });
+        this.eSearchInput.addEventListener("input", e => this.refresh());
         this.eSearchClear.addEventListener("click", e => {
-            this.eSearchInput.value = "";
             this.searchPart = null;
         });
 
@@ -994,7 +998,26 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         } else if (this.searchPart == "tools") {
             this.tags = [new Panel.AddPage.Tag("Tools", "cube-outline")];
             this.placeholder = "Search tools";
-            this.items = [];
+            let items = [
+                {
+                    item: new Panel.AddPage.Button("Graph", "analytics"),
+                    trigger: () => {},
+                },
+            ];
+            items = items.map(item => {
+                item.item.addHandler("trigger", item.trigger);
+                return item.item;
+            });
+            if (this.query.length > 0) {
+                const fuse = new Fuse(items, {
+                    isCaseSensitive: false,
+                    keys: [
+                        "name",
+                    ],
+                });
+                items = fuse.search(this.query).map(item => item.item);
+            }
+            this.items = items;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddPage.Tag(
                 this.searchPart[0].toUpperCase()+this.searchPart.substring(1).toLowerCase(),
@@ -1002,16 +1025,38 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
             )];
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
-            this.items = [];
+            let items = [];
             if (this.hasApp() && this.app.hasRootTable()) {
                 let root = this.app.rootTable;
                 const dfs = generic => {
                     let itm = new Panel.AddPage.GenericButton(generic);
-                    if (generic instanceof { tables: Table, topics: Topic, all: Generic }[this.searchPart]) this.addItem(itm);
+                    if (generic instanceof { tables: Table, topics: Topic, all: Generic }[this.searchPart]) items.push({
+                        item: itm,
+                        trigger: () => {
+                            if (!this.hasParent()) return;
+                            let index = this.parent.pages.indexOf(this);
+                            this.parent.addPage(new Panel.BrowserPage(generic.path), index);
+                            this.parent.remPage(this);
+                        },
+                    });
                     if (generic instanceof Table) generic.children.forEach(generic => dfs(generic));
                 };
                 dfs(root);
             }
+            items = items.map(item => {
+                item.item.addHandler("trigger", item.trigger);
+                return item.item;
+            });
+            if (this.query.length > 0) {
+                const fuse = new Fuse(items, {
+                    isCaseSensitive: false,
+                    keys: [
+                        "generic.path",
+                    ],
+                });
+                items = fuse.search(this.query).map(item => item.item);
+            }
+            this.items = items;
         }
         this.eSearchInput.focus();
     }
@@ -1021,6 +1066,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         v = (v == null) ? null : String(v);
         if (this.searchPart == v) return;
         this.#searchPart = v;
+        this.query = "";
         this.refresh();
     }
     hasSearchPart() { return this.searchPart != null; }
@@ -1093,6 +1139,9 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
 
     get placeholder() { return this.eSearchInput.placeholder; }
     set placeholder(v) { this.eSearchInput.placeholder = v; }
+
+    get query() { return this.eSearchInput.value; }
+    set query(v) { this.eSearchInput.value = v; }
 };
 Panel.AddPage.Tag = class PanelAddPageTag extends core.Target {
     #elem;
@@ -1547,6 +1596,11 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
     get eBrowser() { return this.#eBrowser; }
     get eDisplay() { return this.#eDisplay; }
 };
+Panel.ToolPage = class PanelToolPage extends Panel.Page {
+    constructor() {
+        super();
+    }
+}
 
 export default class App extends core.App {
     #browserItems;
@@ -1713,7 +1767,7 @@ export default class App extends core.App {
             this.addHandler("update", data => {
                 if (this.hasRootWidget()) {
                     this.rootWidget.collapse();
-                    this.rootWidget.update();
+                    if (this.hasRootWidget()) this.rootWidget.update();
                 }
             });
 

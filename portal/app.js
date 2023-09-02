@@ -61,48 +61,18 @@ export default class App extends core.App {
 
         this.#navToolButtons = new Set();
 
-        document.body.addEventListener("mousemove", e => {
-            if (!this.hasEBackground()) return;
-            this.eBackground.style.setProperty("--x", e.pageX+"px");
-            this.eBackground.style.setProperty("--y", e.pageY+"px");
-        });
-
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#TITLEPAGE > .inner > .title");
         });
-        let ctx = null;
         this.addHandler("start-complete", data => {
             this.#eBackground = document.querySelector("#TITLEPAGE > .background");
-            if (this.hasEBackground() && 0) {
-                let size = 50;
-                this.eBackground.style.setProperty("--size", size+"px");
-                let w = Math.ceil(window.screen.width / (Math.sqrt(3) * size))-5;
-                let h = Math.ceil(window.screen.height / (2 * size))-5;
-                w = h = Math.max(w, h);
-                let totalW = w * (Math.sqrt(3) * size);
-                let totalH = h * ((3/2) * size);
-                for (let x = 0; x <= w; x++) {
-                    for (let y = 0; y <= h; y++) {
-                        let icon = document.createElement("ion-icon");
-                        this.eBackground.appendChild(icon);
-                        let type = "solid";
-                        if (y == Math.floor(h/2)+3) {
-                            if (x == Math.floor(w/2)) type = 1;
-                            else if (x == Math.floor(w/2)+1) type = 2;
-                        }
-                        if (y == Math.floor(h/2)+2) {
-                            if (x == Math.floor(w/2)) type = 3;
-                            else if (x == Math.floor(w/2)+1) type = 4;
-                        }
-                        icon.setAttribute("src", `../assets/logo-part-${type}.svg`);
-                        icon.style.setProperty("--x", (((x+0.25) * (Math.sqrt(3) * size)) - ((y%2==0)?(Math.sqrt(3)/2):0)*size - totalW/2)+"px");
-                        icon.style.setProperty("--y", ((y * ((3/2) * size)) - totalH/2 + 20)+"px");
-                    }
-                }
+            this.#eCanvas = document.querySelector("#TITLEPAGE > .background > div > #canvas");
+            if (this.hasECanvas()) {
+                const fluid = new Fluid(this.eCanvas);
+                fluid.mapBehaviors({
+                });
+                fluid.activate();
             }
-            this.#eCanvas = document.querySelector("#TITLEPAGE > .background > #canvas");
-            if (this.hasECanvas())
-                ctx = this.eCanvas.getContext("2d");
             this.#eNav = document.querySelector("#TITLEPAGE > .inner > .nav");
             this.#eInfo = document.querySelector("#TITLEPAGE > .info");
             if (this.hasEInfo()) {
@@ -133,9 +103,6 @@ export default class App extends core.App {
             btn = this.addNavToolButton(new FeatureButton("Pursuit", "flash"));
             btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => window.api.ask("spawn", ["PURSUIT"]));
-            btn = this.addNavToolButton(new FeatureButton("Perception", "eye"));
-            btn.tooltip = "Coming soon!";
-            btn.elem.addEventListener("click", e => window.api.ask("spawn", ["PERCEPTION"]));
         });
     }
 

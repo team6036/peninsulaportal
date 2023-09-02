@@ -1,8 +1,17 @@
 #titlebar {
+    background-color: transparent;
+}
+
+body {
     background-color: var(--v1);
 }
 
+#mount {
+    overflow: visible;
+}
 #TITLEPAGE {
+    overflow: visible;
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -11,10 +20,6 @@
     align-content: center;
 }
 #TITLEPAGE > .background {
-    --x: 0px;
-    --y: 0px;
-    --size: 0px;
-
     z-index: -1;
 
     position: absolute;
@@ -26,44 +31,31 @@
     max-width: 100%;
     height: calc(100% + var(--TOP));
     max-height: calc(100% + var(--TOP));
+    overflow: hidden;
 
     background: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
-    /*
-    background: radial-gradient(
-        circle at center,
-        var(--v1-0) 0%,
-        var(--v1-0) 50%,
-        var(--v1) 75%
-    ),
-    radial-gradient(
-        circle at var(--x) var(--y),
-        var(--v2-8) 0%,
-        var(--v2-0) 25%
-    );
-    visibility: hidden;
-    */
 }
-#TITLEPAGE > .background > ion-icon {
-    --x: 0px;
-    --y: 0px;
-
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) translate(var(--x), calc(-1 * var(--y))) scale(90%);
-
-    color: var(--v1);
-    filter: brightness(100%);
-
-    font-size: calc(2 * var(--size));
-}
-#TITLEPAGE > .background > #canvas {
+#TITLEPAGE > .background > div {
     z-index: -1;
 
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+
+    width: 100%;
+    height: 100%;
+
+    background-color: var(--a);
+    opacity: 25%;
+}
+#TITLEPAGE > .background > div > #canvas {
+    width: 100%;
+    height: 100%;
+
+    filter: grayscale(100%);
+
+    mix-blend-mode: multiply;
 }
 #TITLEPAGE > .inner {
     height: 100%;
@@ -76,6 +68,8 @@
     align-items: center;
     align-content: center;
     gap: 10px;
+
+    pointer-events: none;
 }
 #TITLEPAGE > .inner > .title {
     font-size: 50px;
@@ -101,6 +95,8 @@
     align-items: center;
     align-content: center;
     gap: 10px;
+
+    pointer-events: auto;
 }
 #TITLEPAGE > .inner > .nav > button.item {
     width: 100px;
