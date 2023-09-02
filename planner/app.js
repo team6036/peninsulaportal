@@ -1131,24 +1131,22 @@ export default class App extends core.App {
                 this.page = "PROJECT";
             });
             const cmdAdd = name => {
+                if (this.dragging) return;
                 name = String(name);
                 if (this.page != "PROJECT") return;
                 let state = this.#pages["PROJECT"];
                 if (!util.is(state, "obj")) return;
                 if (state.getChoosing()) return;
-                if (state.getDragging()) return;
                 if (!this.hasProject()) return;
-                state.setDragging(true);
-                let dragData = state.getDragData();
-                dragData.name = name;
-                if (dragData.elem instanceof HTMLDivElement)
-                    dragData.elem.innerHTML = {
+                this.dragging = true;
+                this.dragState.name = name;
+                let elem = document.getElementById("drag");
+                if (elem instanceof HTMLDivElement)
+                    elem.innerHTML = {
                         node: "<div class='global item selectable node'><div class='button'></div></div>",
                         obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
                     }[name];
-                if (e instanceof MouseEvent)
-                    state.placeDrag(e.pageX, e.pageY);
-                let prevOver = false;
+                let prevOverRender = false;
                 let ghostItem = null;
                 let item = {
                     node: new subcore.Project.Node(
@@ -1158,27 +1156,28 @@ export default class App extends core.App {
                     ),
                     obstacle: new subcore.Project.Obstacle(0, 100),
                 }[name];
-                dragData.addHandler("place", data => {
-                    if (!(state.eRender instanceof HTMLDivElement)) return;
-                    let pos = new V(util.ensure(data, "obj").pos);
-                    let r, over;
-                    r = state.eRender.getBoundingClientRect();
-                    over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
-                    if (prevOver != over) {
-                        prevOver = over;
-                        if (over) {
+                this.dragState.addHandler("move", e => {
+                    let pos = new V(e.pageX, e.pageY);
+                    let overRender = false;
+                    if (state.eRender instanceof HTMLDivElement) {
+                        let r = state.eRender.getBoundingClientRect();
+                        overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                    }
+                    if (prevOverRender != overRender) {
+                        prevOverRender = overRender;
+                        if (overRender) {
                             ghostItem = this.addRenderItem(new RISelectable(item));
                             ghostItem.ghost = true;
-                            if (dragData.elem instanceof HTMLDivElement)
-                                if (dragData.elem.children[0] instanceof HTMLDivElement)
-                                    dragData.elem.children[0].style.visibility = "hidden";
                         } else {
                             this.remRenderItem(ghostItem);
                             ghostItem = null;
-                            if (dragData.elem instanceof HTMLDivElement)
-                                if (dragData.elem.children[0] instanceof HTMLDivElement)
-                                    dragData.elem.children[0].style.visibility = "inherit";
                         }
+                    }
+                    if (elem instanceof HTMLDivElement) {
+                        elem.style.left = pos.x+"px";
+                        elem.style.top = pos.y+"px";
+                        if (elem.children[0] instanceof HTMLElement)
+                            elem.children[0].style.visibility = overRender ? "hidden" : "inherit";
                     }
                     if (ghostItem instanceof RISelectable)
                         if (ghostItem.hasItem())
@@ -1187,24 +1186,22 @@ export default class App extends core.App {
                     if (!util.is(state.panels.objects, "obj")) return;
                     let o = state.panels.objects;
                     if (!(o.eSpawnDelete instanceof HTMLButtonElement)) return;
-                    r = o.eSpawnDelete.getBoundingClientRect();
-                    over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                    let r = o.eSpawnDelete.getBoundingClientRect();
+                    let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
                     if (over) o.eSpawnDelete.classList.add("hover");
                     else o.eSpawnDelete.classList.remove("hover");
                 });
-                dragData.addHandler("stop", data => {
+                const stop = cancel => {
                     this.remRenderItem(ghostItem);
-                    if (dragData.elem instanceof HTMLDivElement)
-                        dragData.elem.innerHTML = "";
-                    if (ghostItem instanceof RISelectable)
-                        if (ghostItem.hasItem())
-                            if (this.hasProject())
-                                this.project.addItem(ghostItem.item);
+                    if (elem instanceof HTMLDivElement) elem.innerHTML = "";
+                    if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
                     if (!util.is(state.panels, "obj")) return;
                     if (!util.is(state.panels.objects, "obj")) return;
                     let o = state.panels.objects;
                     o.eSpawnBox.classList.remove("delete");
-                });
+                };
+                this.dragState.addHandler("submit", data => stop(false));
+                this.dragState.addHandler("cancel", data => stop(true));
                 if (!util.is(state.panels, "obj")) return;
                 if (!util.is(state.panels.objects, "obj")) return;
                 let o = state.panels.objects;
@@ -1748,12 +1745,12 @@ export default class App extends core.App {
                     state.setPanel("objects");
                     state.setMaximized(false);
                     state.setDivPos(0.75);
-                    setChoosing(false);
-                    setDragging(false);
+                    state.setChoosing(false);
+                    this.dragging = false;
                 };
                 if (this.hasENameInput())
                     this.eNameInput.addEventListener("change", e => {
-                        if (getChoosing()) return;
+                        if (state.getChoosing()) return;
                         if (!this.hasProject()) return;
                         this.project.meta.name = this.eNameInput.value;
                         state.post("refresh-options", null);
@@ -1814,16 +1811,16 @@ export default class App extends core.App {
                     itm.addHandler("change", itm._onChange);
                     if (itm instanceof RISelectable) {
                         itm._onTrigger = data => {
-                            if (getChoosing()) {
-                                getChooseData().post("choose", { itm: itm.item, shift: util.ensure(data, "obj").shift });
+                            if (state.getChoosing()) {
+                                state.getChooseData().post("choose", { itm: itm.item, shift: util.ensure(data, "obj").shift });
                             } else {
                                 if (util.ensure(data, "obj").shift) {
-                                    if (isSelected(itm)) remSelected(itm);
-                                    else addSelected(itm);
+                                    if (state.isSelected(itm)) state.remSelected(itm);
+                                    else state.addSelected(itm);
                                 } else {
-                                    if (isSelected(itm)) return;
-                                    clearSelected();
-                                    addSelected(itm);
+                                    if (state.isSelected(itm)) return;
+                                    state.clearSelected();
+                                    state.addSelected(itm);
                                 }
                             }
                         };
@@ -1850,7 +1847,7 @@ export default class App extends core.App {
                 let selected = new Set();
                 let selectItem = null;
                 state.addHandler("refresh-selectitem", data => {
-                    getSelected().forEach(id => {
+                    state.getSelected().forEach(id => {
                         if (!this.hasProject() || !this.project.hasItem(id)) return;
                         let itm = this.project.getItem(id);
                         itm.x = Math.min(this.project.w, Math.max(0, itm.x));
@@ -1885,25 +1882,25 @@ export default class App extends core.App {
                         selectItem = null;
                     }
                 });
-                const getSelected = state.getSelected = () => [...selected];
-                const setSelected = state.setSelected = v => {
+                state.getSelected = () => [...selected];
+                state.setSelected = v => {
                     v = util.ensure(v, "arr");
-                    let sels = clearSelected();
-                    v.forEach(v => addSelected(v));
+                    let sels = state.clearSelected();
+                    v.forEach(v => state.addSelected(v));
                     return sels;
                 };
-                const clearSelected = state.clearSelected = () => {
-                    let sels = getSelected();
-                    sels.forEach(id => remSelected(id));
+                state.clearSelected = () => {
+                    let sels = state.getSelected();
+                    sels.forEach(id => state.remSelected(id));
                     return sels;
                 };
-                const isSelected = state.isSelected = v => {
+                state.isSelected = v => {
                     if (util.is(v, "str")) return selected.has(v);
-                    if (v instanceof subcore.Project.Item) return isSelected(v.id);
-                    if (v instanceof RISelectable) return isSelected(v.item);
+                    if (v instanceof subcore.Project.Item) return state.isSelected(v.id);
+                    if (v instanceof RISelectable) return state.isSelected(v.item);
                     return false;
                 };
-                const addSelected = state.addSelected = v => {
+                state.addSelected = v => {
                     if (util.is(v, "str")) {
                         if (this.hasProject() && this.project.hasItem(v)) {
                             selected.add(v);
@@ -1913,40 +1910,40 @@ export default class App extends core.App {
                         }
                         return false;
                     }
-                    if (v instanceof subcore.Project.Item) return addSelected(v.id);
-                    if (v instanceof RISelectable) return addSelected(v.item);
+                    if (v instanceof subcore.Project.Item) return state.addSelected(v.id);
+                    if (v instanceof RISelectable) return state.addSelected(v.item);
                     return false;
                 };
-                const remSelected = state.remSelected = v => {
+                state.remSelected = v => {
                     if (util.is(v, "str")) {
                         selected.delete(v);
                         state.post("refresh-selectitem", null);
                         state.post("refresh-options", null);
                         return v;
                     }
-                    if (v instanceof subcore.Project.Item) return remSelected(v.id);
-                    if (v instanceof RISelectable) return remSelected(v.item);
+                    if (v instanceof subcore.Project.Item) return state.remSelected(v.id);
+                    if (v instanceof RISelectable) return state.remSelected(v.item);
                     return false;
                 };
                 let selectedPaths = new Set();
-                const getSelectedPaths = state.getSelectedPaths = () => [...selectedPaths];
-                const setSelectedPaths = state.setSelectedPaths = v => {
+                state.getSelectedPaths = () => [...selectedPaths];
+                state.setSelectedPaths = v => {
                     v = util.ensure(v, "arr");
-                    clearSelectedPaths();
-                    v.forEach(v => addSelectedPath(v));
+                    state.clearSelectedPaths();
+                    v.forEach(v => state.addSelectedPath(v));
                 };
-                const clearSelectedPaths = state.clearSelectedPaths = () => {
-                    let pths = getSelectedPaths();
-                    pths.forEach(id => remSelectedPath(id));
+                state.clearSelectedPaths = () => {
+                    let pths = state.getSelectedPaths();
+                    pths.forEach(id => state.remSelectedPath(id));
                     return pths;
                 };
-                const isPathSelected = state.isPathSelected = v => {
+                state.isPathSelected = v => {
                     if (util.is(v, "str")) return selectedPaths.has(v);
-                    if (v instanceof subcore.Project.Path) return isPathSelected(v.id);
-                    if (v instanceof PathButton) return isPathSelected(v.path);
+                    if (v instanceof subcore.Project.Path) return state.isPathSelected(v.id);
+                    if (v instanceof PathButton) return state.isPathSelected(v.path);
                     return false;
                 };
-                const addSelectedPath = state.addSelectedPath = v => {
+                state.addSelectedPath = v => {
                     if (util.is(v, "str")) {
                         if (this.hasProject() && this.project.hasPath(v)) {
                             selectedPaths.add(v);
@@ -1955,18 +1952,18 @@ export default class App extends core.App {
                         }
                         return false;
                     }
-                    if (v instanceof subcore.Project.Path) return addSelectedPath(v.id);
-                    if (v instanceof PathButton) return addSelectedPath(v.path);
+                    if (v instanceof subcore.Project.Path) return state.addSelectedPath(v.id);
+                    if (v instanceof PathButton) return state.addSelectedPath(v.path);
                     return false;
                 };
-                const remSelectedPath = state.remSelectedPath = v => {
+                state.remSelectedPath = v => {
                     if (util.is(v, "str")) {
                         selectedPaths.delete(v);
                         state.post("refresh-options", null);
                         return v;
                     }
-                    if (v instanceof subcore.Project.Path) return remSelectedPath(v.id);
-                    if (v instanceof PathButton) return remSelectedPath(v.path);
+                    if (v instanceof subcore.Project.Path) return state.remSelectedPath(v.id);
+                    if (v instanceof PathButton) return state.remSelectedPath(v.path);
                     return false;
                 };
                 this.addHandler("project-set", data => {
@@ -2072,7 +2069,7 @@ export default class App extends core.App {
                                 itm.item = null;
                             if (itm.hasItem()) {
                                 itmsUsed.add(itm.item.id);
-                                itm.selected = isSelected(itm);
+                                itm.selected = state.isSelected(itm);
                             } else this.remRenderItem(itm);
                         } 
                     });
@@ -2087,12 +2084,12 @@ export default class App extends core.App {
                 });
                 state.cut = async () => {
                     await state.copy();
-                    getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).forEach(id => this.project.remItem(id));
+                    state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).forEach(id => this.project.remItem(id));
                     state.post("refresh-selectitem");
                     state.post("refresh-options");
                 };
                 state.copy = async () => {
-                    let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                    let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                     if (itms.length <= 0) return;
                     let itm = new ClipboardItem({ "text/plain": new Blob([util.MAGIC+JSON.stringify(itms)], { type: "text/plain" })});
                     await navigator.clipboard.write([itm]);
@@ -2121,15 +2118,15 @@ export default class App extends core.App {
                 state.eDisplay = state.elem.querySelector(":scope > .display");
                 if (state.eDisplay instanceof HTMLDivElement) {
                     state.eDisplay.addEventListener("keydown", e => {
-                        if (getChoosing()) return;
+                        if (state.getChoosing()) return;
                         if (!this.hasProject()) return;
                         if (["Backspace", "Delete"].includes(e.code)) {
-                            getSelected().forEach(id => this.project.remItem(id));
-                            setSelected(getSelected());
+                            state.getSelected().forEach(id => this.project.remItem(id));
+                            state.setSelected(state.getSelected());
                         } else if (e.code == "KeyA") {
                             if (e.ctrlKey || e.metaKey) {
                                 e.preventDefault();
-                                setSelected(this.project.items);
+                                state.setSelected(this.project.items);
                             }
                         } else if (e.code == "KeyX") {
                             if (e.ctrlKey || e.metaKey) {
@@ -2151,75 +2148,40 @@ export default class App extends core.App {
                 }
                 let chooseData = null;
                 let choosing = null;
-                const getChoosing = state.getChoosing = () => choosing;
-                const setChoosing = state.setChoosing = v => {
+                state.getChoosing = () => choosing;
+                state.setChoosing = v => {
                     v = !!v;
-                    if (getChoosing() == v) return true;
-                    clearSelected();
+                    if (state.getChoosing() == v) return true;
+                    state.clearSelected();
                     choosing = v;
                     chooseData = choosing ? new core.Target() : null;
                     if (choosing) chooseData.temp = {};
                     choosing ? state.eDisplay.classList.add("choose") : state.eDisplay.classList.remove("choose");
                     return true;
                 };
-                const getChooseData = state.getChooseData = () => chooseData;
+                state.getChooseData = () => chooseData;
                 state.eChooseDoneBtn = state.elem.querySelector(":scope > .display > .render > .nav > button#donebtn");
                 state.eChooseCancelBtn = state.elem.querySelector(":scope > .display > .render > .nav > button#cancelbtn");
                 if (state.eChooseDoneBtn instanceof HTMLButtonElement)
                     state.eChooseDoneBtn.addEventListener("click", e => {
                         e.stopPropagation();
-                        let chooseData = util.ensure(getChooseData(), "obj");
+                        let chooseData = util.ensure(state.getChooseData(), "obj");
                         for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
                         chooseData.post("done", null);
-                        setChoosing(false);
+                        state.setChoosing(false);
                     });
                 if (state.eChooseCancelBtn instanceof HTMLButtonElement)
                     state.eChooseCancelBtn.addEventListener("click", e => {
                         e.stopPropagation();
-                        let chooseData = util.ensure(getChooseData(), "obj");
+                        let chooseData = util.ensure(state.getChooseData(), "obj");
                         for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
                         chooseData.post("cancel", null);
-                        setChoosing(false);
+                        state.setChoosing(false);
                     });
-                let dragData = null;
-                let dragging = null;
-                const getDragging = state.getDragging = () => dragging;
-                const setDragging = state.setDragging = v => {
-                    v = !!v;
-                    if (getDragging() == v) return true;
-                    dragging = v;
-                    dragData = dragging ? new core.Target() : null;
-                    if (dragging) {
-                        dragData.elem = document.getElementById("drag");
-                        const mouseup = () => {
-                            document.body.removeEventListener("mouseup", mouseup);
-                            document.body.removeEventListener("mousemove", mousemove);
-                            dragData.post("stop", null);
-                            setDragging(false);
-                        };
-                        const mousemove = e => {
-                            placeDrag(e.pageX, e.pageY);
-                            dragData.post("move", null);
-                        };
-                        document.body.addEventListener("mouseup", mouseup);
-                        document.body.addEventListener("mousemove", mousemove);
-                    }
-                };
-                const placeDrag = state.placeDrag = (...v) => {
-                    v = new V(...v);
-                    if (!getDragging()) return false;
-                    if (dragData.elem instanceof HTMLDivElement) {
-                        dragData.elem.style.left = v.x+"px";
-                        dragData.elem.style.top = v.y+"px";
-                    }
-                    dragData.post("place", { pos: v });
-                    return true;
-                };
-                const getDragData = state.getDragData = () => dragData;
                 state.eRender = state.elem.querySelector(":scope > .display > .render");
                 if (state.eRender instanceof HTMLDivElement) {
                     state.eRender.addEventListener("contextmenu", e => {
-                        if (getChoosing()) return;
+                        if (state.getChoosing()) return;
                         let itm;
                         let menu = new core.App.ContextMenu();
                         itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
@@ -2267,23 +2229,22 @@ export default class App extends core.App {
                         menu.addItem(new core.App.ContextMenu.Divider());
                         itm = menu.addItem(new core.App.ContextMenu.Item("Edit"));
                         itm.addHandler("trigger", data => {
-                            // state.panels.objects.show();
                             state.setPanel("objects");
                         });
                         itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
                         itm.shortcut = "⌫";
                         itm.addHandler("trigger", data => {
-                            getSelected().forEach(id => this.project.remItem(id));
-                            setSelected(getSelected());
+                            state.getSelected().forEach(id => this.project.remItem(id));
+                            state.setSelected(state.getSelected());
                         });
                         this.contextMenu = menu;
                         this.placeContextMenu(e.pageX, e.pageY);
                     });
                     state.eRender.addEventListener("mousedown", e => {
-                        if (getChoosing()) return;
+                        if (state.getChoosing()) return;
                         if (e.button != 0) return;
                         if (e.target == state.eRender || selected.size <= 0) {
-                            clearSelected();
+                            state.clearSelected();
                             let selectItem = this.addRenderItem(new RISelect());
                             selectItem.a = selectItem.pageToMap(e.pageX, e.pageY);
                             selectItem.b = selectItem.a;
@@ -2296,7 +2257,7 @@ export default class App extends core.App {
                                 if (!this.hasProject()) return;
                                 this.project.items.forEach(id => {
                                     let itm = this.project.getItem(id);
-                                    if (r.collides(itm.getBBox())) addSelected(itm);
+                                    if (r.collides(itm.getBBox())) state.addSelected(itm);
                                 });
                             };
                             const mousemove = e => {
@@ -2316,7 +2277,7 @@ export default class App extends core.App {
                             const mousemove = e => {
                                 let newPos = selectItem.pageToMap(e.pageX, e.pageY);
                                 let rel = newPos.sub(oldPos);
-                                getSelected().forEach(id => {
+                                state.getSelected().forEach(id => {
                                     if (!this.hasProject() || !this.project.hasItem(id)) return;
                                     let itm = this.project.getItem(id);
                                     itm.pos.iadd(rel);
@@ -2394,7 +2355,7 @@ export default class App extends core.App {
                 state.eDivider = state.elem.querySelector(":scope > .divider");
                 if (state.eDivider instanceof HTMLDivElement)
                     state.eDivider.addEventListener("mousedown", e => {
-                        if (getChoosing()) return;
+                        if (state.getChoosing()) return;
                         if (e.button != 0) return;
                         const mouseup = () => {
                             document.body.removeEventListener("mouseup", mouseup);
@@ -2428,7 +2389,7 @@ export default class App extends core.App {
                             let forAny = Array.from(elem.querySelectorAll(":scope .forany"));
                             let forNode = Array.from(elem.querySelectorAll(":scope .fornode"));
                             let forObstacle = Array.from(elem.querySelectorAll(":scope .forobstacle"));
-                            let itms = getSelected().filter(id => has && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                            let itms = state.getSelected().filter(id => has && this.project.hasItem(id)).map(id => this.project.getItem(id));
                             let allNode = (itms.length > 0), allObstacle = (itms.length > 0);
                             itms.forEach(itm => {
                                 if (!(itm instanceof subcore.Project.Node)) allNode = false;
@@ -2585,7 +2546,7 @@ export default class App extends core.App {
                                 let btn = o.spawns[name] = o.eSpawnBox.querySelector(":scope > button.item#spawn"+name);
                                 if (btn instanceof HTMLButtonElement) {
                                     btn.trigger = e => {
-                                        if (getChoosing()) return;
+                                        if (state.getChoosing()) return;
                                         this.post("cmd-add"+name, null);
                                     };
                                     btn.addEventListener("mousedown", btn.trigger);
@@ -2600,7 +2561,7 @@ export default class App extends core.App {
                                 o.ePositionXInput.addEventListener("change", e => {
                                     let v = o.ePositionXInput.value;
                                     if (v.length > 0) {
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         let x = itms.map(itm => itm.x);
                                         let newCenter = util.ensure(parseFloat(v), "num")*100;
                                         let oldCenter = (Math.max(...x) + Math.min(...x)) / 2;
@@ -2617,7 +2578,7 @@ export default class App extends core.App {
                                 o.ePositionYInput.addEventListener("change", e => {
                                     let v = o.ePositionYInput.value;
                                     if (v.length > 0) {
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         let y = itms.map(itm => itm.y);
                                         let newCenter = util.ensure(parseFloat(v), "num")*100;
                                         let oldCenter = (Math.max(...y) + Math.min(...y)) / 2;
@@ -2637,7 +2598,7 @@ export default class App extends core.App {
                             if (o.eHeadingUse instanceof HTMLInputElement)
                                 o.eHeadingUse.addEventListener("change", e => {
                                     let v = o.eHeadingUse.checked;
-                                    let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                    let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                     itms.forEach(itm => {
                                         if (!(itm instanceof subcore.Project.Node)) return;
                                         itm.useHeading = v;
@@ -2657,7 +2618,7 @@ export default class App extends core.App {
                                         v = util.ensure(parseFloat(v), "num");
                                         while (v >= fullTurn) v -= fullTurn;
                                         while (v < 0) v += fullTurn;
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         itms.forEach(itm => {
                                             if (!(itm instanceof subcore.Project.Node)) return;
                                             itm.heading = v;
@@ -2674,7 +2635,7 @@ export default class App extends core.App {
                                         let center = new V(r.left + r.width/2, r.top + r.height/2).mul(+1, -1);
                                         let to = new V(e.pageX, e.pageY).mul(+1, -1);
                                         let v = (Math.PI/180)*center.towards(to);
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         itms.forEach(itm => {
                                             if (!(itm instanceof subcore.Project.Node)) return;
                                             itm.heading = v;
@@ -2700,7 +2661,7 @@ export default class App extends core.App {
                             if (o.eVelocityUse instanceof HTMLInputElement)
                                 o.eVelocityUse.addEventListener("change", e => {
                                     let v = o.eVelocityUse.checked;
-                                    let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                    let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                     itms.forEach(itm => {
                                         if (!(itm instanceof subcore.Project.Node)) return;
                                         itm.useVelocity = v;
@@ -2717,7 +2678,7 @@ export default class App extends core.App {
                                     let v = o.eVelocityXInput.value;
                                     if (v.length > 0) {
                                         v = util.ensure(parseFloat(v), "num");
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         itms.forEach(itm => {
                                             if (!(itm instanceof subcore.Project.Node)) return;
                                             itm.velocityX = v*100;
@@ -2733,7 +2694,7 @@ export default class App extends core.App {
                                     let v = o.eVelocityYInput.value;
                                     if (v.length > 0) {
                                         v = util.ensure(parseFloat(v), "num");
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         itms.forEach(itm => {
                                             if (!(itm instanceof subcore.Project.Node)) return;
                                             itm.velocityY = v*100;
@@ -2752,7 +2713,7 @@ export default class App extends core.App {
                                     let v = o.eVelocityRotInput.value;
                                     if (v.length > 0) {
                                         v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         itms.forEach(itm => {
                                             if (!(itm instanceof subcore.Project.Node)) return;
                                             itm.velocityRot = v;
@@ -2770,7 +2731,7 @@ export default class App extends core.App {
                                     let v = o.eRadiusInput.value;
                                     if (v.length > 0) {
                                         v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                                        let itms = getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
+                                        let itms = state.getSelected().filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
                                         itms.forEach(itm => {
                                             if (!(itm instanceof subcore.Project.Obstacle)) return;
                                             itm.radius = v*100;
@@ -2785,10 +2746,10 @@ export default class App extends core.App {
                             o.eItemRem = o.eItemControls.querySelector(":scope > button#removebtn");
                             if (o.eItemRem instanceof HTMLButtonElement)
                                 o.eItemRem.addEventListener("click", e => {
-                                    if (getChoosing()) return;
+                                    if (state.getChoosing()) return;
                                     if (!this.hasProject()) return;
-                                    getSelected().forEach(id => this.project.remItem(id));
-                                    setSelected(getSelected());
+                                    state.getSelected().forEach(id => this.project.remItem(id));
+                                    state.setSelected(state.getSelected());
                                 });
                         }
                     },
@@ -2804,9 +2765,9 @@ export default class App extends core.App {
                         };
                         let buttons = new Set();
                         document.body.addEventListener("click", e => {
-                            if (getChoosing()) return;
+                            if (state.getChoosing()) return;
                             if (state.eRender instanceof HTMLDivElement && state.eRender.contains(e.target)) return;
-                            clearSelectedPaths();
+                            state.clearSelectedPaths();
                         });
                         this.getPathButtons = () => [...buttons];
                         this.setPathButtons = v => {
@@ -2829,20 +2790,20 @@ export default class App extends core.App {
                             buttons.add(btn);
                             btn.app = this;
                             btn._onTrigger = () => {
-                                clearSelectedPaths();
-                                addSelectedPath(btn);
+                                state.clearSelectedPaths();
+                                state.addSelectedPath(btn);
                             };
                             btn._onEdit = () => {
                                 btn._onTrigger();
-                                if (getChoosing()) return;
+                                if (state.getChoosing()) return;
                                 if (!this.hasProject()) return;
-                                let pths = getSelectedPaths();
+                                let pths = state.getSelectedPaths();
                                 if (pths.length <= 0) return;
                                 let id = pths[0];
                                 if (!this.project.hasPath(id)) return;
                                 let pth = this.project.getPath(id);
-                                setChoosing(true);
-                                let chooseData = getChooseData();
+                                state.setChoosing(true);
+                                let chooseData = state.getChooseData();
                                 chooseData.path = pth;
                                 let nodes = pth.nodes;
                                 chooseData.addHandler("choose", data => {
@@ -2881,10 +2842,10 @@ export default class App extends core.App {
                             };
                             btn._onRemove = () => {
                                 btn._onTrigger();
-                                if (getChoosing()) return;
+                                if (state.getChoosing()) return;
                                 if (!this.hasProject()) return;
-                                getSelectedPaths().forEach(id => this.project.remPath(id));
-                                setSelectedPaths(getSelectedPaths());
+                                state.getSelectedPaths().forEach(id => this.project.remPath(id));
+                                state.setSelectedPaths(state.getSelectedPaths());
                             };
                             btn._onChange = () => {
                                 state.post("refresh-selectitem", null);
@@ -2925,7 +2886,7 @@ export default class App extends core.App {
                                     btn.path = null;
                                 if (btn.hasPath()) {
                                     pthsUsed.add(btn.path.id);
-                                    btn.selected = isPathSelected(btn);
+                                    btn.selected = state.isPathSelected(btn);
                                 } else this.remPathButton(btn);
                             });
                             if (this.hasProject()) {
@@ -2947,11 +2908,11 @@ export default class App extends core.App {
                         state.addHandler("refresh-options", data => {
                             let has = this.hasProject();
                             if (o.ePathRem instanceof HTMLButtonElement)
-                                o.ePathRem.disabled = !has || (getSelectedPaths().length <= 0);
+                                o.ePathRem.disabled = !has || (state.getSelectedPaths().length <= 0);
                             if (o.ePathEdit instanceof HTMLButtonElement)
-                                o.ePathEdit.disabled = !has || (getSelectedPaths().length <= 0);
+                                o.ePathEdit.disabled = !has || (state.getSelectedPaths().length <= 0);
                             if (o.eActivateBtn instanceof HTMLButtonElement) {
-                                o.eActivateBtn.disabled = !o.getGenerating() && (!has || getSelectedPaths().length <= 0);
+                                o.eActivateBtn.disabled = !o.getGenerating() && (!has || state.getSelectedPaths().length <= 0);
                                 o.eActivateBtn.textContent = o.getGenerating() ? "Terminate" : "Generate";
                                 o.eActivateBtn.classList.remove("on");
                                 o.eActivateBtn.classList.remove("off");
@@ -2959,17 +2920,17 @@ export default class App extends core.App {
                             }
                             this.getPathButtons().forEach(btn => {
                                 btn.post("set", data);
-                                if (isPathSelected(btn)) btn.post("add", null);
+                                if (state.isPathSelected(btn)) btn.post("add", null);
                                 else btn.post("rem", null);
                             });
                         });
                         o.ePathAdd = elem.querySelector(":scope #pathaddbtn");
                         if (o.ePathAdd instanceof HTMLButtonElement)
                             o.ePathAdd.addEventListener("click", e => {
-                                if (getChoosing()) return;
+                                if (state.getChoosing()) return;
                                 if (!this.hasProject()) return;
-                                setChoosing(true);
-                                let chooseData = getChooseData();
+                                state.setChoosing(true);
+                                let chooseData = state.getChooseData();
                                 chooseData.path = new subcore.Project.Path();
                                 chooseData.addHandler("choose", data => {
                                     if (!(chooseData.path instanceof subcore.Project.Path)) return;
@@ -3014,7 +2975,7 @@ export default class App extends core.App {
                                 o.eProgressBtn = o.eProgress.querySelector(":scope > button");
                                 if (o.eProgressBtn instanceof HTMLButtonElement)
                                     o.eProgressBtn.addEventListener("click", e => {
-                                        let visuals = this.getPathVisuals().filter(id => isPathSelected(id));
+                                        let visuals = this.getPathVisuals().filter(id => state.isPathSelected(id));
                                         if (visuals.length <= 0) return;
                                         let id = visuals[0];
                                         let visual = this.getPathVisual(id);
@@ -3028,7 +2989,7 @@ export default class App extends core.App {
                                 o.eProgressBar = o.eProgress.querySelector(":scope > .bar");
                                 if (o.eProgressBar instanceof HTMLDivElement)
                                     o.eProgressBar.addEventListener("mousedown", e => {
-                                        if (getChoosing()) return;
+                                        if (state.getChoosing()) return;
                                         if (e.button != 0) return;
                                         e.stopPropagation();
                                         const mouseup = () => {
@@ -3038,7 +2999,7 @@ export default class App extends core.App {
                                         const mousemove = e => {
                                             let r = o.eProgressBar.getBoundingClientRect();
                                             let p = (e.pageX-r.left) / r.width;
-                                            let visuals = this.getPathVisuals().filter(id => isPathSelected(id));
+                                            let visuals = this.getPathVisuals().filter(id => state.isPathSelected(id));
                                             if (visuals.length <= 0) return;
                                             let id = visuals[0];
                                             let visual = this.getPathVisual(id);
@@ -3099,7 +3060,7 @@ export default class App extends core.App {
                             let visuals = [];
                             this.getPathVisuals().forEach(id => {
                                 let visual = this.getPathVisual(id);
-                                visual.show = isPathSelected(id);
+                                visual.show = state.isPathSelected(id);
                                 if (visual.show) visuals.push(id);
                                 visual.update();
                                 if (!this.hasProject() || !this.project.hasPath(id))
@@ -3199,8 +3160,8 @@ export default class App extends core.App {
                                 let projectId = this.projectId;
                                 if (!this.hasProject(projectId)) return;
                                 let project = this.getProject(projectId);
-                                if (getSelectedPaths().length <= 0) return;
-                                let id = getSelectedPaths()[0];
+                                if (state.getSelectedPaths().length <= 0) return;
+                                let id = state.getSelectedPaths()[0];
                                 if (!project.hasPath(id)) return;
                                 let path = project.getPath(id);
                                 e.stopPropagation();
@@ -3214,7 +3175,7 @@ export default class App extends core.App {
                                         await o.checkPathVisual();
                                         this.getPathVisuals().forEach(id => {
                                             let visual = this.getPathVisual(id);
-                                            if (!isPathSelected(id)) return;
+                                            if (!state.isPathSelected(id)) return;
                                             visual.play();
                                         });
                                         o.setGenerating(false);
@@ -3498,13 +3459,11 @@ export default class App extends core.App {
                     let elem = document.getElementById(name+"panel");
                     let btn = document.getElementById("editnav"+name);
                     let o = state.panels[name] = new core.Target();
-                    if (btn instanceof HTMLButtonElement) // {
+                    if (btn instanceof HTMLButtonElement)
                         btn.addEventListener("click", e => {
-                            if (getChoosing()) return;
+                            if (state.getChoosing()) return;
                             state.setPanel(name);
                         });
-                        // new MutationObserver(() => o.post("show-change")).observe(btn, { attributes: true });
-                    // }
                     o.btn = btn;
                     let shown = null;
                     o.getShown = () => shown;
@@ -3520,7 +3479,7 @@ export default class App extends core.App {
                     o.show = () => o.setShown(true);
                     o.hide = () => o.setHidden(true);
                     o.addHandler("show-change", data => {
-                        let show = o.getShown(); // && !btn.disabled;
+                        let show = o.getShown();
                         if (elem instanceof HTMLDivElement) {
                             if (show) elem.classList.add("this");
                             else elem.classList.remove("this");
