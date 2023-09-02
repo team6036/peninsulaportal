@@ -1095,7 +1095,7 @@ export default class App extends core.App {
                     let itm;
                     let menu = new core.App.ContextMenu();
                     itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Maximized"));
-                    itm.shortcut = "F";
+                    itm.shortcut = "⌘M";
                     itm.addHandler("trigger", data => {
                         this.post("cmd-maxmin", null);
                     });
