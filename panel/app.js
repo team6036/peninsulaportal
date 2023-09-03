@@ -259,11 +259,26 @@ class BrowserItem extends core.Target {
         this.eSide.classList.add("side");
         this.eSide.classList.add("override");
 
+        let cancel = false;
         this.eDisplay.addEventListener("click", e => {
+            if (cancel) return cancel = false;
             this.isOpen = !this.isOpen;
         });
         this.eDisplay.addEventListener("dblclick", e => {
             this.post("trigger", { path: this.name });
+        });
+        this.eDisplay.addEventListener("mousedown", e => {
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+            };
+            const mousemove = () => {
+                mouseup();
+                cancel = true;
+                this.post("drag", { path: this.name });
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
         });
         this.eSide.addEventListener("click", e => {
             this.isOpen = !this.isOpen;
@@ -356,7 +371,12 @@ class BrowserTable extends BrowserItem {
             data = util.ensure(data, "obj");
             this.post("trigger", { path: this.name+"/"+data.path });
         };
+        child._onDrag = data => {
+            data = util.ensure(data, "obj");
+            this.post("drag", { path: this.name+"/"+data.path });
+        };
         child.addHandler("trigger", child._onTrigger);
+        child.addHandler("drag", child._onDrag);
         this.eContent.appendChild(child.elem);
         return child;
     }
@@ -365,7 +385,9 @@ class BrowserTable extends BrowserItem {
         if (!this.hasChild(child)) return false;
         this.#children.splice(this.#children.indexOf(child), 1);
         child.remHandler("trigger", child._onTrigger);
+        child.remHandler("trigger", child._onDrag);
         delete child._onTrigger;
+        delete child._onDrag;
         this.eContent.removeChild(child.elem);
         return child;
     }
@@ -424,6 +446,10 @@ class BrowserTopic extends BrowserItem {
                 itm.addHandler("trigger", data => {
                     data = util.ensure(data, "obj");
                     this.post("trigger", { path: this.name+"/"+data.path });
+                });
+                itm.addHandler("drag", data => {
+                    data = util.ensure(data, "obj");
+                    this.post("drag", { path: this.name+"/"+data.path });
                 });
                 this.#sub.push(itm);
             });
@@ -531,10 +557,11 @@ class Container extends Widget {
         if (!(child instanceof Widget)) return false;
         return this.#children.includes(child) && child.parent == this;
     }
-    insertChild(child, at) {
+    addChild(child, at=null) {
         if (!(child instanceof Widget)) return false;
         if (this.hasChild(child)) return false;
         if (child.parent != null) return false;
+        if (at == null) at = this.#children.length;
         at = Math.min(this.#children.length, Math.max(0, util.ensure(at, "int")));
         child.parent = this;
         this.elem.appendChild(child.elem);
@@ -563,11 +590,10 @@ class Container extends Widget {
         let weights = this.weights;
         let oldChild = this.#children[at];
         this.remChild(oldChild);
-        this.insertChild(child, at);
+        this.addChild(child, at);
         this.weights = weights;
         return child;
     }
-    addChild(child) { return this.insertChild(child, this.#children.length); }
     remChild(child) {
         if (!(child instanceof Widget)) return false;
         if (!this.hasChild(child)) return false;
@@ -672,7 +698,7 @@ class Container extends Widget {
             [...subweights].reverse().forEach(w => weights.splice(i, 0, w*childweight));
             subchildren.forEach(subchild => child.remChild(subchild));
             this.remChild(child);
-            [...subchildren].reverse().forEach(subchild => this.insertChild(subchild, i));
+            [...subchildren].reverse().forEach(subchild => this.addChild(subchild, i));
             this.weights = weights;
         });
     }
@@ -757,12 +783,12 @@ class Panel extends Widget {
         if (i < 0 || i >= this.#pages.length) return null;
         return this.#pages[i];
     }
-    addPage(page, index=null) {
+    addPage(page, at=null) {
         if (!(page instanceof Panel.Page)) return false;
         if (this.hasPage(page)) return false;
         if (page.parent != null) return false;
-        if (index == null) this.#pages.push(page);
-        else this.#pages.splice(index, 0, page);
+        if (at == null) at = this.#pages.length;
+        this.#pages.splice(at, 0, page);
         page.parent = this;
         this.eTop.appendChild(page.eTab);
         this.eContent.appendChild(page.elem);
@@ -1600,19 +1626,17 @@ Panel.ToolPage = class PanelToolPage extends Panel.Page {
     constructor() {
         super();
     }
-}
+};
 
 export default class App extends core.App {
     #browserItems;
     #rootWidget;
     #rootTable;
 
-    #dragging;
-    #dragData;
-
     #eSide;
     #eSideSections;
     #eContent;
+    #eBlock;
 
     constructor() {
         super();
@@ -1620,9 +1644,6 @@ export default class App extends core.App {
         this.#browserItems = [];
         this.#rootWidget = null;
         this.#rootTable = null;
-
-        this.#dragging = false;
-        this.#dragData = null;
 
         this.addHandler("start-complete", data => {       
             this.addBackButton();
@@ -1661,6 +1682,7 @@ export default class App extends core.App {
             this.#eContent = document.querySelector("#mount > .content");
             if (this.hasEContent())
                 new ResizeObserver(() => this.formatContent()).observe(this.eContent);
+            this.#eBlock = document.getElementById("block");
             
             this.formatSide();
             this.formatContent();
@@ -1764,6 +1786,180 @@ export default class App extends core.App {
             };
             this.rootTable = build(template);
 
+            const getHovered = (widget, pos, options) => {
+                options = util.ensure(options, "obj");
+                let canSub = ("canSub" in options) ? options.canSub : true;
+                let canTop = ("canTop" in options) ? options.canTop : true;
+                if (!this.hasEContent()) return null;
+                pos = new V(pos);
+                let r;
+                r = this.eContent.getBoundingClientRect();
+                pos.x = Math.min(r.right, Math.max(r.left, pos.x));
+                pos.y = Math.min(r.bottom, Math.max(r.top, pos.y));
+                if (!(widget instanceof Widget)) return null;
+                r = widget.elem.getBoundingClientRect();
+                if (pos.x < r.left || pos.x > r.right) return null;
+                if (pos.y < r.top || pos.y > r.bottom) return null;
+                if (widget instanceof Container) {
+                    if (canSub) {
+                        for (let i = 0; i < widget.children.length; i++) {
+                            let h = getHovered(widget.children[i], pos, options);
+                            if (h) return h;
+                        }
+                    }
+                }
+                if (widget instanceof Panel) {
+                    if (canTop) {
+                        r = widget.eTop.getBoundingClientRect();
+                        if (pos.x > r.left && pos.x < r.right) {
+                            if (pos.y > r.top && pos.y < r.bottom) {
+                                if (widget.pages.length <= 0) return {
+                                    widget: widget,
+                                    at: 0,
+                                };
+                                let at = null;
+                                for (let i = 0; i < widget.pages.length; i++) {
+                                    if (at != null) continue;
+                                    let r = widget.getPage(i).eTab.getBoundingClientRect();
+                                    if (i == 0) {
+                                        if (pos.x < r.left+r.width/2) {
+                                            at = 0;
+                                            continue;
+                                        }
+                                    }
+                                    if (i+1 >= widget.pages.length) {
+                                        if (pos.x > r.left+r.width/2) at = widget.pages.length;
+                                        continue;
+                                    }
+                                    let ri = r, rj = widget.getPage(i+1).eTab.getBoundingClientRect();
+                                    if (pos.x > ri.left+ri.width/2 && pos.x < rj.left+rj.width) at = i+1;
+                                }
+                                if (at != null) return {
+                                    widget: widget,
+                                    at: at,
+                                };
+                            }
+                        }
+                        r = widget.elem.getBoundingClientRect();
+                    }
+                }
+                let x = (pos.x-r.left)/r.width - 0.5;
+                let y = (pos.y-r.top)/r.height - 0.5;
+                let at;
+                if (x-y > 0) at = (x+y > 0) ? "+x" : "-y";
+                else at = (x+y > 0) ? "+y" : "-x";
+                return {
+                    widget: widget,
+                    at: at,
+                };
+            };
+            const isValid = o => {
+                if (o instanceof Generic) return true;
+                if (o instanceof Widget) return true;
+                if (o instanceof Panel.Page) return true;
+                return false;
+            };
+            this.addHandler("drag-start", () => {
+                if (!isValid(this.dragData)) return;
+            });
+            this.addHandler("drag-move", e => {
+                if (!isValid(this.dragData)) return;
+                if (!this.hasRootWidget()) {
+                    this.showBlock();
+                    if (this.hasEContent()) this.placeBlock(this.eContent.getBoundingClientRect());
+                    return;
+                }
+                const hovered = getHovered(
+                    this.rootWidget, new V(e.pageX, e.pageY),
+                    {
+                        canSub: true,
+                        canTop: (this.dragData instanceof Generic || this.dragData instanceof Panel.Page),
+                    },
+                );
+                if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel))
+                    return this.hideBlock();
+                this.showBlock();
+                let at = hovered.at;
+                if (["+x", "-x", "+y", "-y"].includes(at)) {
+                    let r = new util.Rect(hovered.widget.elem.getBoundingClientRect());
+                    r.x += (at == "+x") ? r.w/2 : 0;
+                    r.y += (at == "+y") ? r.h/2 : 0;
+                    r.w /= at.includes("x") ? 2 : 1;
+                    r.h /= at.includes("y") ? 2 : 1;
+                    this.placeBlock(r);
+                } else if (util.is(at, "int")) {
+                    let r = new util.Rect(hovered.widget.eTop.getBoundingClientRect());
+                    let x = (at >= hovered.widget.pages.length) ? hovered.widget.getPage(hovered.widget.pages.length-1).eTab.getBoundingClientRect().right : hovered.widget.getPage(at).eTab.getBoundingClientRect().left;
+                    this.placeBlock(new util.Rect(x, r.y+10, 0, r.h-15));
+                }
+            });
+            this.addHandler("drag-submit", e => {
+                if (!isValid(this.dragData)) return;
+                this.hideBlock();
+                let canWidgetFromData = false;
+                const getWidgetFromData = () => {
+                    if (this.dragData instanceof Generic) return new Panel([new Panel.BrowserPage(this.dragData.path)]);
+                    if (this.dragData instanceof Widget) return this.dragData;
+                    if (this.dragData instanceof Panel.Page) return new Panel([this.dragData]);
+                    return null;
+                };
+                if (this.dragData instanceof Generic) canWidgetFromData = true;
+                else if (this.dragData instanceof Widget) canWidgetFromData = true;
+                else if (this.dragData instanceof Panel.Page) canWidgetFromData = true;
+                let canPageFromData = false;
+                const getPageFromData = () => {
+                    if (this.dragData instanceof Generic) return new Panel.BrowserPage(this.dragData.path);
+                    if (this.dragData instanceof Widget);
+                    if (this.dragData instanceof Panel.Page) return this.dragData;
+                    return null;
+                };
+                if (this.dragData instanceof Generic) canPageFromData = true;
+                else if (this.dragData instanceof Widget);
+                else if (this.dragData instanceof Panel.Page) canPageFromData = true;
+                if (!this.hasRootWidget()) {
+                    this.rootWidget = getWidgetFromData();
+                    return;
+                }
+                const hovered = getHovered(
+                    this.rootWidget, new V(e.pageX, e.pageY),
+                    {
+                        canSub: true,
+                        canTop: (this.dragData instanceof Generic || this.dragData instanceof Panel.Page),
+                    },
+                );
+                if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel)) return;
+                let at = hovered.at;
+                if (["+x", "-x", "+y", "-y"].includes(at) && canWidgetFromData) {
+                    let widget = getWidgetFromData();
+                    let container = new Container();
+                    container.axis = at[1];
+                    if (hovered.widget == this.rootWidget) {
+                        this.rootWidget = null;
+                        container.addChild((at[0] == "+") ? hovered.widget : widget);
+                        container.addChild((at[0] != "+") ? hovered.widget : widget);
+                        this.rootWidget = container;
+                    } else {
+                        let parent = hovered.widget.parent;
+                        let weights = parent.weights, at = parent.children.indexOf(hovered.widget);
+                        parent.remChild(hovered.widget);
+                        container.addChild((at[0] == "+") ? hovered.widget : widget);
+                        container.addChild((at[0] != "+") ? hovered.widget : widget);
+                        parent.addChild(container, at);
+                        parent.weights = weights;
+                    }
+                } else if (util.is(at, "int") && canPageFromData) {
+                    hovered.widget.addPage(getPageFromData(), at);
+                }
+                this.rootWidget.collapse();
+            });
+
+            this.addHandler("cmd-new", data => {
+                if (this.dragging) return;
+                data = util.ensure(data, "obj");
+                this.dragData = new Panel.AddPage();
+                this.dragging = true;
+            });
+
             this.addHandler("update", data => {
                 if (this.hasRootWidget()) {
                     this.rootWidget.collapse();
@@ -1774,96 +1970,7 @@ export default class App extends core.App {
             document.body.addEventListener("keydown", e => {
                 if (e.code != "KeyK") return;
                 if (!(e.ctrlKey || e.metaKey)) return;
-                const panelSection = document.getElementById("panelsection");
-                const showSection = () => {
-                    if (!(panelSection instanceof HTMLDivElement)) return;
-                    panelSection.style.visibility = "inherit";
-                };
-                const hideSection = () => {
-                    if (!(panelSection instanceof HTMLDivElement)) return;
-                    panelSection.style.visibility = "";
-                };
-                const placeSection = (elem, side) => {
-                    if (!(panelSection instanceof HTMLDivElement)) return;
-                    if (!(elem instanceof HTMLElement)) return;
-                    if (!["+x", "-x", "+y", "-y", "*"].includes(side)) return;
-                    let r = elem.getBoundingClientRect();
-                    panelSection.style.left = (r.left + ((side == "+x") ? (r.width/2) : 0))+"px";
-                    panelSection.style.top = (r.top + ((side == "+y") ? (r.height/2) : 0))+"px";
-                    panelSection.style.width = ((side.includes("x") ? (r.width/2) : r.width)-4)+"px";
-                    panelSection.style.height = ((side.includes("y") ? (r.height/2) : r.height)-4)+"px";
-                };
-                const getHovered = (widget, pos) => {
-                    if (!this.hasEContent()) return null;
-                    pos = new V(pos);
-                    let r;
-                    r = this.eContent.getBoundingClientRect();
-                    pos.x = Math.min(r.right, Math.max(r.left, pos.x));
-                    pos.y = Math.min(r.bottom, Math.max(r.top, pos.y));
-                    if (!(widget instanceof Widget)) return null;
-                    r = widget.elem.getBoundingClientRect();
-                    if (pos.x < r.left || pos.x > r.right) return null;
-                    if (pos.y < r.top || pos.y > r.bottom) return null;
-                    if (widget instanceof Container) {
-                        for (let i = 0; i < widget.children.length; i++) {
-                            let h = getHovered(widget.children[i], pos);
-                            if (h) return h;
-                        }
-                    }
-                    let x = (pos.x-r.left)/r.width - 0.5;
-                    let y = (pos.y-r.top)/r.height - 0.5;
-                    let side;
-                    if (x-y > 0) side = (x+y > 0) ? "+x" : "-y";
-                    else side = (x+y > 0) ? "+y" : "-x";
-                    return {
-                        widget: widget,
-                        side: side,
-                    };
-                };
-                const mouseup = e => {
-                    document.body.removeEventListener("mouseup", mouseup);
-                    document.body.removeEventListener("mousemove", mousemove);
-                    hideSection();
-                    if (!this.hasRootWidget()) {
-                        this.rootWidget = new Panel();
-                        return;
-                    }
-                    const hovered = getHovered(this.rootWidget, new V(e.pageX, e.pageY));
-                    if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel)) return;
-                    let container = new Container();
-                    container.axis = hovered.side[1];
-                    if (hovered.widget == this.rootWidget) {
-                        this.rootWidget = null;
-                        container.addChild((hovered.side[0] == "+") ? hovered.widget : new Panel());
-                        container.addChild((hovered.side[0] != "+") ? hovered.widget : new Panel());
-                        this.rootWidget = container;
-                    } else {
-                        let parent = hovered.widget.parent;
-                        let weights = parent.weights, at = parent.children.indexOf(hovered.widget);
-                        parent.remChild(hovered.widget);
-                        container.addChild((hovered.side[0] == "+") ? hovered.widget : new Panel());
-                        container.addChild((hovered.side[0] != "+") ? hovered.widget : new Panel());
-                        parent.insertChild(container, at);
-                        parent.weights = weights;
-                    }
-                    this.rootWidget.collapse();
-                };
-                const mousemove = e => {
-                    if (!this.hasEContent()) return;
-                    if (!this.hasRootWidget()) {
-                        showSection();
-                        placeSection(this.eContent, "*");
-                        return;
-                    }
-                    const hovered = getHovered(this.rootWidget, new V(e.pageX, e.pageY));
-                    if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel))
-                        return hideSection();
-                    showSection();
-                    placeSection(hovered.widget.elem, hovered.side);
-                };
-                document.body.addEventListener("mouseup", mouseup);
-                document.body.addEventListener("mousemove", mousemove);
-                mousemove(e);
+                this.post("cmd-new", {});
             });
         });
     }
@@ -1887,6 +1994,12 @@ export default class App extends core.App {
         if (!(itm instanceof BrowserItem)) return false;
         if (this.hasBrowserItem(itm)) return false;
         this.#browserItems.push(itm);
+        itm._onDrag = data => {
+            data = util.ensure(data, "obj");
+            let generic = this.lookup(data.path);
+            if (!(generic instanceof Generic)) return;
+        };
+        itm.addHandler("drag", itm._onDrag);
         if (this.hasESideSection("browser") && this.getESideSection("browser").eContent instanceof HTMLDivElement)
             this.getESideSection("browser").eContent.appendChild(itm.elem);
         return itm;
@@ -1895,6 +2008,8 @@ export default class App extends core.App {
         if (!(itm instanceof BrowserItem)) return false;
         if (!this.hasBrowserItem(itm)) return false;
         this.#browserItems.splice(this.#browserItems.indexOf(itm), 1);
+        itm.remHandler("drag", itm._onDrag);
+        delete itm._onDrag;
         if (this.hasESideSection("browser") && this.getESideSection("browser").eContent instanceof HTMLDivElement)
             this.getESideSection("browser").eContent.removeChild(itm.elem);
         return itm;
@@ -1938,7 +2053,7 @@ export default class App extends core.App {
         this.post("refactor-browser", null);
     }
     hasRootTable() { return this.rootTable instanceof Table; }
-    getGeneric(path) {
+    lookup(path) {
         if (!this.hasRootTable()) return null;
         return this.rootTable.lookup(path);
     }
@@ -1974,4 +2089,24 @@ export default class App extends core.App {
     getESideSection(id) { return this.#eSideSections[id]; }
     get eContent() { return this.#eContent; }
     hasEContent() { return this.eContent instanceof HTMLDivElement; }
+    get eBlock() { return this.#eBlock; }
+    hasEBlock() { return this.eBlock instanceof HTMLDivElement; }
+    get isBlockShown() { return this.hasEBlock() ? this.eBlock.classList.contains("this") : null; }
+    set isBlockShown(v) {
+        if (!this.hasEBlock()) return;
+        v ? this.eBlock.classList.add("this") : this.eBlock.classList.remove("this");
+    }
+    get isBlockHidden() { return this.hasEBlock() ? !this.isBlockShown : null; }
+    set isBlockHidden(v) { return this.isBlockShown = !v; }
+    showBlock() { return this.isBlockShown = true; }
+    hideBlock() { return this.isBlockHidden = true; }
+    placeBlock(r) {
+        r = new util.Rect(r);
+        if (!this.hasEBlock()) return;
+        r.normalize();
+        this.eBlock.style.left = r.x+"px";
+        this.eBlock.style.top = r.y+"px";
+        this.eBlock.style.width = Math.max(0, r.w-4)+"px";
+        this.eBlock.style.height = Math.max(0, r.h-4)+"px";
+    }
 }

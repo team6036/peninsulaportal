@@ -103,6 +103,11 @@ export function cos(x) {
 export function lerp(a, b, p) {
     p = ensure(p, "num");
     if (is(a, "num") && is(b, "num")) return a + p*(b-a);
+    if ((a instanceof V3) || (b instanceof V3)) {
+        a = new V3(a);
+        b = new V3(b);
+        return new V3(lerp(a.x, b.x, p), lerp(a.y, b.y, p), lerp(a.z, b.z, p));
+    }
     if ((a instanceof V) || (b instanceof V)) {
         a = new V(a);
         b = new V(b);
@@ -119,6 +124,11 @@ export function lerpE(a, b, p) {
             return b;
         }
         return lerp(a, b, p);
+    }
+    if ((a instanceof V3) || (b instanceof V3)) {
+        a = new V3(a);
+        b = new V3(b);
+        return new V3(lerpE(a.x, b.x, p), lerpE(a.y, b.y, p), lerpE(a.z, b.z, p));
     }
     if ((a instanceof V) || (b instanceof V)) {
         a = new V(a);
@@ -456,6 +466,7 @@ export class V {
         if (a.length == 1) {
             a = a[0];
             if (a instanceof V) a = a.xy;
+            else if (a instanceof V3) a = [a.x, a.y];
             else if (is(a, "arr")) a = new V(...a).xy;
             else if (is(a, "obj")) a = [a.x, a.y];
             else if (is(a, "num")) a = [a, a];
@@ -508,7 +519,7 @@ export class V {
     }
     rotate(d, o) {
         o = new V(o);
-        return this.sub(o).rotate(d).add(o);
+        return this.sub(o).rotateOrigin(d).add(o);
     }
     normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V(this); }
 
@@ -555,6 +566,130 @@ export class V {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": this.xy,
+        };
+    }
+}
+
+export class V3 {
+    #x; #y; #z;
+
+    constructor(...a) {
+        if (a.length <= 0 || a.length > 3) a = [0];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof V3) a = [a.x, a.y, a.z];
+            else if (a instanceof V) a = [a.x, a.y, 0];
+            else if (is(a, "arr")) a = new V3(...a).xyz;
+            else if (is(a, "obj")) a = [a.x, a.y, a.z];
+            else if (is(a, "num")) a = [a, a, a];
+            else a = [0, 0, 0];
+        }
+        if (a.length == 2) a = [...a, 0];
+        [this.x, this.y, this.z] = a;
+    }
+
+    get x() { return this.#x; }
+    set x(v) { this.#x = ensure(v, "num"); }
+    get y() { return this.#y; }
+    set y(v) { this.#y = ensure(v, "num"); }
+    get z() { return this.#z; }
+    set z(v) { this.#z = ensure(v, "num"); }
+    get xyz() { return [this.x, this.y, this.z]; }
+    set xyz(v) { [this.x, this.y, this.z] = new V3(v).xyz; }
+
+    set(...a) { this.xyz = a; return this; }
+
+    add(...a) {
+        a = new V3(...a);
+        return new V3(this.x+a.x, this.y+a.y, this.z+a.z);
+    }
+    sub(...a) {
+        a = new V3(...a);
+        return new V3(this.x-a.x, this.y-a.y, this.z-a.z);
+    }
+    mul(...a) {
+        a = new V3(...a);
+        return new V3(this.x*a.x, this.y*a.y, this.z*a.z);
+    }
+    div(...a) {
+        a = new V3(...a);
+        return new V3(this.x/a.x, this.y/a.y, this.z/a.z);
+    }
+    pow(...a) {
+        a = new V3(...a);
+        return new V3(this.x**a.x, this.y**a.y, this.z**a.z);
+    }
+
+    map(f) {
+        return new V3(f(this.x), f(this.y), f(this.z));
+    }
+    abs() { return this.map(v => Math.abs(v)); }
+    floor() { return this.map(v => Math.floor(v)); }
+    ceil() { return this.map(v => Math.ceil(v)); }
+    round() { return this.map(v => Math.round(v)); }
+
+    rotateOrigin(...d) {
+        d = new V3(...d);
+        d.iadd(new V3().towards(this));
+        let m = this.dist(0);
+        return V3.dir(d, m);
+    }
+    rotate(d, o) {
+        o = new V3(o);
+        return this.sub(o).rotateOrigin(d).add(o);
+    }
+    normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V3(this); }
+
+    iadd(...a) { return this.set(this.add(...a)); }
+    isub(...a) { return this.set(this.sub(...a)); }
+    imul(...a) { return this.set(this.mul(...a)); }
+    idiv(...a) { return this.set(this.div(...a)); }
+    ipow(...a) { return this.set(this.pow(...a)); }
+
+    imap(f) { return this.set(this.map(f)); }
+    iabs() { return this.set(this.abs()); }
+    ifloor() { return this.set(this.floor()); }
+    iceil() { return this.set(this.ceil()); }
+    iround() { return this.set(this.round()); }
+
+    irotateOrigin(d) { return this.set(this.rotateOrigin(d)); }
+    irotate(d, o) { return this.set(this.rotate(d, o)); }
+    inormalize() { return this.set(this.normalize()); }
+
+    distSquared(...v) {
+        v = new V3(...v);
+        return (this.x-v.x)**2 + (this.y-v.y)**2 + (this.z-v.z);
+    }
+    dist(...v) { return Math.sqrt(this.distSquared(...v)); }
+    towards(...v) {
+        v = new V3(...v);
+        let thisFlat = new V(this.x, this.z);
+        let thatFlat = new V(v.x, v.z);
+        let azimuth = thisFlat.towards(thatFlat);
+        let elevation = new V().towards(thisFlat.dist(thatFlat), v.y-this.y);
+        return new V3(elevation, azimuth, 0);
+    }
+    equals(...v) {
+        v = new V3(...v);
+        return (this.x == v.x) && (this.y == v.y) && (this.z == v.z);
+    }
+
+    static dir(d, m=1) {
+        d = new V3(d);
+        m = ensure(m, "num");
+        let azimuth = V.dir(d.y);
+        let elevation = V.dir(d.x);
+        azimuth.imul(elevation.x);
+        return new V3(azimuth.x, elevation.y, azimuth.y).mul(m);
+    }
+
+    toString() { return "<"+this.xyz.join(", ")+">" }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": this.xyz,
         };
     }
 }

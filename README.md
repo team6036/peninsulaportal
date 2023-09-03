@@ -27,12 +27,24 @@ MacOS (Darwin) requires running a few more commands to authorize the application
 2. `xattr -cr Peninsula.app`
 
 ### Development
+
+### Setup
 - [Install NPM / Node](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 - Navigate to the project directory within terminal
 ```shell
 npm install
+```
+
+### Start
+```shell
 npm start
 ```
+
+### Packaging
+```shell
+npm run package
+```
+This should create a `./build` directory with the packaged apps. Check with `package.js` to see the build options.
 
 <div>
     <h1 id="peninsula-panel" align="center">Peninsula Panel</h1>
