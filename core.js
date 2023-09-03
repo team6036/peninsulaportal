@@ -141,6 +141,7 @@ export class App extends Target {
 
     #dragging;
     #dragState;
+    #dragData;
 
     #eCoreStyle;
     #eStyle;
@@ -163,6 +164,7 @@ export class App extends Target {
 
         this.#dragging = false;
         this.#dragState = null;
+        this.#dragData = null;
 
         this.addHandler("start", data => {
             let id = setInterval(() => {
@@ -495,10 +497,13 @@ export class App extends Target {
         if (this.dragging) {
             this.#dragState = new Target();
             const mouseup = e => {
+                this.post("drag-submit", e);
                 this.dragState.post("submit", e);
+                this.post("drag-stop", null);
                 this.dragState.post("stop", null);
             };
             const mousemove = e => {
+                this.post("drag-move", e);
                 this.dragState.post("move", e);
             };
             this.dragState.addHandler("stop", data => {
@@ -509,15 +514,33 @@ export class App extends Target {
             });
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
+            this.post("drag-start", null);
         } else {
             if (!this.dragState._already) {
+                this.post("drag-cancel", null);
                 this.dragState.post("cancel", null);
+                this.post("drag-stop", null);
                 this.dragState.post("stop", null);
             }
             this.#dragState = null;
+            this.dragData = null;
         }
     }
+    submitDrag() {
+        if (!this.dragging) return false;
+        if (this.dragState._already) return false;
+        this.post("drag-submit", e);
+        this.dragState.post("submit", e);
+        this.post("drag-stop", null);
+        this.dragState.post("stop", null);
+        return true;
+    }
     get dragState() { return this.#dragState; }
+    get dragData() { return this.#dragData; }
+    set dragData(v) {
+        if (this.dragging) return;
+        this.#dragData = v;
+    }
 
     addBackButton() {
         if (!(this.eTitleBar instanceof HTMLDivElement)) return false;

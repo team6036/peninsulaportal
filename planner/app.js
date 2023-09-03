@@ -1139,13 +1139,13 @@ export default class App extends core.App {
                 if (state.getChoosing()) return;
                 if (!this.hasProject()) return;
                 this.dragging = true;
-                this.dragState.name = name;
+                this.dragData = name;
                 let elem = document.getElementById("drag");
                 if (elem instanceof HTMLDivElement)
                     elem.innerHTML = {
                         node: "<div class='global item selectable node'><div class='button'></div></div>",
                         obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
-                    }[name];
+                    }[this.dragData];
                 let prevOverRender = false;
                 let ghostItem = null;
                 let item = {
@@ -1155,7 +1155,7 @@ export default class App extends core.App {
                         0, 0, false,
                     ),
                     obstacle: new subcore.Project.Obstacle(0, 100),
-                }[name];
+                }[this.dragData];
                 this.dragState.addHandler("move", e => {
                     let pos = new V(e.pageX, e.pageY);
                     let overRender = false;

@@ -715,7 +715,7 @@
 
     pointer-events: none;
 }
-#overlay > #panelsection {
+#overlay > #block {
     position: absolute;
 
     background-color: var(--a-4);
@@ -724,4 +724,7 @@
     visibility: hidden;
 
     user-select: none;
+}
+#overlay > #block.this {
+    visibility: inherit;
 }
