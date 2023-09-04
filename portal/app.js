@@ -184,7 +184,7 @@ export default class App extends core.App {
                         }
                         [...stars].sort((a, b) => b.z-a.z).forEach(star => {
                             star.speed = star._speed * starSpeed;
-                            star.streakSize = star.size * Math.abs(star.speed) * 0.1;
+                            star.streakSize = star.size * Math.abs(star.speed) * 0.25;
                             star.update();
                             if (star.z + star.streakSize/2 < zNear) {
                                 stars.splice(stars.indexOf(star), 1);
