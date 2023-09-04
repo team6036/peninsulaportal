@@ -245,11 +245,12 @@ export default class App extends core.App {
                     this.eContent.innerHTML = "<article>"+converter.makeHtml(text)+"</article>";
                     const dfs = elem => {
                         if (elem instanceof HTMLAnchorElement) {
-                            let href = elem.href.split("/").at(-1);
-                            if (href.split("#").length > 1) {
+                            let href = elem.href;
+                            if (href.startsWith(window.location.href)) {
+                                let hash = href.substring(window.location.href.length);
                                 elem.addEventListener("click", e => {
                                     e.preventDefault();
-                                    let target = document.getElementById(href.split("#").at(-1));
+                                    let target = document.querySelector(hash);
                                     if (!(target instanceof HTMLElement)) return;
                                     this.eContent.scrollTo({ top: target.offsetTop-100, behavior: "smooth" });
                                 });
