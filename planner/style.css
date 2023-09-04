@@ -124,6 +124,9 @@
     visibility: inherit;
 }
 
+#TITLEPAGE {
+    background: var(--gradient);
+}
 #TITLEPAGE > .title {
     font-size: 50px;
 }
