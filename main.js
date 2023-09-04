@@ -183,15 +183,20 @@ class Portal extends core.Target {
                         async () => {
                             log("solver");
                             this.addLoad(name+":solver");
-                            if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
-                                await fs.promises.cp(
-                                    path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
-                                    {
-                                        force: true,
-                                        recursive: true,
-                                    }
-                                );
-                            log("solver - success");
+                            try {
+                                if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                    await fs.promises.cp(
+                                        path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
+                                        {
+                                            force: true,
+                                            recursive: true,
+                                        }
+                                    );
+                                log("solver - success");
+                            } catch (e) {
+                                log(`solver - error - ${e}`);
+                                this.addLoad(name+":solver:"+e);
+                            }
                             this.remLoad(name+":solver");
                         },
                         async () => {
@@ -208,7 +213,11 @@ class Portal extends core.Target {
                                         resp.body.on("error", e => rej(e));
                                     });
                                 });
-                            } catch (e) { log(`template.json - ${e}`); }
+                                log("template.json - success");
+                            } catch (e) {
+                                log(`template.json - error - ${e}`);
+                                this.addLoad(name+":template.json:"+e);
+                            }
                             this.remLoad(name+":template.json");
                             if (!(await Portal.Feature.fileHas(this, name, "template.json"))) return;
                             log("pruning template.json");
@@ -220,7 +229,11 @@ class Portal extends core.Target {
                                 data[".meta.backgroundImage"] = path.join(Portal.Feature.getDataPath(this, name), "template.png");
                                 content = JSON.stringify(data);
                                 await Portal.Feature.fileWrite(this, name, "template.json", content);
-                            } catch (e) { log(`pruning template.json - ${e}`); }
+                                log("pruning template.json - success");
+                            } catch (e) {
+                                log(`pruning template.json - error - ${e}`);
+                                this.remLoad(name+":template.json-prune:"+e);
+                            }
                             this.remLoad(name+":template.json-prune");
                         },
                         async () => {
@@ -237,7 +250,11 @@ class Portal extends core.Target {
                                         resp.body.on("error", e => rej(e));
                                     });
                                 });
-                            } catch (e) { log(`template.png - ${e}`); }
+                                log("template.png - success");
+                            } catch (e) {
+                                log(`template.png - error - ${e}`);
+                                this.addLoad(name+":template.png:"+e);
+                            }
                             this.remLoad(name+":template.png");
                         },
                     ].map(f => f()));
@@ -299,6 +316,9 @@ class Portal extends core.Target {
         });
         ipc.handle("get-devmode", async e => {
             return await this.isDevMode();
+        });
+        ipc.handle("get-loads", async e => {
+            return this.loads;
         });
 
         ipc.handle("file-has", async (e, pth) => {
@@ -385,7 +405,7 @@ class Portal extends core.Target {
             await this.post("start", null);
 
             this.addFeature(new Portal.Feature("PORTAL"));
-            await this.tryLoad();
+            setTimeout(() => this.tryLoad(), 1000);
         })();
 
         return true;

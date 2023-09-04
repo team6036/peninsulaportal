@@ -254,5 +254,30 @@ article ul {
     align-content: center;
 
     color: var(--v2);
+
     font-size: 12px;
+    font-family: monospace;
+}
+#TITLEPAGE > .info * {
+    font-family: monospace;
+}
+#TITLEPAGE > .loads {
+    position: absolute;
+    top: calc((20px * var(--fs)) + (var(--TOP) * (1 - var(--fs))));
+    left: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: flex-start;
+    align-content: center;
+
+    color: var(--v2);
+
+    font-size: 12px;
+    font-family: monospace;
+}
+#TITLEPAGE > .loads * {
+    font-family: monospace;
 }

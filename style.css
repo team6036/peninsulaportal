@@ -1,7 +1,8 @@
 :root {
     --TOP: 50px;
     --LEFT: 80px;
-
+    --fs: 0;
+    
     --t: 0.25s;
 
     --b: 10px;
