@@ -35,7 +35,7 @@ const log = async (...a) => {
     return console.log(`[${yr}-${mon}-${d}/${hr}:${min}:${s}.${ms}]`, ...a);
 };
 
-const FEATURES = ["LOAD", "PORTAL", "PRESETS", "PANEL", "PLANNER"];
+const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER"];
 
 const PLATFORM = process.platform;
 
@@ -44,12 +44,16 @@ class Portal extends core.Target {
 
     #features;
 
+    #loads;
+
     constructor() {
         super();
 
         this.#started = false;
 
         this.#features = new Set();
+
+        this.#loads = new Set();
 
         this.log();
 
@@ -111,6 +115,137 @@ class Portal extends core.Target {
         feat.portal = null;
         this.post("feature-stop", { feat: feat });
         return feat;
+    }
+
+    get loads() { return [...this.#loads]; }
+    set loads(v) {
+        v = util.ensure(v, "arr");
+        this.clearLoads();
+        v.forEach(v => this.addLoad(v));
+    }
+    clearLoads() {
+        let loads = this.loads;
+        loads.forEach(load => this.remLoad(load));
+        return loads;
+    }
+    hasLoad(load) {
+        load = String(load);
+        return this.#loads.has(load);
+    }
+    addLoad(load) {
+        load = String(load);
+        if (this.hasLoad(load)) return false;
+        this.#loads.add(load);
+        this.post("load-change", { loads: this.loads });
+        return true;
+    }
+    remLoad(load) {
+        load = String(load);
+        if (!this.hasLoad(load)) return false;
+        this.#loads.delete(load);
+        this.post("load-change", { loads: this.loads });
+        return true;
+    }
+    async tryLoad() {
+        const host = "https://peninsula-db.jfancode.repl.co";
+        this.log(`poll db - ${host}`);
+        this.addLoad("polldb");
+        try {
+            await fetch(host);
+        } catch (e) {
+            this.log(`poll db - ${host} - fail`);
+            this.remLoad("polldb");
+            this.addLoad("polldb-fail");
+            return false;
+        }
+        this.log(`poll db - ${host} - success`);
+        this.remLoad("polldb");
+        await Promise.all(FEATURES.map(async name => {
+            const subhost = host+"/"+name.toLowerCase();
+            const log = (...a) => this.log(`[${name}]`, ...a);
+            log("search");
+            this.addLoad(name+":search");
+            try {
+                let resp = await fetch(subhost+"/confirm.json");
+                if (resp.status != 200) throw resp.status;
+            } catch (e) {
+                log(`search - not found - ${e}`);
+                this.remLoad(name+":search");
+                return;
+            }
+            log("search - found");
+            this.remLoad(name+":search");
+            let namefs = {
+                PLANNER: async () => {
+                    const fetch = (await import("node-fetch")).default;
+                    await Portal.Feature.affirm(this, name);
+                    await Promise.all([
+                        async () => {
+                            log("solver");
+                            this.addLoad(name+":solver");
+                            if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                await fs.promises.cp(
+                                    path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
+                                    {
+                                        force: true,
+                                        recursive: true,
+                                    }
+                                );
+                            log("solver - success");
+                            this.remLoad(name+":solver");
+                        },
+                        async () => {
+                            log("template.json");
+                            this.addLoad(name+":template.json");
+                            try {
+                                let resp = await fetch(subhost+"/template.json");
+                                if (resp.status != 200) throw resp.status;
+                                await new Promise((res, rej) => {
+                                    const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.json"));
+                                    stream.on("open", () => {
+                                        resp.body.pipe(stream);
+                                        resp.body.on("end", () => res(true));
+                                        resp.body.on("error", e => rej(e));
+                                    });
+                                });
+                            } catch (e) { log(`template.json - ${e}`); }
+                            this.remLoad(name+":template.json");
+                            if (!(await Portal.Feature.fileHas(this, name, "template.json"))) return;
+                            log("pruning template.json");
+                            this.addLoad(name+":template.json-prune");
+                            let content = await Portal.Feature.fileRead(this, name, "template.json");
+                            try {
+                                let data = JSON.parse(content);
+                                if (!util.is(data, "obj")) throw typeof(data);
+                                data[".meta.backgroundImage"] = path.join(Portal.Feature.getDataPath(this, name), "template.png");
+                                content = JSON.stringify(data);
+                                await Portal.Feature.fileWrite(this, name, "template.json", content);
+                            } catch (e) { log(`pruning template.json - ${e}`); }
+                            this.remLoad(name+":template.json-prune");
+                        },
+                        async () => {
+                            log("template.png");
+                            this.addLoad(name+":template.png");
+                            try {
+                                let resp = await fetch(subhost+"/template.png");
+                                if (resp.status != 200) throw resp.status;
+                                await new Promise((res, rej) => {
+                                    const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.png"));
+                                    stream.on("open", () => {
+                                        resp.body.pipe(stream);
+                                        resp.body.on("end", () => res(true));
+                                        resp.body.on("error", e => rej(e));
+                                    });
+                                });
+                            } catch (e) { log(`template.png - ${e}`); }
+                            this.remLoad(name+":template.png");
+                        },
+                    ].map(f => f()));
+                },
+            };
+            if (name in namefs) await namefs[name]();
+        }));
+        return true;
     }
 
     get started() { return this.#started; }
@@ -249,8 +384,8 @@ class Portal extends core.Target {
             await this.affirm();
             await this.post("start", null);
 
-            this.addFeature(new Portal.Feature("LOAD"));
             this.addFeature(new Portal.Feature("PORTAL"));
+            await this.tryLoad();
         })();
 
         return true;
@@ -265,38 +400,57 @@ class Portal extends core.Target {
         return all;
     }
 
-    async fileHas(pth) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    get dataPath() { return path.join(app.getPath("appData"), "PeninsulaPortal"); }
+
+    static async affirm(dataPath) {
+        let hasAppData = await this.dirHas(dataPath);
+        if (!hasAppData) await this.dirMake(dataPath);
+        return true;
+    }
+    async affirm() {
+        return Portal.affirm(this.dataPath);
+    }
+
+    static makePath(...pth) {
+        let flattened = [];
+        const dfs = itm => {
+            if (util.is(itm, "arr")) util.ensure(itm, "arr").forEach(itm => dfs(itm));
+            else flattened.push(itm);
+        };
+        dfs(pth);
+        return path.join(...flattened);
+    }
+    static async fileHas(pth) {
+        pth = this.makePath(pth);
         this.log(`fs:file-has ${pth}`);
         try {
             await fs.promises.access(pth);
             return true;
         } catch (e) {}
-        return false;
     }
-    async fileRead(pth) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async fileRead(pth) {
+        pth = this.makePath(pth);
         this.log(`fs:file-read ${pth}`);
         return await fs.promises.readFile(pth, { encoding: "utf-8" });
     }
-    async fileWrite(pth, content) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async fileWrite(pth, content) {
+        pth = this.makePath(pth);
         this.log(`fs:file-write ${pth}`);
         return await fs.promises.writeFile(pth, content, { encoding: "utf-8" });
     }
-    async fileAppend(pth, content) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async fileAppend(pth, content) {
+        pth = this.makePath(pth);
         this.log(`fs:file-append ${pth}`);
         return await fs.promises.appendFile(pth, content, { encoding: "utf-8" });
     }
-    async fileDelete(pth) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async fileDelete(pth) {
+        pth = this.makePath(pth);
         this.log(`fs:file-delete ${pth}`);
         return await fs.promises.unlink(pth);
     }
 
-    async dirHas(pth) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async dirHas(pth) {
+        pth = this.makePath(pth);
         this.log(`fs:dir-has ${pth}`);
         try {
             await fs.promises.access(pth);
@@ -304,8 +458,8 @@ class Portal extends core.Target {
         } catch (e) {}
         return false;
     }
-    async dirList(pth) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async dirList(pth) {
+        pth = this.makePath(pth);
         this.log(`fs:dir-list ${pth}`);
         let dirents = await fs.promises.readdir(pth, { withFileTypes: true });
         return dirents.map(dirent => {
@@ -315,32 +469,38 @@ class Portal extends core.Target {
             };
         });
     }
-    async dirMake(pth) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async dirMake(pth) {
+        pth = this.makePath(pth);
         this.log(`fs:dir-make ${pth}`);
         return await fs.promises.mkdir(pth);
     }
-    async dirDelete(pth) {
-        pth = util.is(pth, "arr") ? path.join(...pth) : pth;
+    static async dirDelete(pth) {
+        pth = this.makePath(pth);
         this.log(`fs:dir-delete ${pth}`);
         return await fs.promises.rmdir(pth);
     }
 
-    get dataPath() { return path.join(app.getPath("appData"), "PeninsulaPortal"); }
+    async fileHas(pth) { return Portal.fileHas([this.dataPath, pth]); }
+    async fileRead(pth) { return Portal.fileRead([this.dataPath, pth]); }
+    async fileWrite(pth, content) { return Portal.fileWrite([this.dataPath, pth], content); }
+    async fileAppend(pth, content) { return Portal.fileAppend([this.dataPath, pth], content); }
+    async fileDelete(pth) { return Portal.fileDelete([this.dataPath, pth]); }
 
-    async affirm() {
-        let hasAppData = await this.dirHas(this.dataPath);
-        if (!hasAppData) await this.dirMake(this.dataPath);
-        return true;
-    }
+    async dirHas(pth) { return Portal.dirHas([this.dataPath, pth]); }
+    async dirList(pth) { return Portal.dirList([this.dataPath, pth]); }
+    async dirMake(pth) { return Portal.dirMake([this.dataPath, pth]); }
+    async dirDelete(pth) { return Portal.dirDelete([this.dataPath, pth]); }
 
     update() {
         this.post("update", null);
         this.features.forEach(feat => feat.update());
     }
 
+    static log(...a) {
+        return log(".", ...a);
+    }
     log(...a) {
-        return log("*", ...a);
+        return log(":", ...a);
     }
 }
 Portal.Feature = class PortalFeature extends core.Target {
@@ -488,14 +648,6 @@ Portal.Feature = class PortalFeature extends core.Target {
                 if (PLATFORM == "linux")
                     options.icon = "./assets/icon.png";
             },
-            LOAD: () => {
-                options.width = 750;
-                options.height = 450;
-                options.resizable = false;
-                options.frame = false;
-                delete options.titleBarStyle;
-                delete options.trafficLightPosition;
-            },
         };
         if ("_" in namefs) namefs._();
         if (this.name in namefs) namefs[this.name]();
@@ -633,143 +785,12 @@ Portal.Feature = class PortalFeature extends core.Target {
         ];
 
         namefs = {
-            LOAD: () => {
-                while (template.length > 1) template.pop();
-                window.setAlwaysOnTop(true);
-                let t = 0, lock = false, nTimes = 0;
-                const host = "https://peninsula-db.jfancode.repl.co";
-                let info = {};
-                this.addHandler("update", async data => {
-                    if (!this.hasPortal()) return;
-                    window.webContents.send("ask", "info-set", [Object.values(info)]);
-                    if (lock) return;
-                    lock = true;
-                    let success = await (async () => {
-                        let tNow = util.getTime();
-                        if (tNow-t < 1000) return false;
-                        t = tNow;
-                        const fetch = (await import("node-fetch")).default;
-                        info._ = "Contacting Database";
-                        this.log("POLL db");
-                        try {
-                            await new Promise((res, rej) => {
-                                setTimeout(() => rej("timeout"), 1000);
-                                fetch(host).then(res()).catch(err => rej(err));
-                            });
-                        } catch (e) {
-                            this.log("POLL db ERROR");
-                            return false;
-                        }
-                        delete info._;
-                        await Promise.all(FEATURES.map(async name => {
-                            const root = host+"/"+name.toLowerCase();
-                            info[name] = "Searching for feature: "+name;
-                            let resp = null;
-                            try {
-                                resp = await fetch(root+"/confirm.json");
-                            } catch (e) {}
-                            if (resp == null || resp.status != 200) {
-                                delete info[name];
-                                return;
-                            }
-                            info[name] = "Updating feature: "+name;
-                            this.log("FOUND FEATURE: "+name);
-                            const dataPath = path.join(this.portal.dataPath, name.toLowerCase());
-                            let namefs = {
-                                PLANNER: async () => {
-                                    if (!(await this.portal.dirHas(dataPath)))
-                                        await this.portal.dirMake(dataPath);
-                                    let funcs = [
-                                        async () => {
-                                            info[name+"_solver"] = `[${name}] solver`;
-                                            this.log(name+" : solver");
-                                            if (await this.portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver"))) {
-                                                if (!(await this.portal.dirHas(path.join(dataPath, "solver"))))
-                                                    await this.portal.dirMake(path.join(dataPath, "solver"));
-                                                let dirents = await this.portal.dirList(path.join(__dirname, name.toLowerCase(), "solver"));
-                                                await Promise.all(dirents.map(async dirent => {
-                                                    if (dirent.type != "file") return;
-                                                    let content = await this.portal.fileRead(path.join(__dirname, name.toLowerCase(), "solver", dirent.name));
-                                                    await this.portal.fileWrite(path.join(dataPath, "solver", dirent.name), content);
-                                                }));
-                                            }
-                                            delete info[name+"_solver"];
-                                        },
-                                        async () => {
-                                            info[name+"_template-json"] = `[${name}] template.json`;
-                                            this.log(name+" : template.json");
-                                            try {
-                                                let resp = await fetch(root+"/template.json");
-                                                if (resp.status == 200) {
-                                                    await new Promise((res, rej) => {
-                                                        const file = fs.createWriteStream(path.join(dataPath, "template.json"));
-                                                        file.on("open", () => {
-                                                            resp.body.pipe(file);
-                                                            resp.body.on("end", () => res(true));
-                                                            resp.body.on("error", e => rej(e));
-                                                        });
-                                                    });
-                                                }
-                                            } catch (e) {}
-                                            if (await this.portal.fileHas(path.join(this.portal.dataPath, name.toLowerCase(), "template.json"))) {
-                                                let content = await this.portal.fileRead(path.join(dataPath, "template.json"));
-                                                try {
-                                                    let data = JSON.parse(content);
-                                                    if (!util.is(data, "obj")) throw "";
-                                                    data[".meta.backgroundImage"] = path.join(dataPath, "template.png");
-                                                    content = JSON.stringify(data);
-                                                    await this.portal.fileWrite(path.join(dataPath, "template.json"), content);
-                                                } catch (e) {}
-                                            }
-                                            delete info[name+"_template-json"];
-                                        },
-                                        async () => {
-                                            info[name+"_template-png"] = `[${name}] template.png`;
-                                            this.log(name+" : template.png");
-                                            try {
-                                                let resp = await fetch(root+"/template.png");
-                                                if (resp.status == 200) {
-                                                    await new Promise((res, rej) => {
-                                                        const file = fs.createWriteStream(path.join(dataPath, "template.png"));
-                                                        file.on("open", () => {
-                                                            resp.body.pipe(file);
-                                                            resp.body.on("end", () => res(true));
-                                                            resp.body.on("error", e => rej(e));
-                                                        });
-                                                    });
-                                                }
-                                            } catch (e) {}
-                                            delete info[name+"_template-png"];
-                                        },
-                                    ];
-                                    await Promise.all(funcs.map(f => f()));
-                                },
-                            };
-                            if (name in namefs) await namefs[name]();
-                            delete info[name];
-                        }));
-                        info = {};
-                        info._ = "Complete";
-                        return true;
-                    })();
-                    if (success || nTimes >= 5) {
-                        if (this.hasPortal()) {
-                            let feats = this.portal.features;
-                            let hasPortal = false;
-                            feats.forEach(feat => ((feat.name == "PORTAL") ? (hasPortal = true) : null));
-                            if (!hasPortal) this.portal.addFeature(new Portal.Feature("PORTAL"));
-                        }
-                        await this.stop();
-                    } else nTimes++;
-                    lock = false;
-                });
-            },
             PORTAL: () => {
                 const checkForShow = () => {
                     if (!this.hasPortal()) return;
                     let feats = this.portal.features;
                     let nFeats = 0;
-                    feats.forEach(feat => (["LOAD", "PORTAL"].includes(feat.name) ? null : nFeats++));
+                    feats.forEach(feat => (["PORTAL"].includes(feat.name) ? null : nFeats++));
                     (nFeats > 0) ? window.hide() : window.show();
                 };
                 const hook = () => {
@@ -875,12 +896,11 @@ Portal.Feature = class PortalFeature extends core.Target {
         
         (async () => {
             if (!this.hasName()) return;
-            if (this.name == "LOAD") return;
             if (!this.hasPortal()) return;
             await this.portal.affirm();
             let stateContent = "";
             try {
-                stateContent = await this.portal.fileRead([this.portal.dataPath, "state.json"]);
+                stateContent = await this.portal.fileRead("state.json");
             } catch (e) {}
             let state = null;
             try {
@@ -912,7 +932,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             await this.portal.affirm();
             let stateContent = "";
             try {
-                stateContent = await this.portal.fileRead([this.portal.dataPath, "state.json"]);
+                stateContent = await this.portal.fileRead("state.json");
             } catch (e) {}
             let state = null;
             try {
@@ -921,7 +941,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             state = util.ensure(state, "obj");
             if (!util.is(state[this.name], "obj")) state[this.name] = {};
             state[this.name].bounds = this.window.getBounds();
-            await this.portal.fileWrite([this.portal.dataPath, "state.json"], JSON.stringify(state, null, "\t"));
+            await this.portal.fileWrite("state.json", JSON.stringify(state, null, "\t"));
         }
         // this.popups.forEach(pop => pop.stop());
         if (this.window instanceof electron.BrowserWindow)
@@ -932,76 +952,83 @@ Portal.Feature = class PortalFeature extends core.Target {
         return this;
     }
     
-    get dataPath() {
-        if (!this.canOperateFS) return null;
-        return path.join(this.portal.dataPath, this.name.toLowerCase());
+    static getDataPath(portal, name, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        return path.join(portal.dataPath, name.toLowerCase());
     }
+    get dataPath() { return Portal.Feature.getDataPath(this.portal, this.name, this.started); }
 
-    async affirm() {
-        if (!this.canOperateFS) return false;
-        await this.portal.affirm();
-        let hasFeatureData = await this.portal.dirHas(this.dataPath);
-        if (!hasFeatureData) await this.portal.dirMake(this.dataPath);
+    static getCanOperate(portal, name, started=true) {
+        return (portal instanceof Portal) && FEATURES.includes(name) && started;
+    }
+    get canOperate() { return Portal.Feature.getCanOperate(this.portal, this.name, this.started); }
+
+    static async affirm(portal, name, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return false;
+        await portal.affirm();
+        let hasFeatureData = await Portal.dirHas(this.getDataPath(portal, name, started));
+        if (!hasFeatureData) await Portal.dirMake(this.getDataPath(portal, name, started));
         return true;
     }
+    async affirm() { return await Portal.Feature.affirm(this.portal, this.name, this.started); }
 
-    get canOperateFS() {
-        if (!this.hasPortal()) return false;
-        if (!this.started) return false;
-        if (!this.hasName()) return false;
-        return true;
+    static async fileHas(portal, name, pth, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.fileHas(Portal.makePath(this.getDataPath(portal, name, started), pth));
     }
-    convertPath(pth) {
-        if (!this.canOperateFS) return null;
-        return path.join(this.dataPath, ...(util.is(pth, "arr") ? pth : [pth]));
+    static async fileRead(portal, name, pth, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.fileRead(Portal.makePath(this.getDataPath(portal, name, started), pth));
     }
-
-    async fileHas(pth) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.fileHas(this.convertPath(pth));
+    static async fileWrite(portal, name, pth, content, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.fileWrite(Portal.makePath(this.getDataPath(portal, name, started), pth), content);
     }
-    async fileRead(pth) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.fileRead(this.convertPath(pth));
+    static async fileAppend(portal, name, pth, content, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.fileAppend(Portal.makePath(this.getDataPath(portal, name, started), pth), content);
     }
-    async fileWrite(pth, content) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.fileWrite(this.convertPath(pth), content);
-    }
-    async fileAppend(pth, content) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.fileAppend(this.convertPath(pth), content);
-    }
-    async fileDelete(pth) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.fileDelete(this.convertPath(pth));
+    static async fileDelete(portal, name, pth, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.fileDelete(Portal.makePath(this.getDataPath(portal, name, started), pth));
     }
 
-    async dirHas(pth) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.dirHas(this.convertPath(pth));
+    static async dirHas(portal, name, pth, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.dirHas(Portal.makePath(this.getDataPath(portal, name, started), pth));
     }
-    async dirList(pth) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.dirList(this.convertPath(pth));
+    static async dirList(portal, name, pth, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.dirList(Portal.makePath(this.getDataPath(portal, name, started), pth));
     }
-    async dirMake(pth) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.dirMake(this.convertPath(pth));
+    static async dirMake(portal, name, pth, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.dirMake(Portal.makePath(this.getDataPath(portal, name, started), pth));
     }
-    async dirDelete(pth) {
-        if (!this.canOperateFS) return null;
-        await this.affirm();
-        return await this.portal.dirDelete(this.convertPath(pth));
+    static async dirDelete(portal, name, pth, started=true) {
+        if (!this.getCanOperate(portal, name, started)) return null;
+        await this.affirm(portal, name, started);
+        return await Portal.dirDelete(Portal.makePath(this.getDataPath(portal, name, started), pth));
     }
+
+    async fileHas(pth) { return Portal.Feature.fileHas(this.portal, this.name, pth, this.started); }
+    async fileRead(pth) { return Portal.Feature.fileRead(this.portal, this.name, pth, this.started); }
+    async fileWrite(pth, content) { return Portal.Feature.fileWrite(this.portal, this.name, pth, content, this.started); }
+    async fileAppend(pth, content) { return Portal.Feature.fileAppend(this.portal, this.name, pth, content, this.started); }
+    async fileDelete(pth) { return Portal.Feature.fileRead(this.portal, this.name, pth, this.started); }
+
+    async dirHas(pth) { return Portal.Feature.dirHas(this.portal, this.name, pth, this.started); }
+    async dirList(pth) { return Portal.Feature.dirList(this.portal, this.name, pth, this.started); }
+    async dirMake(pth) { return Portal.Feature.dirMake(this.portal, this.name, pth, this.started); }
+    async dirDelete(pth) { return Portal.Feature.dirDelete(this.portal, this.name, pth, this.started); }
 
     menuChange(changes) {
         if (!this.hasMenu()) return false;
@@ -1036,8 +1063,6 @@ Portal.Feature = class PortalFeature extends core.Target {
         args = Array.isArray(args) ? Array.from(args) : [];
         this.log(`ASK - ${cmd}(${args.join(', ')})`);
         let namefs = {
-            PORTAL: {
-            },
             PLANNER: {
                 exec: async (id, pathId) => {
                     id = String(id);
@@ -1273,9 +1298,10 @@ Portal.Feature = class PortalFeature extends core.Target {
 
     update() { this.post("update", null); }
 
-    log(...a) {
-        return log(`[${this.name}]`, ...a);
+    static log(name, ...a) {
+        return log(`[${name}]`, ...a);
     }
+    log(...a) { Portal.Feature.log(this.name, ...a); }
 };
 /*
 Portal.Feature.Popup = class PortalFeaturePopup extends core.Target {
