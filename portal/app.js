@@ -103,6 +103,7 @@ export default class App extends core.App {
     #eCanvas;
     #eMain;
     #eContent;
+    #eDown; #eUp;
     #eNav;
     #eInfo;
 
@@ -139,6 +140,18 @@ export default class App extends core.App {
                         this.eMain.style.pointerEvents = (p > 0) ? "none" : "";
                         this.eMain.style.visibility = (p >= 1) ? "hidden" : "";
                     }
+                    if (this.hasENav()) {
+                        this.eNav.style.opacity = util.lerp(100, 0, (scroll<0) ? 0 : (scroll>0.25) ? 1 : (scroll/0.25))+"%";
+                        this.eNav.style.visibility = (scroll < 0.25) ? "" : "hidden";
+                    }
+                    if (this.hasEDown()) {
+                        this.eDown.style.opacity = util.lerp(100, 0, (scroll<0) ? 0 : (scroll>0.25) ? 1 : (scroll/0.25))+"%";
+                        this.eDown.style.visibility = (scroll < 0.25) ? "" : "hidden";
+                    }
+                    if (this.hasEUp()) {
+                        this.eUp.style.opacity = util.lerp(0, 100, (scroll<1.25) ? 0 : (scroll>1.5) ? 1 : ((scroll-1.25)/0.25))+"%";
+                        this.eUp.style.visibility = (scroll > 1.25) ? "" : "hidden";
+                    }
                     let scale = Math.max(window.innerWidth/aspect, window.innerHeight/1);
                     let w = scale*aspect, h = scale;
                     if (canvas.width != w*quality) canvas.width = w*quality;
@@ -160,6 +173,7 @@ export default class App extends core.App {
                                 } while (Math.abs(pos.x) < boundW/2 && Math.abs(pos.y) < boundH/2);
                                 let colors = ["--v8", "--a"];
                                 let star = new Star([pos.x, pos.y, aspectBase*starMaxDist], aspectBase*starSize, "");
+                                star._speed = -0.01 * util.lerp(0.5, 1.5, Math.random());
                                 star.size *= util.lerp(0.75, 1.25, Math.random());
                                 star.color = getComputedStyle(document.body).getPropertyValue(colors[Math.floor(colors.length*Math.random())]);
                                 star.alpha *= util.lerp(0.5, 1, Math.random());
@@ -167,8 +181,8 @@ export default class App extends core.App {
                             }
                             starSpawn -= 0.01 * starSpeed;
                         }
-                        [...stars].forEach(star => {
-                            star.speed = -0.01 * starSpeed;
+                        [...stars].sort((a, b) => b.z-a.z).forEach(star => {
+                            star.speed = star._speed * starSpeed;
                             star.streakSize = star.size * Math.abs(star.speed) * 0.1;
                             star.update();
                             if (star.z + star.streakSize/2 < zNear) {
@@ -230,6 +244,17 @@ export default class App extends core.App {
                     let text = await resp.text();
                     this.eContent.innerHTML = "<article>"+converter.makeHtml(text)+"</article>";
                     const dfs = elem => {
+                        if (elem instanceof HTMLAnchorElement) {
+                            let href = elem.href.split("/").at(-1);
+                            if (href.split("#").length > 1) {
+                                elem.addEventListener("click", e => {
+                                    e.preventDefault();
+                                    let target = document.getElementById(href.split("#").at(-1));
+                                    if (!(target instanceof HTMLElement)) return;
+                                    target.scrollIntoView({ behavior: "smooth" });
+                                });
+                            }
+                        }
                         if (elem instanceof HTMLImageElement) {
                             let current = window.location.href.split("/");
                             current.pop();
@@ -248,6 +273,19 @@ export default class App extends core.App {
                 })();
             }
             this.#eNav = document.querySelector("#TITLEPAGE > .main > .nav");
+            this.#eDown = document.querySelector("#TITLEPAGE > .main > button");
+            this.#eUp = document.querySelector("#TITLEPAGE > button");
+            if (this.hasEDown())
+                this.eDown.addEventListener("click", e => {
+                    if (!this.hasEContent()) return;
+                    if (this.eContent.children[0] instanceof HTMLElement)
+                        this.eContent.children[0].scrollIntoView({ behavior: "smooth" });
+                });
+            if (this.hasEUp())
+                this.eUp.addEventListener("click", e => {
+                    if (!this.hasEContent()) return;
+                    this.eContent.scrollTo({ top: 0, behavior: "smooth" });
+                });
             this.#eInfo = document.querySelector("#TITLEPAGE > .info");
             if (this.hasEInfo()) {
                 this.eInfo.innerHTML = "<div class='loading' style='--size:5px;--color:var(--v2);padding:5px;'></div>";
@@ -322,6 +360,10 @@ export default class App extends core.App {
     hasEContent() { return this.eContent instanceof HTMLDivElement; }
     get eNav() { return this.#eNav; }
     hasENav() { return this.eNav instanceof HTMLDivElement; }
+    get eDown() { return this.#eDown; }
+    hasEDown() { return this.eDown instanceof HTMLButtonElement; }
+    get eUp() { return this.#eUp; }
+    hasEUp() { return this.eUp instanceof HTMLButtonElement; }
     get eInfo() { return this.#eInfo; }
     hasEInfo() { return this.eInfo instanceof HTMLDivElement; }
 }
