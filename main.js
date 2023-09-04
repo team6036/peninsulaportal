@@ -565,6 +565,21 @@ Portal.Feature = class PortalFeature extends core.Target {
             front: [
                 { role: "front" },
             ],
+            spawn: [
+                {
+                    label: "New Feature",
+                    submenu: [
+                        {
+                            label: "Peninsula Panel",
+                            click: () => this.ask("spawn", ["PANEL"]),
+                        },
+                        {
+                            label: "Peninsula Planner",
+                            click: () => this.ask("spawn", ["PLANNER"]),
+                        },
+                    ],
+                },
+            ],
             div: { type: "separator" },
         };
         let template = [
@@ -581,6 +596,8 @@ Portal.Feature = class PortalFeature extends core.Target {
             {
                 label: "File",
                 submenu: [
+                    ...build.spawn,
+                    build.div,
                     ...build.close,
                 ],
             },
@@ -1019,28 +1036,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         args = Array.isArray(args) ? Array.from(args) : [];
         this.log(`ASK - ${cmd}(${args.join(', ')})`);
         let namefs = {
-            _: async () => {
-                if (this.name == "PORTAL") return;
-                if (cmd == "back") await this.stop();
-            },
             PORTAL: {
-                spawn: async name => {
-                    name = String(name);
-                    if (!this.hasPortal()) return;
-                    let feats = this.portal.features;
-                    let hasFeat = null;
-                    feats.forEach(feat => {
-                        if (feat.name != name) return;
-                        hasFeat = feat;
-                    });
-                    if (hasFeat instanceof Portal.Feature) {
-                        hasFeat.window.show();
-                        return;
-                    }
-                    if (!FEATURES.includes(name)) return;
-                    let feat = new Portal.Feature(name);
-                    this.portal.addFeature(feat);
-                },
             },
             PLANNER: {
                 exec: async (id, pathId) => {
@@ -1251,6 +1247,24 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (cmd == "back")
             if (this.name != "PORTAL")
                 return await this.stop();
+        if (cmd == "spawn") {
+            let name = String(args[0]);
+            if (!this.hasPortal()) return false;
+            let feats = this.portal.features;
+            let hasFeat = null;
+            feats.forEach(feat => {
+                if (feat.name != name) return;
+                hasFeat = feat;
+            });
+            if (hasFeat instanceof Portal.Feature) {
+                hasFeat.window.show();
+                return;
+            }
+            if (!FEATURES.includes(name)) return false;
+            let feat = new Portal.Feature(name);
+            this.portal.addFeature(feat);
+            return true;
+        }
         if (namefs[this.name])
             if (namefs[this.name][cmd])
                 return await namefs[this.name][cmd](...args);
