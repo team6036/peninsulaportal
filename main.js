@@ -502,7 +502,6 @@ Portal.Feature = class PortalFeature extends core.Target {
         const window = this.#window = new electron.BrowserWindow(options);
         window.once("ready-to-show", () => {
             window.show();
-            window.maximize();
             this.post("show", null);
         });
 
