@@ -242,6 +242,7 @@ export class App extends Target {
             pop.hasInfo = true;
         });
         const onFullScreenState = is => {
+            document.documentElement.style.setProperty("--fs", (is ? 1 : 0));
             document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
         };
         this.addHandler("cmd-set-fullscreen", async args => {

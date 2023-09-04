@@ -106,6 +106,7 @@ export default class App extends core.App {
     #eDown; #eUp;
     #eNav;
     #eInfo;
+    #eLoads;
 
     constructor() {
         super();
@@ -305,6 +306,7 @@ export default class App extends core.App {
                     }
                 })();
             }
+            this.#eLoads = document.querySelector("#TITLEPAGE > .loads");
 
             this.addHandler("cmd-spawn", name => window.api.ask("spawn", [name]));
             
@@ -318,6 +320,66 @@ export default class App extends core.App {
             btn = this.addNavToolButton(new FeatureButton("Pursuit", "flash"));
             btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PURSUIT"));
+
+            let prevLoads = [];
+            let lock = false;
+            this.addHandler("update", async data => {
+                if (lock) return;
+                lock = true;
+                let loads = await window.api.getLoads();
+                if (prevLoads.length == loads.length) {
+                    let all = true;
+                    for (let i = 0; i < loads.length; i++) {
+                        if (loads[i] == prevLoads[i]) continue;
+                        all = false;
+                        break;
+                    }
+                    if (all) return lock = false;
+                }
+                prevLoads = loads;
+                if (this.hasELoads()) {
+                    this.eLoads.innerHTML = "";
+                    loads.forEach(load => {
+                        let elem = document.createElement("div");
+                        this.eLoads.appendChild(elem);
+                        if (load == "polldb") return elem.textContent = "Polling Database";
+                        if (load == "polldb-fail") return elem.textContent = "Polling Database Failed";
+                        if (load.includes(":")) {
+                            let name = load.split(":")[0], content = load.split(":").slice(1);
+                            let displayName = name[0].toUpperCase()+name.substring(1).toLowerCase();
+                            elem.textContent = `[${displayName}] `;
+                            if (content.length == 1 && content[0] == "search") return elem.textContent += "Searching";
+                            let namefs = {
+                                PLANNER: () => {
+                                    if (content[0] == "solver") {
+                                        if (content[1] == null) return elem.textContent += "Copying default solver";
+                                        return elem.textContent += "Error while copying default solver: "+content[1];
+                                    }
+                                    if (content[0] == "template.json") {
+                                        if (content[1] == null) return elem.textContent += "Making template";
+                                        return elem.textContent += "Error while making template: "+content[1];
+                                    }
+                                    if (content[0] == "template.json-prune") {
+                                        if (content[1] == null) return elem.textContent += "Pruning template";
+                                        return elem.textContent += "Error while pruning template: "+content[1];
+                                    }
+                                    if (content[0] == "template.png") {
+                                        if (content[1] == null) return elem.textContent += "Downloading template image";
+                                        return elem.textContent += "Error while downloading template image: "+content[1];
+                                    }
+                                },
+                            };
+                            if (name in namefs) {
+                                let r = namefs[name]();
+                                if (r != null) return r;
+                            }
+                            return elem.textContent += content.join(":");
+                        }
+                        elem.textContent = load;
+                    });
+                }
+                lock = false;
+            });
         });
     }
 
@@ -367,4 +429,6 @@ export default class App extends core.App {
     hasEUp() { return this.eUp instanceof HTMLButtonElement; }
     get eInfo() { return this.#eInfo; }
     hasEInfo() { return this.eInfo instanceof HTMLDivElement; }
+    get eLoads() { return this.#eLoads; }
+    hasELoads() { return this.eLoads instanceof HTMLDivElement; }
 }
