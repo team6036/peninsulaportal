@@ -7,10 +7,13 @@ body {
 }
 
 #mount {
-    overflow: visible;
+    top: 0px;
+
+    height: 100%;
+    max-height: 100%;
 }
 #TITLEPAGE {
-    overflow: visible;
+    overflow: hidden;
 
     display: flex;
     flex-direction: column;
@@ -18,6 +21,8 @@ body {
     justify-content: center;
     align-items: center;
     align-content: center;
+
+    background: var(--gradient);
 }
 #TITLEPAGE > .background {
     z-index: -1;
@@ -32,8 +37,6 @@ body {
     height: calc(100% + var(--TOP));
     max-height: calc(100% + var(--TOP));
     overflow: hidden;
-
-    background: var(--gradient);
 }
 #TITLEPAGE > .background > div {
     z-index: -1;
@@ -42,28 +45,18 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-
-    /*
-    width: 100%;
-    height: 100%;
-
-    background-color: var(--a);
-    opacity: 25%;
-    */
 }
-/*
-#TITLEPAGE > .background > div > #canvas {
-    width: 100%;
-    height: 100%;
+#TITLEPAGE > .main {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 
-    filter: grayscale(100%);
-
-    mix-blend-mode: multiply;
-}
-*/
-#TITLEPAGE > .inner {
     height: 100%;
     max-height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 
     display: flex;
     flex-direction: column;
@@ -75,17 +68,17 @@ body {
 
     pointer-events: none;
 }
-#TITLEPAGE > .inner > .title {
+#TITLEPAGE > .main > .title {
     font-size: 50px;
     font-weight: 500;
 }
-#TITLEPAGE > .inner > .subtitle {
+#TITLEPAGE > .main > .subtitle {
     color: var(--v7);
 
     text-align: center;
     font-size: 16px;
 }
-#TITLEPAGE > .inner > .nav {
+#TITLEPAGE > .main > .nav {
     --n: 4;
 
     width: min(calc(var(--n)*100px + (var(--n)-1)*10px), calc(100vw - 20px));
@@ -102,7 +95,7 @@ body {
 
     pointer-events: auto;
 }
-#TITLEPAGE > .inner > .nav > button.item {
+#TITLEPAGE > .main > .nav > button.item {
     width: 100px;
     aspect-ratio: 1 / 1;
 
@@ -118,8 +111,101 @@ body {
 
     font-size: 16px;
 }
-#TITLEPAGE > .inner > .nav > button.item > ion-icon {
+#TITLEPAGE > .main > .nav > button.item > ion-icon {
     font-size: 32px;
+}
+#TITLEPAGE > .content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    width: auto;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: auto;
+}
+#TITLEPAGE > .content::-webkit-scrollbar {
+    display: none;
+}
+#TITLEPAGE > .content > article {
+    margin-top: 150vh;
+    margin-bottom: 100px;
+}
+article {
+    color: var(--v7);
+
+    line-height: 1.5;
+}
+article a {
+    color: var(--a);
+
+    text-decoration: none;
+}
+article blockquote {
+    margin-left: 0px;
+    margin-right: 0px;
+    padding: 0px 16px;
+
+    color: var(--v6);
+    border-left: 5px solid var(--v2);
+}
+article code {
+    padding: 3px 5px;
+
+    background-color: var(--v2);
+    color: var(--v8);
+    border-radius: 5px;
+
+    font-family: monospace;
+    white-space: break-spaces;
+}
+article h1,
+article h2 {
+    padding-bottom: 0.3em;
+
+    border-bottom: 2px solid var(--v2);
+}
+article h3 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+}
+article h1,
+article h2,
+article h3,
+article h4,
+article h5,
+article h6 {
+    color: var(--v8);
+}
+article pre {
+    padding: 15px;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+}
+article kbd {
+    padding: 3px 5px;
+
+    display: inline-block;
+
+    background-color: var(--v2);
+    color: var(--v8);
+    border-radius: 5px;
+
+    font-family: monospace;
+}
+article blockquote,
+article details,
+article dl,
+article ol,
+article p,
+article pre,
+article table,
+article ul {
+    margin-top: 0px;
+    margin-bottom: 16px;
 }
 #TITLEPAGE > .info {
     position: absolute;
