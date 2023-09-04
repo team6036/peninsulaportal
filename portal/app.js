@@ -236,7 +236,7 @@ export default class App extends core.App {
                     strikethrough: true,
                     tables: true,
                     tasklists: true,
-                    openLinksInNewWindow: true,
+                    openLinksInNewWindow: false,
                 });
                 converter.setFlavor("github");
                 (async () => {
@@ -251,7 +251,7 @@ export default class App extends core.App {
                                     e.preventDefault();
                                     let target = document.getElementById(href.split("#").at(-1));
                                     if (!(target instanceof HTMLElement)) return;
-                                    target.scrollIntoView({ behavior: "smooth" });
+                                    this.eContent.scrollTo({ top: target.offsetTop-100, behavior: "smooth" });
                                 });
                             }
                         }
@@ -279,7 +279,7 @@ export default class App extends core.App {
                 this.eDown.addEventListener("click", e => {
                     if (!this.hasEContent()) return;
                     if (this.eContent.children[0] instanceof HTMLElement)
-                        this.eContent.children[0].scrollIntoView({ behavior: "smooth" });
+                        this.eContent.scrollTo({ top: this.eContent.children[0].offsetTop-100, behavior: "smooth" });
                 });
             if (this.hasEUp())
                 this.eUp.addEventListener("click", e => {
