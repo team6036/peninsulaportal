@@ -342,8 +342,11 @@ export default class App extends core.App {
                     loads.forEach(load => {
                         let elem = document.createElement("div");
                         this.eLoads.appendChild(elem);
-                        if (load == "polldb") return elem.textContent = "Polling Database";
-                        if (load == "polldb-fail") return elem.textContent = "Polling Database Failed";
+                        if (load.startsWith("polldb")) {
+                            let content = load.split(":").slice(1);
+                            if (content.length == 0) return elem.textContent = "Polling database";
+                            return elem.textContent = "Polling database failed: "+content[1];
+                        }
                         if (load.includes(":")) {
                             let name = load.split(":")[0], content = load.split(":").slice(1);
                             let displayName = name[0].toUpperCase()+name.substring(1).toLowerCase();

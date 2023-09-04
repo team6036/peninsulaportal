@@ -155,7 +155,7 @@ class Portal extends core.Target {
         } catch (e) {
             this.log(`poll db - ${host} - fail`);
             this.remLoad("polldb");
-            this.addLoad("polldb-fail");
+            this.addLoad("polldb:"+e);
             return false;
         }
         this.log(`poll db - ${host} - success`);
