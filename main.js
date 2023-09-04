@@ -509,7 +509,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         window.on("unresponsive", () => {});
         window.webContents.on("did-fail-load", () => window.close());
         window.webContents.on("will-navigate", (e, url) => {
-            if (url != e.sender.getURL()) {
+            if (url != e.url) {
                 e.preventDefault();
                 electron.shell.openExternal(url);
             }
@@ -840,7 +840,7 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         let lock = false, t0 = 0;
         this.addHandler("update", async data => {
-            this.popups.forEach(pop => pop.update());
+            // this.popups.forEach(pop => pop.update());
             if (lock) return;
             let t1 = util.getTime();
             if (t1-t0 < 100) return;

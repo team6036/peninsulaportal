@@ -101,6 +101,8 @@ export default class App extends core.App {
 
     #eBackground;
     #eCanvas;
+    #eMain;
+    #eContent;
     #eNav;
     #eInfo;
 
@@ -110,23 +112,12 @@ export default class App extends core.App {
         this.#navToolButtons = new Set();
 
         this.addHandler("start-begin", data => {
-            this.eLoadingTo = document.querySelector("#TITLEPAGE > .inner > .title");
+            this.eLoadingTo = document.querySelector("#TITLEPAGE > .main > .title");
         });
         this.addHandler("start-complete", data => {
             this.#eBackground = document.querySelector("#TITLEPAGE > .background");
             this.#eCanvas = document.querySelector("#TITLEPAGE > .background > div > #canvas");
             if (this.hasECanvas()) {
-                /*
-                const fluid = new Fluid(this.eCanvas);
-                fluid.mapBehaviors({
-                });
-                fluid.activate();
-                */
-                const mouse = new V(), prevMouse = new V();
-                let mouseDown = false;
-                document.body.addEventListener("mousemove", e => mouse.set(e.pageX, e.pageY));
-                document.body.addEventListener("mousedown", e => { mouseDown = true; });
-                document.body.addEventListener("mouseup", e => { mouseDown = false; });
                 const canvas = this.eCanvas;
                 const ctx = canvas.getContext("2d");
                 const quality = 3;
@@ -136,13 +127,18 @@ export default class App extends core.App {
                 let stars = [], starSpawn = 0;
                 let starSize = 0.01, starMaxDist = 0.01, starFadeDist = starMaxDist*0.5, starSpeed = 1;
                 let first = true;
-                let mouseSpeedMin = 10, mouseSpeedMax = 500, mousePressed = 0;
                 this.addHandler("update", data => {
-                    let d = prevMouse.dist(mouse);
-                    if (mouseDown && mousePressed < 100) mousePressed++;
-                    if (!mouseDown && mousePressed > 0) mousePressed--;
-                    starSpeed = util.lerp(1, 15, ((mousePressed/100) + 0*((d<mouseSpeedMin) ? 0 : (d>mouseSpeedMax) ? 1 : ((d-mouseSpeedMin)/(mouseSpeedMax-mouseSpeedMin)))) / 1);
-                    prevMouse.set(mouse);
+                    let scroll = (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
+                    starSpeed = util.lerp(1, 25, (scroll<0) ? 0 : (scroll>1) ? 1 : scroll);
+                    canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
+                    if (this.hasEMain()) {
+                        let p = (scroll<0) ? 0 : (scroll>1) ? 1 : scroll;
+                        this.eMain.style.zIndex = (p > 0.5) ? -1 : "";
+                        this.eMain.style.transform = "translate(-50%, -50%) scale("+util.lerp(100, 200, p)+"%)";
+                        this.eMain.style.opacity = util.lerp(100, 0, p)+"%";
+                        this.eMain.style.pointerEvents = (p > 0) ? "none" : "";
+                        this.eMain.style.visibility = (p >= 1) ? "hidden" : "";
+                    }
                     let scale = Math.max(window.innerWidth/aspect, window.innerHeight/1);
                     let w = scale*aspect, h = scale;
                     if (canvas.width != w*quality) canvas.width = w*quality;
@@ -218,7 +214,40 @@ export default class App extends core.App {
                     if (first) first = false;
                 });
             }
-            this.#eNav = document.querySelector("#TITLEPAGE > .inner > .nav");
+            this.#eMain = document.querySelector("#TITLEPAGE > .main");
+            this.#eContent = document.querySelector("#TITLEPAGE > .content");
+            if (this.hasEContent()) {
+                const converter = new showdown.Converter({
+                    ghCompatibleHeaderId: true,
+                    strikethrough: true,
+                    tables: true,
+                    tasklists: true,
+                    openLinksInNewWindow: true,
+                });
+                converter.setFlavor("github");
+                (async () => {
+                    let resp = await fetch("../README.md");
+                    let text = await resp.text();
+                    this.eContent.innerHTML = "<article>"+converter.makeHtml(text)+"</article>";
+                    const dfs = elem => {
+                        if (elem instanceof HTMLImageElement) {
+                            let current = window.location.href.split("/");
+                            current.pop();
+                            current = current.join("/");
+                            if (elem.src.startsWith(current)) {
+                                let postCurrent = elem.src.substring(current.length);
+                                current = current.split("/");
+                                current.pop();
+                                current = current.join("/");
+                                elem.src = current + postCurrent;
+                            }
+                        }
+                        Array.from(elem.children).forEach(child => dfs(child));
+                    };
+                    dfs(this.eContent);
+                })();
+            }
+            this.#eNav = document.querySelector("#TITLEPAGE > .main > .nav");
             this.#eInfo = document.querySelector("#TITLEPAGE > .info");
             if (this.hasEInfo()) {
                 this.eInfo.innerHTML = "<div class='loading' style='--size:5px;--color:var(--v2);padding:5px;'></div>";
@@ -287,6 +316,10 @@ export default class App extends core.App {
     hasEBackground() { return this.eBackground instanceof HTMLDivElement; }
     get eCanvas() { return this.#eCanvas; }
     hasECanvas() { return this.eCanvas instanceof HTMLCanvasElement; }
+    get eMain() { return this.#eMain; }
+    hasEMain() { return this.eMain instanceof HTMLDivElement; }
+    get eContent() { return this.#eContent; }
+    hasEContent() { return this.eContent instanceof HTMLDivElement; }
     get eNav() { return this.#eNav; }
     hasENav() { return this.eNav instanceof HTMLDivElement; }
     get eInfo() { return this.#eInfo; }
