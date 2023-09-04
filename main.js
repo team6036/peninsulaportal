@@ -52,6 +52,8 @@ class Portal extends core.Target {
         this.#features = new Set();
 
         this.log();
+
+        // electron.nativeTheme.themeSource = "dark";
     }
 
     async isDevMode() { return true; }
@@ -136,6 +138,18 @@ class Portal extends core.Target {
                     return feats[i];
             return null;
         };
+        /*
+        const identifyPopup = e => {
+            if (!util.is(e, "obj")) return null;
+            if (!util.is(e.sender, "obj")) return null;
+            let feats = this.features;
+            for (let i = 0; i < feats.length; i++)
+                for (let j = 0; j < feats[i].popups.length; j++)
+                    if (e.sender.id == feats[i].popups[j].webContents.id)
+                        return feats[i].popups[j];
+            return null;
+        };
+        */
 
         ipc.handle("get-feature", async e => {
             let feat = identifyFeature(e);
@@ -205,38 +219,29 @@ class Portal extends core.Target {
             return feat.menuChange(changes);
         });
 
-        ipc.handle("ask", async (e, cmd, args) => {
+        /*
+        ipc.handle("popup", (e, type) => {
             let feat = identifyFeature(e);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-            return await feat.ask(cmd, args);
+            feat.addPopup(new Portal.Feature.Popup(type));
+            return true;
+        });
+        */
+
+        ipc.handle("ask", async (e, cmd, args) => {
+            let feat = identifyFeature(e);
+            if (feat instanceof Portal.Feature) return await feat.ask(cmd, args);
+            throw "Nonexistent feature corresponding with id: "+e.sender.id;
+            // let pop = identifyPopup(e);
+            // if (pop instanceof Portal.Feature.Popup) return await pop.ask(cmd, args);
+            // throw "Nonexistent feature and popup corresponding with id: "+e.sender.id;
         });
 
         /*
-        let lock = false, t0 = 0;
-        this.addHandler("update", async data => {
-            if (lock) return;
-            let t1 = util.getTime();
-            if (t1-t0 < 1000) return;
-            t0 = t1;
-            lock = true;
-            await this.affirm();
-            let stateContent = "";
-            try {
-                stateContent = await this.fileRead([this.dataPath, "state.json"]);
-            } catch (e) {}
-            let state = null;
-            try {
-                state = JSON.parse(stateContent);
-            } catch (e) {}
-            state = util.ensure(state, "obj");
-            this.features.forEach(feat => {
-                if (!feat.hasName()) return;
-                if (!feat.hasWindow()) return;
-                if (!util.is(state[feat.name], "obj")) state[feat.name] = {};
-                state[feat.name].bounds = feat.window.getBounds();
-            });
-            await this.fileWrite([this.dataPath, "state.json"], JSON.stringify(state, null, "\t"));
-            lock = false;
+        ipc.handle("submit", async (e, result) => {
+            let pop = identifyPopup(e);
+            if (!(pop instanceof Portal.Feature.Popup)) throw "Nonexistent popup corresponding with id: "+e.sender.id;
+            return await pop.submit(result);
         });
         */
 
@@ -343,6 +348,8 @@ Portal.Feature = class PortalFeature extends core.Target {
 
     #name;
 
+    // #popups;
+
     #window;
     #menu;
     #perm;
@@ -356,6 +363,8 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         name = String(name).toUpperCase();
         this.#name = FEATURES.includes(name) ? name : null;
+
+        // this.#popups = new Set();
         
         this.#window = null;
         this.#menu = null;
@@ -391,6 +400,40 @@ Portal.Feature = class PortalFeature extends core.Target {
     
     get name() { return this.#name; }
     hasName() { return util.is(this.name, "str"); }
+
+    /*
+    get popups() { return [...this.#popups]; }
+    set popups(v) {
+        v = util.ensure(v, "arr");
+        this.clearPopups();
+        v.forEach(v => this.addPopup(v));
+    }
+    clearPopups() {
+        let pops = this.popups;
+        pops.forEach(pop => this.remPopup(pop));
+        return pops;
+    }
+    hasPopup(pop) {
+        if (!(pop instanceof Portal.Feature.Popup)) return false;
+        return this.#popups.has(pop) && pop.feature == this;
+    }
+    addPopup(pop) {
+        if (!(pop instanceof Portal.Feature.Popup)) return false;
+        if (this.hasPopup(pop)) return false;
+        this.#popups.add(pop);
+        pop.feature = this;
+        pop.start();
+        return pop;
+    }
+    remPopup(pop) {
+        if (!(pop instanceof Portal.Feature.Popup)) return false;
+        if (!this.hasPopup(pop)) return false;
+        this.#popups.delete(pop);
+        pop.feature = null;
+        pop.stop();
+        return pop;
+    }
+    */
 
     get window() { return this.#window; }
     hasWindow() { return this.window instanceof electron.BrowserWindow; }
@@ -459,6 +502,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         const window = this.#window = new electron.BrowserWindow(options);
         window.once("ready-to-show", () => {
             window.show();
+            window.maximize();
             this.post("show", null);
         });
 
@@ -796,6 +840,7 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         let lock = false, t0 = 0;
         this.addHandler("update", async data => {
+            this.popups.forEach(pop => pop.update());
             if (lock) return;
             let t1 = util.getTime();
             if (t1-t0 < 100) return;
@@ -862,6 +907,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             state[this.name].bounds = this.window.getBounds();
             await this.portal.fileWrite([this.portal.dataPath, "state.json"], JSON.stringify(state, null, "\t"));
         }
+        // this.popups.forEach(pop => pop.stop());
         if (this.window instanceof electron.BrowserWindow)
             this.window.close();
         this.#window = null;
@@ -1217,7 +1263,94 @@ Portal.Feature = class PortalFeature extends core.Target {
     log(...a) {
         return log(`[${this.name}]`, ...a);
     }
-}
+};
+/*
+Portal.Feature.Popup = class PortalFeaturePopup extends core.Target {
+    #feature;
+
+    #type;
+
+    #resolutions;
+    #rejections;
+
+    #window;
+
+    #started;
+
+    constructor(type) {
+        super();
+
+        this.#feature = null;
+
+        type = String(type).toUpperCase();
+        this.#type = POPUPS.includes(type) ? type : null;
+
+        this.#resolutions = [];
+        this.#rejections = [];
+
+        this.#window = null;
+
+        this.#started = false;
+
+        this.log();
+    }
+
+    async isDevMode() {
+        if (!this.hasFeature()) return false;
+        return await this.feature.isDevMode();
+    }
+
+    get feature() { return this.#feature; }
+    set feature(v) {
+        v = (v instanceof Portal.Feature) ? v : null;
+        if (this.feature == v) return;
+        (async () => {
+            if (this.hasFeature()) {
+                await this.feature.remPopup(this);
+                this.post("feature-unhook", { feature: this.feature });
+            }
+            this.#feature = v;
+            if (this.hasFeature()) {
+                this.portal.addPopup(this);
+                this.post("feature-hook", { feature: this.feature });
+            }
+        })();
+    }
+    hasFeature() { return this.feature instanceof Portal.Feature; }
+    
+    get type() { return this.#type; }
+    hasType() { return util.is(this.type, "str"); }
+
+    get window() { return this.#window; }
+    hasWindow() { return this.window instanceof electron.BrowserWindow; }
+
+    get started() { return this.#started; }
+    start() {
+        if (this.started) return false;
+        if (!this.hasName()) return false;
+        this.log("START");
+        this.#started = true;
+    }
+    stop() {
+        if (!this.started) return false;
+        if (!this.hasType()) return false;
+        this.log("STOP");
+        if (this.window instanceof electron.BrowserWindow)
+            this.window.close();
+        this.#window = null;
+        this.#menu = null;
+        this.submit(null);
+        this.feature = null;
+        return this;
+    }
+
+    update() { this.post("update", null); }
+
+    log(...a) {
+        return log(`[${this.hasFeature() ? this.feature.name : null}] [${this.name}]`, ...a);
+    }
+};
+*/
 
 const portal = new Portal();
 

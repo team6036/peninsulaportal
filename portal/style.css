@@ -33,7 +33,7 @@ body {
     max-height: calc(100% + var(--TOP));
     overflow: hidden;
 
-    background: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
+    background: var(--gradient);
 }
 #TITLEPAGE > .background > div {
     z-index: -1;

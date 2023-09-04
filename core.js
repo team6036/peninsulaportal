@@ -133,6 +133,7 @@ export class Target {
 }
 
 export class App extends Target {
+    #setupConfig;
     #setupDone;
 
     #popups;
@@ -153,6 +154,7 @@ export class App extends Target {
     constructor() {
         super();
 
+        this.#setupConfig = {};
         this.#setupDone = false;
 
         this.#popups = [];
@@ -184,6 +186,7 @@ export class App extends Target {
         });
     }
 
+    get setupConfig() { return this.#setupConfig; }
     get setupDone() { return this.#setupDone; }
 
     start() { this.post("start", null); }
@@ -203,6 +206,8 @@ export class App extends Target {
 
         this.#setupDone = true;
 
+        const root = ("root" in this.setupConfig) ? this.setupConfig.root : "..";
+
         window.api.onPerm(() => {
             (async () => {
                 let perm = await this.getPerm();
@@ -219,7 +224,7 @@ export class App extends Target {
             let name = String(await window.api.getFeature());
             let about = await this.getAbout();
             let pop = this.alert();
-            pop.iconSrc = "../assets/icon.svg";
+            pop.iconSrc = root+"/assets/icon.svg";
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+name[0].toUpperCase()+name.slice(1).toLowerCase();
             let lines = new Array(4).fill("");
@@ -271,7 +276,7 @@ export class App extends Target {
         const coreStyle = this.#eCoreStyle = document.createElement("link");
         document.head.appendChild(coreStyle);
         coreStyle.rel = "stylesheet";
-        coreStyle.href = "../style.css";
+        coreStyle.href = root+"/style.css";
 
         const theStyle = this.#eStyle = document.createElement("link");
         document.head.appendChild(theStyle);
@@ -280,7 +285,6 @@ export class App extends Target {
 
         const dynamicStyle = this.#eDynamicStyle = document.createElement("style");
         document.head.appendChild(dynamicStyle);
-        dynamicStyle.innerHTML = "#mount{animation: mount-in 0.25s forwards;}@keyframes mount-in{0%{visibility:hidden;}99%{visibility:hidden;}100%{visibility:inherit;}}";
 
         if (document.getElementById("titlebar") instanceof HTMLDivElement) this.#eTitleBar = document.getElementById("titlebar");
         else this.#eTitleBar = document.createElement("div");
@@ -290,15 +294,24 @@ export class App extends Target {
 
         this.#eLoading = document.getElementById("loading");
         if (this.hasELoading()) this.eLoading.classList.add("this");
+        setTimeout(() => {
+            titleBar.style.opacity = "";
+            let mount = document.getElementById("mount");
+            if (!(mount instanceof HTMLDivElement)) return;
+            mount.style.opacity = "";
+        }, 0.5*1000);
+        titleBar.style.opacity = "0%";
+        let mount = document.getElementById("mount");
+        if (mount instanceof HTMLDivElement) mount.style.opacity = "0%";
 
         const ionicons1 = document.createElement("script");
         document.body.appendChild(ionicons1);
         ionicons1.type = "module";
-        ionicons1.src = "../node_modules/ionicons/dist/ionicons/ionicons.esm.js";
+        ionicons1.src = root+"/node_modules/ionicons/dist/ionicons/ionicons.esm.js";
         const ionicons2 = document.createElement("script");
         document.body.appendChild(ionicons2);
         ionicons2.noModule = true;
-        ionicons2.src = "../node_modules/ionicons/dist/ionicons/ionicons.js";
+        ionicons2.src = root+"/node_modules/ionicons/dist/ionicons/ionicons.js";
 
         const updatePage = () => {
             Array.from(document.querySelectorAll(".loading")).forEach(elem => {
@@ -336,7 +349,7 @@ export class App extends Target {
         onFullScreenState(await window.api.getFullScreen());
         onDevModeState(await window.api.getDevMode());
 
-        let resp = await fetch("../theme.json");
+        let resp = await fetch(root+"/theme.json");
         let data = await resp.json();
         let base = util.ensure(data._, "arr");
         delete data._;
