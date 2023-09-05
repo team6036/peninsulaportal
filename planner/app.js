@@ -1138,8 +1138,8 @@ export default class App extends core.App {
                 if (!util.is(state, "obj")) return;
                 if (state.getChoosing()) return;
                 if (!this.hasProject()) return;
-                this.dragging = true;
                 this.dragData = name;
+                this.dragging = true;
                 let elem = document.getElementById("drag");
                 if (elem instanceof HTMLDivElement)
                     elem.innerHTML = {
