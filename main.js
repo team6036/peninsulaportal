@@ -39,8 +39,140 @@ const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER"];
 
 const PLATFORM = process.platform;
 
+class Process extends core.Target {
+    #id;
+    #tags;
+
+    #parent;
+
+    #process;
+
+    constructor(process) {
+        super();
+
+        this.#id = null;
+        this.#tags = new Set();
+
+        this.#parent = null;
+
+        this.#process = (process instanceof cp.ChildProcess) ? process : cp.exec(process);
+        this.process.stdout.on("data", data => this.post("data", { data: data }));
+        this.process.stderr.on("data", data => this.post("error", { e: data }));
+        this.process.on("exit", code => this.post("exit", { code: code }));
+        this.process.on("error", e => this.post("error", { e: e }));
+
+        this.addHandler("exit", data => (this.parent = null));
+    }
+
+    get id() { return this.#id; }
+    set id(v) {
+        v = (v == null) ? null : String(v);
+        if (this.id == v) return;
+        this.#id = v;
+    }
+    get tags() { return [...this.#tags]; }
+    set tags(v) {
+        v = util.ensure(v, "arr");
+        this.clearTags();
+        v.forEach(v => this.addTag(v));
+    }
+    clearTags() {
+        let tags = this.tags;
+        tags.forEach(tag => this.remTag(tag));
+        return tags;
+    }
+    hasTag(tag) {
+        tag = String(tag);
+        return this.#tags.has(tag);
+    }
+    addTag(tag) {
+        tag = String(tag);
+        this.#tags.add(tag);
+        return true;
+    }
+    remTag(tag) {
+        tag = String(tag);
+        this.#tags.delete(tag);
+        return true;
+    }
+
+    get parent() { return this.#parent; }
+    set parent(v) {
+        v = (v instanceof ProcessManager) ? v : null;
+        if (this.parent == v) return;
+        if (this.hasParent())
+            this.parent.remProcess(this);
+        this.#parent = v;
+        if (this.hasParent())
+            this.parent.addProcess(this);
+    }
+    hasParent() { return this.parent instanceof ProcessManager; }
+
+    get process() { return this.#process; }
+
+    terminate() {
+        if (this.process.exitCode != null) return false;
+        this.process.kill("SIGKILL");
+        this.post("exit", { code: null });
+        return true;
+    }
+}
+class ProcessManager extends core.Target {
+    #processes;
+
+    constructor() {
+        super();
+
+        this.#processes = new Set();
+    }
+
+    get processes() { return [...this.#processes]; }
+    set processes(v) {
+        v = util.ensure(v, "arr");
+        this.clearProcesses();
+        v.forEach(v => this.addProcess(v));
+    }
+    clearProcesses() {
+        let processes = this.processes;
+        processes.forEach(process => this.remProcess(process));
+        return processes;
+    }
+    hasProcess(process) {
+        if (!(process instanceof Process)) return false;
+        return this.#processes.has(process) && process.parent == this;
+    }
+    addProcess(process) {
+        if (!(process instanceof Process)) return false;
+        if (this.hasProcess(process)) return false;
+        this.#processes.add(process);
+        process.parent = this;
+        return process;
+    }
+    remProcess(process) {
+        if (!(process instanceof Process)) return false;
+        if (!this.hasProcess(process)) return false;
+        this.#processes.delete(process);
+        process.parent = null;
+        return process;
+    }
+
+    getProcessById(id) {
+        for (let i = 0; i < this.processes.length; i++)
+            if (this.processes[i].id == id)
+                return this.processes[i];
+        return null;
+    }
+    getProcessesByTag(tag) {
+        tag = String(tag);
+        let processes = [];
+        this.processes.forEach(process => (process.hasTag(tag) ? processes.push(process) : null));
+        return processes;
+    }
+}
 class Portal extends core.Target {
     #started;
+
+    #manager;
 
     #features;
 
@@ -50,6 +182,8 @@ class Portal extends core.Target {
         super();
 
         this.#started = false;
+
+        this.#manager = new ProcessManager();
 
         this.#features = new Set();
 
@@ -61,6 +195,8 @@ class Portal extends core.Target {
     }
 
     async isDevMode() { return true; }
+
+    get manager() { return this.#manager; }
 
     get features() { return [...this.#features]; }
     set features(v) {
@@ -412,6 +548,7 @@ class Portal extends core.Target {
     }
     async stop() {
         this.log("STOP");
+        this.manager.processes.forEach(process => process.terminate());
         await this.post("stop", null);
         let feats = this.features;
         let all = true;
@@ -526,6 +663,8 @@ class Portal extends core.Target {
 Portal.Feature = class PortalFeature extends core.Target {
     #portal;
 
+    #manager;
+
     #name;
 
     // #popups;
@@ -540,6 +679,8 @@ Portal.Feature = class PortalFeature extends core.Target {
         super();
 
         this.#portal = null;
+
+        this.#manager = new ProcessManager();
 
         name = String(name).toUpperCase();
         this.#name = FEATURES.includes(name) ? name : null;
@@ -559,6 +700,8 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (!this.hasPortal()) return false;
         return await this.portal.isDevMode();
     }
+
+    get manager() { return this.#manager; }
 
     get portal() { return this.#portal; }
     set portal(v) {
@@ -948,6 +1091,7 @@ Portal.Feature = class PortalFeature extends core.Target {
         this.log(`STOP - perm: ${this.perm}`);
         if (!this.perm) return false;
         this.#started = false;
+        this.manager.processes.forEach(process => process.terminate());
         if (this.hasPortal()) {
             await this.portal.affirm();
             let stateContent = "";
@@ -1105,9 +1249,9 @@ Portal.Feature = class PortalFeature extends core.Target {
                     let script = project.config.scriptUseDefault ? this.convertPath(["solver", "solver.py"]) : project.config.script;
                     if (script == null) throw "No script for project with id: "+id;
                     script = String(script);
-                    let hasScript = await this.portal.fileHas(script);
+                    let hasScript = await Portal.fileHas(script);
                     if (!hasScript) throw "Script ("+script+") does not exist for project id: "+id;
-                    let root = path.dirname(script);
+                    const root = path.dirname(script);
 
                     let dataIn = { config: {}, nodes: [], obstacles: [] };
                     dataIn.config.map_w = project.w / 100;
@@ -1140,41 +1284,46 @@ Portal.Feature = class PortalFeature extends core.Target {
                     let contentIn = JSON.stringify(dataIn, null, "\t");
 
                     this.log("REMOVE data.in/data.out");
-                    if (await this.portal.fileHas(path.join(root, "data.in")))
-                        await this.portal.fileDelete(path.join(root, "data.in"));
-                    if (await this.portal.fileHas(path.join(root, "data.out")))
-                        await this.portal.fileDelete(path.join(root, "data.out"));
+                    if (await Portal.fileHas(path.join(root, "data.in")))
+                        await Portal.fileDelete(path.join(root, "data.in"));
+                    if (await Portal.fileHas(path.join(root, "data.out")))
+                        await Portal.fileDelete(path.join(root, "data.out"));
                     this.log("REMOVE stdout.log/stderr.log");
-                    if (await this.portal.fileHas(path.join(root, "stdout.log")))
-                        await this.portal.fileDelete(path.join(root, "stdout.log"));
-                    if (await this.portal.fileHas(path.join(root, "stderr.log")))
-                        await this.portal.fileDelete(path.join(root, "stderr.log"));
+                    if (await Portal.fileHas(path.join(root, "stdout.log")))
+                        await Portal.fileDelete(path.join(root, "stdout.log"));
+                    if (await Portal.fileHas(path.join(root, "stderr.log")))
+                        await Portal.fileDelete(path.join(root, "stderr.log"));
                     this.log("CREATE data.in");
-                    await this.portal.fileWrite(path.join(root, "data.in"), contentIn);
+                    await Portal.fileWrite(path.join(root, "data.in"), contentIn);
                     this.log("CREATE stdout.log/stderr.log");
-                    await this.portal.fileWrite(path.join(root, "stdout.log"), "");
-                    await this.portal.fileWrite(path.join(root, "stderr.log"), "");
+                    await Portal.fileWrite(path.join(root, "stdout.log"), "");
+                    await Portal.fileWrite(path.join(root, "stderr.log"), "");
                     return new Promise((res, rej) => {
-                        if ("process" in this) return rej("Existing process has not terminated");
+                        if (this.manager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
                         this.log("SPAWN");
-                        const process = this.process = cp.spawn("python3", [script], { cwd: root });
+                        const process = this.manager.addProcess(new Process(cp.spawn("python3", [script], { cwd: root })));
+                        process.id = "script";
                         const finish = async () => {
-                            let hasMainDir = await this.portal.dirHas(path.join(root, "paths"));
-                            if (!hasMainDir) await this.portal.dirMake(path.join(root, "paths"));
-                            let hasProjectDir = await this.portal.dirHas(path.join(root, "paths", project.meta.name));
-                            if (!hasProjectDir) await this.portal.dirMake(path.join(root, "paths", project.meta.name));
-                            let hasPathDir = await this.portal.dirHas(path.join(root, "paths", project.meta.name, pth.name));
-                            if (!hasPathDir) await this.portal.dirMake(path.join(root, "paths", project.meta.name, pth.name));
-                            let hasDataIn = await this.portal.fileHas(path.join(root, "data.in"));
+                            let hasMainDir = await Portal.dirHas(path.join(root, "paths"));
+                            if (!hasMainDir) await Portal.dirMake(path.join(root, "paths"));
+                            let hasProjectDir = await Portal.dirHas(path.join(root, "paths", project.meta.name));
+                            if (!hasProjectDir) await Portal.dirMake(path.join(root, "paths", project.meta.name));
+                            let hasPathDir = await Portal.dirHas(path.join(root, "paths", project.meta.name, pth.name));
+                            if (!hasPathDir) await Portal.dirMake(path.join(root, "paths", project.meta.name, pth.name));
+                            let hasDataIn = await Portal.fileHas(path.join(root, "data.in"));
                             if (hasDataIn) await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
-                            let hasDataOut = await this.portal.fileHas(path.join(root, "data.out"));
+                            let hasDataOut = await Portal.fileHas(path.join(root, "data.out"));
                             if (hasDataOut) await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
-                            let hasOutLog = await this.portal.fileHas(path.join(root, "stdout.log"));
+                            let hasOutLog = await Portal.fileHas(path.join(root, "stdout.log"));
                             if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, "paths", project.meta.name, pth.name, "stdout.log"));
-                            let hasErrLog = await this.portal.fileHas(path.join(root, "stderr.log"));
+                            let hasErrLog = await Portal.fileHas(path.join(root, "stderr.log"));
                             if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, "paths", project.meta.name, pth.name, "stderr.log"));
                         };
-                        this.process_res = async (...a) => {
+                        process.addHandler("data", async data => {
+                            Portal.fileAppend(path.join(root, "stdout.log"), util.ensure(data, "obj").data);
+                        });
+                        const resolve = async (...a) => {
+                            this.log("SPAWN exit", ...a);
                             await finish();
                             if (!this.window.isVisible() || !this.window.isFocused()) {
                                 const notif = new electron.Notification({
@@ -1185,7 +1334,8 @@ Portal.Feature = class PortalFeature extends core.Target {
                             }
                             return res(...a);
                         };
-                        this.process_rej = async (...a) => {
+                        const reject = async (...a) => {
+                            this.log("SPAWN err", ...a);
                             await finish();
                             if (!this.window.isVisible() || !this.window.isFocused()) {
                                 const notif = new electron.Notification({
@@ -1196,45 +1346,15 @@ Portal.Feature = class PortalFeature extends core.Target {
                             }
                             return rej(...a);
                         };
-                        process.stdout.on("data", data => {
-                            if (!("process" in this)) return;
-                            this.portal.fileAppend(path.join(root, "stdout.log"), data);
-                        });
-                        process.stderr.on("data", data => {
-                            if (!("process" in this)) return;
-                            this.portal.fileAppend(path.join(root, "stderr.log"), data);
-                            this.log("SPAWN err");
-                            this.process_rej(data);
-                            delete this.process;
-                            delete this.process_res;
-                            delete this.process_rej;
-                        });
-                        process.on("exit", async code => {
-                            if (!("process" in this)) return;
-                            this.log("SPAWN exit: "+code);
-                            this.process_res(code);
-                            delete this.process;
-                            delete this.process_res;
-                            delete this.process_rej; 
-                        });
-                        process.on("error", err => {
-                            if (!("process" in this)) return;
-                            this.log("SPAWN err");
-                            this.process_rej(err);
-                            delete this.process;
-                            delete this.process_res;
-                            delete this.process_rej;
-                        });
+                        process.addHandler("exit", data => resolve(data));
+                        process.addHandler("error", data => reject(data));
                     });
                 },
                 exec_term: async () => {
-                    if (!("process" in this)) return;
                     this.log("SPAWN term");
-                    this.process.kill("SIGTERM");
-                    this.process_res(null);
-                    delete this.process;
-                    delete this.process_res;
-                    delete this.process_rej;
+                    const process = this.manager.getProcessById("script");
+                    if (!(process instanceof Process)) return;
+                    process.terminate();
                 },
                 exec_get: async id => {
                     id = String(id);
@@ -1254,17 +1374,17 @@ Portal.Feature = class PortalFeature extends core.Target {
                     let script = project.config.scriptUseDefault ? this.convertPath(["solver", "solver.py"]) : project.config.script;
                     if (script == null) return {}; // throw "No script for project with id: "+id;
                     script = String(script);
-                    let has = await this.portal.fileHas(script);
+                    let has = await Portal.fileHas(script);
                     if (!has) throw "Script ("+script+") does not exist for project id: "+id;
                     let root = path.dirname(script);
 
-                    let hasMainDir = await this.portal.dirHas(path.join(root, "paths"));
+                    let hasMainDir = await Portal.dirHas(path.join(root, "paths"));
                     if (!hasMainDir) return {};
-                    let hasProjectDir = await this.portal.dirHas(path.join(root, "paths", project.meta.name));
+                    let hasProjectDir = await Portal.dirHas(path.join(root, "paths", project.meta.name));
                     if (!hasProjectDir) return {};
                     let datas = {};
                     let pathNames = project.paths.map(id => project.getPath(id).name);
-                    let pathList = await this.portal.dirList(path.join(root, "paths", project.meta.name));
+                    let pathList = await Portal.dirList(path.join(root, "paths", project.meta.name));
                     pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
                     for (let i = 0; i < pathList.length; i++) {
                         let name = pathList[i];
@@ -1275,7 +1395,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                         });
                         let contentOut = "";
                         try {
-                            contentOut = await this.portal.fileRead(path.join(root, "paths", project.meta.name, name, "data.out"));
+                            contentOut = await Portal.fileRead(path.join(root, "paths", project.meta.name, name, "data.out"));
                         } catch (e) {}
                         let dataOut = null;
                         try {
