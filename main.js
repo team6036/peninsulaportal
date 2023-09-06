@@ -296,7 +296,7 @@ class Portal extends core.Target {
     }
     async tryLoad() {
         const fetch = (await import("node-fetch")).default;
-        this.log("db: finding host");
+        this.log("DB finding host");
         this.addLoad("find");
         let content = "";
         try {
@@ -309,21 +309,21 @@ class Portal extends core.Target {
         data = util.ensure(data, "obj");
         this.remLoad("find");
         const host = data.dbHost || "https://peninsula-db.jfancode.repl.co";
-        this.log(`db: poll - ${host}`);
+        this.log(`DB poll - ${host}`);
         this.addLoad("poll");
         try {
             await fetch(host);
         } catch (e) {
-            this.log(`db: poll - ${host} - fail`);
+            this.log(`DB poll - ${host} - fail`);
             this.remLoad("poll");
             this.addLoad("poll:"+e);
             return false;
         }
-        this.log(`db: poll - ${host} - success`);
+        this.log(`DB poll - ${host} - success`);
         this.remLoad("poll");
         await Promise.all([
             (async () => {
-                this.log("db: config");
+                this.log("DB config");
                 this.addLoad("config");
                 let resp = null;
                 try {
@@ -337,9 +337,9 @@ class Portal extends core.Target {
                             resp.body.on("error", e => rej(e));
                         });
                     });
-                    this.log("db: config - success");
+                    this.log("DB config - success");
                 } catch (e) {
-                    this.log(`db: config - error - ${e}`);
+                    this.log(`DB config - error - ${e}`);
                     this.addLoad("config:"+e);
                     return;
                 }
@@ -347,7 +347,7 @@ class Portal extends core.Target {
             })(),
             ...FEATURES.map(async name => {
                 const subhost = host+"/"+name.toLowerCase();
-                const log = (...a) => this.log(`db: [${name}]`, ...a);
+                const log = (...a) => this.log(`DB [${name}]`, ...a);
                 log("search");
                 this.addLoad(name+":search");
                 try {

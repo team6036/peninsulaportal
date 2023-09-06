@@ -140,6 +140,10 @@ export class App extends Target {
 
     #contextMenu;
 
+    #base;
+    #colors;
+    #accent;
+
     #dragging;
     #dragState;
     #dragData;
@@ -163,6 +167,10 @@ export class App extends Target {
         document.body.addEventListener("click", e => {
             this.contextMenu = null;
         }, { capture: true });
+
+        this.#base = [];
+        this.#colors = {};
+        this.#accent = null;
 
         this.#dragging = false;
         this.#dragState = null;
@@ -350,64 +358,21 @@ export class App extends Target {
         onFullScreenState(await window.api.getFullScreen());
         onDevModeState(await window.api.getDevMode());
 
-        let resp = await fetch(root+"/theme.json");
-        let data = await resp.json();
-        let base = util.ensure(data._, "arr");
-        delete data._;
-        base = base.map(rgb => {
-            rgb = util.ensure(rgb, "arr");
-            while (rgb.length > 3) rgb.pop();
-            while (rgb.length < 3) rgb.push(0);
-            return rgb.map(v => Math.min(255, Math.max(0, util.ensure(v, "num"))));
-        });
-        while (base.length > 9) base.shift();
-        while (base.length < 9) base.unshift([0, 0, 0]);
-        for (let color in data) {
-            let rgb = util.ensure(data[color], "arr");
-            while (rgb.length > 3) rgb.pop();
-            while (rgb.length < 3) rgb.push(0);
-            rgb = rgb.map(v => Math.min(255, Math.max(0, util.ensure(v, "num"))));
-            data[color] = rgb;
+        let resp = null;
+        try {
+            resp = await fetch(root+"/theme.json");
+            if (resp.status != 200) throw resp.status;
+        } catch (e) {}
+        let data = null;
+        if (resp instanceof Response) {
+            try {
+                data = await resp.json();
+            } catch (e) {}
         }
-        let style = {};
-        for (let i = 0; i <= 9; i++) {
-            let normal = (i < 9);
-            for (let j = 0; j < 16; j++) {
-                let alpha = j/15;
-                let hex = "0123456789abcdef"[j];
-                if (normal) style["v"+i+"-"+hex] = "rgba("+[...base[i], alpha].join(",")+")";
-                else style["v-"+hex] = style["v4-"+hex];
-            }
-            if (normal) style["v"+i] = style["v"+i+"-f"];
-            else style["v"] = style["v-f"];
-        }
-        let black = base[1], white = base[8];
-        data._ = data.b;
-        for (let color in data) {
-            let rgb = data[color];
-            let header = (color == "_") ? "a" : "c"+color;
-            for (let i = 0; i <= 9; i++) {
-                let normal = (i < 9);
-                let newRgb = normal ?
-                    Array.from(new Array(3).keys()).map(k => util.lerp(
-                        rgb[k],
-                        (i < 4) ? black[k] : (i > 4) ? white[k] : rgb[k],
-                        Math.abs(i-4)/4,
-                    )) :
-                    null;
-                for (let j = 0; j < 16; j++) {
-                    let alpha = j/15;
-                    let hex = "0123456789abcdef"[j];
-                    if (normal) style[header+i+"-"+hex] = "rgba("+[...newRgb, alpha].join(",")+")";
-                    else style[header+"-"+hex] = style[header+"4-"+hex];
-                }
-                if (normal) style[header+i] = style[header+i+"-f"];
-                else style[header] = style[header+"-f"];
-            }
-        }
-        let styleStr = "";
-        for (let k in style) styleStr += "--"+k+":"+style[k]+";";
-        dynamicStyle.innerHTML += ":root{"+styleStr+"}";
+        data = util.ensure(data, "obj");
+        this.base = data.base;
+        this.colors = data.colors;
+        this.accent = data.accent;
 
         await this.post("setup", null);
 
@@ -435,6 +400,106 @@ export class App extends Target {
         }, Math.max(0, 1250 - (util.getTime()-t)));
 
         return true;
+    }
+    get base() { return [...this.#base]; }
+    set base(v) {
+        v = util.ensure(v, "arr").map(v => new util.Color(v));
+        while (v.length < 9) v.push(new util.Color((v.length > 0) ? v.at(-1) : null));
+        while (v.length > 9) v.pop();
+        this.#base = v;
+        this.updateDynamicStyle();
+    }
+    getBase(i) {
+        i = util.ensure(i, "int");
+        if (i < 0 || i >= 9) return null;
+        return this.#base[i];
+    }
+    get colors() { return Object.keys(this.#colors); }
+    set colors(v) {
+        v = util.ensure(v, "obj");
+        this.clearColors();
+        for (let name in v) this.addColor(name, v[name]);
+    }
+    clearColors() {
+        let colors = this.colors;
+        colors.forEach(name => this.remColor(name));
+        return colors;
+    }
+    hasColor(name) {
+        name = String(name);
+        return name in this.#colors;
+    }
+    getColor(name) {
+        name = String(name);
+        if (!this.hasColor(name)) return null;
+        return this.#colors[name];
+    }
+    addColor(name, color) {
+        name = String(name);
+        color = new util.Color(color);
+        if (this.hasColor(name)) return false;
+        this.#colors[name] = color;
+        this.updateDynamicStyle();
+        return color;
+    }
+    remColor(name) {
+        name = String(name);
+        if (this.hasColor(name)) return false;
+        let color = this.getColor(name);
+        delete this.#colors[name];
+        this.updateDynamicStyle();
+        return color;
+    }
+    setColor(name, color) {
+        name = String(name);
+        color = new util.Color(color);
+        this.#colors[name] = color;
+        this.updateDynamicStyle();
+        return color;
+    }
+    get accent() { return this.#accent; }
+    set accent(v) {
+        v = this.hasColor(v) ? String(v) : null;
+        if (this.accent == v) return;
+        this.#accent = v;
+        this.updateDynamicStyle();
+    }
+    updateDynamicStyle() {
+        let style = {};
+        for (let i = 0; i <= 9; i++) {
+            let normal = (i < 9);
+            for (let j = 0; j < 16; j++) {
+                let alpha = j/15;
+                let hex = "0123456789abcdef"[j];
+                if (normal) style["v"+i+"-"+hex] = "rgba("+[...this.getBase(i).rgb, alpha].join(",")+")";
+                else style["v-"+hex] = style["v4-"+hex];
+            }
+            if (normal) style["v"+i] = style["v"+i+"-f"];
+            else style["v"] = style["v-f"];
+        }
+        let black = this.getBase(1), white = this.getBase(8);
+        let colors = {};
+        this.colors.forEach(name => (colors[name] = this.getColor(name)));
+        colors._ = new util.Color(this.hasColor(this.accent) ? this.getColor(this.accent) : this.getBase(4));
+        for (let name in colors) {
+            let color = colors[name];
+            let header = (name == "_") ? "a" : "c"+name;
+            for (let i = 0; i <= 9; i++) {
+                let normal = (i < 9);
+                let newColor = normal ? util.lerp(color, (i<4) ? black : (i>4) ? white : color, Math.abs(i-4)/4) : null;
+                for (let j = 0; j < 16; j++) {
+                    let alpha = j/15;
+                    let hex = "0123456789abcdef"[j];
+                    if (normal) style[header+i+"-"+hex] = "rgba("+[...newColor.rgb, alpha].join(",")+")";
+                    else style[header+"-"+hex] = style[header+"4-"+hex];
+                }
+                if (normal) style[header+i] = style[header+i+"-f"];
+                else style[header] = style[header+"-f"];
+            }
+        }
+        let styleStr = "";
+        for (let k in style) styleStr += "--"+k+":"+style[k]+";";
+        this.eDynamicStyle.innerHTML += ":root{"+styleStr+"}";
     }
 
     async getPerm() {
