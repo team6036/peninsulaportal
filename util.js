@@ -103,15 +103,18 @@ export function cos(x) {
 export function lerp(a, b, p) {
     p = ensure(p, "num");
     if (is(a, "num") && is(b, "num")) return a + p*(b-a);
+    if ((a instanceof V) || (b instanceof V)) {
+        a = new V(a);
+        b = new V(b);
+        return new V(lerp(a.x, b.x, p), lerp(a.y, b.y, p));
+    }
     if ((a instanceof V3) || (b instanceof V3)) {
         a = new V3(a);
         b = new V3(b);
         return new V3(lerp(a.x, b.x, p), lerp(a.y, b.y, p), lerp(a.z, b.z, p));
     }
-    if ((a instanceof V) || (b instanceof V)) {
-        a = new V(a);
-        b = new V(b);
-        return new V(lerp(a.x, b.x, p), lerp(a.y, b.y, p));
+    if ((a instanceof Color) && (b instanceof Color)) {
+        return new Color(lerp(a.r, b.r, p), lerp(a.g, b.g, p), lerp(a.b, b.b, p), lerp(a.a, b.a, p));
     }
     return null;
 }
@@ -125,15 +128,18 @@ export function lerpE(a, b, p) {
         }
         return lerp(a, b, p);
     }
+    if ((a instanceof V) || (b instanceof V)) {
+        a = new V(a);
+        b = new V(b);
+        return new V(lerpE(a.x, b.x, p), lerpE(a.y, b.y, p));
+    }
     if ((a instanceof V3) || (b instanceof V3)) {
         a = new V3(a);
         b = new V3(b);
         return new V3(lerpE(a.x, b.x, p), lerpE(a.y, b.y, p), lerpE(a.z, b.z, p));
     }
-    if ((a instanceof V) || (b instanceof V)) {
-        a = new V(a);
-        b = new V(b);
-        return new V(lerpE(a.x, b.x, p), lerpE(a.y, b.y, p));
+    if ((a instanceof Color) && (b instanceof Color)) {
+        return new Color(lerpE(a.r, b.r, p), lerpE(a.g, b.g, p), lerpE(a.b, b.b, p), lerpE(a.a, b.a, p));
     }
     return null;
 }
@@ -460,6 +466,91 @@ export const ease = {
         if (e in ease) return ease[e](t, m);
         return t;
     },
+}
+
+export class Color {
+    #r; #g; #b; #a;
+
+    constructor(...a) {
+        if (a.length <= 0 || a.length == 2 || a.length > 4) a = [0];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Color) a = a.rgba;
+            else if (is(a, "arr")) a = new Color(...a).rgba;
+            else if (is(a, "obj")) a = [a.r, a.g, a.b, a.a];
+            else if (is(a, "num")) {
+                if (a < 0) a = new Array(3).fill(-a);
+                else if (a < 0xffff) {
+                    let rgba = new Array(4).fill(null).map(_ => {
+                        let x = a % 16;
+                        a = Math.floor(a / 16);
+                        return x;
+                    }).reverse();
+                    a = rgba.map(x => x*16+x);
+                    a[3] /= 255;
+                } else if (a < 0xffffff) {
+                    let rgba = new Array(4).fill(null).map(_ => {
+                        let x = a % 256;
+                        a = Math.floor(a / 256);
+                        return x;
+                    }).reverse();
+                    a = rgba;
+                    a[3] /= 255;
+                } else a = [0, 0, 0];
+            }
+            else if (is(a, "str")) {
+                if (a[0] == "#") {
+                    a = a.substring(1).toLowerCase();
+                    const hex = "0123456789abcdef";
+                    let all = true;
+                    a.split("").forEach(c => (hex.includes(c) ? null : (all = false)));
+                    if (!all) a = [0, 0, 0];
+                    else {
+                        if (a.length == 3 || a.length == 4) a = new Array(a.length).fill(null).map((_, i) => hex.indexOf(a[i])).map(x => x*16+x);
+                        else if (a.length == 6 || a.length == 8) a = new Array(a.length/2).fill(null).map((_, i) => hex.indexOf(a[i])*16+hex.indexOf(a[i+1]));
+                        else a = [0, 0, 0];
+                    }
+                    if (a.length == 4) a[3] /= 255;
+                } else if (a.startsWith("rgb")) {
+                    a = a.substring(a.startsWith("rgba") ? 4 : 3);
+                    if (a.at(0) == "(" && a.at(-1) == ")") {
+                        a = a.substring(1, a.length-1);
+                        a = a.split(",").map(v => v.trim()).map(v => parseFloat(v));
+                        a = new Color(...a).rgba;
+                    } else a = [0, 0, 0];
+                } else a = [0, 0, 0];
+            }
+            else a = [0, 0, 0];
+        }
+        if (a.length == 3) a = [...a, 255];
+
+        [this.r, this.g, this.b, this.a] = a;
+    }
+
+    get r() { return this.#r; }
+    set r(v) { this.#r = Math.min(255, Math.max(0, ensure(v, "num"))); }
+    get g() { return this.#g; }
+    set g(v) { this.#g = Math.min(255, Math.max(0, ensure(v, "num"))); }
+    get b() { return this.#b; }
+    set b(v) { this.#b = Math.min(255, Math.max(0, ensure(v, "num"))); }
+    get a() { return this.#a; }
+    set a(v) { this.#a = Math.min(1, Math.max(0, ensure(v, "num"))); }
+    get rgb() { return [this.r, this.g, this.b]; }
+    set rgb(v) { [this.r, this.g, this.b] = new Color(v).rgb; }
+    get rgba() { return [this.r, this.g, this.b, this.a]; }
+    set rgba(v) { [this.r, this.g, this.b, this.a] = new Color(v).rgba; }
+
+    toHex() {
+        const hex = "0123456789abcdef";
+        let rgba = this.rgba.map(v => {
+            v = Math.round();
+            return hex[Math.floor(v/16)]+hex[v%16];
+        });
+        return "#"+rgba.join("");
+    }
+    toRGBA() {
+        return "rgba("+this.rgba.join(",")+")";
+    }
 }
 
 export class V {
