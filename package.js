@@ -13,6 +13,7 @@ const ignores = [
     "./build",
     "./temp",
     "./.gitignore",
+    "./.devconfig",
 ];
 
 const builds = {

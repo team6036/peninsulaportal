@@ -186,6 +186,11 @@ function splitTimeUnits(t) {
 }
 exports.splitTimeUnits = splitTimeUnits;
 
+async function wait(t) {
+    return await new Promise((res, rej) => setTimeout(() => res(), t));
+}
+exports.wait = wait;
+
 function promiseTimeout(v, time) {
     time = Math.max(0, ensure(time, "num"));
     return new Promise((res, rej) => {
