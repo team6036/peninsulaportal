@@ -499,7 +499,7 @@ export class App extends Target {
         }
         let styleStr = "";
         for (let k in style) styleStr += "--"+k+":"+style[k]+";";
-        this.eDynamicStyle.innerHTML += ":root{"+styleStr+"}";
+        this.eDynamicStyle.innerHTML = ":root{"+styleStr+"}";
     }
 
     async getPerm() {
