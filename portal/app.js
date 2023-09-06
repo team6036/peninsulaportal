@@ -340,45 +340,54 @@ export default class App extends core.App {
                 if (this.hasELoads()) {
                     this.eLoads.innerHTML = "";
                     loads.forEach(load => {
+                        let ogLoad = load;
                         let elem = document.createElement("div");
                         this.eLoads.appendChild(elem);
-                        if (load.startsWith("polldb")) {
-                            let content = load.split(":").slice(1);
-                            if (content.length == 0) return elem.textContent = "Polling database";
-                            return elem.textContent = "Polling database failed: "+content[1];
-                        }
-                        if (load.includes(":")) {
-                            let name = load.split(":")[0], content = load.split(":").slice(1);
-                            let displayName = name[0].toUpperCase()+name.substring(1).toLowerCase();
-                            elem.textContent = `[${displayName}] `;
-                            if (content.length == 1 && content[0] == "search") return elem.textContent += "Searching";
+                        load = load.split(":");
+                        let name = load[0];
+                        load = load.slice(1);
+                        let namefs = {
+                            find: () => (elem.textContent += "Finding database"),
+                            poll: () => {
+                                if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
+                                return elem.textContent += "Polling database";
+                            },
+                            config: () => {
+                                if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
+                                return elem.textContent += "Configuring";
+                            },
+                        };
+                        if (name in namefs) return namefs[name]();
+                        if (name.toUpperCase() == name) {
                             let namefs = {
                                 PLANNER: () => {
-                                    if (content[0] == "solver") {
-                                        if (content[1] == null) return elem.textContent += "Copying default solver";
-                                        return elem.textContent += "Error while copying default solver: "+content[1];
-                                    }
-                                    if (content[0] == "template.json") {
-                                        if (content[1] == null) return elem.textContent += "Making template";
-                                        return elem.textContent += "Error while making template: "+content[1];
-                                    }
-                                    if (content[0] == "template.json-prune") {
-                                        if (content[1] == null) return elem.textContent += "Pruning template";
-                                        return elem.textContent += "Error while pruning template: "+content[1];
-                                    }
-                                    if (content[0] == "template.png") {
-                                        if (content[1] == null) return elem.textContent += "Downloading template image";
-                                        return elem.textContent += "Error while downloading template image: "+content[1];
-                                    }
+                                    let name = load[0];
+                                    load = load.slice(1);
+                                    let namefs = {
+                                        search: () => (elem.textContent += "Searching"),
+                                        solver: () => {
+                                            if (load.length > 0) return elem.textContent += "Error while copying default solver: "+load.join(":");
+                                            return elem.textContent += "Copying default solver";
+                                        },
+                                        "template.json": () => {
+                                            if (load.length > 0) return elem.textContent += "Error while making template: "+load.join(":");
+                                            return elem.textContent += "Making template";
+                                        },
+                                        "template.json-prune": () => {
+                                            if (load.length > 0) return elem.textContent += "Error while pruning template: "+load.join(":");
+                                            return elem.textContent += "Pruning template";
+                                        },
+                                        "template.png": () => {
+                                            if (load.length > 0) return elem.textContent += "Error while downloading template image: "+load.join(":");
+                                            return elem.textContent += "Downloading template image";
+                                        },
+                                    };
+                                    if (name in namefs) return namefs[name]();
                                 },
                             };
-                            if (name in namefs) {
-                                let r = namefs[name]();
-                                if (r != null) return r;
-                            }
-                            return elem.textContent += content.join(":");
+                            if (name in namefs) return namefs[name]();
                         }
-                        elem.textContent = load;
+                        elem.textContent = ogLoad;
                     });
                 }
                 lock = false;

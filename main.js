@@ -194,7 +194,19 @@ class Portal extends core.Target {
         // electron.nativeTheme.themeSource = "dark";
     }
 
-    async isDevMode() { return true; }
+    async isDevMode() {
+        if (!(await Portal.fileHas(path.join(__dirname, ".devconfig")))) return false;
+        let content = "";
+        try {
+            content = await Portal.fileRead(path.join(__dirname, ".devconfig"));
+        } catch (e) { return false; }
+        let data = null;
+        try {
+            data = JSON.parse(content);
+        } catch (e) { return false; }
+        data = util.ensure(data, "obj");
+        return data.isDevMode;
+    }
 
     get manager() { return this.#manager; }
 
@@ -283,121 +295,158 @@ class Portal extends core.Target {
         return true;
     }
     async tryLoad() {
-        const host = "https://peninsula-db.jfancode.repl.co";
-        this.log(`poll db - ${host}`);
-        this.addLoad("polldb");
+        const fetch = (await import("node-fetch")).default;
+        this.log("db: finding host");
+        this.addLoad("find");
+        let content = "";
+        try {
+            content = await this.fileRead(".config");
+        } catch (e) {}
+        let data = null;
+        try {
+            data = JSON.parse(content);
+        } catch (e) {}
+        data = util.ensure(data, "obj");
+        this.remLoad("find");
+        const host = data.dbHost || "https://peninsula-db.jfancode.repl.co";
+        this.log(`db: poll - ${host}`);
+        this.addLoad("poll");
         try {
             await fetch(host);
         } catch (e) {
-            this.log(`poll db - ${host} - fail`);
-            this.remLoad("polldb");
-            this.addLoad("polldb:"+e);
+            this.log(`db: poll - ${host} - fail`);
+            this.remLoad("poll");
+            this.addLoad("poll:"+e);
             return false;
         }
-        this.log(`poll db - ${host} - success`);
-        this.remLoad("polldb");
-        await Promise.all(FEATURES.map(async name => {
-            const subhost = host+"/"+name.toLowerCase();
-            const log = (...a) => this.log(`[${name}]`, ...a);
-            log("search");
-            this.addLoad(name+":search");
-            try {
-                let resp = await fetch(subhost+"/confirm.json");
-                if (resp.status != 200) throw resp.status;
-            } catch (e) {
-                log(`search - not found - ${e}`);
+        this.log(`db: poll - ${host} - success`);
+        this.remLoad("poll");
+        await Promise.all([
+            (async () => {
+                this.log("db: config");
+                this.addLoad("config");
+                let resp = null;
+                try {
+                    resp = await fetch(host+"/config.json");
+                    if (resp.status != 200) throw resp.status;
+                    await new Promise((res, rej) => {
+                        const stream = fs.createWriteStream(path.join(this.dataPath, ".config"));
+                        stream.on("open", () => {
+                            resp.body.pipe(stream);
+                            resp.body.on("end", () => res(true));
+                            resp.body.on("error", e => rej(e));
+                        });
+                    });
+                    this.log("db: config - success");
+                } catch (e) {
+                    this.log(`db: config - error - ${e}`);
+                    this.addLoad("config:"+e);
+                    return;
+                }
+                this.remLoad("config");
+            })(),
+            ...FEATURES.map(async name => {
+                const subhost = host+"/"+name.toLowerCase();
+                const log = (...a) => this.log(`db: [${name}]`, ...a);
+                log("search");
+                this.addLoad(name+":search");
+                try {
+                    let resp = await fetch(subhost+"/confirm.json");
+                    if (resp.status != 200) throw resp.status;
+                } catch (e) {
+                    log(`search - not found - ${e}`);
+                    this.remLoad(name+":search");
+                    return;
+                }
+                log("search - found");
                 this.remLoad(name+":search");
-                return;
-            }
-            log("search - found");
-            this.remLoad(name+":search");
-            let namefs = {
-                PLANNER: async () => {
-                    const fetch = (await import("node-fetch")).default;
-                    await Portal.Feature.affirm(this, name);
-                    await Promise.all([
-                        async () => {
-                            log("solver");
-                            this.addLoad(name+":solver");
-                            try {
-                                if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
-                                    await fs.promises.cp(
-                                        path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
-                                        {
-                                            force: true,
-                                            recursive: true,
-                                        }
-                                    );
-                                log("solver - success");
-                            } catch (e) {
-                                log(`solver - error - ${e}`);
-                                this.addLoad(name+":solver:"+e);
-                            }
-                            this.remLoad(name+":solver");
-                        },
-                        async () => {
-                            log("template.json");
-                            this.addLoad(name+":template.json");
-                            try {
-                                let resp = await fetch(subhost+"/template.json");
-                                if (resp.status != 200) throw resp.status;
-                                await new Promise((res, rej) => {
-                                    const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.json"));
-                                    stream.on("open", () => {
-                                        resp.body.pipe(stream);
-                                        resp.body.on("end", () => res(true));
-                                        resp.body.on("error", e => rej(e));
+                let namefs = {
+                    PLANNER: async () => {
+                        await Portal.Feature.affirm(this, name);
+                        await Promise.all([
+                            async () => {
+                                log("solver");
+                                this.addLoad(name+":solver");
+                                try {
+                                    if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                        await fs.promises.cp(
+                                            path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
+                                            {
+                                                force: true,
+                                                recursive: true,
+                                            }
+                                        );
+                                    log("solver - success");
+                                } catch (e) {
+                                    log(`solver - error - ${e}`);
+                                    this.addLoad(name+":solver:"+e);
+                                }
+                                this.remLoad(name+":solver");
+                            },
+                            async () => {
+                                log("template.json");
+                                this.addLoad(name+":template.json");
+                                try {
+                                    let resp = await fetch(subhost+"/template.json");
+                                    if (resp.status != 200) throw resp.status;
+                                    await new Promise((res, rej) => {
+                                        const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.json"));
+                                        stream.on("open", () => {
+                                            resp.body.pipe(stream);
+                                            resp.body.on("end", () => res(true));
+                                            resp.body.on("error", e => rej(e));
+                                        });
                                     });
-                                });
-                                log("template.json - success");
-                            } catch (e) {
-                                log(`template.json - error - ${e}`);
-                                this.addLoad(name+":template.json:"+e);
-                            }
-                            this.remLoad(name+":template.json");
-                            if (!(await Portal.Feature.fileHas(this, name, "template.json"))) return;
-                            log("pruning template.json");
-                            this.addLoad(name+":template.json-prune");
-                            let content = await Portal.Feature.fileRead(this, name, "template.json");
-                            try {
-                                let data = JSON.parse(content);
-                                if (!util.is(data, "obj")) throw typeof(data);
-                                data[".meta.backgroundImage"] = path.join(Portal.Feature.getDataPath(this, name), "template.png");
-                                content = JSON.stringify(data);
-                                await Portal.Feature.fileWrite(this, name, "template.json", content);
-                                log("pruning template.json - success");
-                            } catch (e) {
-                                log(`pruning template.json - error - ${e}`);
-                                this.remLoad(name+":template.json-prune:"+e);
-                            }
-                            this.remLoad(name+":template.json-prune");
-                        },
-                        async () => {
-                            log("template.png");
-                            this.addLoad(name+":template.png");
-                            try {
-                                let resp = await fetch(subhost+"/template.png");
-                                if (resp.status != 200) throw resp.status;
-                                await new Promise((res, rej) => {
-                                    const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.png"));
-                                    stream.on("open", () => {
-                                        resp.body.pipe(stream);
-                                        resp.body.on("end", () => res(true));
-                                        resp.body.on("error", e => rej(e));
+                                    log("template.json - success");
+                                } catch (e) {
+                                    log(`template.json - error - ${e}`);
+                                    this.addLoad(name+":template.json:"+e);
+                                }
+                                this.remLoad(name+":template.json");
+                                if (!(await Portal.Feature.fileHas(this, name, "template.json"))) return;
+                                log("pruning template.json");
+                                this.addLoad(name+":template.json-prune");
+                                let content = await Portal.Feature.fileRead(this, name, "template.json");
+                                try {
+                                    let data = JSON.parse(content);
+                                    if (!util.is(data, "obj")) throw typeof(data);
+                                    data[".meta.backgroundImage"] = path.join(Portal.Feature.getDataPath(this, name), "template.png");
+                                    content = JSON.stringify(data);
+                                    await Portal.Feature.fileWrite(this, name, "template.json", content);
+                                    log("pruning template.json - success");
+                                } catch (e) {
+                                    log(`pruning template.json - error - ${e}`);
+                                    this.remLoad(name+":template.json-prune:"+e);
+                                }
+                                this.remLoad(name+":template.json-prune");
+                            },
+                            async () => {
+                                log("template.png");
+                                this.addLoad(name+":template.png");
+                                try {
+                                    let resp = await fetch(subhost+"/template.png");
+                                    if (resp.status != 200) throw resp.status;
+                                    await new Promise((res, rej) => {
+                                        const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.png"));
+                                        stream.on("open", () => {
+                                            resp.body.pipe(stream);
+                                            resp.body.on("end", () => res(true));
+                                            resp.body.on("error", e => rej(e));
+                                        });
                                     });
-                                });
-                                log("template.png - success");
-                            } catch (e) {
-                                log(`template.png - error - ${e}`);
-                                this.addLoad(name+":template.png:"+e);
-                            }
-                            this.remLoad(name+":template.png");
-                        },
-                    ].map(f => f()));
-                },
-            };
-            if (name in namefs) await namefs[name]();
-        }));
+                                    log("template.png - success");
+                                } catch (e) {
+                                    log(`template.png - error - ${e}`);
+                                    this.addLoad(name+":template.png:"+e);
+                                }
+                                this.remLoad(name+":template.png");
+                            },
+                        ].map(f => f()));
+                    },
+                };
+                if (name in namefs) await namefs[name]();
+            }),
+        ]);
         return true;
     }
 
@@ -654,6 +703,7 @@ class Portal extends core.Target {
     }
 
     static log(...a) {
+        return;
         return log(".", ...a);
     }
     log(...a) {
@@ -1043,7 +1093,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             // this.popups.forEach(pop => pop.update());
             if (lock) return;
             let t1 = util.getTime();
-            if (t1-t0 < 100) return;
+            if (t1-t0 < 1000) return;
             lock = true;
             t0 = t1;
             let is = await this.isDevMode();
@@ -1063,7 +1113,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             await this.portal.affirm();
             let stateContent = "";
             try {
-                stateContent = await this.portal.fileRead("state.json");
+                stateContent = await this.portal.fileRead(".state");
             } catch (e) {}
             let state = null;
             try {
@@ -1096,7 +1146,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             await this.portal.affirm();
             let stateContent = "";
             try {
-                stateContent = await this.portal.fileRead("state.json");
+                stateContent = await this.portal.fileRead(".state");
             } catch (e) {}
             let state = null;
             try {
@@ -1105,7 +1155,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             state = util.ensure(state, "obj");
             if (!util.is(state[this.name], "obj")) state[this.name] = {};
             state[this.name].bounds = this.window.getBounds();
-            await this.portal.fileWrite("state.json", JSON.stringify(state, null, "\t"));
+            await this.portal.fileWrite(".state", JSON.stringify(state, null, "\t"));
         }
         // this.popups.forEach(pop => pop.stop());
         if (this.window instanceof electron.BrowserWindow)
