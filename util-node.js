@@ -546,6 +546,73 @@ class Color {
     get rgba() { return [this.r, this.g, this.b, this.a]; }
     set rgba(v) { [this.r, this.g, this.b, this.a] = new Color(v).rgba; }
 
+    get hsva() {
+        let r = this.r/255, g = this.g/255, b = this.b/255;
+        let cMax = Math.max(r, g, b), cMin = Math.min(r, g, b);
+        let delta = cMax - cMin;
+        let h = 0;
+        if (delta > 0) {
+            let rgb = [r, g, b];
+            for (let i = 0; i < 3; i++) {
+                if (cMax != rgb[i]) continue;
+                h = 60 * (((((rgb[(i+1)%3]-rgb[(i+2)%3])/delta + i*2)%6)+6)%6);
+                break;
+            }
+        }
+        let s = (cMax > 0) ? (delta/cMax) : 0;
+        let v = cMax;
+        return [h, s, v, this.a];
+    }
+    set hsva(hsva) {
+        hsva = ensure(hsva, "arr");
+        if (hsva.length != 4) hsva = [0, 0, 0, 1];
+        hsva = hsva.map(v => ensure(v, "num"));
+        hsva[0] = ((ensure(hsva[0], "num")%360)+360)%360;
+        for (let i = 1; i < 4; i++) hsva[i] = Math.min(1, Math.max(0, hsva[i]));
+        let h, s, v, a;
+        [h, s, v, a] = hsva;
+        let c = v * s;
+        let x = c * (1-Math.abs(((h/60)%2)-1));
+        let m = v - c;
+        let rgb = [0, 0, 0];
+        for (let i = 0; i < 3; i++) {
+            if (h >= (i+1)*120) continue;
+            let u = i, v = (i+1)%3;
+            if (h >= (i+0.5)*120) [u, v] = [v, u];
+            rgb[u] = c;
+            rgb[v] = x;
+            break;
+        }
+        rgb = rgb.map(v => (v+m)*255);
+        this.rgba = [...rgb, a];
+    }
+    get h() { return this.hsva[0]; }
+    set h(v) {
+        let hsva = this.hsva;
+        hsva[0] = v;
+        this.hsva = hsva;
+    }
+    get s() { return this.hsva[1]; }
+    set s(v) {
+        let hsva = this.hsva;
+        hsva[1] = v;
+        this.hsva = hsva;
+    }
+    get v() { return this.hsva[2]; }
+    set v(v) {
+        let hsva = this.hsva;
+        hsva[2] = v;
+        this.hsva = hsva;
+    }
+    get hsv() { return this.hsva.slice(0, 3); }
+    set hsv(hsv) {
+        hsv = ensure(v, "arr");
+        if (hsv.length != 3) hsv = [0, 0, 0];
+        let hsva = this.hsva;
+        [hsva[0], hsva[1], hsva[2]] = hsv;
+        this.hsva = hsva;
+    }
+
     toHex() {
         const hex = "0123456789abcdef";
         let rgba = this.rgba.map(v => {
