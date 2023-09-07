@@ -272,6 +272,7 @@ export default class App extends core.App {
                         Array.from(elem.children).forEach(child => dfs(child));
                     };
                     dfs(this.eContent);
+                    hljs.highlightAll();
                 })();
             }
             this.#eNav = document.querySelector("#TITLEPAGE > .main > .nav");
