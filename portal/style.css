@@ -185,7 +185,14 @@ article blockquote {
     color: var(--v6);
     border-left: 5px solid var(--v2);
 }
-article code {
+article code.hljs {
+    background-color: var(--v2);
+    border-radius: 10px;
+
+    font-family: monospace;
+    white-space: break-spaces;
+}
+article code:not(.hljs) {
     padding: 3px 5px;
 
     background-color: var(--v2);
@@ -194,6 +201,9 @@ article code {
 
     font-family: monospace;
     white-space: break-spaces;
+}
+article code * {
+    font-family: monospace;
 }
 article h1,
 article h2 {
@@ -213,7 +223,7 @@ article h5,
 article h6 {
     color: var(--v8);
 }
-article pre {
+article pre:not(:has(> code.hljs)) {
     padding: 15px;
 
     background-color: var(--v2);

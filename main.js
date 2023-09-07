@@ -57,9 +57,15 @@ class Process extends core.Target {
 
         this.#process = (process instanceof cp.ChildProcess) ? process : cp.exec(process);
         this.process.stdout.on("data", data => this.post("data", { data: data }));
-        this.process.stderr.on("data", data => this.post("error", { e: data }));
+        this.process.stderr.on("data", data => {
+            this.post("error", { e: data });
+            this.terminate();
+        });
         this.process.on("exit", code => this.post("exit", { code: code }));
-        this.process.on("error", e => this.post("error", { e: e }));
+        this.process.on("error", e => {
+            this.post("error", { e: e });
+            this.terminate();
+        });
 
         this.addHandler("exit", data => (this.parent = null));
     }
