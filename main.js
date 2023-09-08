@@ -240,7 +240,7 @@ class Portal extends core.Target {
         this.#features.add(feat);
         feat.portal = this;
         feat.start();
-        let window = feat.window;
+        const window = feat.window;
         feat._onFocus = () => {
             if (feat.hasMenu()) {
                 if (PLATFORM == "darwin")
@@ -476,9 +476,11 @@ class Portal extends core.Target {
             if (!util.is(e, "obj")) return null;
             if (!util.is(e.sender, "obj")) return null;
             let feats = this.features;
-            for (let i = 0; i < feats.length; i++)
+            for (let i = 0; i < feats.length; i++) {
+                if (!feats[i].hasWindow()) continue;
                 if (e.sender.id == feats[i].window.webContents.id)
                     return feats[i];
+            }
             return null;
         };
         /*
@@ -826,9 +828,10 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (!this.hasName()) return false;
         this.log("GET PERM");
         let perm = await new Promise((res, rej) => {
+            if (!this.hasWindow()) return;
             this.window.webContents.send("perm");
             ipc.once("perm", (e, given) => {
-                if (!this.window || !this.window.webContents) return;
+                if (!this.hasWindow()) return;
                 if (e.sender.id != this.window.webContents.id) return;
                 res(!!given);
             });
@@ -886,16 +889,16 @@ Portal.Feature = class PortalFeature extends core.Target {
         });
         if (this.hasPortal()) {
             let any = false;
-            this.portal.features.forEach(feat => (any ||= feat.window.webContents.isDevToolsOpened()));
+            this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => (any ||= feat.window.webContents.isDevToolsOpened()));
             if (any) window.webContents.openDevTools();
         }
         window.webContents.on("devtools-opened", () => {
             if (!this.hasPortal()) return;
-            this.portal.features.forEach(feat => feat.window.webContents.openDevTools());
+            this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.openDevTools());
         });
         window.webContents.on("devtools-closed", () => {
             if (!this.hasPortal()) return;
-            this.portal.features.forEach(feat => feat.window.webContents.closeDevTools());
+            this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
         });
 
         window.on("enter-full-screen", () => { window.webContents.send("ask", "set-fullscreen", [true]); });
@@ -1173,12 +1176,12 @@ Portal.Feature = class PortalFeature extends core.Target {
             } catch (e) {}
             state = util.ensure(state, "obj");
             if (!util.is(state[this.name], "obj")) state[this.name] = {};
-            state[this.name].bounds = this.window.getBounds();
+            if (this.hasWindow())
+                state[this.name].bounds = this.window.getBounds();
             await this.portal.fileWrite(".state", JSON.stringify(state, null, "\t"));
         }
         // this.popups.forEach(pop => pop.stop());
-        if (this.window instanceof electron.BrowserWindow)
-            this.window.close();
+        if (this.hasWindow()) this.window.close();
         this.#window = null;
         this.#menu = null;
         this.portal = null;
@@ -1394,7 +1397,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                         const resolve = async (...a) => {
                             this.log("SPAWN exit", ...a);
                             await finish();
-                            if (!this.window.isVisible() || !this.window.isFocused()) {
+                            if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                 const notif = new electron.Notification({
                                     title: "Script Process Finished",
                                     body: "Your script finished executing with no errors!",
@@ -1406,7 +1409,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                         const reject = async (...a) => {
                             this.log("SPAWN err", ...a);
                             await finish();
-                            if (!this.window.isVisible() || !this.window.isFocused()) {
+                            if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                 const notif = new electron.Notification({
                                     title: "Script Process Finished",
                                     body: "Your script finished executing with an error!",
@@ -1491,7 +1494,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                 hasFeat = feat;
             });
             if (hasFeat instanceof Portal.Feature) {
-                hasFeat.window.show();
+                if (hasFeat.hasWindow()) hasFeat.window.show();
                 return;
             }
             if (!FEATURES.includes(name)) return false;

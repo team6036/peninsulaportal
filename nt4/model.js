@@ -122,25 +122,26 @@ export default class NTModel extends core.Target {
         const client = this.#client = (v == null) ? null : new NT4_Client(
             v,
             topic => {
-                if (client == this.client) return;
+                if (client == this.#client) return;
                 this.announceTopic(topic.name, topic.type);
             },
             topic => {
-                if (client == this.client) return;
+                if (client == this.#client) return;
                 this.unannounceTopic(topic.name);
             },
             (topic, ts, value) => {
-                if (client == this.client) return;
+                if (client == this.#client) return;
                 this.updateTopic(topic.name, value);
             },
             () => {
-                if (client == this.client) return;
+                if (client == this.#client) return;
                 this.#client.connected = true;
                 this.post("connected", null);
                 this.post("connect-state", this.connected);
+                this.#client.subscribePeriodic(["/"], 0.1);
             },
             () => {
-                if (client == this.client) return;
+                if (client == this.#client) return;
                 this.#client.connected = false;
                 this.post("disconnected", null);
                 this.post("connect-state", this.connected);
