@@ -485,8 +485,6 @@ class RIBackground extends RenderItem {
         this.#img = document.createElement("img");
         this.elem.appendChild(this.img);
 
-        this.img.src = "../assets/field.png";
-
         this.src = src;
     }
 

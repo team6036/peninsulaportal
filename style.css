@@ -249,8 +249,9 @@ label.switch > input[type="checkbox"]:checked + span::before {
     align-content: center;
     gap: 10px;
 
-    background-color: var(--v2);
+    background-color: var(--v1);
     color: var(--v5);
+    border-bottom: 2px solid var(--v2);
 
     -webkit-app-region: drag;
 }

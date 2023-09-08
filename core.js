@@ -627,6 +627,7 @@ export class App extends Target {
         this.eTitleBar.appendChild(btn);
         btn.classList.add("icon");
         btn.style.setProperty("--bg", "transparent");
+        btn.style.setProperty("--bgh", "var(--v2)");
         btn.style.setProperty("--bgd", "transparent");
         btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
         btn.addEventListener("click", e => {

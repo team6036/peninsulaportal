@@ -129,6 +129,10 @@
     cursor: pointer;
 }
 #titlebar > button.nav {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
     align-self: stretch;
 
     padding: 10px 20px;
@@ -148,6 +152,7 @@
 #titlebar > #nameinput > input {
     padding: 5px;
 
+    background-color: var(--v2);
     border-radius: 5px;
 
     font-size: 12px;
@@ -166,6 +171,7 @@
 }
 #titlebar > button.nav:not(.forproject) {
     --bg: transparent;
+    --bgh: var(--v2);
     --bgd: transparent;
 
     padding: 10px;
