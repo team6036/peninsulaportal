@@ -1,11 +1,18 @@
-import * as util from "../../util.js";
-import { V } from "../../util.js";
+import "./msgpack.js";
 
-import * as core from "../../core.js";
+/**
+ * nt4.js - Pure-javascript module implementation of the NetworkTables 4 spec 
+ *          for the FIRST robotics Competition
+ * 
+ * See https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc
+ * for the full spec.
+ */
 
-import { serialize, deserialize } from "./msgpack";
 
-let typestrIdxLookup = {
+/**
+ * Lookup from type string to type integer
+ */
+var typestrIdxLookup = {
     NT4_TYPESTR: 0,
     "double": 1,
     "int": 2,
@@ -21,8 +28,12 @@ let typestrIdxLookup = {
     "int[]": 18,
     "float[]": 19,
     "string[]": 20
-};
+}
 
+
+/**
+ * JS Definition of the topic type strings
+ */
 class NT4_TYPESTR {
     static BOOL = "boolean";
     static FLOAT_64 = "double";
@@ -41,197 +52,91 @@ class NT4_TYPESTR {
     static STR_ARR = "string[]";
 }
 
-export class Subscription extends core.Target {
-    #topics;
-    #options;
-    #uid;
-
-    constructor() {
-        super();
-
-        this.#topics = new Set();
-        this.#options = new Subscription.Options();
-        this.#uid = -1;
-    }
-
-    get topics() { return [...this.#topics]; }
-    get options() { return this.#options; }
-    get uid() { return this.#uid; }
+/**
+ * Class to describe a client's subscription to topics
+ */
+export class NT4_Subscription {
+    topics = new Set();
+    options = new NT4_SubscriptionOptions();
+    uid = -1;
 
     toSubscribeObj() {
         return {
-            topics: this.topics,
-            options: this.options.toObj(),
-            subuid: this.uid,
+            "topics": Array.from(this.topics),
+            "options": this.options.toObj(),
+            "subuid": this.uid,
         };
     }
+
     toUnSubscribeObj() {
         return {
-            subuid: this.uid,
+            "subuid": this.uid,
         };
     }
 }
-Subscription.Options = class SubscriptionOptions extends core.Target {
-    #periodicRate;
-    #all;
-    #topicsOnly;
-    #prefix;
 
-    constructor() {
-        super();
-
-        this.#periodicRate = 0.1;
-        this.#all = false;
-        this.#topicsOnly = false;
-        this.#prefix = true;
-    }
-
-    get periodicRate() { return this.#periodicRate; }
-    set periodicRate(v) {
-        v = Math.max(0, util.ensure(v, "num"));
-        if (this.periodicRate == v) return;
-        this.#periodicRate = v;
-        this.post("periodic-rate-set", { v: v });
-    }
-    get all() { return this.#all; }
-    set all(v) {
-        v = !!v;
-        if (this.all == v) return;
-        this.#all = v;
-        this.post("all-set", { v: v });
-    }
-    get topicsOnly() { return this.#topicsOnly; }
-    set topicsOnly(v) {
-        v = !!v;
-        if (this.topicsOnly == v) return;
-        this.#topicsOnly = v;
-        this.post("topics-only-set", { v: v });
-    }
-    get prefix() { return this.#prefix; }
-    set prefix(v) {
-        v = !!v;
-        if (this.prefix == v) return;
-        this.#prefix = v;
-        this.post("prefix-set", { v: v });
-    }
+/**
+ * Class to describe the options associated with a client's subscription to topics
+ */
+export class NT4_SubscriptionOptions {
+    periodicRate_s = 0.1;
+    all = false;
+    topicsonly = false;
+    prefix = true; //nonstandard default
 
     toObj() {
         return {
-            periodic: this.periodicRate,
+            "periodic": this.periodicRate_s,
+            "all": this.all,
+            "topicsonly": this.topicsonly,
+            "prefix": this.prefix,
         };
     }
 }
 
-export class Topic extends core.Target {
-    #name;
-    #type;
-    #id;
-    #pubuid;
-    #properties;
-
-    constructor() {
-        super();
-
-        this.#name = "";
-        this.#type = "";
-        this.#id = 0;
-        this.#pubuid = 0;
-        this.#properties = {};
-    }
-
-    get name() { return this.#name; }
-    set name(v) {
-        v = String(v);
-        if (this.name == v) return;
-        this.#name = v;
-        this.post("name-set", { v: v });
-    }
-    get type() { return this.#type; }
-    set type(v) {
-        v = String(v);
-        if (this.type == v) return;
-        this.#type = v;
-        this.post("type-set", { v: v });
-    }
-
-    get id() { return this.#id; }
-    set id(v) {
-        v = Math.max(0, util.ensure(v, "int"));
-        if (this.id == v) return;
-        this.#id = v;
-        this.post("id-set", { v: v });
-    }
-    get pubuid() { return this.#pubuid; }
-    set pubuid(v) {
-        v = Math.max(0, util.ensure(v, "int"));
-        if (this.pubuid == v) return;
-        this.#pubuid = v;
-        this.post("pubuid-set", { v: v });
-    }
-
-    get properties() { return Object.keys(this.#properties); }
-    set properties(v) {
-        v = util.ensure(v, "obj");
-        this.clearProperties();
-        for (let k in v) this.addProperty(k, v[k]);
-    }
-    get propertyKVs() {
-        let props = {};
-        this.properties.forEach(k => { props[k] = this.getProperty(k); });
-        return props;
-    }
-    clearProperties() {
-        let ks = this.properties;
-        let props = this.propertyKVs;
-        ks.forEach(k => this.remProperty(k));
-        return props;
-    }
-    hasProperty(k) {
-        k = String(k);
-        return k in this.#properties;
-    }
-    getProperty(k) {
-        k = String(k);
-        if (!this.hasProperty(k)) return null;
-        return this.#properties[k];
-    }
-    addProperty(k, v) {
-        k = String(k);
-        this.#properties[k] = v;
-        return v;
-    }
-    remProperty(k) {
-        k = String(k);
-        if (!this.hasProperty(k)) return null;
-        let v = this.getProperty(k);
-        delete this.#properties[k];
-        return v;
-    }
+/**
+ * Class to describe a topic that the client and server both know about
+ */
+export class NT4_Topic {
+    name = "";
+    type = "";
+    id = 0;
+    pubuid = 0;
+    properties = {}; //Properties are free-form, might have anything in them
 
     toPublishObj() {
         return {
-            name: this.name,
-            type: this.type,
-            pubuid: this.pubuid,
-        };
+            "name": this.name,
+            "type": this.type,
+            "pubuid": this.pubuid,
+        }
     }
+
     toUnPublishObj() {
         return {
-            name: this.name,
-            pubuid: this.pubuid,
-        };
+            "name": this.name,
+            "pubuid": this.pubuid,
+        }
     }
+
     toPropertiesObj() {
         return {
-            name: this.name,
-            update: this.propertyKVs,
-        };
+            "name": this.name,
+            "update": this.properties,
+        }
     }
+
     getTypeIdx() {
         return typestrIdxLookup[this.type];
     }
-    getPropertiesString() {
-        return "{"+this.properties.map(k => k+":"+this.getProperty(k)).join(",")+"}";
+
+    getPropertiesString(){
+        var retStr = "{"
+        for (var key in this.properties){
+            retStr += key + ":" + this.properties[key] + ", ";
+        }
+        retStr += "}";
+        return retStr;
     }
 }
 
@@ -569,18 +474,23 @@ export class NT4_Client {
     }
 
     ws_onClose(e) {
+        //Clear flags to stop server communication
         this.ws = null;
         this.serverConnectionActive = false;
 
+        // User connection-closed hook
         this.onDisconnect();
 
+        //Clear out any local cache of server state
         this.announcedTopics.clear();
 
-        console.log("[NT4] Socket is closed. Reconnect will be attempted in 0.5 second", e.reason);
+        console.log('[NT4] Socket is closed. Reconnect will be attempted in 0.5 second.', e.reason);
         setTimeout(this.ws_connect.bind(this), 500);
 
-        if (!e.wasClean)
+        if (!e.wasClean) {
             console.error('Socket encountered error!');
+        }
+
     }
 
     ws_onError(e) {
@@ -589,10 +499,14 @@ export class NT4_Client {
     }
 
     ws_onMessage(e) {
-        if (util.is(e.data, "str")) {
+        if (typeof e.data === 'string') {
             console.log("[NT4] Server Says: " + e.data);
+            //JSON Message
             var rxArray = JSON.parse(e.data);
-            rxArray.forEach(msg => {
+
+            rxArray.forEach(function (msg) {
+
+                //Validate proper format of message
                 if (typeof msg !== 'object') {
                     console.log("[NT4] Ignoring text message, JSON parsing did not produce an object.");
                     return;
@@ -616,20 +530,32 @@ export class NT4_Client {
                     return;
                 }
 
+                // Message validates reasonably, switch based on supported methods
                 if (method === "announce") {
-                    var newTopic = null;
-                    for (const topic of this.clientPublishedTopics.values())
-                        if (params.name === topic.name)
-                            newTopic = topic;
 
-                    if(newTopic === null)
+                    //Check to see if we already knew about this topic. If not, make a new object.
+
+                    var newTopic = null;
+                    for (const topic of this.clientPublishedTopics.values()) {
+                        if (params.name === topic.name) {
+                            newTopic = topic; //Existing topic, use it.
+                        }
+                    }
+
+                    // Did not know about the topic. Make a new one.
+                    if(newTopic === null){
                         newTopic = new NT4_Topic();
+                    }
 
                     newTopic.name = params.name;
                     newTopic.id = params.id;
 
-                    if (params.pubid != null)
+                    //Strategy - if server sends a pubid use it
+                    // otherwise, preserve whatever we had?
+                    //TODO - ask peter about this. It smells wrong.
+                    if (params.pubid != null) {
                         newTopic.pubuid = params.pubuid;
+                    }
 
                     newTopic.type = params.type;
                     newTopic.properties = params.properties;
@@ -643,16 +569,20 @@ export class NT4_Client {
                     }
                     this.announcedTopics.delete(removedTopic.id);
                     this.onTopicUnAnnounce(removedTopic);
+
                 } else if (method === "properties") {
+                    //TODO support property changes
                 } else {
                     console.log("[NT4] Ignoring text message - unknown method " + method);
                     return;
                 }
             }, this);
-        } else {
-            var rxArray = deserialize(e.data, { multiple: true });
 
-            rxArray.forEach(function (unpackedData) {
+        } else {
+            //MSGPack
+            var rxArray = msgpack.deserialize(e.data, { multiple: true });
+
+            rxArray.forEach(function (unpackedData) { //For every value update...
                 var topicID = unpackedData[0];
                 var timestamp_us = unpackedData[1];
                 var typeIdx = unpackedData[2];
@@ -667,6 +597,7 @@ export class NT4_Client {
                     console.log("[NT4] Ignoring binary data - invalid topic id " + topicID.toString());
                 }
             }, this);
+
         }
     }
 
@@ -674,10 +605,10 @@ export class NT4_Client {
 
         this.clientIdx = Math.floor(Math.random() * 99999999); //Not great, but using it for now
 
-        var port = 5810;
+        var port = 5810; //fallback - unsecured
         var prefix = "ws://";
 
-        this.serverAddr = prefix+this.serverBaseAddr+":"+port.toString()+"/nt/"+"JSClient_"+this.clientIdx.toString();
+        this.serverAddr = prefix + this.serverBaseAddr + ":" + port.toString() + "/nt/" + "JSClient_" + this.clientIdx.toString();
 
         this.ws = new WebSocket(this.serverAddr, "networktables.first.wpi.edu");
         this.ws.binaryType = "arraybuffer";
@@ -689,6 +620,11 @@ export class NT4_Client {
         console.log("[NT4] Connected with idx " + this.clientIdx.toString());
     }
 
+
+
+    //////////////////////////////////////////////////////////////
+    // General utilties
+
     getNewSubUID() {
         this.subscription_uid_counter++;
         return this.subscription_uid_counter + this.clientIdx;
@@ -698,4 +634,6 @@ export class NT4_Client {
         this.publish_uid_counter++;
         return this.publish_uid_counter + this.clientIdx;
     }
+
+
 }

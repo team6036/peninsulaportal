@@ -116,6 +116,73 @@
     background-color: var(--v2-0);
 }
 
+#titlebar {
+    gap: 0px;
+}
+#titlebar > .logo {
+    padding: 10px;
+
+    font-size: 16px;
+
+    background-color: transparent;
+
+    cursor: pointer;
+}
+#titlebar > button.nav {
+    align-self: stretch;
+
+    padding: 10px 20px;
+
+    gap: 10px;
+
+    font-size: 12px;
+}
+#titlebar > #nameinput {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+}
+#titlebar > #nameinput > input {
+    padding: 5px;
+
+    border-radius: 5px;
+
+    font-size: 12px;
+}
+#titlebar > .space {
+    flex-basis: 100%;
+}
+#titlebar > #save {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 10px;
+
+    font-size: 12px;
+}
+#titlebar > button.nav:not(.forproject) {
+    --bg: transparent;
+    --bgd: transparent;
+
+    padding: 10px;
+    aspect-ratio: 1 / 1;
+}
+#titlebar > button.nav:not(.forproject).this {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a3);
+    --fgd: var(--v6);
+}
+#titlebar > :last-child {
+    margin-left: 10px;
+}
+
 #mount {
     width: calc(100% - 20px);
     max-width: calc(100% - 20px);
