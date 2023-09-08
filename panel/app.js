@@ -1192,7 +1192,9 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
         let state = {};
 
         this.addHandler("update", data => {
+            window.log = true;
             let generic = this.hasApp() ? this.app.lookup(this.path) : null;
+            window.log = false;
             if (prevGeneric != generic) {
                 prevGeneric = generic;
                 state = {};
@@ -1499,11 +1501,26 @@ export default class App extends core.App {
                 this.getESideSection("browser").open();
 
             this.addHandler("refactor-browser", data => {
-                let open = [];
+                let newPaths = {};
+                if (this.hasRootModel() && this.rootModel.hasRoot()) {
+                    this.rootModel.root.children.forEach(generic => {
+                        let path = [];
+                        const dfs = generic => {
+                            path.push(generic.name);
+                            newPaths[path.join("/")] = generic;
+                            if (generic instanceof NTModel.Table)
+                                generic.children.forEach(generic => dfs(generic));
+                            path.pop();
+                        };
+                        dfs(generic);
+                    });
+                }
+                let open = [], oldPaths = {};
                 this.browserItems.forEach(itm => {
                     let path = [];
                     const dfs = itm => {
                         path.push(itm.name);
+                        oldPaths[path.join("/")] = itm;
                         if (itm.isOpen) open.push(path.join("/"));
                         if (itm instanceof BrowserTable)
                             itm.children.forEach(itm => dfs(itm));
@@ -1511,23 +1528,35 @@ export default class App extends core.App {
                     };
                     dfs(itm);
                 });
-                this.clearBrowserItems();
-                if (!this.hasRootModel() || !this.rootModel.hasRoot()) return;
-                this.rootModel.root.children.forEach(generic => {
-                    let path = [];
-                    const build = generic => {
-                        path.push(generic.name);
-                        let itm = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
-                        itm.isOpen = open.includes(path.join("/"));
-                        if (generic instanceof NTModel.Table) generic.children.forEach(generic => itm.addChild(build(generic)));
-                        path.pop();
-                        return itm;
-                    };
-                    this.addBrowserItem(build(generic));
+                let needRem = [], needAdd = [];
+                for (let path in oldPaths)
+                    if (!(path in newPaths))
+                        needRem.push(path.split("/"));
+                for (let path in newPaths)
+                    if (!(path in oldPaths))
+                        needAdd.push(path.split("/"));
+                needRem.sort((a, b) => b.length-a.length);
+                needAdd.sort((a, b) => a.length-b.length);
+                needRem.forEach(path => {
+                    let superPath = path.slice(0, path.length-1).join("/");
+                    path = path.join("/");
+                    let itm = oldPaths[path];
+                    if (superPath in oldPaths) oldPaths[superPath].remChild(itm);
+                    else this.remBrowserItem(itm);
+                    delete oldPaths[path];
+                });
+                needAdd.forEach(path => {
+                    let superPath = path.slice(0, path.length-1).join("/");
+                    path = path.join("/");
+                    let generic = newPaths[path];
+                    let itm = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                    if (superPath in oldPaths) oldPaths[superPath].addChild(itm);
+                    else this.addBrowserItem(itm);
+                    oldPaths[path] = itm;
                 });
             });
 
-            this.rootModel = new NTModel();
+            this.rootModel = new NTModel("localhost");
             const template = {
                 name: "",
                 content: [
@@ -1598,7 +1627,7 @@ export default class App extends core.App {
                 }
                 this.rootModel.announceTopic([...path, temp.name].join("/"), temp.type, temp.value);
             };
-            build(template);
+            // build(template);
 
             const getHovered = (widget, pos, options) => {
                 options = util.ensure(options, "obj");
