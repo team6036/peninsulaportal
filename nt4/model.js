@@ -85,7 +85,6 @@ export default class NTModel extends core.Target {
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
         while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-        if (!NTModel.Topic.TYPES.includes(type)) return false;
         if (k.length <= 0) return false;
         let o = this.root, oPrev = this;
         while (k.length > 0) {
@@ -122,26 +121,26 @@ export default class NTModel extends core.Target {
         const client = this.#client = (v == null) ? null : new NT4_Client(
             v,
             topic => {
-                if (client == this.#client) return;
+                if (client != this.#client) return;
                 this.announceTopic(topic.name, topic.type);
             },
             topic => {
-                if (client == this.#client) return;
+                if (client != this.#client) return;
                 this.unannounceTopic(topic.name);
             },
             (topic, ts, value) => {
-                if (client == this.#client) return;
+                if (client != this.#client) return;
                 this.updateTopic(topic.name, value);
             },
             () => {
-                if (client == this.#client) return;
+                if (client != this.#client) return;
                 this.#client.connected = true;
                 this.post("connected", null);
                 this.post("connect-state", this.connected);
-                this.#client.subscribePeriodic(["/"], 0.1);
+                client.subscribePeriodic(["/"], 0.1);
             },
             () => {
-                if (client == this.#client) return;
+                if (client != this.#client) return;
                 this.#client.connected = false;
                 this.post("disconnected", null);
                 this.post("connect-state", this.connected);
@@ -228,7 +227,7 @@ NTModel.Table = class NTModelTable extends NTModel.Generic {
         let name = k.shift();
         for (let i = 0; i < this.children.length; i++)
             if (this.get(i).name == name)
-                return this.get(i);
+                return this.get(i).lookup(k.join("/"));
         return null;
     }
 }
@@ -288,7 +287,9 @@ NTModel.Topic = class NTModelTopic extends NTModel.Generic {
     }
 
     lookup(k) {
-        k = String(k);
+        k = String(k).split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
         if (k.length <= 0) return this;
         if (!this.isArray) return null;
         let i = parseInt(k);
