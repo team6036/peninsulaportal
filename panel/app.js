@@ -3,226 +3,34 @@ import { V } from "../util.js";
 
 import * as core from "../core.js";
 
+import NTModel from "../nt4/model.js";
 
-class Generic extends core.Target {
-    #parent;
 
-    #name;
-
-    constructor(name) {
-        super();
-
-        this.#parent = null;
-
-        this.#name = null;
-
-        this.name = name;
+function getDisplay(t, v) {
+    t = String(t);
+    if (!NTModel.Topic.TYPES.includes(t)) return null;
+    if (t.endsWith("[]")) {
+        t = t.substring(0, t.length-2);
+        let display = getDisplay(t, (t == "boolean") ? true : null);
+        if (display == null) return null;
+        return {
+            src: "../assets/icons/array2.svg",
+            color: display.color,
+        };
     }
-
-    get parent() { return this.#parent; }
-    set parent(v) {
-        v = (v instanceof Table) ? v : (v instanceof App) ? v : null;
-        if (this.parent == v) return;
-        this.#parent = v;
-    }
-    hasParent() { return this.parent instanceof Generic; }
-    hasAppParent() { return this.parent instanceof App; }
-
-    get path() {
-        if (!this.hasParent()) return "";
-        return this.parent.path+"/"+this.name;
-    }
-
-    get name() { return this.#name; }
-    set name(v) {
-        v = String(v);
-        if (this.name == v) return;
-        this.#name = v;
-    }
-}
-
-class Table extends Generic {
-    #children;
-
-    constructor(name) {
-        super(name);
-
-        this.#children = [];
-    }
-
-    get children() { return [...this.#children]; }
-    set children(v) {
-        v = util.ensure(v, "arr");
-        this.clearChildren();
-        v.forEach(v => this.addChild(v));
-    }
-    clearChildren() {
-        let children = this.children;
-        children.forEach(child => this.remChild(child));
-        return children;
-    }
-    hasChild(child) {
-        if (!(child instanceof Generic)) return false;
-        return this.#children.includes(child) && child.parent == this;
-    }
-    getChild(i) {
-        i = util.ensure(i, "int");
-        if (i < 0 || i >= this.#children.length) return null;
-        return this.#children[i];
-    }
-    addChild(child) {
-        if (!(child instanceof Generic)) return false;
-        if (this.hasChild(child)) return false;
-        if (child.parent != null) return false;
-        this.#children.push(child);
-        child.parent = this;
-        child._onChange = () => this.post("change", null);
-        child.addHandler("change", child._onChange);
-        this.post("change", null);
-        return child;
-    }
-    remChild(child) {
-        if (!(child instanceof Generic)) return false;
-        if (!this.hasChild(child)) return false;
-        if (child.parent != this) return false;
-        this.#children.splice(this.#children.indexOf(child), 1);
-        child.parent = null;
-        child.remHandler("change", child._onChange);
-        delete child._onChange;
-        this.post("change", null);
-        return child;
-    }
-
-    lookup(k) {
-        k = String(k).split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-        if (k.length <= 0) return this;
-        let name = k.shift();
-        for (let i = 0; i < this.#children.length; i++)
-            if (this.#children[i].name == name)
-                return this.#children[i].lookup(k.join("/"));
-        return null;
-    }
-}
-
-class Topic extends Generic {
-    #type;
-    #value;
-
-    static TYPES = [
-        "boolean", "boolean[]",
-        "double", "double[]",
-        "float", "float[]",
-        "int", "int[]",
-        "raw",
-        "string", "string[]",
-        "null",
-    ];
-    static TYPE2NAME = {
-        "boolean": "Boolean",
-        "boolean[]": "Boolean Array",
-        "double": "Double",
-        "double[]": "Double Array",
-        "float": "Float",
-        "float[]": "Float Array",
-        "int": "Integer",
-        "int[]": "Integer Array",
-        "raw": "Raw",
-        "string": "String",
-        "string[]": "String Array",
-        "null": "Null",
+    if (["double", "float", "int"].includes(t)) return {
+        src: "../assets/icons/number2.svg",
+        color: "var(--cb)",
     };
-    static getDisplay(t, v) {
-        t = String(t);
-        if (!Topic.TYPES.includes(t)) return null;
-        if (t.endsWith("[]")) {
-            t = t.substring(0, t.length-2);
-            let display = Topic.getDisplay(t, (t == "boolean") ? true : null);
-            if (display == null) return null;
-            return {
-                src: "../assets/icons/array2.svg",
-                color: display.color,
-            };
-        }
-        if (["double", "float", "int"].includes(t)) return {
-            src: "../assets/icons/number2.svg",
-            color: "var(--cb)",
-        };
-        if (t == "boolean") return {
-            name: v ? "checkmark-circle" : "close-circle",
-            color: v ? "var(--cg)" : "var(--cr)",
-        };
-        if (t == "string") return {
-            name: "text",
-            color: "var(--cy)",
-        };
-        return { src: "../assets/icons/variable.svg" };
-    }
-    static ensureType(t, v) {
-        t = String(t);
-        if (!Topic.TYPES.includes(t)) return null;
-        if (t.endsWith("[]")) {
-            t = t.substring(0, t.length-2);
-            return util.ensure(v, "arr").map(v => Topic.ensureType(t, v));
-        }
-        const map = {
-            boolean: "bool",
-            double: "float",
-            float: "float",
-            int: "int",
-            string: "str",
-            null: "null",
-        };
-        return (t in map) ? util.ensure(v, map[t]) : v;
-    }
-
-    constructor(name, type, value) {
-        super(name);
-
-        this.#type = null;
-        this.#value = null;
-
-        this.type = type;
-        this.value = value;
-    }
-
-    get type() { return this.#type; }
-    set type(v) {
-        v = String(v);
-        if (!Topic.TYPES.includes(v)) v = "raw";
-        if (this.type == v) return;
-        this.#type = v;
-        this.post("type-set", { v: v });
-        this.post("change", { k: "type" });
-        this.value = this.value;
-    }
-    get isArray() { return this.type.endsWith("[]"); }
-    get arraylessType() {
-        if (!this.isArray) return this.type;
-        return this.type.substring(0, this.type.length-2);
-    }
-    get value() { return (this.isArray && util.is(this.#value, "arr")) ? this.#value.map(topic => topic.value) : this.#value; }
-    set value(v) {
-        this.#value = Topic.ensureType(this.type, v);
-        if (this.isArray) this.#value = this.#value.map((v, i) => {
-            let topic = new Topic(i, this.arraylessType, v);
-            Object.defineProperty(topic, "type", { get: () => this.arraylessType, set: undefined });
-            return topic;
-        });
-        this.post("value-set", { v: this.value });
-        this.post("change", { k: "value" });
-    }
-
-    lookup(k) {
-        k = String(k);
-        if (k.length <= 0) return this;
-        if (!this.isArray) return null;
-        let i = parseInt(k);
-        if (!util.is(i, "int")) return null;
-        if (i < 0 || i >= this.#value.length) return null;
-        return this.#value[i];
-    }
+    if (t == "boolean") return {
+        name: v ? "checkmark-circle" : "close-circle",
+        color: v ? "var(--cg)" : "var(--cr)",
+    };
+    if (t == "string") return {
+        name: "text",
+        color: "var(--cy)",
+    };
+    return { src: "../assets/icons/variable.svg" };
 }
 
 
@@ -259,9 +67,9 @@ class BrowserItem extends core.Target {
         this.eSide.classList.add("side");
         this.eSide.classList.add("override");
 
-        let cancel = false;
+        let cancel = 10;
         this.eDisplay.addEventListener("click", e => {
-            if (cancel) return cancel = false;
+            if (cancel <= 0) return cancel = 10;
             this.isOpen = !this.isOpen;
         });
         this.eDisplay.addEventListener("dblclick", e => {
@@ -273,8 +81,8 @@ class BrowserItem extends core.Target {
                 document.body.removeEventListener("mousemove", mousemove);
             };
             const mousemove = () => {
+                if (cancel > 0) return cancel--;
                 mouseup();
-                cancel = true;
                 this.post("drag", { path: this.name });
             };
             document.body.addEventListener("mouseup", mouseup);
@@ -413,7 +221,7 @@ class BrowserTopic extends BrowserItem {
     get type() { return this.#type; }
     set type(v) {
         v = String(v);
-        if (!Topic.TYPES.includes(v)) v = "raw";
+        if (!NTModel.Topic.TYPES.includes(v)) v = "raw";
         if (this.type == v) return;
         this.#type = v;
         this.post("type-set", { v: v });
@@ -427,14 +235,14 @@ class BrowserTopic extends BrowserItem {
     }
     get value() { return (this.isArray && util.is(this.#value, "arr")) ? [...this.#value] : this.#value; }
     set value(v) {
-        this.#value = Topic.ensureType(this.type, v);
+        this.#value = NTModel.Topic.ensureType(this.type, v);
         this.post("value-set", { v: this.value });
         this.#sub.forEach(itm => this.eContent.removeChild(itm.elem));
         this.#sub = [];
         this.icon = "";
         this.eIcon.style.color = "";
         this.eName.style.color = "";
-        let display = Topic.getDisplay(this.type, this.value);
+        let display = getDisplay(this.type, this.value);
         if (display != null) {
             if ("src" in display) this.iconSrc = display.src;
             else this.icon = display.name;
@@ -1052,11 +860,11 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
-            if (this.hasApp() && this.app.hasRootTable()) {
-                let root = this.app.rootTable;
+            if (this.hasApp() && this.app.hasRootModel() && this.app.rootModel.hasRoot()) {
+                let root = this.app.rootModel.root;
                 const dfs = generic => {
                     let itm = new Panel.AddPage.GenericButton(generic);
-                    if (generic instanceof { tables: Table, topics: Topic, all: Generic }[this.searchPart]) items.push({
+                    if (generic instanceof { tables: NTModel.Table, topics: NTModel.Topic, all: NTModel.Generic }[this.searchPart]) items.push({
                         item: itm,
                         trigger: () => {
                             if (!this.hasParent()) return;
@@ -1065,7 +873,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                             this.parent.remPage(this);
                         },
                     });
-                    if (generic instanceof Table) generic.children.forEach(generic => dfs(generic));
+                    if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfs(generic));
                 };
                 dfs(root);
             }
@@ -1327,12 +1135,12 @@ Panel.AddPage.GenericButton = class PanelAddPageGenericButton extends Panel.AddP
             }
             this.name = this.generic.path;
             if (this.name.length <= 0) this.name = "/";
-            if (this.generic instanceof Table) {
+            if (this.generic instanceof NTModel.Table) {
                 this.icon = "folder-outline";
                 this.iconColor = "";
                 this.info = "";
-            } else if (this.generic instanceof Topic) {
-                let display = Topic.getDisplay(this.generic.type, this.generic.value);
+            } else if (this.generic instanceof NTModel.Topic) {
+                let display = getDisplay(this.generic.type, this.generic.value);
                 if (display != null) {
                     if ("src" in display) this.iconSrc = display.src;
                     else this.icon = display.name;
@@ -1348,11 +1156,11 @@ Panel.AddPage.GenericButton = class PanelAddPageGenericButton extends Panel.AddP
 
     get generic() { return this.#generic; }
     set generic(v) {
-        v = (v instanceof Generic) ? v : null;
+        v = (v instanceof NTModel.Generic) ? v : null;
         if (this.generic == v) return;
         this.#generic = v;
     }
-    hasGeneric() { return this.generic instanceof Generic; }
+    hasGeneric() { return this.generic instanceof NTModel.Generic; }
 };
 Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
     #path;
@@ -1384,13 +1192,13 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
         let state = {};
 
         this.addHandler("update", data => {
-            let generic = this.hasApp() ? this.app.getGeneric(this.path) : null;
+            let generic = this.hasApp() ? this.app.lookup(this.path) : null;
             if (prevGeneric != generic) {
                 prevGeneric = generic;
                 state = {};
             }
             this.eTabIcon.style.color = "";
-            if (generic instanceof Table) {
+            if (generic instanceof NTModel.Table) {
                 this.eBrowser.classList.add("this");
                 this.eDisplay.classList.remove("this");
                 this.icon = "folder-outline";
@@ -1404,7 +1212,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                 const dfsGeneric = generic => {
                     path.push(generic.name);
                     newPaths[path.slice(1).join("/")] = generic;
-                    if (generic instanceof Table) generic.children.forEach(generic => dfsGeneric(generic));
+                    if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfsGeneric(generic));
                     path.pop();
                 };
                 dfsGeneric(generic);
@@ -1420,7 +1228,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                     if (path.length <= 0) continue;
                     if (path in oldPaths) continue;
                     let generic = newPaths[path];
-                    let item = (generic instanceof Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                    let item = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
                     let parentPath = path.split("/");
                     parentPath.pop();
                     parentPath = parentPath.join("/");
@@ -1456,10 +1264,10 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                         this.eBrowser.removeChild(item.elem);
                     }
                 }
-            } else if (generic instanceof Topic) {
+            } else if (generic instanceof NTModel.Topic) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
-                let display = Topic.getDisplay(generic.type, generic.value);
+                let display = getDisplay(generic.type, generic.value);
                 if (display != null) {
                     if ("src" in display) this.iconSrc = display.src;
                     else this.icon = display.name;
@@ -1479,7 +1287,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                         eType.classList.add("type");
                         let items = [];
                         state.update = () => {
-                            let display = Topic.getDisplay(generic.type, generic.value);
+                            let display = getDisplay(generic.type, generic.value);
                             eType.innerHTML = "<span style='color:"+((display == null || !("color" in display)) ? "var(--v8)" : display.color)+";'>"+generic.arraylessType+"</span>[<span style='color:var(--a);'>"+generic.value.length+"</span>]";
                             while (items.length > generic.value.length) this.eDisplay.removeChild(items.pop().elem);
                             while (items.length < generic.value.length) {
@@ -1508,7 +1316,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                                         item.eValue.children[0].setAttribute("name", generic.value[i] ? "checkmark" : "close");
                                 } else {
                                     item.eValue.style.backgroundColor = "var(--v2)";
-                                    let display = Topic.getDisplay(generic.arraylessType, generic.value[i]);
+                                    let display = getDisplay(generic.arraylessType, generic.value[i]);
                                     item.eValue.style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
                                     item.eValue.style.fontFamily = "monospace";
                                     if (generic.arraylessType == "raw") {
@@ -1551,7 +1359,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                                     item.children[1].style.position = "";
                                     item.children[1].style.top = "";
                                     item.children[1].style.left = "";
-                                    let display = Topic.getDisplay(generic.type, generic.value);
+                                    let display = getDisplay(generic.type, generic.value);
                                     item.children[1].style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
                                     item.children[1].style.fontSize = "32px";
                                     item.children[1].style.fontFamily = "monospace";
@@ -1631,7 +1439,7 @@ Panel.ToolPage = class PanelToolPage extends Panel.Page {
 export default class App extends core.App {
     #browserItems;
     #rootWidget;
-    #rootTable;
+    #rootModel;
 
     #eSide;
     #eSideSections;
@@ -1643,7 +1451,7 @@ export default class App extends core.App {
 
         this.#browserItems = [];
         this.#rootWidget = null;
-        this.#rootTable = null;
+        this.#rootModel = null;
 
         this.addHandler("start-complete", data => {       
             this.addBackButton();
@@ -1704,14 +1512,14 @@ export default class App extends core.App {
                     dfs(itm);
                 });
                 this.clearBrowserItems();
-                if (!this.hasRootTable()) return;
-                this.rootTable.children.forEach(generic => {
+                if (!this.hasRootModel() || !this.rootModel.hasRoot()) return;
+                this.rootModel.root.children.forEach(generic => {
                     let path = [];
                     const build = generic => {
                         path.push(generic.name);
-                        let itm = (generic instanceof Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                        let itm = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
                         itm.isOpen = open.includes(path.join("/"));
-                        if (generic instanceof Table) generic.children.forEach(generic => itm.addChild(build(generic)));
+                        if (generic instanceof NTModel.Table) generic.children.forEach(generic => itm.addChild(build(generic)));
                         path.pop();
                         return itm;
                     };
@@ -1719,6 +1527,7 @@ export default class App extends core.App {
                 });
             });
 
+            this.rootModel = new NTModel();
             const template = {
                 name: "",
                 content: [
@@ -1779,12 +1588,17 @@ export default class App extends core.App {
                     },
                 ],
             };
+            let path = [];
             const build = temp => {
-                let generic = ("content" in temp) ? new Table(temp.name) : new Topic(temp.name, temp.type, temp.value);
-                if (generic instanceof Table) util.ensure(temp.content, "arr").forEach(temp => generic.addChild(build(temp)));
-                return generic;
+                if ("content" in temp) {
+                    path.push(temp.name);
+                    util.ensure(temp.content, "arr").forEach(temp => build(temp));
+                    path.pop();
+                    return;
+                }
+                this.rootModel.announceTopic([...path, temp.name].join("/"), temp.type, temp.value);
             };
-            this.rootTable = build(template);
+            build(template);
 
             const getHovered = (widget, pos, options) => {
                 options = util.ensure(options, "obj");
@@ -1854,7 +1668,7 @@ export default class App extends core.App {
                 };
             };
             const isValid = o => {
-                if (o instanceof Generic) return true;
+                if (o instanceof NTModel.Generic) return true;
                 if (o instanceof Widget) return true;
                 if (o instanceof Panel.Page) return true;
                 return false;
@@ -1873,7 +1687,7 @@ export default class App extends core.App {
                     this.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof Generic || this.dragData instanceof Panel.Page),
+                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Page),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel))
@@ -1898,22 +1712,22 @@ export default class App extends core.App {
                 this.hideBlock();
                 let canWidgetFromData = false;
                 const getWidgetFromData = () => {
-                    if (this.dragData instanceof Generic) return new Panel([new Panel.BrowserPage(this.dragData.path)]);
+                    if (this.dragData instanceof NTModel.Generic) return new Panel([new Panel.BrowserPage(this.dragData.path)]);
                     if (this.dragData instanceof Widget) return this.dragData;
                     if (this.dragData instanceof Panel.Page) return new Panel([this.dragData]);
                     return null;
                 };
-                if (this.dragData instanceof Generic) canWidgetFromData = true;
+                if (this.dragData instanceof NTModel.Generic) canWidgetFromData = true;
                 else if (this.dragData instanceof Widget) canWidgetFromData = true;
                 else if (this.dragData instanceof Panel.Page) canWidgetFromData = true;
                 let canPageFromData = false;
                 const getPageFromData = () => {
-                    if (this.dragData instanceof Generic) return new Panel.BrowserPage(this.dragData.path);
+                    if (this.dragData instanceof NTModel.Generic) return new Panel.BrowserPage(this.dragData.path);
                     if (this.dragData instanceof Widget);
                     if (this.dragData instanceof Panel.Page) return this.dragData;
                     return null;
                 };
-                if (this.dragData instanceof Generic) canPageFromData = true;
+                if (this.dragData instanceof NTModel.Generic) canPageFromData = true;
                 else if (this.dragData instanceof Widget);
                 else if (this.dragData instanceof Panel.Page) canPageFromData = true;
                 if (!this.hasRootWidget()) {
@@ -1924,7 +1738,7 @@ export default class App extends core.App {
                     this.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof Generic || this.dragData instanceof Panel.Page),
+                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Page),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel)) return;
@@ -1997,7 +1811,7 @@ export default class App extends core.App {
         itm._onDrag = data => {
             data = util.ensure(data, "obj");
             let generic = this.lookup(data.path);
-            if (!(generic instanceof Generic)) return;
+            if (!(generic instanceof NTModel.Generic)) return;
         };
         itm.addHandler("drag", itm._onDrag);
         if (this.hasESideSection("browser") && this.getESideSection("browser").eContent instanceof HTMLDivElement)
@@ -2033,29 +1847,25 @@ export default class App extends core.App {
         this.formatContent();
     }
     hasRootWidget() { return this.rootWidget instanceof Widget; }
-    get rootTable() { return this.#rootTable; }
-    set rootTable(v) {
-        v = (v instanceof Table) ? v : null;
-        if (this.rootTable == v) return;
-        if (this.hasRootTable()) {
-            this.rootTable.parent = null;
-            this.rootTable.remHandler("change", this.rootTable._onChange);
-            delete this.rootTable._onChange;
+    get rootModel() { return this.#rootModel; }
+    set rootModel(v) {
+        v = (v instanceof NTModel) ? v : null;
+        if (this.rootModel == v) return;
+        if (this.hasRootModel()) {
+            this.rootModel.remHandler("change", this.rootModel.root._onChange);
+            delete this.rootModel._onChange;
         }
-        this.#rootTable = v;
-        if (this.hasRootTable()) {
-            this.rootTable.parent = this;
-            this.rootTable._onChange = () => {
-                this.post("refactor-browser", null);
-            };
-            this.rootTable.addHandler("change", this.rootTable._onChange);
+        this.#rootModel = v;
+        if (this.hasRootModel()) {
+            this.rootModel._onChange = () => this.post("refactor-browser", null);
+            this.rootModel.addHandler("change", this.rootModel._onChange);
         }
         this.post("refactor-browser", null);
     }
-    hasRootTable() { return this.rootTable instanceof Table; }
+    hasRootModel() { return this.rootModel instanceof NTModel; }
     lookup(path) {
-        if (!this.hasRootTable()) return null;
-        return this.rootTable.lookup(path);
+        if (!this.hasRootModel() || !this.rootModel.hasRoot()) return null;
+        return this.rootModel.root.lookup(path);
     }
 
     format() {
