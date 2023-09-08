@@ -884,6 +884,19 @@ Portal.Feature = class PortalFeature extends core.Target {
                 electron.shell.openExternal(url);
             }
         });
+        if (this.hasPortal()) {
+            let any = false;
+            this.portal.features.forEach(feat => (any ||= feat.window.webContents.isDevToolsOpened()));
+            if (any) window.webContents.openDevTools();
+        }
+        window.webContents.on("devtools-opened", () => {
+            if (!this.hasPortal()) return;
+            this.portal.features.forEach(feat => feat.window.webContents.openDevTools());
+        });
+        window.webContents.on("devtools-closed", () => {
+            if (!this.hasPortal()) return;
+            this.portal.features.forEach(feat => feat.window.webContents.closeDevTools());
+        });
 
         window.on("enter-full-screen", () => { window.webContents.send("ask", "set-fullscreen", [true]); });
         window.on("leave-full-screen", () => { window.webContents.send("ask", "set-fullscreen", [false]); });
