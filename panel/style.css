@@ -142,6 +142,8 @@
     font-size: 12px;
 }
 #titlebar > #nameinput {
+    padding: 10px;
+    
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -152,7 +154,7 @@
 #titlebar > #nameinput > input {
     padding: 5px;
 
-    background-color: var(--v2);
+    background-color: var(--v2-8);
     border-radius: 5px;
 
     font-size: 12px;
@@ -675,7 +677,7 @@
     align-items: stretch;
     align-content: center;
 
-    background-color: var(--v2);
+    background-color: var(--v2-8);
     border-radius: 10px;
 }
 #mount > .content .item.panel > .content > .item.add > .search > .tags {
@@ -714,6 +716,10 @@
     border-radius: 0px;
 }
 #mount > .content .item.panel > .content > .item.add > .search > button {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
     aspect-ratio: 1 / 1;
 }
 #mount > .content .item.panel > .content > .item.add > .content {
@@ -736,6 +742,7 @@
 }
 #mount > .content .item.panel > .content > .item.add > .content > .divider {
     height: 2px;
+    margin: 2px 0px;
 
     background-color: var(--v2);
 }

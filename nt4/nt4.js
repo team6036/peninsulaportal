@@ -154,13 +154,20 @@ export class NT4_Client {
      * @param {function} onNewTopicData_in User-supplied callback function for when the client gets new values for a topic
      * @param {function} onConnect_in User-supplied callback function for when the client successfully connects to the server
      * @param {function} onDisconnect_in User-supplied callback for when the client is disconnected from the server
+     * @param {function} log
+     * @param {function} error
      */
     constructor(serverAddr,
         onTopicAnnounce_in,   
         onTopicUnAnnounce_in, 
         onNewTopicData_in,    
         onConnect_in,         
-        onDisconnect_in) {    
+        onDisconnect_in,
+        log=console.log,
+        error=console.error) {    
+        
+        this.log = log;
+        this.error = error;
 
         this.onTopicAnnounce = onTopicAnnounce_in;
         this.onTopicUnAnnounce = onTopicUnAnnounce_in;
@@ -430,7 +437,7 @@ export class NT4_Client {
             }];
             var txJSON = JSON.stringify(txObj);
 
-            console.log("[NT4] Client Says: " + txJSON);
+            this.log("[NT4] Client Says: " + txJSON);
 
             this.ws.send(txJSON);
         }
@@ -484,23 +491,23 @@ export class NT4_Client {
         //Clear out any local cache of server state
         this.announcedTopics.clear();
 
-        console.log('[NT4] Socket is closed. Reconnect will be attempted in 0.5 second.', e.reason);
+        this.log('[NT4] Socket is closed. Reconnect will be attempted in 0.5 second.', e.reason);
         setTimeout(this.ws_connect.bind(this), 500);
 
         if (!e.wasClean) {
-            console.error('Socket encountered error!');
+            this.error('Socket encountered error!');
         }
 
     }
 
     ws_onError(e) {
-        console.log("[NT4] Websocket error - " + e.toString());
+        this.log("[NT4] Websocket error - " + e.toString());
         this.ws.close();
     }
 
     ws_onMessage(e) {
         if (typeof e.data === 'string') {
-            console.log("[NT4] Server Says: " + e.data);
+            this.log("[NT4] Server Says: " + e.data);
             //JSON Message
             var rxArray = JSON.parse(e.data);
 
@@ -508,12 +515,12 @@ export class NT4_Client {
 
                 //Validate proper format of message
                 if (typeof msg !== 'object') {
-                    console.log("[NT4] Ignoring text message, JSON parsing did not produce an object.");
+                    this.log("[NT4] Ignoring text message, JSON parsing did not produce an object.");
                     return;
                 }
 
                 if (!("method" in msg) || !("params" in msg)) {
-                    console.log("[NT4] Ignoring text message, JSON parsing did not find all required fields.");
+                    this.log("[NT4] Ignoring text message, JSON parsing did not find all required fields.");
                     return;
                 }
 
@@ -521,12 +528,12 @@ export class NT4_Client {
                 var params = msg["params"];
 
                 if (typeof method !== 'string') {
-                    console.log("[NT4] Ignoring text message, JSON parsing found \"method\", but it wasn't a string.");
+                    this.log("[NT4] Ignoring text message, JSON parsing found \"method\", but it wasn't a string.");
                     return;
                 }
 
                 if (typeof params !== 'object') {
-                    console.log("[NT4] Ignoring text message, JSON parsing found \"params\", but it wasn't an object.");
+                    this.log("[NT4] Ignoring text message, JSON parsing found \"params\", but it wasn't an object.");
                     return;
                 }
 
@@ -564,7 +571,7 @@ export class NT4_Client {
                 } else if (method === "unannounce") {
                     var removedTopic = this.announcedTopics.get(params.id);
                     if (!removedTopic) {
-                        console.log("[NT4] Ignorining unannounce, topic was not previously announced.");
+                        this.log("[NT4] Ignorining unannounce, topic was not previously announced.");
                         return;
                     }
                     this.announcedTopics.delete(removedTopic.id);
@@ -573,7 +580,7 @@ export class NT4_Client {
                 } else if (method === "properties") {
                     //TODO support property changes
                 } else {
-                    console.log("[NT4] Ignoring text message - unknown method " + method);
+                    this.log("[NT4] Ignoring text message - unknown method " + method);
                     return;
                 }
             }, this);
@@ -594,7 +601,7 @@ export class NT4_Client {
                 } else if (topicID === -1) {
                     this.ws_handleReceiveTimestamp(timestamp_us, value);
                 } else {
-                    console.log("[NT4] Ignoring binary data - invalid topic id " + topicID.toString());
+                    this.log("[NT4] Ignoring binary data - invalid topic id " + topicID.toString());
                 }
             }, this);
 
@@ -617,7 +624,7 @@ export class NT4_Client {
         this.ws.onclose = this.ws_onClose.bind(this);
         this.ws.onerror = this.ws_onError.bind(this);
 
-        console.log("[NT4] Connected with idx " + this.clientIdx.toString());
+        this.log("[NT4] Connected with idx " + this.clientIdx.toString());
     }
 
 
