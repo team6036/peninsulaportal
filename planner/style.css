@@ -24,6 +24,8 @@
     font-size: 12px;
 }
 #titlebar > #nameinput {
+    padding: 10px;
+
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -34,7 +36,7 @@
 #titlebar > #nameinput > input {
     padding: 5px;
 
-    background-color: var(--v2);
+    background-color: var(--v2-8);
     border-radius: 5px;
 
     font-size: 12px;
@@ -313,20 +315,20 @@
     align-items: stretch;
     align-content: center;
 
-    background-color: var(--v2);
+    background-color: var(--v2-8);
     border-radius: var(--b);
-    outline: 2px solid var(--v4-0);
+    outline: 2px solid var(--a-0);
 
     transition: outline var(--t);
 }
 #PROJECTSPAGE > .content > .item:hover {
-    outline: 2px solid var(--v4);
+    outline: 2px solid var(--a);
 }
 #PROJECTSPAGE > .content > .item > .image {
     height: 100px;
     aspect-ratio: 1 / 1;
 
-    background-color: var(--v1-4);
+    background-color: var(--v1-8);
     border-radius: var(--b);
 
     background-image: none;
@@ -364,9 +366,9 @@
     border-radius: var(--b);
 }
 #PROJECTSPAGE > .content > .item > .nav > button {
-    --bg: var(--v3);
-    --bgh: var(--v4);
-    --bgd: var(--v3);
+    --bg: var(--v2);
+    --bgh: var(--v3);
+    --bgd: var(--v2);
 
     padding: 10px 20px;
 
@@ -1046,8 +1048,9 @@
     align-items: stretch;
     align-content: center;
 
-    background-color: var(--v2);
+    background-color: var(--v2-8);
     border-radius: var(--b);
+    border: 2px solid var(--v2);
 }
 #PROJECTPAGE > .edit > .nav {
     height: var(--bottom);
@@ -1061,7 +1064,7 @@
     align-content: center;
     gap: 10px;
 
-    background-color: var(--v1-8);
+    background-color: var(--v2);
 }
 #PROJECTPAGE > .edit > .nav > button {
     display: flex;
@@ -1228,8 +1231,8 @@
     align-items: stretch;
     align-content: stretch;
 
-    background-color: var(--v2);
-    border: 2px solid var(--v3);
+    background-color: transparent;
+    border: 2px solid var(--v2);
     border-radius: var(--b);
     filter: drop-shadow(0px 0px 0px var(--v1-8));
 
@@ -1250,7 +1253,7 @@
 #objectspanel > #spawnbox > button.item > .name {
     padding: 5px;
 
-    background-color: var(--v3);
+    background-color: var(--v2);
     color: var(--v8);
 
     transition: color var(--t);
@@ -1459,9 +1462,9 @@
     align-content: center;
     gap: 10px;
 
-    background-color: var(--v3);
+    background-color: var(--v2);
     border-radius: 10px;
-    border: 2px solid var(--v2);
+    border: 2px solid transparent;
 }
 #pathspanel > #pathsbox > .item.this {
     border: 2px solid var(--cg);
@@ -1592,9 +1595,9 @@
     border-radius: 0px;
 }
 #optionspanel > #script > div.filedialog > button {
-    --bg: var(--v3);
-    --bgh: var(--v4);
-    --bgd: var(--v3);
+    --bg: var(--v2);
+    --bgh: var(--v3);
+    --bgd: var(--v2);
 
     padding: 10px;
 }

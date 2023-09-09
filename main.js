@@ -1628,13 +1628,4 @@ app.on("quit", () => {
     log("> quit");
 });
 
-app.on("browser-window-focus", function () {
-    electron.globalShortcut.register("CmdOrCtrl+R", () => {});
-    electron.globalShortcut.register("F5", () => {});
-});
-app.on("browser-window-blur", function () {
-    electron.globalShortcut.unregister("CmdOrCtrl+R");
-    electron.globalShortcut.unregister("F5");
-});
-
 setInterval(() => portal.update(), 10);

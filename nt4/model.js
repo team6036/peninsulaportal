@@ -145,6 +145,8 @@ export default class NTModel extends core.Target {
                 this.post("disconnected", null);
                 this.post("connect-state", this.connected);
             },
+            () => {},
+            () => {},
         );
     }
 
