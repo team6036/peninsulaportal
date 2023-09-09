@@ -5,8 +5,8 @@ const cp = require("child_process");
 const appName = "Peninsula";
 const outDir = "./build";
 const icons = {
-    win32: "./assets/icon.ico",
-    darwin: "./assets/icon.icns",
+    win32: "./assets/app/icon.ico",
+    darwin: "./assets/app/icon.icns",
     linux: null,
 };
 const ignores = [

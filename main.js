@@ -213,6 +213,19 @@ class Portal extends core.Target {
         data = util.ensure(data, "obj");
         return data.isDevMode;
     }
+    async isSpooky() {
+        await this.affirm();
+        let content = "";
+        try {
+            content = await this.fileRead(".config");
+        } catch (e) {}
+        let data = null;
+        try {
+            data = JSON.parse(content);
+        } catch (e) {}
+        data = util.ensure(data, "obj");
+        return !!data.spooky;
+    }
 
     get manager() { return this.#manager; }
 
@@ -496,22 +509,32 @@ class Portal extends core.Target {
         };
         */
 
-        ipc.handle("get-feature", async e => {
-            let feat = identifyFeature(e);
-            if (!(feat instanceof Portal.Feature)) return null;
-            return feat.name;
-        });
-        ipc.handle("get-fullscreen", async e => {
-            let feat = identifyFeature(e);
-            if (!(feat instanceof Portal.Feature)) return null;
-            if (!feat.hasWindow()) return null;
-            return feat.window.isFullScreen();
-        });
-        ipc.handle("get-devmode", async e => {
-            return await this.isDevMode();
-        });
-        ipc.handle("get-loads", async e => {
-            return this.loads;
+        ipc.handle("get", async (e, name) => {
+            name = String(name);
+            let namefs = {
+                feature: async () => {
+                    let feat = identifyFeature(e);
+                    if (!(feat instanceof Portal.Feature)) return null;
+                    return feat.name;
+                },
+                fullscreen: async () => {
+                    let feat = identifyFeature(e);
+                    if (!(feat instanceof Portal.Feature)) return null;
+                    if (!feat.hasWindow()) return null;
+                    return feat.window.isFullScreen();
+                },
+                devmode: async () => {
+                    return await this.isDevMode();
+                },
+                spooky: async () => {
+                    return await this.isSpooky();
+                },
+                loads: async () => {
+                    return this.loads;
+                },
+            };
+            if (name in namefs) return await namefs[name]();
+            return null;
         });
 
         ipc.handle("file-has", async (e, pth) => {
@@ -758,6 +781,10 @@ Portal.Feature = class PortalFeature extends core.Target {
         if (!this.hasPortal()) return false;
         return await this.portal.isDevMode();
     }
+    async isSpooky() {
+        if (!this.hasPortal()) return false;
+        return await this.portal.isSpooky();
+    }
 
     get manager() { return this.#manager; }
 
@@ -865,10 +892,21 @@ Portal.Feature = class PortalFeature extends core.Target {
         };
         namefs = {
             _: () => {
-                if (PLATFORM == "win32")
-                    options.icon = "./assets/icon.ico";
-                if (PLATFORM == "linux")
-                    options.icon = "./assets/icon.png";
+                (async () => {
+                    let spooky = await this.isSpooky();
+                    if (PLATFORM == "win32") {
+                        if (spooky) window.setIcon(path.join(__dirname, ...["assets", "app", "icon-spooky.png"]));
+                        else window.setIcon(path.join(__dirname, ...["assets", "app", "icon.png"]));
+                    }
+                    if (PLATFORM == "darwin") {
+                        if (spooky) app.dock.setIcon(path.join(__dirname, ...["assets", "app", "icon-spooky.png"]));
+                        else app.dock.setIcon(path.join(__dirname, ...["assets", "app", "icon.png"]));
+                    }
+                    if (PLATFORM == "linux") {
+                        if (spooky) window.setIcon(path.join(__dirname, ...["assets", "app", "icon-spooky.png"]));
+                        else window.setIcon(path.join(__dirname, ...["assets", "app", "icon.png"]));
+                    }
+                })();
             },
         };
         if ("_" in namefs) namefs._();
@@ -1044,7 +1082,8 @@ Portal.Feature = class PortalFeature extends core.Target {
                 checkForShow();
             },
             PLANNER: () => {
-                template[1].submenu.unshift(
+                template[1].submenu.splice(
+                    2, 0,
                     {
                         id: "newproject",
                         label: "New Project",
