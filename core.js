@@ -374,6 +374,9 @@ export class App extends Target {
         this.colors = data.colors;
         this.accent = data.accent;
 
+        let spooky = await window.api.getSpooky();
+        if (spooky) this.accent = "o";
+
         await this.post("setup", null);
 
         setTimeout(() => {
