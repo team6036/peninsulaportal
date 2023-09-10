@@ -3279,7 +3279,7 @@ export default class App extends core.App {
                                 o.eScriptInput.value = has ? this.project.config.script : "";
                                 o.eScriptInput.disabled = !has || this.project.config.scriptUseDefault;
                             }
-                            if (o.eScriptBrowse instanceof HTMLInputElement)
+                            if (o.eScriptBrowse instanceof HTMLButtonElement)
                                 o.eScriptBrowse.disabled = !has || this.project.config.scriptUseDefault;
                             if (o.eScriptDefault instanceof HTMLInputElement)
                                 o.eScriptDefault.checked = has ? this.project.config.scriptUseDefault : false;
