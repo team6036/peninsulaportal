@@ -1537,6 +1537,8 @@ Portal.Feature = class PortalFeature extends core.Target {
                 return;
             }
             if (!FEATURES.includes(name)) return false;
+            let devmode = await this.isDevMode();
+            if (!devmode && name == "PANEL") return false;
             let feat = new Portal.Feature(name);
             this.portal.addFeature(feat);
             return true;

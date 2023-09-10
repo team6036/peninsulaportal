@@ -23,23 +23,103 @@
 
     font-size: 12px;
 }
-#titlebar > #nameinput {
-    padding: 10px;
+#titlebar > #projectinfo {
+    align-self: stretch;
+
+    position: relative;
 
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
+    justify-content: center;
+    align-items: stretch;
     align-content: center;
 }
-#titlebar > #nameinput > input {
+#titlebar > #projectinfo > button.display {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    min-width: max-content;
+    padding: 10px;
+    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#titlebar > #projectinfo > .content {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translate(-50%, -10px);
+
+    width: 200px;
+    padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+    filter: drop-shadow(0px 5px 5px var(--v0-8));
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: transform var(--t), opacity var(--t), visibility var(--t);
+}
+#titlebar > #projectinfo.this > .content {
+    transform: translate(-50%, 0px);
+
+    opacity: 100%;
+    visibility: inherit;
+}
+#titlebar > #projectinfo > .content > input {
     padding: 5px;
 
-    background-color: var(--v2-8);
+    background-color: var(--v1-8);
     border-radius: 5px;
+}
+#titlebar > #projectinfo > .content > .divider {
+    height: 2px;
+
+    background-color: var(--v3);
+}
+#titlebar > #projectinfo > .content > div:not(.divider) {
+    color: var(--v8);
 
     font-size: 12px;
+}
+#titlebar > #projectinfo > .content > .nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+}
+#titlebar > #projectinfo > .content > .nav > button {
+    flex-basis: 100%;
+
+    padding: 10px;
+
+    border-radius: 10px;
+}
+#titlebar > #projectinfo > .content > .nav > button#infodelete {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
 }
 #titlebar > .space {
     flex-basis: 100%;
@@ -1600,13 +1680,4 @@
     --bgd: var(--v2);
 
     padding: 10px;
-}
-
-#drag {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    transform: translate(-50%, -50%);
-
-    filter: drop-shadow(0px 5px 5px var(--v1-8));
 }

@@ -313,7 +313,7 @@ export default class App extends core.App {
             
             let btn;
             btn = this.addNavToolButton(new FeatureButton("Panel", "grid"));
-            // btn.tooltip = "Coming soon!";
+            btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
             btn = this.addNavToolButton(new FeatureButton("Planner", "analytics"));
             // btn.tooltip = "Coming soon!";
@@ -360,6 +360,7 @@ export default class App extends core.App {
                         };
                         if (name in namefs) return namefs[name]();
                         if (name.toUpperCase() == name) {
+                            elem.textContent += "["+name[0].toUpperCase()+name.slice(1).toLowerCase()+"] ";
                             let namefs = {
                                 PLANNER: () => {
                                     let name = load[0];

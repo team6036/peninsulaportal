@@ -186,6 +186,7 @@ class BrowserTable extends BrowserItem {
         child.addHandler("trigger", child._onTrigger);
         child.addHandler("drag", child._onDrag);
         this.eContent.appendChild(child.elem);
+        this.format();
         return child;
     }
     remChild(child) {
@@ -197,7 +198,15 @@ class BrowserTable extends BrowserItem {
         delete child._onTrigger;
         delete child._onDrag;
         this.eContent.removeChild(child.elem);
+        this.format();
         return child;
+    }
+
+    format() {
+        this.children.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((child, i) => {
+            child.elem.style.order = i;
+            if (child instanceof BrowserTable) child.format();
+        });
     }
 }
 
@@ -212,7 +221,7 @@ class BrowserTopic extends BrowserItem {
         this.#type = null;
         this.#value = null;
 
-        this.#sub = [];
+        this.#sub = {};
 
         this.type = type;
         this.value = value;
@@ -237,8 +246,6 @@ class BrowserTopic extends BrowserItem {
     set value(v) {
         this.#value = NTModel.Topic.ensureType(this.type, v);
         this.post("value-set", { v: this.value });
-        this.#sub.forEach(itm => this.eContent.removeChild(itm.elem));
-        this.#sub = [];
         this.icon = "";
         this.eIcon.style.color = "";
         this.eName.style.color = "";
@@ -250,19 +257,33 @@ class BrowserTopic extends BrowserItem {
         }
         if (this.isArray) {
             this.value.forEach((value, i) => {
-                let itm = new BrowserTopic(i, this.arraylessType, value);
-                itm.addHandler("trigger", data => {
-                    data = util.ensure(data, "obj");
-                    this.post("trigger", { path: this.name+"/"+data.path });
-                });
-                itm.addHandler("drag", data => {
-                    data = util.ensure(data, "obj");
-                    this.post("drag", { path: this.name+"/"+data.path });
-                });
-                this.#sub.push(itm);
+                if (!(i in this.#sub)) {
+                    let itm = this.#sub[i] = new BrowserTopic(i, null, null);
+                    itm.addHandler("trigger", data => {
+                        data = util.ensure(data, "obj");
+                        this.post("trigger", { path: this.name+"/"+data.path });
+                    });
+                    itm.addHandler("drag", data => {
+                        data = util.ensure(data, "obj");
+                        this.post("drag", { path: this.name+"/"+data.path });
+                    });
+                    this.eContent.appendChild(itm.elem);
+                }
+                let itm = this.#sub[i];
+                itm.type = this.arraylessType;
+                itm.value = value;
+            });
+        } else {
+            Object.keys(this.#sub).forEach(id => {
+                let itm = this.#sub[itm];
+                this.eContent.removeChild(itm.elem);
+                delete this.#sub[id];
             });
         }
-        this.#sub.forEach(itm => this.eContent.appendChild(itm.elem));
+        Object.keys(this.#sub).sort().forEach((id, i) => {
+            let itm = this.#sub[id];
+            itm.elem.style.order = i;
+        });
     }
 }
 
@@ -1231,12 +1252,12 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                     if (path in oldPaths) continue;
                     let generic = newPaths[path];
                     let item = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
-                    let parentPath = path.split("/");
-                    parentPath.pop();
-                    parentPath = parentPath.join("/");
-                    if (parentPath.length > 0) {
-                        if (!(parentPath in oldPaths)) continue;
-                        let parentItem = oldPaths[parentPath];
+                    let superPath = path.split("/");
+                    superPath.pop();
+                    superPath = superPath.join("/");
+                    if (superPath.length > 0) {
+                        if (!(superPath in oldPaths)) continue;
+                        let parentItem = oldPaths[superPath];
                         oldPaths[path] = parentItem.addChild(item);
                     } else {
                         state.items.push(item);
@@ -1244,28 +1265,39 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                             data = util.ensure(data, "obj");
                             this.path += "/" + data.path;
                         };
+                        item._onDrag = data => {
+                            data = util.ensure(data, "obj");
+                            let path = this.path + "/" + data.path;
+                            if (!this.hasApp()) return;
+                            this.app.dragData = this.app.lookup(path);
+                            this.app.dragging = true;
+                        };
                         item.addHandler("trigger", item._onTrigger);
+                        item.addHandler("drag", item._onDrag);
                         this.eBrowser.appendChild(item.elem);
                     }
                 }
                 for (let path in oldPaths) {
                     if (path in newPaths) continue;
                     let item = oldPaths[path];
-                    let parentPath = path.split("/");
-                    parentPath.pop();
-                    parentPath = parentPath.join("/");
-                    if (parentPath.length > 0) {
-                        if (!(parentPath in oldPaths)) continue;
-                        let parentItem = oldPaths[parentPath];
+                    let superPath = path.split("/");
+                    superPath.pop();
+                    superPath = superPath.join("/");
+                    if (superPath.length > 0) {
+                        if (!(superPath in oldPaths)) continue;
+                        let parentItem = oldPaths[superPath];
                         parentItem.remChild(item);
                         delete oldPaths[path];
                     } else {
                         state.items.splice(state.items.indexOf(item), 1);
                         item.remHandler("trigger", item._onTrigger);
+                        item.remHandler("drag", item._onDrag);
                         delete item._onTrigger;
+                        delete item._onDrag;
                         this.eBrowser.removeChild(item.elem);
                     }
                 }
+                state.items.sort((a, b) => (a.name > b.name) ? +1 : (a.name < b.name) ? -1 : 0).forEach((itm, i) => (itm.elem.style.order = i));
             } else if (generic instanceof NTModel.Topic) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
@@ -1317,7 +1349,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                                     if (item.eValue.children[0] instanceof HTMLElement)
                                         item.eValue.children[0].setAttribute("name", generic.value[i] ? "checkmark" : "close");
                                 } else {
-                                    item.eValue.style.backgroundColor = "var(--v2)";
+                                    item.eValue.style.backgroundColor = "var(--v2-8)";
                                     let display = getDisplay(generic.arraylessType, generic.value[i]);
                                     item.eValue.style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
                                     item.eValue.style.fontFamily = "monospace";
@@ -1346,7 +1378,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                                     item.children[0].style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                                 }
                             } else {
-                                item.style.backgroundColor = "var(--v2)";
+                                item.style.backgroundColor = "var(--v2-8)";
                                 item.style.position = "relative";
                                 if (item.children[0] instanceof HTMLDivElement) {
                                     item.children[0].style.position = "absolute";
@@ -1448,6 +1480,22 @@ export default class App extends core.App {
     #eContent;
     #eBlock;
 
+    #eTitleBtn;
+    #eProjectsBtn;
+    #eCreateBtn;
+    #eFileBtn;
+    #eEditBtn;
+    #eViewBtn;
+    #eProjectInfo;
+    #eProjectInfoBtn;
+    #eProjectInfoNameInput;
+    #eProjectInfoAddressInput;
+    #eProjectInfoConnectionBtn;
+    #eProjectInfoSaveBtn;
+    #eProjectInfoCopyBtn;
+    #eProjectInfoDeleteBtn;
+    #eSaveBtn;
+
     constructor() {
         super();
 
@@ -1457,6 +1505,85 @@ export default class App extends core.App {
 
         this.addHandler("start-complete", data => {       
             this.addBackButton();
+
+            this.#eTitleBtn = document.getElementById("titlebtn");
+            if (this.hasETitleBtn())
+                this.eTitleBtn.addEventListener("click", e => {
+                });
+            this.#eProjectsBtn = document.querySelector("#titlebar > button.nav#projectsbtn");
+            if (this.hasEProjectsBtn())
+                this.eProjectsBtn.addEventListener("click", e => {
+                });
+            this.#eCreateBtn = document.querySelector("#titlebar > button.nav#createbtn");
+            if (this.hasECreateBtn())
+                this.eCreateBtn.addEventListener("click", e => {
+                });
+            
+            this.#eFileBtn = document.querySelector("#titlebar > button.nav#filebtn");
+            if (this.hasEFileBtn())
+                this.eFileBtn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    let itm;
+                    let menu = new core.App.ContextMenu();
+                    this.contextMenu = menu;
+                    let r = this.eFileBtn.getBoundingClientRect();
+                    this.placeContextMenu(r.left, r.bottom);
+                });
+            this.#eEditBtn = document.querySelector("#titlebar > button.nav#editbtn");
+            if (this.hasEEditBtn())
+                this.eEditBtn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    let itm;
+                    let menu = new core.App.ContextMenu();
+                    this.contextMenu = menu;
+                    let r = this.eEditBtn.getBoundingClientRect();
+                    this.placeContextMenu(r.left, r.bottom);
+                });
+            this.#eViewBtn = document.querySelector("#titlebar > button.nav#viewbtn");
+            if (this.hasEViewBtn())
+                this.eViewBtn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    let itm;
+                    let menu = new core.App.ContextMenu();
+                    this.contextMenu = menu;
+                    let r = this.eViewBtn.getBoundingClientRect();
+                    this.placeContextMenu(r.left, r.bottom);
+                });
+            this.#eProjectInfo = document.querySelector("#titlebar > #projectinfo");
+            if (this.hasEProjectInfo()) {
+                this.#eProjectInfoBtn = this.eProjectInfo.querySelector(":scope > button.display");
+                if (this.hasEProjectInfoBtn())
+                    this.eProjectInfoBtn.addEventListener("click", e => {
+                        e.stopPropagation();
+                        if (this.eProjectInfo.classList.contains("this")) this.eProjectInfo.classList.remove("this");
+                        else {
+                            this.eProjectInfo.classList.add("this");
+                            const click = () => {
+                                document.body.removeEventListener("click", click);
+                                this.eProjectInfo.classList.remove("this");
+                            };
+                            document.body.addEventListener("click", click);
+                        }
+                    });
+                this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
+                this.#eProjectInfoAddressInput = this.eProjectInfo.querySelector(":scope > .content > input#infoaddress");
+                this.#eProjectInfoConnectionBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infoconnection");
+                this.#eProjectInfoSaveBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infosave");
+                this.#eProjectInfoCopyBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infocopy");
+                this.#eProjectInfoDeleteBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infodelete");
+                if (this.hasEProjectInfoSaveBtn())
+                    this.eProjectInfoSaveBtn.addEventListener("click", e => this.post("cmd-save"));
+                if (this.hasEProjectInfoCopyBtn())
+                    this.eProjectInfoCopyBtn.addEventListener("click", e => this.post("cmd-savecopy"));
+                if (this.hasEProjectInfoDeleteBtn())
+                    this.eProjectInfoDeleteBtn.addEventListener("click", e => this.post("cmd-delete"));
+            }
+            this.#eSaveBtn = document.querySelector("#save");
+            if (this.hasESaveBtn())
+                this.eSaveBtn.addEventListener("click", async e => {
+                    e.stopPropagation();
+                    this.post("cmd-save", null);
+                });
 
             this.#eSide = document.querySelector("#mount > .side");
             this.#eSideSections = {};
@@ -1554,80 +1681,13 @@ export default class App extends core.App {
                     else this.addBrowserItem(itm);
                     oldPaths[path] = itm;
                 });
+                for (let path in newPaths) {
+                    if (!(path in oldPaths)) continue;
+                    oldPaths[path].value = newPaths[path].value;
+                }
             });
 
             this.rootModel = new NTModel("localhost");
-            const template = {
-                name: "",
-                content: [
-                    {
-                        name: "Table1",
-                        content: [
-                            {
-                                name: "Table2",
-                                content: [
-                                    {
-                                        name: "Topic1",
-                                        type: "boolean[]",
-                                        value: [true, false, true],
-                                    },
-                                    {
-                                        name: "Topic2",
-                                        type: "null",
-                                        value: null,
-                                    },
-                                    {
-                                        name: "Topic2a",
-                                        type: "raw",
-                                        value: { key: "value" },
-                                    },
-                                ],
-                            },
-                            {
-                                name: "Topic3",
-                                type: "string[]",
-                                value: ["hello", "world", "!"],
-                            },
-                            {
-                                name: "Topic4",
-                                type: "int",
-                                value: 1.23,
-                            },
-                            {
-                                name: "Topic4a",
-                                type: "float",
-                                value: 1.23,
-                            },
-                        ]
-                    },
-                    {
-                        name: "Topic5",
-                        type: "boolean",
-                        value: false,
-                    },
-                    {
-                        name: "Topic6",
-                        type: "double[]",
-                        value: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                    },
-                    {
-                        name: "Topic6a",
-                        type: "string",
-                        value: "hello world",
-                    },
-                ],
-            };
-            let path = [];
-            const build = temp => {
-                if ("content" in temp) {
-                    path.push(temp.name);
-                    util.ensure(temp.content, "arr").forEach(temp => build(temp));
-                    path.pop();
-                    return;
-                }
-                this.rootModel.announceTopic([...path, temp.name].join("/"), temp.type, temp.value);
-            };
-            // build(template);
 
             const getHovered = (widget, pos, options) => {
                 options = util.ensure(options, "obj");
@@ -1702,8 +1762,82 @@ export default class App extends core.App {
                 if (o instanceof Panel.Page) return true;
                 return false;
             };
+            const canGetWidgetFromData = () => {
+                if (this.dragData instanceof NTModel.Generic) return true;
+                if (this.dragData instanceof Widget) return true;
+                if (this.dragData instanceof Panel.Page) return true;
+                return false;
+            };
+            const getWidgetFromData = () => {
+                if (this.dragData instanceof NTModel.Generic) return new Panel([new Panel.BrowserPage(this.dragData.path)]);
+                if (this.dragData instanceof Widget) return this.dragData;
+                if (this.dragData instanceof Panel.Page) return new Panel([this.dragData]);
+                return null;
+            };
+            const canGetPageFromData = () => {
+                if (this.dragData instanceof NTModel.Generic) return true;
+                if (this.dragData instanceof Widget);
+                if (this.dragData instanceof Panel.Page) return true;
+                return false;
+            };
+            const getPageFromData = () => {
+                if (this.dragData instanceof NTModel.Generic) return new Panel.BrowserPage(this.dragData.path);
+                if (this.dragData instanceof Widget);
+                if (this.dragData instanceof Panel.Page) return this.dragData;
+                return null;
+            };
+            const canGetGenericFromData = () => {
+                if (this.dragData instanceof NTModel.Generic) return true;
+                if (this.dragData instanceof Widget);
+                if (this.dragData instanceof Panel.Page) return (this.dragData instanceof Panel.BrowserPage) && (this.lookup(this.dragData.path) instanceof NTModel.Generic);
+                return false;
+            };
+            const getGenericFromData = () => {
+                if (this.dragData instanceof NTModel.Generic) return this.dragData;
+                if (this.dragData instanceof Widget);
+                if (this.dragData instanceof Panel.Page) return (this.dragData instanceof Panel.BrowserPage) ? this.lookup(this.dragData.path) : null;
+                return null;
+            };
             this.addHandler("drag-start", () => {
                 if (!isValid(this.dragData)) return;
+                let canWidget = canGetWidgetFromData();
+                let canPage = canGetPageFromData();
+                let canGeneric = canGetGenericFromData();
+                if (canGeneric) {
+                    let generic = getGenericFromData();
+                    if (this.hasEDrag()) {
+                        this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
+                        let btn = this.eDrag.children[0].children[0];
+                        let icon = btn.children[0], name = btn.children[1];
+                        name.textContent = (generic.name.length > 0) ? generic.name : "/";
+                        if (generic instanceof NTModel.Table) {
+                            icon.setAttribute("name", "folder-outline");
+                        } else {
+                            let display = getDisplay(generic.type, generic.value);
+                            if (display != null) {
+                                if ("src" in display) icon.setAttribute("src", display.src);
+                                else icon.setAttribute("name", display.name);
+                                if ("color" in display) icon.style.color = display.color;
+                            }
+                        }
+                    }
+                    return;
+                }
+                if (canPage) {
+                    if (this.dragData instanceof Panel.Page) {
+                        if (this.hasEDrag()) {
+                            this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
+                            let btn = this.eDrag.children[0].children[0];
+                            let icon = btn.children[0], name = btn.children[1];
+                            name.textContent = this.dragData.name;
+                            if (this.dragData.hasIcon) {
+                                if (this.dragData.eIcon.hasAttribute("src")) icon.setAttribute("src", this.dragData.eIcon.getAttribute("src"));
+                                else icon.setAttribute("src", this.dragData.eIcon.getAttribute("src"));
+                                icon.style = this.dragData.eIcon.style;
+                            } else icon.style.display = "none";
+                        }
+                    }
+                }
             });
             this.addHandler("drag-move", e => {
                 if (!isValid(this.dragData)) return;
@@ -1739,26 +1873,8 @@ export default class App extends core.App {
             this.addHandler("drag-submit", e => {
                 if (!isValid(this.dragData)) return;
                 this.hideBlock();
-                let canWidgetFromData = false;
-                const getWidgetFromData = () => {
-                    if (this.dragData instanceof NTModel.Generic) return new Panel([new Panel.BrowserPage(this.dragData.path)]);
-                    if (this.dragData instanceof Widget) return this.dragData;
-                    if (this.dragData instanceof Panel.Page) return new Panel([this.dragData]);
-                    return null;
-                };
-                if (this.dragData instanceof NTModel.Generic) canWidgetFromData = true;
-                else if (this.dragData instanceof Widget) canWidgetFromData = true;
-                else if (this.dragData instanceof Panel.Page) canWidgetFromData = true;
-                let canPageFromData = false;
-                const getPageFromData = () => {
-                    if (this.dragData instanceof NTModel.Generic) return new Panel.BrowserPage(this.dragData.path);
-                    if (this.dragData instanceof Widget);
-                    if (this.dragData instanceof Panel.Page) return this.dragData;
-                    return null;
-                };
-                if (this.dragData instanceof NTModel.Generic) canPageFromData = true;
-                else if (this.dragData instanceof Widget);
-                else if (this.dragData instanceof Panel.Page) canPageFromData = true;
+                let canWidget = canGetWidgetFromData();
+                let canPage = canGetPageFromData();
                 if (!this.hasRootWidget()) {
                     this.rootWidget = getWidgetFromData();
                     return;
@@ -1772,7 +1888,7 @@ export default class App extends core.App {
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel)) return;
                 let at = hovered.at;
-                if (["+x", "-x", "+y", "-y"].includes(at) && canWidgetFromData) {
+                if (["+x", "-x", "+y", "-y"].includes(at) && canWidget) {
                     let widget = getWidgetFromData();
                     let container = new Container();
                     container.axis = at[1];
@@ -1783,14 +1899,14 @@ export default class App extends core.App {
                         this.rootWidget = container;
                     } else {
                         let parent = hovered.widget.parent;
-                        let weights = parent.weights, at = parent.children.indexOf(hovered.widget);
+                        let weights = parent.weights, thisAt = parent.children.indexOf(hovered.widget);
                         parent.remChild(hovered.widget);
                         container.addChild((at[0] == "+") ? hovered.widget : widget);
                         container.addChild((at[0] != "+") ? hovered.widget : widget);
-                        parent.addChild(container, at);
+                        parent.addChild(container, thisAt);
                         parent.weights = weights;
                     }
-                } else if (util.is(at, "int") && canPageFromData) {
+                } else if (util.is(at, "int") && canPage) {
                     hovered.widget.addPage(getPageFromData(), at);
                 }
                 this.rootWidget.collapse();
@@ -1841,10 +1957,13 @@ export default class App extends core.App {
             data = util.ensure(data, "obj");
             let generic = this.lookup(data.path);
             if (!(generic instanceof NTModel.Generic)) return;
+            this.dragData = generic;
+            this.dragging = true;
         };
         itm.addHandler("drag", itm._onDrag);
         if (this.hasESideSection("browser") && this.getESideSection("browser").eContent instanceof HTMLDivElement)
             this.getESideSection("browser").eContent.appendChild(itm.elem);
+        this.formatSide();
         return itm;
     }
     remBrowserItem(itm) {
@@ -1855,6 +1974,7 @@ export default class App extends core.App {
         delete itm._onDrag;
         if (this.hasESideSection("browser") && this.getESideSection("browser").eContent instanceof HTMLDivElement)
             this.getESideSection("browser").eContent.removeChild(itm.elem);
+        this.formatSide();
         return itm;
     }
 
@@ -1909,6 +2029,10 @@ export default class App extends core.App {
         let availableHeight = r.height - ids.length*22;
         let divideAmong = idsOpen.length;
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
+        this.browserItems.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => {
+            itm.elem.style.order = i;
+            if (itm instanceof BrowserTable) itm.format();
+        });
         return true;
     }
     formatContent() {
@@ -1920,6 +2044,33 @@ export default class App extends core.App {
         this.rootWidget.format();
         return true;
     }
+
+    get eTitleBtn() { return this.#eTitleBtn; }
+    hasETitleBtn() { return this.eTitleBtn instanceof HTMLButtonElement; }
+    get eProjectsBtn() { return this.#eProjectsBtn; }
+    hasEProjectsBtn() { return this.eProjectsBtn instanceof HTMLButtonElement; }
+    get eCreateBtn() { return this.#eCreateBtn; }
+    hasECreateBtn() { return this.eCreateBtn instanceof HTMLButtonElement; }
+    get eFileBtn() { return this.#eFileBtn; }
+    hasEFileBtn() { return this.eFileBtn instanceof HTMLButtonElement; }
+    get eEditBtn() { return this.#eEditBtn; }
+    hasEEditBtn() { return this.eEditBtn instanceof HTMLButtonElement; }
+    get eViewBtn() { return this.#eViewBtn; }
+    hasEViewBtn() { return this.eViewBtn instanceof HTMLButtonElement; }
+    get eProjectInfo() { return this.#eProjectInfo; }
+    hasEProjectInfo() { return this.eProjectInfo instanceof HTMLDivElement; }
+    get eProjectInfoBtn() { return this.#eProjectInfoBtn; }
+    hasEProjectInfoBtn() { return this.eProjectInfoBtn instanceof HTMLButtonElement; }
+    get eProjectInfoNameInput() { return this.#eProjectInfoNameInput; }
+    hasEProjectInfoNameInput() { return this.eProjectInfoNameInput instanceof HTMLInputElement; }
+    get eProjectInfoSaveBtn() { return this.#eProjectInfoSaveBtn; }
+    hasEProjectInfoSaveBtn() { return this.eProjectInfoSaveBtn instanceof HTMLButtonElement; }
+    get eProjectInfoCopyBtn() { return this.#eProjectInfoCopyBtn; }
+    hasEProjectInfoCopyBtn() { return this.eProjectInfoCopyBtn instanceof HTMLButtonElement; }
+    get eProjectInfoDeleteBtn() { return this.#eProjectInfoDeleteBtn; }
+    hasEProjectInfoDeleteBtn() { return this.eProjectInfoDeleteBtn instanceof HTMLButtonElement; }
+    get eSaveBtn() { return this.#eSaveBtn; }
+    hasESaveBtn() { return this.eSaveBtn instanceof HTMLButtonElement; }
 
     get eSide() { return this.#eSide; }
     hasESide() { return this.eSide instanceof HTMLDivElement; }

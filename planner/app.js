@@ -951,7 +951,12 @@ export default class App extends core.App {
     #eFileBtn;
     #eEditBtn;
     #eViewBtn;
-    #eNameInput;
+    #eProjectInfo;
+    #eProjectInfoBtn;
+    #eProjectInfoNameInput;
+    #eProjectInfoSaveBtn;
+    #eProjectInfoCopyBtn;
+    #eProjectInfoDeleteBtn;
     #eSaveBtn;
 
     constructor() {
@@ -1105,7 +1110,33 @@ export default class App extends core.App {
                     let r = this.eViewBtn.getBoundingClientRect();
                     this.placeContextMenu(r.left, r.bottom);
                 });
-            this.#eNameInput = document.querySelector("#nameinput > input");
+            this.#eProjectInfo = document.querySelector("#titlebar > #projectinfo");
+            if (this.hasEProjectInfo()) {
+                this.#eProjectInfoBtn = this.eProjectInfo.querySelector(":scope > button.display");
+                if (this.hasEProjectInfoBtn())
+                    this.eProjectInfoBtn.addEventListener("click", e => {
+                        e.stopPropagation();
+                        if (this.eProjectInfo.classList.contains("this")) this.eProjectInfo.classList.remove("this");
+                        else {
+                            this.eProjectInfo.classList.add("this");
+                            const click = () => {
+                                document.body.removeEventListener("click", click);
+                                this.eProjectInfo.classList.remove("this");
+                            };
+                            document.body.addEventListener("click", click);
+                        }
+                    });
+                this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
+                this.#eProjectInfoSaveBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infosave");
+                this.#eProjectInfoCopyBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infocopy");
+                this.#eProjectInfoDeleteBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infodelete");
+                if (this.hasEProjectInfoSaveBtn())
+                    this.eProjectInfoSaveBtn.addEventListener("click", e => this.post("cmd-save"));
+                if (this.hasEProjectInfoCopyBtn())
+                    this.eProjectInfoCopyBtn.addEventListener("click", e => this.post("cmd-savecopy"));
+                if (this.hasEProjectInfoDeleteBtn())
+                    this.eProjectInfoDeleteBtn.addEventListener("click", e => this.post("cmd-delete"));
+            }
             this.#eSaveBtn = document.querySelector("#save");
             if (this.hasESaveBtn())
                 this.eSaveBtn.addEventListener("click", async e => {
@@ -1138,9 +1169,8 @@ export default class App extends core.App {
                 if (!this.hasProject()) return;
                 this.dragData = name;
                 this.dragging = true;
-                let elem = document.getElementById("drag");
-                if (elem instanceof HTMLDivElement)
-                    elem.innerHTML = {
+                if (this.hasEDrag())
+                    this.eDrag.innerHTML = {
                         node: "<div class='global item selectable node'><div class='button'></div></div>",
                         obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
                     }[this.dragData];
@@ -1171,12 +1201,9 @@ export default class App extends core.App {
                             ghostItem = null;
                         }
                     }
-                    if (elem instanceof HTMLDivElement) {
-                        elem.style.left = pos.x+"px";
-                        elem.style.top = pos.y+"px";
-                        if (elem.children[0] instanceof HTMLElement)
-                            elem.children[0].style.visibility = overRender ? "hidden" : "inherit";
-                    }
+                    if (this.hasEDrag())
+                        if (this.eDrag.children[0] instanceof HTMLElement)
+                            this.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
                     if (ghostItem instanceof RISelectable)
                         if (ghostItem.hasItem())
                             ghostItem.item.pos.set(ghostItem.pageToMap(pos));
@@ -1191,7 +1218,7 @@ export default class App extends core.App {
                 });
                 const stop = cancel => {
                     this.remRenderItem(ghostItem);
-                    if (elem instanceof HTMLDivElement) elem.innerHTML = "";
+                    if (this.hasEDrag()) this.eDrag.innerHTML = "";
                     if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
                     if (!util.is(state.panels, "obj")) return;
                     if (!util.is(state.panels.objects, "obj")) return;
@@ -1746,11 +1773,11 @@ export default class App extends core.App {
                     state.setChoosing(false);
                     this.dragging = false;
                 };
-                if (this.hasENameInput())
-                    this.eNameInput.addEventListener("change", e => {
+                if (this.hasEProjectInfoNameInput())
+                    this.eProjectInfoNameInput.addEventListener("change", e => {
                         if (state.getChoosing()) return;
                         if (!this.hasProject()) return;
-                        this.project.meta.name = this.eNameInput.value;
+                        this.project.meta.name = this.eProjectInfoNameInput.value;
                         state.post("refresh-options", null);
                     });
                 state.addHandler("refresh-options", data => {
@@ -1776,8 +1803,11 @@ export default class App extends core.App {
                             pathNames.add(path.name);
                         });
                     });
-                    if (this.hasENameInput())
-                        this.eNameInput.value = this.hasProject() ? this.project.meta.name : "";
+                    if (this.hasEProjectInfoNameInput())
+                        this.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
+                    if (this.hasEProjectInfoBtn())
+                        if (this.eProjectInfoBtn.querySelector(":scope > .value") instanceof HTMLDivElement)
+                            this.eProjectInfoBtn.querySelector(":scope > .value").textContent = this.hasProject() ? this.project.meta.name : "";
                 });
                 let renderItems = new Set();
                 this.getRenderItems = () => [...renderItems];
@@ -3121,8 +3151,10 @@ export default class App extends core.App {
                             this.clearPathVisuals();
                             if (!this.hasProject()) return;
                             try {
-                                let datas = await window.api.ask("exec-get", [this.projectId]);
+                                let projectId = this.projectId;
+                                let datas = await window.api.ask("exec-get", [projectId]);
                                 if (!util.is(datas, "obj")) return;
+                                if (this.projectId != projectId) return;
                                 for (let id in datas) {
                                     let data = datas[id];
                                     if (!util.is(data, "obj")) continue;
@@ -3624,8 +3656,18 @@ export default class App extends core.App {
     hasEEditBtn() { return this.eEditBtn instanceof HTMLButtonElement; }
     get eViewBtn() { return this.#eViewBtn; }
     hasEViewBtn() { return this.eViewBtn instanceof HTMLButtonElement; }
-    get eNameInput() { return this.#eNameInput; }
-    hasENameInput() { return this.eNameInput instanceof HTMLInputElement; }
+    get eProjectInfo() { return this.#eProjectInfo; }
+    hasEProjectInfo() { return this.eProjectInfo instanceof HTMLDivElement; }
+    get eProjectInfoBtn() { return this.#eProjectInfoBtn; }
+    hasEProjectInfoBtn() { return this.eProjectInfoBtn instanceof HTMLButtonElement; }
+    get eProjectInfoNameInput() { return this.#eProjectInfoNameInput; }
+    hasEProjectInfoNameInput() { return this.eProjectInfoNameInput instanceof HTMLInputElement; }
+    get eProjectInfoSaveBtn() { return this.#eProjectInfoSaveBtn; }
+    hasEProjectInfoSaveBtn() { return this.eProjectInfoSaveBtn instanceof HTMLButtonElement; }
+    get eProjectInfoCopyBtn() { return this.#eProjectInfoCopyBtn; }
+    hasEProjectInfoCopyBtn() { return this.eProjectInfoCopyBtn instanceof HTMLButtonElement; }
+    get eProjectInfoDeleteBtn() { return this.#eProjectInfoDeleteBtn; }
+    hasEProjectInfoDeleteBtn() { return this.eProjectInfoDeleteBtn instanceof HTMLButtonElement; }
     get eSaveBtn() { return this.#eSaveBtn; }
     hasESaveBtn() { return this.eSaveBtn instanceof HTMLButtonElement; }
 }
