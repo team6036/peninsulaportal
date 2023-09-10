@@ -1561,6 +1561,10 @@
     color: var(--v4);
 }
 #pathspanel > #pathsbox > .item > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
     padding: 0px;
 
     background-color: transparent;
