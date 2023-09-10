@@ -1433,7 +1433,10 @@ Portal.Feature = class PortalFeature extends core.Target {
                         process.addHandler("data", async data => {
                             Portal.fileAppend(path.join(root, "stdout.log"), util.ensure(data, "obj").data);
                         });
+                        let already = false;
                         const resolve = async (...a) => {
+                            if (already) return;
+                            already = true;
                             this.log("SPAWN exit", ...a);
                             await finish();
                             if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
@@ -1446,6 +1449,8 @@ Portal.Feature = class PortalFeature extends core.Target {
                             return res(...a);
                         };
                         const reject = async (...a) => {
+                            if (already) return;
+                            already = true;
                             this.log("SPAWN err", ...a);
                             await finish();
                             if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
