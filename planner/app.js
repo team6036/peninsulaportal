@@ -1009,7 +1009,7 @@ export default class App extends core.App {
                     e.stopPropagation();
                     let itm;
                     let menu = new core.App.ContextMenu();
-                    itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "create"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
                     itm.shortcut = "⌘N";
                     itm.addHandler("trigger", data => {
                         this.post("cmd-newproject", null);
@@ -1028,12 +1028,12 @@ export default class App extends core.App {
                         this.post("cmd-addpath", null);
                     });
                     menu.addItem(new core.App.ContextMenu.Divider());
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
                     itm.shortcut = "⌘S";
                     itm.addHandler("trigger", async data => {
                         this.post("cmd-save", null);
                     });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents"));
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
                     itm.shortcut = "⇧⌘S";
                     itm.addHandler("trigger", data => {
                         this.post("cmd-savecopy", null);

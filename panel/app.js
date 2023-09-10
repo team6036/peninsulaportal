@@ -287,6 +287,65 @@ class BrowserTopic extends BrowserItem {
     }
 }
 
+class ToolButton extends core.Target {
+    #elem;
+    #eIcon;
+    #eName;
+
+    constructor(name, icon) {
+        super();
+
+        this.#elem = document.createElement("button");
+        this.elem.classList.add("item");
+        this.#eIcon = document.createElement("ion-icon");
+        this.elem.appendChild(this.eIcon);
+        this.#eName = document.createElement("div");
+        this.elem.appendChild(this.eName);
+
+        let cancel = 10;
+        this.elem.addEventListener("click", e => {
+            if (cancel <= 0) return cancel = 10;
+            this.post("trigger", null);
+        });
+        this.elem.addEventListener("mousedown", e => {
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+            };
+            const mousemove = () => {
+                if (cancel > 0) return cancel--;
+                mouseup();
+                this.post("drag", null);
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        });
+
+        this.name = name;
+        this.icon = icon;
+    }
+
+    get elem() { return this.#elem; }
+    get eIcon() { return this.#eIcon; }
+    get eName() { return this.#eName; }
+
+    get icon() { return this.eIcon.getAttribute("name"); }
+    set icon(v) {
+        this.eIcon.removeAttribute("src");
+        this.eIcon.setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
+    get iconColor() { return this.eIcon.style.color; }
+    set iconColor(v) { this.eIcon.style.color = v; }
+
+    get name() { return this.eName.textContent; }
+    set name(v) { this.eName.textContent = v; }
+}
+
 class Widget extends core.Target {
     #elem;
 
@@ -1297,7 +1356,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
                         this.eBrowser.removeChild(item.elem);
                     }
                 }
-                state.items.sort((a, b) => (a.name > b.name) ? +1 : (a.name < b.name) ? -1 : 0).forEach((itm, i) => (itm.elem.style.order = i));
+                state.items.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => (itm.elem.style.order = i));
             } else if (generic instanceof NTModel.Topic) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
@@ -1465,13 +1524,22 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
     get eDisplay() { return this.#eDisplay; }
 };
 Panel.ToolPage = class PanelToolPage extends Panel.Page {
-    constructor() {
+    constructor(name, icon) {
         super();
+
+        this.name = name;
+        this.icon = icon;
+    }
+};
+Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
+    constructor() {
+        super("Graph", "analytics");
     }
 };
 
 export default class App extends core.App {
     #browserItems;
+    #toolBtns;
     #rootWidget;
     #rootModel;
 
@@ -1500,6 +1568,7 @@ export default class App extends core.App {
         super();
 
         this.#browserItems = [];
+        this.#toolBtns = new Set();
         this.#rootWidget = null;
         this.#rootModel = null;
 
@@ -1620,6 +1689,11 @@ export default class App extends core.App {
             if (this.hasEContent())
                 new ResizeObserver(() => this.formatContent()).observe(this.eContent);
             this.#eBlock = document.getElementById("block");
+
+            this.addToolBtn(new ToolButton("Graph", "analytics")).addHandler("drag", () => {
+                this.dragData = new Panel.GraphPage();
+                this.dragging = true;
+            });
             
             this.formatSide();
             this.formatContent();
@@ -1831,9 +1905,9 @@ export default class App extends core.App {
                             let icon = btn.children[0], name = btn.children[1];
                             name.textContent = this.dragData.name;
                             if (this.dragData.hasIcon) {
-                                if (this.dragData.eIcon.hasAttribute("src")) icon.setAttribute("src", this.dragData.eIcon.getAttribute("src"));
-                                else icon.setAttribute("src", this.dragData.eIcon.getAttribute("src"));
-                                icon.style = this.dragData.eIcon.style;
+                                if (this.dragData.eTabIcon.hasAttribute("src")) icon.setAttribute("src", this.dragData.eTabIcon.getAttribute("src"));
+                                else icon.setAttribute("name", this.dragData.eTabIcon.getAttribute("name"));
+                                icon.style = this.dragData.eTabIcon.style;
                             } else icon.style.display = "none";
                         }
                     }
@@ -1978,6 +2052,38 @@ export default class App extends core.App {
         return itm;
     }
 
+    get toolBtns() { return [...this.#toolBtns]; }
+    set toolBtns(v) {
+        v = util.ensure(v, "arr");
+        this.clearToolBtns();
+        v.forEach(v => this.addToolBtn(v));
+    }
+    clearToolBtns() {
+        let btns = this.toolBtns;
+        btns.forEach(btn => this.remToolBtn(btn));
+        return btns;
+    }
+    hasToolBtn(btn) {
+        if (!(btn instanceof ToolButton)) return false;
+        return this.#toolBtns.has(btn);
+    }
+    addToolBtn(btn) {
+        if (!(btn instanceof ToolButton)) return false;
+        if (this.hasToolBtn(btn)) return false;
+        this.#toolBtns.add(btn);
+        if (this.hasESideSection("tools"))
+            this.getESideSection("tools").eContent.appendChild(btn.elem);
+        return btn;
+    }
+    remToolBtn(btn) {
+        if (!(btn instanceof ToolButton)) return false;
+        if (!this.hasToolBtn(btn)) return false;
+        this.#toolBtns.delete(btn);
+        if (this.hasESideSection("tools"))
+            this.getESideSection("tools").eContent.removeChild(btn.elem);
+        return btn;
+    }
+
     get rootWidget() { return this.#rootWidget; }
     set rootWidget(v) {
         v = (v instanceof Widget) ? v : null;
@@ -2063,12 +2169,16 @@ export default class App extends core.App {
     hasEProjectInfoBtn() { return this.eProjectInfoBtn instanceof HTMLButtonElement; }
     get eProjectInfoNameInput() { return this.#eProjectInfoNameInput; }
     hasEProjectInfoNameInput() { return this.eProjectInfoNameInput instanceof HTMLInputElement; }
+    get eProjectInfoAddressInput() { return this.#eProjectInfoAddressInput; }
+    hasEProjectInfoAddressInput() { return this.eProjectInfoAddressInput instanceof HTMLInputElement; }
     get eProjectInfoSaveBtn() { return this.#eProjectInfoSaveBtn; }
     hasEProjectInfoSaveBtn() { return this.eProjectInfoSaveBtn instanceof HTMLButtonElement; }
     get eProjectInfoCopyBtn() { return this.#eProjectInfoCopyBtn; }
     hasEProjectInfoCopyBtn() { return this.eProjectInfoCopyBtn instanceof HTMLButtonElement; }
     get eProjectInfoDeleteBtn() { return this.#eProjectInfoDeleteBtn; }
     hasEProjectInfoDeleteBtn() { return this.eProjectInfoDeleteBtn instanceof HTMLButtonElement; }
+    get eProjectInfoConnectionBtn() { return this.#eProjectInfoConnectionBtn; }
+    hasEProjectInfoConnectionBtn() { return this.eProjectInfoConnectionBtn instanceof HTMLButtonElement; }
     get eSaveBtn() { return this.#eSaveBtn; }
     hasESaveBtn() { return this.eSaveBtn instanceof HTMLButtonElement; }
 
