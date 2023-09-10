@@ -233,8 +233,22 @@
 			<button id="filebtn" class="nav forproject">File</button>
 			<button id="editbtn" class="nav forproject">Edit</button>
 			<button id="viewbtn" class="nav forproject">View</button>
-			<div id="nameinput" class="forproject">
-				<input type="text" placeholder="Project Name..." autocomplete="off" spellcheck="false">
+			<div id="projectinfo" class="forproject">
+				<button class="display">
+					<ion-icon name="analytics"></ion-icon>
+					<div class="value"></div>
+					<ion-icon name="chevron-down"></ion-icon>
+				</button>
+				<div class="content">
+					<div>Name</div>
+					<input id="infoname" type="text" placeholder="Name your project..." autocomplete="off" spellcheck="false">
+					<div class="divider"></div>
+					<div class="nav">
+						<button id="infosave">Save</button>
+						<button id="infocopy">Copy</button>
+						<button id="infodelete">Delete</button>
+					</div>
+				</div>
 			</div>
 			<div class="space"></div>
 			<button id="save" class="forproject"></button>

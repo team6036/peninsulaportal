@@ -147,6 +147,7 @@ export class App extends Target {
     #dragging;
     #dragState;
     #dragData;
+    #eDrag;
 
     #eCoreStyle;
     #eStyle;
@@ -313,6 +314,8 @@ export class App extends Target {
         let mount = document.getElementById("mount");
         if (mount instanceof HTMLDivElement) mount.style.opacity = "0%";
 
+        this.#eDrag = document.getElementById("drag");
+
         const ionicons1 = document.createElement("script");
         document.body.appendChild(ionicons1);
         ionicons1.type = "module";
@@ -362,7 +365,7 @@ export class App extends Target {
         try {
             resp = await fetch(root+"/theme.json");
             if (resp.status != 200) throw resp.status;
-        } catch (e) {}
+        } catch (e) { resp = null; }
         let data = null;
         if (resp instanceof Response) {
             try {
@@ -585,6 +588,10 @@ export class App extends Target {
                 this.dragState.post("stop", null);
             };
             const mousemove = e => {
+                if (this.hasEDrag()) {
+                    this.eDrag.style.left = e.pageX+"px";
+                    this.eDrag.style.top = e.pageY+"px";
+                }
                 this.post("drag-move", e);
                 this.dragState.post("move", e);
             };
@@ -607,6 +614,7 @@ export class App extends Target {
             this.#dragState = null;
             this.dragData = null;
         }
+        if (this.hasEDrag()) this.eDrag.style.visibility = this.dragging ? "inherit" : "hidden";
     }
     submitDrag() {
         if (!this.dragging) return false;
@@ -623,6 +631,8 @@ export class App extends Target {
         if (this.dragging) return;
         this.#dragData = v;
     }
+    get eDrag() { return this.#eDrag; }
+    hasEDrag() { return this.eDrag instanceof HTMLDivElement; }
 
     addBackButton() {
         if (!(this.eTitleBar instanceof HTMLDivElement)) return false;

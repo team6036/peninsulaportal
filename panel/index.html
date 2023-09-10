@@ -27,6 +27,7 @@
 		<div id="overlay">
 			<div id="block"></div>
 		</div>
+		<div id="drag"></div>
 		<div id="loading">
 			<div class="title introtitle"><div><div>p</div><div>eninsula</div></div><div>Panel</div></div>
 		</div>
@@ -37,8 +38,27 @@
 			<button id="filebtn" class="nav forproject">File</button>
 			<button id="editbtn" class="nav forproject">Edit</button>
 			<button id="viewbtn" class="nav forproject">View</button>
-			<div id="nameinput" class="forproject">
-				<input type="text" placeholder="Project Name..." autocomplete="off" spellcheck="false">
+			<div id="projectinfo" class="forproject">
+				<button class="display">
+					<ion-icon name="grid"></ion-icon>
+					<div class="value"></div>
+					<ion-icon name="chevron-down"></ion-icon>
+				</button>
+				<div class="content">
+					<div>Name</div>
+					<input id="infoname" type="text" placeholder="Name your project..." autocomplete="off" spellcheck="false">
+					<div>IP Address</div>
+					<input id="infoaddress" type="text" placeholder="Provide an IP..." autocomplete="off" spellcheck="false">
+					<div class="nav">
+						<button id="infoconnection" class="on"></button>
+					</div>
+					<div class="divider"></div>
+					<div class="nav">
+						<button id="infosave">Save</button>
+						<button id="infocopy">Copy</button>
+						<button id="infodelete">Delete</button>
+					</div>
+				</div>
 			</div>
 			<div class="space"></div>
 			<button id="save" class="forproject"></button>
