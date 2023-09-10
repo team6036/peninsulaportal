@@ -1434,10 +1434,11 @@ Portal.Feature = class PortalFeature extends core.Target {
                             Portal.fileAppend(path.join(root, "stdout.log"), util.ensure(data, "obj").data);
                         });
                         let already = false;
-                        const resolve = async (...a) => {
+                        const resolve = async data => {
+                            data = util.ensure(data, "obj");
                             if (already) return;
                             already = true;
-                            this.log("SPAWN exit", ...a);
+                            this.log("SPAWN exit", data.e);
                             await finish();
                             if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                 const notif = new electron.Notification({
@@ -1446,12 +1447,13 @@ Portal.Feature = class PortalFeature extends core.Target {
                                 });
                                 notif.show();
                             }
-                            return res(...a);
+                            return res(data.e);
                         };
-                        const reject = async (...a) => {
+                        const reject = async data => {
+                            data = util.ensure(data, "obj");
                             if (already) return;
                             already = true;
-                            this.log("SPAWN err", ...a);
+                            this.log("SPAWN err", data.e);
                             await finish();
                             if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                 const notif = new electron.Notification({
@@ -1460,7 +1462,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                                 });
                                 notif.show();
                             }
-                            return rej(...a);
+                            return rej(data.e);
                         };
                         process.addHandler("exit", data => resolve(data));
                         process.addHandler("error", data => reject(data));
