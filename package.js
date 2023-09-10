@@ -14,6 +14,7 @@ const ignores = [
     "temp*",
     "\\.gitignore",
     "\\.devconfig",
+    "package\\.js",
 ];
 
 const builds = {
