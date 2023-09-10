@@ -1357,7 +1357,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                     if (!project.hasPath(pathId)) throw "Nonexistent path with id: "+pathId+" for project id: "+id;
                     let pth = project.getPath(pathId);
 
-                    let script = project.config.scriptUseDefault ? this.convertPath(["solver", "solver.py"]) : project.config.script;
+                    let script = project.config.scriptUseDefault ? Portal.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
                     if (script == null) throw "No script for project with id: "+id;
                     script = String(script);
                     let hasScript = await Portal.fileHas(script);
@@ -1482,7 +1482,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                     } catch (e) {}
                     if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
 
-                    let script = project.config.scriptUseDefault ? this.convertPath(["solver", "solver.py"]) : project.config.script;
+                    let script = project.config.scriptUseDefault ? Portal.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
                     if (script == null) return {}; // throw "No script for project with id: "+id;
                     script = String(script);
                     let has = await Portal.fileHas(script);
