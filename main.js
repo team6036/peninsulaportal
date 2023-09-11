@@ -882,10 +882,14 @@ Portal.Feature = class PortalFeature extends core.Target {
         let options = {
             width: 1250,
             height: 750,
+
             show: false,
             resizable: true,
+            maximizable: false,
+
             titleBarStyle: "hidden",
             trafficLightPosition: { x: 17, y: 17 },
+
             webPreferences: {
                 preload: path.join(__dirname, "preload.js"),
             },
@@ -953,7 +957,7 @@ Portal.Feature = class PortalFeature extends core.Target {
 
         window.loadURL("file://"+path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
-        let build = {
+        const build = {
             about: [
                 {
                     label: "About Peninsula "+this.name[0].toUpperCase()+this.name.slice(1).toLowerCase(),
@@ -989,6 +993,33 @@ Portal.Feature = class PortalFeature extends core.Target {
             ],
             front: [
                 { role: "front" },
+            ],
+            help: [
+                {
+                    label: "Github Repository",
+                    click: () => {
+                        electron.shell.openExternal("https://github.com/team6036/peninsulaportal");
+                    },
+                },
+                {
+                    label: "Open Database",
+                    click: () => {
+                        (async () => {
+                            if (!this.hasPortal()) return;
+                            await this.portal.affirm();
+                            let content = "";
+                            try {
+                                content = await this.portal.fileRead(".config");
+                            } catch (e) {}
+                            let data = null;
+                            try {
+                                data = JSON.parse(content);
+                            } catch (e) {}
+                            data = util.ensure(data, "obj");
+                            electron.shell.openExternal(data.dbHost);
+                        })();
+                    },
+                },
             ],
             spawn: [
                 {
@@ -1053,6 +1084,12 @@ Portal.Feature = class PortalFeature extends core.Target {
                         []
                     ),
                     { id: "toggleDevTools", role: "toggleDevTools" },
+                ],
+            },
+            {
+                role: "help",
+                submenu: [
+                    ...build.help,
                 ],
             },
         ];
@@ -1184,8 +1221,10 @@ Portal.Feature = class PortalFeature extends core.Target {
             if (!(this.name in state)) return;
             state = state[this.name];
             if (!("bounds" in state)) return;
-            let bounds = state.bounds;
+            let bounds = util.ensure(state.bounds, "obj");
             if (!this.hasWindow()) return;
+            if (("width" in bounds) && (bounds.width < 50)) delete bounds.width;
+            if (("height" in bounds) && (bounds.height < 50)) delete bounds.height;
             this.window.setContentBounds(bounds);
         })();
 
