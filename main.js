@@ -684,7 +684,7 @@ class Portal extends core.Target {
             while (min.length < 2) min = "0"+min;
             while (s.length < 2) s = "0"+s;
             while (ms.length < 3) ms += "0";
-            let name = [yr, mon, d, hr, min, s, ms].join("-")+".log";
+            let name = `${yr}-${mon}-${d} ${hr}-${min}-${s}-${ms}.log`;
             this.#stream = fs.createWriteStream(Portal.makePath(this.dataPath, "logs", name));
             await new Promise((res, rej) => this.stream.on("open", () => res()));
         }
