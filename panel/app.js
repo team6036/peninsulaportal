@@ -1539,7 +1539,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
 
 export default class App extends core.App {
     #browserItems;
-    #toolBtns;
+    #toolButtons;
     #rootWidget;
     #rootModel;
 
@@ -1568,7 +1568,7 @@ export default class App extends core.App {
         super();
 
         this.#browserItems = [];
-        this.#toolBtns = new Set();
+        this.#toolButtons = new Set();
         this.#rootWidget = null;
         this.#rootModel = null;
 
@@ -1690,7 +1690,7 @@ export default class App extends core.App {
                 new ResizeObserver(() => this.formatContent()).observe(this.eContent);
             this.#eBlock = document.getElementById("block");
 
-            this.addToolBtn(new ToolButton("Graph", "analytics")).addHandler("drag", () => {
+            this.addToolButton(new ToolButton("Graph", "analytics")).addHandler("drag", () => {
                 this.dragData = new Panel.GraphPage();
                 this.dragging = true;
             });
@@ -2052,33 +2052,33 @@ export default class App extends core.App {
         return itm;
     }
 
-    get toolBtns() { return [...this.#toolBtns]; }
-    set toolBtns(v) {
+    get toolButtons() { return [...this.#toolButtons]; }
+    set toolButtons(v) {
         v = util.ensure(v, "arr");
-        this.clearToolBtns();
-        v.forEach(v => this.addToolBtn(v));
+        this.clearToolButtons();
+        v.forEach(v => this.addToolButton(v));
     }
-    clearToolBtns() {
-        let btns = this.toolBtns;
-        btns.forEach(btn => this.remToolBtn(btn));
+    clearToolButtons() {
+        let btns = this.toolButtons;
+        btns.forEach(btn => this.remToolButton(btn));
         return btns;
     }
-    hasToolBtn(btn) {
+    hasToolButton(btn) {
         if (!(btn instanceof ToolButton)) return false;
-        return this.#toolBtns.has(btn);
+        return this.#toolButtons.has(btn);
     }
-    addToolBtn(btn) {
+    addToolButton(btn) {
         if (!(btn instanceof ToolButton)) return false;
-        if (this.hasToolBtn(btn)) return false;
-        this.#toolBtns.add(btn);
+        if (this.hasToolButton(btn)) return false;
+        this.#toolButtons.add(btn);
         if (this.hasESideSection("tools"))
             this.getESideSection("tools").eContent.appendChild(btn.elem);
         return btn;
     }
-    remToolBtn(btn) {
+    remToolButton(btn) {
         if (!(btn instanceof ToolButton)) return false;
-        if (!this.hasToolBtn(btn)) return false;
-        this.#toolBtns.delete(btn);
+        if (!this.hasToolButton(btn)) return false;
+        this.#toolButtons.delete(btn);
         if (this.hasESideSection("tools"))
             this.getESideSection("tools").eContent.removeChild(btn.elem);
         return btn;

@@ -39,12 +39,49 @@ class FeatureButton extends core.Target {
     get name() { return this.eName.textContent; }
     set name(v) { this.eName.textContent = v; }
     get icon() { return this.eIcon.getAttribute("name"); }
-    set icon(v) { this.eIcon.setAttribute("name", v); }
+    set icon(v) {
+        this.eIcon.removeAttribute("src");
+        this.eIcon.setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     get tooltip() { return this.eTooltip.textContent; }
     set tooltip(v) {
         this.eTooltip.textContent = v;
         if (this.eTooltip.textContent.length > 0) this.eTooltip.style.visibility = "inherit";
         else this.eTooltip.style.visibility = "hidden";
+    }
+}
+
+class UpperFeatureButton extends core.Target {
+    #elem;
+    #eIcon;
+
+    constructor(icon) {
+        super();
+
+        this.#elem = document.createElement("button");
+        this.#eIcon = document.createElement("ion-icon");
+        this.elem.appendChild(this.eIcon);
+
+        this.icon = icon;
+    }
+
+    get elem() { return this.#elem; }
+    get eIcon() { return this.#eIcon; }
+
+    get icon() { return this.eIcon.getAttribute("name"); }
+    set icon(v) {
+        this.eIcon.removeAttribute("src");
+        this.eIcon.setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
     }
 }
 
@@ -97,7 +134,8 @@ class Star extends core.Target {
 }
 
 export default class App extends core.App {
-    #navToolButtons;
+    #featureButtons;
+    #upperFeatureButtons;
 
     #eBackground;
     #eCanvas;
@@ -111,7 +149,8 @@ export default class App extends core.App {
     constructor() {
         super();
 
-        this.#navToolButtons = new Set();
+        this.#featureButtons = new Set();
+        this.#upperFeatureButtons = new Set();
 
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#TITLEPAGE > .main > .title");
@@ -133,26 +172,6 @@ export default class App extends core.App {
                     let scroll = (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
                     starSpeed = util.lerp(1, 25, (scroll<0) ? 0 : (scroll>1) ? 1 : scroll);
                     canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
-                    if (this.hasEMain()) {
-                        let p = (scroll<0) ? 0 : (scroll>1) ? 1 : scroll;
-                        this.eMain.style.zIndex = (p > 0.5) ? -1 : "";
-                        this.eMain.style.transform = "translate(-50%, -50%) scale("+util.lerp(100, 200, p)+"%)";
-                        this.eMain.style.opacity = util.lerp(100, 0, p)+"%";
-                        this.eMain.style.pointerEvents = (p > 0) ? "none" : "";
-                        this.eMain.style.visibility = (p >= 1) ? "hidden" : "";
-                    }
-                    if (this.hasENav()) {
-                        this.eNav.style.opacity = util.lerp(100, 0, (scroll<0) ? 0 : (scroll>0.25) ? 1 : (scroll/0.25))+"%";
-                        this.eNav.style.visibility = (scroll < 0.25) ? "" : "hidden";
-                    }
-                    if (this.hasEDown()) {
-                        this.eDown.style.opacity = util.lerp(100, 0, (scroll<0) ? 0 : (scroll>0.25) ? 1 : (scroll/0.25))+"%";
-                        this.eDown.style.visibility = (scroll < 0.25) ? "" : "hidden";
-                    }
-                    if (this.hasEUp()) {
-                        this.eUp.style.opacity = util.lerp(0, 100, (scroll<1.25) ? 0 : (scroll>1.5) ? 1 : ((scroll-1.25)/0.25))+"%";
-                        this.eUp.style.visibility = (scroll > 1.25) ? "" : "hidden";
-                    }
                     let scale = Math.max(window.innerWidth/aspect, window.innerHeight/1);
                     let w = scale*aspect, h = scale;
                     if (canvas.width != w*quality) canvas.width = w*quality;
@@ -274,6 +293,31 @@ export default class App extends core.App {
                     dfs(this.eContent);
                     hljs.highlightAll();
                 })();
+                this.addHandler("update", data => {
+                    let scroll = this.eContent.scrollTop / window.innerHeight;
+                    if (this.hasEMain()) {
+                        let p = (scroll<0) ? 0 : (scroll>1) ? 1 : scroll;
+                        this.eMain.style.zIndex = (p > 0.5) ? -1 : "";
+                        this.eMain.style.transform = "translate(-50%, -50%) scale("+util.lerp(100, 200, p)+"%)";
+                        this.eMain.style.opacity = util.lerp(100, 0, p)+"%";
+                        this.eMain.style.pointerEvents = (p > 0) ? "none" : "";
+                        this.eMain.style.visibility = (p >= 1) ? "hidden" : "";
+                    }
+                    if (this.hasENav()) {
+                        this.eNav.style.opacity = util.lerp(100, 0, (scroll<0) ? 0 : (scroll>0.25) ? 1 : (scroll/0.25))+"%";
+                        this.eNav.style.visibility = (scroll < 0.25) ? "" : "hidden";
+                    }
+                    if (this.hasEDown()) {
+                        this.eDown.style.opacity = util.lerp(100, 0, (scroll<0) ? 0 : (scroll>0.25) ? 1 : (scroll/0.25))+"%";
+                        this.eDown.style.visibility = (scroll < 0.25) ? "" : "hidden";
+                    }
+                    if (this.hasEUp()) {
+                        if (scroll > 1) this.eUp.classList.add("this");
+                        else this.eUp.classList.remove("this");
+                    }
+                    if (scroll > 1) this.eTitleBar.classList.add("this");
+                    else this.eTitleBar.classList.remove("this");
+                });
             }
             this.#eNav = document.querySelector("#TITLEPAGE > .main > .nav");
             this.#eDown = document.querySelector("#TITLEPAGE > .main > button");
@@ -312,15 +356,34 @@ export default class App extends core.App {
             this.addHandler("cmd-spawn", name => window.api.ask("spawn", [name]));
             
             let btn;
-            btn = this.addNavToolButton(new FeatureButton("Panel", "grid"));
+
+            btn = this.addFeatureButton(new FeatureButton("Panel", "grid"));
             btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
-            btn = this.addNavToolButton(new FeatureButton("Planner", "analytics"));
+
+            btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
             // btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PLANNER"));
-            btn = this.addNavToolButton(new FeatureButton("Pursuit", "flash"));
+
+            btn = this.addFeatureButton(new FeatureButton("Pursuit", "flash"));
             btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PURSUIT"));
+
+            btn = this.addFeatureButton(new FeatureButton("Perception", "eye"));
+            btn.tooltip = "Coming soon!";
+            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
+
+            btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
+            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
+
+            btn = this.addUpperFeatureButton(new UpperFeatureButton("analytics"));
+            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PLANNER"));
+
+            btn = this.addUpperFeatureButton(new UpperFeatureButton("flash"));
+            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PURSUIT"));
+
+            btn = this.addUpperFeatureButton(new UpperFeatureButton("eye"));
+            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
 
             let prevLoads = [];
             let lock = false;
@@ -397,33 +460,63 @@ export default class App extends core.App {
         });
     }
 
-    get navToolButtons() { return [...this.#navToolButtons]; }
-    set navToolButtons(v) {
+    get featureButtons() { return [...this.#featureButtons]; }
+    set featureButtons(v) {
         v = util.ensure(v, "arr");
-        this.clearNavToolButtons();
-        v.forEach(v => this.addNavToolButton(v));
+        this.clearFeatureButtons();
+        v.forEach(v => this.addFeatureButton(v));
     }
-    clearNavToolButtons() {
-        let btns = this.navToolButtons;
-        btns.forEach(btn => this.remNavButton(btn));
+    clearFeatureButtons() {
+        let btns = this.featureButtons;
+        btns.forEach(btn => this.remFeatureButton(btn));
         return btns;
     }
-    hasNavToolButton(btn) {
+    hasFeatureButton(btn) {
         if (!(btn instanceof FeatureButton)) return false;
-        return this.#navToolButtons.has(btn);
+        return this.#featureButtons.has(btn);
     }
-    addNavToolButton(btn) {
+    addFeatureButton(btn) {
         if (!(btn instanceof FeatureButton)) return false;
-        if (this.hasNavToolButton(btn)) return false;
-        this.#navToolButtons.add(btn);
+        if (this.hasFeatureButton(btn)) return false;
+        this.#featureButtons.add(btn);
         if (this.hasENav()) this.eNav.appendChild(btn.elem);
         return btn;
     }
-    remNavButton(btn) {
+    remFeatureButton(btn) {
         if (!(btn instanceof FeatureButton)) return false;
-        if (!this.hasNavToolButton(btn)) return false;
-        this.#navToolButtons.delete(btn);
+        if (!this.hasFeatureButton(btn)) return false;
+        this.#featureButtons.delete(btn);
         if (this.hasENav()) this.eNav.removeChild(btn.elem);
+        return btn;
+    }
+
+    get upperFeatureButtons() { return [...this.#upperFeatureButtons]; }
+    set upperFeatureButtons(v) {
+        v = util.ensure(v, "arr");
+        this.clearUpperFeatureButtons();
+        v.forEach(v => this.addUpperFeatureButton(v));
+    }
+    clearUpperFeatureButtons() {
+        let btns = this.upperFeatureButtons;
+        btns.forEach(btn => this.remUpperFeatureButton(btn));
+        return btns;
+    }
+    hasUpperFeatureButton(btn) {
+        if (!(btn instanceof UpperFeatureButton)) return false;
+        return this.#featureButtons.has(btn);
+    }
+    addUpperFeatureButton(btn) {
+        if (!(btn instanceof UpperFeatureButton)) return false;
+        if (this.hasUpperFeatureButton(btn)) return false;
+        this.#upperFeatureButtons.add(btn);
+        this.eTitleBar.appendChild(btn.elem);
+        return btn;
+    }
+    remUpperFeatureButton(btn) {
+        if (!(btn instanceof UpperFeatureButton)) return false;
+        if (!this.hasUpperFeatureButton(btn)) return false;
+        this.#upperFeatureButtons.delete(btn);
+        this.eTitleBar.removeChild(btn.elem);
         return btn;
     }
 

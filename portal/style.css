@@ -1,5 +1,26 @@
 #titlebar {
+    padding: 0px;
+
+    gap: 0px;
+
+    border-bottom: none;
     opacity: 0%;
+    visibility: hidden;
+
+    transition: opacity var(--t), visibility var(--t);
+}
+#titlebar.this {
+    opacity: 100%;
+    visibility: inherit;
+}
+#titlebar > button {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    align-self: stretch;
+
+    aspect-ratio: 1 / 1;
 }
 
 body {
@@ -135,6 +156,16 @@ body {
 
     pointer-events: auto;
 }
+#TITLEPAGE > button {
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: opacity var(--t), visibility var(--t);
+}
+#TITLEPAGE > button.this {
+    opacity: 100%;
+    visibility: inherit;
+}
 #TITLEPAGE > .content {
     position: absolute;
     top: 50%;
@@ -230,13 +261,14 @@ article pre:not(:has(> code.hljs)) {
     border-radius: 10px;
 }
 article kbd {
-    padding: 3px 5px;
+    padding: 0px 5px;
 
     display: inline-block;
 
     background-color: var(--v2);
     color: var(--v8);
     border-radius: 5px;
+    filter: drop-shadow(0px 2px 0px var(--v3));
 
     font-family: monospace;
 }
