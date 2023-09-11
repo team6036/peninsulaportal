@@ -17,6 +17,8 @@
     - [Capabilities](#capabilities-1)
     - [Getting Started](#getting-started-2)
 - Peninsula Pursuit - <kbd>TBD</kbd>
+- Peninsula Perception - <kbd>TBD</kbd>
+- [Resources](#resources)
 
 ## Getting Started
 
@@ -133,3 +135,10 @@ Here is what the python script should expect as input and what it should output:
 }
 ```
 `vx`, `vy`, `vt`, and `theta` of `data.in` can be `null` to ignore a velocity or angle override. Adjust your script accordingly.
+
+## Resources
+- [Electron](https://www.electronjs.org/) - Window display and management
+- [Ionicons](https://ionic.io/ionicons) - App icons
+- [Fuse.js](https://www.fusejs.io/) - Fuzzy search
+- [Showdown.js](https://showdownjs.com/) - `.md` to `HTML`
+- [Highlight.js](https://highlightjs.org/) - Syntax coloring for code blocks in `.md`
