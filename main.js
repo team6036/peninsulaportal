@@ -178,6 +178,8 @@ class ProcessManager extends core.Target {
 class Portal extends core.Target {
     #started;
 
+    #stream;
+
     #manager;
 
     #features;
@@ -189,15 +191,30 @@ class Portal extends core.Target {
 
         this.#started = false;
 
+        this.#stream = null;
+
         this.#manager = new ProcessManager();
 
         this.#features = new Set();
 
         this.#loads = new Set();
 
-        this.log();
-
         // electron.nativeTheme.themeSource = "dark";
+    }
+
+    async init() {
+        await this.affirm();
+        const stdoutWrite = process.stdout.write;
+        const stderrWrite = process.stderr.write;
+        process.stdout.write = (...a) => {
+            stdoutWrite.apply(process.stdout, a);
+            this.stream.write.apply(this.stream, a);
+        };
+        process.stderr.write = (...a) => {
+            stderrWrite.apply(process.stderr, a);
+            this.stream.write.apply(this.stream, a);
+        };
+        this.log();
     }
 
     async isDevMode() {
@@ -226,6 +243,9 @@ class Portal extends core.Target {
         data = util.ensure(data, "obj");
         return !!data.spooky;
     }
+
+    get stream() { return this.#stream; }
+    hasStream() { return this.stream instanceof fs.WriteStream; }
 
     get manager() { return this.#manager; }
 
@@ -642,10 +662,33 @@ class Portal extends core.Target {
     static async affirm(dataPath) {
         let hasAppData = await this.dirHas(dataPath);
         if (!hasAppData) await this.dirMake(dataPath);
+        let hasLogDir = await this.dirHas([dataPath, "logs"]);
+        if (!hasLogDir) await this.dirMake([dataPath, "logs"]);
         return true;
     }
     async affirm() {
-        return Portal.affirm(this.dataPath);
+        let r = await Portal.affirm(this.dataPath);
+        if (!r) return r;
+        if (!this.hasStream()) {
+            let now = new Date();
+            let yr = now.getFullYear();
+            let mon = String(now.getMonth()+1);
+            let d = String(now.getDate());
+            let hr = String(now.getHours());
+            let min = String(now.getMinutes());
+            let s = String(now.getSeconds());
+            let ms = String(now.getMilliseconds());
+            while (mon.length < 2) mon = "0"+mon;
+            while (d.length < 2) d = "0"+d;
+            while (hr.length < 2) hr = "0"+hr;
+            while (min.length < 2) min = "0"+min;
+            while (s.length < 2) s = "0"+s;
+            while (ms.length < 3) ms += "0";
+            let name = [yr, mon, d, hr, min, s, ms].join("-")+".log";
+            this.#stream = fs.createWriteStream(Portal.makePath(this.dataPath, "logs", name));
+            await new Promise((res, rej) => this.stream.on("open", () => res()));
+        }
+        return r;
     }
 
     static makePath(...pth) {
@@ -1692,17 +1735,34 @@ Portal.Feature.Popup = class PortalFeaturePopup extends core.Target {
 
 const portal = new Portal();
 
-app.on("ready", () => {
+let ready = false, readyResolves = [];
+async function untilReady() {
+    return await new Promise((res, rej) => {
+        if (ready) return res();
+        readyResolves.push(res);
+    });
+}
+(async () => {
+    await portal.init();
+    ready = true;
+    readyResolves.forEach(res => res());
+    setInterval(() => portal.update(), 10);
+})();
+
+app.on("ready", async () => {
+    await untilReady();
     log("> ready");
     portal.start();
 });
 
-app.on("activate", () => {
+app.on("activate", async () => {
+    await untilReady();
     log("> activate");
     portal.start();
 });
 
 app.on("window-all-closed", async () => {
+    await untilReady();
     log("> all-closed");
     let quit = true;
     try {
@@ -1711,8 +1771,7 @@ app.on("window-all-closed", async () => {
     if (!quit) return;
     app.quit();
 });
-app.on("quit", () => {
+app.on("quit", async () => {
+    await untilReady();
     log("> quit");
 });
-
-setInterval(() => portal.update(), 10);
