@@ -557,6 +557,7 @@
     align-self: center;
 
     width: 20px;
+    min-width: 20px;
     height: 20px;
     margin-left: 5px;
     margin-bottom: 5px;
@@ -567,6 +568,7 @@
     font-size: 12px;
 }
 #mount > .content .item.panel > .top > .item {
+    min-width: max-content;
     padding: 7.5px 10px;
 
     display: flex;
@@ -798,7 +800,7 @@
 #mount > .content .item.panel > .content > .item.add > .search {
     overflow: hidden;
 
-    min-height: 35px;
+    min-height: 36.5px;
 
     display: flex;
     flex-direction: row;
@@ -913,6 +915,237 @@
     opacity: 50%;
 
     flex-basis: 100%;
+}
+#mount > .content .item.panel > .content > .item.tool.graph {
+    padding: 10px;
+    max-width: calc(100% - 20px);
+    max-height: calc(100% - 20px);
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > button.toggle {
+    width: 100%;
+    max-width: 100%;
+    height: 16px;
+    max-height: 16px;
+    padding: 0px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    
+    background-color: transparent;
+    color: var(--v7);
+
+    transition: color var(--t);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > button.toggle > ion-icon {
+    transform: scaleY(100%);
+
+    transition: transform var(--t);
+}
+#mount > .content .item.panel > .content > .item.tool.graph.open > button.toggle > ion-icon {
+    transform: scaleY(-100%);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > button.toggle:not(:disabled):hover {
+    color: var(--v8);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > button.toggle:disabled {
+    color: var(--v5);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .content {
+    width: calc(100% - 4px);
+    max-width: calc(100% - 4px);
+    height: calc(100% - 16px - 4px);
+    max-height: calc(100% - 16px - 4px);
+
+    border-radius: 10px;
+    border: 2px solid var(--v2);
+
+    transition: height var(--t), max-height var(--t);
+}
+#mount > .content .item.panel > .content > .item.tool.graph.open > .content {
+    height: calc(65% - 8px - 4px);
+    max-height: calc(65% - 8px - 4px);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    height: 0%;
+    max-height: 0%;
+    padding: 0px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2-8);
+    border-radius: 10px;
+
+    transition: height var(--t), max-height var(--t), padding var(--t);
+}
+#mount > .content .item.panel > .content > .item.tool.graph.open > .options {
+    height: calc(35% - 8px - 20px);
+    max-height: calc(35% - 8px - 20px);
+    padding: 10px;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section {
+    flex-basis: 100%;
+
+    max-width: calc((100% - 20px) / 3);
+    max-height: 100%;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section > .header {
+    color: var(--v8);
+
+    text-align: center;
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 550;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item > button.display {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    padding: 5px;
+
+    justify-content: flex-start;
+    gap: 10px;
+
+    border-radius: 5px;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item > button.display > div {
+    flex-basis: 100%;
+
+    text-align: left;
+    font-size: 14px;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item > button.display > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item > .content {
+    position: relative;
+
+    padding: 5px;
+    padding-left: 20px;
+
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item > .content::before {
+    content: "";
+
+    position: absolute;
+    top: 0px;
+    left: 10px;
+
+    width: 2px;
+    height: 100%;
+    transform: translateX(-50%);
+
+    background-color: var(--v2);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item.open > .content {
+    display: flex;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item.open > .content > .colorpicker {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item.open > .content > .colorpicker > button {
+    height: 15px;
+    aspect-ratio: 1 / 1;
+
+    border: 2px solid transparent;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.vars > .item.open > .content > .colorpicker > button.this {
+    border: 2px solid var(--v8);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.view > .nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.view > .nav > button {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    width: 20%;
+    max-width: 20%;
+    min-width: 20%;
+    padding: 2px;
+
+    border-radius: 10px;
+
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 550;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.view > .nav > button.this {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--v8);
+    --fgh: var(--v4);
+    --bgd: var(--v6);
+    --fgd: var(--v1);
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.view > .info {
+    color: var(--v8);
+
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 550;
+}
+#mount > .content .item.panel > .content > .item.tool.graph > .options > .section.view > .info > input {
+    padding: 5px;
 }
 #overlay {
     position: absolute;

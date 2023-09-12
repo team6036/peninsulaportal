@@ -175,6 +175,84 @@ label.filedialog > button::before {
     content: "Browse";
 }
 
+label.checkbox {
+    --bg: var(--v3);
+    --fg: var(--v8);
+    --bgh: var(--v4);
+    --fgh: var(--v8);
+    --bgc: var(--cg3);
+    --fgc: var(--v8);
+    --bgch: var(--cg4);
+    --fgch: var(--v8);
+
+    position: relative;
+
+    display: inline-block;
+
+    cursor: pointer;
+}
+label.checkbox > input[type="checkbox"] {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+    min-height: 20px;
+    padding: 0px;
+    margin: 0px;
+
+    opacity: 0%;
+
+    cursor: pointer;
+}
+label.checkbox > span {
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+    min-height: 20px;
+
+    display: block flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    background-color: var(--bg);
+    border-radius: 5px;
+
+    transition: background-color var(--t);
+}
+label.checkbox > span > ion-icon {
+    transform: scale(0%);
+
+    color: var(--fg);
+
+    transition: transform var(--t), color var(--t);
+}
+label.checkbox:hover > span {
+    background-color: var(--bgh);
+}
+label.checkbox:hover > span > ion-icon {
+    color: var(--fgh);
+}
+label.checkbox > input[type="checkbox"]:checked ~ span {
+    background-color: var(--bgc);
+}
+label.checkbox > input[type="checkbox"]:checked ~ span > ion-icon {
+    transform: scale(100%);
+
+    color: var(--fgc);
+}
+label.checkbox:hover > input[type="checkbox"]:checked ~ span {
+    background-color: var(--bgch);
+}
+label.checkbox:hover > input[type="checkbox"]:checked ~ span > ion-icon {
+    color: var(--fgch);
+}
+
 label.switch {
     position: relative;
     min-width: 30px;

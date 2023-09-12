@@ -818,6 +818,12 @@ Panel.Page = class PanelPage extends core.Target {
         if (!this.hasParent()) return "";
         return this.parent.path + "-" + this.parent.pages.indexOf(this);
     }
+
+    getHovered(pos, options) {
+        pos = new V(pos);
+        options = util.ensure(options, "obj");
+        return null;
+    }
 };
 Panel.AddPage = class PanelAddPage extends Panel.Page {
     #searchPart;
@@ -887,35 +893,106 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         if (this.searchPart == null) {
             this.tags = [];
             this.placeholder = "Search tools, tables, and topics";
-            this.items = [
-                new Panel.AddPage.Button("Tables", "folder-outline", true),
-                new Panel.AddPage.Button("Topics", "document-outline", true),
-                new Panel.AddPage.Button("All", "", true),
-                new Panel.AddPage.Divider(),
-                new Panel.AddPage.Header("Tools"),
-                new Panel.AddPage.Button("Tools", "cube-outline", true),
-                new Panel.AddPage.Button("Graph", "analytics"),
-            ];
-            this.items[0].addHandler("trigger", () => {
-                this.searchPart = "tables";
-            });
-            this.items[1].addHandler("trigger", () => {
-                this.searchPart = "topics";
-            });
-            this.items[2].iconSrc = "../assets/icons/variable.svg";
-            this.items[2].addHandler("trigger", () => {
-                this.searchPart = "all";
-            });
-            this.items[5].addHandler("trigger", () => {
-                this.searchPart = "tools";
-            });
+            if (this.query.length > 0) {
+                let toolItems = [
+                    {
+                        item: new Panel.AddPage.Button("Graph", "analytics"),
+                        trigger: () => {
+                            if (!this.hasParent()) return;
+                            let index = this.parent.pages.indexOf(this);
+                            this.parent.addPage(new Panel.GraphPage(), index);
+                            this.parent.remPage(this);
+                        },
+                    },
+                ];
+                toolItems = toolItems.map(item => {
+                    item.item.addHandler("trigger", item.trigger);
+                    return item.item;
+                });
+                const fuse = new Fuse(toolItems, {
+                    isCaseSensitive: false,
+                    keys: [
+                        "name",
+                    ],
+                });
+                toolItems = fuse.search(this.query).map(item => item.item);
+                let genericItems = [];
+                if (this.hasApp() && this.app.hasRootModel() && this.app.rootModel.hasRoot()) {
+                    let root = this.app.rootModel.root;
+                    const dfs = generic => {
+                        let itm = new Panel.AddPage.GenericButton(generic);
+                        genericItems.push({
+                            item: itm,
+                            trigger: () => {
+                                if (!this.hasParent()) return;
+                                let index = this.parent.pages.indexOf(this);
+                                this.parent.addPage(new Panel.BrowserPage(generic.path), index);
+                                this.parent.remPage(this);
+                            },
+                        });
+                        if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfs(generic));
+                    };
+                    dfs(root);
+                }
+                genericItems = genericItems.map(item => {
+                    item.item.addHandler("trigger", item.trigger);
+                    return item.item;
+                });
+                const genericFuse = new Fuse(genericItems, {
+                    isCaseSensitive: false,
+                    keys: [
+                        "generic.path",
+                    ],
+                });
+                genericItems = genericFuse.search(this.query).map(item => item.item);
+                this.items = [
+                    new Panel.AddPage.Header("Tools"),
+                    ...toolItems,
+                    new Panel.AddPage.Header("Tables and Topics"),
+                    ...genericItems,
+                ];
+            } else {
+                this.items = [
+                    new Panel.AddPage.Button("Tables", "folder-outline", true),
+                    new Panel.AddPage.Button("Topics", "document-outline", true),
+                    new Panel.AddPage.Button("All", "", true),
+                    new Panel.AddPage.Divider(),
+                    new Panel.AddPage.Header("Tools"),
+                    new Panel.AddPage.Button("Tools", "cube-outline", true),
+                    new Panel.AddPage.Button("Graph", "analytics"),
+                ];
+                this.items[0].addHandler("trigger", () => {
+                    this.searchPart = "tables";
+                });
+                this.items[1].addHandler("trigger", () => {
+                    this.searchPart = "topics";
+                });
+                this.items[2].iconSrc = "../assets/icons/variable.svg";
+                this.items[2].addHandler("trigger", () => {
+                    this.searchPart = "all";
+                });
+                this.items[5].addHandler("trigger", () => {
+                    this.searchPart = "tools";
+                });
+                this.items[6].addHandler("trigger", () => {
+                    if (!this.hasParent()) return;
+                    let index = this.parent.pages.indexOf(this);
+                    this.parent.addPage(new Panel.GraphPage(), index);
+                    this.parent.remPage(this);
+                });
+            }
         } else if (this.searchPart == "tools") {
             this.tags = [new Panel.AddPage.Tag("Tools", "cube-outline")];
             this.placeholder = "Search tools";
             let items = [
                 {
                     item: new Panel.AddPage.Button("Graph", "analytics"),
-                    trigger: () => {},
+                    trigger: () => {
+                        if (!this.hasParent()) return;
+                        let index = this.parent.pages.indexOf(this);
+                        this.parent.addPage(new Panel.GraphPage(), index);
+                        this.parent.remPage(this);
+                    },
                 },
             ];
             items = items.map(item => {
@@ -1527,14 +1604,681 @@ Panel.ToolPage = class PanelToolPage extends Panel.Page {
     constructor(name, icon) {
         super();
 
+        this.elem.classList.add("tool");
+
         this.name = name;
         this.icon = icon;
     }
 };
 Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
+    #lVars; #rVars;
+
+    #viewMode;
+    #viewParams;
+
+    #eToggle;
+    #eOptions;
+    #eOptionSections;
+    #eContent;
+    #canvas; #ctx;
+
     constructor() {
         super("Graph", "analytics");
+
+        this.elem.classList.add("graph");
+
+        this.#lVars = new Set();
+        this.#rVars = new Set();
+
+        this.#viewMode = "all";
+        this.#viewParams = {};
+
+        this.#eContent = document.createElement("div");
+        this.elem.appendChild(this.eContent);
+        this.eContent.classList.add("content");
+        this.#canvas = document.createElement("canvas");
+        this.eContent.appendChild(this.canvas);
+        this.#ctx = this.canvas.getContext("2d");
+        this.#eToggle = document.createElement("button");
+        this.elem.appendChild(this.eToggle);
+        this.eToggle.classList.add("toggle");
+        this.eToggle.classList.add("override");
+        this.eToggle.innerHTML = "<ion-icon name='chevron-up'></ion-icon>";
+        this.#eOptions = document.createElement("div");
+        this.elem.appendChild(this.eOptions);
+        this.eOptions.classList.add("options");
+        this.#eOptionSections = {};
+        ["l", "v", "r"].forEach(id => {
+            const elem = this.#eOptionSections[id] = document.createElement("div");
+            this.eOptions.appendChild(elem);
+            elem.id = id;
+            elem.classList.add("section");
+            elem.innerHTML = "<div class='header'>"+{ l: "Left Axis", v: "View Window", r: "Right Axis" }[id]+"</div>";
+            let idfs = {
+                l: () => elem.classList.add("vars"),
+                r: () => elem.classList.add("vars"),
+                v: () => {
+                    elem.classList.add("view");
+                    let eNav = document.createElement("div");
+                    elem.appendChild(eNav);
+                    eNav.classList.add("nav");
+                    const viewModes = ["left", "right", "section", "all"];
+                    let eNavButtons = {};
+                    let eForModes = {};
+                    viewModes.forEach(mode => {
+                        let btn = document.createElement("button");
+                        eNav.appendChild(btn);
+                        eNavButtons[mode] = btn;
+                        btn.textContent = mode[0].toUpperCase()+mode.slice(1).toLowerCase();
+                        btn.addEventListener("click", e => {
+                            this.viewMode = mode;
+                        });
+                        let elems = eForModes[mode] = [];
+                        let modefs = {
+                            left: () => {
+                                let info = document.createElement("div");
+                                elem.appendChild(info);
+                                elems.push(info);
+                                info.classList.add("info");
+                                info.textContent = "Forwards View Time";
+                                let input = document.createElement("input");
+                                elem.appendChild(input);
+                                elems.push(input);
+                                input.type = "number";
+                                input.min = 0;
+                                input.placeholder = "...";
+                                this.viewParams.time = 5000;
+                                input.addEventListener("change", e => {
+                                    let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
+                                    this.viewParams.time = v;
+                                });
+                                this.addHandler("update", data => {
+                                    if (document.activeElement == input) return;
+                                    input.value = this.viewParams.time;
+                                });
+                            },
+                            right: () => {
+                                let info = document.createElement("div");
+                                elem.appendChild(info);
+                                elems.push(info);
+                                info.classList.add("info");
+                                info.textContent = "Backwards View Time";
+                                let input = document.createElement("input");
+                                elem.appendChild(input);
+                                elems.push(input);
+                                input.type = "number";
+                                input.min = 0;
+                                input.placeholder = "...";
+                                this.viewParams.time = 5000;
+                                input.addEventListener("change", e => {
+                                    let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
+                                    this.viewParams.time = v;
+                                });
+                                this.addHandler("update", data => {
+                                    if (document.activeElement == input) return;
+                                    input.value = this.viewParams.time;
+                                });
+                            },
+                            section: () => {
+                                let info, input;
+                                info = document.createElement("div");
+                                elem.appendChild(info);
+                                elems.push(info);
+                                info.classList.add("info");
+                                info.textContent = "Range Start";
+                                let startInput = input = document.createElement("input");
+                                elem.appendChild(input);
+                                elems.push(input);
+                                input.type = "number";
+                                input.min = 0;
+                                input.placeholder = "Start";
+                                info = document.createElement("div");
+                                elem.appendChild(info);
+                                elems.push(info);
+                                info.classList.add("info");
+                                info.textContent = "Range Stop";
+                                let stopInput = input = document.createElement("input");
+                                elem.appendChild(input);
+                                elems.push(input);
+                                input.type = "number";
+                                input.min = 0;
+                                input.placeholder = "Stop";
+                                this.viewParams.start = 0;
+                                this.viewParams.stop = 5000;
+                                startInput.addEventListener("change", e => {
+                                    let v = Math.max(0, util.ensure(parseFloat(startInput.value), "num"));
+                                    this.viewParams.start = v;
+                                });
+                                stopInput.addEventListener("change", e => {
+                                    let v = Math.max(0, util.ensure(parseFloat(stopInput.value), "num"));
+                                    this.viewParams.stop = v;
+                                });
+                                this.addHandler("update", data => {
+                                    if (document.activeElement != startInput) startInput.value = this.viewParams.start;
+                                    if (document.activeElement != stopInput) stopInput.value = this.viewParams.stop;
+                                });
+                            },
+                        };
+                        if (mode in modefs) modefs[mode]();
+                    });
+                    this.addHandler("update", data => {
+                        for (let mode in eNavButtons) {
+                            if (mode == this.viewMode) eNavButtons[mode].classList.add("this");
+                            else eNavButtons[mode].classList.remove("this");
+                            eForModes[mode].forEach(elem => {
+                                elem.style.display = (mode == this.viewMode) ? "" : "none";
+                            });
+                        }
+                    });
+                },
+            };
+            if (id in idfs) idfs[id]();
+        });
+
+        this.eToggle.addEventListener("click", e => {
+            this.isOptionsOpen = !this.isOptionsOpen;
+        });
+
+        const quality = 3;
+        const padding = 60;
+
+        new ResizeObserver(() => {
+            let r = this.eContent.getBoundingClientRect();
+            this.canvas.width = (r.width-4) * quality;
+            this.canvas.height = (r.height-4) * quality;
+            this.canvas.style.width = (r.width-4)+"px";
+            this.canvas.style.height = (r.height-4)+"px";
+            this.update();
+        }).observe(this.eContent);
+
+        this.addHandler("update", () => {
+            if (this.isClosed) return;
+            const ctx = this.ctx;
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            if (!this.hasApp() || !this.app.hasRootModel() || !this.app.rootModel.hasRoot()) return;
+            const model = this.app.rootModel;
+            const graphRange = {
+                left: () => [
+                    model.clientStartTime,
+                    Math.min(model.clientTime, model.clientStartTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                ],
+                right: () => [
+                    Math.max(model.clientStartTime, model.clientTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    model.clientTime,
+                ],
+                section: () => {
+                    let start = util.ensure(this.viewParams.start, "num", model.clientStartTime);
+                    let stop = util.ensure(this.viewParams.stop, "num", model.clientTime);
+                    start = Math.min(model.clientTime, Math.max(model.clientStartTime, start));
+                    stop = Math.min(model.clientTime, Math.max(model.clientStartTime, stop));
+                    stop = Math.max(start, stop);
+                    return [start, stop];
+                },
+                all: () => [model.clientStartTime, model.clientTime],
+            }[this.viewMode]();
+            let graphVars = [
+                { vars: this.lVars },
+                { vars: this.rVars },
+            ];
+            graphVars.forEach((o, i) => {
+                let vars = o.vars;
+                let range = [null, null];
+                let logs = {};
+                vars.forEach(v => {
+                    if (!v.isShown) return;
+                    if (!v.hasName()) return this["rem"+"LR"[i]+"Var"](v.name);
+                    let log = model.getLogFor(v.name, ...graphRange);
+                    if (!util.is(log, "arr")) return this["rem"+"LR"[i]+"Var"](v.name);
+                    let start = model.getValueAt(v.name, graphRange[0]), stop = model.getValueAt(v.name, graphRange[1]);
+                    if (start != null) log.unshift({ ts: graphRange[0], v: start });
+                    if (stop != null) log.push({ ts: graphRange[1], v: stop });
+                    if (log.length <= 0) return;
+                    logs[v.name] = log;
+                    let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
+                    if (range[0] == null || range[1] == null) return range = subrange;
+                    range[0] = Math.min(range[0], subrange[0]);
+                    range[1] = Math.max(range[1], subrange[1]);
+                });
+                range = range.map(v => util.ensure(v, "num"));
+                let step = Panel.GraphPage.findStep(range[1]-range[0], 5);
+                range[0] = Math.floor(range[0]/step) - 1;
+                range[1] = Math.ceil(range[1]/step) + 1;
+                o.range = range;
+                o.step = step;
+                o.logs = logs;
+            });
+            let maxNSteps = 0;
+            graphVars.forEach(o => {
+                let range = o.range;
+                maxNSteps = Math.max(maxNSteps, range[1]-range[0]);
+            });
+            graphVars.forEach(o => {
+                let range = o.range;
+                let nSteps = range[1]-range[0];
+                let addAbove = Math.ceil((maxNSteps-nSteps) / 2);
+                let addBelow = (maxNSteps-nSteps) - addAbove;
+                range[0] -= addBelow;
+                range[1] += addAbove;
+                o.range = range;
+            });
+            const timeStep = Panel.GraphPage.findStep(graphRange[1]-graphRange[0], 10);
+            let y0 = padding*quality;
+            let y1 = ctx.canvas.height - padding*quality;
+            let y2 = ctx.canvas.height - (padding-5)*quality;
+            let y3 = ctx.canvas.height - (padding-10)*quality;
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.font = (12*quality)+"px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+            for (let i = Math.ceil(graphRange[0]/timeStep); i <= Math.floor(graphRange[1]/timeStep); i++) {
+                let x = (i*timeStep - graphRange[0]) / (graphRange[1]-graphRange[0]);
+                x = util.lerp(padding*quality, ctx.canvas.width - padding*quality, x);
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.lineWidth = 2*quality;
+                ctx.lineJoin = ctx.lineCap = "square";
+                ctx.beginPath();
+                ctx.moveTo(x, y1);
+                ctx.lineTo(x, y2);
+                ctx.stroke();
+                let t = i*timeStep, unit = "ms";
+                if (t/1000 >= 1) {
+                    t /= 1000;
+                    unit = "s";
+                }
+                ctx.fillText(t+unit, x, y3);
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+                ctx.lineWidth = 2*quality;
+                ctx.lineJoin = ctx.lineCap = "square";
+                ctx.beginPath();
+                ctx.moveTo(x, y0);
+                ctx.lineTo(x, y1);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+            ctx.lineWidth = 2*quality;
+            ctx.lineJoin = ctx.lineCap = "square";
+            for (let i = 0; i <= maxNSteps; i++) {
+                let y = i / maxNSteps;
+                y = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y);
+                ctx.beginPath();
+                ctx.moveTo(padding*quality, y);
+                ctx.lineTo(ctx.canvas.width-padding*quality, y);
+                ctx.stroke();
+            }
+            graphVars.forEach((o, i) => {
+                let vars = o.vars;
+                let range = o.range;
+                let step = o.step;
+                let logs = o.logs;
+                let x1 = [padding*quality, ctx.canvas.width-padding*quality][i];
+                let x2 = [(padding-5)*quality, ctx.canvas.width-(padding-5)*quality][i];
+                let x3 = [(padding-10)*quality, ctx.canvas.width-(padding-10)*quality][i];
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.lineWidth = 2*quality;
+                ctx.lineJoin = ctx.lineCap = "square";
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.font = (12*quality)+"px monospace";
+                ctx.textAlign = ["right", "left"][i];
+                ctx.textBaseline = "middle";
+                for (let j = range[0]; j <= range[1]; j++) {
+                    let y = (j-range[0]) / (range[1]-range[0]);
+                    y = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y);
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y);
+                    ctx.lineTo(x2, y);
+                    ctx.stroke();
+                    ctx.fillText(j*step, x3, y);
+                }
+                vars.forEach(v => {
+                    if (!(v.name in logs)) return;
+                    let log = logs[v.name];
+                    let path = [];
+                    for (let i = 0; i+1 < log.length; i++) {
+                        let j = i+1;
+                        let pi = log[i], pj = log[j];
+                        path.push([pi.ts, pi.v], [pj.ts, pi.v], [pj.ts, pj.v]);
+                    }
+                    ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color) : v.color : "#fff";
+                    ctx.lineWidth = 2*quality;
+                    ctx.lineJoin = ctx.lineCap = "round";
+                    ctx.beginPath();
+                    path.forEach((p, i) => {
+                        p = new V(p).sub(graphRange[0], step*range[0]).div(graphRange[1]-graphRange[0], Math.max(util.EPSILON, step*(range[1]-range[0])));
+                        p.y = 1-p.y;
+                        p.imul(new V(ctx.canvas.width, ctx.canvas.height).isub(2*padding*quality));
+                        p.iadd(padding*quality);
+                        if (i > 0) ctx.lineTo(...p.xy);
+                        else ctx.moveTo(...p.xy);
+                    });
+                    ctx.stroke();
+                });
+            });
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.lineWidth = 2*quality;
+            ctx.lineJoin = ctx.lineCap = "square";
+            ctx.beginPath();
+            ctx.rect(...new V(padding*quality).xy, ...new V(ctx.canvas.width, ctx.canvas.height).sub(2*padding*quality).xy);
+            ctx.stroke();
+        });
+
+        this.viewMode = "all";
+        this.openOptions();
     }
+
+    static findStep(v, nSteps) {
+        v = Math.max(0, util.ensure(v, "num"));
+        if (v <= 0) return 1;
+        let factors = [1, 2, 5];
+        let pow = Math.round(Math.log10(v));
+        let closest = null, closests = [];
+        for (let i = -1; i <= 1; i++) {
+            factors.forEach(f => {
+                let step = (10 ** (pow+i)) * f;
+                let a = Math.abs(nSteps - Math.round(v / step));
+                if (closest == null || a < closest) {
+                    closest = a;
+                    closests = [];
+                }
+                if (a == closest) closests.push(step);
+            });
+        }
+        return Math.min(...closests);
+    }
+
+    get lVars() { return [...this.#lVars]; }
+    set lVars(v) {
+        v = util.ensure(v, "arr");
+        this.clearLVars();
+        v.forEach(v => this.addLVar(v));
+    }
+    clearLVars() {
+        let lVars = this.lVars;
+        lVars.forEach(lVar => this.remLVar(lVar));
+        return lVars;
+    }
+    hasLVar(lVar) {
+        if (!(lVar instanceof Panel.GraphPage.Variable)) return false;
+        return this.#lVars.has(lVar);
+    }
+    addLVar(lVar) {
+        if (!(lVar instanceof Panel.GraphPage.Variable)) return false;
+        if (this.hasLVar(lVar)) return false;
+        this.#lVars.add(lVar);
+        lVar._onRemove = () => this.remLVar(lVar);
+        lVar.addHandler("remove", lVar._onRemove);
+        if (this.hasEOptionSection("l"))
+            this.getEOptionSection("l").appendChild(lVar.elem);
+        return lVar;
+    }
+    remLVar(lVar) {
+        if (!(lVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!this.hasLVar(lVar)) return false;
+        this.#lVars.delete(lVar);
+        lVar.remHandler("remove", lVar._onRemove);
+        delete lVar._onRemove;
+        if (this.hasEOptionSection("l"))
+            this.getEOptionSection("l").removeChild(lVar.elem);
+        return lVar;
+    }
+    get rVars() { return [...this.#rVars]; }
+    set rVars(v) {
+        v = util.ensure(v, "arr");
+        this.clearRVars();
+        v.forEach(v => this.addRVar(v));
+    }
+    clearRVars() {
+        let rVars = this.rVars;
+        rVars.forEach(rVar => this.remRVar(rVar));
+        return rVars;
+    }
+    hasRVar(rVar) {
+        if (!(rVar instanceof Panel.GraphPage.Variable)) return false;
+        return this.#rVars.has(rVar);
+    }
+    addRVar(rVar) {
+        if (!(rVar instanceof Panel.GraphPage.Variable)) return false;
+        if (this.hasRVar(rVar)) return false;
+        this.#rVars.add(rVar);
+        rVar._onRemove = () => this.remRVar(rVar);
+        rVar.addHandler("remove", rVar._onRemove);
+        if (this.hasEOptionSection("r"))
+            this.getEOptionSection("r").appendChild(rVar.elem);
+        return rVar;
+    }
+    remRVar(rVar) {
+        if (!(rVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!this.hasRVar(rVar)) return false;
+        this.#rVars.delete(rVar);
+        rVar.remHandler("remove", rVar._onRemove);
+        delete rVar._onRemove;
+        if (this.hasEOptionSection("r"))
+            this.getEOptionSection("r").removeChild(rVar.elem);
+        return rVar;
+    }
+
+    get viewMode() { return this.#viewMode; }
+    set viewMode(v) {
+        v = String(v);
+        if (this.viewMode == v) return;
+        if (!["right", "left", "section", "all"].includes(v)) return;
+        this.#viewMode = v;
+    }
+    get viewParams() { return this.#viewParams; }
+
+    get eToggle() { return this.#eToggle; }
+    get eContent() { return this.#eContent; }
+    get canvas() { return this.#canvas; }
+    get ctx() { return this.#ctx; }
+    get eOptions() { return this.#eOptions; }
+    get eOptionSections() { return Object.keys(this.#eOptionSections); }
+    hasEOptionSection(id) { return id in this.#eOptionSections; }
+    getEOptionSection(id) { return this.#eOptionSections[id]; }
+
+    get isOptionsOpen() { return this.elem.classList.contains("open"); }
+    set isOptionsOpen(v) {
+        v = !!v;
+        if (this.isOptionsOpen == v) return;
+        if (v) this.elem.classList.add("open");
+        else this.elem.classList.remove("open");
+    }
+    get isOptionsClosed() { return !this.isOptionsOpen; }
+    set isOptionsClosed(v) { this.isOptionsOpen = !v; }
+    openOptions() { return this.isOptionsOpen = true; }
+    closeOptions() { return this.isOptionsClosed = true; }
+
+    getHovered(data, pos, options) {
+        pos = new V(pos);
+        options = util.ensure(options, "obj");
+        if (this.isOptionsClosed) return null;
+        let r;
+        r = this.eOptions.getBoundingClientRect();
+        if (pos.x < r.left || pos.x > r.right) return null;
+        if (pos.y < r.top || pos.y > r.bottom) return null;
+        for (let i = 0; i < this.eOptionSections.length; i++) {
+            let id = this.eOptionSections[i];
+            let elem = this.getEOptionSection(id);
+            r = elem.getBoundingClientRect();
+            if (pos.x < r.left || pos.x > r.right) continue;
+            if (pos.y < r.top || pos.y > r.bottom) continue;
+            const numbers = ["double", "float", "int"];
+            let idfs = {
+                _: side => {
+                    if (!(data instanceof NTModel.Topic)) return null;
+                    if (data.isArray && !numbers.includes(data.arraylessType)) return null;
+                    if (!data.isArray && !numbers.includes(data.type)) return null;
+                    return {
+                        r: r,
+                        submit: () => {
+                            const colors = "rybogpcm";
+                            const addVar = name => {
+                                let taken = new Array(colors.length).fill(false);
+                                [...this.lVars, ...this.rVars].forEach(v => {
+                                    colors.split("").forEach((c, i) => {
+                                        if (v.color == "--c"+c) taken[i] = true;
+                                    });
+                                });
+                                let nextColor = null;
+                                taken.forEach((v, i) => {
+                                    if (v) return;
+                                    if (nextColor != null) return;
+                                    nextColor = colors[i];
+                                });
+                                if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
+                                let has = false;
+                                this[side+"Vars"].forEach(v => (v.name == name) ? (has = true) : null);
+                                if (has) return;
+                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphPage.Variable(name, "--c"+nextColor));
+                            };
+                            if (data.isArray)
+                                for (let i = 0; i < data.value.length; i++)
+                                    addVar(data.path+"/"+i);
+                            else addVar(data.path);
+                        },
+                    };
+                },
+                l: () => idfs._("l"),
+                r: () => idfs._("r"),
+            };
+            if (elem.id in idfs) {
+                let data = idfs[elem.id]();
+                if (util.is(data, "obj")) return data;
+            }
+        }
+        return null;
+    }
+};
+Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
+    #name;
+    #color;
+
+    #elem;
+    #eDisplay;
+    #eShowBox;
+    #eShow;
+    #eShowDisplay;
+    #eDisplayName;
+    #eRemoveBtn;
+    #eContent;
+    #eColorPicker;
+    #eColorPickerColors;
+
+    constructor(name, color) {
+        super();
+
+        this.#name = null;
+        this.#color = null;
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("item");
+        this.#eDisplay = document.createElement("button");
+        this.elem.appendChild(this.eDisplay);
+        this.eDisplay.classList.add("display");
+        this.#eShowBox = document.createElement("label");
+        this.eDisplay.appendChild(this.eShowBox);
+        this.eShowBox.classList.add("checkbox");
+        this.eShowBox.innerHTML = "<input type='checkbox'><span><ion-icon name='eye'></ion-icon></span>";
+        this.#eShow = this.eShowBox.children[0];
+        this.#eShowDisplay = this.eShowBox.children[1];
+        this.#eDisplayName = document.createElement("div");
+        this.eDisplay.appendChild(this.eDisplayName);
+        this.#eRemoveBtn = document.createElement("button");
+        this.eDisplay.appendChild(this.eRemoveBtn);
+        this.eRemoveBtn.classList.add("icon");
+        this.eRemoveBtn.innerHTML = "<ion-icon name='trash'></ion-icon>";
+        this.#eContent = document.createElement("div");
+        this.elem.appendChild(this.eContent);
+        this.eContent.classList.add("content");
+        this.#eColorPicker = document.createElement("div");
+        this.eContent.appendChild(this.eColorPicker);
+        this.eColorPicker.classList.add("colorpicker");
+        this.#eColorPickerColors = [];
+        [
+            { _: "cr", h: "cr5", d: "cr3" },
+            { _: "co", h: "co5", d: "co3" },
+            { _: "cy", h: "cy5", d: "cy3" },
+            { _: "cg", h: "cg5", d: "cg3" },
+            { _: "cc", h: "cc5", d: "cc3" },
+            { _: "cb", h: "cb5", d: "cb3" },
+            { _: "cp", h: "cp5", d: "cp3" },
+            { _: "cm", h: "cm5", d: "cm3" },
+        ].forEach(colors => {
+            let btn = document.createElement("button");
+            this.eColorPicker.appendChild(btn);
+            this.#eColorPickerColors.push(btn);
+            btn.color = "--"+colors._;
+            btn.style.setProperty("--bg", "var(--"+colors._+")");
+            btn.style.setProperty("--bgh", "var(--"+colors.h+")");
+            btn.style.setProperty("--bgd", "var(--"+colors.d+")");
+            btn.addEventListener("click", e => {
+                this.color = btn.color;
+            });
+        });
+
+        this.eShowBox.addEventListener("click", e => {
+            e.stopPropagation();
+        });
+        this.eRemoveBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("remove", null);
+        });
+        this.eDisplay.addEventListener("click", e => {
+            this.isOpen = !this.isOpen;
+        });
+
+        this.name = name;
+        this.color = color;
+        this.show();
+    }
+
+    get name() { return this.#name; }
+    set name(v) {
+        this.#name = (v == null) ? null : String(v);
+        this.eDisplayName.textContent = this.hasName() ? this.name : "?";
+    }
+    hasName() { return this.name != null; }
+    get color() { return this.#color; }
+    set color(v) {
+        this.#color = (v == null) ? null : String(v);
+        let color = this.hasColor() ? this.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.color) : this.color : "#fff";
+        this.eShowDisplay.style.setProperty("--bgc", color);
+        this.eShowDisplay.style.setProperty("--bgch", color);
+        this.eDisplayName.style.color = color;
+        this.eColorPickerColors.forEach(btn => {
+            if (btn.color == this.color) btn.classList.add("this");
+            else btn.classList.remove("this");
+        });
+    }
+    hasColor() { return this.color != null; }
+
+    get elem() { return this.#elem; }
+    get eDisplay() { return this.#eDisplay; }
+    get eShowBox() { return this.#eShowBox; }
+    get eShow() { return this.#eShow; }
+    get eShowDisplay() { return this.#eShowDisplay; }
+    get eDisplayName() { return this.#eDisplayName; }
+    get eRemoveBtn() { return this.#eRemoveBtn; }
+    get eContent() { return this.#eContent; }
+    get eColorPicker() { return this.#eColorPicker; }
+    get eColorPickerColors() { return [...this.#eColorPickerColors]; }
+
+    get isShown() { return this.eShow.checked; }
+    set isShown(v) { this.eShow.checked = v; }
+    get isHidden() { return !this.isShown; }
+    set isHidden(v) { this.isShown = !v; }
+    show() { return this.isShown = true; }
+    hide() { return this.isHidden = true; }
+
+    get isOpen() { return this.elem.classList.contains("open"); }
+    set isOpen(v) {
+        v = !!v;
+        if (this.open == v) return;
+        if (v) this.elem.classList.add("open");
+        else this.elem.classList.remove("open");
+    }
+    get isClosed() { return !this.isOpen; }
+    set isClosed(v) { this.isOpen = !v; }
+    open() { return this.isOpen = true; }
+    close() { return this.isClosed = true; }
 };
 
 export default class App extends core.App {
@@ -1572,6 +2316,9 @@ export default class App extends core.App {
         this.#rootWidget = null;
         this.#rootModel = null;
 
+        this.addHandler("start-begin", data => {
+            this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
+        });
         this.addHandler("start-complete", data => {       
             this.addBackButton();
 
@@ -1817,8 +2564,17 @@ export default class App extends core.App {
                                 };
                             }
                         }
-                        r = widget.elem.getBoundingClientRect();
                     }
+                    let page = widget.getPage(widget.pageIndex);
+                    if (page instanceof Panel.Page) {
+                        let hovered = page.getHovered(this.dragData, pos, options);
+                        if (util.is(hovered, "obj")) return {
+                            widget: widget,
+                            at: "custom",
+                            data: hovered,
+                        };
+                    }
+                    r = widget.elem.getBoundingClientRect();
                 }
                 let x = (pos.x-r.left)/r.width - 0.5;
                 let y = (pos.y-r.top)/r.height - 0.5;
@@ -1942,6 +2698,9 @@ export default class App extends core.App {
                     let r = new util.Rect(hovered.widget.eTop.getBoundingClientRect());
                     let x = (at >= hovered.widget.pages.length) ? hovered.widget.getPage(hovered.widget.pages.length-1).eTab.getBoundingClientRect().right : hovered.widget.getPage(at).eTab.getBoundingClientRect().left;
                     this.placeBlock(new util.Rect(x, r.y+10, 0, r.h-15));
+                } else if (at == "custom") {
+                    let data = util.ensure(hovered.data, "obj");
+                    this.placeBlock(new util.Rect(data.r));
                 }
             });
             this.addHandler("drag-submit", e => {
@@ -1982,6 +2741,9 @@ export default class App extends core.App {
                     }
                 } else if (util.is(at, "int") && canPage) {
                     hovered.widget.addPage(getPageFromData(), at);
+                } else if (at == "custom") {
+                    let data = util.ensure(hovered.data, "obj");
+                    if (util.is(data.submit, "func")) data.submit();
                 }
                 this.rootWidget.collapse();
             });
@@ -1997,7 +2759,7 @@ export default class App extends core.App {
                 if (this.hasRootWidget()) {
                     this.rootWidget.collapse();
                     if (this.hasRootWidget()) this.rootWidget.update();
-                }
+                } else this.rootWidget = new Panel();
             });
 
             document.body.addEventListener("keydown", e => {
