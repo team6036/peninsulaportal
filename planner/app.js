@@ -980,7 +980,7 @@ export default class App extends core.App {
                 alert.info = String(e);
                 alert.iconColor = "var(--cr)";
             }
-        })
+        });
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });

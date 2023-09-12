@@ -1061,6 +1061,9 @@
 }
 #PROJECTPAGE > .display > .axis > div {
     position: absolute;
+
+    font-family: monospace;
+    font-size: 12px;
 }
 #PROJECTPAGE > .display > .axis > div::before {
     content: "";
