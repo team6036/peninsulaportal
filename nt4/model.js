@@ -8,12 +8,14 @@ import { NT4_Subscription, NT4_SubscriptionOptions, NT4_Topic, NT4_Client } from
 
 export default class NTModel extends core.Target {
     #client;
+    #logs;
     #root;
 
     constructor(address) {
         super();
 
         this.#client = null;
+        this.#logs = null;
         this.#root = null;
 
         this.address = address;
@@ -23,13 +25,16 @@ export default class NTModel extends core.Target {
     get root() { return this.#root; }
     hasRoot() { return this.#root instanceof NTModel.Table; }
 
-    announceTopic(k, type, value=null) {
+    announceTopic(k, type, ts=null) {
+        ts = util.ensure(ts, "num", this.serverTime);
         if (!this.hasRoot()) return false;
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
         while (k.length > 0 && k.at(-1).length <= 0) k.pop();
         if (!NTModel.Topic.TYPES.includes(type)) return false;
         if (k.length <= 0) return false;
+        let path = k.join("/");
+        if (!(path in this.#logs)) this.#logs[path] = [];
         let o = this.root, oPrev = this;
         while (k.length > 0) {
             let name = k.shift();
@@ -47,11 +52,11 @@ export default class NTModel extends core.Target {
                 o = new NTModel.Topic(oPrev, name, type);
                 oPrev.add(o);
             }
-            o.value = value;
         }
         return true;
     }
-    unannounceTopic(k) {
+    unannounceTopic(k, ts=null) {
+        ts = util.ensure(ts, "num", this.serverTime);
         if (!this.hasRoot()) return false;
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
@@ -80,12 +85,16 @@ export default class NTModel extends core.Target {
         }
         return true;
     }
-    updateTopic(k, value) {
+    updateTopic(k, value, ts=null) {
+        ts = util.ensure(ts, "num", this.clientTime);
         if (!this.hasRoot()) return false;
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
         while (k.length > 0 && k.at(-1).length <= 0) k.pop();
         if (k.length <= 0) return false;
+        let path = k.join("/");
+        if (!(path in this.#logs)) this.#logs[path] = [];
+        this.#logs[path].push([ts, value]);
         let o = this.root, oPrev = this;
         while (k.length > 0) {
             let name = k.shift();
@@ -100,8 +109,55 @@ export default class NTModel extends core.Target {
             }
             if (!(o instanceof NTModel.Topic)) throw "Nonexistent topic with path: "+k;
             o.value = value;
+            if (o.isArray) {
+                o.value.forEach((v, i) => {
+                    let subpath = path+"/"+i;
+                    if (!(subpath in this.#logs)) this.#logs[subpath] = [];
+                    this.#logs[subpath].push([ts, v]);
+                });
+            }
         }
         return true;
+    }
+
+    getValueAt(k, ts=null) {
+        ts = util.ensure(ts, "num", this.clientTime);
+        if (!this.hasRoot()) return null;
+        k = String(k).split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        if (k.length <= 0) return null;
+        let path = k.join("/");
+        if (!(path in this.#logs)) return null;
+        let log = this.#logs[path];
+        if (log.length <= 0) return null;
+        if (ts < log.at(0)[0]) return null;
+        for (let i = 0; i+1 < log.length; i++)
+            if (ts >= log[i][0] && ts < log[i+1][0])
+                return log[i][1];
+        return log.at(-1)[1];
+    }
+    getLogLengthFor(k) {
+        if (!this.hasRoot()) return null;
+        k = String(k).split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        if (k.length <= 0) return null;
+        let path = k.join("/");
+        if (!(path in this.#logs)) return null;
+        return this.#logs[path].length;
+    }
+    getLogFor(k, tsStart=null, tsStop=null) {
+        if (!this.hasRoot()) return null;
+        k = String(k).split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        if (k.length <= 0) return null;
+        let path = k.join("/");
+        if (!(path in this.#logs)) return null;
+        return this.#logs[path].map(point => { return { ts: point[0], v: point[1] }; })
+            .filter(point => (tsStart == null) || (point.ts >= tsStart))
+            .filter(point => (tsStop == null) || (point.ts <= tsStop));
     }
 
     get address() { return this.#hasClient() ? this.#client.serverBaseAddr : null; }
@@ -118,23 +174,26 @@ export default class NTModel extends core.Target {
             this.root._onChange = () => this.post("change");
             this.root.addHandler("change", this.root._onChange);
         }
+        this.#logs = (v == null) ? null : {};
         const client = this.#client = (v == null) ? null : new NT4_Client(
             v,
             topic => {
                 if (client != this.#client) return;
-                this.announceTopic(topic.name, topic.type);
+                this.announceTopic(topic.name, topic.type, this.clientTime);
             },
             topic => {
                 if (client != this.#client) return;
-                this.unannounceTopic(topic.name);
+                this.unannounceTopic(topic.name, this.clientTime);
             },
             (topic, ts, value) => {
                 if (client != this.#client) return;
-                this.updateTopic(topic.name, value);
+                this.updateTopic(topic.name, value, this.clientTime);
             },
             () => {
                 if (client != this.#client) return;
                 this.#client.connected = true;
+                this.#client.clientStartTime = this.clientTime;
+                this.#client.serverStartTime = this.serverTime;
                 this.post("connected", null);
                 this.post("connect-state", this.connected);
                 client.subscribePeriodic(["/"], 0.1);
@@ -152,6 +211,13 @@ export default class NTModel extends core.Target {
 
     get connected() { return this.#hasClient() ? this.#client.connected : false; }
     get disconnected() { return !this.connected; }
+
+    get clientStartTime() { return this.#hasClient() ? this.#client.clientStartTime : null; }
+    get serverStartTime() { return this.#hasClient() ? this.#client.serverStartTime : null; }
+    get clientTime() { return this.#hasClient() ? this.#client.getClientTime_us()/1000 : null; }
+    get serverTime() { return this.#hasClient() ? this.#client.getServerTime_us()/1000 : null; }
+    get clientTimeSince() { return this.#hasClient() ? (this.clientTime - this.clientStartTime) : null; }
+    get serverTimeSince() { return this.#hasClient() ? (this.serverTime - this.serverStartTime) : null; }
 }
 NTModel.Generic = class NTModelGeneric extends core.Target {
     #parent;
