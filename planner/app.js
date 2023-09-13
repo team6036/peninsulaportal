@@ -3600,41 +3600,48 @@ export default class App extends core.App {
                 Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
                 if (state.refresh) await state.refresh();
                 if (state.eDisplay instanceof HTMLDivElement) state.eDisplay.focus();
-                if (this.hasProject(data.id)) this.project = this.getProject(data.id);
-                else if (data.project instanceof subcore.Project) this.project = data.project;
-                else {
+                let hasTemplate = await window.api.fileHas("template.json");
+                if (!hasTemplate) return console.log("no template found");
+                let templateContent = null;
+                try {
+                    templateContent = await window.api.fileRead("template.json");
+                } catch (e) {}
+                if (templateContent == null) return console.log("invalid template content");
+                let template = null;
+                try {
+                    template = JSON.parse(templateContent);
+                } catch (e) {}
+                if (template == null) return console.log("error parsing template");
+                template = util.ensure(template, "obj");
+                if (this.hasProject(data.id)) {
+                    this.project = this.getProject(data.id);
+                } else if (data.project instanceof subcore.Project) {
+                    this.project = data.project;
+                } else {
                     this.project = new subcore.Project();
                     this.project.meta.created = this.project.meta.modified = util.getTime();
-                    let hasTemplate = await window.api.fileHas("template.json");
-                    if (!hasTemplate) return console.log("no template found");
-                    let templateContent = null;
-                    try {
-                        templateContent = await window.api.fileRead("template.json");
-                    } catch (e) {}
-                    if (templateContent == null) return console.log("invalid template content");
-                    let template = null;
-                    try {
-                        template = JSON.parse(templateContent);
-                    } catch (e) {}
-                    if (template == null) return console.log("error parsing template");
-                    template = util.ensure(template, "obj");
-                    for (let k in template) {
-                        let v = template[k];
-                        k = String(k).split(".");
-                        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-                        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-                        let obj = this.project;
-                        while (k.length > 1) {
-                            if (!util.is(obj, "obj")) {
-                                obj = null;
-                                break;
-                            }
-                            obj = obj[k.shift()];
-                        }
-                        if (obj == null || k.length != 1) continue;
-                        obj[k] = v;
-                    }
+                    this.project.meta.backgroundImage = template[".meta.backgroundImage"];
                     state.post("refresh-options", null);
+                }
+                if (this.hasProject()) {
+                    if (this.project.meta.backgroundImage == template[".meta.backgroundImage"]) {
+                        for (let k in template) {
+                            let v = template[k];
+                            k = String(k).split(".");
+                            while (k.length > 0 && k.at(0).length <= 0) k.shift();
+                            while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+                            let obj = this.project;
+                            while (k.length > 1) {
+                                if (!util.is(obj, "obj")) {
+                                    obj = null;
+                                    break;
+                                }
+                                obj = obj[k.shift()];
+                            }
+                            if (obj == null || k.length != 1) continue;
+                            obj[k] = v;
+                        }
+                    }
                 }
             },
         };
