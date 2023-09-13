@@ -1451,7 +1451,8 @@ export default class App extends core.App {
                     let id = dirent.name.split(".")[0];
                     if (this.hasProject(id)) continue;
                     log("CHANGE:*all > removing project id:"+id);
-                    await window.api.fileDelete(["projects", id+".json"]);
+                    if (await window.api.fileHas(["projects", id+".json"]))
+                        await window.api.fileDelete(["projects", id+".json"]);
                 }
             }
         } else {
@@ -1477,7 +1478,7 @@ export default class App extends core.App {
                 let id = change.substring(5);
                 if (this.hasProject(id)) continue;
                 log("CHANGE:proj:"+id+" > removing project id:"+id);
-                if (await window.api.fileHas(["project", id+".json"]))
+                if (await window.api.fileHas(["projects", id+".json"]))
                     await window.api.fileDelete(["projects", id+".json"]);
             }
         }

@@ -577,10 +577,10 @@ class Portal extends core.Target {
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
             return await feat.fileAppend(pth, content);
         });
-        ipc.handle("file-delete", async (e, pth, content) => {
+        ipc.handle("file-delete", async (e, pth) => {
             let feat = identifyFeature(e);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-            return await feat.fileDelete(pth, content);
+            return await feat.fileDelete(pth);
         });
 
         ipc.handle("dir-has", async (e, pth) => {
@@ -1380,7 +1380,7 @@ Portal.Feature = class PortalFeature extends core.Target {
     async fileRead(pth) { return Portal.Feature.fileRead(this.portal, this.name, pth, this.started); }
     async fileWrite(pth, content) { return Portal.Feature.fileWrite(this.portal, this.name, pth, content, this.started); }
     async fileAppend(pth, content) { return Portal.Feature.fileAppend(this.portal, this.name, pth, content, this.started); }
-    async fileDelete(pth) { return Portal.Feature.fileRead(this.portal, this.name, pth, this.started); }
+    async fileDelete(pth) { return Portal.Feature.fileDelete(this.portal, this.name, pth, this.started); }
 
     async dirHas(pth) { return Portal.Feature.dirHas(this.portal, this.name, pth, this.started); }
     async dirList(pth) { return Portal.Feature.dirList(this.portal, this.name, pth, this.started); }
