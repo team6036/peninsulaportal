@@ -413,23 +413,27 @@ export default class App extends core.App {
                         let namefs = {
                             find: () => (elem.textContent += "Finding database"),
                             poll: () => {
+                                if (load.length > 0) elem.style.color = "var(--cr)";
                                 if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
                                 return elem.textContent += "Polling database";
                             },
                             config: () => {
+                                if (load.length > 0) elem.style.color = "var(--cr)";
                                 if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
                                 return elem.textContent += "Configuring";
                             },
                             "templates.json": () => {
+                                if (load.length > 0) elem.style.color = "var(--cr)";
                                 if (load.length > 0) return elem.textContent += "Error while making templates: "+load.join(":");
                                 return elem.textContent += "Making templates";
                             },
                         };
                         if (name in namefs) return namefs[name]();
                         if (name.startsWith("templates/") && name.endsWith(".png")) {
-                            let year = name.substring(10, name.length-4);
-                            if (load.length > 0) return elem.textContent += "Error while making template image "+year+": "+load.join(":");
-                            return elem.textContent += "Making template image "+year;
+                            name = name.substring(10, name.length-4);
+                            if (load.length > 0) elem.style.color = "var(--cr)";
+                            if (load.length > 0) return elem.textContent += "Error while making template image "+name+": "+load.join(":");
+                            return elem.textContent += "Making template image "+name;
                         }
                         if (name.toUpperCase() == name) {
                             elem.textContent += "["+name[0].toUpperCase()+name.slice(1).toLowerCase()+"] ";
@@ -440,14 +444,17 @@ export default class App extends core.App {
                                     let namefs = {
                                         search: () => (elem.textContent += "Searching"),
                                         solver: () => {
+                                            if (load.length > 0) elem.style.color = "var(--cr)";
                                             if (load.length > 0) return elem.textContent += "Error while copying default solver: "+load.join(":");
                                             return elem.textContent += "Copying default solver";
                                         },
                                         "templates.json": () => {
+                                            if (load.length > 0) elem.style.color = "var(--cr)";
                                             if (load.length > 0) return elem.textContent += "Error while making templates: "+load.join(":");
                                             return elem.textContent += "Making templates";
                                         },
                                         "templates.json-prune": () => {
+                                            if (load.length > 0) elem.style.color = "var(--cr)";
                                             if (load.length > 0) return elem.textContent += "Error while pruning templates: "+load.join(":");
                                             return elem.textContent += "Pruning templates";
                                         },
