@@ -337,6 +337,7 @@ class Portal extends core.Target {
         await this.affirm();
         const fetch = (await import("node-fetch")).default;
         this.log("DB finding host");
+        this.clearLoads();
         this.addLoad("find");
         let content = "";
         try {
@@ -381,7 +382,6 @@ class Portal extends core.Target {
                 } catch (e) {
                     this.log(`DB config - error - ${e}`);
                     this.addLoad("config:"+e);
-                    return;
                 }
                 this.remLoad("config");
             })(),
