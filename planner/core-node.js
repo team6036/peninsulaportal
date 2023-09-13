@@ -275,7 +275,13 @@ class Project extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [itms, pths, this.size, this.robotSize, this.robotMass, this.config, this.meta],
+            "%ARGS": [{
+                items: itms,
+                paths: pths,
+                size: this.size,
+                robotSize: this.robotSize, robotMass: this.robotMass,
+                config: this.config, meta: this.meta,
+            }],
         };
     }
 }
@@ -358,7 +364,12 @@ Project.Config = class ProjectConfig extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.script, this.scriptUseDefault, this.momentOfInertia, this.efficiency, this.is12MotorMode],
+            "%ARGS": [{
+                script: this.script, scriptUseDefault: this.scriptUseDefault,
+                momentOfInertia: this.momentOfInertia,
+                efficiency: this.efficiency,
+                is12MotorMode: this.is12MotorMode,
+            }],
         };
     }
 }
@@ -460,7 +471,14 @@ Project.Meta = class ProjectMeta extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundPos, this.backgroundScale],
+            "%ARGS": [{
+                name: this.name,
+                modified: this.modified, created: this.created,
+                thumb: this.thumb,
+                backgroundImage: this.backgroundImage,
+                backgroundPos: this.backgroundPos,
+                backgroundScale: this.backgroundScale,
+            }],
         };
     }
 }
@@ -509,7 +527,7 @@ Project.Item = class ProjectItem extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.pos],
+            "%ARGS": [{ pos: this.pos }],
         };
     }
 }
@@ -595,7 +613,11 @@ Project.Node = class ProjectNode extends Project.Item {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity],
+            "%ARGS": [{
+                pos: this.pos,
+                heading: this.heading, useHeading: this.useHeading,
+                velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
+            }],
         };
     }
 }
@@ -640,7 +662,10 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.pos, this.radius],
+            "%ARGS": [{
+                pos: this.pos,
+                radius: this.radius,
+            }],
         };
     }
 }
@@ -725,7 +750,10 @@ Project.Path = class ProjectPath extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [this.name, this.nodes],
+            "%ARGS": [{
+                name: this.name,
+                nodes: this.nodes,
+            }],
         };
     }
 }
