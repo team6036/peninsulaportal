@@ -1710,6 +1710,7 @@ export default class App extends core.App {
                     state.eCreate.addEventListener("click", e => {
                         this.page = "PROJECT";
                     });
+                state.eTemplates = state.elem.querySelector(":scope > .nav > .nav > .templates");
                 state.eContent = state.elem.querySelector(":scope > .content");
                 state.eLoading = state.elem.querySelector(":scope > .content > .loading");
                 state.eEmpty = state.elem.querySelector(":scope > .content > .empty");
@@ -1717,6 +1718,18 @@ export default class App extends core.App {
                 this.addHandler("synced-with-files", () => state.refresh());
                 state.refresh = async () => {
                     this.clearProjectButtons();
+                    if (state.eTemplates instanceof HTMLDivElement) {
+                        state.eTemplates.innerHTML = "";
+                        const globalTemplates = await window.api.getTemplates();
+                        for (let name in globalTemplates) {
+                            let btn = document.createElement("button");
+                            state.eTemplates.appendChild(btn);
+                            btn.textContent = name;
+                            btn.addEventListener("click", e => {
+                                this.setPage("PROJECT", { template: name });
+                            });
+                        }
+                    }
                     if (state.eLoading instanceof HTMLDivElement) state.eLoading.style.display = "block";
                     if (state.eEmpty instanceof HTMLDivElement) state.eEmpty.style.display = "none";
                     if (state.eLoading instanceof HTMLDivElement) state.eLoading.style.display = "none";
@@ -3624,7 +3637,7 @@ export default class App extends core.App {
                 } else {
                     this.project = new subcore.Project();
                     this.project.meta.created = this.project.meta.modified = util.getTime();
-                    this.project.meta.backgroundImage = globalTemplateImages[activeTemplate];
+                    this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
                     state.post("refresh-options", null);
                 }
                 if (this.hasProject()) {
@@ -3632,15 +3645,15 @@ export default class App extends core.App {
                     if (this.project.meta.backgroundImage)
                         if (this.project.meta.backgroundImage.endsWith("template.png"));
                             this.project.meta.backgroundImage = globalTemplateImages[activeTemplate];
-                    for (let year in globalTemplates) {
-                        if (this.project.meta.backgroundImage != globalTemplateImages[year]) continue;
-                        const globalTemplate = globalTemplates[year];
-                        let template = util.ensure(templates[year], "obj");
+                    for (let name in globalTemplates) {
+                        if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
+                        const globalTemplate = globalTemplates[name];
+                        let template = util.ensure(templates[name], "obj");
                         template[".size"] = globalTemplate["size"];
                         template[".robotW"] = globalTemplate["robotSize"];
                         template[".robotMass"] = globalTemplate["robotMass"];
                         template[".meta.backgroundScale"] = globalTemplate["imageScale"];
-                        template[".meta.backgroundImage"] = globalTemplateImages[year];
+                        template[".meta.backgroundImage"] = globalTemplateImages[name];
                         template[".meta.backgroundPos"] = new V(template[".size"]).div(2);
                         for (let k in template) {
                             let v = template[k];
