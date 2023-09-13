@@ -3601,19 +3601,22 @@ export default class App extends core.App {
                 Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
                 if (state.refresh) await state.refresh();
                 if (state.eDisplay instanceof HTMLDivElement) state.eDisplay.focus();
-                let hasTemplate = await window.api.fileHas("template.json");
-                if (!hasTemplate) return console.log("no template found");
-                let templateContent = null;
+                const globalTemplates = await window.api.getTemplates();
+                const globalTemplateImages = await window.api.getTemplateImages();
+                const activeTemplate = await window.api.getActiveTemplate();
+                let hasTemplates = await window.api.fileHas("templates.json");
+                if (!hasTemplates) return console.log("no templates found");
+                let templatesContent = null;
                 try {
-                    templateContent = await window.api.fileRead("template.json");
+                    templatesContent = await window.api.fileRead("templates.json");
                 } catch (e) {}
-                if (templateContent == null) return console.log("invalid template content");
-                let template = null;
+                if (templatesContent == null) return console.log("invalid templates content");
+                let templates = null;
                 try {
-                    template = JSON.parse(templateContent);
+                    templates = JSON.parse(templatesContent);
                 } catch (e) {}
-                if (template == null) return console.log("error parsing template");
-                template = util.ensure(template, "obj");
+                if (templates == null) return console.log("error parsing templates");
+                templates = util.ensure(templates, "obj");
                 if (this.hasProject(data.id)) {
                     this.project = this.getProject(data.id);
                 } else if (data.project instanceof subcore.Project) {
@@ -3621,11 +3624,24 @@ export default class App extends core.App {
                 } else {
                     this.project = new subcore.Project();
                     this.project.meta.created = this.project.meta.modified = util.getTime();
-                    this.project.meta.backgroundImage = template[".meta.backgroundImage"];
+                    this.project.meta.backgroundImage = globalTemplateImages[activeTemplate];
                     state.post("refresh-options", null);
                 }
                 if (this.hasProject()) {
-                    if (this.project.meta.backgroundImage == template[".meta.backgroundImage"]) {
+                    /* REMOVE WHEN ALL FIXED */
+                    if (this.project.meta.backgroundImage)
+                        if (this.project.meta.backgroundImage.endsWith("template.png"));
+                            this.project.meta.backgroundImage = globalTemplateImages[activeTemplate];
+                    for (let year in globalTemplates) {
+                        if (this.project.meta.backgroundImage != globalTemplateImages[year]) continue;
+                        const globalTemplate = globalTemplates[year];
+                        let template = util.ensure(templates[year], "obj");
+                        template[".size"] = globalTemplate["size"];
+                        template[".robotW"] = globalTemplate["robotSize"];
+                        template[".robotMass"] = globalTemplate["robotMass"];
+                        template[".meta.backgroundScale"] = globalTemplate["imageScale"];
+                        template[".meta.backgroundImage"] = globalTemplateImages[year];
+                        template[".meta.backgroundPos"] = new V(template[".size"]).div(2);
                         for (let k in template) {
                             let v = template[k];
                             k = String(k).split(".");
@@ -3642,6 +3658,7 @@ export default class App extends core.App {
                             if (obj == null || k.length != 1) continue;
                             obj[k] = v;
                         }
+                        break;
                     }
                 }
             },
