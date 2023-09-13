@@ -420,8 +420,17 @@ export default class App extends core.App {
                                 if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
                                 return elem.textContent += "Configuring";
                             },
+                            "templates.json": () => {
+                                if (load.length > 0) return elem.textContent += "Error while making templates: "+load.join(":");
+                                return elem.textContent += "Making templates";
+                            },
                         };
                         if (name in namefs) return namefs[name]();
+                        if (name.startsWith("templates/") && name.endsWith(".png")) {
+                            let year = name.substring(10, name.length-4);
+                            if (load.length > 0) return elem.textContent += "Error while making template image "+year+": "+load.join(":");
+                            return elem.textContent += "Making template image "+year;
+                        }
                         if (name.toUpperCase() == name) {
                             elem.textContent += "["+name[0].toUpperCase()+name.slice(1).toLowerCase()+"] ";
                             let namefs = {
@@ -434,17 +443,13 @@ export default class App extends core.App {
                                             if (load.length > 0) return elem.textContent += "Error while copying default solver: "+load.join(":");
                                             return elem.textContent += "Copying default solver";
                                         },
-                                        "template.json": () => {
-                                            if (load.length > 0) return elem.textContent += "Error while making template: "+load.join(":");
-                                            return elem.textContent += "Making template";
+                                        "templates.json": () => {
+                                            if (load.length > 0) return elem.textContent += "Error while making templates: "+load.join(":");
+                                            return elem.textContent += "Making templates";
                                         },
-                                        "template.json-prune": () => {
-                                            if (load.length > 0) return elem.textContent += "Error while pruning template: "+load.join(":");
-                                            return elem.textContent += "Pruning template";
-                                        },
-                                        "template.png": () => {
-                                            if (load.length > 0) return elem.textContent += "Error while downloading template image: "+load.join(":");
-                                            return elem.textContent += "Downloading template image";
+                                        "templates.json-prune": () => {
+                                            if (load.length > 0) return elem.textContent += "Error while pruning templates: "+load.join(":");
+                                            return elem.textContent += "Pruning templates";
                                         },
                                     };
                                     if (name in namefs) return namefs[name]();

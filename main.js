@@ -334,6 +334,7 @@ class Portal extends core.Target {
         return true;
     }
     async tryLoad() {
+        await this.affirm();
         const fetch = (await import("node-fetch")).default;
         this.log("DB finding host");
         this.addLoad("find");
@@ -384,6 +385,62 @@ class Portal extends core.Target {
                 }
                 this.remLoad("config");
             })(),
+            (async () => {
+                this.log("DB templates.json");
+                this.addLoad("templates.json");
+                try {
+                    let resp = await fetch(host+"/templates.json");
+                    if (resp.status != 200) throw resp.status;
+                    await new Promise((res, rej) => {
+                        const stream = fs.createWriteStream(path.join(this.dataPath, "templates", "templates.json"));
+                        stream.on("open", () => {
+                            resp.body.pipe(stream);
+                            resp.body.on("end", () => res(true));
+                            resp.body.on("error", e => rej(e));
+                        });
+                    });
+                    this.log("DB templates.json - success");
+                } catch (e) {
+                    this.log(`DB templates.json - error - ${e}`);
+                    this.addLoad("templates.json:"+e);
+                }
+                this.remLoad("templates.json");
+                this.log("DB checking templates.json");
+                let content = await this.fileRead(["templates", "templates.json"]);
+                let data = null;
+                try {
+                    data = JSON.parse(content);
+                    this.log("DB checking templates.json - success");
+                } catch (e) {
+                    log(`DB checking templates.json - error - ${e}`);
+                    this.remLoad("templates.json-check:"+e);
+                }
+                this.remLoad("templates.json-check");
+                data = util.ensure(data, "obj");
+                let years = util.ensure(data.years, "obj");
+                await Promise.all(Object.keys(years).map(async year => {
+                    year = util.ensure(parseInt(year), "int");
+                    this.log(`DB templates/${year}.png`);
+                    this.addLoad(`templates/${year}.png`);
+                    try {
+                        let resp = await fetch(host+"/templates/"+year+".png");
+                        if (resp.status != 200) throw resp.status;
+                        await new Promise((res, rej) => {
+                            const stream = fs.createWriteStream(path.join(this.dataPath, "templates", "images", year+".png"));
+                            stream.on("open", () => {
+                                resp.body.pipe(stream);
+                                resp.body.on("end", () => res(true));
+                                resp.body.on("error", e => rej(e));
+                            });
+                        });
+                        this.log(`DB templates/${year}.png - success`);
+                    } catch (e) {
+                        this.log(`DB templates/${year}.png - error - ${e}`);
+                        this.addLoad(`templates/${year}.png:`+e);
+                    }
+                    this.remLoad(`templates/${year}.png`);
+                }));
+            })(),
             ...FEATURES.map(async name => {
                 const subhost = host+"/"+name.toLowerCase();
                 const log = (...a) => this.log(`DB [${name}]`, ...a);
@@ -423,62 +480,47 @@ class Portal extends core.Target {
                                 this.remLoad(name+":solver");
                             },
                             async () => {
-                                log("template.json");
-                                this.addLoad(name+":template.json");
+                                log("templates.json");
+                                this.addLoad(name+":templates.json");
                                 try {
-                                    let resp = await fetch(subhost+"/template.json");
+                                    let resp = await fetch(subhost+"/templates.json");
                                     if (resp.status != 200) throw resp.status;
                                     await new Promise((res, rej) => {
-                                        const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.json"));
+                                        const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "templates.json"));
                                         stream.on("open", () => {
                                             resp.body.pipe(stream);
                                             resp.body.on("end", () => res(true));
                                             resp.body.on("error", e => rej(e));
                                         });
                                     });
-                                    log("template.json - success");
+                                    log("templates.json - success");
                                 } catch (e) {
-                                    log(`template.json - error - ${e}`);
-                                    this.addLoad(name+":template.json:"+e);
+                                    log(`templates.json - error - ${e}`);
+                                    this.addLoad(name+":templates.json:"+e);
                                 }
-                                this.remLoad(name+":template.json");
-                                if (!(await Portal.Feature.fileHas(this, name, "template.json"))) return;
-                                log("pruning template.json");
-                                this.addLoad(name+":template.json-prune");
-                                let content = await Portal.Feature.fileRead(this, name, "template.json");
+                                this.remLoad(name+":templates.json");
+                                /*
+                                if (!(await Portal.Feature.fileHas(this, name, "templates.json"))) return;
+                                log("pruning templates.json");
+                                this.addLoad(name+":templates.json-prune");
+                                let content = await Portal.Feature.fileRead(this, name, "templates.json");
                                 try {
                                     let data = JSON.parse(content);
                                     if (!util.is(data, "obj")) throw typeof(data);
-                                    data[".meta.backgroundImage"] = path.join(Portal.Feature.getDataPath(this, name), "template.png");
-                                    content = JSON.stringify(data);
-                                    await Portal.Feature.fileWrite(this, name, "template.json", content);
-                                    log("pruning template.json - success");
+                                    data.years = util.ensure(data.years, "obj");
+                                    for (let year in data.years) {
+                                        year = util.ensure(parseInt(year), "num");
+                                        data.years[".meta.backgroundImage"] = path.join(this.dataPath, "templates", "images", year+".png");
+                                    }
+                                    content = JSON.stringify(data, null, "\t");
+                                    await Portal.Feature.fileWrite(this, name, "templates.json", content);
+                                    log("pruning templates.json - success");
                                 } catch (e) {
-                                    log(`pruning template.json - error - ${e}`);
-                                    this.remLoad(name+":template.json-prune:"+e);
+                                    log(`pruning templates.json - error - ${e}`);
+                                    this.remLoad(name+":templates.json-prune:"+e);
                                 }
-                                this.remLoad(name+":template.json-prune");
-                            },
-                            async () => {
-                                log("template.png");
-                                this.addLoad(name+":template.png");
-                                try {
-                                    let resp = await fetch(subhost+"/template.png");
-                                    if (resp.status != 200) throw resp.status;
-                                    await new Promise((res, rej) => {
-                                        const stream = fs.createWriteStream(path.join(Portal.Feature.getDataPath(this, name), "template.png"));
-                                        stream.on("open", () => {
-                                            resp.body.pipe(stream);
-                                            resp.body.on("end", () => res(true));
-                                            resp.body.on("error", e => rej(e));
-                                        });
-                                    });
-                                    log("template.png - success");
-                                } catch (e) {
-                                    log(`template.png - error - ${e}`);
-                                    this.addLoad(name+":template.png:"+e);
-                                }
-                                this.remLoad(name+":template.png");
+                                this.remLoad(name+":templates.json-prune");
+                                */
                             },
                         ].map(f => f()));
                     },
@@ -551,6 +593,36 @@ class Portal extends core.Target {
                 },
                 loads: async () => {
                     return this.loads;
+                },
+                templates: async () => {
+                    let content = "";
+                    try {
+                        content = await this.fileRead(["templates", "templates.json"]);
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return util.ensure(data.years, "obj");
+                },
+                "template-images": async () => {
+                    let templates = await namefs.templates();
+                    let images = {};
+                    Object.keys(templates).map(year => util.ensure(parseInt(year), "int")).map(year => (images[year] = path.join(this.dataPath, "templates", "images", year+".png")));
+                    return images;
+                },
+                "active-template": async () => {
+                    let content = "";
+                    try {
+                        content = await this.fileRead(["templates", "templates.json"]);
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data.active;
                 },
             };
             if (name in namefs) return await namefs[name]();
@@ -664,6 +736,10 @@ class Portal extends core.Target {
         if (!hasAppData) await this.dirMake(dataPath);
         let hasLogDir = await this.dirHas([dataPath, "logs"]);
         if (!hasLogDir) await this.dirMake([dataPath, "logs"]);
+        let hasTemplatesDir = await this.dirHas([dataPath, "templates"]);
+        if (!hasTemplatesDir) await this.dirMake([dataPath, "templates"]);
+        let hasTemplateImagesDir = await this.dirHas([dataPath, "templates", "images"]);
+        if (!hasTemplateImagesDir) await this.dirMake([dataPath, "templates", "images"]);
         return true;
     }
     async affirm() {
