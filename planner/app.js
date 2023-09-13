@@ -3643,7 +3643,7 @@ export default class App extends core.App {
                 if (this.hasProject()) {
                     /* REMOVE WHEN ALL FIXED */
                     if (this.project.meta.backgroundImage)
-                        if (this.project.meta.backgroundImage.endsWith("template.png"));
+                        if (this.project.meta.backgroundImage.endsWith("template.png"))
                             this.project.meta.backgroundImage = globalTemplateImages[activeTemplate];
                     for (let name in globalTemplates) {
                         if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
