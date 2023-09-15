@@ -600,7 +600,8 @@ class Portal extends core.Target {
                         data = JSON.parse(content);
                     } catch (e) {}
                     data = util.ensure(data, "obj");
-                    return data.active;
+                    let templates = await namefs.templates();
+                    return (data.active in templates) ? data.active : null;
                 },
             };
             if (name in namefs) return await namefs[name]();

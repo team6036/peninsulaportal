@@ -997,7 +997,7 @@ export default class App extends core.App {
                 });
             this.#eCreateBtn = document.querySelector("#titlebar > button.nav#createbtn");
             if (this.hasECreateBtn())
-                this.eCreateBtn.addEventListener("click", e => {
+                this.eCreateBtn.addEventListener("click", async e => {
                     this.page = "PROJECT";
                 });
 
@@ -1150,7 +1150,7 @@ export default class App extends core.App {
 
             this.clearChanges();
 
-            this.addHandler("cmd-newproject", () => {
+            this.addHandler("cmd-newproject", async () => {
                 this.page = "PROJECT";
             });
             const cmdAdd = name => {
@@ -1785,6 +1785,13 @@ App.ProjectsPage = class AppProjectsPage extends App.Page {
                     this.app.setPage("PROJECT", { template: name });
                 });
             }
+            let btn = document.createElement("button");
+            this.eTemplates.appendChild(btn);
+            btn.textContent = "Blank Project";
+            btn.addEventListener("click", e => {
+                if (!this.hasApp()) return;
+                this.app.setPage("PROJECT", { template: null });
+            });
         }
         if (this.hasELoading()) this.eLoading.style.display = "block";
         if (this.hasEEmpty()) this.eEmpty.style.display = "none";
