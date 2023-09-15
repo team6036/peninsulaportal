@@ -3249,7 +3249,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
                         o.setGenerating(false);
                         (async () => {
                             o.setGenerating(true);
-                            this.markChange("*all");
+                            this.app.markChange("*all");
                             await this.post("cmd-save", null);
                             try {
                                 await window.api.ask("exec", [project.id, path.id]);
