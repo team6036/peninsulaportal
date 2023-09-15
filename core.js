@@ -662,6 +662,19 @@ export class App extends Target {
         this.#eLoadingTo = v;
     }
     hasELoadingTo() { return this.eLoadingTo instanceof HTMLElement; }
+
+    get loading() {
+        if (!this.eTitleBar.classList.contains("loading")) return null;
+        let loading = this.eTitleBar.style.getPropertyValue("--loading");
+        loading = loading.substring(0, loading.length-1);
+        return Math.min(1, Math.max(0, util.ensure(parseFloat(loading), "num")/100));
+    }
+    set loading(v) {
+        v = (v == null) ? null : Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (v == null) return this.eTitleBar.classList.remove("loading");
+        this.eTitleBar.classList.add("loading");
+        this.eTitleBar.style.setProperty("--loading", (v*100)+"%");
+    }
 }
 App.PopupBase = class AppPopupBase extends Target {
     #elem;

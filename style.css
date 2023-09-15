@@ -5,8 +5,6 @@
     
     --t: 0.25s;
 
-    --b: 10px;
-
     --gradient: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
 }
 
@@ -101,7 +99,7 @@ input:not(.override) {
 
     background-color: var(--v1);
     color: var(--v8);
-    border-radius: var(--b);
+    border-radius: 10px;
 
     transition: background-color var(--t), color var(--t);
 }
@@ -306,6 +304,8 @@ label.switch > input[type="checkbox"]:checked + span::before {
 }
 
 #titlebar {
+    --loading: 0%;
+
     position: absolute;
     top: 0%;
     left: 50%;
@@ -335,6 +335,24 @@ label.switch > input[type="checkbox"]:checked + span::before {
 #titlebar button,
 #titlebar input {
     -webkit-app-region: no-drag;
+}
+#titlebar::before {
+    content: "";
+
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+
+    width: var(--loading);
+    height: 2px;
+
+    background-color: var(--a);
+    opacity: 0%;
+
+    transition: width var(--t), opacity var(--t);
+}
+#titlebar.loading::before {
+    opacity: 100%;
 }
 
 #mount {
@@ -810,7 +828,7 @@ label.switch > input[type="checkbox"]:checked + span::before {
     gap: 10px;
 
     background-color: var(--v2);
-    border-radius: var(--b);
+    border-radius: 10px;
     filter: drop-shadow(0px 5px 5px var(--v0-8));
 }
 .popup.custom > .inner > button.close {
@@ -886,7 +904,7 @@ label.switch > input[type="checkbox"]:checked + span::before {
 
     padding: 5px 75px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 .popup.alert > .inner > button.special,
 .popup.confirm > .inner > button.special,
