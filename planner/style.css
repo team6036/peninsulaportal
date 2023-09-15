@@ -246,7 +246,7 @@
 
     padding: 10px 30px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 
     font-size: 16px;
 }
@@ -325,7 +325,7 @@
 
     gap: 10px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 #PROJECTSPAGE > .nav > .nav > .templates {
     transform-origin: 0% 50%;
@@ -348,7 +348,7 @@
     width: max-content;
     padding: 10px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 #PROJECTSPAGE > .nav > .search {
     flex-basis: 25%;
@@ -363,7 +363,7 @@
     align-content: center;
 
     background-color: var(--v8);
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 #PROJECTSPAGE > .nav > .search > input {
     flex-basis: 100%;
@@ -427,7 +427,7 @@
     align-content: center;
 
     background-color: var(--v2-8);
-    border-radius: var(--b);
+    border-radius: 10px;
     outline: 2px solid var(--a-0);
 
     transition: outline var(--t);
@@ -440,7 +440,7 @@
     aspect-ratio: 1 / 1;
 
     background-color: var(--v1-8);
-    border-radius: var(--b);
+    border-radius: 10px;
 
     background-image: none;
     background-repeat: no-repeat;
@@ -474,7 +474,7 @@
     align-items: stretch;
     align-content: center;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 #PROJECTSPAGE > .content > .item > .nav > button {
     --bg: var(--v2);
@@ -485,7 +485,7 @@
 
     gap: 10px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 
 #PROJECTPAGE {
@@ -536,7 +536,7 @@
 
     border: 2px solid var(--v2);
     outline: none;
-    border-radius: var(--b);
+    border-radius: 10px;
 
     user-select: none;
 }
@@ -611,7 +611,7 @@
 #PROJECTPAGE > .display > .render > .nav > button {
     padding: 5px 10px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 #PROJECTPAGE > .display > .render > .nav > button#donebtn {
     --bg: var(--a);
@@ -1163,7 +1163,7 @@
     align-content: center;
 
     background-color: var(--v2-8);
-    border-radius: var(--b);
+    border-radius: 10px;
     border: 2px solid var(--v2);
 }
 #PROJECTPAGE > .edit > .nav {
@@ -1321,7 +1321,7 @@
     align-items: center;
     align-content: center;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 
     font-size: 30px;
 
@@ -1347,7 +1347,7 @@
 
     background-color: transparent;
     border: 2px solid var(--v2);
-    border-radius: var(--b);
+    border-radius: 10px;
     filter: drop-shadow(0px 0px 0px var(--v1-8));
 
     cursor: grab;
@@ -1536,7 +1536,7 @@
 
     padding: 10px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 #objectspanel > #itemcontrols > button#removebtn {
     --bg: var(--cr);
@@ -1690,7 +1690,7 @@
     align-items: stretch;
     align-content: center;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 }
 #optionspanel > #script > div.filedialog {
     flex-basis: 100%;

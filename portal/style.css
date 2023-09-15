@@ -1,5 +1,7 @@
 #titlebar {
-    padding: 0px;
+    padding-left: 10px;
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
 
     gap: 0px;
 
@@ -128,7 +130,7 @@ body {
     align-content: center;
     gap: 10px;
 
-    border-radius: var(--b);
+    border-radius: 10px;
 
     font-size: 16px;
 }
