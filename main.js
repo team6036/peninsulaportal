@@ -1270,7 +1270,7 @@ Portal.Feature = class PortalFeature extends core.Target {
                     {
                         id: "maxmin",
                         label: "Toggle Maximized",
-                        accelerator: "CmdOrCtrl+M",
+                        accelerator: "Ctrl+F",
                         click: () => window.webContents.send("ask", "maxmin"),
                     },
                     {
