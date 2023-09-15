@@ -1815,14 +1815,23 @@ app.on("activate", async () => {
     portal.start();
 });
 
-app.on("window-all-closed", async () => {
+let allow = false;
+app.on("before-quit", async e => {
+    if (allow) return;
+    e.preventDefault();
     await untilReady();
-    log("> all-closed");
+    log("> before-quit");
     let quit = true;
     try {
         quit = await portal.stop();
     } catch (e) {}
     if (!quit) return;
+    allow = true;
+    app.quit();
+});
+app.on("window-all-closed", async () => {
+    await untilReady();
+    log("> all-closed");
     app.quit();
 });
 app.on("quit", async () => {

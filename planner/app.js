@@ -1349,7 +1349,8 @@ export default class App extends core.App {
         return changes;
     }
     async syncWithFiles() {
-        const log = () => {}; // console.log;
+        const log = () => {};
+        // const log = console.log;
         try {
             await this.post("sync-with-files", null);
         } catch (e) {}
@@ -1411,7 +1412,8 @@ export default class App extends core.App {
         } catch (e) {}
     }
     async syncFilesWith() {
-        const log = () => {}; // console.log;
+        const log = () => {};
+        // const log = console.log;
         try {
             await this.post("sync-files-with", null);
         } catch (e) {}
