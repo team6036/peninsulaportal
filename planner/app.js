@@ -1157,7 +1157,9 @@ export default class App extends core.App {
                 if (this.dragging) return;
                 name = String(name);
                 if (this.page != "PROJECT") return;
-                if (this.hasPage("PROJECT") && this.getPage("PROJECT").choosing) return;
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
+                if (page.choosing) return;
                 if (!this.hasProject()) return;
                 this.dragData = name;
                 this.dragging = true;
@@ -1179,17 +1181,17 @@ export default class App extends core.App {
                 this.dragState.addHandler("move", e => {
                     let pos = new V(e.pageX, e.pageY);
                     let overRender = false;
-                    if (this.hasPage("PROJECT") && this.getPage("PROJECT").hasERender()) {
-                        let r = this.getPage("PROJECT").eRender.getBoundingClientRect();
+                    if (page.hasERender()) {
+                        let r = page.eRender.getBoundingClientRect();
                         overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
                     }
                     if (prevOverRender != overRender) {
                         prevOverRender = overRender;
                         if (overRender) {
-                            ghostItem = this.getPage("PROJECT").addRenderItem(new RISelectable(item));
+                            ghostItem = page.addRenderItem(new RISelectable(item));
                             ghostItem.ghost = true;
                         } else {
-                            this.getPage("PROJECT").remRenderItem(ghostItem);
+                            page.remRenderItem(ghostItem);
                             ghostItem = null;
                         }
                     }
@@ -1199,10 +1201,8 @@ export default class App extends core.App {
                     if (ghostItem instanceof RISelectable)
                         if (ghostItem.hasItem())
                             ghostItem.item.pos.set(ghostItem.pageToMap(pos));
-                    return;
-                    if (!util.is(state.panels, "obj")) return;
-                    if (!util.is(state.panels.objects, "obj")) return;
-                    let o = state.panels.objects;
+                    if (!util.is(page.panels.objects, "obj")) return;
+                    let o = page.panels.objects;
                     if (!(o.eSpawnDelete instanceof HTMLButtonElement)) return;
                     let r = o.eSpawnDelete.getBoundingClientRect();
                     let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
@@ -1210,21 +1210,17 @@ export default class App extends core.App {
                     else o.eSpawnDelete.classList.remove("hover");
                 });
                 const stop = cancel => {
-                    this.getPage("PROJECT").remRenderItem(ghostItem);
+                    page.remRenderItem(ghostItem);
                     if (this.hasEDrag()) this.eDrag.innerHTML = "";
                     if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
-                    return;
-                    if (!util.is(state.panels, "obj")) return;
-                    if (!util.is(state.panels.objects, "obj")) return;
-                    let o = state.panels.objects;
+                    if (!util.is(page.panels.objects, "obj")) return;
+                    let o = page.panels.objects;
                     o.eSpawnBox.classList.remove("delete");
                 };
                 this.dragState.addHandler("submit", data => stop(false));
                 this.dragState.addHandler("cancel", data => stop(true));
-                return;
-                if (!util.is(state.panels, "obj")) return;
-                if (!util.is(state.panels.objects, "obj")) return;
-                let o = state.panels.objects;
+                if (!util.is(page.panels.objects, "obj")) return;
+                let o = page.panels.objects;
                 o.eSpawnBox.classList.add("delete");
             };
             this.addHandler("cmd-addnode", () => cmdAdd("node"));
@@ -1232,10 +1228,11 @@ export default class App extends core.App {
             this.addHandler("cmd-addpath", () => {
                 if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
-                if (this.getPage("PROJECT").choosing) return;
+                const page = this.getPage("PROJECT");
+                if (page.choosing) return;
                 if (!this.hasProject()) return;
-                this.getPage("PROJECT").choosing = true;
-                let chooseState = this.getPage("PROJECT").chooseState;
+                page.choosing = true;
+                let chooseState = page.chooseState;
                 chooseState.path = new subcore.Project.Path();
                 chooseState.addHandler("choose", data => {
                     if (!(chooseState.path instanceof subcore.Project.Path)) return;
@@ -1245,7 +1242,7 @@ export default class App extends core.App {
                     if (!(itm instanceof subcore.Project.Node)) return;
                     if (shift) path.remNode(itm);
                     else path.addNode(itm);
-                    for (let id in chooseState.temp) this.getPage("PROJECT").remRenderItem(chooseState.temp[id]);
+                    for (let id in chooseState.temp) page.remRenderItem(chooseState.temp[id]);
                     chooseState.temp = {};
                     let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
                     for (let i = 0; i < nodes.length; i++) {
@@ -1254,13 +1251,13 @@ export default class App extends core.App {
                         if (id in chooseState.temp) {
                             chooseState.temp[id].value += ", "+(i+1);
                         } else {
-                            chooseState.temp[id] = this.getPage("PROJECT").addRenderItem(new RIPathIndex(node));
+                            chooseState.temp[id] = page.addRenderItem(new RIPathIndex(node));
                             chooseState.temp[id].value = i+1;
                         }
                         if (i > 0) {
                             let id2 = nodes[i-1];
                             let node2 = this.project.getItem(id2);
-                            chooseState.temp[id+"~"+id2] = this.getPage("PROJECT").addRenderItem(new RIPathLine(node, node2));
+                            chooseState.temp[id+"~"+id2] = page.addRenderItem(new RIPathLine(node, node2));
                         }
                     }
                 });
@@ -3809,6 +3806,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
         this.format();
     }
 
+    get panels() { return this.#panels; }
     set panel(v) {
         v = String(v);
         for (let name in this.#panels)
