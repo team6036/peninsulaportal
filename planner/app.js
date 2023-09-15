@@ -3240,7 +3240,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
                         }
                         let projectId = this.app.projectId;
                         if (!this.app.hasProject(projectId)) return;
-                        let project = this.getProject(projectId);
+                        let project = this.app.getProject(projectId);
                         if (this.selectedPaths.length <= 0) return;
                         let id = this.selectedPaths[0];
                         if (!project.hasPath(id)) return;
