@@ -2284,18 +2284,18 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             this.eChooseDoneBtn.addEventListener("click", e => {
                 e.stopPropagation();
                 if (!this.choosing) return;
-                let chooseData = this.chooseData;
-                for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
-                chooseData.post("done", null);
+                let chooseState = this.chooseState;
+                for (let id in chooseState.temp) this.remRenderItem(chooseState.temp[id]);
+                chooseState.post("done", null);
                 this.choosing = false;
             });
         if (this.hasEChooseCancelBtn())
             this.eChooseCancelBtn.addEventListener("click", e => {
                 e.stopPropagation();
                 if (!this.choosing) return;
-                let chooseData = this.chooseState;
-                for (let id in chooseData.temp) this.remRenderItem(chooseData.temp[id]);
-                chooseData.post("cancel", null);
+                let chooseState = this.chooseState;
+                for (let id in chooseState.temp) this.remRenderItem(chooseState.temp[id]);
+                chooseState.post("cancel", null);
                 this.choosing = false;
             });
         
@@ -3617,7 +3617,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
         itm.addHandler("change", itm._onChange);
         if (itm instanceof RISelectable) {
             itm._onTrigger = data => {
-                if (this.choosing) this.chooseData.post("choose", { itm: itm.item, shift: util.ensure(data, "obj").shift });
+                if (this.choosing) this.chooseState.post("choose", { itm: itm.item, shift: util.ensure(data, "obj").shift });
                 else {
                     if (util.ensure(data, "obj").shift) {
                         if (this.isSelected(itm)) this.remSelected(itm);
