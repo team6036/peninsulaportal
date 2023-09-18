@@ -1385,19 +1385,6 @@
 #objectspanel .forobstacle:not(.this) {
     display: none !important;
 }
-/*
-#objectspanel > #heading {
-    align-self: stretch;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 10px;
-}
-*/
 #objectspanel > #heading > .dragbox {
     --dir: 0deg;
 
@@ -1592,57 +1579,6 @@
     --bgd: var(--cr2);
     --fgd: var(--v6);
 }
-/*
-#optionspanel > #size,
-#optionspanel > #robotsize,
-#optionspanel > #robotmass,
-#optionspanel > #background > div {
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#optionspanel > #size > input,
-#optionspanel > #robotsize > input,
-#optionspanel > #robotmass > input,
-#optionspanel > #background > div > input {
-    flex-basis: 100%;
-}
-#optionspanel > #background {
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#optionspanel > #momentofinertia,
-#optionspanel > #efficiency {
-    align-self: stretch;
-
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#optionspanel > #momentofinertia > input,
-#optionspanel > #efficiency > input {
-    flex-basis: 100%;
-}
-*/
 #optionspanel > #script {
     display: flex;
     flex-direction: row;
