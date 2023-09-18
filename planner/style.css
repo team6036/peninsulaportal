@@ -161,38 +161,16 @@
     align-items: center;
     align-content: center;
 }
-#mount > .content {
-    width: calc(100% - 20px);
-    max-width: calc(100% - 20px);
-    height: calc(100% - 20px);
-    max-height: calc(100% - 20px);
-    padding: 10px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 10px;
-}
-#mount > .content > .main {
-    position: relative;
-
-    flex-basis: 100%;
-
-    width: 100%;
-}
-#mount > .content > .main > .page {
+#mount > .page {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
 
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    max-height: 100%;
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    height: calc(100% - 20px);
+    max-height: calc(100% - 20px);
 
     display: flex;
     flex-direction: column;
@@ -207,7 +185,7 @@
 
     transition: opacity var(--t), visibility var(--t);
 }
-#mount > .content > .main > .page.this {
+#mount > .page.this {
     opacity: 100%;
     visibility: inherit;
 }
@@ -329,7 +307,7 @@
 }
 #PROJECTSPAGE > .nav > .nav > .templates {
     transform-origin: 0% 50%;
-    transform: scaleX(0%);
+    transform: translateX(-20px) scale(50%);
 
     display: flex;
     flex-direction: row;
@@ -339,10 +317,16 @@
     align-content: center;
     gap: 10px;
 
-    transition: transform var(--t);
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: transform var(--t), opacity var(--t), visibility var(--t);
 }
 #PROJECTSPAGE > .nav > .nav:hover > .templates {
-    transform: scaleX(100%);
+    transform: translateX(0px) scale(100%);
+
+    opacity: 100%;
+    visibility: inherit;
 }
 #PROJECTSPAGE > .nav > .nav > .templates > button {
     width: max-content;
@@ -1227,7 +1211,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .edit > .content > .page {
+#PROJECTPAGE > .edit > .content > .panel {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1250,10 +1234,10 @@
 
     visibility: hidden;
 }
-#PROJECTPAGE > .edit > .content > .page.this {
+#PROJECTPAGE > .edit > .content > .panel.this {
     visibility: inherit;
 }
-#PROJECTPAGE > .edit > .content > .page > .header {
+#PROJECTPAGE > .edit > .content > .panel > .header {
     align-self: stretch;
 
     margin-top: 10px;
@@ -1271,18 +1255,39 @@
     font-size: 14px;
     font-weight: 550;
 }
-#PROJECTPAGE > .edit > .content > .page > .header.sub {
+#PROJECTPAGE > .edit > .content > .panel > .header.sub {
     font-weight: 400;
 }
-#PROJECTPAGE > .edit > .content > .page > .header > span:first-child {
+#PROJECTPAGE > .edit > .content > .panel > .header > span:first-child {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .edit > .content > .page > .header > span.units {
+#PROJECTPAGE > .edit > .content > .panel > .header > span.units {
     min-width: max-content;
 
     color: var(--v6);
 
     font-style: italic;
+}
+#PROJECTPAGE > .edit > .content > .panel > .input,
+#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div {
+    align-self: stretch;
+
+    max-width: 100%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .edit > .content > .panel > .input.d3 {
+    flex-direction: column;
+}
+#PROJECTPAGE > .edit > .content > .panel > .input > input,
+#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div > input {
+    flex-basis: 100%;
 }
 #objectspanel > #spawnbox {
     position: relative;
@@ -1380,41 +1385,8 @@
 #objectspanel .forobstacle:not(.this) {
     display: none !important;
 }
-#objectspanel > #position {
-    align-self: stretch;
-
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#objectspanel > #position > input {
-    flex-basis: 100%;
-}
-#objectspanel > #radius {
-    align-self: stretch;
-
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#objectspanel > #radius > input {
-    flex-basis: 100%;
-}
+/*
 #objectspanel > #heading {
-    --dir: 0deg;
-
     align-self: stretch;
 
     display: flex;
@@ -1425,7 +1397,10 @@
     align-content: center;
     gap: 10px;
 }
+*/
 #objectspanel > #heading > .dragbox {
+    --dir: 0deg;
+
     z-index: 0;
     position: relative;
 
@@ -1503,22 +1478,6 @@
     padding: 0px;
 
     border-radius: 100%;
-}
-#objectspanel > #velocity,
-#objectspanel > #velocityrot {
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#objectspanel > #velocity > input,
-#objectspanel > #velocityrot > input {
-    flex-basis: 100%;
 }
 #objectspanel > #itemcontrols {
     align-self: stretch;
@@ -1633,6 +1592,7 @@
     --bgd: var(--cr2);
     --fgd: var(--v6);
 }
+/*
 #optionspanel > #size,
 #optionspanel > #robotsize,
 #optionspanel > #robotmass,
@@ -1682,6 +1642,7 @@
 #optionspanel > #efficiency > input {
     flex-basis: 100%;
 }
+*/
 #optionspanel > #script {
     display: flex;
     flex-direction: row;
