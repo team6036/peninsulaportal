@@ -1497,11 +1497,11 @@ App.ProjectsPage.Button =  class AppProjectsPageButton extends core.Target {
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
             itm.addHandler("trigger", data => {
-                this.post("cmd-delete", this.project.id);
+                this.app.post("cmd-delete", this.project.id);
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Duplicate"));
             itm.addHandler("trigger", data => {
-                this.post("cmd-savecopy", this.project);
+                this.app.post("cmd-savecopy", this.project);
             });
             if (!this.hasApp()) return;
             this.app.contextMenu = menu;
@@ -1589,6 +1589,9 @@ App.ProjectPage = class AppProjectPage extends App.Page {
     #ePlayPauseBtn;
     #eTimeDisplay;
     #eMaxMinBtn;
+    #eChooseNav;
+    #eChooseDoneBtn;
+    #eChooseCancelBtn;
     #eEdit;
     #eEditContent;
     #eEditNav;
@@ -1935,6 +1938,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
                 document.body.addEventListener("mousemove", mousemove);
             }
         });
+
         this.#eDisplayNav = document.createElement("div");
         this.eDisplay.appendChild(this.eDisplayNav);
         this.eDisplayNav.classList.add("nav");
@@ -1960,6 +1964,34 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             e.stopPropagation();
             if (!this.hasApp()) return;
             this.app.post("cmd-maxmin", null);
+        });
+
+        this.#eChooseNav = document.createElement("div");
+        this.eDisplay.appendChild(this.eChooseNav);
+        this.eChooseNav.classList.add("choosenav");
+        this.#eChooseDoneBtn = document.createElement("button");
+        this.eChooseNav.appendChild(this.eChooseDoneBtn);
+        this.eChooseDoneBtn.id = "donebtn";
+        this.eChooseDoneBtn.textContent = "Done";
+        this.#eChooseCancelBtn = document.createElement("button");
+        this.eChooseNav.appendChild(this.eChooseCancelBtn);
+        this.eChooseCancelBtn.id = "cancelbtn";
+        this.eChooseCancelBtn.textContent = "Cancel";
+        this.eChooseDoneBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.choosing) return;
+            let chooseState = this.chooseState;
+            for (let id in chooseState.temp) this.odometry.remRender(chooseState.temp[id]);
+            chooseState.post("done", null);
+            this.choosing = false;
+        });
+        this.eChooseCancelBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.choosing) return;
+            let chooseState = this.chooseState;
+            for (let id in chooseState.temp) this.odometry.remRender(chooseState.temp[id]);
+            chooseState.post("cancel", null);
+            this.choosing = false;
         });
 
         this.#eEdit = document.createElement("div");
@@ -2254,6 +2286,9 @@ App.ProjectPage = class AppProjectPage extends App.Page {
     get ePlayPauseBtn() { return this.#ePlayPauseBtn; }
     get eTimeDisplay() { return this.#eTimeDisplay; }
     get eMaxMinBtn() { return this.#eMaxMinBtn; }
+    get eChooseNav() { return this.#eChooseNav; }
+    get eChooseDoneBtn() { return this.#eChooseDoneBtn; }
+    get eChooseCancelBtn() { return this.#eChooseCancelBtn; }
     get eEdit() { return this.#eEdit; }
     get eEditContent() { return this.#eEditContent; }
     get eEditNav() { return this.#eEditNav; }
@@ -3323,7 +3358,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 if (!(itm instanceof subcore.Project.Node)) return;
                 if (shift) path.remNode(itm);
                 else path.addNode(itm);
-                for (let id in chooseState.temp) this.odometry.remRender(chooseState.temp[id]);
+                for (let id in chooseState.temp) this.page.odometry.remRender(chooseState.temp[id]);
                 chooseState.temp = {};
                 let nodes = path.nodes.filter(id => this.page.hasProject() && this.page.project.hasItem(id));
                 for (let i = 0; i < nodes.length; i++) {
