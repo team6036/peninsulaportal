@@ -1131,7 +1131,539 @@ App.ContextMenu.Divider = class AppContextMenuDivider extends App.ContextMenu.It
 
         this.elem.classList.add("divider");
     }
+};
+
+export class Odometry2d extends Target {
+    #canvas;
+    #ctx;
+    #quality;
+    #mouse;
+
+    #renders;
+
+    #image;
+    #imageShow;
+    #imageScale;
+
+    #doRender;
+
+    #padding;
+
+    #size;
+
+    static BEFOREGRID = 0;
+    static AFTERGRID = 1;
+    static BEFOREIMAGE = 1;
+    static AFTERIMAGE = 2;
+    static BEFOREBORDER = 2;
+    static AFTERBORDER = 3;
+
+    constructor(canvas) {
+        super();
+
+        this.#canvas = null;
+        this.#ctx = null;
+        this.#quality = 1;
+        this.#mouse = new V();
+
+        this.#renders = new Set();
+
+        this.#image = new Image();
+        this.#imageScale = false;
+        this.#imageScale = 1;
+
+        this.#doRender = true;
+
+        this.#padding = 0;
+
+        this.#size = new V();
+
+        this.canvas = canvas;
+        this.quality = 3;
+
+        this.padding = 60;
+
+        this.size = 1000;
+
+        this.addHandler("update", data => {
+            if (!this.doRender) return;
+            if (!this.hasCanvas()) return;
+            const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            this.renders.filter(render => render.z == 0).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            ctx.lineWidth = 2*quality;
+            ctx.lineJoin = ctx.lineCap = "square";
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.font = (12*quality)+"px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+            let y0 = (ctx.canvas.height - this.h*scale*quality)/2;
+            let y1 = (ctx.canvas.height + this.h*scale*quality)/2;
+            let y2 = (ctx.canvas.height + this.h*scale*quality)/2 + 5*quality;
+            let y3 = (ctx.canvas.height + this.h*scale*quality)/2 + 10*quality;
+            for (let i = 0; i <= Math.floor(this.w/100); i++) {
+                let x = (i*100) / this.w;
+                x = ctx.canvas.width/2 + util.lerp(-0.5, +0.5, x)*this.w*scale*quality;
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.beginPath();
+                ctx.moveTo(x, y1);
+                ctx.lineTo(x, y2);
+                ctx.stroke();
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+                ctx.beginPath();
+                ctx.moveTo(x, y0);
+                ctx.lineTo(x, y1);
+                ctx.stroke();
+                if (i%2 == 1 && i < Math.floor(this.w/100)) continue;
+                ctx.fillText(i, x, y3);
+            }
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
+            let x0 = (ctx.canvas.width + this.w*scale*quality)/2;
+            let x1 = (ctx.canvas.width - this.w*scale*quality)/2;
+            let x2 = (ctx.canvas.width - this.w*scale*quality)/2 - 5*quality;
+            let x3 = (ctx.canvas.width - this.w*scale*quality)/2 - 10*quality;
+            for (let i = 0; i <= Math.floor(this.h/100); i++) {
+                let y = (i*100) / this.h;
+                y = ctx.canvas.height/2 - util.lerp(-0.5, +0.5, y)*this.h*scale*quality;
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.beginPath();
+                ctx.moveTo(x1, y);
+                ctx.lineTo(x2, y);
+                ctx.stroke();
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+                ctx.beginPath();
+                ctx.moveTo(x0, y);
+                ctx.lineTo(x1, y);
+                ctx.stroke();
+                if (i%2 == 1 && i < Math.floor(this.h/100)) continue;
+                ctx.fillText(i, x3, y);
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+                (ctx.canvas.width - this.w*scale*quality)/2,
+                (ctx.canvas.height - this.h*scale*quality)/2,
+                ...this.size.mul(scale*quality).xy,
+            );
+            ctx.clip();
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            this.renders.filter(render => render.z == 1).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+
+            try {
+                if (this.#imageShow) {
+                    ctx.globalAlpha = 0.25;
+                    ctx.globalCompositeOperation = "overlay";
+                    ctx.drawImage(
+                        this.#image,
+                        (ctx.canvas.width - this.w*scale*quality)/2,
+                        (ctx.canvas.height - this.h*scale*quality)/2,
+                        this.#image.width*this.imageScale*scale*quality,
+                        this.#image.height*this.imageScale*scale*quality,
+                    );
+                }
+            } catch (e) {}
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            this.renders.filter(render => render.z == 2).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+
+            ctx.restore();
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.lineWidth = 2*quality;
+            ctx.strokeRect(
+                (ctx.canvas.width - this.w*scale*quality)/2,
+                (ctx.canvas.height - this.h*scale*quality)/2,
+                ...this.size.mul(scale*quality).xy,
+            );
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            this.renders.filter(render => render.z == 3).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+        });
+    }
+
+    get canvas() { return this.#canvas; }
+    set canvas(v) {
+        v = (v instanceof HTMLCanvasElement) ? v : null;
+        if (this.canvas == v) return;
+        if (this.hasCanvas()) {
+            this.canvas.removeEventListener("mousemove", this.canvas._onMouseMove);
+            delete this.canvas._onMouseMove;
+        }
+        this.#canvas = v;
+        if (this.hasCanvas()) {
+            this.canvas._onMouseMove = e => this.#mouse.set(e.pageX, e.pageY);
+            this.canvas.addEventListener("mousemove", this.canvas._onMouseMove);
+        }
+        this.#ctx = this.hasCanvas() ? this.canvas.getContext("2d") : null;
+        this.update();
+    }
+    hasCanvas() { return this.canvas instanceof HTMLCanvasElement; }
+    get ctx() { return this.#ctx; }
+    get quality() { return this.#quality; }
+    set quality(v) { this.#quality = Math.max(1, util.ensure(v, "int")); }
+    get mouse() { return new V(this.#mouse); }
+
+    get renders() { return [...this.#renders]; }
+    set renders(v) {
+        v = util.ensure(v, "arr");
+        this.clearRenders();
+        v.forEach(v => this.addRender(v));
+    }
+    clearRenders() {
+        let renders = this.renders;
+        renders.forEach(render => this.remRender(render));
+        return renders;
+    }
+    hasRender(render) {
+        if (!(render instanceof Odometry2d.Render)) return false;
+        return this.#renders.has(render) && render.odometry == this;
+    }
+    addRender(render) {
+        if (!(render instanceof Odometry2d.Render)) return false;
+        if (render.odometry != null) return false;
+        if (this.hasRender(render)) return false;
+        this.#renders.add(render);
+        render.odometry = this;
+        return render;
+    }
+    remRender(render) {
+        if (!(render instanceof Odometry2d.Render)) return false;
+        if (render.odometry != this) return false;
+        if (!this.hasRender(render)) return false;
+        this.#renders.delete(render);
+        render.odometry = null;
+        return render;
+    }
+
+    get imageSrc() { return this.#image.src; }
+    set imageSrc(v) {
+        if (v == null) return this.#imageShow = false;
+        this.#imageShow = true;
+        this.#image.src = v;
+    }
+    get imageScale() { return this.#imageScale; }
+    set imageScale(v) { this.#imageScale = Math.max(0, util.ensure(v, "num")); }
+
+    get doRender() { return this.#doRender; }
+    set doRender(v) { this.#doRender = !!v; }
+
+    get padding() { return this.#padding; }
+    set padding(v) { this.#padding = Math.max(0, util.ensure(v, "num")); }
+
+    get size() { return this.#size; }
+    set size(v) { this.#size.set(v); }
+    get w() { return this.size.x; }
+    set w(v) { this.size.x = v; }
+    get h() { return this.size.y; }
+    set h(v) { this.size.y = v; }
+
+    get scale() {
+        if (!this.hasCanvas()) return;
+        return Math.min(((this.canvas.width/this.quality) - 2*this.padding)/this.w, ((this.canvas.height/this.quality) - 2*this.padding)/this.h);
+    }
+
+    get hovered() {
+        let hovered = null;
+        this.renders.forEach(render => {
+            if (hovered != null) return;
+            if (render.hovered == null) return;
+            hovered = render;
+        });
+        return hovered;
+    }
+    get hoveredPart() {
+        let hovered = this.hovered;
+        if (hovered == null) return;
+        return hovered.hovered;
+    }
+
+    worldToCanvas(...p) {
+        p = new V(...p);
+        if (!this.hasCanvas()) return p;
+        p.idiv(this.size);
+        p.y = 1-p.y;
+        p.isub(0.5);
+        p.imul(this.size.mul(this.scale*this.quality));
+        p.iadd(new V(this.canvas.width, this.canvas.height).div(2));
+        return p;
+    }
+    worldLenToCanvas(l) {
+        l = util.ensure(l, "num");
+        if (!this.hasCanvas()) return l;
+        return l*(this.scale*this.quality);
+    }
+    canvasToWorld(...p) {
+        p = new V(...p);
+        if (!this.hasCanvas()) return p;
+        p.isub(new V(this.canvas.width, this.canvas.height).div(2));
+        p.idiv(this.size.mul(this.scale*this.quality));
+        p.iadd(0.5);
+        p.y = 1-p.y;
+        p.imul(this.size);
+        return p;
+    }
+    canvasLenToWorld(l) {
+        l = util.ensure(l, "num");
+        if (!this.hasCanvas()) return l;
+        return l/(this.scale*this.quality);
+    }
+    canvasToPage(...p) {
+        p = new V(...p);
+        if (!this.hasCanvas()) return p;
+        let r = this.canvas.getBoundingClientRect();
+        p.idiv(this.quality);
+        p.iadd(r.left, r.top);
+        return p;
+    }
+    canvasLenToPage(l) {
+        l = util.ensure(l, "num");
+        if (!this.hasCanvas()) return l;
+        return l/this.quality;
+    }
+    pageToCanvas(...p) {
+        p = new V(...p);
+        if (!this.hasCanvas()) return p;
+        let r = this.canvas.getBoundingClientRect();
+        p.isub(r.left, r.top);
+        p.imul(this.quality);
+        return p;
+    }
+    pageLenToCanvas(l) {
+        l = util.ensure(l, "num");
+        if (!this.hasCanvas()) return l;
+        return l*this.quality;
+    }
+    worldToPage(...p) { return this.canvasToPage(this.worldToCanvas(...p)); }
+    worldLenToPage(l) { return this.canvasLenToPage(this.worldLenToCanvas(l)); }
+    pageToWorld(...p) { return this.canvasToWorld(this.pageToCanvas(...p)); }
+    pageLenToWorld(l) { return this.canvasLenToWorld(this.pageLenToCanvas(l)); }
+
+    update() { this.post("update"); }
 }
+Odometry2d.Render = class Odometry2dRender extends Target {
+    #odometry;
+    
+    #pos;
+    #z; #z2;
+    #alpha;
+
+    #canHover;
+
+    constructor(pos) {
+        super();
+
+        this.#odometry = null;
+
+        this.#pos = new V();
+        this.#z = this.#z2 = 0;
+        this.#alpha = 1;
+
+        this.#canHover = true;
+
+        this.pos = pos;
+        this.z = Odometry2d.AFTERIMAGE;
+        this.z2 = 0;
+    }
+
+    get odometry() { return this.#odometry; }
+    set odometry(v) {
+        v = (v instanceof Odometry2d) ? v : null;
+        if (this.odometry == v) return;
+        this.#odometry = v;
+    }
+    hasOdometry() { return this.odometry instanceof Odometry2d; }
+
+    get pos() { return this.#pos; }
+    set pos(v) { this.#pos.set(v); }
+    get x() { return this.pos.x; }
+    set x(v) { this.pos.x = v; }
+    get y() { return this.pos.y; }
+    set y(v) { this.pos.y = v; }
+
+    get z() { return this.#z; }
+    set z(v) { this.#z = util.ensure(v, "int"); }
+    get z2() { return this.#z2; }
+    set z2(v) { this.#z2 = util.ensure(v, "int"); }
+
+    get alpha() { return this.#alpha; }
+    set alpha(v) { this.#alpha = Math.min(1, Math.max(0, util.ensure(v, "num"))); }
+
+    get canHover() { return this.#canHover; }
+    set canHover(v) { this.#canHover = !!v; }
+    get hovered() { return null; }
+
+    render() {
+        if (!this.hasOdometry()) return;
+        this.odometry.ctx.globalAlpha = this.alpha;
+        this.post("render", null);
+    }
+};
+Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
+    #size;
+    #velocity;
+    #showVelocity;
+    #heading;
+
+    #color;
+    #colorH;
+
+    #selected;
+
+    constructor(pos, size, heading) {
+        super(pos);
+
+        this.#size = new V();
+        this.#velocity = new V();
+        this.#showVelocity = true;
+        this.#heading = 0;
+
+        this.#color = "cb";
+        this.#colorH = "cb5";
+
+        this.size = size;
+        this.heading = heading;
+
+        this.addHandler("render", () => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8-8");
+            ctx.lineWidth = 2*quality;
+            ctx.beginPath();
+            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+            for (let i = 0; i <= path.length; i++) {
+                let j = i%path.length;
+                let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
+                if (i > 0) ctx.lineTo(...p.xy);
+                else ctx.moveTo(...p.xy);
+            }
+            ctx.stroke();
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? "a" : "v8"));
+            ctx.beginPath();
+            ctx.arc(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? this.colorH : this.color));
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            ctx.lineWidth = 2*quality;
+            ctx.beginPath();
+            ctx.arc(...this.odometry.worldToCanvas(this.pos).xy, 7.5*quality, 0, 2*Math.PI);
+            ctx.fill();
+            if (this.selected) ctx.stroke();
+            if (this.showVelocity) {
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
+                ctx.lineWidth = 2*quality;
+                ctx.beginPath();
+                ctx.moveTo(...this.odometry.worldToCanvas(this.pos).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(this.pos.add(V.dir(180+this.velocity.towards(), Math.max(0, this.velocity.dist()-this.odometry.pageLenToWorld(5))))).xy);
+                ctx.stroke();
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
+                ctx.beginPath();
+                ctx.arc(...this.odometry.worldToCanvas(this.pos.add(this.velocity)).xy, 5*quality, 0, 2*Math.PI);
+                ctx.fill();
+            }
+        });
+    }
+
+    get hovered() {
+        if (!this.canHover) return null;
+        if (!this.hasOdometry()) return null;
+        let m = this.odometry.pageToWorld(this.odometry.mouse);
+        if (this.showVelocity && this.pos.add(this.velocity).dist(m) < this.odometry.pageLenToWorld(5)) return "velocity";
+        if (this.pos.add(V.dir(this.heading, this.w/2)).dist(m) < this.odometry.pageLenToWorld(5)) return "heading";
+        if (this.pos.dist(m) < this.odometry.pageLenToWorld(7.5)) return "main";
+        return null;
+    }
+
+    get size() { return this.#size; }
+    set size(v) { this.#size.set(v); }
+    get w() { return this.size.x; }
+    set w(v) { this.size.x = v; }
+    get h() { return this.size.y; }
+    set h(v) { this.size.y = v; }
+    get velocity() { return this.#velocity; }
+    set velocity(v) { this.#velocity.set(v); }
+    get velocityX() { return this.velocity.x; }
+    set velocityX(v) { this.velocity.x = v; }
+    get velocityY() { return this.velocity.y; }
+    set velocityY(v) { this.velocity.y = v; }
+    get showVelocity() { return this.#showVelocity; }
+    set showVelocity(v) { this.#showVelocity = !!v; }
+
+    get heading() { return this.#heading; }
+    set heading(v) { this.#heading = ((util.ensure(v, "num")%360)+360)%360; }
+
+    get color() { return this.#color; }
+    set color(v) { this.#color = String(v); }
+    get colorH() { return this.#colorH; }
+    set colorH(v) { this.#colorH = String(v); }
+
+    get selected() { return this.#selected; }
+    set selected(v) { this.#selected = !!v; }
+};
+Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
+    #radius;
+    #dir;
+
+    #selected;
+
+    constructor(pos, radius) {
+        super(pos);
+
+        this.#radius = 0;
+        this.#dir = 0;
+
+        this.radius = radius;
+
+        this.addHandler("render", () => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? "cr-8" : "cr-4"));
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            ctx.lineWidth = 2*quality;
+            ctx.beginPath();
+            ctx.arc(...this.odometry.worldToCanvas(this.pos).xy, this.odometry.worldLenToCanvas(this.radius), 0, 2*Math.PI);
+            ctx.fill();
+            if (this.selected) ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(...this.odometry.worldToCanvas(this.pos).xy);
+            ctx.lineTo(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.dir, this.radius))).xy);
+            ctx.stroke();
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "radius") ? "a" : "v8"));
+            ctx.beginPath();
+            ctx.arc(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.dir, this.radius))).xy, 5*quality, 0, 2*Math.PI);
+            ctx.fill();
+        });
+    }
+
+    get hovered() {
+        if (!this.canHover) return null;
+        if (!this.hasOdometry()) return null;
+        let m = this.odometry.pageToWorld(this.odometry.mouse);
+        if (this.pos.add(V.dir(this.dir, this.radius)).dist(m) < this.odometry.pageLenToWorld(5)) return "radius";
+        if (this.pos.dist(m) < this.radius) return "main";
+        return null;
+    }
+
+    get radius() { return this.#radius; }
+    set radius(v) { this.#radius = Math.max(0, util.ensure(v, "num")); }
+
+    get dir() { return this.#dir; }
+    set dir(v) { this.#dir = ((util.ensure(v, "num")%360)+360)%360; }
+
+    get selected() { return this.#selected; }
+    set selected(v) { this.#selected = !!v; }
+};
 
 export class Reviver {
     #rules;

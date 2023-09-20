@@ -6,151 +6,386 @@ import * as core from "../core.js";
 import * as subcore from "./core.js";
 
 
-class PathButton extends core.Target {
-    #page;
+class RLabel extends core.Odometry2d.Render {
+    #item;
 
-    #path;
-    #showIndices;
-    #showLines;
+    #text;
 
-    #elem;
-    #eName;
-    #eEdit;
-    #eRemove;
-
-    constructor(path) {
+    constructor(item) {
         super();
 
-        this.#page = null;
+        this.z2 = 2;
 
-        this.#path = null;
-        this.#showIndices = true;
-        this.#showLines = true;
+        this.#item = null;
 
-        this.#elem = document.createElement("div");
-        this.elem.classList.add("item");
-        this.#eName = document.createElement("input");
-        this.elem.appendChild(this.eName);
-        this.eName.type = "text";
-        this.eName.placeholder = "Path Name";
-        this.eName.autocomplete = "off";
-        this.eName.spellcheck = false;
-        this.#eEdit = document.createElement("button");
-        this.elem.appendChild(this.eEdit);
-        this.eEdit.innerHTML = "<ion-icon name='pencil'></ion-icon>";
-        this.#eRemove = document.createElement("button");
-        this.elem.appendChild(this.eRemove);
-        this.eRemove.innerHTML = "<ion-icon name='trash'></ion-icon>";
+        this.#text = "";
+        
+        this.item = item;
 
-        this.elem.addEventListener("click", e => {
-            e.stopPropagation();
-            this.post("trigger", null);
+        this.addHandler("render", () => {
+            if (this.hasItem()) this.pos = this.item.pos;
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            ctx.font = (12*quality)+"px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--cg-8");
+            const width = ctx.measureText(this.text).width/quality;
+            ctx.beginPath();
+            let path = [
+                [0, 0],
+                [+5, 5],
+                [+width/2+5, 5],
+                [+width/2+5, 25],
+                [-width/2-5, 25],
+                [-width/2-5, 5],
+                [-5, 5],
+            ];
+            let offset = [0, 5];
+            for (let i = 0; i <= path.length; i++) {
+                let j = i%path.length;
+                let p = this.odometry.worldToCanvas(this.pos).add(new V(path[j]).add(offset).mul(+1,-1).mul(quality));
+                if (i > 0) ctx.lineTo(...p.xy);
+                else ctx.moveTo(...p.xy);
+            }
+            ctx.fill();
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            let p = this.odometry.worldToCanvas(this.pos).add(new V(0,15).add(offset).mul(+1,-1).mul(quality));
+            ctx.fillText(this.text, ...p.xy);
         });
-        this.eEdit.addEventListener("click", e => {
-            e.stopPropagation();
-            this.post("edit", null);
-        });
-        this.eRemove.addEventListener("click", e => {
-            e.stopPropagation();
-            this.post("remove", null);
+    }
+
+    get item() { return this.#item; }
+    set item(v) {
+        v = (v instanceof subcore.Project.Item) ? v : null;
+        if (this.item == v) return;
+        this.#item = v;
+    }
+    hasItem() { return this.item instanceof subcore.Project.Item; }
+
+    get text() { return this.#text; }
+    set text(v) { this.#text = String(v); }
+}
+class RLine extends core.Odometry2d.Render {
+    #itemA; #itemB;
+
+    constructor(itemA, itemB) {
+        super();
+
+        this.z2 = 1;
+
+        this.#itemA = null;
+        this.#itemB = null;
+
+        let a = new V(), b = new V();
+
+        this.addHandler("render", data => {
+            if (this.hasItemA()) a.set(this.itemA.pos);
+            if (this.hasItemB()) b.set(this.itemB.pos);
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            if (a.dist(b) < this.odometry.pageLenToWorld((7.5+5)*2)) return;
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--cg-8");
+            ctx.lineWidth = 5*quality;
+            ctx.beginPath();
+            ctx.moveTo(...this.odometry.worldToCanvas(a.add(V.dir(a.towards(b), this.odometry.pageLenToWorld(7.5+5)))).xy);
+            ctx.lineTo(...this.odometry.worldToCanvas(b.add(V.dir(b.towards(a), this.odometry.pageLenToWorld(7.5+5)))).xy);
+            ctx.stroke();
         });
 
-        this.eName.addEventListener("change", e => {
-            if (!this.hasPath()) return;
-            this.path.name = this.eName.value;
-            this.post("change", null);
-        });
+        this.itemA = itemA;
+        this.itemB = itemB;
+    }
 
-        this.addHandler("set", data => {
-            this.eName.value = this.hasPath() ? this.path.name : "";
-        });
+    get itemA() { return this.#itemA; }
+    set itemA(v) {
+        v = (v instanceof subcore.Project.Item) ? v : null;
+        if (this.item == v) return;
+        this.#itemA = v;
+    }
+    hasItemA() { return this.itemA instanceof subcore.Project.Item; }
+    get itemB() { return this.#itemB; }
+    set itemB(v) {
+        v = (v instanceof subcore.Project.Item) ? v : null;
+        if (this.item == v) return;
+        this.#itemB = v;
+    }
+    hasItemB() { return this.itemB instanceof subcore.Project.Item; }
+}
+class RVisual extends core.Odometry2d.Render {
+    #dt;
+    #nodes;
 
-        let show = false;
-        this.addHandler("add", data => {
-            show = true;
-            this.post("udpate", null);
-        });
-        this.addHandler("rem", data => {
-            show = false;
-            this.post("udpate", null);
-        });
-        let prevPath = "";
-        let prevShowIndicies = null, prevShowLines = null;
-        let pthItems = {};
-        this.addHandler("udpate", data => {
-            if (!this.hasPage()) return;
-            if (!this.page.hasProject()) return;
-            let nodes = (show && this.hasPath()) ? this.path.nodes : [];
-            let path = nodes.join("");
-            if (prevPath == path && prevShowIndicies == this.showIndices && prevShowLines == this.showLines) return;
-            for (let id in pthItems) this.page.remRenderItem(pthItems[id]);
-            pthItems = {};
-            prevPath = path;
-            prevShowIndicies = this.showIndices;
-            prevShowLines = this.showLines;
-            for (let i = 0; i < nodes.length; i++) {
-                let id = nodes[i];
-                let node = this.page.project.getItem(id);
-                if (this.showIndices) {
-                    if (id in pthItems) {
-                        pthItems[id].value += ", "+(i+1);
-                    } else {
-                        pthItems[id] = this.page.addRenderItem(new RIPathIndex(node));
-                        pthItems[id].value = i+1;
-                    }
+    constructor(dt, nodes) {
+        super();
+
+        this.z2 = -2;
+
+        this.#dt = 0;
+        this.#nodes = [];
+
+        this.addHandler("render", data => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            const colors = {
+                g: new util.Color(getComputedStyle(document.body).getPropertyValue("--cg")),
+                y: new util.Color(getComputedStyle(document.body).getPropertyValue("--cy")),
+                r: new util.Color(getComputedStyle(document.body).getPropertyValue("--cr")),
+            };
+            const thresh1 = 0, thresh2 = 500;
+            const getColor = v => {
+                const ks = Object.keys(colors);
+                if (v < thresh1) return colors[ks.at(0)];
+                if (v >= thresh2) return colors[ks.at(-1)];
+                for (let i = 0; i+1 < ks.length; i++) {
+                    let j = i+1;
+                    let ki = ks[i], kj = ks[j];
+                    let p = (v-thresh1)/(thresh2-thresh1);
+                    let pi = i / (ks.length-1), pj = j / (ks.length-1);
+                    if (p < pi) continue;
+                    if (p >= pj) continue;
+                    p = (p-pi)/(pj-pi);
+                    return util.lerp(colors[ki], colors[kj], p);
                 }
-                if (i > 0 && this.showLines) {
-                    let id2 = nodes[i-1];
-                    let node2 = this.page.project.getItem(id2);
-                    pthItems[id+"~"+id2] = this.page.addRenderItem(new RIPathLine(node, node2));
-                }
+                return colors[ks[0]];
+            };
+            for (let i = 0; i+1 < this.nodes.length; i++) {
+                let j = i+1;
+                let ni = this.nodes[i], nj = this.nodes[j];
+                let pi = this.odometry.worldToCanvas(ni.pos), pj = this.odometry.worldToCanvas(nj.pos);
+                let vi = ni.velocity.dist(), vj = nj.velocity.dist();
+                let ci = getColor(vi), cj = getColor(vj);
+                let grad = ctx.createLinearGradient(...pi.xy, ...pj.xy);
+                grad.addColorStop(0, ci.toRGBA());
+                grad.addColorStop(1, cj.toRGBA());
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 2*quality;
+                ctx.beginPath();
+                ctx.moveTo(...pi.xy);
+                ctx.lineTo(...pj.xy);
+                ctx.stroke();
             }
         });
 
-        this.path = path;
+        this.dt = dt;
+        this.nodes = nodes;
     }
 
-    get page() { return this.#page; }
-    set page(v) {
-        v = (v instanceof App.ProjectPage) ? v : null;
-        if (this.page == v) return;
-        this.#page = v;
+    get dt() { return this.#dt; }
+    set dt(v) {
+        v = Math.max(0, util.ensure(v, "num"));
+        if (this.dt == v) return;
+        this.#dt = v;
     }
-    hasPage() { return this.page instanceof App.ProjectPage; }
-    get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
 
-    get path() { return this.#path; }
-    set path(v) {
-        v = (v instanceof subcore.Project.Path) ? v : null;
-        if (this.path == v) return;
-        this.#path = v;
+    get nodes() { return [...this.#nodes]; }
+    set nodes(v) {
+        v = util.ensure(v, "arr");
+        this.#nodes = v.map(v => new subcore.Project.Node(v));
+    }
+}
+class RVisualItem extends core.Odometry2d.Robot {
+    #visual;
+    #interp;
+
+    constructor(visual) {
+        super();
+
+        this.z2 = -1;
+
+        this.#visual = null;
+        this.#interp = 0;
+
+        this.addHandler("render", data => {
+            if (!this.hasVisual()) return;
+            let p = this.interp;
+            let nodes = this.visual.nodes;
+            let i = Math.floor((nodes.length-1)*p);
+            let j = Math.min(i+1, nodes.length-1);
+            let ni = nodes[i], nj = nodes[j];
+            p = ((nodes.length-1)*p) - i;
+            let node = new subcore.Project.Node(
+                util.lerp(ni.pos, nj.pos, p),
+                ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
+                util.lerp(ni.velocity, nj.velocity),
+                0, true,
+            );
+            this.pos = node.pos;
+            this.velocity = node.velocity;
+            this.heading = node.heading * (180/Math.PI);
+        });
+
+        this.visual = visual;
+    }
+
+    get visual() { return this.#visual; }
+    set visual(v) {
+        v = (v instanceof RVisual) ? v : null;
+        if (this.visual == v) return;
+        this.#visual = v;
+    }
+    hasVisual() { return this.visual instanceof RVisual; }
+
+    get interp() { return this.#interp; }
+    set interp(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (this.interp == v) return;
+        this.#interp = v;
+    }
+}
+class RSelect extends core.Odometry2d.Render {
+    #a; #b;
+
+    constructor() {
+        super();
+
+        this.z2 = 3;
+
+        this.#a = new V();
+        this.#b = new V();
+
+        this.addHandler("render", data => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            ctx.lineWidth = 2*quality;
+            let a = this.odometry.worldToCanvas(this.a);
+            let b = this.odometry.worldToCanvas(this.b);
+            ctx.strokeRect(
+                Math.min(a.x, b.x),
+                Math.min(a.y, b.y),
+                Math.max(a.x, b.x)-Math.min(a.x, b.x),
+                Math.max(a.y, b.y)-Math.min(a.y, b.y),
+            );
+        });
+    }
+
+    get a() { return this.#a; }
+    set a(v) { this.a.set(v); }
+    get aX() { return this.a.x; }
+    set aX(v) { this.a.x = v; }
+    get aY() { return this.a.y; }
+    set aY(v) { this.a.y = v; }
+    get b() { return this.#b; }
+    set b(v) { this.b.set(v); }
+    get bX() { return this.b.x; }
+    set bX(v) { this.b.x = v; }
+    get bY() { return this.b.y; }
+    set bY(v) { this.b.y = v; }
+}
+class RSelectable extends core.Odometry2d.Render {
+    #ghost;
+
+    #item;
+    #renderObject;
+
+    constructor(item) {
+        super();
+
+        this.#ghost = false;
+
+        this.#item = null;
+        this.#renderObject = null;
+
+        const check = () => {
+            if (!this.hasRenderObject()) return;
+            if (this.hasOdometry()) {
+                if (this.renderObject.hasOdometry()) return;
+                this.odometry.addRender(this.renderObject);
+            } else {
+                if (!this.renderObject.hasOdometry()) return;
+                this.renderObject.odometry.remRender(this.renderObject);
+            }
+            this.renderObject.alpha = this.ghost ? 0.5 : 1;
+        };
+
+        this.addHandler("set", data => {
+            if (this.hasRenderObject()) this.renderObject.remHandler("render", check);
+            if (this.hasOdometry()) this.odometry.remRender(this.renderObject);
+            this.#renderObject = null;
+            if (!this.hasItem()) return;
+            if (this.item instanceof subcore.Project.Node) {
+                this.#renderObject = new core.Odometry2d.Robot();
+            } else if (this.item instanceof subcore.Project.Obstacle) {
+                this.#renderObject = new core.Odometry2d.Obstacle();
+            }
+            if (this.hasRenderObject()) this.renderObject.addHandler("render", check);
+        });
+
+        this.addHandler("render", data => {
+            check();
+            if (!this.hasItem()) return;
+            if (!this.hasRenderObject()) return;
+            const render = this.renderObject;
+            render.source = this;
+            render.pos = this.item.pos;
+            if (this.item instanceof subcore.Project.Node) {
+                render.velocity = this.item.velocity;
+                render.showVelocity = this.item.useVelocity;
+                render.heading = this.item.heading * (180/Math.PI);
+            } else if (this.item instanceof subcore.Project.Obstacle) {
+                render.radius = this.item.radius;
+            }
+        });
+
+        this.item = item;
+    }
+
+    get ghost() { return this.#ghost; }
+    set ghost(v) { this.#ghost = !!v; }
+
+    get item() { return this.#item; }
+    set item(v) {
+        v = (v instanceof subcore.Project.Item) ? v : null;
+        if (this.item == v) return;
+        this.#item = v;
         this.post("set", { v: v });
     }
-    hasPath() { return this.path instanceof subcore.Project.Path; }
-    get showIndices() { return this.#showIndices; }
-    set showIndices(v) {
-        v = !!v;
-        if (this.showIndices == v) return;
-        this.#showIndices = v;
+    hasItem() { return this.item instanceof subcore.Project.Item; }
+    get renderObject() { return this.#renderObject; }
+    hasRenderObject() { return this.#renderObject instanceof core.Odometry2d.Render; }
+
+    get selected() { return this.hasRenderObject() ? this.renderObject.selected : false; }
+    set selected(v) { if (this.hasRenderObject()) this.renderObject.selected = v; }
+
+    hover(part) {
+        part = String(part);
+        if (!this.hasItem()) return "";
+        if (part == "main") return "move";
+        if (this.item instanceof subcore.Project.Node) {
+            let partfs = {
+                velocity: "grab",
+                heading: "grab",
+            };
+            if (part in partfs) return partfs[part];
+        } else if (this.item instanceof subcore.Project.Obstacle) {
+            let partfs = {
+                radius: "grab",
+            };
+            if (part in partfs) return partfs[part];
+        }
+        return "";
     }
-    get showLines() { return this.#showLines; }
-    set showLines(v) {
-        v = !!v;
-        if (this.showLines == v) return;
-        this.#showLines = v;
-    }
-
-    get selected() { return this.elem.classList.contains("this"); }
-    set selected(v) { v ? this.elem.classList.add("this") : this.elem.classList.remove("this"); }
-
-    get elem() { return this.#elem; }
-    get eName() { return this.#eName; }
-    get eEdit() { return this.#eEdit; }
-    get eRemove() { return this.#eRemove; }
-
-    update() {
-        this.post("udpate", null);
+    drag(part, pos) {
+        part = String(part);
+        pos = new V(pos);
+        if (!this.hasItem()) return "";
+        if (this.item instanceof subcore.Project.Node) {
+            let partfs = {
+                velocity: () => {
+                    this.item.velocity = pos.sub(this.item.pos);
+                    this.item.post("change", null);
+                },
+                heading: () => {
+                    this.item.heading = (Math.PI/180) * this.item.pos.towards(pos);
+                },
+            };
+            if (part in partfs) partfs[part]();
+        } else if (this.item instanceof subcore.Project.Obstacle) {
+            let partfs = {
+                radius: () => {
+                    this.item.radius = this.item.pos.dist(pos);
+                    this.renderObject.dir = this.item.pos.towards(pos);
+                },
+            };
+            if (part in partfs) partfs[part]();
+        }
     }
 }
 
@@ -177,8 +412,8 @@ class PathVisual extends core.Target {
 
         this.#show = false;
 
-        this.#visual = new RIPathVisual();
-        this.#item = new RIPathVisualItem(this.visual);
+        this.#visual = new RVisual();
+        this.#item = new RVisualItem(this.visual);
 
         this.#t = 0;
         this.#tPrev = 0;
@@ -190,13 +425,13 @@ class PathVisual extends core.Target {
         v = (v instanceof App.ProjectPage.PathsPanel) ? v : null;
         if (this.panel == v) return;
         if (this.hasPage()) {
-            this.page.remRenderItem(this.visual);
-            this.page.remRenderItem(this.item);
+            this.page.odometry.remRender(this.visual);
+            this.page.odometry.remRender(this.item);
         }
         this.#panel = v;
         if (this.hasPage() && this.show) {
-            this.page.addRenderItem(this.visual);
-            this.page.addRenderItem(this.item);
+            this.page.odometry.addRender(this.visual);
+            this.page.odometry.addRender(this.item);
         }
     }
     hasPanel() { return this.panel instanceof App.ProjectPage.PathsPanel; }
@@ -219,11 +454,11 @@ class PathVisual extends core.Target {
         this.#show = v;
         if (!this.hasPage()) return;
         if (this.show) {
-            this.page.addRenderItem(this.visual);
-            this.page.addRenderItem(this.item);
+            this.page.odometry.addRender(this.visual);
+            this.page.odometry.addRender(this.item);
         } else {
-            this.page.remRenderItem(this.visual);
-            this.page.remRenderItem(this.item);
+            this.page.odometry.remRender(this.visual);
+            this.page.odometry.remRender(this.item);
         }
     }
 
@@ -262,588 +497,10 @@ class PathVisual extends core.Target {
     }
 }
 
-class RenderItem extends core.Target {
-    #page;
-
-    #pos;
-    #dir;
-    #scale;
-    #align;
-    #show;
-
-    #applyGlobalToPos;
-    #applyGlobalToScale;
-
-    #elem;
-
-    constructor() {
-        super();
-
-        this.#page = null;
-
-        this.#pos = new V();
-        this.#dir = 0;
-        this.#scale = new V(1);
-        this.#align = new V();
-        this.#show = true;
-
-        this.#applyGlobalToPos = true;
-        this.#applyGlobalToScale = true;
-
-        this.#elem = document.createElement("div");
-        this.elem.classList.add("item");
-    }
-
-    get page() { return this.#page; }
-    set page(v) {
-        v = (v instanceof App.ProjectPage) ? v : null;
-        if (this.page == v) return;
-        this.#page = v;
-    }
-    hasPage() { return this.page instanceof App.ProjectPage; }
-    get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
-
-    get pos() { return this.#pos; }
-    set pos(v) { this.pos.set(v); }
-    get x() { return this.pos.x; }
-    set x(v) { this.pos.x = v; }
-    get y() { return this.pos.y; }
-    set y(v) { this.pos.y = v; }
-    get dir() { return this.#dir; }
-    set dir(v) {
-        v = ((util.ensure(v, "num")%360)+360)%360;
-        if (this.dir == v) return;
-        this.#dir = v;
-        this.post("dir-set", { v: v });
-    }
-    get scale() { return this.#scale; }
-    set scale(v) { this.scale.set(v); }
-    get scaleX() { return this.scale.x; }
-    set scaleX(v) { this.scale.x = v; }
-    get scaleY() { return this.scale.y; }
-    set scaleY(v) { this.scale.y = v; }
-    get align() { return this.#align; }
-    set align(v) { this.#align.set(v); }
-    get alignX() { return this.align.x; }
-    set alignX(v) { this.align.x = v; }
-    get alignY() { return this.align.y; }
-    set alignY(v) { this.align.y = v; }
-    get show() { return this.#show; }
-    set show(v) {
-        v = !!v;
-        if (this.show == v) return;
-        this.#show = v;
-        this.post("show-set", { v: v });
-    }
-
-    get applyGlobalToPos() { return this.#applyGlobalToPos; }
-    set applyGlobalToPos(v) { this.#applyGlobalToPos = !!v; }
-    get applyGlobalToScale() { return this.#applyGlobalToScale; }
-    set applyGlobalToScale(v) { this.#applyGlobalToScale = !!v; }
-
-    get elem() { return this.#elem; }
-
-    get parentElem() { return this.elem.parentElement; }
-    hasParentElem() { return this.parentElem instanceof HTMLElement; }
-
-    update() {
-        this.post("update", null);
-        let globalScale = this.hasPage() ? this.page.globalScale : 1;
-        let posScale = this.applyGlobalToPos ? globalScale : 1;
-        let scaleScale = this.applyGlobalToScale ? globalScale : 1;
-        this.elem.style.transform = [
-            "translate("+(this.x * posScale)+"px, "+(-this.y * posScale)+"px)",
-            "translate("+(this.alignX<0?-100:this.alignX>0?0:-50)+"%, "+(this.alignY<0?100:this.alignY>0?0:50)+"%)",
-            "scale("+this.scale.mul(scaleScale).xy.join(",")+")",
-            "rotate("+(-this.dir)+"deg)",
-        ].join(" ");
-        this.elem.style.visibility = this.show ? "inherit" : "hidden";
-    }
-
-    pageToMap(...pos) {
-        pos = new V(...pos);
-        if (!this.hasParentElem()) return pos;
-        let r = this.parentElem.getBoundingClientRect();
-        let x = pos.x;
-        let y = pos.y;
-        x -= r.left;
-        y -= r.top;
-        x /= r.width;
-        y /= r.height;
-        y = 1 - y;
-        x *= (this.hasPage() && this.page.hasProject()) ? this.page.project.w : 0;
-        y *= (this.hasPage() && this.page.hasProject()) ? this.page.project.h : 0;
-        return new V(x, y);
-    }
-}
-
-class RIBackground extends RenderItem {
-    #img;
-
-    constructor(src) {
-        super();
-
-        this.elem.classList.add("background");
-
-        this.#img = document.createElement("img");
-        this.elem.appendChild(this.img);
-
-        this.src = src;
-    }
-
-    get img() { return this.#img; }
-
-    get src() { return this.img.src; }
-    set src(v) {
-        if (v == null) this.img.style.visibility = "hidden";
-        else {
-            this.img.style.visibility = "inherit";
-            this.img.src = v;
-        }
-    }
-}
-
-class RIPathIndex extends RenderItem {
-    #item;
-
-    constructor(item) {
-        super();
-
-        this.#item = null;
-
-        this.elem.classList.add("pathindex");
-        this.applyGlobalToScale = false;
-
-        this.addHandler("update", data => {
-            if (this.hasItem()) this.pos = this.item.pos;
-        });
-
-        this.item = item;
-    }
-
-    get item() { return this.#item; }
-    set item(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
-        if (this.item == v) return;
-        this.#item = v;
-    }
-    hasItem() { return this.item instanceof subcore.Project.Item; }
-
-    get value() { return this.elem.textContent; }
-    set value(v) { this.elem.textContent = v; }
-}
-class RIPathLine extends RenderItem {
-    #itemA; #itemB;
-
-    constructor(itemA, itemB) {
-        super();
-
-        this.elem.classList.add("pathline");
-
-        this.#itemA = null;
-        this.#itemB = null;
-
-        let a = new V(), b = new V();
-
-        this.addHandler("update", data => {
-            if (this.hasItemA()) a.set(this.itemA.pos);
-            if (this.hasItemB()) b.set(this.itemB.pos);
-            this.pos = a;
-            this.dir = a.towards(b);
-            this.elem.style.setProperty("--dist", b.dist(a)+"px");
-        });
-
-        this.itemA = itemA;
-        this.itemB = itemB;
-    }
-
-    get itemA() { return this.#itemA; }
-    set itemA(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
-        if (this.item == v) return;
-        this.#itemA = v;
-    }
-    hasItemA() { return this.itemA instanceof subcore.Project.Item; }
-    get itemB() { return this.#itemB; }
-    set itemB(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
-        if (this.item == v) return;
-        this.#itemB = v;
-    }
-    hasItemB() { return this.itemB instanceof subcore.Project.Item; }
-}
-class RIPathVisual extends RenderItem {
-    #dt;
-    #nodes;
-
-    #canvas;
-    #ctx;
-
-    constructor(dt, nodes) {
-        super();
-
-        this.#dt = 0;
-        this.#nodes = [];
-
-        this.elem.classList.add("pathvisual");
-
-        const canvas = this.#canvas = document.createElement("canvas");
-        this.elem.appendChild(canvas);
-        const ctx = this.#ctx = canvas.getContext("2d");
-        const scale = 3;
-
-        this.addHandler("update", data => {
-            let style = getComputedStyle(document.body);
-            let size = new V((this.hasPage() && this.page.hasProject()) ? this.page.project.size : 0);
-            this.pos = size.div(2);
-            canvas.width = scale*size.x;
-            canvas.height = scale*size.y;
-            canvas.style.width = size.x+"px";
-            canvas.style.height = size.y+"px";
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.lineWidth = scale*5;
-            ctx.lineCap = "butt";
-            ctx.lineJoin = "round";
-            let nodes = this.nodes;
-            let colors = {};
-            "roygbpm".split("").forEach(name => {
-                let c = String(style.getPropertyValue("--c"+name));
-                c = c.startsWith("rgba") ? c.slice(4) : c.startsWith("rgb") ? c.slice(3) : null;
-                if (c == null) c = [0, 0, 0];
-                else {
-                    c = (c.at(0) == "(" && c.at(-1) == ")") ? c.slice(1, c.length-1) : null;
-                    if (c == null) c = [0, 0, 0];
-                    else {
-                        c = c.split(",").map(v => v.replaceAll(" ", ""));
-                        if (![3, 4].includes(c.length)) c = [0, 0, 0];
-                        else {
-                            if (c.length > 3) c.pop();
-                            c = c.map(v => Math.min(255, Math.max(0, util.ensure(parseFloat(v), "num"))));
-                        }
-                    }
-                }
-                colors[name] = c;
-            });
-            for (let i = 0; i+1 < nodes.length; i++) {
-                let j = i+1;
-                let ni = nodes[i], nj = nodes[j];
-                let pi = new V(ni.x, size.y-ni.y).mul(scale), pj = new V(nj.x, size.y-nj.y).mul(scale);
-                let vi = ni.velocity.dist(), vj = nj.velocity.dist();
-                let thresh1 = 0, thresh2 = 500;
-                let colorks = ["g", "y", "r"];
-                const fc = v => {
-                    v = Math.min(1, Math.max(0, (v - thresh1) / (thresh2 - thresh1)));
-                    for (let i = 0; i+1 < colorks.length; i++) {
-                        let j = i+1;
-                        let vi = i / (colorks.length-1), vj = j / (colorks.length-1);
-                        if (v >= vi && v <= vj) {
-                            let ci = colors[colorks[i]], cj = colors[colorks[j]];
-                            return Array.from(new Array(3).keys()).map(k => util.lerp(ci[k], cj[k], (v-vi)/(vj-vi)));
-                        }
-                    }
-                    return null;
-                };
-                let ci = fc(vi), cj = fc(vj);
-                let grad = ctx.createLinearGradient(...pi.xy, ...pj.xy);
-                grad.addColorStop(0, "rgb("+ci.join(",")+")");
-                grad.addColorStop(1, "rgb("+cj.join(",")+")");
-                ctx.beginPath();
-                ctx.strokeStyle = grad;
-                ctx.moveTo(...pi.xy);
-                ctx.lineTo(...pj.xy);
-                ctx.stroke();
-            }
-        });
-
-        this.dt = dt;
-        this.nodes = nodes;
-    }
-
-    get dt() { return this.#dt; }
-    set dt(v) {
-        v = Math.max(0, util.ensure(v, "num"));
-        if (this.dt == v) return;
-        this.#dt = v;
-    }
-
-    get nodes() { return [...this.#nodes]; }
-    set nodes(v) {
-        v = util.ensure(v, "arr");
-        this.#nodes = v.map(v => new subcore.Project.Node(v));
-    }
-
-    get canvas() { return this.#canvas; }
-    get ctx() { return this.#ctx; }
-}
-class RIPathVisualItem extends RenderItem {
-    #visual;
-    #interp;
-
-    constructor(visual) {
-        super();
-
-        this.#visual = null;
-        this.#interp = 0;
-
-        this.applyGlobalToScale = false;
-
-        this.elem.classList.add("pathvisualitem");
-
-        this.elem.classList.add("selectable");
-
-        this.elem.classList.add("this");
-
-        this.elem.innerHTML = "<button></button>";
-
-        this.elem.classList.add("node");
-
-        this.elem.classList.add("heading");
-        this.elem.classList.add("velocity");
-
-        const eArrow = document.createElement("button");
-        this.elem.appendChild(eArrow);
-        eArrow.classList.add("arrow");
-
-        const eBody = document.createElement("button");
-        this.elem.appendChild(eBody);
-        eBody.classList.add("body");
-
-        this.addHandler("update", data => {
-            this.elem.style.setProperty("--body-w", ((this.hasPage() && this.page.hasProject()) ? this.page.project.robotW : 0)+"px");
-            this.elem.style.setProperty("--body-h", ((this.hasPage() && this.page.hasProject()) ? this.page.project.robotW : 0)+"px");
-            if (!this.hasVisual()) return;
-            let p = this.interp;
-            let nodes = this.visual.nodes;
-            let i = Math.floor((nodes.length-1)*p);
-            let j = Math.min(i+1, nodes.length-1);
-            let ni = nodes[i], nj = nodes[j];
-            p = ((nodes.length-1)*p) - i;
-            let node = new subcore.Project.Node(
-                util.lerp(ni.pos, nj.pos, p),
-                ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
-                util.lerp(ni.velocity, nj.velocity),
-                0, true,
-            );
-            this.pos = node.pos;
-            this.elem.style.setProperty("--dir-vel", (180-node.velocity.towards())+"deg");
-            this.elem.style.setProperty("--dist", node.velocity.dist()+"px");
-            this.elem.style.setProperty("--dir-head", (-(180/Math.PI)*node.heading)+"deg");
-        });
-
-        this.visual = visual;
-    }
-
-    get visual() { return this.#visual; }
-    set visual(v) {
-        v = (v instanceof RIPathVisual) ? v : null;
-        if (this.visual == v) return;
-        this.#visual = v;
-    }
-    hasVisual() { return this.visual instanceof RIPathVisual; }
-
-    get interp() { return this.#interp; }
-    set interp(v) {
-        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
-        if (this.interp == v) return;
-        this.#interp = v;
-    }
-}
-
-class RISelect extends RenderItem {
-    #a; #b;
-
-    constructor() {
-        super();
-
-        this.#a = new V();
-        this.#b = new V();
-
-        this.elem.classList.add("select");
-
-        this.addHandler("update", data => {
-            this.pos = [(this.aX+this.bX)/2, (this.aY+this.bY)/2];
-            this.elem.style.width = Math.abs(this.aX-this.bX)+"px";
-            this.elem.style.height = Math.abs(this.aY-this.bY)+"px";
-        });
-    }
-
-    get a() { return this.#a; }
-    set a(v) { this.a.set(v); }
-    get aX() { return this.a.x; }
-    set aX(v) { this.a.x = v; }
-    get aY() { return this.a.y; }
-    set aY(v) { this.a.y = v; }
-    get b() { return this.#b; }
-    set b(v) { this.b.set(v); }
-    get bX() { return this.b.x; }
-    set bX(v) { this.b.x = v; }
-    get bY() { return this.b.y; }
-    set bY(v) { this.b.y = v; }
-}
-class RISelectable extends RenderItem {
-    #ghost;
-
-    #item;
-
-    constructor(item) {
-        super();
-
-        this.#ghost = false;
-
-        this.#item = null;
-
-        this.elem.classList.add("selectable");
-
-        this.elem.addEventListener("mousedown", e => {
-            if (e.button != 0) return;
-            this.post("trigger", { shift: e.shiftKey });
-        });
-
-        this.addHandler("update", data => {
-            if (this.ghost) this.elem.style.opacity = "50%";
-            else this.elem.style.opacity = "100%";
-        });
-
-        this.addHandler("set", data => {
-            this.elem.innerHTML = "<button></button>";
-            [...this.elem.classList].forEach(cls => ["item", "selectable", "this"].includes(cls) ? null : this.elem.classList.remove(cls));
-            if (!this.hasItem()) return;
-
-            this.applyGlobalToPos = true;
-            this.applyGlobalToScale = false;
-
-            if (this.item instanceof subcore.Project.Node) {
-                this.elem.classList.add("node");
-
-                const eArrow = document.createElement("button");
-                this.elem.appendChild(eArrow);
-                eArrow.classList.add("arrow");
-
-                eArrow.addEventListener("mousedown", e => {
-                    if (e.button != 0) return;
-                    e.stopPropagation();
-                    const mouseup = () => {
-                        document.body.removeEventListener("mouseup", mouseup);
-                        document.body.removeEventListener("mousemove", mousemove);
-                    };
-                    const mousemove = e => {
-                        let pos = this.pageToMap(e.pageX, e.pageY);
-                        this.item.velocity = pos.sub(this.pos);
-                        this.post("change", null);
-                    };
-                    document.body.addEventListener("mouseup", mouseup);
-                    document.body.addEventListener("mousemove", mousemove);
-                });
-
-                const eBody = document.createElement("button");
-                this.elem.appendChild(eBody);
-                eBody.classList.add("body");
-
-                eBody.addEventListener("mousedown", e => {
-                    if (e.button != 0) return;
-                    e.stopPropagation();
-                    const mouseup = () => {
-                        document.body.removeEventListener("mouseup", mouseup);
-                        document.body.removeEventListener("mousemove", mousemove);
-                    };
-                    const mousemove = e => {
-                        let pos = this.pageToMap(e.pageX, e.pageY);
-                        this.item.heading = (Math.PI/180) * this.pos.towards(pos);
-                        this.post("change", null);
-                    };
-                    document.body.addEventListener("mouseup", mouseup);
-                    document.body.addEventListener("mousemove", mousemove);
-                });
-                
-                const update = data => {
-                    this.pos = this.item.pos;
-                    if (this.item.useHeading) this.elem.classList.add("heading");
-                    else this.elem.classList.remove("heading");
-                    if (this.item.useVelocity) this.elem.classList.add("velocity");
-                    else this.elem.classList.remove("velocity");
-                    this.elem.style.setProperty("--dir-vel", (180-this.item.velocity.towards())+"deg");
-                    this.elem.style.setProperty("--dist", this.item.velocity.dist()+"px");
-                    this.elem.style.setProperty("--dir-head", (-(180/Math.PI)*this.item.heading)+"deg");
-                    this.elem.style.setProperty("--body-w", ((this.hasPage() && this.page.hasProject()) ? this.page.project.robotW : 0)+"px");
-                    this.elem.style.setProperty("--body-h", ((this.hasPage() && this.page.hasProject()) ? this.page.project.robotW : 0)+"px");
-                };
-                this.addHandler("update", update);
-
-                const set = () => {
-                    this.remHandler("update", update);
-                    this.remHandler("set", set);
-                };
-                this.addHandler("set", set);
-            }
-
-            if (this.item instanceof subcore.Project.Obstacle) {
-                this.elem.classList.add("obstacle");
-        
-                const eRadius = document.createElement("div");
-                this.elem.appendChild(eRadius);
-                eRadius.classList.add("radius");
-                const eRadiusDrag = document.createElement("button");
-                this.elem.appendChild(eRadiusDrag);
-                eRadiusDrag.classList.add("radiusdrag");
-        
-                eRadiusDrag.addEventListener("mousedown", e => {
-                    if (e.button != 0) return;
-                    e.stopPropagation();
-                    const mouseup = () => {
-                        document.body.removeEventListener("mouseup", mouseup);
-                        document.body.removeEventListener("mousemove", mousemove);
-                    };
-                    const mousemove = e => {
-                        let pos = this.pageToMap(e.pageX, e.pageY);
-                        let r = this.pos.dist(pos);
-                        this.item.radius = r;
-                        this.post("change", null);
-                        this.dir = this.pos.towards(pos);
-                    };
-                    document.body.addEventListener("mouseup", mouseup);
-                    document.body.addEventListener("mousemove", mousemove);
-                });
-
-                const update = data => {
-                    this.pos = this.item.pos;
-                    this.elem.style.setProperty("--radius", this.item.radius+"px");
-                    this.elem.style.setProperty("--dir", this.dir+"deg");
-                };
-                this.addHandler("update", update);
-
-                const set = () => {
-                    this.remHandler("update", update);
-                    this.remHandler("set", set);
-                };
-                this.addHandler("set", set);
-            }
-        });
-
-        this.item = item;
-    }
-
-    get ghost() { return this.#ghost; }
-    set ghost(v) { this.#ghost = !!v; }
-
-    get item() { return this.#item; }
-    set item(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
-        if (this.item == v) return;
-        this.#item = v;
-        this.post("set", { v: v });
-    }
-    hasItem() { return this.item instanceof subcore.Project.Item; }
-
-    get selected() { return this.elem.classList.contains("this"); }
-    set selected(v) { v ? this.elem.classList.add("this") : this.elem.classList.remove("this"); }
-}
-
 export default class App extends core.App {
     #changes;
 
     #projects;
-    #projectId;
 
     #pages;
     #page;
@@ -868,7 +525,6 @@ export default class App extends core.App {
         this.#changes = new Set();
 
         this.#projects = {};
-        this.#projectId = false;
 
         this.#pages = {};
         this.#page = null;
@@ -1085,24 +741,24 @@ export default class App extends core.App {
                 this.dragState.addHandler("move", e => {
                     let pos = new V(e.pageX, e.pageY);
                     let r;
-                    r = page.eRender.getBoundingClientRect();
+                    r = page.odometry.canvas.getBoundingClientRect();
                     let overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
                     if (prevOverRender != overRender) {
                         prevOverRender = overRender;
                         if (overRender) {
-                            ghostItem = page.addRenderItem(new RISelectable(item));
+                            ghostItem = page.odometry.addRender(new RSelectable(item));
                             ghostItem.ghost = true;
                         } else {
-                            page.remRenderItem(ghostItem);
+                            page.odometry.remRender(ghostItem);
                             ghostItem = null;
                         }
                     }
                     if (this.hasEDrag())
                         if (this.eDrag.children[0] instanceof HTMLElement)
                             this.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
-                    if (ghostItem instanceof RISelectable)
+                    if (ghostItem instanceof RSelectable)
                         if (ghostItem.hasItem())
-                            ghostItem.item.pos.set(ghostItem.pageToMap(pos));
+                            ghostItem.item.pos.set(page.odometry.pageToWorld(pos));
                     if (!page.hasPanel("objects")) return;
                     const panel = page.getPanel("objects");
                     r = panel.eSpawnDelete.getBoundingClientRect();
@@ -1111,7 +767,7 @@ export default class App extends core.App {
                     else panel.eSpawnDelete.classList.remove("hover");
                 });
                 const stop = cancel => {
-                    page.remRenderItem(ghostItem);
+                    page.odometry.remRender(ghostItem);
                     if (this.hasEDrag()) this.eDrag.innerHTML = "";
                     if (!cancel && prevOverRender && page.hasProject()) page.project.addItem(item);
                     if (!page.hasPanel("objects")) return;
@@ -1143,22 +799,22 @@ export default class App extends core.App {
                     if (!(itm instanceof subcore.Project.Node)) return;
                     if (shift) path.remNode(itm);
                     else path.addNode(itm);
-                    for (let id in chooseState.temp) page.remRenderItem(chooseState.temp[id]);
+                    for (let id in chooseState.temp) page.odometry.remRender(chooseState.temp[id]);
                     chooseState.temp = {};
                     let nodes = path.nodes.filter(id => page.hasProject() && page.project.hasItem(id));
                     for (let i = 0; i < nodes.length; i++) {
                         let id = nodes[i];
                         let node = page.project.getItem(id);
                         if (id in chooseState.temp) {
-                            chooseState.temp[id].value += ", "+(i+1);
+                            chooseState.temp[id].text += ", "+(i+1);
                         } else {
-                            chooseState.temp[id] = page.addRenderItem(new RIPathIndex(node));
-                            chooseState.temp[id].value = i+1;
+                            chooseState.temp[id] = page.odometry.addRender(new RLabel(node));
+                            chooseState.temp[id].text = i+1;
                         }
                         if (i > 0) {
                             let id2 = nodes[i-1];
                             page.project.getItem(id2);
-                            chooseState.temp[id+"~"+id2] = page.addRenderItem(new RIPathLine(node, node2));
+                            chooseState.temp[id+"~"+id2] = page.odometry.addRender(new RLine(node, node2));
                         }
                     }
                 });
@@ -1908,12 +1564,11 @@ App.ProjectsPage.Button =  class AppProjectsPageButton extends core.Target {
     update() { this.post("update", null); }
 };
 App.ProjectPage = class AppProjectPage extends App.Page {
-    #renderItems;
     #selected;
     #selectItem;
     #selectedPaths;
 
-    #globalScale;
+    #odometry;
 
     #choosing;
     #chooseState;
@@ -1928,18 +1583,11 @@ App.ProjectPage = class AppProjectPage extends App.Page {
 
     #eDisplay;
     #eBlockage;
-    #eRender;
-    #eRenderInfo;
-    #eRenderNav;
-    #eChooseDoneBtn;
-    #eChooseCancelBtn;
-    #eProgress;
-    #eProgressBtn;
-    #eProgressTimeNow;
-    #eProgressTimeTotal;
-    #eProgressBar;
-    #eXAxis; #eYAxis;
     #eDisplayNav;
+    #eProgress;
+    #eDisplaySubNav;
+    #ePlayPauseBtn;
+    #eTimeDisplay;
     #eMaxMinBtn;
     #eEdit;
     #eEditContent;
@@ -1975,7 +1623,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
 
         document.body.addEventListener("click", e => {
             if (this.choosing) return;
-            if (this.eRender.contains(e.target)) return;
+            if (this.eDisplay.contains(e.target)) return;
             this.clearSelectedPaths();
         });
 
@@ -1987,14 +1635,12 @@ App.ProjectPage = class AppProjectPage extends App.Page {
                 this.post("refresh-options", null);
             });
 
-        this.#renderItems = new Set();
-
         this.#selected = new Set();
         this.#selectItem = null;
 
         this.#selectedPaths = new Set();
 
-        this.#globalScale = 1;
+        this.#odometry = new core.Odometry2d();
 
         this.addHandler("refresh-selectitem", data => {
             this.selected.forEach(id => {
@@ -2006,7 +1652,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             });
             if (this.selected.length > 1) {
                 if (!this.hasSelectItem())
-                    this.#selectItem = this.addRenderItem(new RISelect());
+                    this.#selectItem = this.odometry.addRender(new RSelect());
                 let maxPos = new V(), minPos = new V();
                 let first = true;
                 this.selected.forEach(id => {
@@ -2027,7 +1673,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
                 this.selectItem.a = minPos;
                 this.selectItem.b = maxPos;
             } else {
-                this.remRenderItem(this.selectItem);
+                this.odometry.remRender(this.selectItem);
                 this.#selectItem = null;
             }
         });
@@ -2069,113 +1715,35 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             this.panels.forEach(name => this.getPanel(name).refresh());
         });
 
-        const background = new RIBackground();
-        let oldW = null, oldH = null, padding = 40;
-
         this.addHandler("update", data => {
+            this.odometry.update();
+            this.odometry.size = this.hasProject() ? this.project.size : 0;
+            this.odometry.imageSrc = this.hasProject() ? this.project.meta.backgroundImage : null;
+            this.odometry.imageScale = this.hasProject() ? this.project.meta.backgroundScale : 0;
             this.panels.forEach(name => this.getPanel(name).update());
-            this.addRenderItem(background);
-            let w = this.hasProject() ? this.project.w : 0;
-            let h = this.hasProject() ? this.project.h : 0;
-            background.src = this.hasProject() ? this.project.meta.backgroundImage : null;
-            background.pos = this.hasProject() ? this.project.meta.backgroundPos : 0;
-            background.scale = this.hasProject() ? this.project.meta.backgroundScale : 0;
-            let newW = false, newH = false;
-            if (oldW != w) [oldW, newW] = [w, true];
-            if (oldH != h) [oldH, newH] = [h, true];
-            this.globalScale = 1;
-            let parent = this.eRender.parentElement;
-            let rParent = document.body.getBoundingClientRect();
-            if (parent instanceof HTMLElement) {
-                let r = rParent = parent.getBoundingClientRect();
-                this.globalScale = Math.min((r.width-(padding*2)) / w, (r.height-(padding*2)) / h);
-            }
-            this.eRender.style.width = (w*this.globalScale)+"px";
-            this.eRender.style.height = (h*this.globalScale)+"px";
-            let r = this.eRender.getBoundingClientRect();
-            let xGrid = Array.from(this.eRender.querySelectorAll(":scope > .grid.x"));
-            let nXGrid = xGrid.length;
-            while (nXGrid < Math.max(0, Math.ceil(h/100)-1)) {
-                nXGrid++;
-                let grid = document.createElement("div");
-                grid.classList.add("grid");
-                grid.classList.add("x");
-                if (this.eRender.children.length > 0) this.eRender.insertBefore(grid, this.eRender.children[0]);
-                else this.eRender.appendChild(grid);
-            }
-            while (nXGrid > Math.max(0, Math.ceil(h/100)-1)) {
-                nXGrid--;
-                xGrid.pop().remove();
-            }
-            Array.from(this.eRender.querySelectorAll(":scope > .grid.x")).forEach((grid, i) => { grid.style.bottom = ((i+1) * (100/h) * (r.height - 4))+"px"; });
-            let yGrid = Array.from(this.eRender.querySelectorAll(":scope > .grid.y"));
-            let nYGrid = yGrid.length;
-            while (nYGrid < Math.max(0, Math.ceil(w/100)-1)) {
-                nYGrid++;
-                let grid = document.createElement("div");
-                grid.classList.add("grid");
-                grid.classList.add("y");
-                if (this.eRender.children.length > 0) this.eRender.insertBefore(grid, this.eRender.children[0]);
-                else this.eRender.appendChild(grid);
-            }
-            while (nYGrid > Math.max(0, Math.ceil(w/100)-1)) {
-                nYGrid--;
-                yGrid.pop().remove();
-            }
-            Array.from(this.eRender.querySelectorAll(":scope > .grid.y")).forEach((grid, i) => { grid.style.left = ((i+1) * (100/w) * (r.width - 4))+"px"; });
-            let axis;
-            axis = this.eXAxis;
-            axis.style.right = ((rParent.left + rParent.width) - r.left) + "px";
-            axis.style.top = (r.top - rParent.top) + "px";
-            axis.style.height = (r.height - 4) + "px";
-            if (newH) {
-                axis.innerHTML = "";
-                for (let i = 0; i <= h/100; i++) {
-                    let mark = document.createElement("div");
-                    mark.style.bottom = ((i * 100 / h) * 100) + "%";
-                    mark.style.right = "10px";
-                    mark.style.transform = "translateY(50%)";
-                    mark.style.textAlign = "right";
-                    mark.textContent = ((i%2 == 0) || (i >= h/100)) ? i : "";
-                    axis.appendChild(mark);
-                }
-            }
-            axis = this.eYAxis;
-            axis.style.top = ((r.top + r.height) - rParent.top) + "px";
-            axis.style.left = (r.left - rParent.left) + "px";
-            axis.style.width = (r.width - 4) + "px";
-            if (newW) {
-                axis.innerHTML = "";
-                for (let i = 0; i <= w/100; i++) {
-                    let mark = document.createElement("div");
-                    mark.style.left = ((i * 100 / w) * 100) + "%";
-                    mark.style.top = "10px";
-                    mark.style.transform = "translateX(-50%)";
-                    mark.style.textAlign = "center";
-                    mark.textContent = ((i%2 == 0) || (i >= w/100)) ? i : "";
-                    axis.appendChild(mark);
-                }
-            }
-            this.eRender.style.setProperty("--scale", this.globalScale);
             let itmsUsed = new Set();
-            this.renderItems.forEach(itm => {
-                itm.update();
-                if (itm instanceof RISelectable) {
-                    if (itm.ghost) return;
-                    if (!this.hasProject() || !this.project.hasItem(itm.item))
-                        itm.item = null;
-                    if (itm.hasItem()) {
-                        itmsUsed.add(itm.item.id);
-                        itm.selected = this.isSelected(itm);
-                    } else this.remRenderItem(itm);
-                }
+            this.odometry.renders.forEach(render => {
+                if (render instanceof core.Odometry2d.Robot)
+                    render.size = this.hasProject() ? this.project.robotW : 0;
+                if (!(render instanceof RSelectable)) return;
+                if (!render.ghost && (!this.hasProject() || !this.project.hasItem(render.item)))
+                    render.item = null;
+                if (render.hasItem()) {
+                    itmsUsed.add(render.item.id);
+                    render.selected = this.isSelected(render);
+                } else this.odometry.remRender(render);
             });
             if (this.hasProject()) {
                 let need;
                 need = new Set(this.project.items);
                 itmsUsed.forEach(id => need.delete(id));
-                need.forEach(id => this.addRenderItem(new RISelectable(this.project.getItem(id))));
+                need.forEach(id => this.odometry.addRender(new RSelectable(this.project.getItem(id))));
             }
+            const hovered = this.odometry.hovered;
+            const hoveredPart = this.odometry.hoveredPart;
+            if (!(hovered instanceof core.Odometry2d.Render)) return this.odometry.canvas.style.cursor = "crosshair";
+            if (!(hovered.source instanceof RSelectable)) return this.odometry.canvas.style.cursor = "crosshair";
+            this.odometry.canvas.style.cursor = hovered.source.hover(hoveredPart);
         });
 
         this.#choosing = false;
@@ -2219,10 +1787,16 @@ App.ProjectPage = class AppProjectPage extends App.Page {
         this.#eBlockage = document.createElement("div");
         this.eDisplay.appendChild(this.eBlockage);
         this.eBlockage.classList.add("blockage");
-        this.#eRender = document.createElement("div");
-        this.eDisplay.appendChild(this.eRender);
-        this.eRender.classList.add("render");
-        this.eRender.addEventListener("contextmenu", e => {
+        this.odometry.canvas = document.createElement("canvas");
+        this.eDisplay.appendChild(this.odometry.canvas);
+        new ResizeObserver(() => {
+            let r = this.eDisplay.getBoundingClientRect();
+            this.odometry.canvas.width = r.width*this.odometry.quality;
+            this.odometry.canvas.height = r.height*this.odometry.quality;
+            this.odometry.canvas.style.width = r.width+"px";
+            this.odometry.canvas.style.height = r.height+"px";
+        }).observe(this.eDisplay);
+        this.odometry.canvas.addEventListener("contextmenu", e => {
             if (this.choosing) return;
             let itm;
             let menu = new core.App.ContextMenu();
@@ -2280,18 +1854,25 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             this.app.contextMenu = menu;
             this.app.placeContextMenu(e.pageX, e.pageY);
         });
-        this.eRender.addEventListener("mousedown", e => {
-            if (this.choosing) return;
+        this.odometry.canvas.addEventListener("mousedown", e => {
+            const hovered = this.odometry.hovered;
+            const hoveredPart = this.odometry.hoveredPart;
+            if (this.choosing) {
+                if (!(hovered instanceof core.Odometry2d.Render)) return;
+                if (!(hovered.source instanceof RSelectable)) return;
+                this.chooseState.post("choose", { itm: hovered.source.item, shift: e.shiftKey });
+                return;
+            }
             if (e.button != 0) return;
-            if (e.target == this.eRender || this.selected.length <= 0) {
+            if (!(hovered instanceof core.Odometry2d.Render) || !(hovered.source instanceof RSelectable)) {
                 this.clearSelected();
-                let selectItem = this.addRenderItem(new RISelect());
-                selectItem.a = selectItem.pageToMap(e.pageX, e.pageY);
+                let selectItem = this.odometry.addRender(new RSelect());
+                selectItem.a = this.odometry.pageToWorld(e.pageX, e.pageY);
                 selectItem.b = selectItem.a;
                 const mouseup = () => {
                     document.body.removeEventListener("mouseup", mouseup);
                     document.body.removeEventListener("mousemove", mousemove);
-                    this.remRenderItem(selectItem);
+                    this.odometry.remRender(selectItem);
                     let a = selectItem.a, b = selectItem.b;
                     let r = new util.Rect(a, b.sub(a)).normalize();
                     if (!this.hasProject()) return;
@@ -2301,21 +1882,43 @@ App.ProjectPage = class AppProjectPage extends App.Page {
                     });
                 };
                 const mousemove = e => {
-                    selectItem.b = selectItem.pageToMap(e.pageX, e.pageY);
+                    selectItem.b = this.odometry.pageToWorld(e.pageX, e.pageY);
                 };
                 document.body.addEventListener("mouseup", mouseup);
                 document.body.addEventListener("mousemove", mousemove);
             } else {
-                let selectItem = this.addRenderItem(new RISelect());
-                selectItem.show = false;
-                let oldPos = selectItem.pageToMap(e.pageX, e.pageY);
+                if (hoveredPart != null && hoveredPart != "main") {
+                    const mouseup = () => {
+                        document.body.removeEventListener("mouseup", mouseup);
+                        document.body.removeEventListener("mousemove", mousemove);
+                        this.odometry.canvas.style.cursor = "";
+                    };
+                    const mousemove = e => {
+                        this.odometry.canvas.style.cursor = hovered.source.drag(hoveredPart, this.odometry.pageToWorld(e.pageX, e.pageY));
+                        this.post("refresh-selectitem", null);
+                        this.post("refresh-options", null);
+                    };
+                    document.body.addEventListener("mouseup", mouseup);
+                    document.body.addEventListener("mousemove", mousemove);
+                    return;
+                }
+                if (e.shiftKey) {
+                    if (this.isSelected(hovered.source.item)) this.remSelected(hovered.source.item);
+                    else this.addSelected(hovered.source.item);
+                } else {
+                    if (!this.isSelected(hovered.source.item)) {
+                        this.clearSelected();
+                        this.addSelected(hovered.source.item);
+                    }
+                }
+                let oldPos = this.odometry.pageToWorld(e.pageX, e.pageY);
                 const mouseup = () => {
                     document.body.removeEventListener("mouseup", mouseup);
                     document.body.removeEventListener("mousemove", mousemove);
-                    this.remRenderItem(selectItem);
+                    this.odometry.canvas.style.cursor = "";
                 };
                 const mousemove = e => {
-                    let newPos = selectItem.pageToMap(e.pageX, e.pageY);
+                    let newPos = this.odometry.pageToWorld(e.pageX, e.pageY);
                     let rel = newPos.sub(oldPos);
                     this.selected.forEach(id => {
                         if (!this.hasProject() || !this.project.hasItem(id)) return;
@@ -2326,75 +1929,32 @@ App.ProjectPage = class AppProjectPage extends App.Page {
                     oldPos.set(newPos);
                     this.post("refresh-selectitem", null);
                     this.post("refresh-options", null);
+                    this.odometry.canvas.style.cursor = "move";
                 };
                 document.body.addEventListener("mouseup", mouseup);
                 document.body.addEventListener("mousemove", mousemove);
             }
         });
-        this.#eRenderInfo = document.createElement("div");
-        this.eRender.appendChild(this.eRenderInfo);
-        this.eRenderInfo.classList.add("info");
-        this.eRenderInfo.textContent = "Pick nodes in order...";
-        this.#eRenderNav = document.createElement("div");
-        this.eRender.appendChild(this.eRenderNav);
-        this.eRenderNav.classList.add("nav");
-        this.#eChooseDoneBtn = document.createElement("button");
-        this.eRenderNav.appendChild(this.eChooseDoneBtn);
-        this.eChooseDoneBtn.id = "donebtn";
-        this.eChooseDoneBtn.textContent = "Done";
-        this.#eChooseCancelBtn = document.createElement("button");
-        this.eRenderNav.appendChild(this.eChooseCancelBtn);
-        this.eChooseCancelBtn.id = "cancelbtn";
-        this.eChooseCancelBtn.textContent = "Cancel";
-        this.eChooseDoneBtn.addEventListener("click", e => {
-            e.stopPropagation();
-            if (!this.choosing) return;
-            let chooseState = this.chooseState;
-            for (let id in chooseState.temp) this.remRenderItem(chooseState.temp[id]);
-            chooseState.post("done", null);
-            this.choosing = false;
-        });
-        this.eChooseCancelBtn.addEventListener("click", e => {
-            e.stopPropagation();
-            if (!this.choosing) return;
-            let chooseState = this.chooseState;
-            for (let id in chooseState.temp) this.remRenderItem(chooseState.temp[id]);
-            chooseState.post("cancel", null);
-            this.choosing = false;
-        });
-        this.#eProgress = document.createElement("div");
-        this.eRender.appendChild(this.eProgress);
-        this.eProgress.classList.add("progress");
-        this.#eProgressBtn = document.createElement("button");
-        this.eProgress.appendChild(this.eProgressBtn);
-        this.eProgressBtn.classList.add("override");
-        this.eProgressBtn.innerHTML = "<ion-icon name='play'></ion-icon>";
-        this.#eProgressTimeNow = document.createElement("div");
-        this.eProgress.appendChild(this.eProgressTimeNow);
-        this.eProgressTimeNow.classList.add("time");
-        this.eProgressTimeNow.classList.add("now");
-        this.#eProgressTimeTotal = document.createElement("div");
-        this.eProgress.appendChild(this.eProgressTimeTotal);
-        this.eProgressTimeTotal.classList.add("time");
-        this.eProgressTimeTotal.classList.add("total");
-        this.#eProgressBar = document.createElement("div");
-        this.eProgress.insertBefore(this.eProgressBar, this.eProgressTimeTotal);
-        this.eProgressBar.classList.add("bar");
-        this.eProgressBar.innerHTML = "<div></div>";
-        this.#eXAxis = document.createElement("div");
-        this.eDisplay.appendChild(this.eXAxis);
-        this.eXAxis.classList.add("axis");
-        this.eXAxis.classList.add("x");
-        this.#eYAxis = document.createElement("div");
-        this.eDisplay.appendChild(this.eYAxis);
-        this.eYAxis.classList.add("axis");
-        this.eYAxis.classList.add("y");
         this.#eDisplayNav = document.createElement("div");
         this.eDisplay.appendChild(this.eDisplayNav);
         this.eDisplayNav.classList.add("nav");
+        this.#eProgress = document.createElement("div");
+        this.eDisplayNav.appendChild(this.eProgress);
+        this.eProgress.classList.add("progress");
+        this.#eDisplaySubNav = document.createElement("div");
+        this.eDisplayNav.appendChild(this.eDisplaySubNav);
+        this.eDisplaySubNav.classList.add("nav");
+        this.#ePlayPauseBtn = document.createElement("button");
+        this.eDisplaySubNav.appendChild(this.ePlayPauseBtn);
+        this.ePlayPauseBtn.innerHTML = "<ion-icon></ion-icon>";
+        this.#eTimeDisplay = document.createElement("div");
+        this.eDisplaySubNav.appendChild(this.eTimeDisplay);
+        this.eTimeDisplay.textContent = "0:00 / 0:00";
+        let space = document.createElement("div");
+        this.eDisplaySubNav.appendChild(space);
+        space.style.flexBasis = "100%";
         this.#eMaxMinBtn = document.createElement("button");
-        this.eDisplayNav.appendChild(this.eMaxMinBtn);
-        this.eMaxMinBtn.id = "maxminbtn";
+        this.eDisplaySubNav.appendChild(this.eMaxMinBtn);
         this.eMaxMinBtn.innerHTML = "<ion-icon></ion-icon>";
         this.eMaxMinBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -2463,67 +2023,6 @@ App.ProjectPage = class AppProjectPage extends App.Page {
         this.app.dragging = false;
     }
 
-    get renderItems() { return [...this.#renderItems]; }
-    set renderItems(v) {
-        v = util.ensure(v, "arr");
-        this.clearRenderItems();
-        v.forEach(v => this.addRenderItem(v));
-    }
-    clearRenderItems() {
-        let itms = this.renderItems;
-        itms.forEach(itm => this.remRenderItem(itm));
-        return itms;
-    }
-    hasRenderItem(itm) {
-        if (!(itm instanceof RenderItem)) return false;
-        return this.#renderItems.has(itm) && itm.page == this;
-    }
-    addRenderItem(itm) {
-        if (!(itm instanceof RenderItem)) return false;
-        if (itm.page != null) return false;
-        if (this.hasRenderItem(itm)) return false;
-        this.#renderItems.add(itm);
-        itm.page = this;
-        itm._onChange = () => {
-            this.post("refresh-selectitem", null);
-            this.post("refresh-options", null);
-        };
-        itm.addHandler("change", itm._onChange);
-        if (itm instanceof RISelectable) {
-            itm._onTrigger = data => {
-                if (this.choosing) this.chooseState.post("choose", { itm: itm.item, shift: util.ensure(data, "obj").shift });
-                else {
-                    if (util.ensure(data, "obj").shift) {
-                        if (this.isSelected(itm)) this.remSelected(itm);
-                        else this.addSelected(itm);
-                    } else {
-                        if (this.isSelected(itm)) return;
-                        this.clearSelected();
-                        this.addSelected(itm);
-                    }
-                }
-            };
-            itm.addHandler("trigger", itm._onTrigger);
-        }
-        this.eRender.appendChild(itm.elem);
-        return itm;
-    }
-    remRenderItem(itm) {
-        if (!(itm instanceof RenderItem)) return false;
-        if (itm.page != this) return false;
-        if (!this.hasRenderItem(itm)) return false;
-        this.#renderItems.delete(itm);
-        itm.page = null;
-        itm.remHandler("change", itm._onChange);
-        delete itm._onChange;
-        if (itm instanceof RISelectable) {
-            itm.remHandler("trigger", itm._onTrigger);
-            delete itm._onTrigger;
-        }
-        this.eRender.removeChild(itm.elem);
-        return itm;
-    }
-
     get selected() { return [...this.#selected]; }
     set selected(v) {
         v = util.ensure(v, "arr");
@@ -2538,7 +2037,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
     isSelected(v) {
         if (util.is(v, "str")) return this.#selected.has(v);
         if (v instanceof subcore.Project.Item) return this.isSelected(v.id);
-        if (v instanceof RISelectable) return this.isSelected(v.item);
+        if (v instanceof RSelectable) return this.isSelected(v.item);
         return false;
     }
     addSelected(v) {
@@ -2552,7 +2051,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             return false;
         }
         if (v instanceof subcore.Project.Item) return this.addSelected(v.id);
-        if (v instanceof RISelectable) return this.addSelected(v.item);
+        if (v instanceof RSelectable) return this.addSelected(v.item);
         return false;
     }
     remSelected(v) {
@@ -2563,7 +2062,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             return v;
         }
         if (v instanceof subcore.Project.Item) return this.remSelected(v.id);
-        if (v instanceof RISelectable) return this.remSelected(v.item);
+        if (v instanceof RSelectable) return this.remSelected(v.item);
         return false;
     }
 
@@ -2606,14 +2105,9 @@ App.ProjectPage = class AppProjectPage extends App.Page {
     }
 
     get selectItem() { return this.#selectItem; }
-    hasSelectItem() { return this.selectItem instanceof RISelect; }
+    hasSelectItem() { return this.selectItem instanceof RSelect; }
 
-    get globalScale() { return this.#globalScale; }
-    set globalScale(v) {
-        v = Math.max(0, util.ensure(v, "num"));
-        if (this.globalScale == v) return;
-        this.#globalScale = v;
-    }
+    get odometry() { return this.#odometry; }
 
     async cut() {
         await this.copy();
@@ -2754,19 +2248,11 @@ App.ProjectPage = class AppProjectPage extends App.Page {
 
     get eDisplay() { return this.#eDisplay; }
     get eBlockage() { return this.#eBlockage; }
-    get eRender() { return this.#eRender; }
-    get eRenderInfo() { return this.#eRenderInfo; }
-    get eRenderNav() { return this.#eRenderNav; }
-    get eChooseDoneBtn() { return this.#eChooseDoneBtn; }
-    get eChooseCancelBtn() { return this.#eChooseCancelBtn; }
-    get eProgress() { return this.#eProgress; }
-    get eProgressBtn() { return this.#eProgressBtn; }
-    get eProgressTimeNow() { return this.#eProgressTimeNow; }
-    get eProgressTimeTotal() { return this.#eProgressTimeTotal; }
-    get eProgressBar() { return this.#eProgressBar; }
-    get eXAxis() { return this.#eXAxis; }
-    get eYAxis() { return this.#eYAxis; }
     get eDisplayNav() { return this.#eDisplayNav; }
+    get eProgress() { return this.#eProgress; }
+    get eDisplaySubNav() { return this.#eDisplaySubNav; }
+    get ePlayPauseBtn() { return this.#ePlayPauseBtn; }
+    get eTimeDisplay() { return this.#eTimeDisplay; }
     get eMaxMinBtn() { return this.#eMaxMinBtn; }
     get eEdit() { return this.#eEdit; }
     get eEditContent() { return this.#eEditContent; }
@@ -3550,22 +3036,22 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 if (!(itm instanceof subcore.Project.Node)) return;
                 if (shift) path.remNode(itm);
                 else path.addNode(itm);
-                for (let id in chooseState.temp) this.page.remRenderItem(chooseState.temp[id]);
+                for (let id in chooseState.temp) this.page.odometry.remRender(chooseState.temp[id]);
                 chooseState.temp = {};
                 let nodes = path.nodes.filter(id => this.hasPage() && this.page.hasProject() && this.page.project.hasItem(id));
                 for (let i = 0; i < nodes.length; i++) {
                     let id = nodes[i];
                     let node = this.page.project.getItem(id);
                     if (id in chooseState.temp) {
-                        chooseState.temp[id].value += ", "+(i+1);
+                        chooseState.temp[id].text += ", "+(i+1);
                     } else {
-                        chooseState.temp[id] = this.page.addRenderItem(new RIPathIndex(node));
-                        chooseState.temp[id].value = i+1;
+                        chooseState.temp[id] = this.page.odometry.addRender(new RLabel(node));
+                        chooseState.temp[id].text = i+1;
                     }
                     if (i > 0) {
                         let id2 = nodes[i-1];
                         let node2 = this.page.project.getItem(id2);
-                        chooseState.temp[id+"~"+id2] = this.page.addRenderItem(new RIPathLine(node, node2));
+                        chooseState.temp[id+"~"+id2] = this.page.odometry.addRender(new RLine(node, node2));
                     }
                 }
             });
@@ -3670,14 +3156,14 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
 
         this.addHandler("pre-page-set", data => {
             if (!this.hasPage()) return;
-            this.page.eProgressBtn.removeEventListener("click", this.page.eProgressBtn._onClick);
-            delete this.page.eProgressBtn._onClick;
-            this.page.eProgressBar.removeEventListener("mousedown", this.page.eProgressBar._onMouseDown);
-            delete this.page.eProgressBar._onMouseDown;
+            this.page.ePlayPauseBtn.removeEventListener("click", this.page.ePlayPauseBtn._onClick);
+            delete this.page.ePlayPauseBtn._onClick;
+            this.page.eProgress.removeEventListener("mousedown", this.page.eProgress._onMouseDown);
+            delete this.page.eProgress._onMouseDown;
         });
         this.addHandler("post-page-set", data => {
             if (!this.hasPage()) return;
-            this.page.eProgressBtn._onClick = () => {
+            this.page.ePlayPauseBtn._onClick = () => {
                 let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
                 if (visuals.length <= 0) return;
                 let id = visuals[0];
@@ -3687,8 +3173,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     visual.play();
                 } else visual.paused = !visual.paused;
             };
-            this.page.eProgressBtn.addEventListener("click", this.page.eProgressBtn._onClick);
-            this.page.eProgressBar._onMouseDown = e => {
+            this.page.ePlayPauseBtn.addEventListener("click", this.page.ePlayPauseBtn._onClick);
+            this.page.eProgress._onMouseDown = e => {
                 if (this.page.choosing) return;
                 if (e.button != 0) return;
                 e.stopPropagation();
@@ -3697,7 +3183,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     document.body.removeEventListener("mousemove", mousemove);
                 };
                 const mousemove = e => {
-                    let r = this.page.eProgressBar.getBoundingClientRect();
+                    let r = this.page.eProgress.getBoundingClientRect();
                     let p = (e.pageX-r.left) / r.width;
                     let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
                     if (visuals.length <= 0) return;
@@ -3709,7 +3195,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 document.body.addEventListener("mouseup", mouseup);
                 document.body.addEventListener("mousemove", mousemove);
             };
-            this.page.eProgressBar.addEventListener("mousedown", this.page.eProgressBar._onMouseDown);
+            this.page.eProgress.addEventListener("mousedown", this.page.eProgress._onMouseDown);
         });
         
         this.addHandler("update", data => {
@@ -3724,16 +3210,24 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     this.remVisual(id);
             });
             if (visuals.length <= 0) {
-                if (this.hasPage()) this.page.eDisplay.classList.remove("progress");
+                if (this.hasPage()) {
+                    this.page.eProgress.style.display = "none";
+                    this.page.ePlayPauseBtn.style.display = "none";
+                    this.page.eTimeDisplay.style.display = "none";
+                }
                 return;
             }
-            if (this.hasPage()) this.page.eDisplay.classList.add("progress");
+            if (this.hasPage()) {
+                this.page.eProgress.style.display = "";
+                this.page.ePlayPauseBtn.style.display = "";
+                this.page.eTimeDisplay.style.display = "";
+            }
             let id = visuals[0];
             let visual = this.getVisual(id);
             if (!this.hasPage()) return;
             this.page.eProgress.style.setProperty("--progress", (100*visual.item.interp)+"%");
-            if (this.page.eProgressBtn.children[0] instanceof HTMLElement)
-                this.page.eProgressBtn.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
+            if (this.page.ePlayPauseBtn.children[0] instanceof HTMLElement)
+                this.page.ePlayPauseBtn.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
             let split;
             split = util.splitTimeUnits(visual.nowTime);
             split[0] = Math.round(split[0]);
@@ -3751,7 +3245,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 }
                 return v;
             });
-            this.page.eProgressTimeNow.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+            this.page.eTimeDisplay.textContent = split.slice(1).reverse().join(":")+"."+split[0];
             split = util.splitTimeUnits(visual.totalTime);
             split[0] = Math.round(split[0]);
             while (split.length > 3) {
@@ -3768,7 +3262,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 }
                 return v;
             });
-            this.page.eProgressTimeTotal.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+            this.page.eTimeDisplay.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];
         });
     }
 
@@ -3829,22 +3323,22 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 if (!(itm instanceof subcore.Project.Node)) return;
                 if (shift) path.remNode(itm);
                 else path.addNode(itm);
-                for (let id in chooseState.temp) this.remRenderItem(chooseState.temp[id]);
+                for (let id in chooseState.temp) this.odometry.remRender(chooseState.temp[id]);
                 chooseState.temp = {};
                 let nodes = path.nodes.filter(id => this.page.hasProject() && this.page.project.hasItem(id));
                 for (let i = 0; i < nodes.length; i++) {
                     let id = nodes[i];
                     let node = this.page.project.getItem(id);
                     if (id in chooseState.temp) {
-                        chooseState.temp[id].value += ", "+(i+1);
+                        chooseState.temp[id].text += ", "+(i+1);
                     } else {
-                        chooseState.temp[id] = this.page.addRenderItem(new RIPathIndex(node));
-                        chooseState.temp[id].value = i+1;
+                        chooseState.temp[id] = this.page.odometry.addRender(new RLabel(node));
+                        chooseState.temp[id].text = i+1;
                     }
                     if (i > 0) {
                         let id2 = nodes[i-1];
                         let node2 = this.page.project.getItem(id2);
-                        chooseState.temp[id+"~"+id2] = this.page.addRenderItem(new RIPathLine(node, node2));
+                        chooseState.temp[id+"~"+id2] = this.page.odometry.addRender(new RLine(node, node2));
                     }
                 }
             });
@@ -4055,7 +3549,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
             let nodes = (show && this.hasPath()) ? this.path.nodes : [];
             let path = nodes.join("");
             if (prevPath == path && prevShowIndicies == this.showIndices && prevShowLines == this.showLines) return;
-            for (let id in pthItems) this.page.remRenderItem(pthItems[id]);
+            for (let id in pthItems) this.page.odometry.remRender(pthItems[id]);
             pthItems = {};
             prevPath = path;
             prevShowIndicies = this.showIndices;
@@ -4065,16 +3559,16 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
                 let node = this.page.project.getItem(id);
                 if (this.showIndices) {
                     if (id in pthItems) {
-                        pthItems[id].value += ", "+(i+1);
+                        pthItems[id].text += ", "+(i+1);
                     } else {
-                        pthItems[id] = this.page.addRenderItem(new RIPathIndex(node));
-                        pthItems[id].value = i+1;
+                        pthItems[id] = this.page.odometry.addRender(new RLabel(node));
+                        pthItems[id].text = i+1;
                     }
                 }
                 if (i > 0 && this.showLines) {
                     let id2 = nodes[i-1];
                     let node2 = this.page.project.getItem(id2);
-                    pthItems[id+"~"+id2] = this.page.addRenderItem(new RIPathLine(node, node2));
+                    pthItems[id+"~"+id2] = this.page.odometry.addRender(new RLine(node, node2));
                 }
             }
         });
