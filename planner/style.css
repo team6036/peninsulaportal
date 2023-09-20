@@ -977,6 +977,46 @@
     font-family: monospace;
     font-size: 12px;
 }
+#PROJECTPAGE > .display > .choosenav {
+    z-index: 3;
+
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+
+    display: flex;
+    flex-direction: row-reverse;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+
+    visibility: hidden;
+}
+#PROJECTPAGE > .display.choose > .choosenav {
+    visibility: inherit;
+}
+#PROJECTPAGE > .display > .choosenav > button {
+    padding: 10px;
+
+    border-radius: 5px;
+}
+#PROJECTPAGE > .display > .choosenav > button#donebtn {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v4);
+}
+#PROJECTPAGE > .display > .choosenav > button#cancelbtn {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr2);
+    --fgd: var(--v4);
+}
 #PROJECTPAGE > .edit {
     --bottom: 85px;
 
