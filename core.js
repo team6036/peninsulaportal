@@ -1553,9 +1553,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8-8");
-            ctx.lineWidth = 2*quality;
-            ctx.lineJoin = "miter";
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+this.color); // "--v8-8");
+            ctx.lineWidth = 7.5*quality;
+            ctx.lineJoin = "round";
             ctx.lineCap = "square";
             ctx.beginPath();
             let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
@@ -1565,8 +1565,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 if (i > 0) ctx.lineTo(...p.xy);
                 else ctx.moveTo(...p.xy);
             }
+            ctx.closePath();
             ctx.stroke();
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? "a" : "v8"));
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? "v8" : "v8-8"));
             ctx.beginPath();
             ctx.arc(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
             ctx.fill();

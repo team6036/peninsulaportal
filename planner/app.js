@@ -987,7 +987,7 @@ export default class App extends core.App {
                 let id = projectIds[i];
                 log("CHANGE:*all > creating/updating project id:"+id);
                 let project = this.getProject(id);
-                project.meta.thumb = this.generateRepresentation(project);
+                // project.meta.thumb = this.generateRepresentation(project);
                 let projectContent = JSON.stringify(project, null, "\t");
                 await window.api.fileWrite(["projects", id+".json"], projectContent);
             }
@@ -1016,7 +1016,7 @@ export default class App extends core.App {
                 log("CHANGE:proj:"+id+" > creating/updating project id:"+id);
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
-                project.meta.thumb = this.generateRepresentation(project);
+                // project.meta.thumb = this.generateRepresentation(project);
                 let projectContent = JSON.stringify(project, null, "\t");
                 await window.api.fileWrite(["projects", id+".json"], projectContent);
             }
@@ -1718,6 +1718,7 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             this.panels.forEach(name => this.getPanel(name).refresh());
         });
 
+        let timer = 0;
         this.addHandler("update", data => {
             this.odometry.update();
             this.odometry.size = this.hasProject() ? this.project.size : 0;
@@ -1744,9 +1745,24 @@ App.ProjectPage = class AppProjectPage extends App.Page {
             }
             const hovered = this.odometry.hovered;
             const hoveredPart = this.odometry.hoveredPart;
-            if (!(hovered instanceof core.Odometry2d.Render)) return this.odometry.canvas.style.cursor = "crosshair";
-            if (!(hovered.source instanceof RSelectable)) return this.odometry.canvas.style.cursor = "crosshair";
-            this.odometry.canvas.style.cursor = hovered.source.hover(hoveredPart);
+            if (!(hovered instanceof core.Odometry2d.Render)) this.odometry.canvas.style.cursor = "crosshair";
+            else if (!(hovered.source instanceof RSelectable)) this.odometry.canvas.style.cursor = "crosshair";
+            else this.odometry.canvas.style.cursor = hovered.source.hover(hoveredPart);
+            if (util.getTime()-timer < 1000) return;
+            timer = util.getTime();
+            if (!this.hasProject()) return;
+            const canvas = document.createElement("canvas");
+            canvas.width = this.odometry.w;
+            canvas.height = this.odometry.h;
+            canvas.getContext("2d").drawImage(
+                this.odometry.canvas,
+                (this.odometry.canvas.width-this.odometry.w*this.odometry.scale*this.odometry.quality)/2,
+                (this.odometry.canvas.height-this.odometry.h*this.odometry.scale*this.odometry.quality)/2,
+                this.odometry.w*this.odometry.scale*this.odometry.quality,
+                this.odometry.h*this.odometry.scale*this.odometry.quality,
+                0, 0, canvas.width, canvas.height,
+            );
+            this.project.meta.thumb = canvas.toDataURL();
         });
 
         this.#choosing = false;
