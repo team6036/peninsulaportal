@@ -82,6 +82,12 @@ class Reviver {
         delete this.#rules[constructor.name];
         return constructor;
     }
+    addRuleAndAllSub(constructor) {
+        if (!util.is(constructor, "func")) return false;
+        this.addRule(constructor);
+        for (let k in constructor) this.addRuleAndAllSub(constructor[k]);
+        return constructor;
+    }
 
     get f() {
         return (k, v) =>  {
@@ -100,7 +106,7 @@ class Reviver {
 }
 
 const REVIVER = new Reviver();
-REVIVER.addRule(V);
+REVIVER.addRuleAndAllSub(V);
 
 exports.Target = Target;
 exports.Reviver = Reviver;
