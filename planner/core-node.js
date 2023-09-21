@@ -759,13 +759,7 @@ Project.Path = class ProjectPath extends core.Target {
 }
 
 const REVIVER = new core.Reviver(core.REVIVER);
-REVIVER.addRule(Project);
-REVIVER.addRule(Project.Config);
-REVIVER.addRule(Project.Meta);
-REVIVER.addRule(Project.Item);
-REVIVER.addRule(Project.Node);
-REVIVER.addRule(Project.Obstacle);
-REVIVER.addRule(Project.Path);
+REVIVER.addRuleAndAllSub(Project);
 
 exports.Project = Project;
 exports.REVIVER = REVIVER;

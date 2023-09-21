@@ -1198,7 +1198,8 @@ export class Odometry2d extends Target {
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
             ctx.lineWidth = 2*quality;
-            ctx.lineJoin = ctx.lineCap = "square";
+            ctx.lineJoin = "miter";
+            ctx.lineCap = "square";
             ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
@@ -1283,6 +1284,8 @@ export class Odometry2d extends Target {
             ctx.globalCompositeOperation = "source-over";
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
             ctx.lineWidth = 2*quality;
+            ctx.lineJoin = "miter";
+            ctx.lineCap = "square";
             ctx.strokeRect(
                 (ctx.canvas.width - this.w*scale*quality)/2,
                 (ctx.canvas.height - this.h*scale*quality)/2,
@@ -1513,6 +1516,8 @@ Odometry2d.Render = class Odometry2dRender extends Target {
     }
 };
 Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
+    #type;
+
     #size;
     #velocity;
     #showVelocity;
@@ -1523,8 +1528,14 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     #selected;
 
-    constructor(pos, size, heading) {
+    static Types = {
+        DEFAULT: Symbol("DEFAULT"),
+    };
+
+    constructor(pos, size, heading, velocity) {
         super(pos);
+
+        this.#type = null;
 
         this.#size = new V();
         this.#velocity = new V();
@@ -1534,13 +1545,18 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         this.#color = "cb";
         this.#colorH = "cb5";
 
+        this.type = Odometry2d.Robot.Types.DEFAULT;
+
         this.size = size;
         this.heading = heading;
+        this.velocity = velocity;
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8-8");
             ctx.lineWidth = 2*quality;
+            ctx.lineJoin = "miter";
+            ctx.lineCap = "square";
             ctx.beginPath();
             let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
             for (let i = 0; i <= path.length; i++) {
@@ -1564,14 +1580,18 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             if (this.showVelocity) {
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
                 ctx.lineWidth = 2*quality;
+                ctx.lineJoin = "round";
+                ctx.lineCap = "round";
+                let dir = 180+this.velocity.towards();
+                let tail = this.pos;
+                let head = tail.add(V.dir(dir, this.velocity.dist()));
                 ctx.beginPath();
-                ctx.moveTo(...this.odometry.worldToCanvas(this.pos).xy);
-                ctx.lineTo(...this.odometry.worldToCanvas(this.pos.add(V.dir(180+this.velocity.towards(), Math.max(0, this.velocity.dist()-this.odometry.pageLenToWorld(5))))).xy);
+                ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir-135, this.odometry.pageLenToWorld(5)))).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(5)))).xy);
                 ctx.stroke();
-                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
-                ctx.beginPath();
-                ctx.arc(...this.odometry.worldToCanvas(this.pos.add(this.velocity)).xy, 5*quality, 0, 2*Math.PI);
-                ctx.fill();
             }
         });
     }
@@ -1584,6 +1604,12 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         if (this.pos.add(V.dir(this.heading, this.w/2)).dist(m) < this.odometry.pageLenToWorld(5)) return "heading";
         if (this.pos.dist(m) < this.odometry.pageLenToWorld(7.5)) return "main";
         return null;
+    }
+
+    get type() { return this.#type; }
+    set type(v) {
+        if (!Object.values(Odometry2d.Robot.Types)) return;
+        this.#type = v;
     }
 
     get size() { return this.#size; }
@@ -1631,6 +1657,8 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
             ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? "cr-8" : "cr-4"));
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
             ctx.lineWidth = 2*quality;
+            ctx.lineJoin = "miter";
+            ctx.lineCap = "square";
             ctx.beginPath();
             ctx.arc(...this.odometry.worldToCanvas(this.pos).xy, this.odometry.worldLenToCanvas(this.radius), 0, 2*Math.PI);
             ctx.fill();
@@ -1675,6 +1703,15 @@ export class Reviver {
             reviver.rules.forEach(cons => this.addRule(cons));
     }
 
+    isConstructor(constructor) {
+        if (!util.is(constructor, "func")) return false;
+        try {
+            new constructor();
+            return true;
+        } catch (e) {}
+        return false;
+    }
+
     get rules() { return Object.values(this.#rules); }
     set rules(v) {
         v = util.ensure(v, "arr");
@@ -1706,6 +1743,12 @@ export class Reviver {
         delete this.#rules[constructor.name];
         return constructor;
     }
+    addRuleAndAllSub(constructor) {
+        if (!util.is(constructor, "func")) return false;
+        this.addRule(constructor);
+        for (let k in constructor) this.addRuleAndAllSub(constructor[k]);
+        return constructor;
+    }
 
     get f() {
         return (k, v) =>  {
@@ -1724,4 +1767,4 @@ export class Reviver {
 }
 
 export const REVIVER = new Reviver();
-REVIVER.addRule(V);
+REVIVER.addRuleAndAllSub(V);
