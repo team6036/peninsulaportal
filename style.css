@@ -26,6 +26,10 @@ body {
     overflow: hidden;
 }
 
+::selection {
+    background-color: var(--a5-8);
+}
+
 button {
     outline: none;
     border: none;
