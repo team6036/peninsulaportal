@@ -6,6 +6,52 @@ import * as core from "../core.js";
 import NTModel from "../nt4/model.js";
 
 
+class RLine extends core.Odometry2d.Render {
+    #a; #b;
+    #color;
+
+    constructor(a, b, color) {
+        super();
+
+        this.#a = new V();
+        this.#b = new V();
+        this.#color = null;
+
+        this.a = a;
+        this.b = b;
+        this.color = color;
+
+        this.addHandler("render", () => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            ctx.strokeStyle = this.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.color) : this.color;
+            ctx.lineWidth = 7.5*quality;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "square";
+            ctx.beginPath();
+            ctx.moveTo(...this.odometry.worldToCanvas(this.a).xy);
+            ctx.lineTo(...this.odometry.worldToCanvas(this.b).xy);
+            ctx.stroke();
+        });
+    }
+
+    get a() { return this.#a; }
+    set a(v) { this.#a.set(v); }
+    get aX() { return this.a.x; }
+    set aX(v) { this.a.x = v; }
+    get aY() { return this.a.y; }
+    set aY(v) { this.a.y = v; }
+    get b() { return this.#b; }
+    set b(v) { this.#b.set(v); }
+    get bX() { return this.b.x; }
+    set bX(v) { this.b.x = v; }
+    get bY() { return this.b.y; }
+    set bY(v) { this.b.y = v; }
+
+    get color() { return this.#color; }
+    set color(v) { this.#color = String(v); }
+}
+
+
 function getDisplay(t, v) {
     t = String(t);
     if (!NTModel.Topic.TYPES.includes(t)) return null;
@@ -14,12 +60,12 @@ function getDisplay(t, v) {
         let display = getDisplay(t, (t == "boolean") ? true : null);
         if (display == null) return null;
         return {
-            src: "../assets/icons/array2.svg",
+            src: "../assets/icons/array.svg",
             color: display.color,
         };
     }
     if (["double", "float", "int"].includes(t)) return {
-        src: "../assets/icons/number2.svg",
+        src: "../assets/icons/number.svg",
         color: "var(--cb)",
     };
     if (t == "boolean") return {
@@ -394,7 +440,7 @@ class Container extends Widget {
     #dividers;
     #axis;
 
-    constructor(children) {
+    constructor(...a) {
         super();
 
         this.elem.classList.add("container");
@@ -410,9 +456,26 @@ class Container extends Widget {
             this.children.forEach(child => child.update());
         });
 
-        this.axis = "x";
+        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Container) a = [a.children, a.weights, a.axis];
+            else if (util.is(a, "arr")) {
+                if (a[0] instanceof Widget) a = [a, [], "x"];
+                else {
+                    a = new Container(...a);
+                    a = [a.children, a.weights, a.axis];
+                }
+            }
+            else if (util.is(a, "obj")) a = [a.children, a.weights, a.axis];
+            else a = [[], [], "x"];
+        }
+        if (a.length == 2) {
+            if (util.is(a[1], "str")) a = [a[0], [], a[1]];
+            else a = [...a, "x"];
+        }
 
-        this.children = children;
+        [this.children, this.weights, this.axis] = a;
     }
 
     get children() { return [...this.#children]; }
@@ -590,29 +653,41 @@ class Container extends Widget {
             this.weights = weights;
         });
     }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                children: this.children,
+                weights: this.weights,
+                axis: this.axis,
+            }],
+        };
+    }
 }
 
 class Panel extends Widget {
     #pages;
     #pageIndex;
 
-    #eClose;
+    #eOptions;
     #eTop;
     #eAdd;
     #eContent;
 
-    constructor(pages) {
+    constructor(...a) {
         super();
 
         this.elem.classList.add("panel");
 
         this.#pages = [];
 
-        this.#eClose = document.createElement("button");
-        this.elem.appendChild(this.eClose);
-        this.eClose.classList.add("close");
-        this.eClose.classList.add("icon");
-        this.eClose.innerHTML = "<ion-icon name='close'></ion-icon>";
+        this.#eOptions = document.createElement("button");
+        this.elem.appendChild(this.eOptions);
+        this.eOptions.classList.add("options");
+        this.eOptions.classList.add("icon");
+        this.eOptions.innerHTML = "<ion-icon name='ellipsis-vertical'></ion-icon>";
         this.#eTop = document.createElement("div");
         this.elem.appendChild(this.eTop);
         this.eTop.classList.add("top");
@@ -623,9 +698,23 @@ class Panel extends Widget {
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
 
-        this.eClose.addEventListener("click", e => {
-            if (this.hasAppParent()) return this.parent.rootWidget = null;
-            if (this.hasParent()) return this.parent.remChild(this);
+        this.eOptions.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            e.stopPropagation();
+            let itm;
+            let menu = new core.App.ContextMenu();
+            itm = menu.addItem(new core.App.ContextMenu.Item("Close", "close"));
+            itm.addHandler("trigger", data => {
+                if (this.hasAppParent()) return this.parent.rootWidget = null;
+                if (this.hasParent()) return this.parent.remChild(this);
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-expand" : "chevron-collapse"));
+            itm.addHandler("trigger", data => {
+                this.isTitleCollapsed = !this.isTitleCollapsed;
+            });
+            this.app.contextMenu = menu;
+            let r = this.eOptions.getBoundingClientRect();
+            this.app.placeContextMenu(r.left, r.bottom);
         });
         this.eAdd.addEventListener("click", e => {
             this.addPage(new Panel.AddPage());
@@ -638,7 +727,23 @@ class Panel extends Widget {
             this.pages.forEach(page => page.update());
         });
 
-        this.pages = pages;
+        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel) a = [a.pages, false];
+            else if (a instanceof Panel.Page) a = [[a], false];
+            else if (util.is(a, "arr")) {
+                if (a[0] instanceof Panel.Page) a = [a, false];
+                else {
+                    a = new Panel(...a);
+                    a = [a.pages, a.isTitleCollapsed];
+                }
+            }
+            else if (util.is(a, "obj")) a = [a.pages, a.isCollapsed];
+            else a = [[], false];
+        }
+
+        [this.pages, this.isTitleCollapsed] = a;
 
         if (this.pages.length <= 0) this.addPage(new Panel.AddPage());
     }
@@ -712,10 +817,33 @@ class Panel extends Widget {
         if (this.hasParent()) this.parent.remChild(this);
     }
 
-    get eClose() { return this.#eClose; }
+    get eOptions() { return this.#eOptions; }
     get eTop() { return this.#eTop; }
     get eAdd() { return this.#eAdd; }
     get eContent() { return this.#eContent; }
+
+    get isTitleCollapsed() { return this.elem.classList.contains("collapsed"); }
+    set isTitleCollapsed(v) {
+        v = !!v;
+        if (this.isTitleCollapsed == v) return;
+        if (v) this.elem.classList.add("collapsed");
+        else this.elem.classList.remove("collapsed");
+    }
+    get isTitleExpanded() { return !this.isTitleCollapsed; }
+    set isTitleExpanded(v) { this.isTitleCollapsed = !v; }
+    collapseTitle() { return this.isTitleCollapsed = true; }
+    expandTitle() { return this.isTitleExpanded = true; }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                pages: this.pages,
+                isCollapsed: this.isTitleCollapsed,
+            }],
+        };
+    }
 }
 Panel.Page = class PanelPage extends core.Target {
     #parent;
@@ -745,9 +873,28 @@ Panel.Page = class PanelPage extends core.Target {
         this.eTabClose.classList.add("icon");
         this.eTabClose.innerHTML = "<ion-icon name='close'></ion-icon>";
 
+        let cancel = 10;
         this.eTab.addEventListener("click", e => {
+            if (cancel <= 0) return cancel = 10;
             if (!this.hasParent()) return;
             this.parent.pageIndex = this.parent.pages.indexOf(this);
+        });
+        this.eTab.addEventListener("mousedown", e => {
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+            };
+            const mousemove = () => {
+                if (cancel > 0) return cancel--;
+                mouseup();
+                if (!this.hasApp() || !this.hasParent()) return;
+                const app = this.app;
+                this.parent.remPage(this);
+                app.dragData = this;
+                app.dragging = true;
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
         });
         this.eTabClose.addEventListener("click", e => {
             e.stopPropagation();
@@ -824,6 +971,14 @@ Panel.Page = class PanelPage extends core.Target {
         options = util.ensure(options, "obj");
         return null;
     }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{}],
+        };
+    }
 };
 Panel.AddPage = class PanelAddPage extends Panel.Page {
     #searchPart;
@@ -836,7 +991,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
     #eSearchClear;
     #eContent;
 
-    constructor() {
+    constructor(...a) {
         super();
 
         this.elem.classList.add("add");
@@ -881,7 +1036,19 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
             this.items.forEach(itm => itm.update());
         });
 
-        this.searchPart = null;
+        if (a.length <= 0 || a.length > 1) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.AddPage) a = [a.searchPart, a.query];
+            else if (util.is(a, "arr")) {
+                a = new Panel.AddPage(...a);
+                a = [a.searchPart, a.query];
+            }
+            else if (util.is(a, "obj")) a = [a.searchPart, a.query];
+            else a = [null, ""];
+        }
+
+        [this.searchPart, this.query] = a;
 
         this.refresh();
     }
@@ -890,25 +1057,43 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         this.clearTags();
         this.placeholder = "";
         this.clearItems();
+        let toolItems = [
+            {
+                item: new Panel.AddPage.Button("Graph", "analytics"),
+                trigger: () => {
+                    if (!this.hasParent()) return;
+                    let index = this.parent.pages.indexOf(this);
+                    this.parent.addPage(new Panel.GraphPage(), index);
+                    this.parent.remPage(this);
+                },
+            },
+            {
+                item: new Panel.AddPage.Button("Odometry2d", "locate"),
+                trigger: () => {
+                    if (!this.hasParent()) return;
+                    let index = this.parent.pages.indexOf(this);
+                    this.parent.addPage(new Panel.Odometry2dPage(), index);
+                    this.parent.remPage(this);
+                },
+            },
+            {
+                item: new Panel.AddPage.Button("Odometry3d", "locate"),
+                trigger: () => {
+                    if (!this.hasParent()) return;
+                    let index = this.parent.pages.indexOf(this);
+                    this.parent.addPage(new Panel.Odometry3dPage(), index);
+                    this.parent.remPage(this);
+                },
+            },
+        ];
+        toolItems = toolItems.map(item => {
+            item.item.addHandler("trigger", item.trigger);
+            return item.item;
+        });
         if (this.searchPart == null) {
             this.tags = [];
             this.placeholder = "Search tools, tables, and topics";
             if (this.query.length > 0) {
-                let toolItems = [
-                    {
-                        item: new Panel.AddPage.Button("Graph", "analytics"),
-                        trigger: () => {
-                            if (!this.hasParent()) return;
-                            let index = this.parent.pages.indexOf(this);
-                            this.parent.addPage(new Panel.GraphPage(), index);
-                            this.parent.remPage(this);
-                        },
-                    },
-                ];
-                toolItems = toolItems.map(item => {
-                    item.item.addHandler("trigger", item.trigger);
-                    return item.item;
-                });
                 const fuse = new Fuse(toolItems, {
                     isCaseSensitive: false,
                     keys: [
@@ -959,7 +1144,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                     new Panel.AddPage.Divider(),
                     new Panel.AddPage.Header("Tools"),
                     new Panel.AddPage.Button("Tools", "cube-outline", true),
-                    new Panel.AddPage.Button("Graph", "analytics"),
+                    ...toolItems,
                 ];
                 this.items[0].addHandler("trigger", () => {
                     this.searchPart = "tables";
@@ -974,41 +1159,20 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                 this.items[5].addHandler("trigger", () => {
                     this.searchPart = "tools";
                 });
-                this.items[6].addHandler("trigger", () => {
-                    if (!this.hasParent()) return;
-                    let index = this.parent.pages.indexOf(this);
-                    this.parent.addPage(new Panel.GraphPage(), index);
-                    this.parent.remPage(this);
-                });
             }
         } else if (this.searchPart == "tools") {
             this.tags = [new Panel.AddPage.Tag("Tools", "cube-outline")];
             this.placeholder = "Search tools";
-            let items = [
-                {
-                    item: new Panel.AddPage.Button("Graph", "analytics"),
-                    trigger: () => {
-                        if (!this.hasParent()) return;
-                        let index = this.parent.pages.indexOf(this);
-                        this.parent.addPage(new Panel.GraphPage(), index);
-                        this.parent.remPage(this);
-                    },
-                },
-            ];
-            items = items.map(item => {
-                item.item.addHandler("trigger", item.trigger);
-                return item.item;
-            });
             if (this.query.length > 0) {
-                const fuse = new Fuse(items, {
+                const fuse = new Fuse(toolItems, {
                     isCaseSensitive: false,
                     keys: [
                         "name",
                     ],
                 });
-                items = fuse.search(this.query).map(item => item.item);
+                toolItems = fuse.search(this.query).map(item => item.item);
             }
-            this.items = items;
+            this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddPage.Tag(
                 this.searchPart[0].toUpperCase()+this.searchPart.substring(1).toLowerCase(),
@@ -1133,6 +1297,17 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
 
     get query() { return this.eSearchInput.value; }
     set query(v) { this.eSearchInput.value = v; }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                searchPart: this.searchPart,
+                query: this.query,
+            }],
+        };
+    }
 };
 Panel.AddPage.Tag = class PanelAddPageTag extends core.Target {
     #elem;
@@ -1326,7 +1501,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
     #eBrowser;
     #eDisplay;
 
-    constructor(path) {
+    constructor(...a) {
         super();
 
         this.elem.classList.add("browser_");
@@ -1343,7 +1518,22 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
         this.elem.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
 
-        this.path = path;
+        if (a.length <= 0 || a.length > 1) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.BrowserPage) a = [a.path];
+            else if (util.is(a, "arr")) {
+                if (util.is(a[0], "str")) a = [a.join("/")];
+                else {
+                    a = new Panel.BrowserPage(...a);
+                    a = [a.path];
+                }
+            }
+            else if (util.is(a, "obj")) a = [a.path];
+            else a = [a];
+        }
+
+        [this.path] = a;
 
         let prevGeneric = null;
         let state = {};
@@ -1599,6 +1789,16 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
     get ePath() { return this.#ePath; }
     get eBrowser() { return this.#eBrowser; }
     get eDisplay() { return this.#eDisplay; }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                path: this.path,
+            }],
+        };
+    }
 };
 Panel.ToolPage = class PanelToolPage extends Panel.Page {
     constructor(name, icon) {
@@ -1610,11 +1810,8 @@ Panel.ToolPage = class PanelToolPage extends Panel.Page {
         this.icon = icon;
     }
 };
-Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
-    #lVars; #rVars;
-
-    #viewMode;
-    #viewParams;
+Panel.ToolCanvasPage = class PanelToolCanvasPage extends Panel.ToolPage {
+    #quality;
 
     #eToggle;
     #eOptions;
@@ -1622,16 +1819,12 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
     #eContent;
     #canvas; #ctx;
 
-    constructor() {
-        super("Graph", "analytics");
+    constructor(name, icon) {
+        super(name, icon);
 
-        this.elem.classList.add("graph");
+        this.elem.classList.add("canvas");
 
-        this.#lVars = new Set();
-        this.#rVars = new Set();
-
-        this.#viewMode = "all";
-        this.#viewParams = {};
+        this.#quality = null;
 
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
@@ -1648,15 +1841,96 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
         this.elem.appendChild(this.eOptions);
         this.eOptions.classList.add("options");
         this.#eOptionSections = {};
+
+        this.eToggle.addEventListener("click", e => {
+            this.isOptionsOpen = !this.isOptionsOpen;
+        });
+
+        new ResizeObserver(() => {
+            let r = this.eContent.getBoundingClientRect();
+            this.canvas.width = (r.width-4) * this.quality;
+            this.canvas.height = (r.height-4) * this.quality;
+            this.canvas.style.width = (r.width-4)+"px";
+            this.canvas.style.height = (r.height-4)+"px";
+            this.update();
+        }).observe(this.eContent);
+
+        this.openOptions();
+    }
+
+    get quality() { return this.#quality; }
+    set quality(v) {
+        v = Math.max(0, util.ensure(v, "num"));
+        if (util.is(this.quality, "num")) return;
+        this.#quality = v;
+    }
+
+    get eToggle() { return this.#eToggle; }
+    get eContent() { return this.#eContent; }
+    get canvas() { return this.#canvas; }
+    get ctx() { return this.#ctx; }
+    get eOptions() { return this.#eOptions; }
+    get eOptionSections() { return Object.keys(this.#eOptionSections); }
+    hasEOptionSection(id) { return id in this.#eOptionSections; }
+    getEOptionSection(id) { return this.#eOptionSections[id]; }
+    addEOptionSection(elem) {
+        if (!(elem instanceof HTMLDivElement)) return false;
+        if (this.hasEOptionSection(elem.id)) return false;
+        this.#eOptionSections[elem.id] = elem;
+        this.eOptions.appendChild(elem);
+        return elem;
+    }
+
+    get isOptionsOpen() { return this.elem.classList.contains("open"); }
+    set isOptionsOpen(v) {
+        v = !!v;
+        if (this.isOptionsOpen == v) return;
+        if (v) this.elem.classList.add("open");
+        else this.elem.classList.remove("open");
+    }
+    get isOptionsClosed() { return !this.isOptionsOpen; }
+    set isOptionsClosed(v) { this.isOptionsOpen = !v; }
+    openOptions() { return this.isOptionsOpen = true; }
+    closeOptions() { return this.isOptionsClosed = true; }
+};
+Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
+    #lVars; #rVars;
+
+    #viewMode;
+    #viewParams;
+
+    constructor(...a) {
+        super("Graph", "analytics");
+
+        this.elem.classList.add("graph");
+
+        this.#lVars = new Set();
+        this.#rVars = new Set();
+
+        this.#viewMode = "all";
+        this.#viewParams = {};
+
         ["l", "v", "r"].forEach(id => {
-            const elem = this.#eOptionSections[id] = document.createElement("div");
-            this.eOptions.appendChild(elem);
+            const elem = document.createElement("div");
             elem.id = id;
+            this.addEOptionSection(elem);
             elem.classList.add("section");
             elem.innerHTML = "<div class='header'>"+{ l: "Left Axis", v: "View Window", r: "Right Axis" }[id]+"</div>";
             let idfs = {
-                l: () => elem.classList.add("vars"),
-                r: () => elem.classList.add("vars"),
+                l: () => {
+                    elem.classList.add("list");
+                    this.addHandler("update", data => {
+                        if (this.lVars.length > 0) elem.classList.remove("empty");
+                        else elem.classList.add("empty");
+                    });
+                },
+                r: () => {
+                    elem.classList.add("list");
+                    this.addHandler("update", data => {
+                        if (this.rVars.length > 0) elem.classList.remove("empty");
+                        else elem.classList.add("empty");
+                    });
+                },
                 v: () => {
                     elem.classList.add("view");
                     let eNav = document.createElement("div");
@@ -1775,21 +2049,8 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
             if (id in idfs) idfs[id]();
         });
 
-        this.eToggle.addEventListener("click", e => {
-            this.isOptionsOpen = !this.isOptionsOpen;
-        });
-
-        const quality = 3;
+        const quality = this.quality = 3;
         const padding = 60;
-
-        new ResizeObserver(() => {
-            let r = this.eContent.getBoundingClientRect();
-            this.canvas.width = (r.width-4) * quality;
-            this.canvas.height = (r.height-4) * quality;
-            this.canvas.style.width = (r.width-4)+"px";
-            this.canvas.style.height = (r.height-4)+"px";
-            this.update();
-        }).observe(this.eContent);
 
         this.addHandler("update", () => {
             if (this.isClosed) return;
@@ -1799,22 +2060,22 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
             const model = this.app.rootModel;
             const graphRange = {
                 left: () => [
-                    model.clientStartTime,
-                    Math.min(model.clientTime, model.clientStartTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    model.serverStartTime,
+                    Math.min(model.serverTime, model.serverStartTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
                 ],
                 right: () => [
-                    Math.max(model.clientStartTime, model.clientTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
-                    model.clientTime,
+                    Math.max(model.serverStartTime, model.serverTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    model.serverTime,
                 ],
                 section: () => {
-                    let start = util.ensure(this.viewParams.start, "num", model.clientStartTime);
-                    let stop = util.ensure(this.viewParams.stop, "num", model.clientTime);
-                    start = Math.min(model.clientTime, Math.max(model.clientStartTime, start));
-                    stop = Math.min(model.clientTime, Math.max(model.clientStartTime, stop));
+                    let start = util.ensure(this.viewParams.start, "num", model.serverStartTime);
+                    let stop = util.ensure(this.viewParams.stop, "num", model.serverTime);
+                    start = Math.min(model.serverTime, Math.max(model.serverStartTime, start));
+                    stop = Math.min(model.serverTime, Math.max(model.serverStartTime, stop));
                     stop = Math.max(start, stop);
                     return [start, stop];
                 },
-                all: () => [model.clientStartTime, model.clientTime],
+                all: () => [model.serverStartTime, model.serverTime],
             }[this.viewMode]();
             let graphVars = [
                 { vars: this.lVars },
@@ -1823,17 +2084,21 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
             graphVars.forEach((o, i) => {
                 let vars = o.vars;
                 let range = [null, null];
-                let logs = {};
+                let logs = {}, topics = {};
                 vars.forEach(v => {
                     if (!v.isShown) return;
-                    if (!v.hasName()) return this["rem"+"LR"[i]+"Var"](v.name);
+                    if (!v.hasName()) return;
+                    let topic = model.root.lookup(v.name);
+                    if (topic.isArray) return;
                     let log = model.getLogFor(v.name, ...graphRange);
-                    if (!util.is(log, "arr")) return this["rem"+"LR"[i]+"Var"](v.name);
+                    if (!util.is(log, "arr")) return;
                     let start = model.getValueAt(v.name, graphRange[0]), stop = model.getValueAt(v.name, graphRange[1]);
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
                     if (stop != null) log.push({ ts: graphRange[1], v: stop });
                     if (log.length <= 0) return;
                     logs[v.name] = log;
+                    topics[v.name] = topic;
+                    if (!["double", "float", "int"].includes(topic.type)) return;
                     let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
                     if (range[0] == null || range[1] == null) return range = subrange;
                     range[0] = Math.min(range[0], subrange[0]);
@@ -1846,6 +2111,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
                 o.range = range;
                 o.step = step;
                 o.logs = logs;
+                o.topics = topics;
             });
             let maxNSteps = 0;
             graphVars.forEach(o => {
@@ -1866,6 +2132,9 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
             let y1 = ctx.canvas.height - padding*quality;
             let y2 = ctx.canvas.height - (padding-5)*quality;
             let y3 = ctx.canvas.height - (padding-10)*quality;
+            ctx.lineWidth = 2*quality;
+            ctx.lineJoin = "miter";
+            ctx.lineCap = "square";
             ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
@@ -1874,8 +2143,6 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
                 let x = (i*timeStep - graphRange[0]) / (graphRange[1]-graphRange[0]);
                 x = util.lerp(padding*quality, ctx.canvas.width - padding*quality, x);
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
-                ctx.lineWidth = 2*quality;
-                ctx.lineJoin = ctx.lineCap = "square";
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
                 ctx.lineTo(x, y2);
@@ -1887,16 +2154,12 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
                 }
                 ctx.fillText(t+unit, x, y3);
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
-                ctx.lineWidth = 2*quality;
-                ctx.lineJoin = ctx.lineCap = "square";
                 ctx.beginPath();
                 ctx.moveTo(x, y0);
                 ctx.lineTo(x, y1);
                 ctx.stroke();
             }
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
-            ctx.lineWidth = 2*quality;
-            ctx.lineJoin = ctx.lineCap = "square";
             for (let i = 0; i <= maxNSteps; i++) {
                 let y = i / maxNSteps;
                 y = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y);
@@ -1905,17 +2168,20 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
                 ctx.lineTo(ctx.canvas.width-padding*quality, y);
                 ctx.stroke();
             }
+            let nDiscrete = 0;
             graphVars.forEach((o, i) => {
                 let vars = o.vars;
                 let range = o.range;
                 let step = o.step;
                 let logs = o.logs;
+                let topics = o.topics;
                 let x1 = [padding*quality, ctx.canvas.width-padding*quality][i];
                 let x2 = [(padding-5)*quality, ctx.canvas.width-(padding-5)*quality][i];
                 let x3 = [(padding-10)*quality, ctx.canvas.width-(padding-10)*quality][i];
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
                 ctx.lineWidth = 2*quality;
-                ctx.lineJoin = ctx.lineCap = "square";
+                ctx.lineJoin = "miter";
+                ctx.lineCap = "square";
                 ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
                 ctx.font = (12*quality)+"px monospace";
                 ctx.textAlign = ["right", "left"][i];
@@ -1932,37 +2198,98 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
                 vars.forEach(v => {
                     if (!(v.name in logs)) return;
                     let log = logs[v.name];
-                    let path = [];
-                    for (let i = 0; i+1 < log.length; i++) {
-                        let j = i+1;
-                        let pi = log[i], pj = log[j];
-                        path.push([pi.ts, pi.v], [pj.ts, pi.v], [pj.ts, pj.v]);
+                    let topic = topics[v.name];
+                    if (!["double", "float", "int"].includes(topic.type)) {
+                        log.forEach((p, i) => {
+                            let pts = p.ts, pv = p.v;
+                            let npts = (i+1 >= log.length) ? graphRange[1] : log[i+1].ts;
+                            let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
+                            let nx = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
+                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color) : v.color : "#fff";
+                            ctx.fillRect(
+                                x, (padding+10+20*nDiscrete)*quality,
+                                Math.max(0, nx-x-5*quality), 15*quality,
+                            );
+                            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+                            ctx.font = (12*quality)+"px monospace";
+                            ctx.textAlign = "left";
+                            ctx.textBaseline = "middle";
+                            ctx.fillText(pv, x+5*quality, (padding+10+20*nDiscrete+7.5)*quality);
+                        });
+                        nDiscrete++;
+                        return;
+                    }
+                    let ranges = [];
+                    for (let i = 0; i < log.length; i++) {
+                        let p = log[i];
+                        let ts = p.ts, v = p.v;
+                        let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (ts-graphRange[0])/(graphRange[1]-graphRange[0]));
+                        if (ranges.length > 0) {
+                            let px = ranges.at(-1).x;
+                            let r = ranges.at(-1).r;
+                            if (x-px > quality) ranges.push({ x: x, r: [v, v] });
+                            else {
+                                r[0] = Math.min(r[0], v);
+                                r[1] = Math.max(r[1], v);
+                            }
+                        } else ranges.push({ x: x, r: [v, v] });
                     }
                     ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color) : v.color : "#fff";
                     ctx.lineWidth = 2*quality;
-                    ctx.lineJoin = ctx.lineCap = "round";
+                    ctx.lineJoin = "round";
+                    ctx.lineCap = "square";
                     ctx.beginPath();
-                    path.forEach((p, i) => {
-                        p = new V(p).sub(graphRange[0], step*range[0]).div(graphRange[1]-graphRange[0], Math.max(util.EPSILON, step*(range[1]-range[0])));
-                        p.y = 1-p.y;
-                        p.imul(new V(ctx.canvas.width, ctx.canvas.height).isub(2*padding*quality));
-                        p.iadd(padding*quality);
-                        if (i > 0) ctx.lineTo(...p.xy);
-                        else ctx.moveTo(...p.xy);
+                    let py = null;
+                    ranges.forEach((p, i) => {
+                        let x = p.x, r = p.r;
+                        let y1 = r[0], y2 = r[1];
+                        y1 = (y1-(step*range[0])) / (step*(range[1]-range[0]));
+                        y2 = (y2-(step*range[0])) / (step*(range[1]-range[0]));
+                        y1 = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y1);
+                        y2 = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y2);
+                        if (i > 0) {
+                            ctx.lineTo(x, py);
+                            ctx.lineTo(x, (y1+y2)/2);
+                        } else ctx.moveTo(x, (y1+y2)/2);
+                        ctx.lineTo(x, y1);
+                        ctx.lineTo(x, y2);
+                        ctx.lineTo(x, (y1+y2)/2);
+                        py = (y1+y2)/2;
                     });
                     ctx.stroke();
                 });
             });
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
             ctx.lineWidth = 2*quality;
-            ctx.lineJoin = ctx.lineCap = "square";
+            ctx.lineJoin = "miter";
+            ctx.lineCap = "square";
             ctx.beginPath();
-            ctx.rect(...new V(padding*quality).xy, ...new V(ctx.canvas.width, ctx.canvas.height).sub(2*padding*quality).xy);
-            ctx.stroke();
+            ctx.strokeRect(...new V(padding*quality).xy, ...new V(ctx.canvas.width, ctx.canvas.height).sub(2*padding*quality).xy);
         });
 
-        this.viewMode = "all";
-        this.openOptions();
+        if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.GraphPage) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOptionsOpen];
+            else if (util.is(a, "arr")) {
+                if (a[0] instanceof Panel.GraphPage.Variable) a = [a, []];
+                else {
+                    a = new Panel.GraphPage(...a);
+                    a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOptionsOpen];
+                }
+            }
+            else if (a instanceof Panel.GraphPage.Variable) a = [[a], []];
+            else if (util.is(a, "obj")) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOpen];
+            else a = [[], []];
+        }
+        if (a.length == 2)
+            a = [...a, true];
+        if (a.length == 3) {
+            if (util.is(a[2], "str")) a = [...a, {}, true];
+            else a = [a[0], a[1], "all", {}, a[2]];
+        }
+
+        [this.lVars, this.rVars, this.viewMode, this.viewParams, this.isOptionsOpen] = a;
     }
 
     static findStep(v, nSteps) {
@@ -2064,27 +2391,10 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
         this.#viewMode = v;
     }
     get viewParams() { return this.#viewParams; }
-
-    get eToggle() { return this.#eToggle; }
-    get eContent() { return this.#eContent; }
-    get canvas() { return this.#canvas; }
-    get ctx() { return this.#ctx; }
-    get eOptions() { return this.#eOptions; }
-    get eOptionSections() { return Object.keys(this.#eOptionSections); }
-    hasEOptionSection(id) { return id in this.#eOptionSections; }
-    getEOptionSection(id) { return this.#eOptionSections[id]; }
-
-    get isOptionsOpen() { return this.elem.classList.contains("open"); }
-    set isOptionsOpen(v) {
-        v = !!v;
-        if (this.isOptionsOpen == v) return;
-        if (v) this.elem.classList.add("open");
-        else this.elem.classList.remove("open");
+    set viewParams(v) {
+        v = util.ensure(v, "obj");
+        for (let k in v) this.#viewMode[k] = v[k];
     }
-    get isOptionsClosed() { return !this.isOptionsOpen; }
-    set isOptionsClosed(v) { this.isOptionsOpen = !v; }
-    openOptions() { return this.isOptionsOpen = true; }
-    closeOptions() { return this.isOptionsClosed = true; }
 
     getHovered(data, pos, options) {
         pos = new V(pos);
@@ -2094,22 +2404,20 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
+        if (data instanceof Panel.BrowserPage) data = this.hasApp() ? this.app.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
             r = elem.getBoundingClientRect();
             if (pos.x < r.left || pos.x > r.right) continue;
             if (pos.y < r.top || pos.y > r.bottom) continue;
-            const numbers = ["double", "float", "int"];
             let idfs = {
                 _: side => {
                     if (!(data instanceof NTModel.Topic)) return null;
-                    if (data.isArray && !numbers.includes(data.arraylessType)) return null;
-                    if (!data.isArray && !numbers.includes(data.type)) return null;
                     return {
                         r: r,
                         submit: () => {
-                            const colors = "rybogpcm";
+                            const colors = "rybgpocm";
                             const addVar = name => {
                                 let taken = new Array(colors.length).fill(false);
                                 [...this.lVars, ...this.rVars].forEach(v => {
@@ -2146,6 +2454,20 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolPage {
         }
         return null;
     }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                lVars: this.lVars,
+                rVars: this.rVars,
+                viewMode: this.viewMode,
+                viewParams: this.viewParams,
+                isOpen: this.isOptionsOpen,
+            }],
+        };
+    }
 };
 Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
     #name;
@@ -2162,7 +2484,7 @@ Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
     #eColorPicker;
     #eColorPickerColors;
 
-    constructor(name, color) {
+    constructor(...a) {
         super();
 
         this.#name = null;
@@ -2225,9 +2547,20 @@ Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
             this.isOpen = !this.isOpen;
         });
 
-        this.name = name;
-        this.color = color;
-        this.show();
+        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.GraphPage.Variable) a = [a.name, a.color, a.isShown];
+            else if (util.is(a, "arr")) {
+                a = new Panel.GraphPage.Variable(...a);
+                a = [a.name, a.color, a.isShown];
+            }
+            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown];
+            else a = [null, null, true];
+        }
+        if (a.length == 2) a = [...a, true];
+
+        [this.name, this.color, this.isShown] = a;
     }
 
     get name() { return this.#name; }
@@ -2279,6 +2612,453 @@ Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
     set isClosed(v) { this.isOpen = !v; }
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                name: this.name,
+                color: this.color,
+                isShown: this.isShown,
+            }],
+        };
+    }
+};
+Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
+    #poses;
+
+    constructor(tail="") {
+        super("Odometry"+tail, "locate");
+
+        this.elem.classList.add("odometry");
+
+        this.#poses = new Set();
+
+        ["p", "f", "o"].forEach(id => {
+            const elem = document.createElement("div");
+            elem.id = id;
+            this.addEOptionSection(elem);
+            elem.classList.add("section");
+            elem.innerHTML = "<div class='header'>"+{ p: "Poses", f: "Field", o: "Options" }[id]+"</div>";
+            let idfs = {
+                p: () => {
+                    elem.classList.add("list");
+                    this.addHandler("update", data => {
+                        if (this.poses.length > 0) elem.classList.remove("empty");
+                        else elem.classList.add("empty");
+                    });
+                },
+            };
+            if (id in idfs) idfs[id]();
+        });
+    }
+
+    get poses() { return [...this.#poses]; }
+    set poses(v) {
+        v = util.ensure(v, "arr");
+        this.clearPoses();
+        v.forEach(v => this.addPose(v));
+    }
+    clearPoses() {
+        let poses = this.poses;
+        poses.forEach(pose => this.remPose(pose));
+        return poses;
+    }
+    hasPose(pose) {
+        if (!(pose instanceof Panel.OdometryPage.Pose)) return false;
+        return this.#poses.has(pose);
+    }
+    addPose(pose) {
+        if (!(pose instanceof Panel.OdometryPage.Pose)) return false;
+        if (this.hasPose(pose)) return false;
+        this.#poses.add(pose);
+        pose._onRemove = () => this.remPose(pose);
+        pose.addHandler("remove", pose._onRemove);
+        if (this.hasEOptionSection("p"))
+            this.getEOptionSection("p").appendChild(pose.elem);
+        return pose;
+    }
+    remPose(pose) {
+        if (!(pose instanceof Panel.OdometryPage.Pose)) return false;
+        if (!this.hasPose(pose)) return false;
+        this.#poses.delete(pose);
+        pose.remHandler("remove", pose._onRemove);
+        if (this.hasEOptionSection("p"))
+            this.getEOptionSection("p").removeChild(pose.elem);
+        delete pose._onRemove;
+        return pose;
+    }
+
+    getHovered(data, pos, options) {
+        pos = new V(pos);
+        options = util.ensure(options, "obj");
+        if (this.isOptionsClosed) return null;
+        let r;
+        r = this.eOptions.getBoundingClientRect();
+        if (pos.x < r.left || pos.x > r.right) return null;
+        if (pos.y < r.top || pos.y > r.bottom) return null;
+        if (data instanceof Panel.BrowserPage) data = this.hasApp() ? this.app.lookup(data.path) : null;
+        for (let i = 0; i < this.eOptionSections.length; i++) {
+            let id = this.eOptionSections[i];
+            let elem = this.getEOptionSection(id);
+            r = elem.getBoundingClientRect();
+            if (pos.x < r.left || pos.x > r.right) continue;
+            if (pos.y < r.top || pos.y > r.bottom) continue;
+            const numbers = ["double", "float", "int"];
+            let idfs = {
+                p: () => {
+                    if (!(data instanceof NTModel.Topic)) return null;
+                    if (!data.isArray || !numbers.includes(data.arraylessType)) return null;
+                    if (!this.isValidPose(data)) return null;
+                    return {
+                        r: r,
+                        submit: () => {
+                            const colors = "rybgpocm";
+                            const addPose = name => {
+                                let taken = new Array(colors.length).fill(false);
+                                this.poses.forEach(pose => {
+                                    colors.split("").forEach((c, i) => {
+                                        if (pose.color == "--c"+c) taken[i] = true;
+                                    });
+                                });
+                                let nextColor = null;
+                                taken.forEach((v, i) => {
+                                    if (v) return;
+                                    if (nextColor != null) return;
+                                    nextColor = colors[i];
+                                });
+                                if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
+                                let has = false;
+                                this.poses.forEach(v => (v.name == name) ? (has = true) : null);
+                                if (has) return;
+                                this.addPose(new Panel.OdometryPage.Pose(name, "--c"+nextColor));
+                            };
+                            addPose(data.path);
+                        },
+                    };
+                },
+            };
+            if (elem.id in idfs) {
+                let data = idfs[elem.id]();
+                if (util.is(data, "obj")) return data;
+            }
+        }
+        return null;
+    }
+    isValidPose(topic) { return true; }
+};
+Panel.OdometryPage.Pose = class PanelOdometryPagePose extends core.Target {
+    #name;
+    #color;
+    #ghost;
+
+    #elem;
+    #eDisplay;
+    #eShowBox;
+    #eShow;
+    #eShowDisplay;
+    #eDisplayName;
+    #eRemoveBtn;
+    #eContent;
+    #eColorPicker;
+    #eColorPickerColors;
+    #eGhostBtn;
+
+    constructor(...a) {
+        super();
+
+        this.#name = null;
+        this.#color = null;
+        this.#ghost = false;
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("item");
+        this.#eDisplay = document.createElement("button");
+        this.elem.appendChild(this.eDisplay);
+        this.eDisplay.classList.add("display");
+        this.#eShowBox = document.createElement("label");
+        this.eDisplay.appendChild(this.eShowBox);
+        this.eShowBox.classList.add("checkbox");
+        this.eShowBox.innerHTML = "<input type='checkbox'><span><ion-icon name='eye'></ion-icon></span>";
+        this.#eShow = this.eShowBox.children[0];
+        this.#eShowDisplay = this.eShowBox.children[1];
+        this.#eDisplayName = document.createElement("div");
+        this.eDisplay.appendChild(this.eDisplayName);
+        this.#eRemoveBtn = document.createElement("button");
+        this.eDisplay.appendChild(this.eRemoveBtn);
+        this.eRemoveBtn.classList.add("icon");
+        this.eRemoveBtn.innerHTML = "<ion-icon name='trash'></ion-icon>";
+        this.#eContent = document.createElement("div");
+        this.elem.appendChild(this.eContent);
+        this.eContent.classList.add("content");
+        this.#eColorPicker = document.createElement("div");
+        this.eContent.appendChild(this.eColorPicker);
+        this.eColorPicker.classList.add("colorpicker");
+        this.#eColorPickerColors = [];
+        [
+            { _: "cr", h: "cr5", d: "cr3" },
+            { _: "co", h: "co5", d: "co3" },
+            { _: "cy", h: "cy5", d: "cy3" },
+            { _: "cg", h: "cg5", d: "cg3" },
+            { _: "cc", h: "cc5", d: "cc3" },
+            { _: "cb", h: "cb5", d: "cb3" },
+            { _: "cp", h: "cp5", d: "cp3" },
+            { _: "cm", h: "cm5", d: "cm3" },
+        ].forEach(colors => {
+            let btn = document.createElement("button");
+            this.eColorPicker.appendChild(btn);
+            this.#eColorPickerColors.push(btn);
+            btn.color = "--"+colors._;
+            btn.style.setProperty("--bg", "var(--"+colors._+")");
+            btn.style.setProperty("--bgh", "var(--"+colors.h+")");
+            btn.style.setProperty("--bgd", "var(--"+colors.d+")");
+            btn.addEventListener("click", e => {
+                this.color = btn.color;
+            });
+        });
+        this.#eGhostBtn = document.createElement("button");
+        this.eColorPicker.appendChild(this.eGhostBtn);
+        this.eGhostBtn.classList.add("ghost");
+        this.eGhostBtn.textContent = "Ghost";
+        this.eGhostBtn.addEventListener("click", e => (this.ghost = !this.ghost));
+
+        this.eShowBox.addEventListener("click", e => {
+            e.stopPropagation();
+        });
+        this.eRemoveBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("remove", null);
+        });
+        this.eDisplay.addEventListener("click", e => {
+            this.isOpen = !this.isOpen;
+        });
+
+        if (a.length <= 0 || a.length > 4) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.OdometryPage.Pose) a = [a.name, a.color, a.isShown, a.ghost];
+            else if (util.is(a, "arr")) {
+                a = new Panel.OdometryPage.Pose(...a);
+                a = [a.name, a.color, a.isShown, a.ghost];
+            }
+            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.ghost];
+            else a = [null, null];
+        }
+        if (a.length == 2) a = [...a, true];
+        if (a.length == 3) a = [...a, false];
+
+        [this.name, this.color, this.isShown, this.ghost] = a;
+    }
+
+    get name() { return this.#name; }
+    set name(v) {
+        this.#name = (v == null) ? null : String(v);
+        this.eDisplayName.textContent = this.hasName() ? this.name : "?";
+    }
+    hasName() { return this.name != null; }
+    get color() { return this.#color; }
+    set color(v) {
+        this.#color = (v == null) ? null : String(v);
+        let color = this.hasColor() ? this.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.color) : this.color : "#fff";
+        this.eShowDisplay.style.setProperty("--bgc", color);
+        this.eShowDisplay.style.setProperty("--bgch", color);
+        this.eDisplayName.style.color = color;
+        this.eColorPickerColors.forEach(btn => {
+            if (btn.color == this.color) btn.classList.add("this");
+            else btn.classList.remove("this");
+        });
+    }
+    hasColor() { return this.color != null; }
+    get ghost() { return this.#ghost; }
+    set ghost(v) {
+        this.#ghost = !!v;
+        if (this.ghost) this.eGhostBtn.classList.add("this");
+        else this.eGhostBtn.classList.remove("this");
+    }
+
+    get elem() { return this.#elem; }
+    get eDisplay() { return this.#eDisplay; }
+    get eShowBox() { return this.#eShowBox; }
+    get eShow() { return this.#eShow; }
+    get eShowDisplay() { return this.#eShowDisplay; }
+    get eDisplayName() { return this.#eDisplayName; }
+    get eRemoveBtn() { return this.#eRemoveBtn; }
+    get eContent() { return this.#eContent; }
+    get eColorPicker() { return this.#eColorPicker; }
+    get eColorPickerColors() { return [...this.#eColorPickerColors]; }
+    get eGhostBtn() { return this.#eGhostBtn; }
+
+    get isShown() { return this.eShow.checked; }
+    set isShown(v) { this.eShow.checked = v; }
+    get isHidden() { return !this.isShown; }
+    set isHidden(v) { this.isShown = !v; }
+    show() { return this.isShown = true; }
+    hide() { return this.isHidden = true; }
+
+    get isOpen() { return this.elem.classList.contains("open"); }
+    set isOpen(v) {
+        v = !!v;
+        if (this.open == v) return;
+        if (v) this.elem.classList.add("open");
+        else this.elem.classList.remove("open");
+    }
+    get isClosed() { return !this.isOpen; }
+    set isClosed(v) { this.isOpen = !v; }
+    open() { return this.isOpen = true; }
+    close() { return this.isClosed = true; }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                name: this.name,
+                color: this.color,
+                isShown: this.isShown,
+                ghost: this.ghost,
+            }],
+        };
+    }
+};
+Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
+    #odometry;
+
+    #size;
+    
+    #template;
+
+    constructor(...a) {
+        super("2d");
+
+        this.#odometry = new core.Odometry2d(this.canvas);
+
+        this.#size = new V(10);
+
+        this.#template = null;
+
+        this.quality = this.odometry.quality;
+
+        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.Odometry2dPage) a = [a.poses, a.size, a.template, a.isOptionsOpen];
+            else if (util.is(a, "arr")) {
+                if (a[0] instanceof Panel.OdometryPage.Pose) a = [a, null];
+                else {
+                    a = new Panel.Odometry2dPage(...a);
+                    a = [a.poses, a.size, a.template, a.isOptionsClosed];
+                }
+            }
+            else if (util.is(a, "obj")) a = [a.poses, a.size, a.template, a.isOpen];
+            else a = [[], null];
+        }
+        if (a.length == 2) a = [a[0], 10, a[1]];
+        if (a.length == 3) a = [...a, true];
+
+        [this.poses, this.size, this.template, this.isOptionsOpen] = a;
+
+        let templates = {};
+        let templateImages = {};
+        let finished = false;
+        (async () => {
+            templates = await window.api.getTemplates();
+            templateImages = await window.api.getTemplateImages();
+            // this.template = await window.api.getActiveTemplate();
+            finished = true;
+        })();
+
+        let poses = {};
+
+        this.addHandler("update", () => {
+            if (!finished) return;
+            this.odometry.size = new V((this.template in templates) ? templates[this.template].size : this.size).mul(100);
+            this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
+            this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
+            if (this.isClosed) return;
+            if (!this.hasApp() || !this.app.hasRootModel() || !this.app.rootModel.hasRoot()) return;
+            const model = this.app.rootModel;
+            let newPoses = {};
+            this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
+            let needAdd = {}, needRem = {};
+            for (let name in newPoses)
+                if (!(name in poses))
+                    needAdd[name] = newPoses[name];
+            for (let name in poses)
+                if (!(name in newPoses))
+                    needRem[name] = poses[name];
+            Object.keys(needAdd).forEach(name => {
+                let topic = model.root.lookup(name);
+                if (!(topic instanceof NTModel.Topic)) return;
+                if (!topic.isArray) return;
+                if (topic.value.length % 2 == 0) {
+                    poses[name] = [];
+                } else if (topic.value.length == 3) {
+                    let renders = poses[name] = [this.odometry.addRender(new core.Odometry2d.Robot())];
+                    renders[0].showVelocity = false;
+                }
+            });
+            Object.keys(needRem).forEach(name => {
+                poses[name].forEach(render => this.odometry.remRender(render));
+                delete poses[name];
+            });
+            for (let name in poses) {
+                let renders = poses[name];
+                let pose = newPoses[name];
+                let topic = model.root.lookup(name);
+                if (!(topic instanceof NTModel.Topic)) continue;
+                if (!topic.isArray) continue;
+                if (topic.value.length % 2 == 0) {
+                    let l = Math.max(0, (topic.value.length / 2) - 1);
+                    while (renders.length < l) renders.push(this.odometry.addRender(new RLine()));
+                    while (renders.length > l) this.odometry.remRender(renders.pop());
+                    renders.forEach((render, i) => {
+                        render.a = [topic.value[i*2 + 0], topic.value[i*2 + 1]];
+                        render.a.imul(100);
+                        render.b = [topic.value[i*2 + 2], topic.value[i*2 + 3]];
+                        render.b.imul(100);
+                        render.color = pose.color;
+                    });
+                } else if (topic.value.length == 3) {
+                    let render = renders[0];
+                    render.color = pose.color.substring(2);
+                    render.colorH = pose.color.substring(2)+5;
+                    render.alpha = pose.ghost ? 0.5 : 1;
+                    render.size = templates[activeTemplate].robotSize;
+                    render.pos = new V(topic.value[0], topic.value[1]).mul(100);
+                    render.heading = topic.value[2];
+                }
+            }
+            this.odometry.update();
+        });
+    }
+
+    get odometry() { return this.#odometry; }
+
+    get size() { return this.#size; }
+    set size(v) { this.#size.set(v); }
+    get w() { return this.size.x; }
+    set w(v) { this.size.x = v; }
+    get h() { return this.size.y; }
+    set h(v) { this.size.y = v; }
+
+    get template() { return this.#template; }
+    set template(v) { this.#template = (v == null) ? null : String(v); }
+
+    isValidPose(topic) { return (topic.value.length % 2 == 0) || (topic.value.length == 3); }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                poses: this.poses,
+                size: this.size,
+                template: this.template,
+                isOpen: this.isOptionsOpen,
+            }],
+        };
+    }
 };
 
 export default class App extends core.App {
@@ -2441,6 +3221,14 @@ export default class App extends core.App {
                 this.dragData = new Panel.GraphPage();
                 this.dragging = true;
             });
+            this.addToolButton(new ToolButton("Odom2d", "locate")).addHandler("drag", () => {
+                this.dragData = new Panel.Odometry2dPage();
+                this.dragging = true;
+            });
+            this.addToolButton(new ToolButton("Odom3d", "locate")).addHandler("drag", () => {
+                this.dragData = new Panel.Odometry3dPage();
+                this.dragging = true;
+            });
             
             this.formatSide();
             this.formatContent();
@@ -2448,6 +3236,13 @@ export default class App extends core.App {
             if (this.hasESideSection("browser"))
                 this.getESideSection("browser").open();
 
+            let refactor = false;
+            this.addHandler("refactor-browser-queue", data => { refactor = true; });
+            this.addHandler("update", data => {
+                if (!refactor) return;
+                refactor = false;
+                this.post("refactor-browser", null);
+            });
             this.addHandler("refactor-browser", data => {
                 let newPaths = {};
                 if (this.hasRootModel() && this.rootModel.hasRoot()) {
@@ -2463,13 +3258,12 @@ export default class App extends core.App {
                         dfs(generic);
                     });
                 }
-                let open = [], oldPaths = {};
+                let oldPaths = {};
                 this.browserItems.forEach(itm => {
                     let path = [];
                     const dfs = itm => {
                         path.push(itm.name);
                         oldPaths[path.join("/")] = itm;
-                        if (itm.isOpen) open.push(path.join("/"));
                         if (itm instanceof BrowserTable)
                             itm.children.forEach(itm => dfs(itm));
                         path.pop();
@@ -2874,7 +3668,7 @@ export default class App extends core.App {
         }
         this.#rootModel = v;
         if (this.hasRootModel()) {
-            this.rootModel._onChange = () => this.post("refactor-browser", null);
+            this.rootModel._onChange = data => this.post("refactor-browser-queue", null);
             this.rootModel.addHandler("change", this.rootModel._onChange);
         }
         this.post("refactor-browser", null);

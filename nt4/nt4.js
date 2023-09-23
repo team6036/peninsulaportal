@@ -377,8 +377,8 @@ export class NT4_Client {
      * to synchronize timebases. 
      * @returns The current time on the server, in microseconds
      */
-    getServerTime_us() {
-        return this.getClientTime_us() + this.serverTimeOffset_us;
+    getServerTime_us(clientTime=null) {
+        return ((clientTime == null) ? this.getClientTime_us() : clientTime) + this.serverTimeOffset_us;
     }
 
     //////////////////////////////////////////////////////////////
