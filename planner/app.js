@@ -389,114 +389,6 @@ class RSelectable extends core.Odometry2d.Render {
     }
 }
 
-class PathVisual extends core.Target {
-    #panel;
-
-    #id;
-
-    #show;
-
-    #visual;
-    #item;
-
-    #t;
-    #tPrev;
-    #paused;
-
-    constructor() {
-        super();
-
-        this.#panel = null;
-
-        this.#id = null;
-
-        this.#show = false;
-
-        this.#visual = new RVisual();
-        this.#item = new RVisualItem(this.visual);
-
-        this.#t = 0;
-        this.#tPrev = 0;
-        this.#paused = true;
-    }
-
-    get panel() { return this.#panel; }
-    set panel(v) {
-        v = (v instanceof App.ProjectPage.PathsPanel) ? v : null;
-        if (this.panel == v) return;
-        if (this.hasPage()) {
-            this.page.odometry.remRender(this.visual);
-            this.page.odometry.remRender(this.item);
-        }
-        this.#panel = v;
-        if (this.hasPage() && this.show) {
-            this.page.odometry.addRender(this.visual);
-            this.page.odometry.addRender(this.item);
-        }
-    }
-    hasPanel() { return this.panel instanceof App.ProjectPage.PathsPanel; }
-    get page() { return this.hasPanel() ? this.panel.page : null; }
-    hasPage() { return this.page instanceof App.ProjectPage; }
-    get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
-
-    get id() { return this.#id; }
-    set id(v) {
-        v = (v == null) ? null : String(v);
-        if (this.id == v) return;
-        this.#id = v;
-    }
-
-    get show() { return this.#show; }
-    set show(v) {
-        v = !!v;
-        if (this.show == v) return;
-        this.#show = v;
-        if (!this.hasPage()) return;
-        if (this.show) {
-            this.page.odometry.addRender(this.visual);
-            this.page.odometry.addRender(this.item);
-        } else {
-            this.page.odometry.remRender(this.visual);
-            this.page.odometry.remRender(this.item);
-        }
-    }
-
-    get visual() { return this.#visual; }
-    get item() { return this.#item; }
-
-    get totalTime() { return this.visual.dt * this.visual.nodes.length; }
-    get nowTime() { return this.#t; }
-    set nowTime(v) {
-        v = Math.min(this.totalTime, Math.max(0, util.ensure(v, "num")));
-        if (this.nowTime == v) return;
-        this.#t = v;
-        this.item.interp = this.nowTime / this.totalTime;
-        this.post("change", null);
-    }
-    get isFinished() { return this.nowTime >= this.totalTime; }
-
-    start() { return this.#tPrev = util.getTime(); }
-
-    get paused() { return this.#paused; }
-    set paused(v) {
-        v = !!v;
-        if (this.paused == v) return;
-        this.#paused = v;
-        this.post("change", null);
-    }
-    get playing() { return !this.paused; }
-    set playing(v) { this.paused = !v; }
-    pause() { return this.paused = true; }
-    play() { return this.playing = true; }
-
-    update() {
-        let deltaTime = util.getTime() - this.#tPrev;
-        if (this.show && this.playing) this.nowTime += deltaTime;
-        this.#tPrev += deltaTime;
-    }
-}
-
 export default class App extends core.App {
     #changes;
 
@@ -3453,7 +3345,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     }
     hasVisual(v) {
         if (util.is(v, "str")) return v in this.#visuals;
-        if (v instanceof PathVisual) return this.hasVisual(v.id);
+        if (v instanceof App.ProjectPage.PathsPanel.Visual) return this.hasVisual(v.id);
         return false;
     }
     getVisual(id) {
@@ -3463,7 +3355,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     }
     addVisual(id, visual) {
         id = String(id);
-        if (!(visual instanceof PathVisual)) return false;
+        if (!(visual instanceof App.ProjectPage.PathsPanel.Visual)) return false;
         if (visual.panel != null || visual.id != null) return false;
         if (this.hasVisual(id)) return false;
         this.#visuals[id] = visual;
@@ -3480,7 +3372,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             visual.panel = null;
             return visual;
         }
-        if (v instanceof PathVisual) return this.remVisual(v.id);
+        if (v instanceof App.ProjectPage.PathsPanel.Visual) return this.remVisual(v.id);
         return false;
     }
 
@@ -3496,7 +3388,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             for (let id in datas) {
                 let data = datas[id];
                 if (!util.is(data, "obj")) continue;
-                let visual = this.addVisual(id, new PathVisual());
+                let visual = this.addVisual(id, new App.ProjectPage.PathsPanel.Visual());
                 visual.visual.dt = data.dt*1000;
                 visual.visual.nodes = util.ensure(data.state, "arr").map(node => {
                     node = util.ensure(node, "obj");
@@ -3522,6 +3414,113 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     get eAddBtn() { return this.#eAddBtn; }
     get ePathsBox() { return this.#ePathsBox; }
     get eActivateBtn() { return this.#eActivateBtn; }
+};
+App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends core.Target {
+    #panel;
+
+    #id;
+
+    #show;
+
+    #visual;
+    #item;
+
+    #t;
+    #tPrev;
+    #paused;
+
+    constructor() {
+        super();
+
+        this.#panel = null;
+
+        this.#id = null;
+
+        this.#show = false;
+
+        this.#visual = new RVisual();
+        this.#item = new RVisualItem(this.visual);
+
+        this.#t = 0;
+        this.#tPrev = 0;
+        this.#paused = true;
+    }
+
+    get panel() { return this.#panel; }
+    set panel(v) {
+        v = (v instanceof App.ProjectPage.PathsPanel) ? v : null;
+        if (this.panel == v) return;
+        if (this.hasPage()) {
+            this.page.odometry.remRender(this.visual);
+            this.page.odometry.remRender(this.item);
+        }
+        this.#panel = v;
+        if (this.hasPage() && this.show) {
+            this.page.odometry.addRender(this.visual);
+            this.page.odometry.addRender(this.item);
+        }
+    }
+    hasPanel() { return this.panel instanceof App.ProjectPage.PathsPanel; }
+    get page() { return this.hasPanel() ? this.panel.page : null; }
+    hasPage() { return this.page instanceof App.ProjectPage; }
+    get app() { return this.hasPage() ? this.page.app : null; }
+    hasApp() { return this.app instanceof App; }
+
+    get id() { return this.#id; }
+    set id(v) {
+        v = (v == null) ? null : String(v);
+        if (this.id == v) return;
+        this.#id = v;
+    }
+
+    get show() { return this.#show; }
+    set show(v) {
+        v = !!v;
+        if (this.show == v) return;
+        this.#show = v;
+        if (!this.hasPage()) return;
+        if (this.show) {
+            this.page.odometry.addRender(this.visual);
+            this.page.odometry.addRender(this.item);
+        } else {
+            this.page.odometry.remRender(this.visual);
+            this.page.odometry.remRender(this.item);
+        }
+    }
+
+    get visual() { return this.#visual; }
+    get item() { return this.#item; }
+
+    get totalTime() { return this.visual.dt * this.visual.nodes.length; }
+    get nowTime() { return this.#t; }
+    set nowTime(v) {
+        v = Math.min(this.totalTime, Math.max(0, util.ensure(v, "num")));
+        if (this.nowTime == v) return;
+        this.#t = v;
+        this.item.interp = this.nowTime / this.totalTime;
+        this.post("change", null);
+    }
+    get isFinished() { return this.nowTime >= this.totalTime; }
+
+    start() { return this.#tPrev = util.getTime(); }
+
+    get paused() { return this.#paused; }
+    set paused(v) {
+        v = !!v;
+        if (this.paused == v) return;
+        this.#paused = v;
+        this.post("change", null);
+    }
+    get playing() { return !this.paused; }
+    set playing(v) { this.paused = !v; }
+    pause() { return this.paused = true; }
+    play() { return this.playing = true; }
+
+    update() {
+        let deltaTime = util.getTime() - this.#tPrev;
+        if (this.show && this.playing) this.nowTime += deltaTime;
+        this.#tPrev += deltaTime;
+    }
 };
 App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends core.Target {
     #panel;
