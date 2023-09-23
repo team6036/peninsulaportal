@@ -2068,8 +2068,8 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
                     model.serverTime,
                 ],
                 section: () => {
-                    let start = util.ensure(this.viewParams.start, "num", model.serverStartTime);
-                    let stop = util.ensure(this.viewParams.stop, "num", model.serverTime);
+                    let start = util.ensure(model.serverStartTime+this.viewParams.start, "num", model.serverStartTime);
+                    let stop = util.ensure(model.serverStartTime+this.viewParams.stop, "num", model.serverTime);
                     start = Math.min(model.serverTime, Math.max(model.serverStartTime, start));
                     stop = Math.min(model.serverTime, Math.max(model.serverStartTime, stop));
                     stop = Math.max(start, stop);

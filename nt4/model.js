@@ -118,6 +118,29 @@ export default class NTModel extends core.Target {
         return true;
     }
 
+    getSectionIndexOf(k, ts=null) {
+        ts = util.ensure(ts, "num", this.serverTime);
+        if (!this.hasRoot()) return null;
+        k = String(k).split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        if (k.length <= 0) return null;
+        let path = k.join("/");
+        if (!(path in this.#logs)) return null;
+        let log = this.#logs[path];
+        if (log.length <= 0) return null;
+        if (ts < log.at(0)[0]) return -1;
+        if (ts >= log.at(-1)[0]) return log.length-1;
+        let l = 0, r = log.length-2;
+        while (l <= r) {
+            let m = Math.floor((l+r)/2);
+            let range = [log[m][0], log[m+1][0]];
+            if (ts < range[0]) r = m-1;
+            else if (ts >= range[1]) l = m+1;
+            else return m;
+        }
+        return null;
+    }
     /*
     getIndexOf(k, ts=null) {
         ts = util.ensure(ts, "num", this.clientTime);
@@ -144,7 +167,7 @@ export default class NTModel extends core.Target {
     }
     */
     getValueAt(k, ts=null) {
-        ts = util.ensure(ts, "num", this.clientTime);
+        ts = util.ensure(ts, "num", this.serverTime);
         if (!this.hasRoot()) return null;
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
@@ -153,6 +176,11 @@ export default class NTModel extends core.Target {
         let path = k.join("/");
         if (!(path in this.#logs)) return null;
         let log = this.#logs[path];
+        let i = this.getSectionIndexOf(path, ts);
+        if (i == null || i < 0 || i >= log.length) return null;
+        return log[i][1];
+        /*
+        let log = this.#logs[path];
         if (log.length <= 0) return null;
         if (ts < log.at(0)[0]) return null;
         if (ts >= log.at(-1)[0]) return log.at(-1)[1];
@@ -160,6 +188,7 @@ export default class NTModel extends core.Target {
             if (ts >= log[i][0] && ts < log[i+1][0])
                 return log[i][1];
         return log.at(-1)[1];
+        */
     }
     getLogLengthFor(k) {
         if (!this.hasRoot()) return null;
@@ -172,6 +201,8 @@ export default class NTModel extends core.Target {
         return this.#logs[path].length;
     }
     getLogFor(k, tsStart=null, tsStop=null) {
+        tsStart = util.ensure(tsStart, "num", this.serverStartTime);
+        tsStop = util.ensure(tsStop, "num", this.serverTime);
         if (!this.hasRoot()) return null;
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
@@ -179,12 +210,19 @@ export default class NTModel extends core.Target {
         if (k.length <= 0) return null;
         let path = k.join("/");
         if (!(path in this.#logs)) return null;
+        let log = this.#logs[path];
+        let start = this.getSectionIndexOf(path, tsStart);
+        let stop = this.getSectionIndexOf(path, tsStop);
+        if (start == null || stop == null) return null;
+        return log.slice(start+1, stop+1).map(p => { return { ts: p[0], v: p[1] }; });
+        /*
         // tsStart = util.ensure(tsStart, "num", this.clientStartTime);
         // tsStop = util.ensure(tsStop, "num", this.clientTime);
         // let i1 = this.getIndexOf(k, tsStart), i2 = this.getIndexOf(k, tsStop);
         return this.#logs[path].map(point => { return { ts: point[0], v: point[1] }; })
             .filter(point => (tsStart == null) || (point.ts >= tsStart))
             .filter(point => (tsStop == null) || (point.ts <= tsStop));
+        */
     }
 
     get address() { return this.#hasClient() ? this.#client.serverBaseAddr : null; }

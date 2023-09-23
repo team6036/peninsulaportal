@@ -1029,7 +1029,8 @@
     align-content: center;
     gap: 5px;
 }
-#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list {
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list,
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list {
     position: relative;
 }
 #mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list.empty::before {
