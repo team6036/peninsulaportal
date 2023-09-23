@@ -1053,7 +1053,7 @@ Portal.Feature = class PortalFeature extends core.Target {
             this.stop();
         });
 
-        window.loadURL("file://"+path.join(__dirname, this.name.toLowerCase(), "index.html"));
+        window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
         const build = {
             about: [

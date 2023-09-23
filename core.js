@@ -1553,7 +1553,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+this.color); // "--v8-8");
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+this.color+"-8");
             ctx.lineWidth = 7.5*quality;
             ctx.lineJoin = "round";
             ctx.lineCap = "square";
