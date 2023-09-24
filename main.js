@@ -1216,6 +1216,43 @@ Portal.Feature = class PortalFeature extends core.Target {
                 hook();
                 checkForShow();
             },
+            PANEL: () => {
+                template[1].submenu.splice(
+                    2, 0,
+                    {
+                        id: "newproject",
+                        label: "New Project",
+                        accelerator: "CmdOrCtrl+N",
+                        click: () => window.webContents.send("ask", "newproject"),
+                    },
+                    {
+                        id: "newtab",
+                        label: "New Tab",
+                        accelerator: "CmdOrCtrl+Shift+N",
+                        click: () => window.webContents.send("ask", "newtab"),
+                    },
+                    build.div,
+                    {
+                        id: "openclose",
+                        label: "Toggle Open / Closed",
+                        accelerator: "Ctrl+F",
+                        click: () => window.webContents.send("ask", "openclose"),
+                    },
+                    {
+                        id: "expandcollapse",
+                        label: "Toggle Title Collapsed",
+                        accelerator: "Ctrl+Shift+F",
+                        click: () => window.webContents.send("ask", "expandcollapse"),
+                    },
+                    build.div,
+                    {
+                        id: "close",
+                        label: "Close Tab",
+                        accelerator: "CmdOrCtrl+Shift+W",
+                        click: () => window.webContents.send("ask", "close"),
+                    },
+                );
+            },
             PLANNER: () => {
                 template[1].submenu.splice(
                     2, 0,
