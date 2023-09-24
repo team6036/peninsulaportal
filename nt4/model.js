@@ -305,6 +305,8 @@ NTModel.Generic = class NTModelGeneric extends core.Target {
         return this.parent.path + "/" + this.name;
     }
 
+    get nFields() { return 0; }
+
     lookup(k) {
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
@@ -320,6 +322,12 @@ NTModel.Table = class NTModelTable extends NTModel.Generic {
         super(parent, name);
 
         this.#children = new Set();
+    }
+
+    get nFields() {
+        let n = 0;
+        this.children.forEach(child => (n += child.nFields));
+        return n;
     }
 
     get children() { return [...this.#children]; }
@@ -408,6 +416,8 @@ NTModel.Topic = class NTModelTopic extends NTModel.Generic {
 
         this.value = value;
     }
+
+    get nFields() { return 1; }
 
     get type() { return this.#type; }
     get isArray() { return this.type.endsWith("[]"); }
