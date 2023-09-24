@@ -2999,11 +2999,13 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             let r = this.eTemplateSelect.getBoundingClientRect();
             this.app.placeContextMenu(r.left, r.bottom);
         });
+        let infoUnits = [];
         info = document.createElement("div");
         eField.appendChild(info);
         info.classList.add("info");
         info.classList.add("nothas");
         info.innerHTML = "<span>Map Size</span><span class='units'>m</span>";
+        infoUnits.push(info.children[1]);
         let eSize = document.createElement("div");
         eField.appendChild(eSize);
         eSize.classList.add("v");
@@ -3018,7 +3020,7 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             let v = this.eSizeWInput.value;
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.w = v*100;
+                this.w = v*(this.isMeters ? 100 : 1);
             }
         });
         this.#eSizeHInput = document.createElement("input");
@@ -3031,7 +3033,7 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             let v = this.eSizeHInput.value;
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.h = v*100;
+                this.h = v*(this.isMeters ? 100 : 1);
             }
         });
         info = document.createElement("div");
@@ -3039,6 +3041,7 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
         info.classList.add("info");
         info.classList.add("nothas");
         info.innerHTML = "<span>Robot Size</span><span class='units'>m</span>";
+        infoUnits.push(info.children[1]);
         let eRobotSize = document.createElement("div");
         eField.appendChild(eRobotSize);
         eRobotSize.classList.add("v");
@@ -3053,7 +3056,7 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             let v = this.eRobotSizeWInput.value;
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.robotW = v*100;
+                this.robotW = v*(this.isMeters ? 100 : 1);
             }
         });
         this.#eRobotSizeHInput = document.createElement("input");
@@ -3066,7 +3069,7 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             let v = this.eRobotSizeHInput.value;
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.robotH = v*100;
+                this.robotH = v*(this.isMeters ? 100 : 1);
             }
         });
         let eNav;
@@ -3110,8 +3113,8 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOpen];
             else a = [[], null];
         }
-        if (a.length == 2) a = [...a, 10000];
-        if (a.length == 3) a = [...a, 1000];
+        if (a.length == 2) a = [...a, 1000];
+        if (a.length == 3) a = [...a, 100];
         if (a.length == 4) a = [...a, true];
         if (a.length == 5) a = [...a.slice(0, 4), true, true, a[4]];
 
@@ -3132,10 +3135,10 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
         this.addHandler("update", () => {
             if (this.template in templates) eField.classList.add("has");
             else eField.classList.remove("has");
-            if (document.activeElement != this.eSizeWInput) this.eSizeWInput.value = this.w/100;
-            if (document.activeElement != this.eSizeHInput) this.eSizeHInput.value = this.h/100;
-            if (document.activeElement != this.eRobotSizeWInput) this.eRobotSizeWInput.value = this.robotW/100;
-            if (document.activeElement != this.eRobotSizeHInput) this.eRobotSizeHInput.value = this.robotH/100;
+            if (document.activeElement != this.eSizeWInput) this.eSizeWInput.value = this.w/(this.isMeters ? 100 : 1);
+            if (document.activeElement != this.eSizeHInput) this.eSizeHInput.value = this.h/(this.isMeters ? 100 : 1);
+            if (document.activeElement != this.eRobotSizeWInput) this.eRobotSizeWInput.value = this.robotW/(this.isMeters ? 100 : 1);
+            if (document.activeElement != this.eRobotSizeHInput) this.eRobotSizeHInput.value = this.robotH/(this.isMeters ? 100 : 1);
             if (this.isMeters) this.eUnitsMeters.classList.add("this");
             else this.eUnitsMeters.classList.remove("this");
             if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
@@ -3144,6 +3147,7 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             else this.eUnitsDegrees.classList.remove("this");
             if (this.isRadians) this.eUnitsRadians.classList.add("this");
             else this.eUnitsRadians.classList.remove("this");
+            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
             if (!finished) return;
             this.odometry.size = (this.template in templates) ? templates[this.template].size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
