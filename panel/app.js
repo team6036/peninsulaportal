@@ -2934,26 +2934,36 @@ Panel.OdometryPage.Pose = class PanelOdometryPagePose extends core.Target {
 Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
     #odometry;
 
+    #template;
+
     #size;
     #robotSize;
-    
-    #template;
+
+    #isMeters;
+    #isDegrees;
 
     #eTemplateSelect;
     #eSizeWInput;
     #eSizeHInput;
     #eRobotSizeWInput;
     #eRobotSizeHInput;
+    #eUnitsMeters;
+    #eUnitsCentimeters;
+    #eUnitsDegrees;
+    #eUnitsRadians;
 
     constructor(...a) {
         super("2d");
 
         this.#odometry = new core.Odometry2d(this.canvas);
 
+        this.#template = null;
+
         this.#size = new V(1000);
         this.#robotSize = new V(100);
 
-        this.#template = null;
+        this.#isMeters = true;
+        this.#isDegrees = true;
 
         let info;
         const eField = this.getEOptionSection("f");
@@ -3054,6 +3064,30 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
                 this.robotH = v*100;
             }
         });
+        let eNav;
+        const eOptions = this.getEOptionSection("o");
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eUnitsMeters = document.createElement("button");
+        eNav.appendChild(this.eUnitsMeters);
+        this.eUnitsMeters.textContent = "Meters";
+        this.eUnitsMeters.addEventListener("click", e => { this.isMeters = true; });
+        this.#eUnitsCentimeters = document.createElement("button");
+        eNav.appendChild(this.eUnitsCentimeters);
+        this.eUnitsCentimeters.textContent = "Centimeters";
+        this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eUnitsDegrees = document.createElement("button");
+        eNav.appendChild(this.eUnitsDegrees);
+        this.eUnitsDegrees.textContent = "Degrees";
+        this.eUnitsDegrees.addEventListener("click", e => { this.isDegrees = true; });
+        this.#eUnitsRadians = document.createElement("button");
+        eNav.appendChild(this.eUnitsRadians);
+        this.eUnitsRadians.textContent = "Radians";
+        this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
 
         this.quality = this.odometry.quality;
 
@@ -3096,6 +3130,14 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             if (document.activeElement != this.eSizeHInput) this.eSizeHInput.value = this.h/100;
             if (document.activeElement != this.eRobotSizeWInput) this.eRobotSizeWInput.value = this.robotW/100;
             if (document.activeElement != this.eRobotSizeHInput) this.eRobotSizeHInput.value = this.robotH/100;
+            if (this.isMeters) this.eUnitsMeters.classList.add("this");
+            else this.eUnitsMeters.classList.remove("this");
+            if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
+            else this.eUnitsCentimeters.classList.remove("this");
+            if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
+            else this.eUnitsDegrees.classList.remove("this");
+            if (this.isRadians) this.eUnitsRadians.classList.add("this");
+            else this.eUnitsRadians.classList.remove("this");
             if (!finished) return;
             this.odometry.size = (this.template in templates) ? templates[this.template].size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
@@ -3139,10 +3181,11 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
                     while (renders.length > l) this.odometry.remRender(renders.pop());
                     renders.forEach((render, i) => {
                         render.a = [topic.value[i*2 + 0], topic.value[i*2 + 1]];
-                        render.a.imul(100);
+                        render.a.imul(this.isMeters ? 100 : 1);
                         render.b = [topic.value[i*2 + 2], topic.value[i*2 + 3]];
-                        render.b.imul(100);
+                        render.b.imul(this.isMeters ? 100 : 1);
                         render.color = pose.color;
+                        render.alpha = pose.ghost ? 0.5 : 1;
                     });
                 } else if (topic.value.length == 3) {
                     let render = renders[0];
@@ -3150,8 +3193,8 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
                     render.colorH = pose.color.substring(2)+5;
                     render.alpha = pose.ghost ? 0.5 : 1;
                     render.size = (this.template in templates) ? templates[this.template].robotSize : this.robotSize;
-                    render.pos = new V(topic.value[0], topic.value[1]).mul(100);
-                    render.heading = topic.value[2];
+                    render.pos = new V(topic.value[0], topic.value[1]).mul(this.isMeters ? 100 : 1);
+                    render.heading = topic.value[2] * (this.isDegrees ? 1 : (180/Math.PI));
                 }
             }
             this.odometry.update();
@@ -3159,6 +3202,13 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
     }
 
     get odometry() { return this.#odometry; }
+
+    get template() { return this.#template; }
+    set template(v) {
+        this.#template = (v == null) ? null : String(v);
+        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
+            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
+    }
 
     get size() { return this.#size; }
     set size(v) { this.#size.set(v); }
@@ -3173,18 +3223,24 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
     get robotH() { return this.robotSize.y; }
     set robotH(v) { this.robotSize.y = v; }
 
-    get template() { return this.#template; }
-    set template(v) {
-        this.#template = (v == null) ? null : String(v);
-        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
-            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
-    }
+    get isMeters() { return this.#isMeters; }
+    set isMeters(v) { this.#isMeters = !!v; }
+    get isCentimeters() { return !this.isMeters; }
+    set isCentimeters(v) { this.isMeters = !v; }
+    get isDegrees() { return this.#isDegrees; }
+    set isDegrees(v) { this.#isDegrees = !!v; }
+    get isRadians() { return !this.isDegrees; }
+    set isRadians(v) { this.isDegrees = !v; }
 
     get eTemplateSelect() { return this.#eTemplateSelect; }
     get eSizeWInput() { return this.#eSizeWInput; }
     get eSizeHInput() { return this.#eSizeHInput; }
     get eRobotSizeWInput() { return this.#eRobotSizeWInput; }
     get eRobotSizeHInput() { return this.#eRobotSizeHInput; }
+    get eUnitsMeters() { return this.#eUnitsMeters; }
+    get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
+    get eUnitsDegrees() { return this.#eUnitsDegrees; }
+    get eUnitsRadians() { return this.#eUnitsRadians; }
 
     isValidPose(topic) { return (topic.value.length % 2 == 0) || (topic.value.length == 3); }
 
