@@ -12,6 +12,7 @@
     - [Development](#development)
 - [Peninsula Panel](#peninsula-panel)
     - [Capabilities](#capabilities)
+    - [Pages and Tools](#pages-and-tools)
     - [Getting Started](#getting-started-1)
 - [Peninsula Planner](#peninsula-planner)
     - [Capabilities](#capabilities-1)
@@ -54,12 +55,30 @@ This should create a `./build` directory with the packaged apps. Check with `pac
 </div>
 
 ## Capabilities
+- Connection to `localhost:5810` with NT4
+- Paneled visualization of NetworkTable values
+    - Table/Topic browsing and built in tools
+
+## Pages and Tools
+
+### Add Page
+Your home page, where you can pick what page to add, including any of the pages listed below. Includes searching for quick access to wanted tables, topics, and tools
+
+### Browser Page
+Views any table or topic, similar to your operating system's file explorer
+
+### Graph Page
+Graphs numerical and discrete topics in NT. Choose window view, in `ms`, of the graph to see. Pick colors for different variables.
+
+### Odometry 2D Page
+Displays the robot as shown from `double[3]`, `float[3]`, and `int[3]` in NT. Choose field template, create your own, and change units. Pick colors for different poses, including toggling ghost effect.
 
 ## Getting Started
 
-### Usage
-
 ### FAQ
+> How can I graph topics in the Graph or Odometry 2D?
+
+Drag topics from the left or from the Browser to the sections you wanted to graph
 
 ### Development
 
@@ -77,16 +96,15 @@ This should create a `./build` directory with the packaged apps. Check with `pac
 
 ## Getting Started
 
-### Usage
-Just navigate through portal using the "Planner" button
-
 ### FAQ
 > How can I reset the divider to it's original position?  
 
 On the view menu of the app, click "Reset divider"
+
 > How can I delete nodes when creating or editing a path?  
 
 When clicking a node, hold down <kbd>shift</kbd> to remove it instead
+
 > How can I select multiple nodes or obstacles at once?
 
 By dragging on the display area, you can create a rectangular seletion. This allows you to select multiple objects at once. Additionally, holding down <kbd>shift</kbd> while clicking adds or removes objects to your selection
