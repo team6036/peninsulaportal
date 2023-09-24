@@ -522,6 +522,10 @@
 
     border: 2px solid var(--v2);
     border-radius: 10px;
+    outline: none;
+}
+#mount > .content .item.panel:focus {
+    border: 2px solid var(--v4);
 }
 #mount > .content .item.panel > button.options {
     --bg: var(--v2);
@@ -1184,7 +1188,19 @@
     --bgd: var(--v6);
     --fgd: var(--v1);
 }
-#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info {
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info,
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span:not(.units),
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span:not(.units) {
+    flex-basis: 100%;
+    
     color: var(--v8);
 
     text-align: left;
@@ -1192,8 +1208,18 @@
     font-size: 12px;
     font-weight: 550;
 }
-#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > input {
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span.units,
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span.units {
+    color: var(--v6);
+
+    font-size: 12px;
+    font-style: italic;
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > input,
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > input {
     padding: 5px;
+
+    border-radius: 5px;
 }
 #mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.ghost {
     --bg: transparent;
@@ -1207,6 +1233,38 @@
     --fg: var(--cg);
     --fgh: var(--cg5);
     --fgd: var(--cg2);
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button {
+    position: relative;
+
+    padding: 5px;
+
+    border-radius: 5px;
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button > ion-icon {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field.has > .nothas {
+    display: none !important;
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v > input {
+    flex-basis: 100%;
+
+    padding: 5px;
+
+    border-radius: 5px;
 }
 #overlay {
     position: absolute;

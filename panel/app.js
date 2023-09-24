@@ -680,6 +680,7 @@ class Panel extends Widget {
         super();
 
         this.elem.classList.add("panel");
+        this.elem.tabIndex = 0;
 
         this.#pages = [];
 
@@ -703,14 +704,17 @@ class Panel extends Widget {
             e.stopPropagation();
             let itm;
             let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("Close", "close"));
+            itm = menu.addItem(new core.App.ContextMenu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-expand" : "chevron-collapse"));
+            itm.shortcut = "⇧⌃F";
+            itm.addHandler("trigger", data => {
+                this.isTitleCollapsed = !this.isTitleCollapsed;
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
+            itm = menu.addItem(new core.App.ContextMenu.Item("Close Panel", "close"));
+            // itm.shortcut = "⇧⌘W";
             itm.addHandler("trigger", data => {
                 if (this.hasAppParent()) return this.parent.rootWidget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
-            });
-            itm = menu.addItem(new core.App.ContextMenu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-expand" : "chevron-collapse"));
-            itm.addHandler("trigger", data => {
-                this.isTitleCollapsed = !this.isTitleCollapsed;
             });
             this.app.contextMenu = menu;
             let r = this.eOptions.getBoundingClientRect();
@@ -1846,6 +1850,10 @@ Panel.ToolCanvasPage = class PanelToolCanvasPage extends Panel.ToolPage {
             this.isOptionsOpen = !this.isOptionsOpen;
         });
 
+        this.addHandler("openclose", data => {
+            this.isOptionsOpen = !this.isOptionsOpen;
+        });
+
         new ResizeObserver(() => {
             let r = this.eContent.getBoundingClientRect();
             this.canvas.width = (r.width-4) * this.quality;
@@ -1954,13 +1962,13 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
                                 elem.appendChild(info);
                                 elems.push(info);
                                 info.classList.add("info");
-                                info.textContent = "Forwards View Time";
+                                info.innerHTML = "<span>Forwards View Time</span><span class='units'>ms</span>";
                                 let input = document.createElement("input");
                                 elem.appendChild(input);
                                 elems.push(input);
                                 input.type = "number";
-                                input.min = 0;
                                 input.placeholder = "...";
+                                input.min = 0;
                                 this.viewParams.time = 5000;
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
@@ -1976,13 +1984,13 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
                                 elem.appendChild(info);
                                 elems.push(info);
                                 info.classList.add("info");
-                                info.textContent = "Backwards View Time";
+                                info.innerHTML = "<span>Backwards View Time</span><span class='units'>ms</span>";
                                 let input = document.createElement("input");
                                 elem.appendChild(input);
                                 elems.push(input);
                                 input.type = "number";
-                                input.min = 0;
                                 input.placeholder = "...";
+                                input.min = 0;
                                 this.viewParams.time = 5000;
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
@@ -1999,24 +2007,24 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
                                 elem.appendChild(info);
                                 elems.push(info);
                                 info.classList.add("info");
-                                info.textContent = "Range Start";
+                                info.innerHTML = "<span>Range Start</span><span class='units'>ms</span>";
                                 let startInput = input = document.createElement("input");
                                 elem.appendChild(input);
                                 elems.push(input);
                                 input.type = "number";
-                                input.min = 0;
                                 input.placeholder = "Start";
+                                input.min = 0;
                                 info = document.createElement("div");
                                 elem.appendChild(info);
                                 elems.push(info);
                                 info.classList.add("info");
-                                info.textContent = "Range Stop";
+                                info.innerHTML = "<span>Range Stop</span><span class='units'>ms</span>";
                                 let stopInput = input = document.createElement("input");
                                 elem.appendChild(input);
                                 elems.push(input);
                                 input.type = "number";
-                                input.min = 0;
                                 input.placeholder = "Stop";
+                                input.min = 0;
                                 this.viewParams.start = 0;
                                 this.viewParams.stop = 5000;
                                 startInput.addEventListener("change", e => {
@@ -2649,6 +2657,8 @@ Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
                         else elem.classList.add("empty");
                     });
                 },
+                f: () => elem.classList.add("field"),
+                o: () => elem.classList.add("options"),
             };
             if (id in idfs) idfs[id]();
         });
@@ -2925,38 +2935,147 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
     #odometry;
 
     #size;
+    #robotSize;
     
     #template;
+
+    #eTemplateSelect;
+    #eSizeWInput;
+    #eSizeHInput;
+    #eRobotSizeWInput;
+    #eRobotSizeHInput;
 
     constructor(...a) {
         super("2d");
 
         this.#odometry = new core.Odometry2d(this.canvas);
 
-        this.#size = new V(10);
+        this.#size = new V(1000);
+        this.#robotSize = new V(100);
 
         this.#template = null;
 
+        let info;
+        const eField = this.getEOptionSection("f");
+        info = document.createElement("div");
+        eField.appendChild(info);
+        info.classList.add("info");
+        info.innerHTML = "<span>Template</span>";
+        this.#eTemplateSelect = document.createElement("button");
+        eField.appendChild(this.eTemplateSelect);
+        this.eTemplateSelect.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+        this.eTemplateSelect.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            e.stopPropagation();
+            let itm;
+            let menu = new core.App.ContextMenu();
+            itm = menu.addItem(new core.App.ContextMenu.Item("No Template", (this.template == null) ? "checkmark" : ""));
+            itm.addHandler("trigger", data => {
+                this.template = null;
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
+            for (let name in templates) {
+                itm = menu.addItem(new core.App.ContextMenu.Item(name, (this.template == name) ? "checkmark" : ""));
+                itm.addHandler("trigger", data => {
+                    this.template = name;
+                });
+            }
+            this.app.contextMenu = menu;
+            let r = this.eTemplateSelect.getBoundingClientRect();
+            this.app.placeContextMenu(r.left, r.bottom);
+        });
+        info = document.createElement("div");
+        eField.appendChild(info);
+        info.classList.add("info");
+        info.classList.add("nothas");
+        info.innerHTML = "<span>Map Size</span><span class='units'>m</span>";
+        let eSize = document.createElement("div");
+        eField.appendChild(eSize);
+        eSize.classList.add("v");
+        eSize.classList.add("nothas");
+        this.#eSizeWInput = document.createElement("input");
+        eSize.appendChild(this.eSizeWInput);
+        this.eSizeWInput.type = "number";
+        this.eSizeWInput.placeholder = "Width";
+        this.eSizeWInput.min = 0;
+        this.eSizeWInput.step = 0.1;
+        this.eSizeWInput.addEventListener("change", e => {
+            let v = this.eSizeWInput.value;
+            if (v.length > 0) {
+                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                this.w = v*100;
+            }
+        });
+        this.#eSizeHInput = document.createElement("input");
+        eSize.appendChild(this.eSizeHInput);
+        this.eSizeHInput.type = "number";
+        this.eSizeHInput.placeholder = "Height";
+        this.eSizeHInput.min = 0;
+        this.eSizeHInput.step = 0.1;
+        this.eSizeHInput.addEventListener("change", e => {
+            let v = this.eSizeHInput.value;
+            if (v.length > 0) {
+                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                this.h = v*100;
+            }
+        });
+        info = document.createElement("div");
+        eField.appendChild(info);
+        info.classList.add("info");
+        info.classList.add("nothas");
+        info.innerHTML = "<span>Robot Size</span><span class='units'>m</span>";
+        let eRobotSize = document.createElement("div");
+        eField.appendChild(eRobotSize);
+        eRobotSize.classList.add("v");
+        eRobotSize.classList.add("nothas");
+        this.#eRobotSizeWInput = document.createElement("input");
+        eRobotSize.appendChild(this.eRobotSizeWInput);
+        this.eRobotSizeWInput.type = "number";
+        this.eRobotSizeWInput.placeholder = "Width";
+        this.eRobotSizeWInput.min = 0;
+        this.eRobotSizeWInput.step = 0.1;
+        this.eRobotSizeWInput.addEventListener("change", e => {
+            let v = this.eRobotSizeWInput.value;
+            if (v.length > 0) {
+                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                this.robotW = v*100;
+            }
+        });
+        this.#eRobotSizeHInput = document.createElement("input");
+        eRobotSize.appendChild(this.eRobotSizeHInput);
+        this.eRobotSizeHInput.type = "number";
+        this.eRobotSizeHInput.placeholder = "Height";
+        this.eRobotSizeHInput.min = 0;
+        this.eRobotSizeHInput.step = 0.1;
+        this.eRobotSizeHInput.addEventListener("change", e => {
+            let v = this.eRobotSizeHInput.value;
+            if (v.length > 0) {
+                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                this.robotH = v*100;
+            }
+        });
+
         this.quality = this.odometry.quality;
 
-        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dPage) a = [a.poses, a.size, a.template, a.isOptionsOpen];
+            if (a instanceof Panel.Odometry2dPage) a = [a.poses, a.size, a.robotSize, a.template, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof Panel.OdometryPage.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dPage(...a);
-                    a = [a.poses, a.size, a.template, a.isOptionsClosed];
+                    a = [a.poses, a.size, a.robotSize, a.template, a.isOptionsClosed];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.size, a.template, a.isOpen];
+            else if (util.is(a, "obj")) a = [a.poses, a.size, a.robotSize, a.template, a.isOpen];
             else a = [[], null];
         }
-        if (a.length == 2) a = [a[0], 10, a[1]];
-        if (a.length == 3) a = [...a, true];
+        if (a.length == 2) a = [a[0], 1000, 100, a[1]];
+        if (a.length == 3) a = [...a, null];
+        if (a.length == 4) a = [...a, true];
 
-        [this.poses, this.size, this.template, this.isOptionsOpen] = a;
+        [this.poses, this.size, this.robotSize, this.template, this.isOptionsOpen] = a;
 
         let templates = {};
         let templateImages = {};
@@ -2964,15 +3083,21 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
         (async () => {
             templates = await window.api.getTemplates();
             templateImages = await window.api.getTemplateImages();
-            // this.template = await window.api.getActiveTemplate();
+            this.template = await window.api.getActiveTemplate();
             finished = true;
         })();
 
         let poses = {};
 
         this.addHandler("update", () => {
+            if (this.template in templates) eField.classList.add("has");
+            else eField.classList.remove("has");
+            if (document.activeElement != this.eSizeWInput) this.eSizeWInput.value = this.w/100;
+            if (document.activeElement != this.eSizeHInput) this.eSizeHInput.value = this.h/100;
+            if (document.activeElement != this.eRobotSizeWInput) this.eRobotSizeWInput.value = this.robotW/100;
+            if (document.activeElement != this.eRobotSizeHInput) this.eRobotSizeHInput.value = this.robotH/100;
             if (!finished) return;
-            this.odometry.size = new V((this.template in templates) ? templates[this.template].size : this.size).mul(100);
+            this.odometry.size = (this.template in templates) ? templates[this.template].size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
             this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
             if (this.isClosed) return;
@@ -3024,7 +3149,7 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
                     render.color = pose.color.substring(2);
                     render.colorH = pose.color.substring(2)+5;
                     render.alpha = pose.ghost ? 0.5 : 1;
-                    render.size = templates[activeTemplate].robotSize;
+                    render.size = (this.template in templates) ? templates[this.template].robotSize : this.robotSize;
                     render.pos = new V(topic.value[0], topic.value[1]).mul(100);
                     render.heading = topic.value[2];
                 }
@@ -3041,9 +3166,25 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
     set w(v) { this.size.x = v; }
     get h() { return this.size.y; }
     set h(v) { this.size.y = v; }
+    get robotSize() { return this.#robotSize; }
+    set robotSize(v) { this.#robotSize.set(v); }
+    get robotW() { return this.robotSize.x; }
+    set robotW(v) { this.robotSize.x = v; }
+    get robotH() { return this.robotSize.y; }
+    set robotH(v) { this.robotSize.y = v; }
 
     get template() { return this.#template; }
-    set template(v) { this.#template = (v == null) ? null : String(v); }
+    set template(v) {
+        this.#template = (v == null) ? null : String(v);
+        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
+            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
+    }
+
+    get eTemplateSelect() { return this.#eTemplateSelect; }
+    get eSizeWInput() { return this.#eSizeWInput; }
+    get eSizeHInput() { return this.#eSizeHInput; }
+    get eRobotSizeWInput() { return this.#eRobotSizeWInput; }
+    get eRobotSizeHInput() { return this.#eRobotSizeHInput; }
 
     isValidPose(topic) { return (topic.value.length % 2 == 0) || (topic.value.length == 3); }
 
@@ -3542,11 +3683,41 @@ export default class App extends core.App {
                 this.rootWidget.collapse();
             });
 
-            this.addHandler("cmd-new", data => {
-                if (this.dragging) return;
-                data = util.ensure(data, "obj");
-                this.dragData = new Panel.AddPage();
-                this.dragging = true;
+            const getWidgetFromElem = (widget, elem) => {
+                if (!(widget instanceof Widget)) return null;
+                if (widget.elem == elem) return widget;
+                if (widget instanceof Container) {
+                    for (let i = 0; i < widget.children.length; i++) {
+                        let child = getWidgetFromElem(widget.children[i], elem);
+                        if (child instanceof Widget) return child;
+                    }
+                }
+                return null;
+            };
+            this.addHandler("cmd-newtab", data => {
+                const elem = document.activeElement;
+                const active = getWidgetFromElem(this.rootWidget, elem);
+                if (!(active instanceof Panel)) return;
+                active.addPage(new Panel.AddPage());
+            });
+            this.addHandler("cmd-close", data => {
+                const elem = document.activeElement;
+                const active = getWidgetFromElem(this.rootWidget, elem);
+                if (!(active instanceof Panel)) return;
+                active.remPage(active.pages[active.pageIndex]);
+            });
+            this.addHandler("cmd-openclose", data => {
+                const elem = document.activeElement;
+                const active = getWidgetFromElem(this.rootWidget, elem);
+                if (!(active instanceof Panel)) return;
+                if (!(active.pages[active.pageIndex] instanceof Panel.Page)) return;
+                active.pages[active.pageIndex].post("openclose", null);
+            });
+            this.addHandler("cmd-expandcollapse", data => {
+                const elem = document.activeElement;
+                const active = getWidgetFromElem(this.rootWidget, elem);
+                if (!(active instanceof Panel)) return;
+                active.isTitleCollapsed = !active.isTitleCollapsed;
             });
 
             this.addHandler("update", data => {
@@ -3559,7 +3730,6 @@ export default class App extends core.App {
             document.body.addEventListener("keydown", e => {
                 if (e.code != "KeyK") return;
                 if (!(e.ctrlKey || e.metaKey)) return;
-                this.post("cmd-new", {});
             });
         });
     }
@@ -3654,6 +3824,7 @@ export default class App extends core.App {
             this.rootWidget.parent = this;
             if (this.hasEContent())
                 this.eContent.appendChild(this.rootWidget.elem);
+            this.rootWidget.elem.focus();
         }
         this.formatContent();
     }
