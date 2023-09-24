@@ -1153,7 +1153,8 @@
 #mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.ghost).this {
     border: 2px solid var(--v8);
 }
-#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav {
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav,
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav {
     margin-bottom: 10px;
 
     display: flex;
@@ -1164,14 +1165,12 @@
     align-content: center;
     gap: 5px;
 }
-#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button {
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button,
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
     --bg: transparent;
     --bgh: var(--v2);
     --bgd: transparent;
 
-    width: 20%;
-    max-width: 20%;
-    min-width: 20%;
     padding: 2px;
 
     border-radius: 10px;
@@ -1180,7 +1179,18 @@
     font-size: 12px;
     font-weight: 550;
 }
-#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button.this {
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button {
+    width: 20%;
+    max-width: 20%;
+    min-width: 20%;
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
+    width: 30%;
+    max-width: 30%;
+    min-width: 30%;
+}
+#mount > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button.this,
+#mount > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button.this {
     --bg: var(--v8);
     --fg: var(--v1);
     --bgh: var(--v8);
