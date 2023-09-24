@@ -687,7 +687,6 @@ class Panel extends Widget {
         this.#eOptions = document.createElement("button");
         this.elem.appendChild(this.eOptions);
         this.eOptions.classList.add("options");
-        this.eOptions.classList.add("icon");
         this.eOptions.innerHTML = "<ion-icon name='ellipsis-vertical'></ion-icon>";
         this.#eTop = document.createElement("div");
         this.elem.appendChild(this.eTop);
@@ -790,6 +789,8 @@ class Panel extends Widget {
         this.eTop.appendChild(page.eTab);
         this.eContent.appendChild(page.elem);
         this.pageIndex = this.#pages.indexOf(page);
+        if (this.pages[this.pageIndex] instanceof Panel.Page)
+            this.pages[this.pageIndex].eTab.scrollIntoView({ behavior: "smooth" });
         this.format();
         return page;
     }
@@ -806,6 +807,8 @@ class Panel extends Widget {
         let index = this.pageIndex;
         this.#pageIndex = null;
         this.pageIndex = index;
+        if (this.pages[this.pageIndex] instanceof Panel.Page)
+            this.pages[this.pageIndex].eTab.scrollIntoView({ behavior: "smooth" });
         return page;
     }
 
@@ -1063,7 +1066,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         this.clearItems();
         let toolItems = [
             {
-                item: new Panel.AddPage.Button("Graph", "analytics"),
+                item: new Panel.AddPage.Button("Graph", "analytics", "var(--cb)"),
                 trigger: () => {
                     if (!this.hasParent()) return;
                     let index = this.parent.pages.indexOf(this);
@@ -1072,7 +1075,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                 },
             },
             {
-                item: new Panel.AddPage.Button("Odometry2d", "locate"),
+                item: new Panel.AddPage.Button("Odometry2d", "locate", "var(--cy)"),
                 trigger: () => {
                     if (!this.hasParent()) return;
                     let index = this.parent.pages.indexOf(this);
@@ -1081,7 +1084,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                 },
             },
             {
-                item: new Panel.AddPage.Button("Odometry3d", "locate"),
+                item: new Panel.AddPage.Button("Odometry3d", "locate", "var(--cy)"),
                 trigger: () => {
                     if (!this.hasParent()) return;
                     let index = this.parent.pages.indexOf(this);
@@ -1142,12 +1145,12 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                 ];
             } else {
                 this.items = [
-                    new Panel.AddPage.Button("Tables", "folder-outline", true),
-                    new Panel.AddPage.Button("Topics", "document-outline", true),
-                    new Panel.AddPage.Button("All", "", true),
+                    new Panel.AddPage.Button("Tables", "folder-outline", "", true),
+                    new Panel.AddPage.Button("Topics", "document-outline", "", true),
+                    new Panel.AddPage.Button("All", "", "", true),
                     new Panel.AddPage.Divider(),
                     new Panel.AddPage.Header("Tools"),
-                    new Panel.AddPage.Button("Tools", "cube-outline", true),
+                    new Panel.AddPage.Button("Tools", "cube-outline", "", true),
                     ...toolItems,
                 ];
                 this.items[0].addHandler("trigger", () => {
@@ -1393,7 +1396,7 @@ Panel.AddPage.Button = class PanelAddPageButton extends Panel.AddPage.Item {
     #eInfo;
     #eChevron;
 
-    constructor(name, icon="", hasChevron=false) {
+    constructor(name, icon="", color="", hasChevron=false) {
         super();
 
         this.elem.classList.add("item");
@@ -1416,6 +1419,7 @@ Panel.AddPage.Button = class PanelAddPageButton extends Panel.AddPage.Item {
 
         this.name = name;
         this.icon = icon;
+        this.iconColor = color;
         this.hasChevron = hasChevron;
     }
 
@@ -1805,13 +1809,14 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
     }
 };
 Panel.ToolPage = class PanelToolPage extends Panel.Page {
-    constructor(name, icon) {
+    constructor(name, icon, color="") {
         super();
 
         this.elem.classList.add("tool");
 
         this.name = name;
         this.icon = icon;
+        this.iconColor = color;
     }
 };
 Panel.ToolCanvasPage = class PanelToolCanvasPage extends Panel.ToolPage {
@@ -1823,8 +1828,8 @@ Panel.ToolCanvasPage = class PanelToolCanvasPage extends Panel.ToolPage {
     #eContent;
     #canvas; #ctx;
 
-    constructor(name, icon) {
-        super(name, icon);
+    constructor(name, icon, color="") {
+        super(name, icon, color);
 
         this.elem.classList.add("canvas");
 
@@ -1908,7 +1913,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
     #viewParams;
 
     constructor(...a) {
-        super("Graph", "analytics");
+        super("Graph", "analytics", "var(--cb)");
 
         this.elem.classList.add("graph");
 
@@ -2637,7 +2642,7 @@ Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
     #poses;
 
     constructor(tail="") {
-        super("Odometry"+tail, "locate");
+        super("Odometry"+tail, "locate", "var(--cy)");
 
         this.elem.classList.add("odometry");
 
@@ -3091,25 +3096,26 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
 
         this.quality = this.odometry.quality;
 
-        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length <= 0 || [6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dPage) a = [a.poses, a.size, a.robotSize, a.template, a.isOptionsOpen];
+            if (a instanceof Panel.Odometry2dPage) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof Panel.OdometryPage.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dPage(...a);
-                    a = [a.poses, a.size, a.robotSize, a.template, a.isOptionsClosed];
+                    a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsClosed];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.size, a.robotSize, a.template, a.isOpen];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOpen];
             else a = [[], null];
         }
-        if (a.length == 2) a = [a[0], 1000, 100, a[1]];
-        if (a.length == 3) a = [...a, null];
+        if (a.length == 2) a = [...a, 10000];
+        if (a.length == 3) a = [...a, 1000];
         if (a.length == 4) a = [...a, true];
+        if (a.length == 5) a = [...a.slice(0, 4), true, true, a[4]];
 
-        [this.poses, this.size, this.robotSize, this.template, this.isOptionsOpen] = a;
+        [this.poses, this.template, this.size, this.robotSize, this.isMeters, this.isDegrees, this.isOptionsOpen] = a;
 
         let templates = {};
         let templateImages = {};
@@ -3250,13 +3256,20 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
             "%CUSTOM": true,
             "%ARGS": [{
                 poses: this.poses,
-                size: this.size,
                 template: this.template,
+                size: this.size,
+                robotSize: this.robotSize,
+                isMeters: this.isMeters,
+                isDegrees: this.isDegrees,
                 isOpen: this.isOptionsOpen,
             }],
         };
     }
 };
+
+const REVIVER = new core.Reviver(core.REVIVER);
+REVIVER.addRuleAndAllSub(Container);
+REVIVER.addRuleAndAllSub(Panel);
 
 export default class App extends core.App {
     #browserItems;
@@ -3265,6 +3278,7 @@ export default class App extends core.App {
     #rootModel;
 
     #eSide;
+    #eSideMeta;
     #eSideSections;
     #eContent;
     #eBlock;
@@ -3381,6 +3395,7 @@ export default class App extends core.App {
             this.#eSide = document.querySelector("#mount > .side");
             this.#eSideSections = {};
             if (this.hasESide()) {
+                this.#eSideMeta = this.eSide.querySelector(":scope > #meta");
                 Array.from(this.eSide.querySelectorAll(":scope > .section")).forEach(elem => {
                     let s = this.#eSideSections[elem.id] = new core.Target();
                     s.elem = elem;
@@ -3781,6 +3796,11 @@ export default class App extends core.App {
                     this.rootWidget.collapse();
                     if (this.hasRootWidget()) this.rootWidget.update();
                 } else this.rootWidget = new Panel();
+                if (!this.hasESideMeta()) return;
+                this.eSideMeta.textContent = (!this.hasRootModel() || !this.rootModel.hasRoot()) ? "No connection" : (() => {
+                    let nFields = this.rootModel.root.nFields;
+                    return nFields + " field" + (nFields==1 ? "" : "s");
+                })();
             });
 
             document.body.addEventListener("keydown", e => {
@@ -3915,7 +3935,7 @@ export default class App extends core.App {
         let r = this.eSide.getBoundingClientRect();
         let ids = this.eSideSections;
         let idsOpen = ids.filter(id => this.getESideSection(id).getIsOpen());
-        let availableHeight = r.height - ids.length*22;
+        let availableHeight = r.height - 22 - ids.length*22;
         let divideAmong = idsOpen.length;
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
         this.browserItems.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => {
@@ -3967,6 +3987,8 @@ export default class App extends core.App {
 
     get eSide() { return this.#eSide; }
     hasESide() { return this.eSide instanceof HTMLDivElement; }
+    get eSideMeta() { return this.#eSideMeta; }
+    hasESideMeta() { return this.eSideMeta instanceof HTMLDivElement; }
     get eSideSections() { return Object.keys(this.#eSideSections); }
     hasESideSection(id) { return id in this.#eSideSections; }
     getESideSection(id) { return this.#eSideSections[id]; }
