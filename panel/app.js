@@ -2063,7 +2063,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         });
 
         const quality = this.quality = 3;
-        const padding = 60;
+        const padding = 40;
 
         this.addHandler("update", () => {
             if (this.isClosed) return;
