@@ -10,11 +10,11 @@ const icons = {
     linux: null,
 };
 const ignores = [
-    "build*",
-    "temp*",
-    "\\.gitignore",
-    "\\.devconfig",
-    "package\\.js",
+    "^build*",
+    "^temp*",
+    "^.gitignore",
+    "^.devconfig",
+    "^package.js$",
 ];
 
 const builds = {
@@ -33,8 +33,8 @@ for (let platform in builds) {
             `--arch='${arch}'`,
             `--out='${outDir}'`,
             "--overwrite",
-            `--ignore='(${ignores.join("|")})'`,
         ];
+        ignores.forEach(ignore => command.push(`--ignore='${ignore}'`));
         let icon = icons[platform];
         if (icon != null) command.push(`--icon='${icon}'`);
         commands.push(command.join(" "));
