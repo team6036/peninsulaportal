@@ -353,7 +353,20 @@ export default class App extends core.App {
             }
             this.#eLoads = document.querySelector("#TITLEPAGE > .loads");
 
-            this.addHandler("cmd-spawn", name => window.api.ask("spawn", [name]));
+            this.addHandler("cmd-spawn", async name => {
+                let isDevMode = await window.api.getDevMode();
+                if (!isDevMode && name == "PANEL") {
+                    let pop = this.confirm();
+                    pop.eContent.innerText = "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs";
+                    pop.addHandler("result", async data => {
+                        let v = !!util.ensure(data, "obj").v;
+                        if (!v) return;
+                        window.api.ask("spawn", [name]);
+                    });
+                    return;
+                }
+                window.api.ask("spawn", [name]);
+            });
             
             let btn;
 
