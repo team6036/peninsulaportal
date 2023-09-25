@@ -7,6 +7,8 @@ export const BASE64 = ALPHABETLOWER+ALPHABETUPPER+NUMBERS+"-_";
 
 export const MAGIC = "_*[[;ƒ";
 
+export const UTILVERSION = 1;
+
 
 export function is(o, type) {
     let typefs = {
@@ -618,6 +620,20 @@ export class Color {
     toRGBA() {
         return "rgba("+this.rgba.join(",")+")";
     }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                r: this.r,
+                g: this.g,
+                b: this.b,
+                a: this.a,
+            }],
+        };
+    }
 }
 
 export class V {
@@ -727,7 +743,11 @@ export class V {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": this.xy,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                x: this.x,
+                y: this.y,
+            }],
         };
     }
 }
@@ -851,7 +871,12 @@ export class V3 {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": this.xyz,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                x: this.x,
+                y: this.y,
+                z: this.z,
+            }],
         };
     }
 }
@@ -964,7 +989,20 @@ export class Line extends Shape {
         if (o instanceof Shape) return o.collides(this);
         return false;
     }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                x1: this.x1, y1: this.y1,
+                x2: this.x2, y2: this.y2,
+            }],
+        };
+    }
 }
+Shape.Line = Line;
 
 export class Circle extends Shape {
     #p;
@@ -1042,7 +1080,20 @@ export class Circle extends Shape {
         if (o instanceof Shape) return o.collides(this);
         return false;
     }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                x: this.x, y: this.y,
+                r: this.r,
+            }],
+        };
+    }
 }
+Shape.Circle = Circle;
 
 export class InvertedCircle extends Circle {
     constructor(...a) {
@@ -1083,6 +1134,7 @@ export class InvertedCircle extends Circle {
         return false;
     }
 }
+Shape.InvertedCircle = InvertedCircle;
 
 export class Rect extends Shape {
     #xy; #wh;
@@ -1269,7 +1321,20 @@ export class Rect extends Shape {
         if (o instanceof Shape) return o.collides(this);
         return false;
     }
+    
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                x: this.x, y: this.y,
+                w: this.w, h: this.h,
+            }],
+        };
+    }
 }
+Shape.Rect = Rect;
 
 export class Polygon extends Shape {
     #p;
@@ -1407,4 +1472,17 @@ export class Polygon extends Shape {
         if (o instanceof Shape) return o.collides(this);
         return false;
     }
+    
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                p: this.p,
+                points: this.points,
+            }],
+        };
+    }
 }
+Shape.Polygon = Polygon;

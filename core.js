@@ -1831,6 +1831,7 @@ export class Reviver {
     }
     addRuleAndAllSub(constructor) {
         if (!util.is(constructor, "func")) return false;
+        if (this.hasRule(constructor)) return constructor;
         this.addRule(constructor);
         for (let k in constructor) this.addRuleAndAllSub(constructor[k]);
         return constructor;
@@ -1854,3 +1855,5 @@ export class Reviver {
 
 export const REVIVER = new Reviver();
 REVIVER.addRuleAndAllSub(V);
+REVIVER.addRuleAndAllSub(util.V3);
+REVIVER.addRuleAndAllSub(util.Shape);

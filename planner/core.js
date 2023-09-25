@@ -4,6 +4,9 @@ import { V } from "../util.js";
 import * as core from "../core.js";
 
 
+export const COREVERSION = 1;
+
+
 export class Project extends core.Target {
     #id;
 
@@ -276,6 +279,7 @@ export class Project extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
+                VERSION: COREVERSION,
                 items: itms,
                 paths: pths,
                 size: this.size,
@@ -365,6 +369,7 @@ Project.Config = class ProjectConfig extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
+                VERSION: COREVERSION,
                 script: this.script, scriptUseDefault: this.scriptUseDefault,
                 momentOfInertia: this.momentOfInertia,
                 efficiency: this.efficiency,
@@ -472,6 +477,7 @@ Project.Meta = class ProjectMeta extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
+                VERSION: COREVERSION,
                 name: this.name,
                 modified: this.modified, created: this.created,
                 thumb: this.thumb,
@@ -527,7 +533,10 @@ Project.Item = class ProjectItem extends core.Target {
         return {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
-            "%ARGS": [{ pos: this.pos }],
+            "%ARGS": [{
+                VERSION: COREVERSION,
+                pos: this.pos,
+            }],
         };
     }
 }
@@ -614,6 +623,7 @@ Project.Node = class ProjectNode extends Project.Item {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
+                VERSION: COREVERSION,
                 pos: this.pos,
                 heading: this.heading, useHeading: this.useHeading,
                 velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
@@ -663,6 +673,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
+                VERSION: COREVERSION,
                 pos: this.pos,
                 radius: this.radius,
             }],
@@ -751,6 +762,7 @@ Project.Path = class ProjectPath extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
+                VERSION: COREVERSION,
                 name: this.name,
                 nodes: this.nodes,
             }],
