@@ -1266,7 +1266,7 @@ export class Odometry2d extends Target {
         this.canvas = canvas;
         this.quality = 3;
 
-        this.padding = 60;
+        this.padding = 40;
 
         this.size = 1000;
 
