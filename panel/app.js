@@ -3396,7 +3396,7 @@ export default class App extends core.App {
                     this.post("cmd-save", null);
                 });
 
-            this.#eSide = document.querySelector("#mount > .side");
+            this.#eSide = document.querySelector("#PROJECTPAGE > .side");
             this.#eSideSections = {};
             if (this.hasESide()) {
                 this.#eSideMeta = this.eSide.querySelector(":scope > #meta");
@@ -3428,7 +3428,7 @@ export default class App extends core.App {
                 });
                 new ResizeObserver(() => this.formatSide()).observe(this.eSide);
             }
-            this.#eContent = document.querySelector("#mount > .content");
+            this.#eContent = document.querySelector("#PROJECTPAGE > .content");
             if (this.hasEContent())
                 new ResizeObserver(() => this.formatContent()).observe(this.eContent);
             this.#eBlock = document.getElementById("block");

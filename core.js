@@ -149,6 +149,9 @@ export class App extends Target {
     #dragData;
     #eDrag;
 
+    #pages;
+    #page;
+
     #eCoreStyle;
     #eStyle;
     #eDynamicStyle;
@@ -176,6 +179,9 @@ export class App extends Target {
         this.#dragging = false;
         this.#dragState = null;
         this.#dragData = null;
+
+        this.#pages = {};
+        this.#page = null;
 
         this.addHandler("start", data => {
             let id = setInterval(() => {
@@ -633,6 +639,58 @@ export class App extends Target {
     }
     get eDrag() { return this.#eDrag; }
     hasEDrag() { return this.eDrag instanceof HTMLDivElement; }
+
+    get pages() { return Object.keys(this.#pages); }
+    hasPage(name) {
+        name = String(name);
+        return name in this.#pages;
+    }
+    addPage(page) {
+        if (!(page instanceof App.Page)) return false;
+        if (this.hasPage(page.name)) return false;
+        this.#pages[page.name] = page;
+        document.getElementById("mount").appendChild(page.elem);
+        return page;
+    }
+    getPage(name) {
+        name = String(name);
+        if (!this.hasPage(name)) return null;
+        return this.#pages[name];
+    }
+    get page() { return this.#page; }
+    set page(v) { this.setPage(v, null); }
+    async setPage(name, data) {
+        name = String(name);
+        data = util.ensure(data, "obj");
+
+        if (this.page == name) {
+            if (!this.hasPage(this.page)) return;
+            if (await this.getPage(this.page).determineSame(data)) return;
+        }
+        if (!this.hasPage(name)) return;
+
+        this.pages.forEach(name => this.getPage(name).elem.classList.remove("this"));
+
+        if (this.hasPage(this.page)) await this.getPage(this.page).leave(data);
+
+        this.#page = name;
+
+        let projectOnly = [
+            "addnode", "addobstacle", "addpath",
+            "savecopy",
+            "delete", "close",
+            "maxmin", "resetdivider",
+        ];
+        let changes = {};
+        projectOnly.forEach(id => {
+            changes[id] = { ".enabled": this.page == "PROJECT" };
+        });
+        await window.api.menuChange(changes);
+
+        if (this.hasPage(this.page)) await this.getPage(this.page).enter(data);
+
+        this.pages.forEach(name => this.getPage(name).elem.classList[(name == this.page ? "add" : "remove")]("this"));
+    }
 
     addBackButton() {
         if (!(this.eTitleBar instanceof HTMLDivElement)) return false;
@@ -1131,6 +1189,33 @@ App.ContextMenu.Divider = class AppContextMenuDivider extends App.ContextMenu.It
 
         this.elem.classList.add("divider");
     }
+};
+// App.Page = class AppPage extends core.Target {
+App.Page = class AppPage extends Target {
+    #name;
+    #app;
+    #elem;
+
+    constructor(name, app) {
+        super();
+
+        this.#name = String(name);
+        this.#app = (app instanceof App) ? app : null;
+        this.#elem = document.createElement("div");
+        this.elem.id = this.name+"PAGE";
+        this.elem.classList.add("page");
+    }
+
+    get name() { return this.#name; }
+    get app() { return this.#app; }
+    hasApp() { return this.app instanceof App; }
+    get elem() { return this.#elem; }
+
+    async enter(data) {}
+    async leave(data) {}
+    async determineSame(data) { return false; }
+
+    update() { this.post("update", null); }
 };
 
 export class Odometry2d extends Target {

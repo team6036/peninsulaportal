@@ -394,8 +394,8 @@ export default class App extends core.App {
 
     #projects;
 
-    #pages;
-    #page;
+    // #pages;
+    // #page;
 
     #eTitleBtn;
     #eProjectsBtn;
@@ -418,8 +418,8 @@ export default class App extends core.App {
 
         this.#projects = {};
 
-        this.#pages = {};
-        this.#page = null;
+        // this.#pages = {};
+        // this.#page = null;
 
         this.addHandler("setup", async data => {
             try {
@@ -1010,6 +1010,7 @@ export default class App extends core.App {
         return canv.toDataURL();
     };
 
+    /*
     get pages() { return Object.keys(this.#pages); }
     hasPage(name) {
         name = String(name);
@@ -1061,6 +1062,7 @@ export default class App extends core.App {
 
         this.pages.forEach(name => this.getPage(name).elem.classList[(name == this.page ? "add" : "remove")]("this"));
     }
+    */
 
     get eTitleBtn() { return this.#eTitleBtn; }
     hasETitleBtn() { return this.eTitleBtn instanceof HTMLButtonElement; }
@@ -1089,6 +1091,7 @@ export default class App extends core.App {
     get eSaveBtn() { return this.#eSaveBtn; }
     hasESaveBtn() { return this.eSaveBtn instanceof HTMLButtonElement; }
 }
+/*
 App.Page = class AppPage extends core.Target {
     #name;
     #app;
@@ -1115,7 +1118,9 @@ App.Page = class AppPage extends core.Target {
 
     update() { this.post("update", null); }
 };
-App.TitlePage = class AppTitlePage extends App.Page {
+*/
+// App.TitlePage = class AppTitlePage extends App.Page {
+App.TitlePage = class AppTitlePage extends core.App.Page {
     #eTitle;
     #eSubtitle;
     #eNav;
@@ -1167,7 +1172,8 @@ App.TitlePage = class AppTitlePage extends App.Page {
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
     }
 };
-App.ProjectsPage = class AppProjectsPage extends App.Page {
+// App.ProjectsPage = class AppProjectsPage extends App.Page {
+App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     #buttons;
 
     #eTitle;
@@ -1455,7 +1461,8 @@ App.ProjectsPage.Button =  class AppProjectsPageButton extends core.Target {
 
     update() { this.post("update", null); }
 };
-App.ProjectPage = class AppProjectPage extends App.Page {
+// App.ProjectPage = class AppProjectPage extends App.Page {
+App.ProjectPage = class AppProjectPage extends core.App.Page {
     #selected;
     #selectItem;
     #selectedPaths;
