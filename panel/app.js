@@ -410,16 +410,21 @@ class Widget extends core.Target {
 
     get parent() { return this.#parent; }
     set parent(v) {
-        v = (v instanceof Container) ? v : (v instanceof App) ? v : null;
+        v = (v instanceof Container) ? v : (v instanceof App.ProjectPage) ? v : null;
         if (this.parent == v) return;
         this.#parent = v;
     }
     hasParent() { return this.parent instanceof Container; }
-    hasAppParent() { return this.parent instanceof App; }
-    get app() {
-        if (this.hasAppParent()) return this.parent;
-        if (this.hasParent()) return this.parent.app;
+    hasPageParent() { return this.parent instanceof App.ProjectPage; }
+    get page() {
+        if (this.hasPageParent()) return this.parent;
+        if (this.hasParent()) return this.parent.page;
         return null;
+    }
+    hasPage() { return this.page instanceof App.ProjectPage; }
+    get app() {
+        if (!this.hasPage()) return null;
+        return this.page.app;
     }
     hasApp() { return this.app instanceof App; }
 
@@ -627,14 +632,14 @@ class Container extends Widget {
     collapse() {
         this.children.forEach(child => child.collapse());
         if (this.children.length <= 0) {
-            if (this.hasAppParent()) this.parent.rootWidget = null;
+            if (this.hasPageParent()) this.parent.rootWidget = null;
             else if (this.hasParent()) this.parent.remChild(this);
             return;
         }
         if (this.children.length <= 1) {
             let child = this.children[0];
             this.clearChildren();
-            if (this.hasAppParent()) this.parent.rootWidget = child;
+            if (this.hasPageParent()) this.parent.rootWidget = child;
             else if (this.hasParent()) this.parent.replaceChild(child, this.parent.children.indexOf(this));
             return;
         }
@@ -715,7 +720,7 @@ class Panel extends Widget {
             itm = menu.addItem(new core.App.ContextMenu.Item("Close Panel", "close"));
             // itm.shortcut = "⇧⌘W";
             itm.addHandler("trigger", data => {
-                if (this.hasAppParent()) return this.parent.rootWidget = null;
+                if (this.hasPageParent()) return this.parent.rootWidget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
             });
             this.app.contextMenu = menu;
@@ -818,7 +823,7 @@ class Panel extends Widget {
     }
     collapse() {
         if (this.tabs.length > 0) return;
-        if (this.hasAppParent()) this.parent.rootWidget = null;
+        if (this.hasPageParent()) this.parent.rootWidget = null;
         if (this.hasParent()) this.parent.remChild(this);
     }
 
@@ -915,9 +920,14 @@ Panel.Tab = class PanelTab extends core.Target {
         this.#parent = v;
     }
     hasParent() { return this.parent instanceof Panel; }
-    get app() {
+    get page() {
         if (!this.hasParent()) return null;
-        return this.parent.app;
+        return this.parent.page;
+    }
+    hasPage() { return this.page instanceof App.ProjectPage; }
+    get app() {
+        if (!this.hasPage()) return null;
+        return this.page.app;
     }
     hasApp() { return this.app instanceof App; }
 
@@ -1107,8 +1117,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 });
                 toolItems = fuse.search(this.query).map(item => item.item);
                 let genericItems = [];
-                if (this.hasApp() && this.app.hasRootModel() && this.app.rootModel.hasRoot()) {
-                    let root = this.app.rootModel.root;
+                if (this.hasPage() && this.page.hasRootModel() && this.page.rootModel.hasRoot()) {
+                    let root = this.page.rootModel.root;
                     const dfs = generic => {
                         let itm = new Panel.AddTab.GenericButton(generic);
                         genericItems.push({
@@ -1186,8 +1196,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
-            if (this.hasApp() && this.app.hasRootModel() && this.app.rootModel.hasRoot()) {
-                let root = this.app.rootModel.root;
+            if (this.hasPage() && this.page.hasRootModel() && this.page.rootModel.hasRoot()) {
+                let root = this.page.rootModel.root;
                 const dfs = generic => {
                     let itm = new Panel.AddTab.GenericButton(generic);
                     if (generic instanceof { tables: NTModel.Table, topics: NTModel.Topic, all: NTModel.Generic }[this.searchPart]) items.push({
@@ -2067,8 +2077,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (this.isClosed) return;
             const ctx = this.ctx;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            if (!this.hasApp() || !this.app.hasRootModel() || !this.app.rootModel.hasRoot()) return;
-            const model = this.app.rootModel;
+            if (!this.hasPage() || !this.page.hasRootModel() || !this.page.rootModel.hasRoot()) return;
+            const model = this.page.rootModel;
             const graphRange = {
                 left: () => [
                     model.serverStartTime,
@@ -3151,8 +3161,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
             this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
             if (this.isClosed) return;
-            if (!this.hasApp() || !this.app.hasRootModel() || !this.app.rootModel.hasRoot()) return;
-            const model = this.app.rootModel;
+            if (!this.hasPage() || !this.page.hasRootModel() || !this.page.rootModel.hasRoot()) return;
+            const model = this.page.rootModel;
             let newPoses = {};
             this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
             let needAdd = {}, needRem = {};
@@ -3274,15 +3284,6 @@ REVIVER.addRuleAndAllSub(Container);
 REVIVER.addRuleAndAllSub(Panel);
 
 export default class App extends core.App {
-    #browserItems;
-    #toolButtons;
-    #rootWidget;
-    #rootModel;
-
-    #eSide;
-    #eSideMeta;
-    #eSideSections;
-    #eContent;
     #eBlock;
 
     #eTitleBtn;
@@ -3303,11 +3304,6 @@ export default class App extends core.App {
 
     constructor() {
         super();
-
-        this.#browserItems = [];
-        this.#toolButtons = new Set();
-        this.#rootWidget = null;
-        this.#rootModel = null;
 
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
@@ -3394,138 +3390,17 @@ export default class App extends core.App {
                     this.post("cmd-save", null);
                 });
 
-            this.#eSide = document.querySelector("#PROJECTPAGE > .side");
-            this.#eSideSections = {};
-            if (this.hasESide()) {
-                this.#eSideMeta = this.eSide.querySelector(":scope > #meta");
-                Array.from(this.eSide.querySelectorAll(":scope > .section")).forEach(elem => {
-                    let s = this.#eSideSections[elem.id] = new core.Target();
-                    s.elem = elem;
-                    s.getIsOpen = () => elem.classList.contains("this");
-                    s.setIsOpen = v => {
-                        v = !!v;
-                        if (s.getIsOpen() == v) return true;
-                        if (v) elem.classList.add("this");
-                        else elem.classList.remove("this");
-                        this.formatSide();
-                        return true;
-                    };
-                    s.getIsClosed = () => !s.getIsOpen();
-                    s.setIsClosed = v => s.setIsOpen(!v);
-                    s.open = () => s.setIsOpen(true);
-                    s.close = () => s.setIsClosed(true);
-                    let btn = elem.querySelector(":scope > button");
-                    if (btn instanceof HTMLButtonElement)
-                        btn.addEventListener("click", e => {
-                            s.setIsOpen(!s.getIsOpen());
-                        });
-                    s.eContent = elem.querySelector(":scope > .content");
-                    let idfs = {
-                    };
-                    if (elem.id in idfs) idfs[elem.id]();
-                });
-                new ResizeObserver(() => this.formatSide()).observe(this.eSide);
-            }
-            this.#eContent = document.querySelector("#PROJECTPAGE > .content");
-            if (this.hasEContent())
-                new ResizeObserver(() => this.formatContent()).observe(this.eContent);
             this.#eBlock = document.getElementById("block");
-
-            this.addToolButton(new ToolButton("Graph", "analytics")).addHandler("drag", () => {
-                this.dragData = new Panel.GraphTab();
-                this.dragging = true;
-            });
-            this.addToolButton(new ToolButton("Odom2d", "locate")).addHandler("drag", () => {
-                this.dragData = new Panel.Odometry2dTab();
-                this.dragging = true;
-            });
-            this.addToolButton(new ToolButton("Odom3d", "locate")).addHandler("drag", () => {
-                this.dragData = new Panel.Odometry3dTab();
-                this.dragging = true;
-            });
-            
-            this.formatSide();
-            this.formatContent();
-
-            if (this.hasESideSection("browser"))
-                this.getESideSection("browser").open();
-
-            let refactor = false;
-            this.addHandler("refactor-browser-queue", data => { refactor = true; });
-            this.addHandler("update", data => {
-                if (!refactor) return;
-                refactor = false;
-                this.post("refactor-browser", null);
-            });
-            this.addHandler("refactor-browser", data => {
-                let newPaths = {};
-                if (this.hasRootModel() && this.rootModel.hasRoot()) {
-                    this.rootModel.root.children.forEach(generic => {
-                        let path = [];
-                        const dfs = generic => {
-                            path.push(generic.name);
-                            newPaths[path.join("/")] = generic;
-                            if (generic instanceof NTModel.Table)
-                                generic.children.forEach(generic => dfs(generic));
-                            path.pop();
-                        };
-                        dfs(generic);
-                    });
-                }
-                let oldPaths = {};
-                this.browserItems.forEach(itm => {
-                    let path = [];
-                    const dfs = itm => {
-                        path.push(itm.name);
-                        oldPaths[path.join("/")] = itm;
-                        if (itm instanceof BrowserTable)
-                            itm.children.forEach(itm => dfs(itm));
-                        path.pop();
-                    };
-                    dfs(itm);
-                });
-                let needRem = [], needAdd = [];
-                for (let path in oldPaths)
-                    if (!(path in newPaths))
-                        needRem.push(path.split("/"));
-                for (let path in newPaths)
-                    if (!(path in oldPaths))
-                        needAdd.push(path.split("/"));
-                needRem.sort((a, b) => b.length-a.length);
-                needAdd.sort((a, b) => a.length-b.length);
-                needRem.forEach(path => {
-                    let superPath = path.slice(0, path.length-1).join("/");
-                    path = path.join("/");
-                    let itm = oldPaths[path];
-                    if (superPath in oldPaths) oldPaths[superPath].remChild(itm);
-                    else this.remBrowserItem(itm);
-                    delete oldPaths[path];
-                });
-                needAdd.forEach(path => {
-                    let superPath = path.slice(0, path.length-1).join("/");
-                    path = path.join("/");
-                    let generic = newPaths[path];
-                    let itm = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
-                    if (superPath in oldPaths) oldPaths[superPath].addChild(itm);
-                    else this.addBrowserItem(itm);
-                    oldPaths[path] = itm;
-                });
-                for (let path in newPaths) {
-                    if (!(path in oldPaths)) continue;
-                    oldPaths[path].value = newPaths[path].value;
-                }
-            });
-
-            this.rootModel = new NTModel("localhost");
 
             const getHovered = (widget, pos, options) => {
                 options = util.ensure(options, "obj");
                 let canSub = ("canSub" in options) ? options.canSub : true;
                 let canTop = ("canTop" in options) ? options.canTop : true;
-                if (!this.hasEContent()) return null;
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
                 pos = new V(pos);
                 let r;
-                r = this.eContent.getBoundingClientRect();
+                r = page.eContent.getBoundingClientRect();
                 pos.x = Math.min(r.right, Math.max(r.left, pos.x));
                 pos.y = Math.min(r.bottom, Math.max(r.top, pos.y));
                 if (!(widget instanceof Widget)) return null;
@@ -3674,14 +3549,16 @@ export default class App extends core.App {
                 }
             });
             this.addHandler("drag-move", e => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
                 if (!isValid(this.dragData)) return;
-                if (!this.hasRootWidget()) {
+                if (!page.hasRootWidget()) {
                     this.showBlock();
-                    if (this.hasEContent()) this.placeBlock(this.eContent.getBoundingClientRect());
+                    this.placeBlock(page.eContent.getBoundingClientRect());
                     return;
                 }
                 const hovered = getHovered(
-                    this.rootWidget, new V(e.pageX, e.pageY),
+                    page.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
                         canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Tab),
@@ -3708,16 +3585,18 @@ export default class App extends core.App {
                 }
             });
             this.addHandler("drag-submit", e => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
                 if (!isValid(this.dragData)) return;
                 this.hideBlock();
                 let canWidget = canGetWidgetFromData();
                 let canTab = canGetTabFromData();
-                if (!this.hasRootWidget()) {
-                    this.rootWidget = getWidgetFromData();
+                if (!page.hasRootWidget()) {
+                    page.rootWidget = getWidgetFromData();
                     return;
                 }
                 const hovered = getHovered(
-                    this.rootWidget, new V(e.pageX, e.pageY),
+                    page.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
                         canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Tab),
@@ -3729,11 +3608,11 @@ export default class App extends core.App {
                     let widget = getWidgetFromData();
                     let container = new Container();
                     container.axis = at[1];
-                    if (hovered.widget == this.rootWidget) {
-                        this.rootWidget = null;
+                    if (hovered.widget == page.rootWidget) {
+                        page.rootWidget = null;
                         container.addChild((at[0] == "+") ? hovered.widget : widget);
                         container.addChild((at[0] != "+") ? hovered.widget : widget);
-                        this.rootWidget = container;
+                        page.rootWidget = container;
                     } else {
                         let parent = hovered.widget.parent;
                         let weights = parent.weights, thisAt = parent.children.indexOf(hovered.widget);
@@ -3749,7 +3628,7 @@ export default class App extends core.App {
                     let data = util.ensure(hovered.data, "obj");
                     if (util.is(data.submit, "func")) data.submit();
                 }
-                this.rootWidget.collapse();
+                page.rootWidget.collapse();
             });
 
             const getWidgetFromElem = (widget, elem) => {
@@ -3764,192 +3643,43 @@ export default class App extends core.App {
                 return null;
             };
             this.addHandler("cmd-newtab", data => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
                 const elem = document.activeElement;
-                const active = getWidgetFromElem(this.rootWidget, elem);
+                const active = getWidgetFromElem(page.rootWidget, elem);
                 if (!(active instanceof Panel)) return;
                 active.addTab(new Panel.AddTab());
             });
             this.addHandler("cmd-close", data => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
                 const elem = document.activeElement;
-                const active = getWidgetFromElem(this.rootWidget, elem);
+                const active = getWidgetFromElem(page.rootWidget, elem);
                 if (!(active instanceof Panel)) return;
                 active.remTab(active.tabs[active.tabIndex]);
             });
             this.addHandler("cmd-openclose", data => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
                 const elem = document.activeElement;
-                const active = getWidgetFromElem(this.rootWidget, elem);
+                const active = getWidgetFromElem(page.rootWidget, elem);
                 if (!(active instanceof Panel)) return;
                 if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
                 active.tabs[active.tabIndex].post("openclose", null);
             });
             this.addHandler("cmd-expandcollapse", data => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
                 const elem = document.activeElement;
-                const active = getWidgetFromElem(this.rootWidget, elem);
+                const active = getWidgetFromElem(page.rootWidget, elem);
                 if (!(active instanceof Panel)) return;
                 active.isTitleCollapsed = !active.isTitleCollapsed;
             });
+            
+            this.addPage(new App.ProjectPage(this));
 
-            this.addHandler("update", data => {
-                if (this.hasRootWidget()) {
-                    this.rootWidget.collapse();
-                    if (this.hasRootWidget()) this.rootWidget.update();
-                } else this.rootWidget = new Panel();
-                if (!this.hasESideMeta()) return;
-                this.eSideMeta.textContent = (!this.hasRootModel() || !this.rootModel.hasRoot()) ? "No connection" : (() => {
-                    let nFields = this.rootModel.root.nFields;
-                    return nFields + " field" + (nFields==1 ? "" : "s");
-                })();
-            });
-
-            document.body.addEventListener("keydown", e => {
-                if (e.code != "KeyK") return;
-                if (!(e.ctrlKey || e.metaKey)) return;
-            });
+            this.page = "PROJECT";
         });
-    }
-
-    get browserItems() { return [...this.#browserItems]; }
-    set browserItems(v) {
-        v = util.ensure(v, "arr");
-        this.clearBrowserItems();
-        v.forEach(v => this.addBrowserItem(v));
-    }
-    clearBrowserItems() {
-        let itms = this.browserItems;
-        itms.forEach(itm => this.remBrowserItem(itm));
-        return itms;
-    }
-    hasBrowserItem(itm) {
-        if (!(itm instanceof BrowserItem)) return false;
-        return this.#browserItems.includes(itm);
-    }
-    addBrowserItem(itm) {
-        if (!(itm instanceof BrowserItem)) return false;
-        if (this.hasBrowserItem(itm)) return false;
-        this.#browserItems.push(itm);
-        itm._onDrag = data => {
-            data = util.ensure(data, "obj");
-            let generic = this.lookup(data.path);
-            if (!(generic instanceof NTModel.Generic)) return;
-            this.dragData = generic;
-            this.dragging = true;
-        };
-        itm.addHandler("drag", itm._onDrag);
-        if (this.hasESideSection("browser") && this.getESideSection("browser").eContent instanceof HTMLDivElement)
-            this.getESideSection("browser").eContent.appendChild(itm.elem);
-        this.formatSide();
-        return itm;
-    }
-    remBrowserItem(itm) {
-        if (!(itm instanceof BrowserItem)) return false;
-        if (!this.hasBrowserItem(itm)) return false;
-        this.#browserItems.splice(this.#browserItems.indexOf(itm), 1);
-        itm.remHandler("drag", itm._onDrag);
-        delete itm._onDrag;
-        if (this.hasESideSection("browser") && this.getESideSection("browser").eContent instanceof HTMLDivElement)
-            this.getESideSection("browser").eContent.removeChild(itm.elem);
-        this.formatSide();
-        return itm;
-    }
-
-    get toolButtons() { return [...this.#toolButtons]; }
-    set toolButtons(v) {
-        v = util.ensure(v, "arr");
-        this.clearToolButtons();
-        v.forEach(v => this.addToolButton(v));
-    }
-    clearToolButtons() {
-        let btns = this.toolButtons;
-        btns.forEach(btn => this.remToolButton(btn));
-        return btns;
-    }
-    hasToolButton(btn) {
-        if (!(btn instanceof ToolButton)) return false;
-        return this.#toolButtons.has(btn);
-    }
-    addToolButton(btn) {
-        if (!(btn instanceof ToolButton)) return false;
-        if (this.hasToolButton(btn)) return false;
-        this.#toolButtons.add(btn);
-        if (this.hasESideSection("tools"))
-            this.getESideSection("tools").eContent.appendChild(btn.elem);
-        return btn;
-    }
-    remToolButton(btn) {
-        if (!(btn instanceof ToolButton)) return false;
-        if (!this.hasToolButton(btn)) return false;
-        this.#toolButtons.delete(btn);
-        if (this.hasESideSection("tools"))
-            this.getESideSection("tools").eContent.removeChild(btn.elem);
-        return btn;
-    }
-
-    get rootWidget() { return this.#rootWidget; }
-    set rootWidget(v) {
-        v = (v instanceof Widget) ? v : null;
-        if (this.rootWidget == v) return;
-        if (this.hasRootWidget()) {
-            this.rootWidget.parent = null;
-            if (this.hasEContent())
-                this.eContent.removeChild(this.rootWidget.elem);
-        }
-        this.#rootWidget = v;
-        if (this.hasRootWidget()) {
-            this.rootWidget.parent = this;
-            if (this.hasEContent())
-                this.eContent.appendChild(this.rootWidget.elem);
-            this.rootWidget.elem.focus();
-        }
-        this.formatContent();
-    }
-    hasRootWidget() { return this.rootWidget instanceof Widget; }
-    get rootModel() { return this.#rootModel; }
-    set rootModel(v) {
-        v = (v instanceof NTModel) ? v : null;
-        if (this.rootModel == v) return;
-        if (this.hasRootModel()) {
-            this.rootModel.remHandler("change", this.rootModel.root._onChange);
-            delete this.rootModel._onChange;
-        }
-        this.#rootModel = v;
-        if (this.hasRootModel()) {
-            this.rootModel._onChange = data => this.post("refactor-browser-queue", null);
-            this.rootModel.addHandler("change", this.rootModel._onChange);
-        }
-        this.post("refactor-browser", null);
-    }
-    hasRootModel() { return this.rootModel instanceof NTModel; }
-    lookup(path) {
-        if (!this.hasRootModel() || !this.rootModel.hasRoot()) return null;
-        return this.rootModel.root.lookup(path);
-    }
-
-    format() {
-        this.formatSide();
-        this.formatContent();
-    }
-    formatSide() {
-        if (!this.hasESide()) return false;
-        let r = this.eSide.getBoundingClientRect();
-        let ids = this.eSideSections;
-        let idsOpen = ids.filter(id => this.getESideSection(id).getIsOpen());
-        let availableHeight = r.height - 22 - ids.length*22;
-        let divideAmong = idsOpen.length;
-        idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
-        this.browserItems.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => {
-            itm.elem.style.order = i;
-            if (itm instanceof BrowserTable) itm.format();
-        });
-        return true;
-    }
-    formatContent() {
-        if (!this.hasEContent()) return false;
-        if (!this.hasRootWidget()) return false;
-        let r = this.eContent.getBoundingClientRect();
-        this.rootWidget.elem.style.setProperty("--w", r.width+"px");
-        this.rootWidget.elem.style.setProperty("--h", r.height+"px");
-        this.rootWidget.format();
-        return true;
     }
 
     get eTitleBtn() { return this.#eTitleBtn; }
@@ -3983,15 +3713,6 @@ export default class App extends core.App {
     get eSaveBtn() { return this.#eSaveBtn; }
     hasESaveBtn() { return this.eSaveBtn instanceof HTMLButtonElement; }
 
-    get eSide() { return this.#eSide; }
-    hasESide() { return this.eSide instanceof HTMLDivElement; }
-    get eSideMeta() { return this.#eSideMeta; }
-    hasESideMeta() { return this.eSideMeta instanceof HTMLDivElement; }
-    get eSideSections() { return Object.keys(this.#eSideSections); }
-    hasESideSection(id) { return id in this.#eSideSections; }
-    getESideSection(id) { return this.#eSideSections[id]; }
-    get eContent() { return this.#eContent; }
-    hasEContent() { return this.eContent instanceof HTMLDivElement; }
     get eBlock() { return this.#eBlock; }
     hasEBlock() { return this.eBlock instanceof HTMLDivElement; }
     get isBlockShown() { return this.hasEBlock() ? this.eBlock.classList.contains("this") : null; }
@@ -4014,6 +3735,317 @@ export default class App extends core.App {
     }
 }
 App.ProjectPage = class AppProjectPage extends core.App.Page {
-    constructor() {
+    #browserItems;
+    #toolButtons;
+    #rootWidget;
+    #rootModel;
+
+    #eSide;
+    #eSideMeta;
+    #eSideSections;
+    #eContent;
+    
+    constructor(app) {
+        super("PROJECT", app);
+
+        if (!this.hasApp()) return;
+
+        this.#browserItems = [];
+        this.#toolButtons = new Set();
+        this.#rootWidget = null;
+        this.#rootModel = null;
+
+        this.#eSide = document.createElement("div");
+        this.elem.appendChild(this.eSide);
+        this.eSide.classList.add("side");
+        this.#eSideMeta = document.createElement("div");
+        this.eSide.appendChild(this.eSideMeta);
+        this.eSideMeta.id = "meta";
+        this.#eSideSections = {};
+        ["browser", "tools"].forEach(name => {
+            let elem = document.createElement("div");
+            this.eSide.appendChild(elem);
+            elem.id = name;
+            elem.classList.add("section");
+            let s = this.#eSideSections[name] = new core.Target();
+            s.elem = elem;
+            s.getIsOpen = () => elem.classList.contains("this");
+            s.setIsOpen = v => {
+                v = !!v;
+                if (s.getIsOpen() == v) return true;
+                if (v) elem.classList.add("this");
+                else elem.classList.remove("this");
+                this.formatSide();
+                return true;
+            };
+            s.getIsClosed = () => !s.getIsOpen();
+            s.setIsClosed = v => s.setIsOpen(!v);
+            s.open = () => s.setIsOpen(true);
+            s.close = () => s.setIsClosed(true);
+            let btn = document.createElement("button");
+            elem.appendChild(btn);
+            btn.classList.add("override");
+            btn.innerHTML = "<ion-icon name='chevron-forward'></ion-icon>";
+            btn.append(name.toUpperCase());
+            if (btn instanceof HTMLButtonElement)
+                btn.addEventListener("click", e => {
+                    s.setIsOpen(!s.getIsOpen());
+                });
+            s.eContent = document.createElement("div");
+            elem.appendChild(s.eContent);
+            s.eContent.classList.add("content");
+            let idfs = {
+                browser: () => s.eContent.classList.add("browser"),
+            };
+            if (elem.id in idfs) idfs[elem.id]();
+        });
+        new ResizeObserver(() => this.formatSide()).observe(this.eSide);
+        this.#eContent = document.createElement("div");
+        this.elem.appendChild(this.eContent);
+        this.eContent.classList.add("content");
+        new ResizeObserver(() => this.formatContent()).observe(this.eContent);
+        
+        this.addToolButton(new ToolButton("Graph", "analytics")).addHandler("drag", () => {
+            if (!this.hasApp()) return;
+            this.app.dragData = new Panel.GraphTab();
+            this.app.dragging = true;
+        });
+        this.addToolButton(new ToolButton("Odom2d", "locate")).addHandler("drag", () => {
+            if (!this.hasApp()) return;
+            this.app.dragData = new Panel.Odometry2dTab();
+            this.app.dragging = true;
+        });
+        this.addToolButton(new ToolButton("Odom3d", "locate")).addHandler("drag", () => {
+            if (!this.hasApp()) return;
+            this.app.dragData = new Panel.Odometry3dTab();
+            this.app.dragging = true;
+        });
+
+        this.format();
+
+        this.getESideSection("browser").open();
+
+        let refactor = false;
+        this.addHandler("refactor-browser-queue", data => { refactor = true; });
+        this.addHandler("update", data => {
+            if (!refactor) return;
+            refactor = false;
+            this.post("refactor-browser", null);
+        });
+        this.addHandler("refactor-browser", data => {
+            let newPaths = {};
+            if (this.hasRootModel() && this.rootModel.hasRoot()) {
+                this.rootModel.root.children.forEach(generic => {
+                    let path = [];
+                    const dfs = generic => {
+                        path.push(generic.name);
+                        newPaths[path.join("/")] = generic;
+                        if (generic instanceof NTModel.Table)
+                            generic.children.forEach(generic => dfs(generic));
+                        path.pop();
+                    };
+                    dfs(generic);
+                });
+            }
+            let oldPaths = {};
+            this.browserItems.forEach(itm => {
+                let path = [];
+                const dfs = itm => {
+                    path.push(itm.name);
+                    oldPaths[path.join("/")] = itm;
+                    if (itm instanceof BrowserTable)
+                        itm.children.forEach(itm => dfs(itm));
+                    path.pop();
+                };
+                dfs(itm);
+            });
+            let needRem = [], needAdd = [];
+            for (let path in oldPaths)
+                if (!(path in newPaths))
+                    needRem.push(path.split("/"));
+            for (let path in newPaths)
+                if (!(path in oldPaths))
+                    needAdd.push(path.split("/"));
+            needRem.sort((a, b) => b.length-a.length);
+            needAdd.sort((a, b) => a.length-b.length);
+            needRem.forEach(path => {
+                let superPath = path.slice(0, path.length-1).join("/");
+                path = path.join("/");
+                let itm = oldPaths[path];
+                if (superPath in oldPaths) oldPaths[superPath].remChild(itm);
+                else this.remBrowserItem(itm);
+                delete oldPaths[path];
+            });
+            needAdd.forEach(path => {
+                let superPath = path.slice(0, path.length-1).join("/");
+                path = path.join("/");
+                let generic = newPaths[path];
+                let itm = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                if (superPath in oldPaths) oldPaths[superPath].addChild(itm);
+                else this.addBrowserItem(itm);
+                oldPaths[path] = itm;
+            });
+            for (let path in newPaths) {
+                if (!(path in oldPaths)) continue;
+                oldPaths[path].value = newPaths[path].value;
+            }
+        });
+
+        this.rootModel = new NTModel("localhost");
+
+        this.addHandler("update", data => {
+            if (this.hasRootWidget()) {
+                this.rootWidget.collapse();
+                if (this.hasRootWidget()) this.rootWidget.update();
+            } else this.rootWidget = new Panel();
+            this.eSideMeta.textContent = (!this.hasRootModel() || !this.rootModel.hasRoot()) ? "No connection" : (() => {
+                let nFields = this.rootModel.root.nFields;
+                return nFields + " field" + (nFields==1 ? "" : "s");
+            })();
+        });
+    }
+
+    get browserItems() { return [...this.#browserItems]; }
+    set browserItems(v) {
+        v = util.ensure(v, "arr");
+        this.clearBrowserItems();
+        v.forEach(v => this.addBrowserItem(v));
+    }
+    clearBrowserItems() {
+        let itms = this.browserItems;
+        itms.forEach(itm => this.remBrowserItem(itm));
+        return itms;
+    }
+    hasBrowserItem(itm) {
+        if (!(itm instanceof BrowserItem)) return false;
+        return this.#browserItems.includes(itm);
+    }
+    addBrowserItem(itm) {
+        if (!(itm instanceof BrowserItem)) return false;
+        if (this.hasBrowserItem(itm)) return false;
+        this.#browserItems.push(itm);
+        itm._onDrag = data => {
+            data = util.ensure(data, "obj");
+            let generic = this.lookup(data.path);
+            if (!(generic instanceof NTModel.Generic)) return;
+            if (!this.hasApp()) return;
+            this.app.dragData = generic;
+            this.app.dragging = true;
+        };
+        itm.addHandler("drag", itm._onDrag);
+        this.getESideSection("browser").eContent.appendChild(itm.elem);
+        this.formatSide();
+        return itm;
+    }
+    remBrowserItem(itm) {
+        if (!(itm instanceof BrowserItem)) return false;
+        if (!this.hasBrowserItem(itm)) return false;
+        this.#browserItems.splice(this.#browserItems.indexOf(itm), 1);
+        itm.remHandler("drag", itm._onDrag);
+        delete itm._onDrag;
+        this.getESideSection("browser").eContent.removeChild(itm.elem);
+        this.formatSide();
+        return itm;
+    }
+
+    get toolButtons() { return [...this.#toolButtons]; }
+    set toolButtons(v) {
+        v = util.ensure(v, "arr");
+        this.clearToolButtons();
+        v.forEach(v => this.addToolButton(v));
+    }
+    clearToolButtons() {
+        let btns = this.toolButtons;
+        btns.forEach(btn => this.remToolButton(btn));
+        return btns;
+    }
+    hasToolButton(btn) {
+        if (!(btn instanceof ToolButton)) return false;
+        return this.#toolButtons.has(btn);
+    }
+    addToolButton(btn) {
+        if (!(btn instanceof ToolButton)) return false;
+        if (this.hasToolButton(btn)) return false;
+        this.#toolButtons.add(btn);
+        this.getESideSection("tools").eContent.appendChild(btn.elem);
+        return btn;
+    }
+    remToolButton(btn) {
+        if (!(btn instanceof ToolButton)) return false;
+        if (!this.hasToolButton(btn)) return false;
+        this.#toolButtons.delete(btn);
+        this.getESideSection("tools").eContent.removeChild(btn.elem);
+        return btn;
+    }
+
+    get rootWidget() { return this.#rootWidget; }
+    set rootWidget(v) {
+        v = (v instanceof Widget) ? v : null;
+        if (this.rootWidget == v) return;
+        if (this.hasRootWidget()) {
+            this.rootWidget.parent = null;
+            this.eContent.removeChild(this.rootWidget.elem);
+        }
+        this.#rootWidget = v;
+        if (this.hasRootWidget()) {
+            this.rootWidget.parent = this;
+            this.eContent.appendChild(this.rootWidget.elem);
+            this.rootWidget.elem.focus();
+        }
+        this.formatContent();
+    }
+    hasRootWidget() { return this.rootWidget instanceof Widget; }
+    get rootModel() { return this.#rootModel; }
+    set rootModel(v) {
+        v = (v instanceof NTModel) ? v : null;
+        if (this.rootModel == v) return;
+        if (this.hasRootModel()) {
+            this.rootModel.remHandler("change", this.rootModel.root._onChange);
+            delete this.rootModel._onChange;
+        }
+        this.#rootModel = v;
+        if (this.hasRootModel()) {
+            this.rootModel._onChange = data => this.post("refactor-browser-queue", null);
+            this.rootModel.addHandler("change", this.rootModel._onChange);
+        }
+        this.post("refactor-browser", null);
+    }
+    hasRootModel() { return this.rootModel instanceof NTModel; }
+    lookup(path) {
+        if (!this.hasRootModel() || !this.rootModel.hasRoot()) return null;
+        return this.rootModel.root.lookup(path);
+    }
+
+    get eSide() { return this.#eSide; }
+    get eSideMeta() { return this.#eSideMeta; }
+    get eSideSections() { return Object.keys(this.#eSideSections); }
+    hasESideSection(id) { return id in this.#eSideSections; }
+    getESideSection(id) { return this.#eSideSections[id]; }
+    get eContent() { return this.#eContent; }
+
+    format() {
+        this.formatSide();
+        this.formatContent();
+    }
+    formatSide() {
+        let r = this.eSide.getBoundingClientRect();
+        let ids = this.eSideSections;
+        let idsOpen = ids.filter(id => this.getESideSection(id).getIsOpen());
+        let availableHeight = r.height - 22 - ids.length*22;
+        let divideAmong = idsOpen.length;
+        idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
+        this.browserItems.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => {
+            itm.elem.style.order = i;
+            if (itm instanceof BrowserTable) itm.format();
+        });
+        return true;
+    }
+    formatContent() {
+        if (!this.hasRootWidget()) return false;
+        let r = this.eContent.getBoundingClientRect();
+        this.rootWidget.elem.style.setProperty("--w", r.width+"px");
+        this.rootWidget.elem.style.setProperty("--h", r.height+"px");
+        this.rootWidget.format();
+        return true;
     }
 };

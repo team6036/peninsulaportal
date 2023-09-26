@@ -591,7 +591,6 @@ export default class App extends core.App {
             });
             this.addHandler("update", data => {
                 if (this.hasESaveBtn()) this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
-                this.pages.forEach(name => this.getPage(name).update());
             });
 
             this.clearChanges();

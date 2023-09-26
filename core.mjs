@@ -115,6 +115,10 @@ export class App extends Target {
                 })();
             }, 10);
         });
+
+        this.addHandler("update", data => {
+            this.pages.forEach(name => this.getPage(name).update());
+        });
     }
 
     get setupConfig() { return this.#setupConfig; }
@@ -1110,7 +1114,6 @@ App.ContextMenu.Divider = class AppContextMenuDivider extends App.ContextMenu.It
         this.elem.classList.add("divider");
     }
 };
-// App.Page = class AppPage extends core.Target {
 App.Page = class AppPage extends Target {
     #name;
     #app;
@@ -1774,6 +1777,8 @@ export class Reviver {
 }
 
 export const REVIVER = new Reviver();
-REVIVER.addRuleAndAllSub(V);
+REVIVER.addRuleAndAllSub(util.Color);
+REVIVER.addRuleAndAllSub(util.Range);
+REVIVER.addRuleAndAllSub(util.V);
 REVIVER.addRuleAndAllSub(util.V3);
 REVIVER.addRuleAndAllSub(util.Shape);
