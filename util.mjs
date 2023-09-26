@@ -12,8 +12,11 @@ export const UTILVERSION = 1;
 
 export function is(o, type) {
     let typefs = {
+        any_num: () => {
+            return (typeof(o) == "number") && !Number.isNaN(o);
+        },
         num: () => {
-            return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o);
+            return typefs.any_num() && Number.isFinite(o);
         },
         float: () => {
             return typefs.num();
@@ -48,6 +51,10 @@ export function is(o, type) {
 const ENSURE_NONE = Symbol("ENSURE_NONE");
 export function ensure(o, type, def=ENSURE_NONE) {
     let typefs = {
+        any_num: () => {
+            if (is(o, "any_num")) return o;
+            return (def == ENSURE_NONE) ? 0 : def;
+        },
         num: () => {
             if (is(o, "num")) return o;
             return (def == ENSURE_NONE) ? 0 : def;
@@ -631,6 +638,72 @@ export class Color {
                 g: this.g,
                 b: this.b,
                 a: this.a,
+            }],
+        };
+    }
+}
+
+export class Range {
+    #l; #r;
+    #lInclude; #rInclude;
+
+    constructor(...a) {
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 2) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Range) a = [a.l, a.r, a.lInclude, a.rInclude];
+            else if (is(a, "arr")) {
+                a = new Range(...a);
+                a = [a.l, a.r, a.lInclude, a.rInclude];
+            }
+            else if (is(a, "obj")) a = [a.l, a.r, a.lInclude, a.rInclude];
+            else if (is(a, "any_num")) a = [a, Infinity];
+            else a = [-Infinity, Infinity];
+        }
+        if (a.length == 2) a = [...a, true, true];
+        [this.l, this.r, this.lInclude, this.rInclude] = a;
+    }
+
+    get l() { return this.#l; }
+    set l(v) { this.#l = ensure(v, "any_num"); }
+    get r() { return this.#r; }
+    set r(v) { this.#r = ensure(v, "any_num"); }
+
+    get lInclude() { return this.#lInclude; }
+    set lInclude(v) { this.#lInclude = !!v; }
+    get rInclude() { return this.#rInclude; }
+    set rInclude(v) { this.#rInclude = !!v; }
+
+    normalize() {
+        if (this.l > this.r) [this.l, this.r] = [this.r, this.l];
+        return this;
+    }
+
+    test(v) {
+        v = ensure(v, "any_num");
+        if ((this.lInclude && v < this.l) || (!this.lInclude && v <= this.l)) return false;
+        if ((this.rInclude && v > this.r) || (!this.rInclude && v >= this.r)) return false;
+        return true;
+    }
+    clamp(v) {
+        v = ensure(v, "any_num");
+        return Math.min(this.r, Math.max(this.l, v));
+    }
+    lerp(v) {
+        if (!Number.isFinite(this.l) || !Number.isFinite(this.r)) return null;
+        return lerp(this.l, this.r, v);
+    }
+
+    toString() { return (this.lInclude ? "[" : "(") + this.l + ", " + this.r + (this.rInclude ? "]" : ")"); }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: UTILVERSION,
+                l: this.l, r: this.r,
+                lInclude: this.lInclude, rInclude: this.rInclude,
             }],
         };
     }
