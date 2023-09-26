@@ -525,19 +525,31 @@ const MAIN = async () => {
             };
             */
 
-            ipc.handle("get", async (e, name) => {
-                name = String(name);
-                let namefs = {
+            ipc.handle("get", async (e, k) => {
+                k = String(k);
+                let kfs = {
                     feature: async () => {
                         let feat = identifyFeature(e);
                         if (!(feat instanceof Portal.Feature)) return null;
                         return feat.name;
+                    },
+                    fullscreenable: async () => {
+                        let feat = identifyFeature(e);
+                        if (!(feat instanceof Portal.Feature)) return null;
+                        if (!feat.hasWindow()) return null;
+                        return feat.window.isFullScreenable();
                     },
                     fullscreen: async () => {
                         let feat = identifyFeature(e);
                         if (!(feat instanceof Portal.Feature)) return null;
                         if (!feat.hasWindow()) return null;
                         return feat.window.isFullScreen();
+                    },
+                    closeable: async () => {
+                        let feat = identifyFeature(e);
+                        if (!(feat instanceof Portal.Feature)) return null;
+                        if (!feat.hasWindow()) return null;
+                        return feat.window.isClosable();
                     },
                     devmode: async () => {
                         return await this.isDevMode();
@@ -561,7 +573,7 @@ const MAIN = async () => {
                         return util.ensure(data.templates, "obj");
                     },
                     "template-images": async () => {
-                        let templates = await namefs.templates();
+                        let templates = await kfs.templates();
                         let images = {};
                         Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "templates", "images", name+".png")));
                         return images;
@@ -576,12 +588,38 @@ const MAIN = async () => {
                             data = JSON.parse(content);
                         } catch (e) {}
                         data = util.ensure(data, "obj");
-                        let templates = await namefs.templates();
+                        let templates = await kfs.templates();
                         return (data.active in templates) ? data.active : null;
                     },
                 };
-                if (name in namefs) return await namefs[name]();
+                if (k in kfs) return await kfs[k]();
                 return null;
+            });
+            ipc.handle("set", async (e, k, v) => {
+                k = String(k);
+                let kfs = {
+                    fullscreenable: async () => {
+                        let feat = identifyFeature(e);
+                        if (!(feat instanceof Portal.Feature)) return;
+                        if (!feat.hasWindow()) return;
+                        feat.window.setFullScreenable(!!v);
+                    },
+                    fullscreen: async () => {
+                        let feat = identifyFeature(e);
+                        if (!(feat instanceof Portal.Feature)) return;
+                        if (!feat.hasWindow()) return;
+                        feat.window.setFullScreen(!!v);
+                    },
+                    closeable: async () => {
+                        let feat = identifyFeature(e);
+                        if (!(feat instanceof Portal.Feature)) return;
+                        if (!feat.hasWindow()) return;
+                        let maximizable = feat.window.isMaximizable();
+                        feat.window.setClosable(!!v);
+                        feat.window.setMaximizable(maximizable);
+                    },
+                };
+                if (k in kfs) await kfs[k]();
             });
 
             ipc.handle("file-has", async (e, pth) => {

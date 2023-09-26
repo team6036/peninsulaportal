@@ -3132,9 +3132,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         let templateImages = {};
         let finished = false;
         (async () => {
-            templates = await window.api.getTemplates();
-            templateImages = await window.api.getTemplateImages();
-            this.template = await window.api.getActiveTemplate();
+            templates = await window.api.get("templates");
+            templateImages = await window.api.get("template-images");
+            this.template = await window.api.get("active-template");
             finished = true;
         })();
 

@@ -14,14 +14,8 @@ contextBridge.exposeInMainWorld("api", {
 
     on: f => ipcRenderer.on("ask", f),
 
-    getFeature: () => ipcRenderer.invoke("get", "feature"),
-    getFullScreen: () => ipcRenderer.invoke("get", "fullscreen"),
-    getDevMode: () => ipcRenderer.invoke("get", "devmode"),
-    getSpooky: () => ipcRenderer.invoke("get", "spooky"),
-    getLoads: () => ipcRenderer.invoke("get", "loads"),
-    getTemplates: () => ipcRenderer.invoke("get", "templates"),
-    getTemplateImages: () => ipcRenderer.invoke("get", "template-images"),
-    getActiveTemplate: () => ipcRenderer.invoke("get", "active-template"),
+    get: k => ipcRenderer.invoke("get", k),
+    set: (k, v) => ipcRenderer.invoke("set", k, v),
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
     fileRead: path => ipcRenderer.invoke("file-read", path),

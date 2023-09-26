@@ -154,7 +154,7 @@ export class App extends Target {
             this.post("cmd-"+cmd, args);
         });
         this.addHandler("cmd-about", async args => {
-            let name = String(await window.api.getFeature());
+            let name = String(await window.api.get("feature"));
             let about = await this.getAbout();
             let pop = this.alert();
             pop.iconSrc = root+"/assets/icon.svg";
@@ -288,8 +288,8 @@ export class App extends Target {
         
         let t = util.getTime();
         
-        onFullScreenState(await window.api.getFullScreen());
-        onDevModeState(await window.api.getDevMode());
+        onFullScreenState(await window.api.get("fullscreen"));
+        onDevModeState(await window.api.get("devmode"));
 
         let resp = null;
         try {
@@ -307,7 +307,7 @@ export class App extends Target {
         this.colors = data.colors;
         this.accent = data.accent;
 
-        let spooky = await window.api.getSpooky();
+        let spooky = await window.api.get("spooky");
         if (spooky) this.accent = "o";
 
         await this.post("setup", null);
@@ -471,6 +471,7 @@ export class App extends Target {
         };
         pop.addHandler("close", pop._onClose);
         document.body.appendChild(pop.elem);
+        window.api.set("closeable", this.popups.length <= 0);
         return pop;
     }
     remPopup(pop) {
@@ -480,6 +481,7 @@ export class App extends Target {
         pop.remHandler("close", pop._onClose);
         delete pop._onClose;
         document.body.removeChild(pop.elem);
+        window.api.set("closeable", this.popups.length <= 0);
         return pop;
     }
     alert(...a) { return this.addPopup(new App.Alert(...a)); }
