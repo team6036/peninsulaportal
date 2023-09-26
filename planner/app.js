@@ -1,9 +1,9 @@
-import * as util from "../util.js";
-import { V } from "../util.js";
+import * as util from "../util.mjs";
+import { V } from "../util.mjs";
 
-import * as core from "../core.js";
+import * as core from "../core.mjs";
 
-import * as subcore from "./core.js";
+import * as subcore from "./core.mjs";
 
 
 class RLabel extends core.Odometry2d.Render {
