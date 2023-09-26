@@ -394,9 +394,6 @@ export default class App extends core.App {
 
     #projects;
 
-    // #pages;
-    // #page;
-
     #eTitleBtn;
     #eProjectsBtn;
     #eCreateBtn;
@@ -417,9 +414,6 @@ export default class App extends core.App {
         this.#changes = new Set();
 
         this.#projects = {};
-
-        // this.#pages = {};
-        // this.#page = null;
 
         this.addHandler("setup", async data => {
             try {
@@ -615,11 +609,10 @@ export default class App extends core.App {
                 if (!page.hasProject()) return;
                 this.dragData = name;
                 this.dragging = true;
-                if (this.hasEDrag())
-                    this.eDrag.innerHTML = {
-                        node: "<div class='global item selectable node'><div class='button'></div></div>",
-                        obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
-                    }[this.dragData];
+                this.eDrag.innerHTML = {
+                    node: "<div class='global item selectable node'><div class='button'></div></div>",
+                    obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
+                }[this.dragData];
                 let prevOverRender = false;
                 let ghostItem = null;
                 let item = {
@@ -645,9 +638,8 @@ export default class App extends core.App {
                             ghostItem = null;
                         }
                     }
-                    if (this.hasEDrag())
-                        if (this.eDrag.children[0] instanceof HTMLElement)
-                            this.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
+                    if (this.eDrag.children[0] instanceof HTMLElement)
+                        this.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
                     if (ghostItem instanceof RSelectable)
                         if (ghostItem.hasItem())
                             ghostItem.item.pos.set(page.odometry.pageToWorld(pos));
@@ -660,7 +652,7 @@ export default class App extends core.App {
                 });
                 const stop = cancel => {
                     page.odometry.remRender(ghostItem);
-                    if (this.hasEDrag()) this.eDrag.innerHTML = "";
+                    this.eDrag.innerHTML = "";
                     if (!cancel && prevOverRender && page.hasProject()) page.project.addItem(item);
                     if (!page.hasPanel("objects")) return;
                     const panel = page.getPanel("objects");
@@ -1010,60 +1002,6 @@ export default class App extends core.App {
         return canv.toDataURL();
     };
 
-    /*
-    get pages() { return Object.keys(this.#pages); }
-    hasPage(name) {
-        name = String(name);
-        return name in this.#pages;
-    }
-    addPage(page) {
-        if (!(page instanceof App.Page)) return false;
-        if (this.hasPage(page.name)) return false;
-        this.#pages[page.name] = page;
-        document.getElementById("mount").appendChild(page.elem);
-        return page;
-    }
-    getPage(name) {
-        name = String(name);
-        if (!this.hasPage(name)) return null;
-        return this.#pages[name];
-    }
-    get page() { return this.#page; }
-    set page(v) { this.setPage(v, null); }
-    async setPage(name, data) {
-        name = String(name);
-        data = util.ensure(data, "obj");
-
-        if (this.page == name) {
-            if (!this.hasPage(this.page)) return;
-            if (await this.getPage(this.page).determineSame(data)) return;
-        }
-        if (!this.hasPage(name)) return;
-
-        this.pages.forEach(name => this.getPage(name).elem.classList.remove("this"));
-
-        if (this.hasPage(this.page)) await this.getPage(this.page).leave(data);
-
-        this.#page = name;
-
-        let projectOnly = [
-            "addnode", "addobstacle", "addpath",
-            "savecopy",
-            "delete", "close",
-            "maxmin", "resetdivider",
-        ];
-        let changes = {};
-        projectOnly.forEach(id => {
-            changes[id] = { ".enabled": this.page == "PROJECT" };
-        });
-        await window.api.menuChange(changes);
-
-        if (this.hasPage(this.page)) await this.getPage(this.page).enter(data);
-
-        this.pages.forEach(name => this.getPage(name).elem.classList[(name == this.page ? "add" : "remove")]("this"));
-    }
-    */
-
     get eTitleBtn() { return this.#eTitleBtn; }
     hasETitleBtn() { return this.eTitleBtn instanceof HTMLButtonElement; }
     get eProjectsBtn() { return this.#eProjectsBtn; }
@@ -1091,35 +1029,6 @@ export default class App extends core.App {
     get eSaveBtn() { return this.#eSaveBtn; }
     hasESaveBtn() { return this.eSaveBtn instanceof HTMLButtonElement; }
 }
-/*
-App.Page = class AppPage extends core.Target {
-    #name;
-    #app;
-    #elem;
-
-    constructor(name, app) {
-        super();
-
-        this.#name = String(name);
-        this.#app = (app instanceof App) ? app : null;
-        this.#elem = document.createElement("div");
-        this.elem.id = this.name+"PAGE";
-        this.elem.classList.add("page");
-    }
-
-    get name() { return this.#name; }
-    get app() { return this.#app; }
-    hasApp() { return this.app instanceof App; }
-    get elem() { return this.#elem; }
-
-    async enter(data) {}
-    async leave(data) {}
-    async determineSame(data) { return false; }
-
-    update() { this.post("update", null); }
-};
-*/
-// App.TitlePage = class AppTitlePage extends App.Page {
 App.TitlePage = class AppTitlePage extends core.App.Page {
     #eTitle;
     #eSubtitle;
@@ -1172,7 +1081,6 @@ App.TitlePage = class AppTitlePage extends core.App.Page {
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
     }
 };
-// App.ProjectsPage = class AppProjectsPage extends App.Page {
 App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     #buttons;
 
@@ -1461,7 +1369,6 @@ App.ProjectsPage.Button =  class AppProjectsPageButton extends core.Target {
 
     update() { this.post("update", null); }
 };
-// App.ProjectPage = class AppProjectPage extends App.Page {
 App.ProjectPage = class AppProjectPage extends core.App.Page {
     #selected;
     #selectItem;
