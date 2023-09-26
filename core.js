@@ -1,96 +1,6 @@
 import * as util from "./util.js";
 import { V } from "./util.js";
 
-export const LOGOMESHDATA = (() => {
-    let loadState = 0;
-
-    let grid = null;
-
-    return {
-        load: async () => {
-            if (loadState > 0) return false;
-            loadState = 1;
-            let img = await util.loadImage("../assets/logo.svg");
-            let canv = document.createElement("canvas");
-            let ctx = canv.getContext("2d");
-            canv.width = img.width;
-            canv.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            let q = 3;
-            let w = Math.floor(img.width/q), h = Math.floor(img.height/q);
-            grid = [];
-            for (let x = 0; x < w; x++) {
-                let column = [];
-                for (let y = 0; y < h; y++) {
-                    let tx = x*q, ty = y*q;
-                    let data = ctx.getImageData(tx, ty, 1, 1).data;
-                    column.push(data[3] > 128 ? 0 : 1);
-                }
-                grid.push(column);
-            }
-            for (let x = 0; x < w; x++) {
-                for (let y = 0; y < h; y++) {
-                    if (grid[x][y] > 0) continue;
-                    let fill = (x, y) => {
-                        if (x < 0 || x >= w) return true;
-                        if (y < 0 || y >= h) return true;
-                        if (grid[x][y] > 0) return grid[x][y] == 1;
-                        grid[x][y] = 2;
-                        if (fill(x+1, y) || fill(x-1, y) || fill(x, y+1) || fill(x, y-1)) grid[x][y] = 3;
-                    };
-                    fill(x, y);
-                }
-            }
-            let polys = [];
-            for (let x = 0; x < w; x++) {
-                for (let y = 0; y < h; y++) {
-                    if (grid[x][y] != 3) continue;
-                    grid[x][y] = 4+polys.length;
-                    let path = [];
-                    let head = [x, y];
-                    while (true) {
-                        let found = null;
-                        for (let rx = -1; rx <= 1; rx++) {
-                            for (let ry = -1; ry <= 1; ry++) {
-                                if (rx == 0 && ry == 0) continue;
-                                let tx = head[0]+rx, ty = head[1]+ry;
-                                if (tx < 0 || tx >= w) continue;
-                                if (ty < 0 || ty >= h) continue;
-                                if (grid[tx][ty] == 3) {
-                                    found = [tx, ty];
-                                    grid[tx][ty] = 4+polys.length;
-                                }
-                                if (found) break;
-                            }
-                            if (found) break;
-                        }
-                        path.push(head);
-                        if (found) head = found;
-                        else break;
-                    }
-                    polys.push(path);
-                }
-            }
-            console.log(polys);
-            let all = "";
-            for (let y = 0; y < h; y++) {
-                let row = "";
-                for (let x = 0; x < w; x++) {
-                    let n = grid[x][y];
-                    if (n < 4) row += "?.:#"[grid[x][y]];
-                    else row += util.BASE64[(n-4)%64];
-                }
-                all += row+"\n";
-            }
-            console.log(all);
-            loadState = 2;
-            return true;
-        },
-        getLoadState: () => loadState,
-        isLoading: () => (loadState == 1),
-        isLoaded: () => (loadState == 2),
-    }
-})();
 
 export class Target {
     #handlers;
@@ -158,6 +68,7 @@ export class App extends Target {
     #eTitleBar;
     #eLoading;
     #eLoadingTo;
+    #eMount;
 
     constructor() {
         super();
@@ -182,6 +93,11 @@ export class App extends Target {
 
         this.#pages = {};
         this.#page = null;
+
+        window.api.onPerm(() => {
+            if (this.setupDone) return;
+            window.api.sendPerm(true);
+        });
 
         this.addHandler("start", data => {
             let id = setInterval(() => {
@@ -218,8 +134,6 @@ export class App extends Target {
 
     async setup() {
         if (this.setupDone) return false;
-
-        this.#setupDone = true;
 
         const root = ("root" in this.setupConfig) ? this.setupConfig.root : "..";
 
@@ -289,38 +203,44 @@ export class App extends Target {
             onDevModeState(!!args[0]);
         });
 
-        const coreStyle = this.#eCoreStyle = document.createElement("link");
-        document.head.appendChild(coreStyle);
-        coreStyle.rel = "stylesheet";
-        coreStyle.href = root+"/style.css";
+        this.#eCoreStyle = document.createElement("link");
+        document.head.appendChild(this.eCoreStyle);
+        this.eCoreStyle.rel = "stylesheet";
+        this.eCoreStyle.href = root+"/style.css";
 
-        const theStyle = this.#eStyle = document.createElement("link");
-        document.head.appendChild(theStyle);
-        theStyle.rel = "stylesheet";
-        theStyle.href = "./style.css";
+        this.#eStyle = document.createElement("link");
+        document.head.appendChild(this.eStyle);
+        this.eStyle.rel = "stylesheet";
+        this.eStyle.href = "./style.css";
 
-        const dynamicStyle = this.#eDynamicStyle = document.createElement("style");
-        document.head.appendChild(dynamicStyle);
+        this.#eDynamicStyle = document.createElement("style");
+        document.head.appendChild(this.eDynamicStyle);
 
-        if (document.getElementById("titlebar") instanceof HTMLDivElement) this.#eTitleBar = document.getElementById("titlebar");
-        else this.#eTitleBar = document.createElement("div");
-        const titleBar = this.#eTitleBar;
-        document.body.appendChild(titleBar);
-        titleBar.id = "titlebar";
+        this.#eTitleBar = document.getElementById("titlebar");
+        if (!(this.#eTitleBar instanceof HTMLDivElement)) this.#eTitleBar = document.createElement("div");
+        document.body.appendChild(this.eTitleBar);
+        this.eTitleBar.id = "titlebar";
+
+        this.#eMount = document.getElementById("mount");
+        if (!(this.#eMount instanceof HTMLDivElement)) this.#eMount = document.createElement("div");
+        this.eMount.remove();
+        if (document.body.children[0] instanceof HTMLElement) document.body.insertBefore(this.eMount, document.body.children[0]);
+        else document.body.appendChild(this.eMount);
+        this.eMount.id = "mount";
 
         this.#eLoading = document.getElementById("loading");
         if (this.hasELoading()) this.eLoading.classList.add("this");
         setTimeout(() => {
-            titleBar.style.opacity = "";
-            let mount = document.getElementById("mount");
-            if (!(mount instanceof HTMLDivElement)) return;
-            mount.style.opacity = "";
+            this.eTitleBar.style.opacity = "";
+            this.eMount.style.opacity = "";
         }, 0.5*1000);
-        titleBar.style.opacity = "0%";
-        let mount = document.getElementById("mount");
-        if (mount instanceof HTMLDivElement) mount.style.opacity = "0%";
+        this.eTitleBar.style.opacity = "0%";
+        this.eMount.style.opacity = "0%";
 
         this.#eDrag = document.getElementById("drag");
+        if (!(this.#eDrag instanceof HTMLDivElement)) this.#eDrag = document.createElement("div");
+        document.body.appendChild(this.eDrag);
+        this.eDrag.id = "drag";
 
         const ionicons1 = document.createElement("script");
         document.body.appendChild(ionicons1);
@@ -410,6 +330,8 @@ export class App extends Target {
                 }
             }
         }, Math.max(0, 1250 - (util.getTime()-t)));
+
+        this.#setupDone = true;
 
         return true;
     }
@@ -594,10 +516,8 @@ export class App extends Target {
                 this.dragState.post("stop", null);
             };
             const mousemove = e => {
-                if (this.hasEDrag()) {
-                    this.eDrag.style.left = e.pageX+"px";
-                    this.eDrag.style.top = e.pageY+"px";
-                }
+                this.eDrag.style.left = e.pageX+"px";
+                this.eDrag.style.top = e.pageY+"px";
                 this.post("drag-move", e);
                 this.dragState.post("move", e);
             };
@@ -620,7 +540,7 @@ export class App extends Target {
             this.#dragState = null;
             this.dragData = null;
         }
-        if (this.hasEDrag()) this.eDrag.style.visibility = this.dragging ? "inherit" : "hidden";
+        this.eDrag.style.visibility = this.dragging ? "inherit" : "hidden";
     }
     submitDrag() {
         if (!this.dragging) return false;
@@ -638,7 +558,6 @@ export class App extends Target {
         this.#dragData = v;
     }
     get eDrag() { return this.#eDrag; }
-    hasEDrag() { return this.eDrag instanceof HTMLDivElement; }
 
     get pages() { return Object.keys(this.#pages); }
     hasPage(name) {
@@ -649,7 +568,7 @@ export class App extends Target {
         if (!(page instanceof App.Page)) return false;
         if (this.hasPage(page.name)) return false;
         this.#pages[page.name] = page;
-        document.getElementById("mount").appendChild(page.elem);
+        this.eMount.appendChild(page.elem);
         return page;
     }
     getPage(name) {
@@ -720,6 +639,7 @@ export class App extends Target {
         this.#eLoadingTo = v;
     }
     hasELoadingTo() { return this.eLoadingTo instanceof HTMLElement; }
+    get eMount() { return this.#eMount; }
 
     get loading() {
         if (!this.eTitleBar.classList.contains("loading")) return null;

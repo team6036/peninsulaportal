@@ -668,8 +668,8 @@ class Container extends Widget {
 }
 
 class Panel extends Widget {
-    #pages;
-    #pageIndex;
+    #tabs;
+    #tabIndex;
 
     #eOptions;
     #eTop;
@@ -682,7 +682,8 @@ class Panel extends Widget {
         this.elem.classList.add("panel");
         this.elem.tabIndex = 0;
 
-        this.#pages = [];
+        this.#tabs = [];
+        this.#tabIndex = null;
 
         this.#eOptions = document.createElement("button");
         this.elem.appendChild(this.eOptions);
@@ -697,6 +698,8 @@ class Panel extends Widget {
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
+
+        this.tabIndex = 0;
 
         this.eOptions.addEventListener("click", e => {
             if (!this.hasApp()) return;
@@ -720,106 +723,101 @@ class Panel extends Widget {
             this.app.placeContextMenu(r.left, r.bottom);
         });
         this.eAdd.addEventListener("click", e => {
-            this.addPage(new Panel.AddPage());
+            this.addTab(new Panel.AddTab());
         });
 
-        this.#pageIndex = null;
-        this.pageIndex = 0;
-
         this.addHandler("update", data => {
-            this.pages.forEach(page => page.update());
+            this.tabs.forEach(tab => tab.update());
         });
 
         if (a.length <= 0 || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel) a = [a.pages, false];
-            else if (a instanceof Panel.Page) a = [[a], false];
+            if (a instanceof Panel) a = [a.tabs, false];
+            else if (a instanceof Panel.Tab) a = [[a], false];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.Page) a = [a, false];
+                if (a[0] instanceof Panel.Tab) a = [a, false];
                 else {
                     a = new Panel(...a);
-                    a = [a.pages, a.isTitleCollapsed];
+                    a = [a.tabs, a.isTitleCollapsed];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.pages, a.isCollapsed];
+            else if (util.is(a, "obj")) a = [a.tabs, a.isCollapsed];
             else a = [[], false];
         }
 
-        [this.pages, this.isTitleCollapsed] = a;
+        [this.tabs, this.isTitleCollapsed] = a;
 
-        if (this.pages.length <= 0) this.addPage(new Panel.AddPage());
+        if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
     }
 
-    get pages() { return [...this.#pages]; }
-    set pages(v) {
+    get tabs() { return [...this.#tabs]; }
+    set tabs(v) {
         v = util.ensure(v, "arr");
-        this.clearPages();
-        v.forEach(v => this.addPage(v));
+        this.clearTabs();
+        v.forEach(v => this.addTab(v));
     }
-    get pageIndex() { return this.#pageIndex; }
-    set pageIndex(v) {
-        v = Math.min(this.#pages.length-1, Math.max(0, util.ensure(v, "int")));
-        if (this.pageIndex == v) return;
-        this.#pageIndex = v;
-        this.#pages.forEach((page, i) => (i == this.pageIndex) ? page.open() : page.close());
+    get tabIndex() { return this.#tabIndex; }
+    set tabIndex(v) {
+        v = Math.min(this.#tabs.length-1, Math.max(0, util.ensure(v, "int")));
+        if (this.tabIndex == v) return;
+        this.#tabIndex = v;
+        this.#tabs.forEach((tab, i) => (i == this.tabIndex) ? tab.open() : tab.close());
+        if (this.tabs[this.tabIndex] instanceof Panel.Tab)
+            this.tabs[this.tabIndex].eTab.scrollIntoView({ behavior: "smooth" });
         this.format();
     }
-    clearPages() {
-        let pages = this.pages;
-        pages.forEach(page => this.remPage(page));
-        return pages;
+    clearTabs() {
+        let tabs = this.tabs;
+        tabs.forEach(tab => this.remTab(tab));
+        return tabs;
     }
-    hasPage(page) {
-        if (!(page instanceof Panel.Page)) return false;
-        return this.#pages.includes(page) && page.parent == this;
+    hasTab(tab) {
+        if (!(tab instanceof Panel.Tab)) return false;
+        return this.#tabs.includes(tab) && tab.parent == this;
     }
-    getPage(i) {
+    getTab(i) {
         i = util.ensure(i, "int");
-        if (i < 0 || i >= this.#pages.length) return null;
-        return this.#pages[i];
+        if (i < 0 || i >= this.#tabs.length) return null;
+        return this.#tabs[i];
     }
-    addPage(page, at=null) {
-        if (!(page instanceof Panel.Page)) return false;
-        if (this.hasPage(page)) return false;
-        if (page.parent != null) return false;
-        if (at == null) at = this.#pages.length;
-        this.#pages.splice(at, 0, page);
-        page.parent = this;
-        this.eTop.appendChild(page.eTab);
-        this.eContent.appendChild(page.elem);
-        this.pageIndex = this.#pages.indexOf(page);
-        if (this.pages[this.pageIndex] instanceof Panel.Page)
-            this.pages[this.pageIndex].eTab.scrollIntoView({ behavior: "smooth" });
+    addTab(tab, at=null) {
+        if (!(tab instanceof Panel.Tab)) return false;
+        if (this.hasTab(tab)) return false;
+        if (tab.parent != null) return false;
+        if (at == null) at = this.#tabs.length;
+        this.#tabs.splice(at, 0, tab);
+        tab.parent = this;
+        this.eTop.appendChild(tab.eTab);
+        this.eContent.appendChild(tab.elem);
+        this.tabIndex = this.#tabs.indexOf(tab);
         this.format();
-        return page;
+        return tab;
     }
-    remPage(page) {
-        if (!(page instanceof Panel.Page)) return false;
-        if (!this.hasPage(page)) return false;
-        if (page.parent != this) return false;
-        this.#pages.splice(this.#pages.indexOf(page), 1);
-        page.parent = null;
-        this.eTop.removeChild(page.eTab);
-        this.eContent.removeChild(page.elem);
-        page.close();
+    remTab(tab) {
+        if (!(tab instanceof Panel.Tab)) return false;
+        if (!this.hasTab(tab)) return false;
+        if (tab.parent != this) return false;
+        this.#tabs.splice(this.#tabs.indexOf(tab), 1);
+        tab.parent = null;
+        this.eTop.removeChild(tab.eTab);
+        this.eContent.removeChild(tab.elem);
+        tab.close();
         this.format();
-        let index = this.pageIndex;
-        this.#pageIndex = null;
-        this.pageIndex = index;
-        if (this.pages[this.pageIndex] instanceof Panel.Page)
-            this.pages[this.pageIndex].eTab.scrollIntoView({ behavior: "smooth" });
-        return page;
+        let index = this.tabIndex;
+        this.#tabIndex = null;
+        this.tabIndex = index;
+        return tab;
     }
 
     format() {
-        this.pages.forEach((page, i) => {
-            page.eTab.style.order = i;
+        this.tabs.forEach((tab, i) => {
+            tab.eTab.style.order = i;
         });
-        this.eAdd.style.order = this.pages.length;
+        this.eAdd.style.order = this.tabs.length;
     }
     collapse() {
-        if (this.pages.length > 0) return;
+        if (this.tabs.length > 0) return;
         if (this.hasAppParent()) this.parent.rootWidget = null;
         if (this.hasParent()) this.parent.remChild(this);
     }
@@ -846,13 +844,13 @@ class Panel extends Widget {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                pages: this.pages,
+                tabs: this.tabs,
                 isCollapsed: this.isTitleCollapsed,
             }],
         };
     }
 }
-Panel.Page = class PanelPage extends core.Target {
+Panel.Tab = class PanelTab extends core.Target {
     #parent;
 
     #elem;
@@ -884,7 +882,7 @@ Panel.Page = class PanelPage extends core.Target {
         this.eTab.addEventListener("click", e => {
             if (cancel <= 0) return cancel = 10;
             if (!this.hasParent()) return;
-            this.parent.pageIndex = this.parent.pages.indexOf(this);
+            this.parent.tabIndex = this.parent.tabs.indexOf(this);
         });
         this.eTab.addEventListener("mousedown", e => {
             const mouseup = () => {
@@ -896,7 +894,7 @@ Panel.Page = class PanelPage extends core.Target {
                 mouseup();
                 if (!this.hasApp() || !this.hasParent()) return;
                 const app = this.app;
-                this.parent.remPage(this);
+                this.parent.remTab(this);
                 app.dragData = this;
                 app.dragging = true;
             };
@@ -906,7 +904,7 @@ Panel.Page = class PanelPage extends core.Target {
         this.eTabClose.addEventListener("click", e => {
             e.stopPropagation();
             if (!this.hasParent()) return;
-            this.parent.remPage(this);
+            this.parent.remTab(this);
         });
     }
 
@@ -970,7 +968,7 @@ Panel.Page = class PanelPage extends core.Target {
 
     get path() {
         if (!this.hasParent()) return "";
-        return this.parent.path + "-" + this.parent.pages.indexOf(this);
+        return this.parent.path + "-" + this.parent.tabs.indexOf(this);
     }
 
     getHovered(pos, options) {
@@ -987,7 +985,7 @@ Panel.Page = class PanelPage extends core.Target {
         };
     }
 };
-Panel.AddPage = class PanelAddPage extends Panel.Page {
+Panel.AddTab = class PanelAddTab extends Panel.Tab {
     #searchPart;
     #tags;
     #items;
@@ -1003,7 +1001,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
 
         this.elem.classList.add("add");
 
-        this.name = "New Page";
+        this.name = "New Tab";
         this.hasIcon = false;
 
         this.#searchPart = "";
@@ -1046,9 +1044,9 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         if (a.length <= 0 || a.length > 1) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.AddPage) a = [a.searchPart, a.query];
+            if (a instanceof Panel.AddTab) a = [a.searchPart, a.query];
             else if (util.is(a, "arr")) {
-                a = new Panel.AddPage(...a);
+                a = new Panel.AddTab(...a);
                 a = [a.searchPart, a.query];
             }
             else if (util.is(a, "obj")) a = [a.searchPart, a.query];
@@ -1066,30 +1064,30 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         this.clearItems();
         let toolItems = [
             {
-                item: new Panel.AddPage.Button("Graph", "analytics", "var(--cb)"),
+                item: new Panel.AddTab.Button("Graph", "analytics", "var(--cb)"),
                 trigger: () => {
                     if (!this.hasParent()) return;
-                    let index = this.parent.pages.indexOf(this);
-                    this.parent.addPage(new Panel.GraphPage(), index);
-                    this.parent.remPage(this);
+                    let index = this.parent.tabs.indexOf(this);
+                    this.parent.addTab(new Panel.GraphTab(), index);
+                    this.parent.remTab(this);
                 },
             },
             {
-                item: new Panel.AddPage.Button("Odometry2d", "locate", "var(--cy)"),
+                item: new Panel.AddTab.Button("Odometry2d", "locate", "var(--cy)"),
                 trigger: () => {
                     if (!this.hasParent()) return;
-                    let index = this.parent.pages.indexOf(this);
-                    this.parent.addPage(new Panel.Odometry2dPage(), index);
-                    this.parent.remPage(this);
+                    let index = this.parent.tabs.indexOf(this);
+                    this.parent.addTab(new Panel.Odometry2dTab(), index);
+                    this.parent.remTab(this);
                 },
             },
             {
-                item: new Panel.AddPage.Button("Odometry3d", "locate", "var(--cy)"),
+                item: new Panel.AddTab.Button("Odometry3d", "locate", "var(--cy)"),
                 trigger: () => {
                     if (!this.hasParent()) return;
-                    let index = this.parent.pages.indexOf(this);
-                    this.parent.addPage(new Panel.Odometry3dPage(), index);
-                    this.parent.remPage(this);
+                    let index = this.parent.tabs.indexOf(this);
+                    this.parent.addTab(new Panel.Odometry3dTab(), index);
+                    this.parent.remTab(this);
                 },
             },
         ];
@@ -1112,14 +1110,14 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                 if (this.hasApp() && this.app.hasRootModel() && this.app.rootModel.hasRoot()) {
                     let root = this.app.rootModel.root;
                     const dfs = generic => {
-                        let itm = new Panel.AddPage.GenericButton(generic);
+                        let itm = new Panel.AddTab.GenericButton(generic);
                         genericItems.push({
                             item: itm,
                             trigger: () => {
                                 if (!this.hasParent()) return;
-                                let index = this.parent.pages.indexOf(this);
-                                this.parent.addPage(new Panel.BrowserPage(generic.path), index);
-                                this.parent.remPage(this);
+                                let index = this.parent.tabs.indexOf(this);
+                                this.parent.addTab(new Panel.BrowserTab(generic.path), index);
+                                this.parent.remTab(this);
                             },
                         });
                         if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfs(generic));
@@ -1138,19 +1136,19 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                 });
                 genericItems = genericFuse.search(this.query).map(item => item.item);
                 this.items = [
-                    new Panel.AddPage.Header("Tools"),
+                    new Panel.AddTab.Header("Tools"),
                     ...toolItems,
-                    new Panel.AddPage.Header("Tables and Topics"),
+                    new Panel.AddTab.Header("Tables and Topics"),
                     ...genericItems,
                 ];
             } else {
                 this.items = [
-                    new Panel.AddPage.Button("Tables", "folder-outline", "", true),
-                    new Panel.AddPage.Button("Topics", "document-outline", "", true),
-                    new Panel.AddPage.Button("All", "", "", true),
-                    new Panel.AddPage.Divider(),
-                    new Panel.AddPage.Header("Tools"),
-                    new Panel.AddPage.Button("Tools", "cube-outline", "", true),
+                    new Panel.AddTab.Button("Tables", "folder-outline", "", true),
+                    new Panel.AddTab.Button("Topics", "document-outline", "", true),
+                    new Panel.AddTab.Button("All", "", "", true),
+                    new Panel.AddTab.Divider(),
+                    new Panel.AddTab.Header("Tools"),
+                    new Panel.AddTab.Button("Tools", "cube-outline", "", true),
                     ...toolItems,
                 ];
                 this.items[0].addHandler("trigger", () => {
@@ -1168,7 +1166,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
                 });
             }
         } else if (this.searchPart == "tools") {
-            this.tags = [new Panel.AddPage.Tag("Tools", "cube-outline")];
+            this.tags = [new Panel.AddTab.Tag("Tools", "cube-outline")];
             this.placeholder = "Search tools";
             if (this.query.length > 0) {
                 const fuse = new Fuse(toolItems, {
@@ -1181,7 +1179,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
             }
             this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
-            this.tags = [new Panel.AddPage.Tag(
+            this.tags = [new Panel.AddTab.Tag(
                 this.searchPart[0].toUpperCase()+this.searchPart.substring(1).toLowerCase(),
                 { tables: "folder-outline", topics: "document-outline", all: "" }[this.searchPart],
             )];
@@ -1191,14 +1189,14 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
             if (this.hasApp() && this.app.hasRootModel() && this.app.rootModel.hasRoot()) {
                 let root = this.app.rootModel.root;
                 const dfs = generic => {
-                    let itm = new Panel.AddPage.GenericButton(generic);
+                    let itm = new Panel.AddTab.GenericButton(generic);
                     if (generic instanceof { tables: NTModel.Table, topics: NTModel.Topic, all: NTModel.Generic }[this.searchPart]) items.push({
                         item: itm,
                         trigger: () => {
                             if (!this.hasParent()) return;
-                            let index = this.parent.pages.indexOf(this);
-                            this.parent.addPage(new Panel.BrowserPage(generic.path), index);
-                            this.parent.remPage(this);
+                            let index = this.parent.tabs.indexOf(this);
+                            this.parent.addTab(new Panel.BrowserTab(generic.path), index);
+                            this.parent.remTab(this);
                         },
                     });
                     if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfs(generic));
@@ -1245,18 +1243,18 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         return tags;
     }
     hasTag(tag) {
-        if (!(tag instanceof Panel.AddPage.Tag)) return false;
+        if (!(tag instanceof Panel.AddTab.Tag)) return false;
         return this.#tags.includes(tag);
     }
     addTag(tag) {
-        if (!(tag instanceof Panel.AddPage.Tag)) return false;
+        if (!(tag instanceof Panel.AddTab.Tag)) return false;
         if (this.hasTag(tag)) return false;
         this.#tags.push(tag);
         this.eSearchTags.appendChild(tag.elem);
         return tag;
     }
     remTag(tag) {
-        if (!(tag instanceof Panel.AddPage.Tag)) return false;
+        if (!(tag instanceof Panel.AddTab.Tag)) return false;
         if (!this.hasTag(tag)) return false;
         this.#tags.splice(this.#tags.indexOf(tag), 1);
         this.eSearchTags.removeChild(tag.elem);
@@ -1275,18 +1273,18 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         return itms;
     }
     hasItem(itm) {
-        if (!(itm instanceof Panel.AddPage.Item)) return false;
+        if (!(itm instanceof Panel.AddTab.Item)) return false;
         return this.#items.includes(itm);
     }
     addItem(itm) {
-        if (!(itm instanceof Panel.AddPage.Item)) return false;
+        if (!(itm instanceof Panel.AddTab.Item)) return false;
         if (this.hasItem(itm)) return false;
         this.#items.push(itm);
         this.eContent.appendChild(itm.elem);
         return itm;
     }
     remItem(itm) {
-        if (!(itm instanceof Panel.AddPage.Item)) return false;
+        if (!(itm instanceof Panel.AddTab.Item)) return false;
         if (!this.hasItem(itm)) return false;
         this.#items.splice(this.#items.indexOf(itm), 1);
         this.eContent.removeChild(itm.elem);
@@ -1316,7 +1314,7 @@ Panel.AddPage = class PanelAddPage extends Panel.Page {
         };
     }
 };
-Panel.AddPage.Tag = class PanelAddPageTag extends core.Target {
+Panel.AddTab.Tag = class PanelAddTabTag extends core.Target {
     #elem;
     #eIcon;
     #eName;
@@ -1357,7 +1355,7 @@ Panel.AddPage.Tag = class PanelAddPageTag extends core.Target {
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 };
-Panel.AddPage.Item = class PanelAddPageItem extends core.Target {
+Panel.AddTab.Item = class PanelAddTabItem extends core.Target {
     #elem;
 
     constructor() {
@@ -1370,7 +1368,7 @@ Panel.AddPage.Item = class PanelAddPageItem extends core.Target {
 
     update() { this.post("update", null); }
 };
-Panel.AddPage.Header = class PanelAddPageHeader extends Panel.AddPage.Item {
+Panel.AddTab.Header = class PanelAddTabHeader extends Panel.AddTab.Item {
     constructor(value) {
         super();
 
@@ -1382,14 +1380,14 @@ Panel.AddPage.Header = class PanelAddPageHeader extends Panel.AddPage.Item {
     get value() { return this.elem.textContent; }
     set value(v) { this.elem.textContent = v; }
 };
-Panel.AddPage.Divider = class PanelAddPageDivider extends Panel.AddPage.Item {
+Panel.AddTab.Divider = class PanelAddTabDivider extends Panel.AddTab.Item {
     constructor() {
         super();
 
         this.elem.classList.add("divider");
     }
 };
-Panel.AddPage.Button = class PanelAddPageButton extends Panel.AddPage.Item {
+Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
     #btn;
     #eIcon;
     #eName;
@@ -1456,7 +1454,7 @@ Panel.AddPage.Button = class PanelAddPageButton extends Panel.AddPage.Item {
         else this.btn.removeChild(this.eChevron);
     }
 };
-Panel.AddPage.GenericButton = class PanelAddPageGenericButton extends Panel.AddPage.Button {
+Panel.AddTab.GenericButton = class PanelAddTabGenericButton extends Panel.AddTab.Button {
     #generic;
 
     constructor(generic) {
@@ -1502,7 +1500,7 @@ Panel.AddPage.GenericButton = class PanelAddPageGenericButton extends Panel.AddP
     }
     hasGeneric() { return this.generic instanceof NTModel.Generic; }
 };
-Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
+Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #path;
 
     #ePath;
@@ -1529,11 +1527,11 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
         if (a.length <= 0 || a.length > 1) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.BrowserPage) a = [a.path];
+            if (a instanceof Panel.BrowserTab) a = [a.path];
             else if (util.is(a, "arr")) {
                 if (util.is(a[0], "str")) a = [a.join("/")];
                 else {
-                    a = new Panel.BrowserPage(...a);
+                    a = new Panel.BrowserTab(...a);
                     a = [a.path];
                 }
             }
@@ -1808,7 +1806,7 @@ Panel.BrowserPage = class PanelBrowserPage extends Panel.Page {
         };
     }
 };
-Panel.ToolPage = class PanelToolPage extends Panel.Page {
+Panel.ToolTab = class PanelToolTab extends Panel.Tab {
     constructor(name, icon, color="") {
         super();
 
@@ -1819,7 +1817,7 @@ Panel.ToolPage = class PanelToolPage extends Panel.Page {
         this.iconColor = color;
     }
 };
-Panel.ToolCanvasPage = class PanelToolCanvasPage extends Panel.ToolPage {
+Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
 
     #eToggle;
@@ -1906,7 +1904,7 @@ Panel.ToolCanvasPage = class PanelToolCanvasPage extends Panel.ToolPage {
     openOptions() { return this.isOptionsOpen = true; }
     closeOptions() { return this.isOptionsClosed = true; }
 };
-Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
+Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #lVars; #rVars;
 
     #viewMode;
@@ -2118,7 +2116,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
                     range[1] = Math.max(range[1], subrange[1]);
                 });
                 range = range.map(v => util.ensure(v, "num"));
-                let step = Panel.GraphPage.findStep(range[1]-range[0], 5);
+                let step = Panel.GraphTab.findStep(range[1]-range[0], 5);
                 range[0] = Math.floor(range[0]/step) - 1;
                 range[1] = Math.ceil(range[1]/step) + 1;
                 o.range = range;
@@ -2140,7 +2138,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
                 range[1] += addAbove;
                 o.range = range;
             });
-            const timeStep = Panel.GraphPage.findStep(graphRange[1]-graphRange[0], 10);
+            const timeStep = Panel.GraphTab.findStep(graphRange[1]-graphRange[0], 10);
             let y0 = padding*quality;
             let y1 = ctx.canvas.height - padding*quality;
             let y2 = ctx.canvas.height - (padding-5)*quality;
@@ -2283,15 +2281,15 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphPage) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOptionsOpen];
+            if (a instanceof Panel.GraphTab) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.GraphPage.Variable) a = [a, []];
+                if (a[0] instanceof Panel.GraphTab.Variable) a = [a, []];
                 else {
-                    a = new Panel.GraphPage(...a);
+                    a = new Panel.GraphTab(...a);
                     a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOptionsOpen];
                 }
             }
-            else if (a instanceof Panel.GraphPage.Variable) a = [[a], []];
+            else if (a instanceof Panel.GraphTab.Variable) a = [[a], []];
             else if (util.is(a, "obj")) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOpen];
             else a = [[], []];
         }
@@ -2337,11 +2335,11 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         return lVars;
     }
     hasLVar(lVar) {
-        if (!(lVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
         return this.#lVars.has(lVar);
     }
     addLVar(lVar) {
-        if (!(lVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
         if (this.hasLVar(lVar)) return false;
         this.#lVars.add(lVar);
         lVar._onRemove = () => this.remLVar(lVar);
@@ -2351,7 +2349,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         return lVar;
     }
     remLVar(lVar) {
-        if (!(lVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
         if (!this.hasLVar(lVar)) return false;
         this.#lVars.delete(lVar);
         lVar.remHandler("remove", lVar._onRemove);
@@ -2372,11 +2370,11 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         return rVars;
     }
     hasRVar(rVar) {
-        if (!(rVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
         return this.#rVars.has(rVar);
     }
     addRVar(rVar) {
-        if (!(rVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
         if (this.hasRVar(rVar)) return false;
         this.#rVars.add(rVar);
         rVar._onRemove = () => this.remRVar(rVar);
@@ -2386,7 +2384,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         return rVar;
     }
     remRVar(rVar) {
-        if (!(rVar instanceof Panel.GraphPage.Variable)) return false;
+        if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
         if (!this.hasRVar(rVar)) return false;
         this.#rVars.delete(rVar);
         rVar.remHandler("remove", rVar._onRemove);
@@ -2417,7 +2415,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserPage) data = this.hasApp() ? this.app.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.hasApp() ? this.app.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -2448,7 +2446,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
                                 let has = false;
                                 this[side+"Vars"].forEach(v => (v.name == name) ? (has = true) : null);
                                 if (has) return;
-                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphPage.Variable(name, "--c"+nextColor));
+                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(name, "--c"+nextColor));
                             };
                             if (data.isArray)
                                 for (let i = 0; i < data.value.length; i++)
@@ -2482,7 +2480,7 @@ Panel.GraphPage = class PanelGraphPage extends Panel.ToolCanvasPage {
         };
     }
 };
-Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
+Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
     #name;
     #color;
 
@@ -2563,9 +2561,9 @@ Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphPage.Variable) a = [a.name, a.color, a.isShown];
+            if (a instanceof Panel.GraphTab.Variable) a = [a.name, a.color, a.isShown];
             else if (util.is(a, "arr")) {
-                a = new Panel.GraphPage.Variable(...a);
+                a = new Panel.GraphTab.Variable(...a);
                 a = [a.name, a.color, a.isShown];
             }
             else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown];
@@ -2638,7 +2636,7 @@ Panel.GraphPage.Variable = class PanelGraphPageVariable extends core.Target {
         };
     }
 };
-Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
+Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     #poses;
 
     constructor(tail="") {
@@ -2681,11 +2679,11 @@ Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
         return poses;
     }
     hasPose(pose) {
-        if (!(pose instanceof Panel.OdometryPage.Pose)) return false;
+        if (!(pose instanceof Panel.OdometryTab.Pose)) return false;
         return this.#poses.has(pose);
     }
     addPose(pose) {
-        if (!(pose instanceof Panel.OdometryPage.Pose)) return false;
+        if (!(pose instanceof Panel.OdometryTab.Pose)) return false;
         if (this.hasPose(pose)) return false;
         this.#poses.add(pose);
         pose._onRemove = () => this.remPose(pose);
@@ -2695,7 +2693,7 @@ Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
         return pose;
     }
     remPose(pose) {
-        if (!(pose instanceof Panel.OdometryPage.Pose)) return false;
+        if (!(pose instanceof Panel.OdometryTab.Pose)) return false;
         if (!this.hasPose(pose)) return false;
         this.#poses.delete(pose);
         pose.remHandler("remove", pose._onRemove);
@@ -2713,7 +2711,7 @@ Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserPage) data = this.hasApp() ? this.app.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.hasApp() ? this.app.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -2747,7 +2745,7 @@ Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
                                 let has = false;
                                 this.poses.forEach(v => (v.name == name) ? (has = true) : null);
                                 if (has) return;
-                                this.addPose(new Panel.OdometryPage.Pose(name, "--c"+nextColor));
+                                this.addPose(new Panel.OdometryTab.Pose(name, "--c"+nextColor));
                             };
                             addPose(data.path);
                         },
@@ -2763,7 +2761,7 @@ Panel.OdometryPage = class PanelOdometryPage extends Panel.ToolCanvasPage {
     }
     isValidPose(topic) { return true; }
 };
-Panel.OdometryPage.Pose = class PanelOdometryPagePose extends core.Target {
+Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
     #name;
     #color;
     #ghost;
@@ -2852,9 +2850,9 @@ Panel.OdometryPage.Pose = class PanelOdometryPagePose extends core.Target {
         if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.OdometryPage.Pose) a = [a.name, a.color, a.isShown, a.ghost];
+            if (a instanceof Panel.OdometryTab.Pose) a = [a.name, a.color, a.isShown, a.ghost];
             else if (util.is(a, "arr")) {
-                a = new Panel.OdometryPage.Pose(...a);
+                a = new Panel.OdometryTab.Pose(...a);
                 a = [a.name, a.color, a.isShown, a.ghost];
             }
             else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.ghost];
@@ -2936,7 +2934,7 @@ Panel.OdometryPage.Pose = class PanelOdometryPagePose extends core.Target {
         };
     }
 };
-Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
+Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #odometry;
 
     #template;
@@ -3102,11 +3100,11 @@ Panel.Odometry2dPage = class PanelOdometry2dPage extends Panel.OdometryPage {
         if (a.length <= 0 || [6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dPage) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsOpen];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.OdometryPage.Pose) a = [a, null];
+                if (a[0] instanceof Panel.OdometryTab.Pose) a = [a, null];
                 else {
-                    a = new Panel.Odometry2dPage(...a);
+                    a = new Panel.Odometry2dTab(...a);
                     a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsClosed];
                 }
             }
@@ -3434,15 +3432,15 @@ export default class App extends core.App {
             this.#eBlock = document.getElementById("block");
 
             this.addToolButton(new ToolButton("Graph", "analytics")).addHandler("drag", () => {
-                this.dragData = new Panel.GraphPage();
+                this.dragData = new Panel.GraphTab();
                 this.dragging = true;
             });
             this.addToolButton(new ToolButton("Odom2d", "locate")).addHandler("drag", () => {
-                this.dragData = new Panel.Odometry2dPage();
+                this.dragData = new Panel.Odometry2dTab();
                 this.dragging = true;
             });
             this.addToolButton(new ToolButton("Odom3d", "locate")).addHandler("drag", () => {
-                this.dragData = new Panel.Odometry3dPage();
+                this.dragData = new Panel.Odometry3dTab();
                 this.dragging = true;
             });
             
@@ -3547,25 +3545,25 @@ export default class App extends core.App {
                         r = widget.eTop.getBoundingClientRect();
                         if (pos.x > r.left && pos.x < r.right) {
                             if (pos.y > r.top && pos.y < r.bottom) {
-                                if (widget.pages.length <= 0) return {
+                                if (widget.tabs.length <= 0) return {
                                     widget: widget,
                                     at: 0,
                                 };
                                 let at = null;
-                                for (let i = 0; i < widget.pages.length; i++) {
+                                for (let i = 0; i < widget.tabs.length; i++) {
                                     if (at != null) continue;
-                                    let r = widget.getPage(i).eTab.getBoundingClientRect();
+                                    let r = widget.getTab(i).eTab.getBoundingClientRect();
                                     if (i == 0) {
                                         if (pos.x < r.left+r.width/2) {
                                             at = 0;
                                             continue;
                                         }
                                     }
-                                    if (i+1 >= widget.pages.length) {
-                                        if (pos.x > r.left+r.width/2) at = widget.pages.length;
+                                    if (i+1 >= widget.tabs.length) {
+                                        if (pos.x > r.left+r.width/2) at = widget.tabs.length;
                                         continue;
                                     }
-                                    let ri = r, rj = widget.getPage(i+1).eTab.getBoundingClientRect();
+                                    let ri = r, rj = widget.getTab(i+1).eTab.getBoundingClientRect();
                                     if (pos.x > ri.left+ri.width/2 && pos.x < rj.left+rj.width) at = i+1;
                                 }
                                 if (at != null) return {
@@ -3575,9 +3573,9 @@ export default class App extends core.App {
                             }
                         }
                     }
-                    let page = widget.getPage(widget.pageIndex);
-                    if (page instanceof Panel.Page) {
-                        let hovered = page.getHovered(this.dragData, pos, options);
+                    let tab = widget.getTab(widget.tabIndex);
+                    if (tab instanceof Panel.Tab) {
+                        let hovered = tab.getHovered(this.dragData, pos, options);
                         if (util.is(hovered, "obj")) return {
                             widget: widget,
                             at: "custom",
@@ -3599,83 +3597,79 @@ export default class App extends core.App {
             const isValid = o => {
                 if (o instanceof NTModel.Generic) return true;
                 if (o instanceof Widget) return true;
-                if (o instanceof Panel.Page) return true;
+                if (o instanceof Panel.Tab) return true;
                 return false;
             };
             const canGetWidgetFromData = () => {
                 if (this.dragData instanceof NTModel.Generic) return true;
                 if (this.dragData instanceof Widget) return true;
-                if (this.dragData instanceof Panel.Page) return true;
+                if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
             const getWidgetFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return new Panel([new Panel.BrowserPage(this.dragData.path)]);
+                if (this.dragData instanceof NTModel.Generic) return new Panel([new Panel.BrowserTab(this.dragData.path)]);
                 if (this.dragData instanceof Widget) return this.dragData;
-                if (this.dragData instanceof Panel.Page) return new Panel([this.dragData]);
+                if (this.dragData instanceof Panel.Tab) return new Panel([this.dragData]);
                 return null;
             };
-            const canGetPageFromData = () => {
+            const canGetTabFromData = () => {
                 if (this.dragData instanceof NTModel.Generic) return true;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Page) return true;
+                if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
-            const getPageFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return new Panel.BrowserPage(this.dragData.path);
+            const getTabFromData = () => {
+                if (this.dragData instanceof NTModel.Generic) return new Panel.BrowserTab(this.dragData.path);
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Page) return this.dragData;
+                if (this.dragData instanceof Panel.Tab) return this.dragData;
                 return null;
             };
             const canGetGenericFromData = () => {
                 if (this.dragData instanceof NTModel.Generic) return true;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Page) return (this.dragData instanceof Panel.BrowserPage) && (this.lookup(this.dragData.path) instanceof NTModel.Generic);
+                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.lookup(this.dragData.path) instanceof NTModel.Generic);
                 return false;
             };
             const getGenericFromData = () => {
                 if (this.dragData instanceof NTModel.Generic) return this.dragData;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Page) return (this.dragData instanceof Panel.BrowserPage) ? this.lookup(this.dragData.path) : null;
+                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) ? this.lookup(this.dragData.path) : null;
                 return null;
             };
             this.addHandler("drag-start", () => {
                 if (!isValid(this.dragData)) return;
                 let canWidget = canGetWidgetFromData();
-                let canPage = canGetPageFromData();
+                let canTab = canGetTabFromData();
                 let canGeneric = canGetGenericFromData();
                 if (canGeneric) {
                     let generic = getGenericFromData();
-                    if (this.hasEDrag()) {
-                        this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
-                        let btn = this.eDrag.children[0].children[0];
-                        let icon = btn.children[0], name = btn.children[1];
-                        name.textContent = (generic.name.length > 0) ? generic.name : "/";
-                        if (generic instanceof NTModel.Table) {
-                            icon.setAttribute("name", "folder-outline");
-                        } else {
-                            let display = getDisplay(generic.type, generic.value);
-                            if (display != null) {
-                                if ("src" in display) icon.setAttribute("src", display.src);
-                                else icon.setAttribute("name", display.name);
-                                if ("color" in display) icon.style.color = display.color;
-                            }
+                    this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
+                    let btn = this.eDrag.children[0].children[0];
+                    let icon = btn.children[0], name = btn.children[1];
+                    name.textContent = (generic.name.length > 0) ? generic.name : "/";
+                    if (generic instanceof NTModel.Table) {
+                        icon.setAttribute("name", "folder-outline");
+                    } else {
+                        let display = getDisplay(generic.type, generic.value);
+                        if (display != null) {
+                            if ("src" in display) icon.setAttribute("src", display.src);
+                            else icon.setAttribute("name", display.name);
+                            if ("color" in display) icon.style.color = display.color;
                         }
                     }
                     return;
                 }
-                if (canPage) {
-                    if (this.dragData instanceof Panel.Page) {
-                        if (this.hasEDrag()) {
-                            this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
-                            let btn = this.eDrag.children[0].children[0];
-                            let icon = btn.children[0], name = btn.children[1];
-                            name.textContent = this.dragData.name;
-                            if (this.dragData.hasIcon) {
-                                if (this.dragData.eTabIcon.hasAttribute("src")) icon.setAttribute("src", this.dragData.eTabIcon.getAttribute("src"));
-                                else icon.setAttribute("name", this.dragData.eTabIcon.getAttribute("name"));
-                                icon.style = this.dragData.eTabIcon.style;
-                            } else icon.style.display = "none";
-                        }
+                if (canTab) {
+                    if (this.dragData instanceof Panel.Tab) {
+                        this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
+                        let btn = this.eDrag.children[0].children[0];
+                        let icon = btn.children[0], name = btn.children[1];
+                        name.textContent = this.dragData.name;
+                        if (this.dragData.hasIcon) {
+                            if (this.dragData.eTabIcon.hasAttribute("src")) icon.setAttribute("src", this.dragData.eTabIcon.getAttribute("src"));
+                            else icon.setAttribute("name", this.dragData.eTabIcon.getAttribute("name"));
+                            icon.style = this.dragData.eTabIcon.style;
+                        } else icon.style.display = "none";
                     }
                 }
             });
@@ -3690,7 +3684,7 @@ export default class App extends core.App {
                     this.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Page),
+                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Tab),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel))
@@ -3706,7 +3700,7 @@ export default class App extends core.App {
                     this.placeBlock(r);
                 } else if (util.is(at, "int")) {
                     let r = new util.Rect(hovered.widget.eTop.getBoundingClientRect());
-                    let x = (at >= hovered.widget.pages.length) ? hovered.widget.getPage(hovered.widget.pages.length-1).eTab.getBoundingClientRect().right : hovered.widget.getPage(at).eTab.getBoundingClientRect().left;
+                    let x = (at >= hovered.widget.tabs.length) ? hovered.widget.getTab(hovered.widget.tabs.length-1).eTab.getBoundingClientRect().right : hovered.widget.getTab(at).eTab.getBoundingClientRect().left;
                     this.placeBlock(new util.Rect(x, r.y+10, 0, r.h-15));
                 } else if (at == "custom") {
                     let data = util.ensure(hovered.data, "obj");
@@ -3717,7 +3711,7 @@ export default class App extends core.App {
                 if (!isValid(this.dragData)) return;
                 this.hideBlock();
                 let canWidget = canGetWidgetFromData();
-                let canPage = canGetPageFromData();
+                let canTab = canGetTabFromData();
                 if (!this.hasRootWidget()) {
                     this.rootWidget = getWidgetFromData();
                     return;
@@ -3726,7 +3720,7 @@ export default class App extends core.App {
                     this.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Page),
+                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Tab),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel)) return;
@@ -3749,8 +3743,8 @@ export default class App extends core.App {
                         parent.addChild(container, thisAt);
                         parent.weights = weights;
                     }
-                } else if (util.is(at, "int") && canPage) {
-                    hovered.widget.addPage(getPageFromData(), at);
+                } else if (util.is(at, "int") && canTab) {
+                    hovered.widget.addTab(getTabFromData(), at);
                 } else if (at == "custom") {
                     let data = util.ensure(hovered.data, "obj");
                     if (util.is(data.submit, "func")) data.submit();
@@ -3773,20 +3767,20 @@ export default class App extends core.App {
                 const elem = document.activeElement;
                 const active = getWidgetFromElem(this.rootWidget, elem);
                 if (!(active instanceof Panel)) return;
-                active.addPage(new Panel.AddPage());
+                active.addTab(new Panel.AddTab());
             });
             this.addHandler("cmd-close", data => {
                 const elem = document.activeElement;
                 const active = getWidgetFromElem(this.rootWidget, elem);
                 if (!(active instanceof Panel)) return;
-                active.remPage(active.pages[active.pageIndex]);
+                active.remTab(active.tabs[active.tabIndex]);
             });
             this.addHandler("cmd-openclose", data => {
                 const elem = document.activeElement;
                 const active = getWidgetFromElem(this.rootWidget, elem);
                 if (!(active instanceof Panel)) return;
-                if (!(active.pages[active.pageIndex] instanceof Panel.Page)) return;
-                active.pages[active.pageIndex].post("openclose", null);
+                if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
+                active.tabs[active.tabIndex].post("openclose", null);
             });
             this.addHandler("cmd-expandcollapse", data => {
                 const elem = document.activeElement;
@@ -4019,3 +4013,7 @@ export default class App extends core.App {
         this.eBlock.style.height = Math.max(0, r.h-4)+"px";
     }
 }
+App.ProjectPage = class AppProjectPage extends core.App.Page {
+    constructor() {
+    }
+};
