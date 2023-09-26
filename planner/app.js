@@ -1162,7 +1162,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     async refresh() {
         this.clearButtons();
         this.eTemplates.innerHTML = "";
-        const globalTemplates = await window.api.getTemplates();
+        const globalTemplates = await window.api.get("templates");
         for (let name in globalTemplates) {
             let btn = document.createElement("button");
             this.eTemplates.appendChild(btn);
@@ -2137,9 +2137,9 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (!this.hasApp()) return;
         await this.refresh();
         this.eDisplay.focus();
-        const globalTemplates = await window.api.getTemplates();
-        const globalTemplateImages = await window.api.getTemplateImages();
-        const activeTemplate = await window.api.getActiveTemplate();
+        const globalTemplates = await window.api.get("templates");
+        const globalTemplateImages = await window.api.get("template-images");
+        const activeTemplate = await window.api.get("active-template");
         let hasTemplates = await window.api.fileHas("templates.json");
         if (!hasTemplates) return console.log("no templates found");
         let templatesContent = null;

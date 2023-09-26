@@ -354,7 +354,7 @@ export default class App extends core.App {
             this.#eLoads = document.querySelector("#TITLEPAGE > .loads");
 
             this.addHandler("cmd-spawn", async name => {
-                let isDevMode = await window.api.getDevMode();
+                let isDevMode = await window.api.get("devmode");
                 if (!isDevMode && name == "PANEL") {
                     let pop = this.confirm();
                     pop.eContent.innerText = "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs";
@@ -403,7 +403,7 @@ export default class App extends core.App {
             this.addHandler("update", async data => {
                 if (lock) return;
                 lock = true;
-                let loads = await window.api.getLoads();
+                let loads = await window.api.get("loads");
                 if (prevLoads.length == loads.length) {
                     let all = true;
                     for (let i = 0; i < loads.length; i++) {
