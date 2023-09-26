@@ -1139,10 +1139,12 @@ const MAIN = async () => {
                         submenu: [
                             {
                                 label: "Peninsula Panel",
+                                accelerator: "CmdOrCtrl+1",
                                 click: () => this.ask("spawn", ["PANEL"]),
                             },
                             {
                                 label: "Peninsula Planner",
+                                accelerator: "CmdOrCtrl+2",
                                 click: () => this.ask("spawn", ["PLANNER"]),
                             },
                         ],

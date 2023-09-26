@@ -24,11 +24,11 @@ class FeatureButton extends core.Target {
         this.eTooltip.classList.add("tooltip");
         this.eTooltip.classList.add("hov");
         this.eTooltip.classList.add("sx");
-        this.eTooltip.style.setProperty("--bg", "var(--a)");
 
         this.name = name;
         this.icon = icon;
         this.tooltip = "";
+        this.tooltipColor = "";
     }
 
     get elem() { return this.#elem; }
@@ -54,6 +54,8 @@ class FeatureButton extends core.Target {
         if (this.eTooltip.textContent.length > 0) this.eTooltip.style.visibility = "inherit";
         else this.eTooltip.style.visibility = "hidden";
     }
+    get tooltipColor() { return this.eTooltip.style.getPropertyValue("--bg"); }
+    set tooltipColor(v) { return this.eTooltip.style.setProperty("--bg", v); }
 }
 
 class UpperFeatureButton extends core.Target {
@@ -371,19 +373,21 @@ export default class App extends core.App {
             let btn;
 
             btn = this.addFeatureButton(new FeatureButton("Panel", "grid"));
-            btn.tooltip = "Coming soon!";
+            btn.tooltip = "Experimental!";
+            btn.tooltipColor = "var(--cr)";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
 
             btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
-            // btn.tooltip = "Coming soon!";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PLANNER"));
 
             btn = this.addFeatureButton(new FeatureButton("Pursuit", "flash"));
             btn.tooltip = "Coming soon!";
+            btn.tooltipColor = "var(--a)";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PURSUIT"));
 
             btn = this.addFeatureButton(new FeatureButton("Perception", "eye"));
             btn.tooltip = "Coming soon!";
+            btn.tooltipColor = "var(--a)";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
