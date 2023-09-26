@@ -1321,19 +1321,6 @@ Portal.Feature = class PortalFeature extends core.Target {
             },
         };
 
-        let lock = false, t0 = 0;
-        this.addHandler("update", async data => {
-            // this.popups.forEach(pop => pop.update());
-            if (lock) return;
-            let t1 = util.getTime();
-            if (t1-t0 < 1000) return;
-            lock = true;
-            t0 = t1;
-            let is = await this.isDevMode();
-            this.menuChange({ toggleDevTools: { ".enabled": is } });
-            lock = false;
-        });
-
         if (namefs[this.name]) namefs[this.name]();
 
         this.#menu = electron.Menu.buildFromTemplate(template);
@@ -1341,6 +1328,12 @@ Portal.Feature = class PortalFeature extends core.Target {
             window.setMenu(this.menu);
         
         (async () => {
+            const checkDevMode = async () => {
+                let is = await this.isDevMode();
+                this.menuChange({ toggleDevTools: { ".enabled": is } });
+            };
+            fs.watch(path.join(__dirname, ".devconfig"), () => checkDevMode());
+            await checkDevMode();
             if (!this.hasName()) return;
             if (!this.hasPortal()) return;
             await this.portal.affirm();
