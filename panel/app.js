@@ -502,6 +502,7 @@ class Container extends Widget {
         wSum = 0;
         v.forEach(w => (wSum += w));
         this.#weights = (this.children.length > 0) ? v.map(w => w/wSum) : [];
+        this.post("change", null);
         this.format();
     }
     clearChildren() {
@@ -534,6 +535,9 @@ class Container extends Widget {
             this.#weights = this.#weights.map(w => w/wSum);
             this.#children.splice(at, 0, child);
         }
+        child._onChange = () => this.post("change", null);
+        child.addHandler("change", child._onChange);
+        this.post("change", null);
         this.format();
         return child;
     }
@@ -564,6 +568,9 @@ class Container extends Widget {
             this.#weights.forEach(w => (wSum += w));
             this.#weights = this.#weights.map(w => w/wSum);
         }
+        child.remHandler("change", child._onChange);
+        delete child._onChange;
+        this.post("change", null);
         this.format();
         return child;
     }
@@ -574,6 +581,7 @@ class Container extends Widget {
         if (!["x", "y"].includes(v)) return;
         if (this.axis == v) return;
         this.#axis = v;
+        this.post("change", null);
         this.format();
     }
 
@@ -754,6 +762,8 @@ class Panel extends Widget {
         [this.tabs, this.isTitleCollapsed] = a;
 
         if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
+
+        new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
     }
 
     get tabs() { return [...this.#tabs]; }
@@ -770,6 +780,7 @@ class Panel extends Widget {
         this.#tabs.forEach((tab, i) => (i == this.tabIndex) ? tab.open() : tab.close());
         if (this.tabs[this.tabIndex] instanceof Panel.Tab)
             this.tabs[this.tabIndex].eTab.scrollIntoView({ behavior: "smooth" });
+        this.post("change", null);
         this.format();
     }
     clearTabs() {
@@ -793,6 +804,9 @@ class Panel extends Widget {
         if (at == null) at = this.#tabs.length;
         this.#tabs.splice(at, 0, tab);
         tab.parent = this;
+        tab._onChange = () => this.post("change", null);
+        tab.addHandler("change", tab._onChange);
+        this.post("change", null);
         this.eTop.appendChild(tab.eTab);
         this.eContent.appendChild(tab.elem);
         this.tabIndex = this.#tabs.indexOf(tab);
@@ -805,6 +819,9 @@ class Panel extends Widget {
         if (tab.parent != this) return false;
         this.#tabs.splice(this.#tabs.indexOf(tab), 1);
         tab.parent = null;
+        tab.remHandler("change", tab._onChange);
+        delete tab._onChange;
+        this.post("change", null);
         this.eTop.removeChild(tab.eTab);
         this.eContent.removeChild(tab.elem);
         tab.close();
@@ -911,6 +928,8 @@ Panel.Tab = class PanelTab extends core.Target {
             if (!this.hasParent()) return;
             this.parent.remTab(this);
         });
+
+        new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
     }
 
     get parent() { return this.#parent; }
@@ -937,14 +956,14 @@ Panel.Tab = class PanelTab extends core.Target {
     get eTabName() { return this.#eTabName; }
     get eTabClose() { return this.#eTabClose; }
 
-    get isOpen() { return this.eTab.classList.contains("this"); }
+    get isOpen() { return this.elem.classList.contains("this"); }
     set isOpen(v) {
         v = !!v;
         if (this.isOpen == v) return;
-        if (v) this.eTab.classList.add("this");
-        else this.eTab.classList.remove("this");
         if (v) this.elem.classList.add("this");
         else this.elem.classList.remove("this");
+        if (v) this.eTab.classList.add("this");
+        else this.eTab.classList.remove("this");
     }
     get isClosed() { return !this.isOpen; }
     set isClosed(v) { this.isOpen = !v; }
@@ -1042,7 +1061,10 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.eSearchInput.value.length > 0) return;
             this.searchPart = null;
         });
-        this.eSearchInput.addEventListener("input", e => this.refresh());
+        this.eSearchInput.addEventListener("input", e => {
+            this.post("change", null);
+            this.refresh();
+        });
         this.eSearchClear.addEventListener("click", e => {
             this.searchPart = null;
         });
@@ -1237,6 +1259,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         if (this.searchPart == v) return;
         this.#searchPart = v;
         this.query = "";
+        this.post("change", null);
         this.refresh();
     }
     hasSearchPart() { return this.searchPart != null; }
@@ -1311,7 +1334,10 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     set placeholder(v) { this.eSearchInput.placeholder = v; }
 
     get query() { return this.eSearchInput.value; }
-    set query(v) { this.eSearchInput.value = v; }
+    set query(v) {
+        this.eSearchInput.value = v;
+        this.post("change", null);
+    }
 
     toJSON() {
         return {
@@ -1800,6 +1826,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             btn.textContent = (name == null) ? "/" : name;
             btn.addEventListener("click", e => { this.path = pth; });
         });
+        this.post("change", null);
     }
 
     get ePath() { return this.#ePath; }
@@ -1875,6 +1902,8 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
             this.canvas.style.height = (r.height-4)+"px";
             this.update();
         }).observe(this.eContent);
+
+        new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
         this.openOptions();
     }
@@ -1983,9 +2012,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.placeholder = "...";
                                 input.min = 0;
                                 this.viewParams.time = 5000;
+                                this.post("change", null);
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.viewParams.time = v;
+                                    this.post("change", null);
                                 });
                                 this.addHandler("update", data => {
                                     if (document.activeElement == input) return;
@@ -2005,9 +2036,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.placeholder = "...";
                                 input.min = 0;
                                 this.viewParams.time = 5000;
+                                this.post("change", null);
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.viewParams.time = v;
+                                    this.post("change", null);
                                 });
                                 this.addHandler("update", data => {
                                     if (document.activeElement == input) return;
@@ -2040,13 +2073,16 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.min = 0;
                                 this.viewParams.start = 0;
                                 this.viewParams.stop = 5000;
+                                this.post("change", null);
                                 startInput.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(startInput.value), "num"));
                                     this.viewParams.start = v;
+                                    this.post("change", null);
                                 });
                                 stopInput.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(stopInput.value), "num"));
                                     this.viewParams.stop = v;
+                                    this.post("change", null);
                                 });
                                 this.addHandler("update", data => {
                                     if (document.activeElement != startInput) startInput.value = this.viewParams.start;
@@ -2353,9 +2389,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (this.hasLVar(lVar)) return false;
         this.#lVars.add(lVar);
         lVar._onRemove = () => this.remLVar(lVar);
+        lVar._onChange = () => this.post("change", null);
         lVar.addHandler("remove", lVar._onRemove);
+        lVar.addHandler("change", lVar._onChange);
         if (this.hasEOptionSection("l"))
             this.getEOptionSection("l").appendChild(lVar.elem);
+        this.post("change", null);
         return lVar;
     }
     remLVar(lVar) {
@@ -2363,9 +2402,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (!this.hasLVar(lVar)) return false;
         this.#lVars.delete(lVar);
         lVar.remHandler("remove", lVar._onRemove);
+        lVar.remHandler("change", lVar._onChange);
         delete lVar._onRemove;
+        delete lVar._onChange;
         if (this.hasEOptionSection("l"))
             this.getEOptionSection("l").removeChild(lVar.elem);
+        this.post("change", null);
         return lVar;
     }
     get rVars() { return [...this.#rVars]; }
@@ -2388,9 +2430,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (this.hasRVar(rVar)) return false;
         this.#rVars.add(rVar);
         rVar._onRemove = () => this.remRVar(rVar);
+        rVar._onChange = () => this.post("change", null);
         rVar.addHandler("remove", rVar._onRemove);
+        rVar.addHandler("change", rVar._onChange);
         if (this.hasEOptionSection("r"))
             this.getEOptionSection("r").appendChild(rVar.elem);
+        this.post("change", null);
         return rVar;
     }
     remRVar(rVar) {
@@ -2401,6 +2446,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         delete rVar._onRemove;
         if (this.hasEOptionSection("r"))
             this.getEOptionSection("r").removeChild(rVar.elem);
+        this.post("change", null);
         return rVar;
     }
 
@@ -2410,11 +2456,13 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (this.viewMode == v) return;
         if (!["right", "left", "section", "all"].includes(v)) return;
         this.#viewMode = v;
+        this.post("change", null);
     }
     get viewParams() { return this.#viewParams; }
     set viewParams(v) {
         v = util.ensure(v, "obj");
         for (let k in v) this.#viewMode[k] = v[k];
+        this.post("change", null);
     }
 
     getHovered(data, pos, options) {
@@ -2560,6 +2608,9 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
         this.eShowBox.addEventListener("click", e => {
             e.stopPropagation();
         });
+        this.eShow.addEventListener("change", e => {
+            this.post("change", null);
+        });
         this.eRemoveBtn.addEventListener("click", e => {
             e.stopPropagation();
             this.post("remove", null);
@@ -2588,6 +2639,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
     set name(v) {
         this.#name = (v == null) ? null : String(v);
         this.eDisplayName.textContent = this.hasName() ? this.name : "?";
+        this.post("change", null);
     }
     hasName() { return this.name != null; }
     get color() { return this.#color; }
@@ -2601,6 +2653,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
             if (btn.color == this.color) btn.classList.add("this");
             else btn.classList.remove("this");
         });
+        this.post("change", null);
     }
     hasColor() { return this.color != null; }
 
@@ -2616,7 +2669,10 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
     get eColorPickerColors() { return [...this.#eColorPickerColors]; }
 
     get isShown() { return this.eShow.checked; }
-    set isShown(v) { this.eShow.checked = v; }
+    set isShown(v) {
+        this.eShow.checked = v;
+        this.post("change", null);
+    }
     get isHidden() { return !this.isShown; }
     set isHidden(v) { this.isShown = !v; }
     show() { return this.isShown = true; }
@@ -2697,9 +2753,12 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (this.hasPose(pose)) return false;
         this.#poses.add(pose);
         pose._onRemove = () => this.remPose(pose);
+        pose._onChange = () => this.post("change", null);
         pose.addHandler("remove", pose._onRemove);
+        pose.addHandler("change", pose._onChange);
         if (this.hasEOptionSection("p"))
             this.getEOptionSection("p").appendChild(pose.elem);
+        this.post("change", null);
         return pose;
     }
     remPose(pose) {
@@ -2707,9 +2766,12 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!this.hasPose(pose)) return false;
         this.#poses.delete(pose);
         pose.remHandler("remove", pose._onRemove);
+        pose.remHandler("change", pose._onChange);
+        delete pose._onRemove;
+        delete pose._onChange;
         if (this.hasEOptionSection("p"))
             this.getEOptionSection("p").removeChild(pose.elem);
-        delete pose._onRemove;
+        this.post("change", null);
         return pose;
     }
 
@@ -2849,6 +2911,9 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         this.eShowBox.addEventListener("click", e => {
             e.stopPropagation();
         });
+        this.eShow.addEventListener("change", e => {
+            this.post("change", null);
+        });
         this.eRemoveBtn.addEventListener("click", e => {
             e.stopPropagation();
             this.post("remove", null);
@@ -2878,6 +2943,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
     set name(v) {
         this.#name = (v == null) ? null : String(v);
         this.eDisplayName.textContent = this.hasName() ? this.name : "?";
+        this.post("change", null);
     }
     hasName() { return this.name != null; }
     get color() { return this.#color; }
@@ -2891,6 +2957,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
             if (btn.color == this.color) btn.classList.add("this");
             else btn.classList.remove("this");
         });
+        this.post("change", null);
     }
     hasColor() { return this.color != null; }
     get ghost() { return this.#ghost; }
@@ -2898,6 +2965,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         this.#ghost = !!v;
         if (this.ghost) this.eGhostBtn.classList.add("this");
         else this.eGhostBtn.classList.remove("this");
+        this.post("change", null);
     }
 
     get elem() { return this.#elem; }
@@ -2913,7 +2981,10 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
     get eGhostBtn() { return this.#eGhostBtn; }
 
     get isShown() { return this.eShow.checked; }
-    set isShown(v) { this.eShow.checked = v; }
+    set isShown(v) {
+        this.eShow.checked = v;
+        this.post("change", null);
+    }
     get isHidden() { return !this.isShown; }
     set isHidden(v) { this.isShown = !v; }
     show() { return this.isShown = true; }
@@ -3029,6 +3100,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.w = v*(this.isMeters ? 100 : 1);
+                this.post("change", null);
             }
         });
         this.#eSizeHInput = document.createElement("input");
@@ -3042,6 +3114,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.h = v*(this.isMeters ? 100 : 1);
+                this.post("change", null);
             }
         });
         info = document.createElement("div");
@@ -3065,6 +3138,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.robotW = v*(this.isMeters ? 100 : 1);
+                this.post("change", null);
             }
         });
         this.#eRobotSizeHInput = document.createElement("input");
@@ -3078,6 +3152,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.robotH = v*(this.isMeters ? 100 : 1);
+                this.post("change", null);
             }
         });
         let eNav;
@@ -3226,6 +3301,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.#template = (v == null) ? null : String(v);
         if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
             this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
+        this.post("change", null);
     }
 
     get size() { return this.#size; }
@@ -3242,11 +3318,21 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     set robotH(v) { this.robotSize.y = v; }
 
     get isMeters() { return this.#isMeters; }
-    set isMeters(v) { this.#isMeters = !!v; }
+    set isMeters(v) {
+        v = !!v;
+        if (this.isMeters == v) return;
+        this.#isMeters = v;
+        this.post("change", null);
+    }
     get isCentimeters() { return !this.isMeters; }
     set isCentimeters(v) { this.isMeters = !v; }
     get isDegrees() { return this.#isDegrees; }
-    set isDegrees(v) { this.#isDegrees = !!v; }
+    set isDegrees(v) {
+        v = !!v;
+        if (this.isDegrees == v) return;
+        this.#isDegrees = v;
+        this.post("change", null);
+    }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
 
@@ -3278,6 +3364,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         };
     }
 };
+
+class Project extends core.Target {
+    constructor() {
+        super();
+    }
+}
 
 const REVIVER = new core.Reviver(core.REVIVER);
 REVIVER.addRuleAndAllSub(Container);
@@ -3984,11 +4076,15 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (this.rootWidget == v) return;
         if (this.hasRootWidget()) {
             this.rootWidget.parent = null;
+            this.rootWidget.remHandler("change", this.rootWidget._onChange);
+            delete this.rootWidget._onChange;
             this.eContent.removeChild(this.rootWidget.elem);
         }
         this.#rootWidget = v;
         if (this.hasRootWidget()) {
             this.rootWidget.parent = this;
+            this.rootWidget._onChange = () => console.log("change");
+            this.rootWidget.addHandler("change", this.rootWidget._onChange);
             this.eContent.appendChild(this.rootWidget.elem);
             this.rootWidget.elem.focus();
         }
