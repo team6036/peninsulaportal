@@ -424,10 +424,12 @@ label.switch > input[type="checkbox"]:checked + span::before {
 
     background-color: var(--bg);
     color: var(--v8);
+    opacity: 100%;
+    visibility: inherit;
 
     font-size: 14px;
 
-    transition: --tooltip-size-v var(--t), transform var(--t), background-color var(--t);
+    transition: --tooltip-size-v var(--t), transform var(--t), background-color var(--t), opacity var(--t), visibility var(--t);
 }
 .tooltip::before {
     position: absolute;
@@ -443,10 +445,16 @@ label.switch > input[type="checkbox"]:checked + span::before {
     transition: background-color var(--t);
 }
 .tooltip.hov {
-    --tooltip-size-v: 0%;
+    --tooltip-size-v: 75%;
+
+    opacity: 0%;
+    visibility: hidden;
 }
 :hover > .tooltip.hov {
     --tooltip-size-v: 100%;
+
+    opacity: 100%;
+    visibility: inherit;
 }
 .tooltip.nex {
     top: 0%;
@@ -829,9 +837,18 @@ label.switch > input[type="checkbox"]:checked + span::before {
     align-content: center;
 
     background-color: var(--v1-8);
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: opacity var(--t), visibility var(--t);;
+}
+.popup.in {
+    opacity: 100%;
+    visibility: inherit;
 }
 .popup > .inner {
     position: relative;
+    transform: scale(75%);
 
     padding: 10px;
 
@@ -846,6 +863,11 @@ label.switch > input[type="checkbox"]:checked + span::before {
     background-color: var(--v2);
     border-radius: 10px;
     filter: drop-shadow(0px 5px 5px var(--v0-8));
+
+    transition: transform var(--t);
+}
+.popup.in > .inner {
+    transform: scale(100%);
 }
 .popup.custom > .inner > button.close {
     --bg: var(--v3);
