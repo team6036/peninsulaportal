@@ -1600,7 +1600,7 @@ const MAIN = async () => {
                         return new Promise((res, rej) => {
                             if (this.manager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
                             this.log("SPAWN");
-                            const process = this.manager.addProcess(new Process(cp.spawn("python3", [script], { cwd: root })));
+                            const process = this.manager.addProcess(new Process(cp.spawn(project.config.scriptPython, [script], { cwd: root })));
                             process.id = "script";
                             const finish = async () => {
                                 let hasMainDir = await Portal.dirHas(path.join(root, "paths"));

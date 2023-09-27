@@ -2177,7 +2177,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 template[".robotMass"] = globalTemplate["robotMass"];
                 template[".meta.backgroundScale"] = globalTemplate["imageScale"];
                 template[".meta.backgroundImage"] = globalTemplateImages[name];
-                template[".meta.backgroundPos"] = new V(template[".size"]).div(2);
+                // template[".meta.backgroundPos"] = new V(template[".size"]).div(2);
                 for (let k in template) {
                     let v = template[k];
                     k = String(k).split(".");
@@ -3592,6 +3592,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     #eScript;
     #eScriptInput;
     #eScriptBtn;
+    #scriptPython;
     #scriptUseDefault;
 
     constructor() {
@@ -3753,6 +3754,20 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             dialog.click();
         });
 
+        this.addItem(new App.ProjectPage.Panel.SubHeader("Script Python", "shell"));
+        this.#scriptPython = this.addItem(new App.ProjectPage.Panel.Input1d());
+        this.scriptPython.inputs.forEach(inp => {
+            inp.type = "text";
+            inp.placeholder = "Python command";
+            inp.addEventListener("change", e => {
+                if (!this.hasPage()) return;
+                let v = inp.value;
+                if (this.page.hasProject())
+                    this.page.project.config.scriptPython = v;
+                this.page.post("refresh-options", null);
+            });
+        });
+
         header = this.addItem(new App.ProjectPage.Panel.SubHeader("Default Generator Script"));
         this.#scriptUseDefault = document.createElement("label");
         this.scriptUseDefault.classList.add("switch");
@@ -3776,6 +3791,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.momentOfInertia.inputs.forEach(inp => (inp.disabled = !has));
             this.efficiency.inputs.forEach(inp => (inp.disabled = !has));
             this.is12MotorMode.disabled = !has;
+            this.scriptPython.inputs.forEach(inp => (inp.disabled = !has));
             this.scriptUseDefault.disabled = !has;
         });
         this.addHandler("refresh", data => {
@@ -3789,6 +3805,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.eScriptInput.value = has ? this.page.project.config.script : "";
             this.eScriptInput.disabled = !has || this.page.project.config.scriptUseDefault;
             this.eScriptBtn.disabled = !has || this.page.project.config.scriptUseDefault;
+            this.scriptPython.inputs.forEach(inp => (inp.value = has ? this.page.project.config.scriptPython : ""));
             this.scriptUseDefault.checked = has ? this.page.project.config.scriptUseDefault : false;
         });
     }
@@ -3802,5 +3819,6 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     get eScript() { return this.#eScript; }
     get eScriptInput() { return this.#eScriptInput; }
     get eScriptBtn() { return this.#eScriptBtn; }
+    get scriptPython() { return this.#scriptPython; }
     get scriptUseDefault() { return this.#scriptUseDefault; }
 }

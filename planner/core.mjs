@@ -4,7 +4,7 @@ import { V } from "../util.mjs";
 import * as core from "../core.mjs";
 
 
-export const COREVERSION = 1;
+export const COREVERSION = 2;
 
 
 export class Project extends core.Target {
@@ -291,6 +291,7 @@ export class Project extends core.Target {
 }
 Project.Config = class ProjectConfig extends core.Target {
     #script;
+    #scriptPython;
     #scriptUseDefault;
 
     #momentOfInertia;
@@ -301,28 +302,29 @@ Project.Config = class ProjectConfig extends core.Target {
         super();
 
         this.#script = null;
+        this.#scriptPython = "";
         this.#scriptUseDefault = false;
 
         this.#momentOfInertia = 0;
         this.#efficiency = 0;
         this.#is12MotorMode = false;
 
-        if (a.length <= 0 || ![1, 4, 5].includes(a.length)) a = [null];
+        if (a.length <= 0 || ![1, 4, 6].includes(a.length)) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Config) a = [a.script, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+            if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
             else if (util.is(a, "arr")) {
                 a = new Project.Config(...a);
-                a = [a.script, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+                a = [a.script, a.scriptPython, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
             }
-            else if (util.is(a, "str")) a = [a, null, null, null];
-            else if (util.is(a, "obj")) a = [a.script, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+            else if (util.is(a, "str")) a = [a, 0, 0, false];
+            else if (util.is(a, "obj")) a = [a.script, a.scriptPython, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
             else a = [null, 0, 0, false];
         }
         if (a.length == 4)
-            a = [...a.slice(0, 1), false, ...a.slice(1)];
+            a = [...a.slice(0, 1), "python3", false, ...a.slice(1)];
 
-        [this.script, this.scriptUseDefault, this.momentOfInertia, this.efficiency, this.is12MotorMode] = a;
+        [this.script, this.scriptPython, this.scriptUseDefault, this.momentOfInertia, this.efficiency, this.is12MotorMode] = a;
     }
 
     get script() { return this.#script; }
@@ -330,6 +332,13 @@ Project.Config = class ProjectConfig extends core.Target {
         v = (v == null) ? null : String(v);
         if (this.script == v) return;
         this.#script = v;
+        this.post("change", null);
+    }
+    get scriptPython() { return this.#scriptPython; }
+    set scriptPython(v) {
+        v = (v == null) ? "python3" : String(v);
+        if (this.scriptPython == v) return;
+        this.#scriptPython = v;
         this.post("change", null);
     }
     get scriptUseDefault() { return this.#scriptUseDefault; }
@@ -370,7 +379,7 @@ Project.Config = class ProjectConfig extends core.Target {
             "%CUSTOM": true,
             "%ARGS": [{
                 VERSION: COREVERSION,
-                script: this.script, scriptUseDefault: this.scriptUseDefault,
+                script: this.script, scriptPython: this.scriptPython, scriptUseDefault: this.scriptUseDefault,
                 momentOfInertia: this.momentOfInertia,
                 efficiency: this.efficiency,
                 is12MotorMode: this.is12MotorMode,
@@ -385,7 +394,7 @@ Project.Meta = class ProjectMeta extends core.Target {
     #thumb;
 
     #backgroundImage;
-    #backgroundPos;
+    // #backgroundPos;
     #backgroundScale;
 
     constructor(...a) {
@@ -397,19 +406,22 @@ Project.Meta = class ProjectMeta extends core.Target {
         this.#thumb = null;
 
         this.#backgroundImage = null;
-        this.#backgroundPos = new V();
+        // this.#backgroundPos = new V();
         this.#backgroundScale = 1;
 
-        if (a.length <= 0 || [5, 6].includes(a.length) || a.length > 7) a = [null];
+        if (a.length <= 0 || [5].includes(a.length) || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
+            // if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
+            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
             else if (util.is(a, "arr")) {
                 a = new Project.Meta(...a);
-                a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
+                // a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
+                a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
             }
             else if (util.is(a, "str")) a = [a, 0, 0, null];
-            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
+            // else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
+            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
             else a = [null, 0, 0, null];
         }
         if (a.length == 2)
@@ -417,9 +429,10 @@ Project.Meta = class ProjectMeta extends core.Target {
         if (a.length == 3)
             a = [...a, null];
         if (a.length == 4)
-            a = [...a, null, 0, 1];
+            a = [...a, null, 0];
         
-        [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundPos, this.backgroundScale] = a;
+        // [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundPos, this.backgroundScale] = a;
+        [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundScale] = a;
     }
 
     get name() { return this.#name; }
@@ -458,8 +471,10 @@ Project.Meta = class ProjectMeta extends core.Target {
         this.#backgroundImage = v;
         this.post("change", null);
     }
+    /*
     get backgroundPos() { return this.#backgroundPos; }
     set backgroundPos(v) { this.#backgroundPos.set(v); }
+    */
     get backgroundX() { return this.backgroundPos.x; }
     set backgroundX(v) { this.backgroundPos.x = v; }
     get backgroundY() { return this.backgroundPos.y; }
@@ -482,7 +497,7 @@ Project.Meta = class ProjectMeta extends core.Target {
                 modified: this.modified, created: this.created,
                 thumb: this.thumb,
                 backgroundImage: this.backgroundImage,
-                backgroundPos: this.backgroundPos,
+                // backgroundPos: this.backgroundPos,
                 backgroundScale: this.backgroundScale,
             }],
         };
