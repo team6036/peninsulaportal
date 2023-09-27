@@ -31,10 +31,14 @@ const log = async (...a) => {
 };
 
 const MAIN = async () => {
+    log("< IMPORTING ASYNCHRONOUSLY >");
+
     const util = await import("./util.mjs");
     const V = util.V;
 
     const core = await import("./core.mjs");
+
+    log("< IMPORTED ASYNCHRONOUSLY >");
 
     const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER"];
 
@@ -1835,6 +1839,8 @@ const MAIN = async () => {
         }
     };
     */
+
+    log("< BUILT PORTAL >");
 
     return Portal;
 };

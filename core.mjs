@@ -471,6 +471,10 @@ export class App extends Target {
         };
         pop.addHandler("close", pop._onClose);
         document.body.appendChild(pop.elem);
+        setTimeout(() => {
+            if (!this.hasPopup(pop)) return;
+            pop.elem.classList.add("in");
+        }, 0.01*1000);
         window.api.set("closeable", this.popups.length <= 0);
         return pop;
     }
@@ -480,7 +484,11 @@ export class App extends Target {
         this.#popups.splice(this.#popups.indexOf(pop), 1);
         pop.remHandler("close", pop._onClose);
         delete pop._onClose;
-        document.body.removeChild(pop.elem);
+        pop.elem.classList.remove("in");
+        setTimeout(() => {
+            if (this.hasPopup(pop)) return;
+            document.body.removeChild(pop.elem);
+        }, 0.25*1000);
         window.api.set("closeable", this.popups.length <= 0);
         return pop;
     }
