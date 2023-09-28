@@ -6,7 +6,7 @@ import * as core from "../core.mjs";
 import { NT4_Subscription, NT4_SubscriptionOptions, NT4_Topic, NT4_Client } from "./nt4.js";
 
 
-export default class NTModel extends core.Target {
+export default class NTSource extends core.Target {
     #client;
     #logs;
     #root;
@@ -23,14 +23,14 @@ export default class NTModel extends core.Target {
 
     #hasClient() { return this.#client instanceof NT4_Client; }
     get root() { return this.#root; }
-    hasRoot() { return this.#root instanceof NTModel.Table; }
+    hasRoot() { return this.#root instanceof NTSource.Table; }
 
     announceTopic(k, type) {
         if (!this.hasRoot()) return false;
         k = String(k).split("/");
         while (k.length > 0 && k.at(0).length <= 0) k.shift();
         while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-        if (!NTModel.Topic.TYPES.includes(type)) return false;
+        if (!NTSource.Topic.TYPES.includes(type)) return false;
         if (k.length <= 0) return false;
         let path = k.join("/");
         if (!(path in this.#logs)) this.#logs[path] = [];
@@ -39,16 +39,16 @@ export default class NTModel extends core.Target {
             let name = k.shift();
             [o, oPrev] = [o.lookup(name), o];
             if (k.length > 0) {
-                if (!(o instanceof NTModel.Table)) {
+                if (!(o instanceof NTSource.Table)) {
                     oPrev.rem(o);
-                    o = new NTModel.Table(oPrev, name);
+                    o = new NTSource.Table(oPrev, name);
                     oPrev.add(o);
                 }
                 continue;
             }
-            if (!(o instanceof NTModel.Topic)) {
+            if (!(o instanceof NTSource.Topic)) {
                 oPrev.rem(o);
-                o = new NTModel.Topic(oPrev, name, type);
+                o = new NTSource.Topic(oPrev, name, type);
                 oPrev.add(o);
             }
         }
@@ -65,9 +65,9 @@ export default class NTModel extends core.Target {
             let name = k.shift();
             [o, oPrev] = [o.lookup(name), o];
             if (k.length > 0) {
-                if (!(o instanceof NTModel.Table)) {
+                if (!(o instanceof NTSource.Table)) {
                     oPrev.rem(o);
-                    o = new NTModel.Table(oPrev, name);
+                    o = new NTSource.Table(oPrev, name);
                     oPrev.add(o);
                 }
                 continue;
@@ -75,8 +75,8 @@ export default class NTModel extends core.Target {
             oPrev.rem(o);
             o = oPrev;
             while (1) {
-                if (!(o instanceof NTModel.Table)) break;
-                if (!(o.parent instanceof NTModel.Table)) break;
+                if (!(o instanceof NTSource.Table)) break;
+                if (!(o.parent instanceof NTSource.Table)) break;
                 if (o.children.length > 0) break;
                 o.parent.rem(o);
             }
@@ -98,14 +98,14 @@ export default class NTModel extends core.Target {
             let name = k.shift();
             [o, oPrev] = [o.lookup(name), o];
             if (k.length > 0) {
-                if (!(o instanceof NTModel.Table)) {
+                if (!(o instanceof NTSource.Table)) {
                     oPrev.rem(o);
-                    o = new NTModel.Table(oPrev, name);
+                    o = new NTSource.Table(oPrev, name);
                     oPrev.add(o);
                 }
                 continue;
             }
-            if (!(o instanceof NTModel.Topic)) throw "Nonexistent topic with path: "+k;
+            if (!(o instanceof NTSource.Topic)) throw "Nonexistent topic with path: "+k;
             o.value = value;
             if (o.isArray) {
                 o.value.forEach((v, i) => {
@@ -234,7 +234,7 @@ export default class NTModel extends core.Target {
             this.root.remHandler("change", this.root._onChange);
             delete this.root._onChange;
         }
-        this.#root = (v == null) ? null : new NTModel.Table(this, "");
+        this.#root = (v == null) ? null : new NTSource.Table(this, "");
         if (this.hasRoot()) {
             this.root._onChange = data => this.post("change", data);
             this.root.addHandler("change", this.root._onChange);
@@ -285,14 +285,14 @@ export default class NTModel extends core.Target {
     get clientTimeSince() { return this.#hasClient() ? (this.clientTime - this.clientStartTime) : null; }
     get serverTimeSince() { return this.#hasClient() ? (this.serverTime - this.serverStartTime) : null; }
 }
-NTModel.Generic = class NTModelGeneric extends core.Target {
+NTSource.Generic = class NTSourceGeneric extends core.Target {
     #parent;
     #name;
 
     constructor(parent, name) {
         super();
 
-        if (!(parent instanceof NTModel.Generic || parent instanceof NTModel)) throw "Parent is not valid";
+        if (!(parent instanceof NTSource.Generic || parent instanceof NTSource)) throw "Parent is not valid";
 
         this.#parent = parent;
         this.#name = String(name);
@@ -302,7 +302,7 @@ NTModel.Generic = class NTModelGeneric extends core.Target {
     get name() { return this.#name; }
 
     get path() {
-        if (this.parent instanceof NTModel) return this.name;
+        if (this.parent instanceof NTSource) return this.name;
         return this.parent.path + "/" + this.name;
     }
 
@@ -316,7 +316,7 @@ NTModel.Generic = class NTModelGeneric extends core.Target {
         return this;
     }
 };
-NTModel.Table = class NTModelTable extends NTModel.Generic {
+NTSource.Table = class NTSourceTable extends NTSource.Generic {
     #children;
 
     constructor(parent, name) {
@@ -333,7 +333,7 @@ NTModel.Table = class NTModelTable extends NTModel.Generic {
 
     get children() { return [...this.#children]; }
     has(child) {
-        if (!(child instanceof NTModel.Generic)) return false;
+        if (!(child instanceof NTSource.Generic)) return false;
         if (child.parent != this) return false;
         return this.#children.has(child);
     }
@@ -343,7 +343,7 @@ NTModel.Table = class NTModelTable extends NTModel.Generic {
         return this.children[i];
     }
     add(child) {
-        if (!(child instanceof NTModel.Generic)) return false;
+        if (!(child instanceof NTSource.Generic)) return false;
         if (child.parent != this) return false;
         this.#children.add(child);
         child._onChange = data => {
@@ -355,7 +355,7 @@ NTModel.Table = class NTModelTable extends NTModel.Generic {
         return child;
     }
     rem(child) {
-        if (!(child instanceof NTModel.Generic)) return false;
+        if (!(child instanceof NTSource.Generic)) return false;
         if (child.parent != this) return false;
         this.#children.delete(child);
         child.remHandler("change", child._onChange);
@@ -376,7 +376,7 @@ NTModel.Table = class NTModelTable extends NTModel.Generic {
         return null;
     }
 }
-NTModel.Topic = class NTModelTopic extends NTModel.Generic {
+NTSource.Topic = class NTSourceTopic extends NTSource.Generic {
     #type;
     #value;
 
@@ -392,10 +392,10 @@ NTModel.Topic = class NTModelTopic extends NTModel.Generic {
 
     static ensureType(t, v) {
         t = String(t);
-        if (!NTModel.Topic.TYPES.includes(t)) return null;
+        if (!NTSource.Topic.TYPES.includes(t)) return null;
         if (t.endsWith("[]")) {
             t = t.substring(0, t.length-2);
-            return util.ensure(v, "arr").map(v => NTModel.Topic.ensureType(t, v));
+            return util.ensure(v, "arr").map(v => NTSource.Topic.ensureType(t, v));
         }
         const map = {
             boolean: "bool",
@@ -411,7 +411,7 @@ NTModel.Topic = class NTModelTopic extends NTModel.Generic {
     constructor(parent, name, type, value=null) {
         super(parent, name);
 
-        if (!NTModel.Topic.TYPES.includes(type)) throw "Type "+type+" is not a valid type";
+        if (!NTSource.Topic.TYPES.includes(type)) throw "Type "+type+" is not a valid type";
         this.#type = type;
         this.#value = null;
 
@@ -428,8 +428,8 @@ NTModel.Topic = class NTModelTopic extends NTModel.Generic {
     }
     get value() { return (this.isArray && util.is(this.#value, "arr")) ? this.#value.map(topic => topic.value) : this.#value; }
     set value(v) {
-        this.#value = NTModel.Topic.ensureType(this.type, v);
-        if (this.isArray) this.#value = this.#value.map((v, i) => new NTModel.Topic(this, i, this.arraylessType, v));
+        this.#value = NTSource.Topic.ensureType(this.type, v);
+        if (this.isArray) this.#value = this.#value.map((v, i) => new NTSource.Topic(this, i, this.arraylessType, v));
         this.post("change", { path: this.name });
     }
 
