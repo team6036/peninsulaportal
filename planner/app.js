@@ -558,7 +558,8 @@ export default class App extends core.App {
                         if (this.eProjectInfo.classList.contains("this")) this.eProjectInfo.classList.remove("this");
                         else {
                             this.eProjectInfo.classList.add("this");
-                            const click = () => {
+                            const click = e => {
+                                if (this.eProjectInfo.contains(e.target)) return;
                                 document.body.removeEventListener("click", click);
                                 this.eProjectInfo.classList.remove("this");
                             };
