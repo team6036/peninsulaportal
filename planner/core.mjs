@@ -4,7 +4,7 @@ import { V } from "../util.mjs";
 import * as core from "../core.mjs";
 
 
-export const COREVERSION = 2;
+export const VERSION = 2;
 
 
 export class Project extends core.Target {
@@ -279,7 +279,7 @@ export class Project extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: COREVERSION,
+                VERSION: VERSION,
                 items: itms,
                 paths: pths,
                 size: this.size,
@@ -378,7 +378,7 @@ Project.Config = class ProjectConfig extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: COREVERSION,
+                VERSION: VERSION,
                 script: this.script, scriptPython: this.scriptPython, scriptUseDefault: this.scriptUseDefault,
                 momentOfInertia: this.momentOfInertia,
                 efficiency: this.efficiency,
@@ -409,7 +409,7 @@ Project.Meta = class ProjectMeta extends core.Target {
         // this.#backgroundPos = new V();
         this.#backgroundScale = 1;
 
-        if (a.length <= 0 || [5].includes(a.length) || a.length > 6) a = [null];
+        if (a.length <= 0 || [3, 5].includes(a.length) || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
             // if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
@@ -419,17 +419,13 @@ Project.Meta = class ProjectMeta extends core.Target {
                 // a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
                 a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
             }
-            else if (util.is(a, "str")) a = [a, 0, 0, null];
+            else if (util.is(a, "str")) a = [a, null];
             // else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
             else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
-            else a = [null, 0, 0, null];
+            else a = ["Unnamed", null];
         }
-        if (a.length == 2)
-            a = [a[0], 0, a[1]];
-        if (a.length == 3)
-            a = [...a, null];
-        if (a.length == 4)
-            a = [...a, null, 0];
+        if (a.length == 2) a = [a[0], 0, 0, a[1]];
+        if (a.length == 4) a = [...a, null, 0];
         
         // [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundPos, this.backgroundScale] = a;
         [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundScale] = a;
@@ -492,7 +488,7 @@ Project.Meta = class ProjectMeta extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: COREVERSION,
+                VERSION: VERSION,
                 name: this.name,
                 modified: this.modified, created: this.created,
                 thumb: this.thumb,
@@ -549,7 +545,7 @@ Project.Item = class ProjectItem extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: COREVERSION,
+                VERSION: VERSION,
                 pos: this.pos,
             }],
         };
@@ -638,7 +634,7 @@ Project.Node = class ProjectNode extends Project.Item {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: COREVERSION,
+                VERSION: VERSION,
                 pos: this.pos,
                 heading: this.heading, useHeading: this.useHeading,
                 velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
@@ -688,7 +684,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: COREVERSION,
+                VERSION: VERSION,
                 pos: this.pos,
                 radius: this.radius,
             }],
@@ -777,7 +773,7 @@ Project.Path = class ProjectPath extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: COREVERSION,
+                VERSION: VERSION,
                 name: this.name,
                 nodes: this.nodes,
             }],
