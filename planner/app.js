@@ -1185,16 +1185,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
         this.eLoading.style.display = "none";
         let projects = (this.hasApp() ? this.app.projects : []).map(id => this.app.getProject(id));
         if (projects.length > 0) {
-            let query = this.eSearchInput.value;
-            if (query.length > 0) {
-                const fuse = new Fuse(projects, {
-                    isCaseSensitive: false,
-                    keys: [
-                        "meta.name",
-                    ],
-                });
-                projects = fuse.search(query).map(item => item.item);
-            }
+            projects = util.search(projects, [ "meta.name" ], this.eSearchInput.value);
             projects.forEach(project => this.addButton(new App.ProjectsPage.Button(project)));
         } else this.eEmpty.style.display = "block";
     }

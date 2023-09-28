@@ -238,6 +238,19 @@ export function promiseTimeout(v, time) {
     });
 }
 
+export function search(items, keys, query) {
+    items = ensure(items, "arr");
+    keys = ensure(keys, "arr");
+    query = String(query);
+    if (query.length <= 0) return items;
+    const fuse = new Fuse(items, {
+        isCaseSensitive: false,
+        keys: keys,
+    });
+    items = fuse.search(query).map(item => item.item);
+    return items;
+}
+
 export const ease = {
     // https://easings.net/
 

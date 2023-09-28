@@ -303,9 +303,18 @@ export class App extends Target {
             } catch (e) {}
         }
         data = util.ensure(data, "obj");
-        this.base = data.base;
-        this.colors = data.colors;
-        this.accent = data.accent;
+        this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
+        this.colors = data.colors || {
+            r: [255, 0, 0],
+            o: [255, 128, 0],
+            y: [255, 255, 0],
+            g: [0, 255, 0],
+            c: [0, 255, 255],
+            b: [0, 0, 255],
+            p: [128, 0, 255],
+            m: [255, 0, 255],
+        };
+        this.accent = data.accent || "b";
 
         let spooky = await window.api.get("spooky");
         if (spooky) this.accent = "o";
