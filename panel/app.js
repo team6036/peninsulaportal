@@ -3,7 +3,7 @@ import { V } from "../util.mjs";
 
 import * as core from "../core.mjs";
 
-import NTModel from "../nt4/model.js";
+import NTSource from "../nt4/source.js";
 
 
 export const VERSION = 1;
@@ -56,7 +56,7 @@ class RLine extends core.Odometry2d.Render {
 
 function getDisplay(t, v) {
     t = String(t);
-    if (!NTModel.Topic.TYPES.includes(t)) return null;
+    if (!NTSource.Topic.TYPES.includes(t)) return null;
     if (t.endsWith("[]")) {
         t = t.substring(0, t.length-2);
         let display = getDisplay(t, (t == "boolean") ? true : null);
@@ -278,7 +278,7 @@ class BrowserTopic extends BrowserItem {
     get type() { return this.#type; }
     set type(v) {
         v = String(v);
-        if (!NTModel.Topic.TYPES.includes(v)) v = "raw";
+        if (!NTSource.Topic.TYPES.includes(v)) v = "raw";
         if (this.type == v) return;
         this.#type = v;
         this.post("type-set", { v: v });
@@ -292,7 +292,7 @@ class BrowserTopic extends BrowserItem {
     }
     get value() { return (this.isArray && util.is(this.#value, "arr")) ? [...this.#value] : this.#value; }
     set value(v) {
-        this.#value = NTModel.Topic.ensureType(this.type, v);
+        this.#value = NTSource.Topic.ensureType(this.type, v);
         this.post("value-set", { v: this.value });
         this.icon = "";
         this.eIcon.style.color = "";
@@ -1119,6 +1119,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             },
             {
                 item: new Panel.AddTab.Button("Odometry3d", "locate", "var(--cy)"),
+                init: item => (item.btn.disabled = true),
                 trigger: () => {
                     if (!this.hasParent()) return;
                     let index = this.parent.tabs.indexOf(this);
@@ -1128,6 +1129,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             },
         ];
         toolItems = toolItems.map(item => {
+            if (item.init) item.init(item.item);
             item.item.addHandler("trigger", item.trigger);
             return item.item;
         });
@@ -1143,8 +1145,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 });
                 toolItems = fuse.search(this.query).map(item => item.item);
                 let genericItems = [];
-                if (this.hasPage() && this.page.hasRootModel() && this.page.rootModel.hasRoot()) {
-                    let root = this.page.rootModel.root;
+                if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
+                    let root = this.page.rootSource.root;
                     const dfs = generic => {
                         let itm = new Panel.AddTab.GenericButton(generic);
                         genericItems.push({
@@ -1156,11 +1158,12 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 this.parent.remTab(this);
                             },
                         });
-                        if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfs(generic));
+                        if (generic instanceof NTSource.Table) generic.children.forEach(generic => dfs(generic));
                     };
                     dfs(root);
                 }
                 genericItems = genericItems.map(item => {
+                    if (item.init) item.init(item.item);
                     item.item.addHandler("trigger", item.trigger);
                     return item.item;
                 });
@@ -1222,11 +1225,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
-            if (this.hasPage() && this.page.hasRootModel() && this.page.rootModel.hasRoot()) {
-                let root = this.page.rootModel.root;
+            if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
+                let root = this.page.rootSource.root;
                 const dfs = generic => {
                     let itm = new Panel.AddTab.GenericButton(generic);
-                    if (generic instanceof { tables: NTModel.Table, topics: NTModel.Topic, all: NTModel.Generic }[this.searchPart]) items.push({
+                    if (generic instanceof { tables: NTSource.Table, topics: NTSource.Topic, all: NTSource.Generic }[this.searchPart]) items.push({
                         item: itm,
                         trigger: () => {
                             if (!this.hasParent()) return;
@@ -1235,11 +1238,12 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                             this.parent.remTab(this);
                         },
                     });
-                    if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfs(generic));
+                    if (generic instanceof NTSource.Table) generic.children.forEach(generic => dfs(generic));
                 };
                 dfs(root);
             }
             items = items.map(item => {
+                if (item.init) item.init(item.item);
                 item.item.addHandler("trigger", item.trigger);
                 return item.item;
             });
@@ -1513,11 +1517,11 @@ Panel.AddTab.GenericButton = class PanelAddTabGenericButton extends Panel.AddTab
             }
             this.name = this.generic.path;
             if (this.name.length <= 0) this.name = "/";
-            if (this.generic instanceof NTModel.Table) {
+            if (this.generic instanceof NTSource.Table) {
                 this.icon = "folder-outline";
                 this.iconColor = "";
                 this.info = "";
-            } else if (this.generic instanceof NTModel.Topic) {
+            } else if (this.generic instanceof NTSource.Topic) {
                 let display = getDisplay(this.generic.type, this.generic.value);
                 if (display != null) {
                     if ("src" in display) this.iconSrc = display.src;
@@ -1534,11 +1538,11 @@ Panel.AddTab.GenericButton = class PanelAddTabGenericButton extends Panel.AddTab
 
     get generic() { return this.#generic; }
     set generic(v) {
-        v = (v instanceof NTModel.Generic) ? v : null;
+        v = (v instanceof NTSource.Generic) ? v : null;
         if (this.generic == v) return;
         this.#generic = v;
     }
-    hasGeneric() { return this.generic instanceof NTModel.Generic; }
+    hasGeneric() { return this.generic instanceof NTSource.Generic; }
 };
 Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #path;
@@ -1593,7 +1597,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 state = {};
             }
             this.eTabIcon.style.color = "";
-            if (generic instanceof NTModel.Table) {
+            if (generic instanceof NTSource.Table) {
                 this.eBrowser.classList.add("this");
                 this.eDisplay.classList.remove("this");
                 this.icon = "folder-outline";
@@ -1607,7 +1611,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 const dfsGeneric = generic => {
                     path.push(generic.name);
                     newPaths[path.slice(1).join("/")] = generic;
-                    if (generic instanceof NTModel.Table) generic.children.forEach(generic => dfsGeneric(generic));
+                    if (generic instanceof NTSource.Table) generic.children.forEach(generic => dfsGeneric(generic));
                     path.pop();
                 };
                 dfsGeneric(generic);
@@ -1623,7 +1627,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     if (path.length <= 0) continue;
                     if (path in oldPaths) continue;
                     let generic = newPaths[path];
-                    let item = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                    let item = (generic instanceof NTSource.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
                     let superPath = path.split("/");
                     superPath.pop();
                     superPath = superPath.join("/");
@@ -1670,7 +1674,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     }
                 }
                 state.items.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => (itm.elem.style.order = i));
-            } else if (generic instanceof NTModel.Topic) {
+            } else if (generic instanceof NTSource.Topic) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
                 let display = getDisplay(generic.type, generic.value);
@@ -2117,26 +2121,26 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (this.isClosed) return;
             const ctx = this.ctx;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            if (!this.hasPage() || !this.page.hasRootModel() || !this.page.rootModel.hasRoot()) return;
-            const model = this.page.rootModel;
+            if (!this.hasPage() || !this.page.hasRootSource() || !this.page.rootSource.hasRoot()) return;
+            const source = this.page.rootSource;
             const graphRange = {
                 left: () => [
-                    model.serverStartTime,
-                    Math.min(model.serverTime, model.serverStartTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    source.serverStartTime,
+                    Math.min(source.serverTime, source.serverStartTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
                 ],
                 right: () => [
-                    Math.max(model.serverStartTime, model.serverTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
-                    model.serverTime,
+                    Math.max(source.serverStartTime, source.serverTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    source.serverTime,
                 ],
                 section: () => {
-                    let start = util.ensure(model.serverStartTime+this.viewParams.start, "num", model.serverStartTime);
-                    let stop = util.ensure(model.serverStartTime+this.viewParams.stop, "num", model.serverTime);
-                    start = Math.min(model.serverTime, Math.max(model.serverStartTime, start));
-                    stop = Math.min(model.serverTime, Math.max(model.serverStartTime, stop));
+                    let start = util.ensure(source.serverStartTime+this.viewParams.start, "num", source.serverStartTime);
+                    let stop = util.ensure(source.serverStartTime+this.viewParams.stop, "num", source.serverTime);
+                    start = Math.min(source.serverTime, Math.max(source.serverStartTime, start));
+                    stop = Math.min(source.serverTime, Math.max(source.serverStartTime, stop));
                     stop = Math.max(start, stop);
                     return [start, stop];
                 },
-                all: () => [model.serverStartTime, model.serverTime],
+                all: () => [source.serverStartTime, source.serverTime],
             }[this.viewMode]();
             let graphVars = [
                 { vars: this.lVars },
@@ -2149,11 +2153,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 vars.forEach(v => {
                     if (!v.isShown) return;
                     if (!v.hasName()) return;
-                    let topic = model.root.lookup(v.name);
+                    let topic = source.root.lookup(v.name);
                     if (topic.isArray) return;
-                    let log = model.getLogFor(v.name, ...graphRange);
+                    let log = source.getLogFor(v.name, ...graphRange);
                     if (!util.is(log, "arr")) return;
-                    let start = model.getValueAt(v.name, graphRange[0]), stop = model.getValueAt(v.name, graphRange[1]);
+                    let start = source.getValueAt(v.name, graphRange[0]), stop = source.getValueAt(v.name, graphRange[1]);
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
                     if (stop != null) log.push({ ts: graphRange[1], v: stop });
                     if (log.length <= 0) return;
@@ -2486,7 +2490,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             let idfs = {
                 _: side => {
-                    if (!(data instanceof NTModel.Topic)) return null;
+                    if (!(data instanceof NTSource.Topic)) return null;
                     return {
                         r: r,
                         submit: () => {
@@ -2797,7 +2801,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             const numbers = ["double", "float", "int"];
             let idfs = {
                 p: () => {
-                    if (!(data instanceof NTModel.Topic)) return null;
+                    if (!(data instanceof NTSource.Topic)) return null;
                     if (!data.isArray || !numbers.includes(data.arraylessType)) return null;
                     if (!this.isValidPose(data)) return null;
                     return {
@@ -3240,8 +3244,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
             this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
             if (this.isClosed) return;
-            if (!this.hasPage() || !this.page.hasRootModel() || !this.page.rootModel.hasRoot()) return;
-            const model = this.page.rootModel;
+            if (!this.hasPage() || !this.page.hasRootSource() || !this.page.rootSource.hasRoot()) return;
+            const source = this.page.rootSource;
             let newPoses = {};
             this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
             let needAdd = {}, needRem = {};
@@ -3252,8 +3256,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 if (!(name in newPoses))
                     needRem[name] = poses[name];
             Object.keys(needAdd).forEach(name => {
-                let topic = model.root.lookup(name);
-                if (!(topic instanceof NTModel.Topic)) return;
+                let topic = source.root.lookup(name);
+                if (!(topic instanceof NTSource.Topic)) return;
                 if (!topic.isArray) return;
                 if (topic.value.length % 2 == 0) {
                     poses[name] = [];
@@ -3269,8 +3273,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             for (let name in poses) {
                 let renders = poses[name];
                 let pose = newPoses[name];
-                let topic = model.root.lookup(name);
-                if (!(topic instanceof NTModel.Topic)) continue;
+                let topic = source.root.lookup(name);
+                if (!(topic instanceof NTSource.Topic)) continue;
                 if (!topic.isArray) continue;
                 if (topic.value.length % 2 == 0) {
                     let l = Math.max(0, (topic.value.length / 2) - 1);
@@ -3773,43 +3777,43 @@ export default class App extends core.App {
                 };
             };
             const isValid = o => {
-                if (o instanceof NTModel.Generic) return true;
+                if (o instanceof NTSource.Generic) return true;
                 if (o instanceof Widget) return true;
                 if (o instanceof Panel.Tab) return true;
                 return false;
             };
             const canGetWidgetFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return true;
+                if (this.dragData instanceof NTSource.Generic) return true;
                 if (this.dragData instanceof Widget) return true;
                 if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
             const getWidgetFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return new Panel([new Panel.BrowserTab(this.dragData.path)]);
+                if (this.dragData instanceof NTSource.Generic) return new Panel([new Panel.BrowserTab(this.dragData.path)]);
                 if (this.dragData instanceof Widget) return this.dragData;
                 if (this.dragData instanceof Panel.Tab) return new Panel([this.dragData]);
                 return null;
             };
             const canGetTabFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return true;
+                if (this.dragData instanceof NTSource.Generic) return true;
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
             const getTabFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return new Panel.BrowserTab(this.dragData.path);
+                if (this.dragData instanceof NTSource.Generic) return new Panel.BrowserTab(this.dragData.path);
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return this.dragData;
                 return null;
             };
             const canGetGenericFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return true;
+                if (this.dragData instanceof NTSource.Generic) return true;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.lookup(this.dragData.path) instanceof NTModel.Generic);
+                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.lookup(this.dragData.path) instanceof NTSource.Generic);
                 return false;
             };
             const getGenericFromData = () => {
-                if (this.dragData instanceof NTModel.Generic) return this.dragData;
+                if (this.dragData instanceof NTSource.Generic) return this.dragData;
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) ? this.lookup(this.dragData.path) : null;
                 return null;
@@ -3825,7 +3829,7 @@ export default class App extends core.App {
                     let btn = this.eDrag.children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (generic.name.length > 0) ? generic.name : "/";
-                    if (generic instanceof NTModel.Table) {
+                    if (generic instanceof NTSource.Table) {
                         icon.setAttribute("name", "folder-outline");
                     } else {
                         let display = getDisplay(generic.type, generic.value);
@@ -3864,7 +3868,7 @@ export default class App extends core.App {
                     page.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Tab),
+                        canTop: (this.dragData instanceof NTSource.Generic || this.dragData instanceof Panel.Tab),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel))
@@ -3902,7 +3906,7 @@ export default class App extends core.App {
                     page.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof NTModel.Generic || this.dragData instanceof Panel.Tab),
+                        canTop: (this.dragData instanceof NTSource.Generic || this.dragData instanceof Panel.Tab),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel)) return;
@@ -4043,7 +4047,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     #browserItems;
     #toolButtons;
     #rootWidget;
-    #rootModel;
+    #rootSource;
 
     #eSide;
     #eSideMeta;
@@ -4060,7 +4064,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.#browserItems = [];
         this.#toolButtons = new Set();
         this.#rootWidget = null;
-        this.#rootModel = null;
+        this.#rootSource = null;
 
         this.#eSide = document.createElement("div");
         this.elem.appendChild(this.eSide);
@@ -4141,13 +4145,13 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         });
         this.addHandler("refactor-browser", data => {
             let newPaths = {};
-            if (this.hasRootModel() && this.rootModel.hasRoot()) {
-                this.rootModel.root.children.forEach(generic => {
+            if (this.hasRootSource() && this.rootSource.hasRoot()) {
+                this.rootSource.root.children.forEach(generic => {
                     let path = [];
                     const dfs = generic => {
                         path.push(generic.name);
                         newPaths[path.join("/")] = generic;
-                        if (generic instanceof NTModel.Table)
+                        if (generic instanceof NTSource.Table)
                             generic.children.forEach(generic => dfs(generic));
                         path.pop();
                     };
@@ -4187,7 +4191,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 let superPath = path.slice(0, path.length-1).join("/");
                 path = path.join("/");
                 let generic = newPaths[path];
-                let itm = (generic instanceof NTModel.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                let itm = (generic instanceof NTSource.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
                 if (superPath in oldPaths) oldPaths[superPath].addChild(itm);
                 else this.addBrowserItem(itm);
                 oldPaths[path] = itm;
@@ -4198,7 +4202,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             }
         });
 
-        this.rootModel = null;
+        this.rootSource = null;
 
         if (this.app.hasEProjectInfoNameInput())
             this.app.eProjectInfoNameInput.addEventListener("change", e => {
@@ -4207,15 +4211,15 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (this.app.hasEProjectInfoAddressInput())
             this.app.eProjectInfoAddressInput.addEventListener("change", e => {
                 this.project.config.ip = this.app.eProjectInfoAddressInput.value;
-                this.rootModel = null;
+                this.rootSource = null;
             });
         if (this.app.hasEProjectInfoConnectionBtn())
             this.app.eProjectInfoConnectionBtn.addEventListener("click", e => {
-                if (!this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected)) {
-                    this.rootModel = new NTModel(this.project.config.ip);
+                if (!this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected)) {
+                    this.rootSource = new NTSource(this.project.config.ip);
                     return;
                 }
-                this.rootModel = null;
+                this.rootSource = null;
             });
 
         this.addHandler("update", data => {
@@ -4223,14 +4227,14 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 this.rootWidget.collapse();
                 if (this.hasRootWidget()) this.rootWidget.update();
             } else this.rootWidget = new Panel();
-            this.eSideMeta.textContent = (!this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected)) ? "Disconnected" : this.rootModel.connecting ? "Connecting to "+this.rootModel.address : (() => {
-                let nFields = this.rootModel.root.nFields;
+            this.eSideMeta.textContent = (!this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected)) ? "Disconnected" : this.rootSource.connecting ? "Connecting to "+this.rootSource.address : (() => {
+                let nFields = this.rootSource.root.nFields;
                 return nFields + " field" + (nFields==1 ? "" : "s");
             })();
             if (!this.hasApp()) return;
             if (this.app.hasEProjectInfoBtn())
                 if (this.app.eProjectInfoBtn.querySelector(":scope > .value") instanceof HTMLDivElement)
-                    this.app.eProjectInfoBtn.querySelector(":scope > .value").textContent = (!this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected)) ? "Disconnected" : this.rootModel.connecting ? "Connecting to "+this.rootModel.address : this.rootModel.address;
+                    this.app.eProjectInfoBtn.querySelector(":scope > .value").textContent = this.project.meta.name;
             if (this.app.hasEProjectInfoNameInput())
                 if (document.activeElement != this.app.eProjectInfoNameInput)
                     this.app.eProjectInfoNameInput.value = this.project.meta.name;
@@ -4238,7 +4242,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 if (document.activeElement != this.app.eProjectInfoAddressInput)
                     this.app.eProjectInfoAddressInput.value = this.project.config.ip;
             if (this.app.hasEProjectInfoConnectionBtn()) {
-                let on = !this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected);
+                let on = !this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected);
                 this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
                 if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
                 else this.app.eProjectInfoConnectionBtn.classList.remove("on");
@@ -4272,7 +4276,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         itm._onDrag = data => {
             data = util.ensure(data, "obj");
             let generic = this.lookup(data.path);
-            if (!(generic instanceof NTModel.Generic)) return;
+            if (!(generic instanceof NTSource.Generic)) return;
             if (!this.hasApp()) return;
             this.app.dragData = generic;
             this.app.dragging = true;
@@ -4347,25 +4351,25 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.formatContent();
     }
     hasRootWidget() { return this.rootWidget instanceof Widget; }
-    get rootModel() { return this.#rootModel; }
-    set rootModel(v) {
-        v = (v instanceof NTModel) ? v : null;
-        if (this.rootModel == v) return;
-        if (this.hasRootModel()) {
-            this.rootModel.remHandler("change", this.rootModel.root._onChange);
-            delete this.rootModel._onChange;
+    get rootSource() { return this.#rootSource; }
+    set rootSource(v) {
+        v = (v instanceof NTSource) ? v : null;
+        if (this.rootSource == v) return;
+        if (this.hasRootSource()) {
+            this.rootSource.remHandler("change", this.rootSource.root._onChange);
+            delete this.rootSource._onChange;
         }
-        this.#rootModel = v;
-        if (this.hasRootModel()) {
-            this.rootModel._onChange = data => this.post("refactor-browser-queue", null);
-            this.rootModel.addHandler("change", this.rootModel._onChange);
+        this.#rootSource = v;
+        if (this.hasRootSource()) {
+            this.rootSource._onChange = data => this.post("refactor-browser-queue", null);
+            this.rootSource.addHandler("change", this.rootSource._onChange);
         }
         this.post("refactor-browser", null);
     }
-    hasRootModel() { return this.rootModel instanceof NTModel; }
+    hasRootSource() { return this.rootSource instanceof NTSource; }
     lookup(path) {
-        if (!this.hasRootModel() || !this.rootModel.hasRoot()) return null;
-        return this.rootModel.root.lookup(path);
+        if (!this.hasRootSource() || !this.rootSource.hasRoot()) return null;
+        return this.rootSource.root.lookup(path);
     }
 
     get eSide() { return this.#eSide; }
