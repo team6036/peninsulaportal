@@ -1137,13 +1137,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.tags = [];
             this.placeholder = "Search tools, tables, and topics";
             if (this.query.length > 0) {
-                const fuse = new Fuse(toolItems, {
-                    isCaseSensitive: false,
-                    keys: [
-                        "name",
-                    ],
-                });
-                toolItems = fuse.search(this.query).map(item => item.item);
+                toolItems = util.search(toolItems, [ "name" ], this.query);
                 let genericItems = [];
                 if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
                     let root = this.page.rootSource.root;
@@ -1167,13 +1161,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     item.item.addHandler("trigger", item.trigger);
                     return item.item;
                 });
-                const genericFuse = new Fuse(genericItems, {
-                    isCaseSensitive: false,
-                    keys: [
-                        "generic.path",
-                    ],
-                });
-                genericItems = genericFuse.search(this.query).map(item => item.item);
+                genericItems = util.search(genericItems, [ "generic.path", "generic.type" ], this.query);
                 this.items = [
                     new Panel.AddTab.Header("Tools"),
                     ...toolItems,
@@ -1207,15 +1195,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         } else if (this.searchPart == "tools") {
             this.tags = [new Panel.AddTab.Tag("Tools", "cube-outline")];
             this.placeholder = "Search tools";
-            if (this.query.length > 0) {
-                const fuse = new Fuse(toolItems, {
-                    isCaseSensitive: false,
-                    keys: [
-                        "name",
-                    ],
-                });
-                toolItems = fuse.search(this.query).map(item => item.item);
-            }
+            toolItems = util.search(toolItems, [ "name" ], this.query);
             this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddTab.Tag(
@@ -1247,15 +1227,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 item.item.addHandler("trigger", item.trigger);
                 return item.item;
             });
-            if (this.query.length > 0) {
-                const fuse = new Fuse(items, {
-                    isCaseSensitive: false,
-                    keys: [
-                        "generic.path",
-                    ],
-                });
-                items = fuse.search(this.query).map(item => item.item);
-            }
+            items = util.search(items, [ "generic.path", "generic.type" ], this.query);
             this.items = items;
         }
         this.eSearchInput.focus();
