@@ -7,7 +7,7 @@ export const BASE64 = ALPHABETLOWER+ALPHABETUPPER+NUMBERS+"-_";
 
 export const MAGIC = "_*[[;ƒ";
 
-export const UTILVERSION = 1;
+export const VERSION = 1;
 
 
 export function is(o, type) {
@@ -633,7 +633,7 @@ export class Color {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 r: this.r,
                 g: this.g,
                 b: this.b,
@@ -701,7 +701,7 @@ export class Range {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 l: this.l, r: this.r,
                 lInclude: this.lInclude, rInclude: this.rInclude,
             }],
@@ -817,7 +817,7 @@ export class V {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 x: this.x,
                 y: this.y,
             }],
@@ -945,7 +945,7 @@ export class V3 {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 x: this.x,
                 y: this.y,
                 z: this.z,
@@ -1068,7 +1068,7 @@ export class Line extends Shape {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 x1: this.x1, y1: this.y1,
                 x2: this.x2, y2: this.y2,
             }],
@@ -1159,7 +1159,7 @@ export class Circle extends Shape {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 x: this.x, y: this.y,
                 r: this.r,
             }],
@@ -1400,7 +1400,7 @@ export class Rect extends Shape {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 x: this.x, y: this.y,
                 w: this.w, h: this.h,
             }],
@@ -1551,7 +1551,7 @@ export class Polygon extends Shape {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                VERSION: UTILVERSION,
+                VERSION: VERSION,
                 p: this.p,
                 points: this.points,
             }],
