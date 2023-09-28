@@ -274,6 +274,7 @@ export default class NTModel extends core.Target {
         );
     }
 
+    get connecting() { return this.#hasClient() && this.disconnected; }
     get connected() { return this.#hasClient() ? this.#client.connected : false; }
     get disconnected() { return !this.connected; }
 

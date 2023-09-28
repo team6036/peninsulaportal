@@ -6,6 +6,8 @@ import * as core from "../core.mjs";
 import NTModel from "../nt4/model.js";
 
 
+export const VERSION = 1;
+
 class RLine extends core.Odometry2d.Render {
     #a; #b;
     #color;
@@ -480,7 +482,9 @@ class Container extends Widget {
             else a = [...a, "x"];
         }
 
-        [this.children, this.weights, this.axis] = a;
+        this.children = a[0];
+        this.weights = a[1];
+        this.axis = a[2];
     }
 
     get children() { return [...this.#children]; }
@@ -2461,7 +2465,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     get viewParams() { return this.#viewParams; }
     set viewParams(v) {
         v = util.ensure(v, "obj");
-        for (let k in v) this.#viewMode[k] = v[k];
+        for (let k in v) this.#viewParams[k] = v[k];
         this.post("change", null);
     }
 
@@ -3366,14 +3370,220 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 };
 
 class Project extends core.Target {
-    constructor() {
+    #id;
+
+    #cache;
+
+    #rootData;
+    #config;
+    #meta;
+
+    constructor(...a) {
         super();
+
+        this.#id = null;
+
+        this.#cache = {};
+
+        this.#rootData = "";
+        this.#config = new Project.Config();
+        this.#meta = new Project.Meta();
+
+        if (a.length <= 0 || [2].includes(a.length) || a.length > 3) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project) a = [a.rootData, a.config, a.meta];
+            else if (util.is(a, "arr")) {
+                a = new Project(...a);
+                a = [a.rootData, a.config, a.meta];
+            }
+            else if (a instanceof Project.Config) a = ["", a, null];
+            else if (a instanceof Project.Meta) a = ["", null, a];
+            else if (util.is(a, "str")) a = ["", null, { name: a }];
+            else if (util.is(a, "obj")) a = [a.rootData, a.config, a.meta];
+            else a = ["", null, null];
+        }
+
+        [this.rootData, this.config, this.meta] = a;
+    }
+
+    get id() { return this.#id; }
+    set id(v) { this.#id = (v == null) ? null : String(v); }
+
+    get rootData() { return this.#rootData; }
+    set rootData(v) {
+        v = String(v);
+        if (this.rootData == v) return;
+        this.#rootData = v;
+        this.post("change", null);
+    }
+
+    buildRootWidget() {
+        try {
+            let widget = JSON.parse(this.rootData, REVIVER.f);
+            if (!(widget instanceof Widget)) throw widget;
+            return widget;
+        } catch (e) {}
+        this.rootData = JSON.stringify(new Panel());
+        return this.buildRootWidget();
+    }
+
+    get config() { return this.#config; }
+    set config(v) {
+        v = new Project.Config(v);
+        if (this.config == v) return;
+        if (this.config instanceof Project.Config) {
+            this.config.remHandler("change", this.#cache["config_change"]);
+            delete this.#cache["config_change"];
+        }
+        this.#config = v;
+        if (this.config instanceof Project.Config) {
+            this.#cache["config_change"] = () => this.post("change", null);
+            this.config.addHandler("change", this.#cache["config_change"]);
+        }
+    }
+
+    get meta() { return this.#meta; }
+    set meta(v) {
+        v = new Project.Meta(v);
+        if (this.meta == v) return;
+        if (this.meta instanceof Project.Meta) {
+            this.meta.remHandler("change", this.#cache["meta_change"]);
+            delete this.#cache["meta_change"];
+        }
+        this.#meta = v;
+        if (this.meta instanceof Project.Meta) {
+            this.#cache["meta_change"] = () => this.post("change", null);
+            this.meta.addHandler("change", this.#cache["meta_change"]);
+        }
+        this.post("change", null);
+    }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: VERSION,
+                rootData: this.rootData,
+                config: this.config, meta: this.meta,
+            }],
+        };
     }
 }
+Project.Config = class ProjectConfig extends core.Target {
+    #ip;
+
+    constructor(...a) {
+        super();
+
+        if (a.length <= 0 || a.length > 1) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project.Config) a = [a.ip];
+            else if (util.is(a, "arr")) a = [(new Project.Config(...a)).ip];
+            else if (util.is(a, "obj")) a = [a.ip];
+            else a = [a];
+        }
+
+        [this.ip] = a;
+    }
+
+    get ip() { return this.#ip; }
+    set ip(v) {
+        v = (v == null) ? "localhost" : String(v);
+        if (this.ip == v) return;
+        this.#ip = v;
+        this.post("change", null);
+    }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: VERSION,
+                ip: this.ip,
+            }],
+        };
+    }
+};
+Project.Meta = class ProjectMeta extends core.Target {
+    #name;
+    #modified;
+    #created;
+    #thumb;
+
+    constructor(...a) {
+        super();
+
+        this.#name = "Unnamed";
+        this.#modified = 0;
+        this.#created = 0;
+        this.#thumb = null;
+
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb];
+            else if (util.is(a, "arr")) {
+                a = new Project.Meta(...a);
+                a = [a.name, a.modified, a.created, a.thumb];
+            }
+            else if (util.is(a, "str")) a = [a, null];
+            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
+            else a = ["Unnamed", null];
+        }
+        if (a.length == 2) a = [a[0], 0, 0, a[1]];
+        
+        [this.name, this.modified, this.created, this.thumb] = a;
+    }
+
+    get name() { return this.#name; }
+    set name(v) {
+        v = (v == null) ? "Unnamed" : String(v);
+        if (this.name == v) return;
+        this.#name = v;
+        this.post("change", null);
+    }
+    get modified() { return this.#modified; }
+    set modified(v) {
+        v = util.ensure(v, "num");
+        if (this.modified == v) return;
+        this.#modified = v;
+    }
+    get created() { return this.#created; }
+    set created(v) {
+        v = util.ensure(v, "num");
+        if (this.created == v) return;
+        this.#created = v;
+        this.post("change", null);
+    }
+    get thumb() { return this.#thumb; }
+    set thumb(v) {
+        v = (v == null) ? null : String(v);
+        if (this.thumb == v) return;
+        this.#thumb = v;
+    }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                VERSION: VERSION,
+                name: this.name,
+                modified: this.modified, created: this.created,
+                thumb: this.thumb,
+            }],
+        };
+    }
+};
 
 const REVIVER = new core.Reviver(core.REVIVER);
 REVIVER.addRuleAndAllSub(Container);
 REVIVER.addRuleAndAllSub(Panel);
+REVIVER.addRuleAndAllSub(Project);
 
 export default class App extends core.App {
     #eBlock;
@@ -3455,7 +3665,8 @@ export default class App extends core.App {
                         if (this.eProjectInfo.classList.contains("this")) this.eProjectInfo.classList.remove("this");
                         else {
                             this.eProjectInfo.classList.add("this");
-                            const click = () => {
+                            const click = e => {
+                                if (this.eProjectInfo.contains(e.target)) return;
                                 document.body.removeEventListener("click", click);
                                 this.eProjectInfo.classList.remove("this");
                             };
@@ -3827,6 +4038,8 @@ export default class App extends core.App {
     }
 }
 App.ProjectPage = class AppProjectPage extends core.App.Page {
+    #project;
+
     #browserItems;
     #toolButtons;
     #rootWidget;
@@ -3841,6 +4054,8 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         super("PROJECT", app);
 
         if (!this.hasApp()) return;
+
+        this.#project = new Project();
 
         this.#browserItems = [];
         this.#toolButtons = new Set();
@@ -3983,19 +4198,57 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             }
         });
 
-        this.rootModel = new NTModel("localhost");
+        this.rootModel = null;
+
+        if (this.app.hasEProjectInfoNameInput())
+            this.app.eProjectInfoNameInput.addEventListener("change", e => {
+                this.project.meta.name = this.app.eProjectInfoNameInput.value;
+            });
+        if (this.app.hasEProjectInfoAddressInput())
+            this.app.eProjectInfoAddressInput.addEventListener("change", e => {
+                this.project.config.ip = this.app.eProjectInfoAddressInput.value;
+                this.rootModel = null;
+            });
+        if (this.app.hasEProjectInfoConnectionBtn())
+            this.app.eProjectInfoConnectionBtn.addEventListener("click", e => {
+                if (!this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected)) {
+                    this.rootModel = new NTModel(this.project.config.ip);
+                    return;
+                }
+                this.rootModel = null;
+            });
 
         this.addHandler("update", data => {
             if (this.hasRootWidget()) {
                 this.rootWidget.collapse();
                 if (this.hasRootWidget()) this.rootWidget.update();
             } else this.rootWidget = new Panel();
-            this.eSideMeta.textContent = (!this.hasRootModel() || !this.rootModel.hasRoot()) ? "No connection" : (() => {
+            this.eSideMeta.textContent = (!this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected)) ? "Disconnected" : this.rootModel.connecting ? "Connecting to "+this.rootModel.address : (() => {
                 let nFields = this.rootModel.root.nFields;
                 return nFields + " field" + (nFields==1 ? "" : "s");
             })();
+            if (!this.hasApp()) return;
+            if (this.app.hasEProjectInfoBtn())
+                if (this.app.eProjectInfoBtn.querySelector(":scope > .value") instanceof HTMLDivElement)
+                    this.app.eProjectInfoBtn.querySelector(":scope > .value").textContent = (!this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected)) ? "Disconnected" : this.rootModel.connecting ? "Connecting to "+this.rootModel.address : this.rootModel.address;
+            if (this.app.hasEProjectInfoNameInput())
+                if (document.activeElement != this.app.eProjectInfoNameInput)
+                    this.app.eProjectInfoNameInput.value = this.project.meta.name;
+            if (this.app.hasEProjectInfoAddressInput())
+                if (document.activeElement != this.app.eProjectInfoAddressInput)
+                    this.app.eProjectInfoAddressInput.value = this.project.config.ip;
+            if (this.app.hasEProjectInfoConnectionBtn()) {
+                let on = !this.hasRootModel() || (!this.rootModel.connecting && !this.rootModel.connected);
+                this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
+                if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
+                else this.app.eProjectInfoConnectionBtn.classList.remove("on");
+                if (!on) this.app.eProjectInfoConnectionBtn.classList.add("off");
+                else this.app.eProjectInfoConnectionBtn.classList.remove("off");
+            }
         });
     }
+
+    get project() { return this.#project; }
 
     get browserItems() { return [...this.#browserItems]; }
     set browserItems(v) {
@@ -4083,11 +4336,14 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.#rootWidget = v;
         if (this.hasRootWidget()) {
             this.rootWidget.parent = this;
-            this.rootWidget._onChange = () => console.log("change");
+            this.rootWidget._onChange = () => {
+                this.project.rootData = JSON.stringify(this.rootWidget);
+            };
             this.rootWidget.addHandler("change", this.rootWidget._onChange);
             this.eContent.appendChild(this.rootWidget.elem);
             this.rootWidget.elem.focus();
         }
+        this.project.rootData = JSON.stringify(this.rootWidget);
         this.formatContent();
     }
     hasRootWidget() { return this.rootWidget instanceof Widget; }
