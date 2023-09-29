@@ -688,12 +688,12 @@ const MAIN = async () => {
             });
             */
 
-            ipc.handle("ask", async (e, cmd, args) => {
+            ipc.handle("on", async (e, k, args) => {
                 let feat = identifyFeature(e);
-                if (feat instanceof Portal.Feature) return await feat.ask(cmd, args);
+                if (feat instanceof Portal.Feature) return await feat.on(k, args);
                 throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 // let pop = identifyPopup(e);
-                // if (pop instanceof Portal.Feature.Popup) return await pop.ask(cmd, args);
+                // if (pop instanceof Portal.Feature.Popup) return await pop.on(k, args);
                 // throw "Nonexistent feature and popup corresponding with id: "+e.sender.id;
             });
 
@@ -1059,8 +1059,8 @@ const MAIN = async () => {
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
             });
 
-            window.on("enter-full-screen", () => { window.webContents.send("ask", "set-fullscreen", [true]); });
-            window.on("leave-full-screen", () => { window.webContents.send("ask", "set-fullscreen", [false]); });
+            window.on("enter-full-screen", () => { window.webContents.send("send", "set-fullscreen", [true]); });
+            window.on("leave-full-screen", () => { window.webContents.send("send", "set-fullscreen", [false]); });
 
             this.perm = false;
             window.on("close", e => {
@@ -1077,7 +1077,7 @@ const MAIN = async () => {
                 about: [
                     {
                         label: "About Peninsula "+this.name[0].toUpperCase()+this.name.slice(1).toLowerCase(),
-                        click: () => window.webContents.send("ask", "about"),
+                        click: () => window.webContents.send("send", "about"),
                     },
                 ],
                 hide: [
@@ -1144,12 +1144,12 @@ const MAIN = async () => {
                             {
                                 label: "Peninsula Panel",
                                 accelerator: "CmdOrCtrl+1",
-                                click: () => this.ask("spawn", ["PANEL"]),
+                                click: () => this.on("spawn", ["PANEL"]),
                             },
                             {
                                 label: "Peninsula Planner",
                                 accelerator: "CmdOrCtrl+2",
-                                click: () => this.ask("spawn", ["PLANNER"]),
+                                click: () => this.on("spawn", ["PLANNER"]),
                             },
                         ],
                     },
@@ -1243,33 +1243,33 @@ const MAIN = async () => {
                             id: "newproject",
                             label: "New Project",
                             accelerator: "CmdOrCtrl+N",
-                            click: () => window.webContents.send("ask", "newproject"),
+                            click: () => window.webContents.send("send", "newproject"),
                         },
                         {
                             id: "newtab",
                             label: "New Tab",
                             accelerator: "CmdOrCtrl+Shift+N",
-                            click: () => window.webContents.send("ask", "newtab"),
+                            click: () => window.webContents.send("send", "newtab"),
                         },
                         build.div,
                         {
                             id: "openclose",
                             label: "Toggle Open / Closed",
                             accelerator: "Ctrl+F",
-                            click: () => window.webContents.send("ask", "openclose"),
+                            click: () => window.webContents.send("send", "openclose"),
                         },
                         {
                             id: "expandcollapse",
                             label: "Toggle Title Collapsed",
                             accelerator: "Ctrl+Shift+F",
-                            click: () => window.webContents.send("ask", "expandcollapse"),
+                            click: () => window.webContents.send("send", "expandcollapse"),
                         },
                         build.div,
                         {
                             id: "close",
                             label: "Close Tab",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => window.webContents.send("ask", "close"),
+                            click: () => window.webContents.send("send", "close"),
                         },
                     );
                 },
@@ -1280,48 +1280,48 @@ const MAIN = async () => {
                             id: "newproject",
                             label: "New Project",
                             accelerator: "CmdOrCtrl+N",
-                            click: () => window.webContents.send("ask", "newproject"),
+                            click: () => window.webContents.send("send", "newproject"),
                         },
                         build.div,
                         {
                             id: "addnode",
                             label: "Add Node",
-                            click: () => window.webContents.send("ask", "addnode"),
+                            click: () => window.webContents.send("send", "addnode"),
                         },
                         {
                             id: "addobstacle",
                             label: "Add Obstacle",
-                            click: () => window.webContents.send("ask", "addobstacle"),
+                            click: () => window.webContents.send("send", "addobstacle"),
                         },
                         {
                             id: "addpath",
                             label: "Add Path",
-                            click: () => window.webContents.send("ask", "addpath"),
+                            click: () => window.webContents.send("send", "addpath"),
                         },
                         build.div,
                         {
                             id: "save",
                             label: "Save",
                             accelerator: "CmdOrCtrl+S",
-                            click: () => window.webContents.send("ask", "save"),
+                            click: () => window.webContents.send("send", "save"),
                         },
                         {
                             id: "savecopy",
                             label: "Save as copy",
                             accelerator: "CmdOrCtrl+Shift+S",
-                            click: () => window.webContents.send("ask", "savecopy"),
+                            click: () => window.webContents.send("send", "savecopy"),
                         },
                         build.div,
                         {
                             id: "delete",
                             label: "Delete Project",
-                            click: () => window.webContents.send("ask", "delete"),
+                            click: () => window.webContents.send("send", "delete"),
                         },
                         {
                             id: "close",
                             label: "Close Project",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => window.webContents.send("ask", "close"),
+                            click: () => window.webContents.send("send", "close"),
                         },
                     );
                     template[3].submenu.unshift(
@@ -1329,12 +1329,12 @@ const MAIN = async () => {
                             id: "maxmin",
                             label: "Toggle Maximized",
                             accelerator: "Ctrl+F",
-                            click: () => window.webContents.send("ask", "maxmin"),
+                            click: () => window.webContents.send("send", "maxmin"),
                         },
                         {
                             id: "resetdivider",
                             label: "Reset Divider",
-                            click: () => window.webContents.send("ask", "resetdivider"),
+                            click: () => window.webContents.send("send", "resetdivider"),
                         },
                         build.div,
                     );
@@ -1518,12 +1518,12 @@ const MAIN = async () => {
             }
         }
 
-        async ask(cmd, args) {
+        async on(k, args) {
             if (!this.started) return;
             if (!this.hasName()) return;
-            cmd = String(cmd);
+            k = String(k);
             args = Array.isArray(args) ? Array.from(args) : [];
-            this.log(`ASK - ${cmd}(${args.join(', ')})`);
+            this.log(`ON - ${k}(${args.join(', ')})`);
             let namefs = {
                 PLANNER: {
                     exec: async (id, pathId) => {
@@ -1715,11 +1715,11 @@ const MAIN = async () => {
                     },
                 },
             };
-            cmd = String(cmd).replace("-", "_");
-            if (cmd == "back")
+            k = String(k).replace("-", "_");
+            if (k == "back")
                 if (this.name != "PORTAL")
                     return await this.stop();
-            if (cmd == "spawn") {
+            if (k == "spawn") {
                 let name = String(args[0]);
                 if (!this.hasPortal()) return false;
                 let feats = this.portal.features;
@@ -1740,8 +1740,8 @@ const MAIN = async () => {
                 return true;
             }
             if (namefs[this.name])
-                if (namefs[this.name][cmd])
-                    return await namefs[this.name][cmd](...args);
+                if (namefs[this.name][k])
+                    return await namefs[this.name][k](...args);
             return null;
         }
 

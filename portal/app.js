@@ -363,11 +363,11 @@ export default class App extends core.App {
                     pop.addHandler("result", async data => {
                         let v = !!util.ensure(data, "obj").v;
                         if (!v) return;
-                        window.api.ask("spawn", [name]);
+                        window.api.send("spawn", [name]);
                     });
                     return;
                 }
-                window.api.ask("spawn", [name]);
+                window.api.send("spawn", [name]);
             });
             
             let btn;

@@ -644,7 +644,7 @@ export class App extends Target {
         btn.style.setProperty("--bgd", "transparent");
         btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
         btn.addEventListener("click", e => {
-            window.api.ask("back");
+            window.api.send("back");
         });
         return btn;
     }

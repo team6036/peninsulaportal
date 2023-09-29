@@ -12,7 +12,8 @@ contextBridge.exposeInMainWorld("api", {
     onPerm: f => ipcRenderer.on("perm", f),
     sendPerm: perm => ipcRenderer.send("perm", perm),
 
-    on: f => ipcRenderer.on("ask", f),
+    on: f => ipcRenderer.on("send", f),
+    send: (k, args) => ipcRenderer.invoke("on", k, args),
 
     get: k => ipcRenderer.invoke("get", k),
     set: (k, v) => ipcRenderer.invoke("set", k, v),
@@ -29,6 +30,4 @@ contextBridge.exposeInMainWorld("api", {
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
 
     menuChange: changes => ipcRenderer.invoke("menu-change", changes),
-
-    ask: (cmd, args) => ipcRenderer.invoke("ask", cmd, args),
 });
