@@ -1585,7 +1585,21 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             ctx.lineJoin = "round";
             ctx.lineCap = "square";
             ctx.beginPath();
-            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+            for (let i = 0; i <= path.length; i++) {
+                let j = i%path.length;
+                let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
+                if (i > 0) ctx.lineTo(...p.xy);
+                else ctx.moveTo(...p.xy);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            ctx.lineWidth = 2*quality;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "square";
+            ctx.beginPath();
+            path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
             for (let i = 0; i <= path.length; i++) {
                 let j = i%path.length;
                 let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
