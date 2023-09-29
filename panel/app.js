@@ -3229,10 +3229,11 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
             this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
             if (this.isClosed) return;
-            if (!this.hasPage() || !this.page.hasRootSource() || !this.page.rootSource.hasRoot()) return;
-            const source = this.page.rootSource;
+            let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
             let newPoses = {};
-            this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
+            if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
+                this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
+            }
             let needAdd = {}, needRem = {};
             for (let name in newPoses)
                 if (!(name in poses))
@@ -3363,6 +3364,20 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #renderer;
     #controls;
 
+    #template;
+
+    #isProjection;
+    #isMeters;
+    #isDegrees;
+
+    #eTemplateSelect;
+    #eViewProjection;
+    #eViewIsometric;
+    #eUnitsMeters;
+    #eUnitsCentimeters;
+    #eUnitsDegrees;
+    #eUnitsRadians;
+
     static DO = false;
 
     constructor() {
@@ -3384,7 +3399,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         light.position.set(0, 0, 10);
         this.scene.add(light);
 
-        this.camera.position.set(0, 7.5, 7.5);
         this.controls.target.set(0, 0, 0);
         this.controls.update();
 
@@ -3399,26 +3413,204 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             });
         });
 
+        /*
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cube = new THREE.Mesh(geometry, material);
+        this.scene.add(cube);
+        */
+
+        this.#template = null;
+
+        this.#isMeters = true;
+        this.#isDegrees = true;
+        this.#isProjection = false;
+
+        let info;
+        const eField = this.getEOptionSection("f");
+        info = document.createElement("div");
+        eField.appendChild(info);
+        info.classList.add("info");
+        info.innerHTML = "<span>Template</span>";
+        this.#eTemplateSelect = document.createElement("button");
+        eField.appendChild(this.eTemplateSelect);
+        this.eTemplateSelect.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+        this.eTemplateSelect.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            e.stopPropagation();
+            let itm;
+            let menu = new core.App.ContextMenu();
+            itm = menu.addItem(new core.App.ContextMenu.Item("No Template", (this.template == null) ? "checkmark" : ""));
+            itm.addHandler("trigger", data => {
+                this.template = null;
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
+            for (let name in templates) {
+                itm = menu.addItem(new core.App.ContextMenu.Item(name, (this.template == name) ? "checkmark" : ""));
+                itm.addHandler("trigger", data => {
+                    this.template = name;
+                });
+            }
+            this.app.contextMenu = menu;
+            let r = this.eTemplateSelect.getBoundingClientRect();
+            this.app.placeContextMenu(r.left, r.bottom);
+        });
+        let eNav;
+        const eOptions = this.getEOptionSection("o");
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eViewProjection = document.createElement("button");
+        eNav.appendChild(this.eViewProjection);
+        this.eViewProjection.textContent = "Projection";
+        this.eViewProjection.addEventListener("click", e => { this.isProjection = true; });
+        this.#eViewIsometric = document.createElement("button");
+        eNav.appendChild(this.eViewIsometric);
+        this.eViewIsometric.textContent = "Isometric";
+        this.eViewIsometric.addEventListener("click", e => { this.isIsometric = true; });
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eUnitsMeters = document.createElement("button");
+        eNav.appendChild(this.eUnitsMeters);
+        this.eUnitsMeters.textContent = "Meters";
+        this.eUnitsMeters.addEventListener("click", e => { this.isMeters = true; });
+        this.#eUnitsCentimeters = document.createElement("button");
+        eNav.appendChild(this.eUnitsCentimeters);
+        this.eUnitsCentimeters.textContent = "Centimeters";
+        this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eUnitsDegrees = document.createElement("button");
+        eNav.appendChild(this.eUnitsDegrees);
+        this.eUnitsDegrees.textContent = "Degrees";
+        this.eUnitsDegrees.addEventListener("click", e => { this.isDegrees = true; });
+        this.#eUnitsRadians = document.createElement("button");
+        eNav.appendChild(this.eUnitsRadians);
+        this.eUnitsRadians.textContent = "Radians";
+        this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
+
+        let templates = {};
+        let templateImages = {};
+        let finished = false;
+        (async () => {
+            templates = await window.api.get("templates");
+            templateImages = await window.api.get("template-images");
+            this.template = await window.api.get("active-template");
+            finished = true;
+        })();
+
         this.addHandler("update", data => {
             if (this.isClosed) return;
+
+            if (this.template in templates) eField.classList.add("has");
+            else eField.classList.remove("has");
+            if (this.isProjection) this.eViewProjection.classList.add("this");
+            else this.eViewProjection.classList.remove("this");
+            if (this.isIsometric) this.eViewIsometric.classList.add("this");
+            else this.eViewIsometric.classList.remove("this");
+            if (this.isMeters) this.eUnitsMeters.classList.add("this");
+            else this.eUnitsMeters.classList.remove("this");
+            if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
+            else this.eUnitsCentimeters.classList.remove("this");
+            if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
+            else this.eUnitsDegrees.classList.remove("this");
+            if (this.isRadians) this.eUnitsRadians.classList.add("this");
+            else this.eUnitsRadians.classList.remove("this");
 
             this.controls.update();
 
             let r = this.eContent.getBoundingClientRect();
 
-            this.camera.aspect = (r.width-4) / (r.height-4);
-            this.camera.updateProjectionMatrix();
+            if (this.camera instanceof THREE.PerspectiveCamera) {
+                this.camera.aspect = (r.width-4) / (r.height-4);
+                this.camera.updateProjectionMatrix();
+            } else if (this.camera instanceof THREE.OrthographicCamera) {
+                let size = 15;
+                let aspect = (r.width-4) / (r.height-4);
+                this.camera.left = -size/2 * aspect;
+                this.camera.right = +size/2 * aspect;
+                this.camera.top = +size/2;
+                this.camera.bottom = -size/2;
+            }
 
             this.renderer.setSize((r.width-4)*this.quality, (r.height-4)*this.quality);
             this.renderer.render(this.scene, this.camera);
             this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
         });
+
+        this.isProjection = true;
     }
 
     get scene() { return this.#scene; }
     get camera() { return this.#camera; }
     get renderer() { return this.#renderer; }
     get controls() { return this.#controls; }
+
+    get template() { return this.#template; }
+    set template(v) {
+        this.#template = (v == null) ? null : String(v);
+        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
+            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
+        this.post("change", null);
+    }
+
+    get isProjection() { return this.#isProjection; }
+    set isProjection(v) {
+        v = !!v;
+        if (this.#isProjection == v) return;
+        this.#isProjection = v;
+        this.post("change", null);
+        this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
+        this.camera.position.set(...(this.isProjection ? [0, 7.5, 7.5] : [10, 10, 10]));
+        this.controls.object = this.camera;
+    }
+    get isIsometric() { return !this.isProjection; }
+    set isIsometric(v) { this.isProjection = !v; }
+    get isMeters() { return this.#isMeters; }
+    set isMeters(v) {
+        v = !!v;
+        if (this.isMeters == v) return;
+        this.#isMeters = v;
+        this.post("change", null);
+    }
+    get isCentimeters() { return !this.isMeters; }
+    set isCentimeters(v) { this.isMeters = !v; }
+    get isDegrees() { return this.#isDegrees; }
+    set isDegrees(v) {
+        v = !!v;
+        if (this.isDegrees == v) return;
+        this.#isDegrees = v;
+        this.post("change", null);
+    }
+    get isRadians() { return !this.isDegrees; }
+    set isRadians(v) { this.isDegrees = !v; }
+
+    get eTemplateSelect() { return this.#eTemplateSelect; }
+    get eViewProjection() { return this.#eViewProjection; }
+    get eViewIsometric() { return this.#eViewIsometric; }
+    get eUnitsMeters() { return this.#eUnitsMeters; }
+    get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
+    get eUnitsDegrees() { return this.#eUnitsDegrees; }
+    get eUnitsRadians() { return this.#eUnitsRadians; }
+
+    isValidPose(topic) { return false; }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                poses: this.poses,
+                template: this.template,
+                isProjection: this.isProjection,
+                isMeters: this.isMeters,
+                isDegrees: this.isDegrees,
+                isOpen: this.isOptionsOpen,
+            }],
+        };
+    }
 };
 
 class Project extends core.Target {
