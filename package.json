@@ -10,7 +10,8 @@
     "electron": "^26.1.0",
     "fuse": "^0.0.8",
     "ionicons": "^7.1.2",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "three": "^0.157.0"
   },
   "devDependencies": {
     "electron-packager": "^17.1.2"

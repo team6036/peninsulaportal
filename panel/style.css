@@ -1000,6 +1000,8 @@
     color: var(--v5);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content {
+    position: relative;
+
     width: calc(100% - 4px);
     max-width: calc(100% - 4px);
     height: calc(100% - 16px - 4px);
@@ -1013,6 +1015,11 @@
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .content {
     height: calc(65% - 8px - 4px);
     max-height: calc(65% - 8px - 4px);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > canvas {
+    position: absolute;
+    top: 0%;
+    left: 0%;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options {
     width: calc(100% - 20px);
