@@ -418,16 +418,19 @@ const MAIN = async () => {
                     let templates = util.ensure(data.templates, "obj");
                     await Promise.all(Object.keys(templates).map(async name => {
                         name = String(name);
-                        this.log(`DB templates/${name}.png`);
-                        this.addLoad(`templates/${name}.png`);
-                        try {
-                            await fetchAndPipe(host+"/templates/"+name+".png", path.join(this.dataPath, "templates", "images", name+".png"));
-                            this.log(`DB templates/${name}.png - success`);
-                        } catch (e) {
-                            this.log(`DB templates/${name}.png - error - ${e}`);
-                            this.addLoad(`templates/${name}.png:`+e);
-                        }
-                        this.remLoad(`templates/${name}.png`);
+                        await Promise.all(["images", "models"].map(async section => {
+                            let tag = { "images": "png", "models": "glb" }[section];
+                            this.log(`DB templates/${name}.${tag}`);
+                            this.addLoad(`templates/${name}.${tag}`);
+                            try {
+                                await fetchAndPipe(host+"/templates/"+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
+                                this.log(`DB templates/${name}.${tag} - success`);
+                            } catch (e) {
+                                this.log(`DB templates/${name}.${tag} - error - ${e}`);
+                                this.addLoad(`templates/${name}.${tag}:`+e);
+                            }
+                            this.remLoad(`templates/${name}.${tag}`);
+                        }));
                     }));
                 })(),
                 ...FEATURES.map(async name => {
@@ -580,6 +583,12 @@ const MAIN = async () => {
                         let templates = await kfs.templates();
                         let images = {};
                         Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "templates", "images", name+".png")));
+                        return images;
+                    },
+                    "template-models": async () => {
+                        let templates = await kfs.templates();
+                        let images = {};
+                        Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "templates", "models", name+".glb")));
                         return images;
                     },
                     "active-template": async () => {
@@ -737,6 +746,8 @@ const MAIN = async () => {
             if (!hasTemplatesDir) await this.dirMake([dataPath, "templates"]);
             let hasTemplateImagesDir = await this.dirHas([dataPath, "templates", "images"]);
             if (!hasTemplateImagesDir) await this.dirMake([dataPath, "templates", "images"]);
+            let hasTemplateModelsDir = await this.dirHas([dataPath, "templates", "models"]);
+            if (!hasTemplateModelsDir) await this.dirMake([dataPath, "templates", "models"]);
             return true;
         }
         async affirm() {
@@ -1733,8 +1744,6 @@ const MAIN = async () => {
                     return;
                 }
                 if (!FEATURES.includes(name)) return false;
-                // let devmode = await this.isDevMode();
-                // if (!devmode && name == "PANEL") return false;
                 let feat = new Portal.Feature(name);
                 this.portal.addFeature(feat);
                 return true;

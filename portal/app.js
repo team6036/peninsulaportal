@@ -452,6 +452,12 @@ export default class App extends core.App {
                             if (load.length > 0) return elem.textContent += "Error while making template image "+name+": "+load.join(":");
                             return elem.textContent += "Making template image "+name;
                         }
+                        if (name.startsWith("templates/") && name.endsWith(".glb")) {
+                            name = name.substring(10, name.length-4);
+                            if (load.length > 0) elem.style.color = "var(--cr)";
+                            if (load.length > 0) return elem.textContent += "Error while making template model "+name+": "+load.join(":");
+                            return elem.textContent += "Making template model "+name;
+                        }
                         if (name.toUpperCase() == name) {
                             elem.textContent += "["+name[0].toUpperCase()+name.slice(1).toLowerCase()+"] ";
                             let namefs = {
