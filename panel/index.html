@@ -3,6 +3,14 @@
     <head>
 		<title>Peninsula Panel</title>
 		<meta charset="UTF-8">
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../node_modules/three/build/three.module.min.js",
+					"three/addons/": "../node_modules/three/examples/jsm/"
+				}
+			}
+		  </script>
 		<script src="../assets/modules/fuse.min.js"></script>
 		<script type="module">
 			import App from "./app.js";

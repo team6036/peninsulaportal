@@ -3,6 +3,9 @@ import { V } from "../util.mjs";
 
 import * as core from "../core.mjs";
 
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
 import NTSource from "../nt4/source.js";
 
 
@@ -1119,7 +1122,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             },
             {
                 item: new Panel.AddTab.Button("Odometry3d", "locate", "var(--cy)"),
-                init: item => (item.btn.disabled = true),
+                init: item => (item.btn.disabled = false),
                 trigger: () => {
                     if (!this.hasParent()) return;
                     let index = this.parent.tabs.indexOf(this);
@@ -1562,7 +1565,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         this.addHandler("update", data => {
             window.log = true;
-            let generic = this.hasApp() ? this.app.lookup(this.path) : null;
+            let generic = this.hasPage() ? this.page.lookup(this.path) : null;
             window.log = false;
             if (prevGeneric != generic) {
                 prevGeneric = generic;
@@ -1616,8 +1619,8 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         item._onDrag = data => {
                             data = util.ensure(data, "obj");
                             let path = this.path + "/" + data.path;
-                            if (!this.hasApp()) return;
-                            this.app.dragData = this.app.lookup(path);
+                            if (!this.hasApp() || !this.hasPage()) return;
+                            this.app.dragData = this.page.lookup(path);
                             this.app.dragging = true;
                         };
                         item.addHandler("trigger", item._onTrigger);
@@ -1843,6 +1846,8 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #eContent;
     #canvas; #ctx;
 
+    static DO = true;
+
     constructor(name, icon, color="") {
         super(name, icon, color);
 
@@ -1855,7 +1860,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         this.eContent.classList.add("content");
         this.#canvas = document.createElement("canvas");
         this.eContent.appendChild(this.canvas);
-        this.#ctx = this.canvas.getContext("2d");
+        if (this.constructor.DO) this.#ctx = this.canvas.getContext("2d");
         this.#eToggle = document.createElement("button");
         this.elem.appendChild(this.eToggle);
         this.eToggle.classList.add("toggle");
@@ -1874,14 +1879,16 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
             this.isOptionsOpen = !this.isOptionsOpen;
         });
 
-        new ResizeObserver(() => {
-            let r = this.eContent.getBoundingClientRect();
-            this.canvas.width = (r.width-4) * this.quality;
-            this.canvas.height = (r.height-4) * this.quality;
-            this.canvas.style.width = (r.width-4)+"px";
-            this.canvas.style.height = (r.height-4)+"px";
-            this.update();
-        }).observe(this.eContent);
+        if (this.constructor.DO) {
+            new ResizeObserver(() => {
+                let r = this.eContent.getBoundingClientRect();
+                this.canvas.width = (r.width-4) * this.quality;
+                this.canvas.height = (r.height-4) * this.quality;
+                this.canvas.style.width = (r.width-4)+"px";
+                this.canvas.style.height = (r.height-4)+"px";
+                this.update();
+            }).observe(this.eContent);
+        }
 
         new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
@@ -2453,7 +2460,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = this.hasApp() ? this.app.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.hasPage() ? this.page.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -2763,7 +2770,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = this.hasApp() ? this.app.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.hasPage() ? this.page.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -3344,6 +3351,62 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         };
     }
 };
+Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
+    #scene;
+    #camera;
+    #renderer;
+
+    static DO = false;
+
+    constructor() {
+        super("3d");
+
+        this.quality = 3;
+
+        this.#scene = new THREE.Scene();
+        this.#camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+
+        this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
+
+        const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
+        this.scene.add(hemLight);
+
+        const light = new THREE.PointLight(0xffffff, 0.5);
+        light.position.set(0, 0, 10);
+        this.scene.add(light);
+
+        const loader = new GLTFLoader();
+        loader.load("../temp/Field3d_2023.glb", gltf => {
+            this.scene.add(gltf.scene);
+            gltf.scene.scale.set(10, 10, 10);
+            gltf.scene.traverse(mesh => {
+                if (mesh.isMesh && mesh.material instanceof THREE.MeshStandardMaterial) {
+                    mesh.material.metalness = 0;
+                    mesh.material.roughness = 1;
+                }
+            })
+            let box = new THREE.Box3();
+            box.setFromObject(this.scene);
+            console.log(box);
+            console.log(this.scene);
+        });
+
+        this.camera.position.z = 75;
+
+        this.addHandler("update", data => {
+            let r = this.eContent.getBoundingClientRect();
+            this.camera.aspect = (r.width-4) / (r.height-4);
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize((r.width-4)*this.quality, (r.height-4)*this.quality);
+            this.renderer.render(this.scene, this.camera);
+            this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
+        });
+    }
+
+    get scene() { return this.#scene; }
+    get camera() { return this.#camera; }
+    get renderer() { return this.#renderer; }
+};
 
 class Project extends core.Target {
     #id;
@@ -3781,13 +3844,13 @@ export default class App extends core.App {
             const canGetGenericFromData = () => {
                 if (this.dragData instanceof NTSource.Generic) return true;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.lookup(this.dragData.path) instanceof NTSource.Generic);
+                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.hasPage("PROJECT") && this.getPage("PROJECT").lookup(this.dragData.path) instanceof NTSource.Generic);
                 return false;
             };
             const getGenericFromData = () => {
                 if (this.dragData instanceof NTSource.Generic) return this.dragData;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) ? this.lookup(this.dragData.path) : null;
+                if (this.dragData instanceof Panel.Tab) return ((this.dragData instanceof Panel.BrowserTab) && this.hasPage("PROJECT")) ? this.getPage("PROJECT").lookup(this.dragData.path) : null;
                 return null;
             };
             this.addHandler("drag-start", () => {
