@@ -3364,6 +3364,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #renderer;
     #controls;
 
+    #field;
+
     #template;
 
     #isProjection;
@@ -3392,6 +3394,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         
         this.#controls = new OrbitControls(this.camera, this.renderer.domElement);
 
+        this.#field = null;
+
         const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
         this.scene.add(hemLight);
 
@@ -3403,15 +3407,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.controls.update();
 
         const loader = new GLTFLoader();
-        loader.load("../temp/Field3d_2023.glb", gltf => {
-            this.scene.add(gltf.scene);
-            gltf.scene.traverse(mesh => {
-                if (mesh.isMesh && mesh.material instanceof THREE.MeshStandardMaterial) {
-                    mesh.material.metalness = 0;
-                    mesh.material.roughness = 1;
-                }
-            });
-        });
 
         /*
         const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -3492,14 +3487,27 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
 
         let templates = {};
-        let templateImages = {};
+        let templateModels = {};
         let finished = false;
         (async () => {
             templates = await window.api.get("templates");
-            templateImages = await window.api.get("template-images");
+            templateModels = await window.api.get("template-models");
             this.template = await window.api.get("active-template");
             finished = true;
+            /*
+            loader.load(templateModels[this.template], gltf => {
+                gltf.scene.traverse(mesh => {
+                    if (mesh.isMesh && mesh.material instanceof THREE.MeshStandardMaterial) {
+                        mesh.material.metalness = 0;
+                        mesh.material.roughness = 1;
+                    }
+                });
+                this.scene.add(gltf.scene);
+            });
+            */
         })();
+
+        let preloadedFields = {};
 
         this.addHandler("update", data => {
             if (this.isClosed) return;
@@ -3518,6 +3526,22 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             else this.eUnitsDegrees.classList.remove("this");
             if (this.isRadians) this.eUnitsRadians.classList.add("this");
             else this.eUnitsRadians.classList.remove("this");
+
+            if ((this.template in templateModels) && !(this.template in preloadedFields)) {
+                const template = this.template;
+                preloadedFields[template] = null;
+                loader.load(templateModels[template], gltf => {
+                    gltf.scene.traverse(mesh => {
+                        if (mesh.isMesh && mesh.material instanceof THREE.MeshStandardMaterial) {
+                            mesh.material.metalness = 0;
+                            mesh.material.roughness = 1;
+                        }
+                    });
+                    preloadedFields[template] = gltf.scene;
+                }, null, err => { delete preloadedFields[template]; });
+            }
+
+            this.field = preloadedFields[this.template];
 
             this.controls.update();
 
@@ -3547,6 +3571,16 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get camera() { return this.#camera; }
     get renderer() { return this.#renderer; }
     get controls() { return this.#controls; }
+
+    get field() { return this.#field; }
+    set field(v) {
+        v = (v instanceof THREE.Object3D) ? v : null;
+        if (this.field == v) return;
+        if (this.hasField()) this.scene.remove(this.field);
+        this.#field = v;
+        if (this.hasField()) this.scene.add(this.field);
+    }
+    hasField() { return this.field instanceof THREE.Object3D; }
 
     get template() { return this.#template; }
     set template(v) {
