@@ -5,6 +5,7 @@ import * as core from "../core.mjs";
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import NTSource from "../nt4/source.js";
 
@@ -2098,6 +2099,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 
         this.addHandler("update", () => {
             if (this.isClosed) return;
+            
             const ctx = this.ctx;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             if (!this.hasPage() || !this.page.hasRootSource() || !this.page.rootSource.hasRoot()) return;
@@ -3203,6 +3205,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         let poses = {};
 
         this.addHandler("update", () => {
+            if (this.isClosed) return;
+
             if (this.template in templates) eField.classList.add("has");
             else eField.classList.remove("has");
             if (document.activeElement != this.eSizeWInput) this.eSizeWInput.value = this.w/(this.isMeters ? 100 : 1);
@@ -3218,7 +3222,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (this.isRadians) this.eUnitsRadians.classList.add("this");
             else this.eUnitsRadians.classList.remove("this");
             infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
+
             if (!finished) return;
+
             this.odometry.size = (this.template in templates) ? templates[this.template].size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
             this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
@@ -3355,6 +3361,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #scene;
     #camera;
     #renderer;
+    #controls;
 
     static DO = false;
 
@@ -3367,6 +3374,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
 
         this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
+        
+        this.#controls = new OrbitControls(this.camera, this.renderer.domElement);
 
         const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
         this.scene.add(hemLight);
@@ -3375,28 +3384,31 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         light.position.set(0, 0, 10);
         this.scene.add(light);
 
+        this.camera.position.set(0, 7.5, 7.5);
+        this.controls.target.set(0, 0, 0);
+        this.controls.update();
+
         const loader = new GLTFLoader();
         loader.load("../temp/Field3d_2023.glb", gltf => {
             this.scene.add(gltf.scene);
-            gltf.scene.scale.set(10, 10, 10);
             gltf.scene.traverse(mesh => {
                 if (mesh.isMesh && mesh.material instanceof THREE.MeshStandardMaterial) {
                     mesh.material.metalness = 0;
                     mesh.material.roughness = 1;
                 }
-            })
-            let box = new THREE.Box3();
-            box.setFromObject(this.scene);
-            console.log(box);
-            console.log(this.scene);
+            });
         });
 
-        this.camera.position.z = 75;
-
         this.addHandler("update", data => {
+            if (this.isClosed) return;
+
+            this.controls.update();
+
             let r = this.eContent.getBoundingClientRect();
+
             this.camera.aspect = (r.width-4) / (r.height-4);
             this.camera.updateProjectionMatrix();
+
             this.renderer.setSize((r.width-4)*this.quality, (r.height-4)*this.quality);
             this.renderer.render(this.scene, this.camera);
             this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
@@ -3406,6 +3418,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get scene() { return this.#scene; }
     get camera() { return this.#camera; }
     get renderer() { return this.#renderer; }
+    get controls() { return this.#controls; }
 };
 
 class Project extends core.Target {

@@ -2925,7 +2925,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (!this.hasPage()) return;
             e.stopPropagation();
             if (this.generating) {
-                window.api.ask("exec-term");
+                window.api.send("exec-term");
                 return;
             }
             const projectId = this.page.projectId;
@@ -2940,7 +2940,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 this.app.markChange("*all");
                 await this.app.post("cmd-save", null);
                 try {
-                    await window.api.ask("exec", [project.id, path.id]);
+                    await window.api.send("exec", [project.id, path.id]);
                     await this.checkVisuals();
                     this.visuals.forEach(id => {
                         let visual = this.getVisual(id);
@@ -3287,7 +3287,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         if (!this.page.hasProject()) return;
         try {
             let projectId = this.page.projectId;
-            let datas = await window.api.ask("exec-get", [projectId]);
+            let datas = await window.api.send("exec-get", [projectId]);
             if (!util.is(datas, "obj")) return;
             if (this.page.projectId != projectId) return;
             for (let id in datas) {
