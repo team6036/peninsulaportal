@@ -1557,6 +1557,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     static Types = {
         DEFAULT: Symbol("DEFAULT"),
+        NODE: Symbol("NODE"),
+        BOX: Symbol("BOX"),
+        ARROW: Symbol("ARROW"),
     };
 
     constructor(pos, size, heading, velocity) {
@@ -1580,45 +1583,71 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+this.color+"-8");
-            ctx.lineWidth = 7.5*quality;
-            ctx.lineJoin = "round";
-            ctx.lineCap = "square";
-            ctx.beginPath();
-            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
-            for (let i = 0; i <= path.length; i++) {
-                let j = i%path.length;
-                let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
-                if (i > 0) ctx.lineTo(...p.xy);
-                else ctx.moveTo(...p.xy);
+            if (![Odometry2d.Robot.Types.NODE, Odometry2d.Robot.Types.ARROW].includes(this.type)) {
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+this.color+"-8");
+                ctx.lineWidth = 7.5*quality;
+                ctx.lineJoin = "round";
+                ctx.lineCap = "square";
+                ctx.beginPath();
+                let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+                for (let i = 0; i <= path.length; i++) {
+                    let j = i%path.length;
+                    let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
+                    if (i > 0) ctx.lineTo(...p.xy);
+                    else ctx.moveTo(...p.xy);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+                ctx.lineWidth = 2*quality;
+                ctx.lineJoin = "round";
+                ctx.lineCap = "square";
+                ctx.beginPath();
+                path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+                for (let i = 0; i <= path.length; i++) {
+                    let j = i%path.length;
+                    let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
+                    if (i > 0) ctx.lineTo(...p.xy);
+                    else ctx.moveTo(...p.xy);
+                }
+                ctx.closePath();
+                ctx.stroke();
             }
-            ctx.closePath();
-            ctx.stroke();
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
-            ctx.lineWidth = 2*quality;
-            ctx.lineJoin = "round";
-            ctx.lineCap = "square";
-            ctx.beginPath();
-            path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
-            for (let i = 0; i <= path.length; i++) {
-                let j = i%path.length;
-                let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
-                if (i > 0) ctx.lineTo(...p.xy);
-                else ctx.moveTo(...p.xy);
+            if (this.type == Odometry2d.Robot.Types.ARROW) {
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? this.colorH : this.color));
+                ctx.lineWidth = 5*quality;
+                ctx.lineJoin = "round";
+                ctx.lineCap = "round";
+                let dir = this.heading;
+                let tail = this.pos.add(V.dir(dir, -this.w/2));
+                let head = this.pos.add(V.dir(dir, +this.w/2));
+                ctx.beginPath();
+                ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir-135, this.odometry.pageLenToWorld(15)))).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(15)))).xy);
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? "v8" : "v8-8"));
+                ctx.lineWidth = 2*quality;
+                ctx.lineJoin = "round";
+                ctx.lineCap = "square";
+                ctx.beginPath();
+                ctx.arc(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
+                ctx.fill();
             }
-            ctx.closePath();
-            ctx.stroke();
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? "v8" : "v8-8"));
-            ctx.beginPath();
-            ctx.arc(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
-            ctx.fill();
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? this.colorH : this.color));
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
-            ctx.lineWidth = 2*quality;
-            ctx.beginPath();
-            ctx.arc(...this.odometry.worldToCanvas(this.pos).xy, 7.5*quality, 0, 2*Math.PI);
-            ctx.fill();
-            if (this.selected) ctx.stroke();
+            if (![Odometry2d.Robot.Types.BOX, Odometry2d.Robot.Types.ARROW].includes(this.type)) {
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? this.colorH : this.color));
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+                ctx.lineWidth = 2*quality;
+                ctx.lineJoin = "round";
+                ctx.lineCap = "square";
+                ctx.beginPath();
+                ctx.arc(...this.odometry.worldToCanvas(this.pos).xy, 7.5*quality, 0, 2*Math.PI);
+                ctx.fill();
+                if (this.selected) ctx.stroke();
+            }
             if (this.showVelocity) {
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
                 ctx.lineWidth = 2*quality;
