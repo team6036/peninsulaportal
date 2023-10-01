@@ -2,7 +2,7 @@
   "name": "Pensinula",
   "productName": "Pensinula",
   "scripts": {
-    "start": "npm install && electron .",
+    "start": "electron .",
     "package": "node package.js"
   },
   "main": "main.js",
