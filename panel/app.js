@@ -7,6 +7,13 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
+
 import NTSource from "../nt4/source.js";
 
 
@@ -1141,7 +1148,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.tags = [];
             this.placeholder = "Search tools, tables, and topics";
             if (this.query.length > 0) {
-                toolItems = util.search(toolItems, [ "name" ], this.query);
+                toolItems = util.search(toolItems, ["name"], this.query);
                 let genericItems = [];
                 if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
                     let root = this.page.rootSource.root;
@@ -1165,7 +1172,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     item.item.addHandler("trigger", item.trigger);
                     return item.item;
                 });
-                genericItems = util.search(genericItems, [ "generic.path", "generic.type" ], this.query);
+                genericItems = util.search(genericItems, ["generic.path", "generic.type"], this.query);
                 this.items = [
                     new Panel.AddTab.Header("Tools"),
                     ...toolItems,
@@ -1199,7 +1206,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         } else if (this.searchPart == "tools") {
             this.tags = [new Panel.AddTab.Tag("Tools", "cube-outline")];
             this.placeholder = "Search tools";
-            toolItems = util.search(toolItems, [ "name" ], this.query);
+            toolItems = util.search(toolItems, ["name"], this.query);
             this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddTab.Tag(
@@ -1231,7 +1238,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 item.item.addHandler("trigger", item.trigger);
                 return item.item;
             });
-            items = util.search(items, [ "generic.path", "generic.type" ], this.query);
+            items = util.search(items, ["generic.path", "generic.type"], this.query);
             this.items = items;
         }
         this.eSearchInput.focus();
@@ -3363,6 +3370,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #camera;
     #renderer;
     #controls;
+    #composer;
 
     #field;
 
@@ -3377,12 +3385,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #eViewIsometric;
     #eUnitsMeters;
     #eUnitsCentimeters;
-    #eUnitsDegrees;
-    #eUnitsRadians;
 
     static DO = false;
 
-    constructor() {
+    constructor(...a) {
         super("3d");
 
         this.quality = 3;
@@ -3393,6 +3399,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
         
         this.#controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+        this.#composer = null;
 
         this.#field = null;
 
@@ -3408,17 +3416,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         const loader = new GLTFLoader();
 
-        /*
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const cube = new THREE.Mesh(geometry, material);
-        this.scene.add(cube);
-        */
+        this.#composer = new EffectComposer(this.renderer);
 
         this.#template = null;
 
         this.#isMeters = true;
-        this.#isDegrees = true;
         this.#isProjection = false;
 
         let info;
@@ -3474,17 +3476,25 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eNav.appendChild(this.eUnitsCentimeters);
         this.eUnitsCentimeters.textContent = "Centimeters";
         this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eUnitsDegrees = document.createElement("button");
-        eNav.appendChild(this.eUnitsDegrees);
-        this.eUnitsDegrees.textContent = "Degrees";
-        this.eUnitsDegrees.addEventListener("click", e => { this.isDegrees = true; });
-        this.#eUnitsRadians = document.createElement("button");
-        eNav.appendChild(this.eUnitsRadians);
-        this.eUnitsRadians.textContent = "Radians";
-        this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
+
+        if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOptionsOpen];
+            else if (util.is(a, "arr")) {
+                if (a[0] instanceof Panel.OdometryTab.Pose) a = [a, null];
+                else {
+                    a = new Panel.Odometry2dTab(...a);
+                    a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOptionsClosed];
+                }
+            }
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOpen];
+            else a = [[], null];
+        }
+        if (a.length == 2) a = [...a, true];
+        if (a.length == 3) a = [...a.slice(0, 2), true, true, a[2]];
+
+        [this.poses, this.template, this.isProjection, this.isMeters, this.isOptionsOpen] = a;
 
         let templates = {};
         let templateModels = {};
@@ -3494,20 +3504,90 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             templateModels = await window.api.get("template-models");
             this.template = await window.api.get("active-template");
             finished = true;
-            /*
-            loader.load(templateModels[this.template], gltf => {
-                gltf.scene.traverse(mesh => {
-                    if (mesh.isMesh && mesh.material instanceof THREE.MeshStandardMaterial) {
-                        mesh.material.metalness = 0;
-                        mesh.material.roughness = 1;
-                    }
-                });
-                this.scene.add(gltf.scene);
-            });
-            */
         })();
 
         let preloadedFields = {};
+
+        let poses = {};
+
+        window.hottest = () => {
+            const page = app.getPage("PROJECT");
+            page.rootSource.announceTopic("k", "double[]");
+            page.rootSource.updateTopic("k", [0, 0, 0, 0, 0, 0, 0]);
+        };
+
+        class Pass extends core.Target {
+            #composer;
+            #scene;
+            #camera;
+
+            #createPass;
+
+            #pass;
+
+            constructor(createPass) {
+                super();
+
+                this.#composer = null;
+                this.#scene = null;
+                this.#camera = null;
+
+                this.#createPass = null;
+
+                this.#pass = null;
+                
+                this.createPass = createPass;
+            }
+
+            get composer() { return this.#composer; }
+            set composer(v) {
+                v = (v instanceof EffectComposer) ? v : null;
+                if (this.composer == v) return;
+                this.#composer = v;
+                this.recreate();
+            }
+            hasComposer() { return this.composer instanceof EffectComposer; }
+            get scene() { return this.#scene; }
+            set scene(v) {
+                v = (v instanceof THREE.Scene) ? v : null;
+                if (this.scene == v) return;
+                this.#scene = v;
+                this.recreate();
+            }
+            hasScene() { return this.scene instanceof THREE.Scene; }
+            get camera() { return this.#camera; }
+            set camera(v) {
+                v = (v instanceof THREE.Camera) ? v : null;
+                if (this.camera == v) return;
+                this.#camera = v;
+                this.recreate();
+            }
+            hasCamera() { return this.camera instanceof THREE.Camera; }
+
+            get createPass() { return this.#createPass; }
+            set createPass(v) {
+                v = util.is(v, "func") ? v : null;
+                if (this.createPass == v) return;
+                this.#createPass = v;
+                this.recreate();
+            }
+            hasCreatePass() { return util.is(this.createPass, "func"); }
+
+            get pass() { return this.#pass; }
+            hasPass() { return util.is(this.pass, "obj"); }
+
+            recreate() {
+                if (this.hasPass()) {
+                    this.pass.composer.removePass(this.pass);
+                    delete this.pass.composer;
+                }
+                this.#pass = (this.hasComposer() && this.hasScene() && this.hasCamera() && this.hasCreatePass()) ? this.createPass(this.composer, this.scene, this.camera) : null;
+                if (this.hasPass()) {
+                    this.pass.composer = this.composer;
+                    this.pass.composer.addPass(this.pass);
+                }
+            }
+        }
 
         this.addHandler("update", data => {
             if (this.isClosed) return;
@@ -3522,17 +3602,89 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             else this.eUnitsMeters.classList.remove("this");
             if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
             else this.eUnitsCentimeters.classList.remove("this");
-            if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
-            else this.eUnitsDegrees.classList.remove("this");
-            if (this.isRadians) this.eUnitsRadians.classList.add("this");
-            else this.eUnitsRadians.classList.remove("this");
+            
+            let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
+            let newPoses = {};
+            if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
+                this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
+            }
+            let needAdd = {}, needRem = {};
+            for (let name in newPoses)
+                if (!(name in poses))
+                    needAdd[name] = newPoses[name];
+            for (let name in poses)
+                if (!(name in newPoses))
+                    needRem[name] = poses[name];
+            Object.keys(needAdd).forEach(name => {
+                let topic = source.root.lookup(name);
+                if (!(topic instanceof NTSource.Topic)) return;
+                if (!topic.isArray) return;
+                if (topic.value.length == 7) {
+                    let item = {};
+                    item.geometry = new THREE.BoxGeometry(1, 1, 1);
+                    item.material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                    item.mesh = new THREE.Mesh(item.geometry, item.material);
+                    let pass = new Pass((composer, scene, camera) => {
+                        let pass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
+                        pass.selectedObjects = [item.mesh];
+                        pass.edgeStrength = 10;
+                        pass.edgeGlow = 0;
+                        pass.edgeThickness = 5;
+                        return pass;
+                    });
+                    item.passes = [pass];
+                    let items = poses[name] = [item];
+                    items[0].showVelocity = false;
+                }
+                poses[name].forEach(item => {
+                    this.scene.add(item.mesh);
+                });
+            });
+            Object.keys(needRem).forEach(name => {
+                poses[name].forEach(item => {
+                    this.scene.remove(item.mesh);
+                    util.ensure(item.passes, "arr").forEach(pass => {
+                        pass.composer = null;
+                        pass.scene = null;
+                        pass.camera = null;
+                    });
+                });
+                delete poses[name];
+            });
+            for (let name in poses) {
+                let items = poses[name];
+                items.forEach(item => {
+                    util.ensure(item.passes, "arr").forEach(pass => {
+                        pass.composer = this.composer;
+                        pass.scene = this.scene;
+                        pass.camera = this.camera;
+                    });
+                });
+                let pose = newPoses[name];
+                let topic = source.root.lookup(name);
+                if (!(topic instanceof NTSource.Topic)) continue;
+                if (!topic.isArray) continue;
+                if (topic.value.length == 7) {
+                    let item = items[0]; // , pass = item.passes[0];
+                    item.mesh.position.set(topic.value[0] * (this.isMeters?100:1), topic.value[1] * (this.isMeters?100:1), topic.value[2] * (this.isMeters?100:1));
+                    item.mesh.rotation.setFromQuaternion(new THREE.Quaternion(...topic.value.slice(3)), "XYZ");
+                    let color = new util.Color(pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(pose.color) : pose.color);
+                    let pass = item.passes[0];
+                    if (!(pass instanceof Pass)) continue;
+                    if (!pass.hasPass()) continue;
+                    pass = pass.pass;
+                    pass.visibleEdgeColor.set(color.toHex(false));
+                    pass.hiddenEdgeColor.set(util.lerp(color, new util.Color(), 0.5).toHex(false));
+                }
+            }
 
             if ((this.template in templateModels) && !(this.template in preloadedFields)) {
                 const template = this.template;
                 preloadedFields[template] = null;
                 loader.load(templateModels[template], gltf => {
                     gltf.scene.traverse(mesh => {
-                        if (mesh.isMesh && mesh.material instanceof THREE.MeshStandardMaterial) {
+                        if (!mesh.isMesh) return;
+                        if (mesh.material instanceof THREE.MeshStandardMaterial) {
                             mesh.material.metalness = 0;
                             mesh.material.roughness = 1;
                         }
@@ -3560,8 +3712,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             }
 
             this.renderer.setSize((r.width-4)*this.quality, (r.height-4)*this.quality);
-            this.renderer.render(this.scene, this.camera);
             this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
+
+            this.composer.setSize((r.width-4)*this.quality, (r.height-4)*this.quality);
+            this.composer.render();
         });
 
         this.isProjection = true;
@@ -3571,6 +3725,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get camera() { return this.#camera; }
     get renderer() { return this.#renderer; }
     get controls() { return this.#controls; }
+    get composer() { return this.#composer; }
 
     get field() { return this.#field; }
     set field(v) {
@@ -3599,6 +3754,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
         this.camera.position.set(...(this.isProjection ? [0, 7.5, 7.5] : [10, 10, 10]));
         this.controls.object = this.camera;
+
+        this.composer.dispose();
+        this.#composer = new EffectComposer(this.renderer);
+        const renderPass = new RenderPass(this.scene, this.camera);
+        this.composer.addPass(renderPass);
+        const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
+        this.composer.addPass(outlinePass);
     }
     get isIsometric() { return !this.isProjection; }
     set isIsometric(v) { this.isProjection = !v; }
@@ -3626,10 +3788,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get eViewIsometric() { return this.#eViewIsometric; }
     get eUnitsMeters() { return this.#eUnitsMeters; }
     get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
-    get eUnitsDegrees() { return this.#eUnitsDegrees; }
-    get eUnitsRadians() { return this.#eUnitsRadians; }
 
-    isValidPose(topic) { return false; }
+    isValidPose(topic) { return topic.value.length == 7; }
 
     toJSON() {
         return {

@@ -629,13 +629,13 @@ export class Color {
         this.hsva = hsva;
     }
 
-    toHex() {
+    toHex(a=true) {
         const hex = "0123456789abcdef";
-        let rgba = this.rgba.map(v => {
-            v = Math.round();
+        let vals = (a ? this.rgba : this.rgb).map(v => {
+            v = Math.round(v);
             return hex[Math.floor(v/16)]+hex[v%16];
         });
-        return "#"+rgba.join("");
+        return "#"+vals.join("");
     }
     toRGBA() {
         return "rgba("+this.rgba.join(",")+")";
