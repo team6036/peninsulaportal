@@ -691,6 +691,7 @@
     width: calc(100% - 20px);
     max-width: calc(100% - 20px);
     padding: 10px;
+    padding-bottom: 0px;
     overflow: auto;
 
     display: flex;
@@ -733,13 +734,13 @@
 #PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .browser,
 #PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display {
     position: absolute;
-    top: 32px;
+    top: 26.5px;
     left: 0px;
 
     width: calc(100% - 20px);
     max-width: calc(100% - 20px);
-    height: calc(100% - 20px - 32px);
-    max-height: calc(100% - 20px - 32px);
+    height: calc(100% - 20px - 26.5px);
+    max-height: calc(100% - 20px - 26.5px);
     padding: 10px;
     overflow: auto;
 
@@ -823,9 +824,9 @@
     border-radius: 10px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.add {
-    padding: 20px;
-    max-width: calc(100% - 40px);
-    max-height: calc(100% - 40px);
+    padding: 10px;
+    max-width: calc(100% - 20px);
+    max-height: calc(100% - 20px);
 
     display: flex;
     flex-direction: column;
