@@ -223,10 +223,10 @@ const MAIN = async () => {
         }
 
         async isDevMode() {
-            if (!(await Portal.fileHas(path.join(__dirname, ".devconfig")))) return false;
+            if (!(await Portal.fileHas(path.join(__dirname, ".config")))) return false;
             let content = "";
             try {
-                content = await Portal.fileRead(path.join(__dirname, ".devconfig"));
+                content = await Portal.fileRead(path.join(__dirname, ".config"));
             } catch (e) { return false; }
             let data = null;
             try {
@@ -1363,7 +1363,7 @@ const MAIN = async () => {
                     let is = await this.isDevMode();
                     this.menuChange({ toggleDevTools: { ".enabled": is } });
                 };
-                fs.watch(path.join(__dirname, ".devconfig"), () => checkDevMode());
+                fs.watch(path.join(__dirname, ".config"), () => checkDevMode());
                 await checkDevMode();
                 if (!this.hasName()) return;
                 if (!this.hasPortal()) return;

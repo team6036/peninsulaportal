@@ -1561,6 +1561,12 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         BOX: Symbol("BOX"),
         ARROW: Symbol("ARROW"),
     };
+    static lookupTypeName(type) {
+        for (let name in Odometry2d.Robot.Types)
+            if (Odometry2d.Robot.Types[name] == type)
+                return name;
+        return null;
+    }
 
     constructor(pos, size, heading, velocity) {
         super(pos);
