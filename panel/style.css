@@ -1274,6 +1274,7 @@
     --fgh: var(--cg5);
     --fgd: var(--cg2);
 }
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display,
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button {
     position: relative;
 
@@ -1281,6 +1282,7 @@
 
     border-radius: 5px;
 }
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display > ion-icon,
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button > ion-icon {
     position: absolute;
     top: 50%;

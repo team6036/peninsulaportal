@@ -1210,7 +1210,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddTab.Tag(
-                this.searchPart[0].toUpperCase()+this.searchPart.substring(1).toLowerCase(),
+                util.capitalize(this.searchPart),
                 { tables: "folder-outline", topics: "document-outline", all: "" }[this.searchPart],
             )];
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
@@ -1988,7 +1988,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         let btn = document.createElement("button");
                         eNav.appendChild(btn);
                         eNavButtons[mode] = btn;
-                        btn.textContent = mode[0].toUpperCase()+mode.slice(1).toLowerCase();
+                        btn.textContent = util.capitalize(mode);
                         btn.addEventListener("click", e => {
                             this.viewMode = mode;
                         });
@@ -3211,6 +3211,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         let poses = {};
 
+        window.hottest2d = () => {
+            const page = app.getPage("PROJECT");
+            page.rootSource.announceTopic("k", "double[]");
+            page.rootSource.updateTopic("k", [2, 2, 0]);
+        };
+
         this.addHandler("update", () => {
             if (this.isClosed) return;
 
@@ -3289,10 +3295,43 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                     render.size = (this.template in templates) ? templates[this.template].robotSize : this.robotSize;
                     render.pos = new V(topic.value[0], topic.value[1]).mul(this.isMeters ? 100 : 1);
                     render.heading = topic.value[2] * (this.isDegrees ? 1 : (180/Math.PI));
+                    let current = Object.keys(core.Odometry2d.Robot.Types)[Object.values(core.Odometry2d.Robot.Types).indexOf(render.type)];
+                    pose.eDisplayBtn.children[0].textContent = String(current).split(" ").map(v => util.capitalize(v)).join(" ");
+                    pose.eDisplayBtn._onClick = () => {
+                        if (!this.hasApp()) return;
+                        let itm;
+                        let menu = new core.App.ContextMenu();
+                        Object.keys(core.Odometry2d.Robot.Types).forEach(k => {
+                            let name = String(k).split(" ").map(v => util.capitalize(v)).join(" ");
+                            itm = menu.addItem(new core.App.ContextMenu.Item(name, (current == k) ? "checkmark" : ""));
+                            itm.addHandler("trigger", data => {
+                                render.type = k;
+                            });
+                        });
+                        this.app.contextMenu = menu;
+                        let r = pose.eDisplayBtn.getBoundingClientRect();
+                        this.app.placeContextMenu(r.left, r.bottom);
+                    };
                 }
             }
             this.odometry.update();
         });
+    }
+
+    addPose(pose) {
+        let r = super.addPose(pose);
+        if (r instanceof Panel.OdometryTab.Pose) {
+            const eDisplayBtn = r.eDisplayBtn = document.createElement("button");
+            r.eContent.appendChild(eDisplayBtn);
+            eDisplayBtn.classList.add("display");
+            eDisplayBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+            eDisplayBtn._onClick = () => {};
+            eDisplayBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                eDisplayBtn._onClick();
+            });
+        }
+        return r;
     }
 
     get odometry() { return this.#odometry; }
@@ -3510,7 +3549,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         let poses = {};
 
-        window.hottest = () => {
+        window.hottest3d = () => {
             const page = app.getPage("PROJECT");
             page.rootSource.announceTopic("k", "double[]");
             page.rootSource.updateTopic("k", [0, 0, 0, 0, 0, 0, 0]);
