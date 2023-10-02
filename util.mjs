@@ -251,6 +251,12 @@ export function search(items, keys, query) {
     return items;
 }
 
+export function capitalize(s) {
+    s = String(s);
+    if (s.length <= 0) return s;
+    return s[0].toUpperCase() + s.substring(1).toLowerCase();
+}
+
 export const ease = {
     // https://easings.net/
 

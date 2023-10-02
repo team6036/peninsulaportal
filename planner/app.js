@@ -2237,7 +2237,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends core.Target {
         });
 
         this.icon = icon;
-        this.btnName = this.name.split(" ").map(v => v[0].toUpperCase()+v.substring(1).toLowerCase()).join(" ");
+        this.btnName = this.name.split(" ").map(v => util.capitalize(v)).join(" ");
     }
 
     get name() { return this.#name; }
@@ -2471,7 +2471,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let eName = document.createElement("div");
             btn.appendChild(eName);
             eName.classList.add("name");
-            eName.textContent = name.split(" ").map(v => v[0].toUpperCase()+v.substring(1).toLowerCase()).join(" ");
+            eName.textContent = name.split(" ").map(v => util.capitalize(v)).join(" ");
             btn.addEventListener("mousedown", e => {
                 if (!this.hasPage() || !this.hasApp()) return;
                 if (this.page.choosing) return;

@@ -1680,6 +1680,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
     get type() { return this.#type; }
     set type(v) {
         if (!Object.values(Odometry2d.Robot.Types)) return;
+        if (Object.keys(Odometry2d.Robot.Types).includes(v)) v = Odometry2d.Robot.Types[v];
         this.#type = v;
     }
 
