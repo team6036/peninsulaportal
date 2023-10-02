@@ -10,7 +10,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
-import { SAOPass } from "three/addons/postprocessing/SAOPass.js";
+// import { SAOPass } from "three/addons/postprocessing/SAOPass.js";
 // import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 import NTSource from "../nt4/source.js";
@@ -3307,7 +3307,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         let r = super.addPose(pose);
         if (r instanceof this.constructor.Pose) {
             r._onType = () => {
-                let current = Object.keys(core.Odometry2d.Robot.Types)[Object.values(core.Odometry2d.Robot.Types).indexOf(r.type)];
+                let current = core.Odometry2d.Robot.lookupTypeName(r.type);
                 if (!this.hasApp()) return;
                 let itm;
                 let menu = new core.App.ContextMenu();
@@ -3444,10 +3444,8 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         if (!Object.values(core.Odometry2d.Robot.Types)) return;
         if (Object.keys(core.Odometry2d.Robot.Types).includes(v)) v = core.Odometry2d.Robot.Types[v];
         this.#type = v;
-        if (this.eDisplayType.children[0] instanceof HTMLDivElement) {
-            let name = Object.keys(core.Odometry2d.Robot.Types)[Object.values(core.Odometry2d.Robot.Types).indexOf(this.type)];
-            this.eDisplayType.children[0].textContent = String(name).split(" ").map(v => util.capitalize(v)).join(" ");
-        }
+        if (this.eDisplayType.children[0] instanceof HTMLDivElement)
+            this.eDisplayType.children[0].textContent = String(core.Odometry2d.Robot.lookupTypeName(this.type)).split(" ").map(v => util.capitalize(v)).join(" ");
     }
 
     get eDisplayType() { return this.#eDisplayType; }

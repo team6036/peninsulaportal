@@ -546,6 +546,8 @@ export class Color {
                         a = a.split(",").map(v => v.trim()).map(v => parseFloat(v));
                         a = new Color(...a).rgba;
                     } else a = [0, 0, 0];
+                } else if (a.startsWith("--")) {
+                    a = new Color(getComputedStyle(document.body).getPropertyValue(a)).rgba;
                 } else a = [0, 0, 0];
             }
             else a = [0, 0, 0];
