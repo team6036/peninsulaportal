@@ -1193,7 +1193,22 @@
     gap: 5px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav {
+    position: relative;
+
     margin-bottom: 10px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav::before {
+    content: "";
+
+    position: absolute;
+    bottom: -7.5px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: 100%;
+    height: 2px;
+
+    background-color: var(--v2);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button,
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {

@@ -9,10 +9,9 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
+import { SAOPass } from "three/addons/postprocessing/SAOPass.js";
+// import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 import NTSource from "../nt4/source.js";
 
@@ -2741,11 +2740,11 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         return poses;
     }
     hasPose(pose) {
-        if (!(pose instanceof Panel.OdometryTab.Pose)) return false;
+        if (!(pose instanceof this.constructor.Pose)) return false;
         return this.#poses.has(pose);
     }
     addPose(pose) {
-        if (!(pose instanceof Panel.OdometryTab.Pose)) return false;
+        if (!(pose instanceof this.constructor.Pose)) return false;
         if (this.hasPose(pose)) return false;
         this.#poses.add(pose);
         pose._onRemove = () => this.remPose(pose);
@@ -2758,7 +2757,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         return pose;
     }
     remPose(pose) {
-        if (!(pose instanceof Panel.OdometryTab.Pose)) return false;
+        if (!(pose instanceof this.constructor.Pose)) return false;
         if (!this.hasPose(pose)) return false;
         this.#poses.delete(pose);
         pose.remHandler("remove", pose._onRemove);
@@ -2813,7 +2812,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                                 let has = false;
                                 this.poses.forEach(v => (v.name == name) ? (has = true) : null);
                                 if (has) return;
-                                this.addPose(new Panel.OdometryTab.Pose(name, "--c"+nextColor));
+                                this.addPose(new this.constructor.Pose(name, "--c"+nextColor));
                             };
                             addPose(data.path);
                         },
@@ -2921,9 +2920,9 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.OdometryTab.Pose) a = [a.name, a.color, a.isShown, a.ghost];
+            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.ghost];
             else if (util.is(a, "arr")) {
-                a = new Panel.OdometryTab.Pose(...a);
+                a = new this.constructor(...a);
                 a = [a.name, a.color, a.isShown, a.ghost];
             }
             else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.ghost];
@@ -3183,7 +3182,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             a = a[0];
             if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.OdometryTab.Pose) a = [a, null];
+                if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
                     a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsClosed];
@@ -3287,6 +3286,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                         render.color = pose.color;
                         render.alpha = pose.ghost ? 0.5 : 1;
                     });
+                    pose.eDisplayType.style.display = "none";
                 } else if (topic.value.length == 3) {
                     let render = renders[0];
                     render.color = pose.color.substring(2);
@@ -3295,23 +3295,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                     render.size = (this.template in templates) ? templates[this.template].robotSize : this.robotSize;
                     render.pos = new V(topic.value[0], topic.value[1]).mul(this.isMeters ? 100 : 1);
                     render.heading = topic.value[2] * (this.isDegrees ? 1 : (180/Math.PI));
-                    let current = Object.keys(core.Odometry2d.Robot.Types)[Object.values(core.Odometry2d.Robot.Types).indexOf(render.type)];
-                    pose.eDisplayBtn.children[0].textContent = String(current).split(" ").map(v => util.capitalize(v)).join(" ");
-                    pose.eDisplayBtn._onClick = () => {
-                        if (!this.hasApp()) return;
-                        let itm;
-                        let menu = new core.App.ContextMenu();
-                        Object.keys(core.Odometry2d.Robot.Types).forEach(k => {
-                            let name = String(k).split(" ").map(v => util.capitalize(v)).join(" ");
-                            itm = menu.addItem(new core.App.ContextMenu.Item(name, (current == k) ? "checkmark" : ""));
-                            itm.addHandler("trigger", data => {
-                                render.type = k;
-                            });
-                        });
-                        this.app.contextMenu = menu;
-                        let r = pose.eDisplayBtn.getBoundingClientRect();
-                        this.app.placeContextMenu(r.left, r.bottom);
-                    };
+                    render.type = pose.type;
+                    pose.eDisplayType.style.display = "";
                 }
             }
             this.odometry.update();
@@ -3320,16 +3305,32 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
     addPose(pose) {
         let r = super.addPose(pose);
-        if (r instanceof Panel.OdometryTab.Pose) {
-            const eDisplayBtn = r.eDisplayBtn = document.createElement("button");
-            r.eContent.appendChild(eDisplayBtn);
-            eDisplayBtn.classList.add("display");
-            eDisplayBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-            eDisplayBtn._onClick = () => {};
-            eDisplayBtn.addEventListener("click", e => {
-                e.stopPropagation();
-                eDisplayBtn._onClick();
-            });
+        if (r instanceof this.constructor.Pose) {
+            r._onType = () => {
+                let current = Object.keys(core.Odometry2d.Robot.Types)[Object.values(core.Odometry2d.Robot.Types).indexOf(r.type)];
+                if (!this.hasApp()) return;
+                let itm;
+                let menu = new core.App.ContextMenu();
+                Object.keys(core.Odometry2d.Robot.Types).forEach(k => {
+                    let name = String(k).split(" ").map(v => util.capitalize(v)).join(" ");
+                    itm = menu.addItem(new core.App.ContextMenu.Item(name, (current == k) ? "checkmark" : ""));
+                    itm.addHandler("trigger", data => {
+                        r.type = k;
+                    });
+                });
+                this.app.contextMenu = menu;
+                let rect = r.eDisplayType.getBoundingClientRect();
+                this.app.placeContextMenu(rect.left, rect.bottom);
+            };
+            r.addHandler("type", r._onType);
+        }
+        return r;
+    }
+    remPose(pose) {
+        let r = super.remPose(pose);
+        if (r instanceof this.constructor.Pose) {
+            r.remHandler("type", r._onType);
+            delete r._onType;
         }
         return r;
     }
@@ -3404,12 +3405,75 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         };
     }
 };
+Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTab.Pose {
+    #type;
+
+    #eDisplayType;
+
+    constructor(...a) {
+        super();
+
+        this.#type = null;
+
+        this.#eDisplayType = document.createElement("button");
+        this.eContent.appendChild(this.eDisplayType);
+        this.eDisplayType.classList.add("display");
+        this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+        this.eDisplayType.addEventListener("click", e => this.post("type", null));
+
+        if (a.length <= 0 || a.length > 5) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.ghost, a.type];
+            else if (util.is(a, "arr")) {
+                a = new this.constructor(...a);
+                a = [a.name, a.color, a.isShown, a.ghost, a.type];
+            }
+            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.ghost, a.type];
+            else a = [null, null];
+        }
+        if (a.length == 2) a = [...a, true];
+        if (a.length == 3) a = [...a, false];
+        if (a.length == 4) a = [...a, core.Odometry2d.Robot.Types.DEFAULT];
+
+        [this.name, this.color, this.isShown, this.ghost, this.type] = a;
+    }
+
+    get type() { return this.#type; }
+    set type(v) {
+        if (!Object.values(core.Odometry2d.Robot.Types)) return;
+        if (Object.keys(core.Odometry2d.Robot.Types).includes(v)) v = core.Odometry2d.Robot.Types[v];
+        this.#type = v;
+        if (this.eDisplayType.children[0] instanceof HTMLDivElement) {
+            let name = Object.keys(core.Odometry2d.Robot.Types)[Object.values(core.Odometry2d.Robot.Types).indexOf(this.type)];
+            this.eDisplayType.children[0].textContent = String(name).split(" ").map(v => util.capitalize(v)).join(" ");
+        }
+    }
+
+    get eDisplayType() { return this.#eDisplayType; }
+
+    toJSON() {
+        return {
+            "%OBJ": this.constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": [{
+                name: this.name,
+                color: this.color,
+                isShown: this.isShown,
+                ghost: this.ghost,
+                type: this.type,
+            }],
+        };
+    }
+};
 Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #scene;
     #camera;
     #renderer;
     #controls;
     #composer;
+
+    #axisScene;
 
     #field;
 
@@ -3439,7 +3503,34 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         
         this.#controls = new OrbitControls(this.camera, this.renderer.domElement);
 
-        this.#composer = null;
+        this.#composer = new EffectComposer(this.renderer);
+
+        const radius = 0.05;
+        const length = 5;
+        this.#axisScene = new THREE.Object3D();
+        const xAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        xAxis.position.set(length/2, 0, 0);
+        xAxis.rotateZ(Math.PI/2);
+        this.axisScene.add(xAxis);
+        this.axisScene.xAxis = xAxis;
+        const yAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        yAxis.position.set(0, length/2, 0);
+        this.axisScene.add(yAxis);
+        this.axisScene.yAxis = yAxis;
+        const zAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        zAxis.position.set(0, 0, length/2);
+        zAxis.rotateX(Math.PI/2);
+        this.axisScene.add(zAxis);
+        this.axisScene.zAxis = zAxis;
 
         this.#field = null;
 
@@ -3454,8 +3545,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.controls.update();
 
         const loader = new GLTFLoader();
-
-        this.#composer = new EffectComposer(this.renderer);
 
         this.#template = null;
 
@@ -3521,7 +3610,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             a = a[0];
             if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.OdometryTab.Pose) a = [a, null];
+                if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
                     a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOptionsClosed];
@@ -3661,7 +3750,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 if (topic.value.length == 7) {
                     let item = {};
                     item.geometry = new THREE.BoxGeometry(1, 1, 1);
-                    item.material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                    item.material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
                     item.mesh = new THREE.Mesh(item.geometry, item.material);
                     let pass = new Pass((composer, scene, camera) => {
                         let pass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
@@ -3704,7 +3793,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 if (!(topic instanceof NTSource.Topic)) continue;
                 if (!topic.isArray) continue;
                 if (topic.value.length == 7) {
-                    let item = items[0]; // , pass = item.passes[0];
+                    let item = items[0];
                     item.mesh.position.set(topic.value[0] * (this.isMeters?100:1), topic.value[1] * (this.isMeters?100:1), topic.value[2] * (this.isMeters?100:1));
                     item.mesh.rotation.setFromQuaternion(new THREE.Quaternion(...topic.value.slice(3)), "XYZ");
                     let color = new util.Color(pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(pose.color) : pose.color);
@@ -3733,6 +3822,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             }
 
             this.field = preloadedFields[this.template];
+
+            this.axisScene.xAxis.material.color.set(getComputedStyle(document.body).getPropertyValue("--cr"));
+            this.axisScene.yAxis.material.color.set(getComputedStyle(document.body).getPropertyValue("--cg"));
+            this.axisScene.zAxis.material.color.set(getComputedStyle(document.body).getPropertyValue("--cb"));
 
             this.controls.update();
 
@@ -3766,9 +3859,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get controls() { return this.#controls; }
     get composer() { return this.#composer; }
 
+    get axisScene() { return this.#axisScene; }
+    hasAxisScene() { return this.axisScene instanceof THREE.Object3D; }
+
     get field() { return this.#field; }
     set field(v) {
-        v = (v instanceof THREE.Object3D) ? v : null;
+        v = (v instanceof THREE.Object3D) ? v : this.axisScene;
         if (this.field == v) return;
         if (this.hasField()) this.scene.remove(this.field);
         this.#field = v;
