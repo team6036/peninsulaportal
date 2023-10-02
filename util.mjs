@@ -646,6 +646,9 @@ export class Color {
     toRGBA() {
         return "rgba("+this.rgba.join(",")+")";
     }
+    toRGB() {
+        return "rgb("+this.rgb.join(",")+")";
+    }
 
     toJSON() {
         return {
