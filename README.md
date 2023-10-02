@@ -55,9 +55,11 @@ This should create a `./build` directory with the packaged apps. Check with `pac
 </div>
 
 ## Capabilities
-- Connection to `localhost:5810` with NT4
+- Connection to specified ip with port `5810` with NT4
 - Paneled visualization of NetworkTable values
-    - Table/Topic browsing and built in tools
+    - Table/Topic browsing
+    - Graphing of numerical and discrete topics
+    - Odometry 2D/3D displaying
 
 ## Pages and Tools
 
@@ -71,7 +73,10 @@ Views any table or topic, similar to your operating system's file explorer
 Graphs numerical and discrete topics in NT. Choose window view, in `ms`, of the graph to see. Pick colors for different variables.
 
 ### Odometry 2D Page
-Displays the robot as shown from `double[3]`, `float[3]`, and `int[3]` in NT. Choose field template, create your own, and change units. Pick colors for different poses, including toggling ghost effect.
+Displays the robot as shown from `double[3]`, `float[3]`, and `int[3]` in NT. Choose field template, set your own, and change units. Pick colors for different poses, including toggling ghost effect and render type.
+
+### Odometry 3D Page
+Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Choose field template, or use axis, and change units. Pick colors for different poses, including toggling ghost effect.
 
 ## Getting Started
 

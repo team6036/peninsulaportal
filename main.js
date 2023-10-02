@@ -1087,7 +1087,7 @@ const MAIN = async () => {
             const build = {
                 about: [
                     {
-                        label: "About Peninsula "+this.name[0].toUpperCase()+this.name.slice(1).toLowerCase(),
+                        label: "About Peninsula "+util.capitalize(this.name),
                         click: () => window.webContents.send("send", "about"),
                     },
                 ],
@@ -1169,7 +1169,7 @@ const MAIN = async () => {
             };
             let template = [
                 {
-                    label: this.name[0].toUpperCase()+this.name.slice(1).toLowerCase(),
+                    label: util.toUpperCase(this.name),
                     submenu: [
                         ...build.about,
                         build.div,
