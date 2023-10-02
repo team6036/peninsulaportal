@@ -1169,7 +1169,7 @@ const MAIN = async () => {
             };
             let template = [
                 {
-                    label: util.toUpperCase(this.name),
+                    label: util.capitalize(this.name),
                     submenu: [
                         ...build.about,
                         build.div,
