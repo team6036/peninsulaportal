@@ -159,7 +159,7 @@ export class App extends Target {
             let pop = this.alert();
             pop.iconSrc = root+"/assets/icon.svg";
             pop.iconColor = "var(--a)";
-            pop.content = "Peninsula "+name[0].toUpperCase()+name.slice(1).toLowerCase();
+            pop.content = "Peninsula "+util.capitalize(name);
             let lines = new Array(4).fill("");
             lines[0] = "NodeJS: "+about.node;
             lines[1] = "Chrome: "+about.chrome;

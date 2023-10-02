@@ -459,7 +459,7 @@ export default class App extends core.App {
                             return elem.textContent += "Making template model "+name;
                         }
                         if (name.toUpperCase() == name) {
-                            elem.textContent += "["+name[0].toUpperCase()+name.slice(1).toLowerCase()+"] ";
+                            elem.textContent += "["+util.capitalize(name)+"] ";
                             let namefs = {
                                 PLANNER: () => {
                                     let name = load[0];
