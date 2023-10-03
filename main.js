@@ -368,17 +368,57 @@ const MAIN = async () => {
             this.log(`DB poll - ${host} - success`);
             this.remLoad("poll");
             const fetchAndPipe = async (url, pth) => {
+                let fileName = path.basename(pth);
+                let superPth = path.dirname(pth);
+                let thePth = path.join(superPth, fileName);
+                let tmpPth = path.join(superPth, fileName+"-tmp");
                 let resp = await fetch(url);
                 if (resp.status != 200) throw resp.status;
                 await new Promise((res, rej) => {
-                    const stream = fs.createWriteStream(pth);
+                    const stream = fs.createWriteStream(tmpPth);
                     stream.on("open", () => {
                         resp.body.pipe(stream);
                         resp.body.on("end", () => res(true));
                         resp.body.on("error", e => rej(e));
                     });
                 });
+                await fs.promises.rename(tmpPth, thePth);
             };
+            /*
+            this.log("DB version get");
+            this.addLoad("version-get");
+            let newVersion = "";
+            try {
+                let resp = await fetch(host+"/version.txt");
+                newVersion = await resp.text();
+            } catch (e) {
+                this.log(`DB version get - error - ${e}`);
+                this.remLoad("version-get");
+                this.addLoad("version-get:"+e);
+                return false;
+            }
+            this.log("DB version get - success");
+            this.remLoad("version-get");
+            this.log("DB version set");
+            this.addLoad("version-set");
+            let oldVersion = "";
+            try {
+                oldVersion = (await this.fileHas(".version")) ? (await this.fileRead(".version")) : "";
+            } catch (e) {
+                this.log(`DB version set - error - ${e}`);
+                this.remLoad("version-set");
+                this.addLoad("version-set:"+e);
+                return false;
+            }
+            this.log("DB version set - success");
+            this.remLoad("version-set");
+            if (oldVersion == newVersion) {
+                this.log(`DB version same (${JSON.stringify(oldVersion)} == ${JSON.stringify(newVersion)}) - skipping`);
+                return true;
+            }
+            this.log(`DB version diff (${JSON.stringify(oldVersion)} != ${JSON.stringify(newVersion)}) - continuing`);
+            await this.fileWrite(".version", newVersion);
+            */
             await Promise.all([
                 (async () => {
                     this.log("DB config");
@@ -439,7 +479,7 @@ const MAIN = async () => {
                     log("search");
                     this.addLoad(name+":search");
                     try {
-                        let resp = await fetch(subhost+"/confirm.json");
+                        let resp = await fetch(subhost+"/confirm.txt");
                         if (resp.status != 200) throw resp.status;
                     } catch (e) {
                         log(`search - not found - ${e}`);
