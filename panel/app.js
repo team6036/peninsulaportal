@@ -2700,12 +2700,24 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
 Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     #poses;
 
+    #template;
+
+    #eTemplateSelect;
+
     constructor(tail="") {
         super("Odometry"+tail, "locate", "var(--cy)");
 
         this.elem.classList.add("odometry");
 
         this.#poses = new Set();
+
+        this.#template = null;
+
+        let templates = {};
+        (async () => {
+            templates = await window.api.get("templates");
+            this.template = await window.api.get("active-template");
+        })();
 
         ["p", "f", "o"].forEach(id => {
             const elem = document.createElement("div");
@@ -2721,8 +2733,43 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         else elem.classList.add("empty");
                     });
                 },
-                f: () => elem.classList.add("field"),
-                o: () => elem.classList.add("options"),
+                f: () => {
+                    elem.classList.add("field");
+                    let info = document.createElement("div");
+                    elem.appendChild(info);
+                    info.classList.add("info");
+                    info.innerHTML = "<span>Template</span>";
+                    this.#eTemplateSelect = document.createElement("button");
+                    elem.appendChild(this.eTemplateSelect);
+                    this.eTemplateSelect.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+                    this.eTemplateSelect.addEventListener("click", e => {
+                        if (!this.hasApp()) return;
+                        e.stopPropagation();
+                        let itm;
+                        let menu = new core.App.ContextMenu();
+                        itm = menu.addItem(new core.App.ContextMenu.Item("No Template", (this.template == null) ? "checkmark" : ""));
+                        itm.addHandler("trigger", data => {
+                            this.template = null;
+                        });
+                        menu.addItem(new core.App.ContextMenu.Divider());
+                        for (let name in templates) {
+                            itm = menu.addItem(new core.App.ContextMenu.Item(name, (this.template == name) ? "checkmark" : ""));
+                            itm.addHandler("trigger", data => {
+                                this.template = name;
+                            });
+                        }
+                        this.app.contextMenu = menu;
+                        let r = this.eTemplateSelect.getBoundingClientRect();
+                        this.app.placeContextMenu(r.left, r.bottom);
+                    });
+                },
+                o: () => {
+                    elem.classList.add("options");
+                    let header = document.createElement("div");
+                    elem.appendChild(header);
+                    header.classList.add("header");
+                    header.textContent = "View Window";
+                },
             };
             if (id in idfs) idfs[id]();
         });
@@ -2768,6 +2815,14 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             this.getEOptionSection("p").removeChild(pose.elem);
         this.post("change", null);
         return pose;
+    }
+
+    get template() { return this.#template; }
+    set template(v) {
+        this.#template = (v == null) ? null : String(v);
+        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
+            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
+        this.post("change", null);
     }
 
     getHovered(data, pos, options) {
@@ -2827,11 +2882,15 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         return null;
     }
     isValidPose(topic) { return true; }
+
+    get eTemplateSelect() { return this.#eTemplateSelect; }
 };
 Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
     #name;
     #color;
     #ghost;
+
+    #state;
 
     #elem;
     #eDisplay;
@@ -2851,6 +2910,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         this.#name = null;
         this.#color = null;
         this.#ghost = false;
+
+        this.#state = new this.constructor.State();
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -2963,6 +3024,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         this.post("change", null);
     }
 
+    get state() { return this.#state; }
+
     get elem() { return this.#elem; }
     get eDisplay() { return this.#eDisplay; }
     get eShowBox() { return this.#eShowBox; }
@@ -3010,10 +3073,48 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         };
     }
 };
+Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends core.Target {
+    #tab;
+    #pose;
+
+    constructor() {
+        super();
+
+        this.#tab = null;
+        this.#pose = null;
+    }
+
+    get tab() { return this.#tab; }
+    set tab(v) {
+        v = (v instanceof Panel.OdometryTab) ? v : null;
+        if (this.tab == v) return;
+        this.destroy();
+        this.#tab = v;
+        this.create();
+    }
+    hasTab() { return this.tab instanceof Panel.OdometryTab; }
+    get parent() { return this.hasTab() ? this.tab.parent : null; }
+    hasParent() { return this.parent instanceof Panel; }
+    get page() { return this.hasParent() ? this.parent.page : null; }
+    hasPage() { return this.page instanceof App.ProjectPage; }
+    get app() { return this.hasPage() ? this.page.app : null; }
+    hasApp() { return this.app instanceof App; }
+    get pose() { return this.#pose; }
+    set pose(v) {
+        v = (v instanceof Panel.OdometryTab.Pose) ? v : null;
+        if (this.pose == v) return;
+        this.destroy();
+        this.#pose = v;
+        this.create();
+    }
+    hasPose() { return this.pose instanceof Panel.OdometryTab.Pose; }
+
+    destroy() { return; }
+    create() { return; }
+    update() { this.post("update", null); }
+};
 Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #odometry;
-
-    #template;
 
     #size;
     #robotSize;
@@ -3021,7 +3122,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #isMeters;
     #isDegrees;
 
-    #eTemplateSelect;
     #eSizeWInput;
     #eSizeHInput;
     #eRobotSizeWInput;
@@ -3036,8 +3136,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         this.#odometry = new core.Odometry2d(this.canvas);
 
-        this.#template = null;
-
         this.#size = new V(1000);
         this.#robotSize = new V(100);
 
@@ -3046,33 +3144,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         let info;
         const eField = this.getEOptionSection("f");
-        info = document.createElement("div");
-        eField.appendChild(info);
-        info.classList.add("info");
-        info.innerHTML = "<span>Template</span>";
-        this.#eTemplateSelect = document.createElement("button");
-        eField.appendChild(this.eTemplateSelect);
-        this.eTemplateSelect.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eTemplateSelect.addEventListener("click", e => {
-            if (!this.hasApp()) return;
-            e.stopPropagation();
-            let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("No Template", (this.template == null) ? "checkmark" : ""));
-            itm.addHandler("trigger", data => {
-                this.template = null;
-            });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            for (let name in templates) {
-                itm = menu.addItem(new core.App.ContextMenu.Item(name, (this.template == name) ? "checkmark" : ""));
-                itm.addHandler("trigger", data => {
-                    this.template = name;
-                });
-            }
-            this.app.contextMenu = menu;
-            let r = this.eTemplateSelect.getBoundingClientRect();
-            this.app.placeContextMenu(r.left, r.bottom);
-        });
         let infoUnits = [];
         info = document.createElement("div");
         eField.appendChild(info);
@@ -3152,8 +3223,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         });
         let eNav;
         const eOptions = this.getEOptionSection("o");
+        let last = Array.from(eOptions.children).at(-1);
         eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
+        eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
@@ -3164,7 +3236,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.eUnitsCentimeters.textContent = "Centimeters";
         this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
         eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
+        eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
         this.#eUnitsDegrees = document.createElement("button");
         eNav.appendChild(this.eUnitsDegrees);
@@ -3204,11 +3276,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         (async () => {
             templates = await window.api.get("templates");
             templateImages = await window.api.get("template-images");
-            this.template = await window.api.get("active-template");
             finished = true;
         })();
-
-        let poses = {};
 
         window.hottest2d = () => {
             const page = app.getPage("PROJECT");
@@ -3242,63 +3311,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
             if (this.isClosed) return;
             let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
-            let newPoses = {};
-            if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
-                this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
-            }
-            let needAdd = {}, needRem = {};
-            for (let name in newPoses)
-                if (!(name in poses))
-                    needAdd[name] = newPoses[name];
-            for (let name in poses)
-                if (!(name in newPoses))
-                    needRem[name] = poses[name];
-            Object.keys(needAdd).forEach(name => {
-                let topic = source.root.lookup(name);
-                if (!(topic instanceof NTSource.Topic)) return;
-                if (!topic.isArray) return;
-                if (topic.value.length % 2 == 0) {
-                    poses[name] = [];
-                } else if (topic.value.length == 3) {
-                    let renders = poses[name] = [this.odometry.addRender(new core.Odometry2d.Robot())];
-                    renders[0].showVelocity = false;
-                }
+            this.poses.forEach(pose => {
+                pose.state.tab = this;
+                pose.state.pose = pose.isShown ? pose : null;
+                pose.state.value = (source instanceof NTSource) ? source.root.lookup(pose.name).value : [];
+                pose.state.update();
             });
-            Object.keys(needRem).forEach(name => {
-                poses[name].forEach(render => this.odometry.remRender(render));
-                delete poses[name];
-            });
-            for (let name in poses) {
-                let renders = poses[name];
-                let pose = newPoses[name];
-                let topic = source.root.lookup(name);
-                if (!(topic instanceof NTSource.Topic)) continue;
-                if (!topic.isArray) continue;
-                if (topic.value.length % 2 == 0) {
-                    let l = Math.max(0, (topic.value.length / 2) - 1);
-                    while (renders.length < l) renders.push(this.odometry.addRender(new RLine()));
-                    while (renders.length > l) this.odometry.remRender(renders.pop());
-                    renders.forEach((render, i) => {
-                        render.a = [topic.value[i*2 + 0], topic.value[i*2 + 1]];
-                        render.a.imul(this.isMeters ? 100 : 1);
-                        render.b = [topic.value[i*2 + 2], topic.value[i*2 + 3]];
-                        render.b.imul(this.isMeters ? 100 : 1);
-                        render.color = pose.color;
-                        render.alpha = pose.ghost ? 0.5 : 1;
-                    });
-                    pose.eDisplayType.style.display = "none";
-                } else if (topic.value.length == 3) {
-                    let render = renders[0];
-                    render.color = pose.color.substring(2);
-                    render.colorH = pose.color.substring(2)+5;
-                    render.alpha = pose.ghost ? 0.5 : 1;
-                    render.size = (this.template in templates) ? templates[this.template].robotSize : this.robotSize;
-                    render.pos = new V(topic.value[0], topic.value[1]).mul(this.isMeters ? 100 : 1);
-                    render.heading = topic.value[2] * (this.isDegrees ? 1 : (180/Math.PI));
-                    render.type = pose.type;
-                    pose.eDisplayType.style.display = "";
-                }
-            }
             this.odometry.update();
         });
     }
@@ -3337,14 +3355,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
     get odometry() { return this.#odometry; }
 
-    get template() { return this.#template; }
-    set template(v) {
-        this.#template = (v == null) ? null : String(v);
-        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
-            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
-        this.post("change", null);
-    }
-
     get size() { return this.#size; }
     set size(v) { this.#size.set(v); }
     get w() { return this.size.x; }
@@ -3377,7 +3387,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
 
-    get eTemplateSelect() { return this.#eTemplateSelect; }
     get eSizeWInput() { return this.#eSizeWInput; }
     get eSizeHInput() { return this.#eSizeHInput; }
     get eRobotSizeWInput() { return this.#eRobotSizeWInput; }
@@ -3464,6 +3473,86 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         };
     }
 };
+Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel.OdometryTab.Pose.State {
+    #value;
+
+    #renders;
+
+    constructor() {
+        super();
+
+        this.#value = [];
+
+        this.#renders = [];
+
+        let templates = {};
+        (async () => {
+            templates = await window.api.get("templates");
+        })();
+
+        this.addHandler("update", data => {
+            if (!this.hasTab()) return;
+            if (!this.hasPose()) return;
+            const renders = this.#renders;
+            if (this.value.length % 2 == 0) {
+                let l = Math.max(0, (this.value.length/2) - 1);
+                while (renders.length < l) renders.push(this.tab.odometry.addRender(new RLine()));
+                while (renders.length > l) this.tab.odometry.remRender(renders.pop());
+                renders.forEach((render, i) => {
+                    render.a = [this.value[i*2 + 0], this.value[i*2 + 1]];
+                    render.a.imul(this.tab.isMeters ? 100 : 1);
+                    render.b = [this.value[i*2 + 2], this.value[i*2 + 3]];
+                    render.b.imul(this.tab.isMeters ? 100 : 1);
+                    render.color = this.pose.color;
+                    render.alpha = this.pose.ghost ? 0.5 : 1;
+                });
+                this.pose.eDisplayType.style.display = "none";
+            } else if (this.value.length == 3) {
+                let render = renders[0];
+                render.color = this.pose.color.substring(2);
+                render.colorH = this.pose.color.substring(2)+5;
+                render.alpha = this.pose.ghost ? 0.5 : 1;
+                render.size = (this.tab.template in templates) ? templates[this.tab.template].robotSize : this.tab.robotSize;
+                render.pos = new V(this.value[0], this.value[1]).mul(this.tab.isMeters ? 100 : 1);
+                render.heading = this.value[2] * (this.tab.isDegrees ? 1 : (180/Math.PI));
+                render.type = this.pose.type;
+                this.pose.eDisplayType.style.display = "";
+            }
+        });
+    }
+
+    hasTab() { return this.tab instanceof Panel.Odometry2dTab; }
+    hasPose() { return this.pose instanceof Panel.Odometry2dTab.Pose; }
+    get value() { return this.#value; }
+    set value(v) {
+        v = util.ensure(v, "arr").map(v => util.ensure(v, "num"));
+        if (this.value.length == v.length) {
+            this.#value = v;
+            return;
+        }
+        this.destroy();
+        this.#value = v;
+        this.create();
+    }
+
+    destroy() {
+        if (!this.hasTab()) return;
+        this.#renders.forEach(render => {
+            this.tab.odometry.remRender(render);
+        });
+        this.#renders = [];
+    }
+    create() {
+        if (!this.hasTab()) return;
+        if (!this.hasPose()) return;
+        if (this.value.length % 2 == 0) {
+            this.#renders = [];
+        } else if (this.value.length == 3) {
+            this.#renders = [this.tab.odometry.addRender(new core.Odometry2d.Robot())];
+            this.#renders[0].showVelocity = false;
+        }
+    }
+};
 Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #scene;
     #camera;
@@ -3475,13 +3564,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     #field;
 
-    #template;
-
     #isProjection;
     #isMeters;
     #isDegrees;
 
-    #eTemplateSelect;
     #eViewProjection;
     #eViewIsometric;
     #eUnitsMeters;
@@ -3544,44 +3630,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         const loader = new GLTFLoader();
 
-        this.#template = null;
-
         this.#isMeters = true;
         this.#isProjection = false;
 
-        let info;
         const eField = this.getEOptionSection("f");
-        info = document.createElement("div");
-        eField.appendChild(info);
-        info.classList.add("info");
-        info.innerHTML = "<span>Template</span>";
-        this.#eTemplateSelect = document.createElement("button");
-        eField.appendChild(this.eTemplateSelect);
-        this.eTemplateSelect.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eTemplateSelect.addEventListener("click", e => {
-            if (!this.hasApp()) return;
-            e.stopPropagation();
-            let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("No Template", (this.template == null) ? "checkmark" : ""));
-            itm.addHandler("trigger", data => {
-                this.template = null;
-            });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            for (let name in templates) {
-                itm = menu.addItem(new core.App.ContextMenu.Item(name, (this.template == name) ? "checkmark" : ""));
-                itm.addHandler("trigger", data => {
-                    this.template = name;
-                });
-            }
-            this.app.contextMenu = menu;
-            let r = this.eTemplateSelect.getBoundingClientRect();
-            this.app.placeContextMenu(r.left, r.bottom);
-        });
         let eNav;
         const eOptions = this.getEOptionSection("o");
+        let last = Array.from(eOptions.children).at(-1);
         eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
+        eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
         this.#eViewProjection = document.createElement("button");
         eNav.appendChild(this.eViewProjection);
@@ -3592,7 +3649,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.eViewIsometric.textContent = "Isometric";
         this.eViewIsometric.addEventListener("click", e => { this.isIsometric = true; });
         eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
+        eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
@@ -3628,92 +3685,16 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         (async () => {
             templates = await window.api.get("templates");
             templateModels = await window.api.get("template-models");
-            this.template = await window.api.get("active-template");
             finished = true;
         })();
 
         let preloadedFields = {};
-
-        let poses = {};
 
         window.hottest3d = () => {
             const page = app.getPage("PROJECT");
             page.rootSource.announceTopic("k", "double[]");
             page.rootSource.updateTopic("k", [0, 0, 0, 0, 0, 0, 0]);
         };
-
-        class Pass extends core.Target {
-            #composer;
-            #scene;
-            #camera;
-
-            #createPass;
-
-            #pass;
-
-            constructor(createPass) {
-                super();
-
-                this.#composer = null;
-                this.#scene = null;
-                this.#camera = null;
-
-                this.#createPass = null;
-
-                this.#pass = null;
-                
-                this.createPass = createPass;
-            }
-
-            get composer() { return this.#composer; }
-            set composer(v) {
-                v = (v instanceof EffectComposer) ? v : null;
-                if (this.composer == v) return;
-                this.#composer = v;
-                this.recreate();
-            }
-            hasComposer() { return this.composer instanceof EffectComposer; }
-            get scene() { return this.#scene; }
-            set scene(v) {
-                v = (v instanceof THREE.Scene) ? v : null;
-                if (this.scene == v) return;
-                this.#scene = v;
-                this.recreate();
-            }
-            hasScene() { return this.scene instanceof THREE.Scene; }
-            get camera() { return this.#camera; }
-            set camera(v) {
-                v = (v instanceof THREE.Camera) ? v : null;
-                if (this.camera == v) return;
-                this.#camera = v;
-                this.recreate();
-            }
-            hasCamera() { return this.camera instanceof THREE.Camera; }
-
-            get createPass() { return this.#createPass; }
-            set createPass(v) {
-                v = util.is(v, "func") ? v : null;
-                if (this.createPass == v) return;
-                this.#createPass = v;
-                this.recreate();
-            }
-            hasCreatePass() { return util.is(this.createPass, "func"); }
-
-            get pass() { return this.#pass; }
-            hasPass() { return util.is(this.pass, "obj"); }
-
-            recreate() {
-                if (this.hasPass()) {
-                    this.pass.composer.removePass(this.pass);
-                    delete this.pass.composer;
-                }
-                this.#pass = (this.hasComposer() && this.hasScene() && this.hasCamera() && this.hasCreatePass()) ? this.createPass(this.composer, this.scene, this.camera) : null;
-                if (this.hasPass()) {
-                    this.pass.composer = this.composer;
-                    this.pass.composer.addPass(this.pass);
-                }
-            }
-        }
 
         this.addHandler("update", data => {
             if (this.isClosed) return;
@@ -3730,79 +3711,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             else this.eUnitsCentimeters.classList.remove("this");
             
             let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
-            let newPoses = {};
-            if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
-                this.poses.forEach(pose => pose.isShown ? (newPoses[pose.name] = pose) : null);
-            }
-            let needAdd = {}, needRem = {};
-            for (let name in newPoses)
-                if (!(name in poses))
-                    needAdd[name] = newPoses[name];
-            for (let name in poses)
-                if (!(name in newPoses))
-                    needRem[name] = poses[name];
-            Object.keys(needAdd).forEach(name => {
-                let topic = source.root.lookup(name);
-                if (!(topic instanceof NTSource.Topic)) return;
-                if (!topic.isArray) return;
-                if (topic.value.length == 7) {
-                    let item = {};
-                    item.geometry = new THREE.BoxGeometry(1, 1, 1);
-                    item.material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-                    item.mesh = new THREE.Mesh(item.geometry, item.material);
-                    let pass = new Pass((composer, scene, camera) => {
-                        let pass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
-                        pass.selectedObjects = [item.mesh];
-                        pass.edgeStrength = 10;
-                        pass.edgeGlow = 0;
-                        pass.edgeThickness = 5;
-                        return pass;
-                    });
-                    item.passes = [pass];
-                    let items = poses[name] = [item];
-                    items[0].showVelocity = false;
-                }
-                poses[name].forEach(item => {
-                    this.scene.add(item.mesh);
-                });
+            this.poses.forEach(pose => {
+                pose.state.tab = this;
+                pose.state.pose = pose.isShown ? pose : null;
+                pose.state.value = (source instanceof NTSource) ? source.root.lookup(pose.name).value : [];
+                pose.state.composer = this.composer;
+                pose.state.scene = this.scene;
+                pose.state.camera = this.camera;
+                pose.state.update();
             });
-            Object.keys(needRem).forEach(name => {
-                poses[name].forEach(item => {
-                    this.scene.remove(item.mesh);
-                    util.ensure(item.passes, "arr").forEach(pass => {
-                        pass.composer = null;
-                        pass.scene = null;
-                        pass.camera = null;
-                    });
-                });
-                delete poses[name];
-            });
-            for (let name in poses) {
-                let items = poses[name];
-                items.forEach(item => {
-                    util.ensure(item.passes, "arr").forEach(pass => {
-                        pass.composer = this.composer;
-                        pass.scene = this.scene;
-                        pass.camera = this.camera;
-                    });
-                });
-                let pose = newPoses[name];
-                let topic = source.root.lookup(name);
-                if (!(topic instanceof NTSource.Topic)) continue;
-                if (!topic.isArray) continue;
-                if (topic.value.length == 7) {
-                    let item = items[0];
-                    item.mesh.position.set(topic.value[0] * (this.isMeters?100:1), topic.value[1] * (this.isMeters?100:1), topic.value[2] * (this.isMeters?100:1));
-                    item.mesh.rotation.setFromQuaternion(new THREE.Quaternion(...topic.value.slice(3)), "XYZ");
-                    let color = new util.Color(pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(pose.color) : pose.color);
-                    let pass = item.passes[0];
-                    if (!(pass instanceof Pass)) continue;
-                    if (!pass.hasPass()) continue;
-                    pass = pass.pass;
-                    pass.visibleEdgeColor.set(color.toHex(false));
-                    pass.hiddenEdgeColor.set(util.lerp(color, new util.Color(), 0.5).toHex(false));
-                }
-            }
 
             if ((this.template in templateModels) && !(this.template in preloadedFields)) {
                 const template = this.template;
@@ -3870,14 +3787,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     }
     hasField() { return this.field instanceof THREE.Object3D; }
 
-    get template() { return this.#template; }
-    set template(v) {
-        this.#template = (v == null) ? null : String(v);
-        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
-            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
-        this.post("change", null);
-    }
-
     get isProjection() { return this.#isProjection; }
     set isProjection(v) {
         v = !!v;
@@ -3916,7 +3825,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
 
-    get eTemplateSelect() { return this.#eTemplateSelect; }
     get eViewProjection() { return this.#eViewProjection; }
     get eViewIsometric() { return this.#eViewIsometric; }
     get eUnitsMeters() { return this.#eUnitsMeters; }
@@ -3937,6 +3845,120 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 isOpen: this.isOptionsOpen,
             }],
         };
+    }
+};
+Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel.OdometryTab.Pose.State {
+    #value;
+    #composer;
+    #scene;
+    #camera;
+
+    #meshes;
+    #passes;
+    
+    constructor() {
+        super();
+
+        this.#value = [];
+        this.#composer = null;
+        this.#scene = null;
+        this.#camera = null;
+
+        this.#meshes = [];
+        this.#passes = [];
+
+        this.addHandler("update", data => {
+            if (!this.hasTab()) return;
+            if (!this.hasPose()) return;
+            if (!this.hasThree()) return;
+            if (this.value.length == 7) {
+                let mesh = this.#meshes[0];
+                let pass = this.#passes[0];
+                mesh.position.set(this.value[0] * (this.tab.isMeters?100:1), this.value[1] * (this.tab.isMeters?100:1), this.value[2] * (this.tab.isMeters?100:1));
+                mesh.rotation.setFromQuaternion(new THREE.Quaternion(...this.value.slice(3)), "XYZ");
+                let color = new util.Color(this.pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.pose.color) : this.pose.color);
+                pass.visibleEdgeColor.set(color.toHex(false));
+                pass.hiddenEdgeColor.set(util.lerp(color, new util.Color(), 0.5).toHex(false));
+            }
+        });
+    }
+
+    hasTab() { return this.tab instanceof Panel.Odometry3dTab; }
+    hasPose() { return this.pose instanceof Panel.Odometry3dTab.Pose; }
+    get value() { return this.#value; }
+    set value(v) {
+        v = util.ensure(v, "arr").map(v => util.ensure(v, "num"));
+        if (this.value.length == v.length) {
+            this.#value = v;
+            return;
+        }
+        this.destroy();
+        this.#value = v;
+        this.create();
+    }
+    get composer() { return this.#composer; }
+    set composer(v) {
+        v = (v instanceof EffectComposer) ? v : null;
+        if (this.composer == v) return;
+        this.destroy();
+        this.#composer = v;
+        this.create();
+    }
+    hasComposer() { return this.composer instanceof EffectComposer; }
+    get scene() { return this.#scene; }
+    set scene(v) {
+        v = (v instanceof THREE.Scene) ? v : null;
+        if (this.scene == v) return;
+        this.destroy();
+        this.#scene = v;
+        this.create();
+    }
+    hasScene() { return this.scene instanceof THREE.Scene; }
+    get camera() { return this.#camera; }
+    set camera(v) {
+        v = (v instanceof THREE.Camera) ? v : null;
+        if (this.camera == v) return;
+        this.destroy();
+        this.#camera = v;
+        this.create();
+    }
+    hasCamera() { return this.camera instanceof THREE.Camera; }
+    hasThree() { return this.hasComposer() && this.hasScene() && this.hasCamera(); }
+
+    destroy() {
+        if (!this.hasComposer()) return;
+        if (!this.hasThree()) return;
+        this.#meshes.forEach(mesh => {
+            this.scene.remove(mesh);
+        });
+        this.#meshes = [];
+        this.#passes.forEach(pass => {
+            this.composer.removePass(pass);
+        });
+        this.#passes = [];
+    }
+    create() {
+        if (!this.hasTab()) return;
+        if (!this.hasPose()) return;
+        if (!this.hasThree()) return;
+        if (this.value.length == 7) {
+            this.#meshes = [new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshPhongMaterial({ color: 0x00ff00 }),
+            )];
+            let pass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
+            pass.selectedObjects = this.#meshes;
+            pass.edgeStrength = 10;
+            pass.edgeGlow = 0;
+            pass.edgeThickness = 5;
+            this.#passes = [pass];
+        }
+        this.#meshes.forEach(mesh => {
+            this.scene.add(mesh);
+        });
+        this.#passes.forEach(pass => {
+            this.composer.addPass(pass);
+        });
     }
 };
 
@@ -4452,7 +4474,7 @@ export default class App extends core.App {
                 } else if (util.is(at, "int")) {
                     let r = new util.Rect(hovered.widget.eTop.getBoundingClientRect());
                     let x = (at >= hovered.widget.tabs.length) ? hovered.widget.getTab(hovered.widget.tabs.length-1).eTab.getBoundingClientRect().right : hovered.widget.getTab(at).eTab.getBoundingClientRect().left;
-                    this.placeBlock(new util.Rect(x, r.y+10, 0, r.h-15));
+                    this.placeBlock(new util.Rect(x, r.y+5, 0, r.h-10));
                 } else if (at == "custom") {
                     let data = util.ensure(hovered.data, "obj");
                     this.placeBlock(new util.Rect(data.r));
