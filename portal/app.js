@@ -434,6 +434,18 @@ export default class App extends core.App {
                                 if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
                                 return elem.textContent += "Polling database";
                             },
+                            /*
+                            "version-get": () => {
+                                if (load.length > 0) elem.style.color = "var(--cr)";
+                                if (load.length > 0) return elem.textContent += "Getting version failed: "+load.join(":");
+                                return elem.textContent += "Getting version";
+                            },
+                            "version-set": () => {
+                                if (load.length > 0) elem.style.color = "var(--cr)";
+                                if (load.length > 0) return elem.textContent += "Setting version failed: "+load.join(":");
+                                return elem.textContent += "Setting version";
+                            },
+                            */
                             config: () => {
                                 if (load.length > 0) elem.style.color = "var(--cr)";
                                 if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
