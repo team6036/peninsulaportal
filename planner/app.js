@@ -3407,8 +3407,6 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
     }
     get isFinished() { return this.nowTime >= this.totalTime; }
 
-    start() { return this.#tPrev = util.getTime(); }
-
     get paused() { return this.#paused; }
     set paused(v) {
         v = !!v;
