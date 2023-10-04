@@ -265,7 +265,7 @@ export default class App extends core.App {
                     let resp = await fetch("../README.md");
                     let text = await resp.text();
                     this.eContent.innerHTML = "<article>"+converter.makeHtml(text)+"</article>";
-                    const dfs = elem => {
+                    const dfs = async elem => {
                         if (elem instanceof HTMLAnchorElement) {
                             let href = elem.href;
                             if (href.startsWith(window.location.href)) {
@@ -279,20 +279,23 @@ export default class App extends core.App {
                             }
                         }
                         if (elem instanceof HTMLImageElement) {
-                            let current = window.location.href.split("/");
-                            current.pop();
-                            current = current.join("/");
-                            if (elem.src.startsWith(current)) {
-                                let postCurrent = elem.src.substring(current.length);
-                                current = current.split("/");
-                                current.pop();
-                                current = current.join("/");
-                                elem.src = current + postCurrent;
+                            let location = window.location.href.split("/");
+                            location.pop();
+                            location = location.join("/");
+                            if (elem.src.startsWith(location)) {
+                                let path = elem.src.substring(location.length);
+                                if (path.endsWith("icon.png"))
+                                    if (await window.api.get("spooky"))
+                                        path = path.substring(0, path.length-"icon.png".length) + "icon-spooky.png";
+                                location = location.split("/");
+                                location.pop();
+                                location = location.join("/");
+                                elem.src = location + path;
                             }
                         }
-                        Array.from(elem.children).forEach(child => dfs(child));
+                        await Promise.all(Array.from(elem.children).map(child => dfs(child)));
                     };
-                    dfs(this.eContent);
+                    await dfs(this.eContent);
                     hljs.highlightAll();
                 })();
                 this.addHandler("update", data => {
