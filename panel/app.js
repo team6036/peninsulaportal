@@ -1728,8 +1728,8 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         else item.innerHTML = "<div></div><div></div>";
                         state.update = () => {
                             if (generic.type == "boolean") {
-                                item.style.backgroundColor = generic.value ? "var(--cg)" : "var(--cr)";
-                                item.style.color = "var(--v8)";
+                                item.style.backgroundColor = generic.value ? "var(--cg3)" : "var(--cr3)";
+                                item.style.color = "var(--v1)";
                                 if (item.children[0] instanceof HTMLElement) {
                                     item.children[0].setAttribute("name", generic.value ? "checkmark" : "close");
                                     let r = item.getBoundingClientRect();

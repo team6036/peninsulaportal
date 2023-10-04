@@ -12,7 +12,7 @@ const electron = require("electron");
 const app = electron.app;
 const ipc = electron.ipcMain;
 
-const log = async (...a) => {
+const log = (...a) => {
     let now = new Date();
     let yr = now.getFullYear();
     let mon = String(now.getMonth()+1);
