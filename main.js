@@ -473,6 +473,47 @@ const MAIN = async () => {
                         }));
                     }));
                 })(),
+                (async () => {
+                    this.log("DB robots.json");
+                    this.addLoad("robots.json");
+                    try {
+                        await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
+                        this.log("DB robots.json - success");
+                    } catch (e) {
+                        this.log(`DB robots.json - error - ${e}`);
+                        this.addLoad("robots.json:"+e);
+                    }
+                    this.remLoad("robots.json");
+                    this.log("DB checking robots.json");
+                    let content = await this.fileRead(["robots", "robots.json"]);
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                        this.log("DB checking robots.json - success");
+                    } catch (e) {
+                        log(`DB checking robots.json - error - ${e}`);
+                        this.remLoad("robots.json-check:"+e);
+                    }
+                    this.remLoad("robots.json-check");
+                    data = util.ensure(data, "obj");
+                    let robots = util.ensure(data.robots, "obj");
+                    await Promise.all(Object.keys(robots).map(async name => {
+                        name = String(name);
+                        await Promise.all(["models"].map(async section => {
+                            let tag = { "models": "glb" }[section];
+                            this.log(`DB robots/${name}.${tag}`);
+                            this.addLoad(`robots/${name}.${tag}`);
+                            try {
+                                await fetchAndPipe(host+"/robots/"+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
+                                this.log(`DB robots/${name}.${tag} - success`);
+                            } catch (e) {
+                                this.log(`DB robots/${name}.${tag} - error - ${e}`);
+                                this.addLoad(`robots/${name}.${tag}:`+e);
+                            }
+                            this.remLoad(`robots/${name}.${tag}`);
+                        }));
+                    }));
+                })(),
                 ...FEATURES.map(async name => {
                     const subhost = host+"/"+name.toLowerCase();
                     const log = (...a) => this.log(`DB [${name}]`, ...a);
@@ -627,9 +668,9 @@ const MAIN = async () => {
                     },
                     "template-models": async () => {
                         let templates = await kfs.templates();
-                        let images = {};
-                        Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "templates", "models", name+".glb")));
-                        return images;
+                        let models = {};
+                        Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, "templates", "models", name+".glb")));
+                        return models;
                     },
                     "active-template": async () => {
                         let content = "";
@@ -643,6 +684,37 @@ const MAIN = async () => {
                         data = util.ensure(data, "obj");
                         let templates = await kfs.templates();
                         return (data.active in templates) ? data.active : null;
+                    },
+                    robots: async () => {
+                        let content = "";
+                        try {
+                            content = await this.fileRead(["robots", "robots.json"]);
+                        } catch (e) {}
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                        } catch (e) {}
+                        data = util.ensure(data, "obj");
+                        return util.ensure(data.robots, "obj");
+                    },
+                    "robot-models": async () => {
+                        let robots = await kfs.robots();
+                        let models = {};
+                        Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, "robots", "models", name+".glb")));
+                        return models;
+                    },
+                    "active-robot": async () => {
+                        let content = "";
+                        try {
+                            content = await this.fileRead(["robots", "robots.json"]);
+                        } catch (e) {}
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                        } catch (e) {}
+                        data = util.ensure(data, "obj");
+                        let robots = await kfs.robots();
+                        return (data.active in robots) ? data.active : null;
                     },
                 };
                 if (k in kfs) return await kfs[k]();
@@ -788,6 +860,10 @@ const MAIN = async () => {
             if (!hasTemplateImagesDir) await this.dirMake([dataPath, "templates", "images"]);
             let hasTemplateModelsDir = await this.dirHas([dataPath, "templates", "models"]);
             if (!hasTemplateModelsDir) await this.dirMake([dataPath, "templates", "models"]);
+            let hasRobotsDir = await this.dirHas([dataPath, "robots"]);
+            if (!hasRobotsDir) await this.dirMake([dataPath, "robots"]);
+            let hasRobotModelsDir = await this.dirHas([dataPath, "robots", "models"]);
+            if (!hasRobotModelsDir) await this.dirMake([dataPath, "robots", "models"]);
             return true;
         }
         async affirm() {
@@ -1574,7 +1650,7 @@ const MAIN = async () => {
             if (!this.hasName()) return;
             k = String(k);
             args = Array.isArray(args) ? Array.from(args) : [];
-            this.log(`ON - ${k}(${args.join(', ')})`);
+            this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
             let namefs = {
                 PLANNER: {
                     exec: async (id, pathId) => {
