@@ -592,6 +592,7 @@ export class App extends Target {
         if (this.hasPage(page.name)) return false;
         this.#pages[page.name] = page;
         this.eMount.appendChild(page.elem);
+        page.leave(null);
         return page;
     }
     getPage(name) {

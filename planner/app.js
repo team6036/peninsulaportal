@@ -1074,12 +1074,6 @@ App.TitlePage = class AppTitlePage extends core.App.Page {
     get eNav() { return this.#eNav; }
     get eCreateBtn() { return this.#eCreateBtn; }
     get eProjectsBtn() { return this.#eProjectsBtn; }
-
-    async enter(data) {
-        if (this.hasApp() && this.app.hasEProjectsBtn())
-            this.app.eProjectsBtn.classList.remove("this");
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
-    }
 };
 App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     #buttons;
@@ -1237,8 +1231,11 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     async enter(data) {
         if (this.hasApp() && this.app.hasEProjectsBtn())
             this.app.eProjectsBtn.classList.add("this");
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         await this.refresh();
+    }
+    async leave(data) {
+        if (this.hasApp() && this.app.hasEProjectsBtn())
+            this.app.eProjectsBtn.classList.remove("this");
     }
 };
 App.ProjectsPage.Button =  class AppProjectsPageButton extends core.Target {
@@ -2123,8 +2120,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     }
 
     async enter(data) {
-        if (this.hasApp() && this.app.hasEProjectsBtn())
-            this.app.eProjectsBtn.classList.remove("this");
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
         if (!this.hasApp()) return;
         await this.refresh();
@@ -2191,6 +2186,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         }
     }
     async leave(data) {
+        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         if (!this.hasApp()) return;
         this.app.markChange("*all");
         await this.app.post("cmd-save", null);
