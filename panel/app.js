@@ -3707,6 +3707,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #eViewIsometric;
     #eUnitsMeters;
     #eUnitsCentimeters;
+    #eUnitsDegrees;
+    #eUnitsRadians;
 
     static DO = false;
 
@@ -3750,6 +3752,16 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         zAxis.rotateX(Math.PI/2);
         this.axisScene.add(zAxis);
         this.axisScene.zAxis = zAxis;
+        /*
+        const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 1),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }),
+        );
+        plane.rotateX(-Math.PI/2);
+        this.axisScene.add(plane);
+        this.axisScene.plane = plane;
+        */
+        this.axisScene.planes = [];
 
         this.#field = null;
 
@@ -3765,8 +3777,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         const loader = new GLTFLoader();
 
-        this.#isMeters = true;
         this.#isProjection = false;
+        this.#isMeters = true;
+        this.#isDegrees = true;
 
         const eField = this.getEOptionSection("f");
         let eNav;
@@ -3794,25 +3807,36 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eNav.appendChild(this.eUnitsCentimeters);
         this.eUnitsCentimeters.textContent = "Centimeters";
         this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
+        eNav = document.createElement("div");
+        eOptions.insertBefore(eNav, last);
+        eNav.classList.add("nav");
+        this.#eUnitsDegrees = document.createElement("button");
+        eNav.appendChild(this.eUnitsDegrees);
+        this.eUnitsDegrees.textContent = "Degrees";
+        this.eUnitsDegrees.addEventListener("click", e => { this.isDegrees = true; });
+        this.#eUnitsRadians = document.createElement("button");
+        eNav.appendChild(this.eUnitsRadians);
+        this.eUnitsRadians.textContent = "Radians";
+        this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
 
-        if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
+        if (a.length <= 0 || [4, 5].includes(a.length) || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOptionsOpen];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isDegrees, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
-                    a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOptionsClosed];
+                    a = [a.poses, a.template, a.isProjection, a.isMeters, a.isDegrees, a.isOptionsClosed];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isOpen];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isDegrees, a.isOpen];
             else a = [[], null];
         }
         if (a.length == 2) a = [...a, true];
-        if (a.length == 3) a = [...a.slice(0, 2), true, true, a[2]];
+        if (a.length == 3) a = [...a.slice(0, 2), true, true, true, a[2]];
 
-        [this.poses, this.template, this.isProjection, this.isMeters, this.isOptionsOpen] = a;
+        [this.poses, this.template, this.isProjection, this.isMeters, this.isDegrees, this.isOptionsOpen] = a;
 
         let templates = {};
         let templateModels = {};
@@ -3844,6 +3868,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             else this.eUnitsMeters.classList.remove("this");
             if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
             else this.eUnitsCentimeters.classList.remove("this");
+            if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
+            else this.eUnitsDegrees.classList.remove("this");
+            if (this.isRadians) this.eUnitsRadians.classList.add("this");
+            else this.eUnitsRadians.classList.remove("this");
             
             let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
             this.poses.forEach(pose => {
@@ -3868,14 +3896,16 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                             mesh.material.roughness = 1;
                         }
                     });
-                    let bbox = new THREE.Box3().setFromObject(gltf.scene);
-                    let obj = new THREE.Object3D();
-                    obj.add(gltf.scene);
-                    gltf.scene.position.set(
-                        gltf.scene.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
-                        gltf.scene.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
-                        gltf.scene.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
+                    let obj, pobj;
+                    obj = gltf.scene;
+                    let bbox = new THREE.Box3().setFromObject(obj);
+                    obj.position.set(
+                        obj.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
+                        obj.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
+                        obj.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
                     );
+                    [obj, pobj] = [new THREE.Object3D(), obj];
+                    obj.add(pobj);
                     preloadedFields[template] = obj;
                 }, null, err => { delete preloadedFields[template]; });
             }
@@ -3886,9 +3916,37 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.field = model;
             }
 
-            this.axisScene.xAxis.material.color.set(getComputedStyle(document.body).getPropertyValue("--cr"));
-            this.axisScene.yAxis.material.color.set(getComputedStyle(document.body).getPropertyValue("--cg"));
-            this.axisScene.zAxis.material.color.set(getComputedStyle(document.body).getPropertyValue("--cb"));
+            let colorR = new util.Color(getComputedStyle(document.body).getPropertyValue("--cr"));
+            let colorG = new util.Color(getComputedStyle(document.body).getPropertyValue("--cg"));
+            let colorB = new util.Color(getComputedStyle(document.body).getPropertyValue("--cb"));
+            let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v4"));
+            this.axisScene.xAxis.material.color.set(colorR.toHex(false));
+            this.axisScene.yAxis.material.color.set(colorG.toHex(false));
+            this.axisScene.zAxis.material.color.set(colorB.toHex(false));
+            let planes = this.axisScene.planes;
+            let size = 10;
+            let i = 0;
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    if ((x+y) % 2 == 0) continue;
+                    if (i >= planes.length) {
+                        let plane = new THREE.Mesh(
+                            new THREE.PlaneGeometry(1, 1),
+                            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                        );
+                        plane.rotateX(-Math.PI/2);
+                        planes.push(plane);
+                        this.axisScene.add(plane);
+                    }
+                    let plane = planes[i++];
+                    plane.position.set(0.5+1*(x-size/2), 0, 0.5+1*(y-size/2));
+                    plane.material.color.set(colorV.toHex(false));
+                }
+            }
+            planes.slice(i).forEach(plane => {
+                planes.splice(planes.indexOf(plane), 1);
+                this.axisScene.remove(plane);
+            });
 
             this.controls.update();
 
@@ -4009,6 +4067,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get eViewIsometric() { return this.#eViewIsometric; }
     get eUnitsMeters() { return this.#eUnitsMeters; }
     get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
+    get eUnitsDegrees() { return this.#eUnitsDegrees; }
+    get eUnitsRadians() { return this.#eUnitsRadians; }
 
     isValidPose(topic) { return topic.value.length == 3 || topic.value.length == 7; }
 
@@ -4143,14 +4203,21 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                                 mesh.material.roughness = 1;
                             }
                         });
-                        let bbox = new THREE.Box3().setFromObject(gltf.scene);
-                        let obj = new THREE.Object3D();
-                        obj.add(gltf.scene);
-                        gltf.scene.position.set(
-                            gltf.scene.position.x + (0-(bbox.max.x+bbox.min.x)/2),
-                            gltf.scene.position.y + (0-(bbox.max.y+bbox.min.y)/2),
-                            gltf.scene.position.z + (0-(bbox.max.z+bbox.min.z)/2),
+                        let obj, pobj;
+                        obj = gltf.scene;
+                        let bbox = new THREE.Box3().setFromObject(obj);
+                        obj.position.set(
+                            obj.position.x + (0-(bbox.max.x+bbox.min.x)/2),
+                            obj.position.y + (0-(bbox.max.y+bbox.min.y)/2),
+                            obj.position.z + (0-(bbox.max.z+bbox.min.z)/2),
                         );
+                        [obj, pobj] = [new THREE.Object3D(), obj];
+                        obj.add(pobj);
+                        obj.rotateX(util.ensure(util.ensure(util.ensure(robots[robot], "obj").rotation, "arr")[0], "num") * (Math.PI/180));
+                        obj.rotateY(util.ensure(util.ensure(util.ensure(robots[robot], "obj").rotation, "arr")[1], "num") * (Math.PI/180));
+                        obj.rotateZ(util.ensure(util.ensure(util.ensure(robots[robot], "obj").rotation, "arr")[2], "num") * (Math.PI/180));
+                        [obj, pobj] = [new THREE.Object3D(), obj];
+                        obj.add(pobj);
                         preloadedRobots[robot] = obj;
                     }, null, err => { delete preloadedRobots[template]; });
                 }
@@ -4172,7 +4239,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                             ((bbox.max.y-bbox.min.y)/2) + (this.offsetY/100),
                             (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
                         );
-                        mesh.rotation.set(0, -this.value[2] * (Math.PI/180), 0, "XYZ");
+                        mesh.rotation.set(0, -this.value[2] * (this.tab.isDegrees ? (Math.PI/180) : 1), 0, "XYZ");
                     } else {
                         mesh.position.set(
                             (this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
@@ -4181,9 +4248,6 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         );
                         mesh.rotation.setFromQuaternion(new THREE.Quaternion(...this.value.slice(3)), "XYZ");
                     }
-                    mesh.rotateX(util.ensure(util.ensure(util.ensure(robots[this.pose.type], "obj").rotation, "arr")[0], "num") * (Math.PI/180));
-                    mesh.rotateY(util.ensure(util.ensure(util.ensure(robots[this.pose.type], "obj").rotation, "arr")[1], "num") * (Math.PI/180));
-                    mesh.rotateZ(util.ensure(util.ensure(util.ensure(robots[this.pose.type], "obj").rotation, "arr")[2], "num") * (Math.PI/180));
                 }
                 let pass = this.#passes[0];
                 let color = new util.Color(this.pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.pose.color) : this.pose.color);
