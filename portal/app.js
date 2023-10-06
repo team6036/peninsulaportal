@@ -456,33 +456,33 @@ export default class App extends core.App {
                             },
                             "templates.json": () => {
                                 if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Error while making templates: "+load.join(":");
-                                return elem.textContent += "Making templates";
+                                if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
+                                return elem.textContent += "Downloading template datas";
                             },
                             "robots.json": () => {
                                 if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Error while making robots: "+load.join(":");
-                                return elem.textContent += "Making robots";
+                                if (load.length > 0) return elem.textContent += "Error while downloading robot datas: "+load.join(":");
+                                return elem.textContent += "Downloading robot datas";
                             },
                         };
                         if (name in namefs) return namefs[name]();
                         if (name.startsWith("templates/") && name.endsWith(".png")) {
                             name = name.substring(10, name.length-4);
                             if (load.length > 0) elem.style.color = "var(--cr)";
-                            if (load.length > 0) return elem.textContent += "Error while making template image "+name+": "+load.join(":");
-                            return elem.textContent += "Making template image "+name;
+                            if (load.length > 0) return elem.textContent += "Error while downloading template image "+name+": "+load.join(":");
+                            return elem.textContent += "Downloading template image "+name;
                         }
                         if (name.startsWith("templates/") && name.endsWith(".glb")) {
                             name = name.substring(10, name.length-4);
                             if (load.length > 0) elem.style.color = "var(--cr)";
-                            if (load.length > 0) return elem.textContent += "Error while making template model "+name+": "+load.join(":");
-                            return elem.textContent += "Making template model "+name;
+                            if (load.length > 0) return elem.textContent += "Error while downloading template model "+name+": "+load.join(":");
+                            return elem.textContent += "Downloading template model "+name;
                         }
                         if (name.startsWith("robots/") && name.endsWith(".glb")) {
                             name = name.substring(7, name.length-4);
                             if (load.length > 0) elem.style.color = "var(--cr)";
-                            if (load.length > 0) return elem.textContent += "Error while making robot model "+name+": "+load.join(":");
-                            return elem.textContent += "Making robot model "+name;
+                            if (load.length > 0) return elem.textContent += "Error while downloading robot model "+name+": "+load.join(":");
+                            return elem.textContent += "Downloading robot model "+name;
                         }
                         if (name.toUpperCase() == name) {
                             elem.textContent += "["+util.capitalize(name)+"] ";
@@ -499,8 +499,8 @@ export default class App extends core.App {
                                         },
                                         "templates.json": () => {
                                             if (load.length > 0) elem.style.color = "var(--cr)";
-                                            if (load.length > 0) return elem.textContent += "Error while making templates: "+load.join(":");
-                                            return elem.textContent += "Making templates";
+                                            if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
+                                            return elem.textContent += "Downloading template datas";
                                         },
                                     };
                                     if (name in namefs) return namefs[name]();
