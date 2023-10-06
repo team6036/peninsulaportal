@@ -479,7 +479,7 @@ export default class App extends core.App {
                             return elem.textContent += "Making template model "+name;
                         }
                         if (name.startsWith("robots/") && name.endsWith(".glb")) {
-                            name = name.substring(10, name.length-4);
+                            name = name.substring(7, name.length-4);
                             if (load.length > 0) elem.style.color = "var(--cr)";
                             if (load.length > 0) return elem.textContent += "Error while making robot model "+name+": "+load.join(":");
                             return elem.textContent += "Making robot model "+name;
