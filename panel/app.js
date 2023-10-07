@@ -6,6 +6,7 @@ import * as core from "../core.mjs";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -3700,11 +3701,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #field;
 
     #isProjection;
+    #isOrbit;
     #isMeters;
     #isDegrees;
 
     #eViewProjection;
     #eViewIsometric;
+    #eViewOrbit;
+    #eViewFree;
     #eUnitsMeters;
     #eUnitsCentimeters;
     #eUnitsDegrees;
@@ -3723,6 +3727,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
         
         this.#controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+        this.renderer.domElement.addEventListener("click", e => {
+            if (this.controls instanceof PointerLockControls)
+                this.controls.lock();
+        });
 
         this.#composer = new EffectComposer(this.renderer);
 
@@ -3763,12 +3772,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         light.position.set(0, 0, 10);
         this.scene.add(light);
 
-        this.controls.target.set(0, 0, 0);
-        this.controls.update();
-
         const loader = new GLTFLoader();
 
         this.#isProjection = false;
+        this.#isOrbit = false;
         this.#isMeters = true;
         this.#isDegrees = true;
 
@@ -3776,6 +3783,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let eNav;
         const eOptions = this.getEOptionSection("o");
         let last = Array.from(eOptions.children).at(-1);
+
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
@@ -3787,6 +3795,19 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eNav.appendChild(this.eViewIsometric);
         this.eViewIsometric.textContent = "Isometric";
         this.eViewIsometric.addEventListener("click", e => { this.isIsometric = true; });
+
+        eNav = document.createElement("div");
+        eOptions.insertBefore(eNav, last);
+        eNav.classList.add("nav");
+        this.#eViewOrbit = document.createElement("button");
+        eNav.appendChild(this.eViewOrbit);
+        this.eViewOrbit.textContent = "Orbit";
+        this.eViewOrbit.addEventListener("click", e => { this.isOrbit = true; });
+        this.#eViewFree = document.createElement("button");
+        eNav.appendChild(this.eViewFree);
+        this.eViewFree.textContent = "Free";
+        this.eViewFree.addEventListener("click", e => { this.isFree = true; });
+
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
@@ -3798,6 +3819,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eNav.appendChild(this.eUnitsCentimeters);
         this.eUnitsCentimeters.textContent = "Centimeters";
         this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
+
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
@@ -3810,24 +3832,24 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.eUnitsRadians.textContent = "Radians";
         this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
 
-        if (a.length <= 0 || [4, 5].includes(a.length) || a.length > 6) a = [null];
+        if (a.length <= 0 || [4, 5, 6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isDegrees, a.isOptionsOpen];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.isOptionsOpen];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
-                    a = [a.poses, a.template, a.isProjection, a.isMeters, a.isDegrees, a.isOptionsClosed];
+                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.isOptionsClosed];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isMeters, a.isDegrees, a.isOpen];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.isOpen];
             else a = [[], null];
         }
         if (a.length == 2) a = [...a, true];
-        if (a.length == 3) a = [...a.slice(0, 2), true, true, true, a[2]];
+        if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, a[2]];
 
-        [this.poses, this.template, this.isProjection, this.isMeters, this.isDegrees, this.isOptionsOpen] = a;
+        [this.poses, this.template, this.isProjection, this.isOrbit, this.isMeters, this.isDegrees, this.isOptionsOpen] = a;
 
         let templates = {};
         let templateModels = {};
@@ -3846,6 +3868,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         let template = null, model = null;
 
+        let keys = new Set();
+        document.body.addEventListener("keydown", e => keys.add(e.code));
+        document.body.addEventListener("keyup", e => keys.delete(e.code));
+
         this.addHandler("update", data => {
             if (this.isClosed) return;
 
@@ -3855,6 +3881,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             else this.eViewProjection.classList.remove("this");
             if (this.isIsometric) this.eViewIsometric.classList.add("this");
             else this.eViewIsometric.classList.remove("this");
+            if (this.isOrbit) this.eViewOrbit.classList.add("this");
+            else this.eViewOrbit.classList.remove("this");
+            if (this.isFree) this.eViewFree.classList.add("this");
+            else this.eViewFree.classList.remove("this");
             if (this.isMeters) this.eUnitsMeters.classList.add("this");
             else this.eUnitsMeters.classList.remove("this");
             if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
@@ -3940,7 +3970,20 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.axisScene.remove(plane);
             });
 
-            this.controls.update();
+            if (this.controls instanceof OrbitControls) {
+                this.controls.target.set(0, 0, 0);
+                this.controls.update();
+            } else if (this.controls instanceof PointerLockControls) {
+                if (this.controls.isLocked) {
+                    let z = (keys.has("KeyW") || keys.has("ArrowUp")) - (keys.has("KeyS") || keys.has("ArrowDown"));
+                    let x = (keys.has("KeyD") || keys.has("ArrowRight")) - (keys.has("KeyA") || keys.has("ArrowLeft"));
+                    let y = (keys.has("Space")) - (keys.has("ShiftRight") || keys.has("ShiftLeft"));
+                    let speed = 0.1;
+                    if (Math.abs(z) > 0) this.controls.moveForward(speed*z);
+                    if (Math.abs(x) > 0) this.controls.moveRight(speed*x);
+                    this.camera.position.y += speed*y;
+                }
+            }
 
             let r = this.eContent.getBoundingClientRect();
 
@@ -4044,7 +4087,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.post("change", null);
         this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
         this.camera.position.set(...(this.isProjection ? [0, 7.5, 7.5] : [10, 10, 10]));
-        this.controls.object = this.camera;
+        if (this.controls instanceof OrbitControls) {
+            this.controls.object = this.camera;
+        } else if (this.controls instanceof PointerLockControls) {
+            this.controls.unlock();
+            this.controls.disconnect();
+            this.#controls = new PointerLockControls(this.camera, this.renderer.domElement);
+            this.controls.connect();
+        }
 
         this.composer.dispose();
         this.#composer = new EffectComposer(this.renderer);
@@ -4055,6 +4105,22 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     }
     get isIsometric() { return !this.isProjection; }
     set isIsometric(v) { this.isProjection = !v; }
+    get isOrbit() { return this.#isOrbit; }
+    set isOrbit(v) {
+        v = !!v;
+        if (this.#isOrbit == v) return;
+        this.#isOrbit = v;
+        this.post("change", null);
+        if (this.controls instanceof OrbitControls) {
+            this.controls.dispose();
+        } else if (this.controls instanceof PointerLockControls) {
+            this.controls.unlock();
+            this.controls.disconnect();
+        }
+        this.#controls = this.isOrbit ? new OrbitControls(this.camera, this.renderer.domElement) :  new PointerLockControls(this.camera, this.renderer.domElement);
+    }
+    get isFree() { return !this.isOrbit; }
+    set isFree(v) { this.isOrbit = !v; }
     get isMeters() { return this.#isMeters; }
     set isMeters(v) {
         v = !!v;
@@ -4076,6 +4142,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     get eViewProjection() { return this.#eViewProjection; }
     get eViewIsometric() { return this.#eViewIsometric; }
+    get eViewOrbit() { return this.#eViewOrbit; }
+    get eViewFree() { return this.#eViewFree; }
     get eUnitsMeters() { return this.#eUnitsMeters; }
     get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
     get eUnitsDegrees() { return this.#eUnitsDegrees; }
@@ -4091,6 +4159,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 poses: this.poses,
                 template: this.template,
                 isProjection: this.isProjection,
+                isOrbit: this.isOrbit,
                 isMeters: this.isMeters,
                 isDegrees: this.isDegrees,
                 isOpen: this.isOptionsOpen,
