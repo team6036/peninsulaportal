@@ -1349,7 +1349,8 @@
     --fgd: var(--v1);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info,
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1358,7 +1359,8 @@
     align-content: center;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span:not(.units),
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span:not(.units) {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span:not(.units),
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span:not(.units) {
     flex-basis: 100%;
     
     color: var(--v8);
@@ -1369,14 +1371,16 @@
     font-weight: 550;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span.units,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span.units {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span.units,
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span.units {
     color: var(--v6);
 
     font-size: 12px;
     font-style: italic;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > input,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > input {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > input,
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > input {
     padding: 5px;
 
     border-radius: 5px;
@@ -1412,7 +1416,8 @@
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field.has > .nothas {
     display: none !important;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v,
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1421,7 +1426,8 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v > input {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v > input,
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v > input {
     flex-basis: 100%;
 
     padding: 5px;
