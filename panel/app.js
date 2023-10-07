@@ -2831,7 +2831,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                     let header = document.createElement("div");
                     elem.appendChild(header);
                     header.classList.add("header");
-                    header.textContent = "View Window";
+                    header.textContent = "View";
                 },
             };
             if (id in idfs) idfs[id]();
@@ -3713,6 +3713,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #eUnitsCentimeters;
     #eUnitsDegrees;
     #eUnitsRadians;
+    #eCameraPosXInput;
+    #eCameraPosYInput;
+    #eCameraPosZInput;
 
     static DO = false;
 
@@ -3832,6 +3835,57 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.eUnitsRadians.textContent = "Radians";
         this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
 
+        let infoUnits = [];
+        let info = document.createElement("div");
+        eOptions.appendChild(info);
+        info.classList.add("info");
+        info.classList.add("nothas");
+        info.innerHTML = "<span>Camera Position</span><span class='units'>m</span>";
+        infoUnits.push(info.children[1]);
+        let eCameraPos = document.createElement("div");
+        eOptions.appendChild(eCameraPos);
+        eCameraPos.classList.add("v");
+        eCameraPos.classList.add("nothas");
+        this.#eCameraPosXInput = document.createElement("input");
+        eCameraPos.appendChild(this.eCameraPosXInput);
+        this.eCameraPosXInput.type = "number";
+        this.eCameraPosXInput.placeholder = "X";
+        this.eCameraPosXInput.step = 0.1;
+        this.eCameraPosXInput.addEventListener("change", e => {
+            let v = this.eCameraPosXInput.value;
+            if (v.length > 0) {
+                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                this.camera.position.x = v / (this.isMeters ? 1 : 100);
+                this.post("change", null);
+            }
+        });
+        this.#eCameraPosYInput = document.createElement("input");
+        eCameraPos.appendChild(this.eCameraPosYInput);
+        this.eCameraPosYInput.type = "number";
+        this.eCameraPosYInput.placeholder = "Y";
+        this.eCameraPosYInput.step = 0.1;
+        this.eCameraPosYInput.addEventListener("change", e => {
+            let v = this.eCameraPosYInput.value;
+            if (v.length > 0) {
+                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                this.camera.position.y = v / (this.isMeters ? 1 : 100);
+                this.post("change", null);
+            }
+        });
+        this.#eCameraPosZInput = document.createElement("input");
+        eCameraPos.appendChild(this.eCameraPosZInput);
+        this.eCameraPosZInput.type = "number";
+        this.eCameraPosZInput.placeholder = "Z";
+        this.eCameraPosZInput.step = 0.1;
+        this.eCameraPosZInput.addEventListener("change", e => {
+            let v = this.eCameraPosZInput.value;
+            if (v.length > 0) {
+                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                this.camera.position.z = v / (this.isMeters ? 1 : 100);
+                this.post("change", null);
+            }
+        });
+
         if (a.length <= 0 || [4, 5, 6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
@@ -3871,6 +3925,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let keys = new Set();
         document.body.addEventListener("keydown", e => keys.add(e.code));
         document.body.addEventListener("keyup", e => keys.delete(e.code));
+        let velocity = new util.V3();
 
         this.addHandler("update", data => {
             if (this.isClosed) return;
@@ -3893,6 +3948,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             else this.eUnitsDegrees.classList.remove("this");
             if (this.isRadians) this.eUnitsRadians.classList.add("this");
             else this.eUnitsRadians.classList.remove("this");
+            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
+            if (document.activeElement != this.eCameraPosXInput)
+                this.eCameraPosXInput.value = Math.round((this.camera.position.x * (this.isMeters ? 1 : 100))*10000)/10000;
+            if (document.activeElement != this.eCameraPosYInput)
+                this.eCameraPosYInput.value = Math.round((this.camera.position.y * (this.isMeters ? 1 : 100))*10000)/10000;
+            if (document.activeElement != this.eCameraPosZInput)
+                this.eCameraPosZInput.value = Math.round((this.camera.position.z * (this.isMeters ? 1 : 100))*10000)/10000;
             
             let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
             this.poses.forEach(pose => {
@@ -3978,12 +4040,17 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     let z = (keys.has("KeyW") || keys.has("ArrowUp")) - (keys.has("KeyS") || keys.has("ArrowDown"));
                     let x = (keys.has("KeyD") || keys.has("ArrowRight")) - (keys.has("KeyA") || keys.has("ArrowLeft"));
                     let y = (keys.has("Space")) - (keys.has("ShiftRight") || keys.has("ShiftLeft"));
-                    let speed = 0.1;
-                    if (Math.abs(z) > 0) this.controls.moveForward(speed*z);
-                    if (Math.abs(x) > 0) this.controls.moveRight(speed*x);
-                    this.camera.position.y += speed*y;
-                }
+                    velocity.iadd(new util.V3(x, y, z).mul(0.01));
+                    velocity.imul(0.9);
+                    velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));
+                    this.controls.moveForward(velocity.z);
+                    this.controls.moveRight(velocity.x);
+                    this.camera.position.y += velocity.y;
+                } else velocity.imul(0);
             }
+            this.camera.position.x = Math.round(this.camera.position.x*10000)/10000;
+            this.camera.position.y = Math.round(this.camera.position.y*10000)/10000;
+            this.camera.position.z = Math.round(this.camera.position.z*10000)/10000;
 
             let r = this.eContent.getBoundingClientRect();
 
@@ -4148,6 +4215,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
     get eUnitsDegrees() { return this.#eUnitsDegrees; }
     get eUnitsRadians() { return this.#eUnitsRadians; }
+    get eCameraPosXInput() { return this.#eCameraPosXInput; }
+    get eCameraPosYInput() { return this.#eCameraPosYInput; }
+    get eCameraPosZInput() { return this.#eCameraPosZInput; }
 
     isValidPose(topic) { return topic.value.length == 3 || topic.value.length == 7; }
 
