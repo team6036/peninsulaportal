@@ -1277,14 +1277,14 @@
     gap: 5px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker > button,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.ghost) {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom) {
     height: 15px;
     aspect-ratio: 1 / 1;
 
     border: 2px solid transparent;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker > button.this,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.ghost).this {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom).this {
     border: 2px solid var(--v8);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav,
@@ -1381,7 +1381,7 @@
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.ghost {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom {
     --bg: transparent;
     --fg: var(--cr);
     --bgh: transparent;
@@ -1389,7 +1389,7 @@
     --bgd: transparent;
     --fgd: var(--cr2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.ghost.this {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom.this {
     --fg: var(--cg);
     --fgh: var(--cg5);
     --fgd: var(--cg2);
