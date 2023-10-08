@@ -76,7 +76,7 @@ Graphs numerical and discrete topics in NT. Choose window view, in `ms`, of the 
 Displays the robot as shown from `double[3]`, `float[3]`, and `int[3]` in NT. Choose field template, set your own, and change units. Pick colors for different poses, including toggling ghost effect and render type.
 
 ### Odometry 3D Page
-Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Choose field template, or use axis, and change units. Pick colors for different poses, including toggling ghost effect.
+Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Choose field template, or use axis, and change units. Pick colors for different poses, including render type.
 
 ## Getting Started
 
@@ -161,7 +161,8 @@ Here is what the python script should expect as input and what it should output:
 
 ## Resources
 - [Electron](https://www.electronjs.org/) - Window display and management
-- [Ionicons](https://ionic.io/ionicons) - App icons
 - [Fuse.js](https://www.fusejs.io/) - Fuzzy search
-- [Showdown.js](https://showdownjs.com/) - `.md` to `HTML`
 - [Highlight.js](https://highlightjs.org/) - Syntax coloring for code blocks in `.md`
+- [Ionicons](https://ionic.io/ionicons) - App icons
+- [Showdown.js](https://showdownjs.com/) - `.md` to `HTML`
+- [Three.js](https://threejs.org/) - 3D rendering
