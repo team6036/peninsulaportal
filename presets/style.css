@@ -1,0 +1,61 @@
+#titlebar {
+    gap: 0px;
+}
+#titlebar > .logo {
+    padding: 10px;
+
+    font-size: 16px;
+
+    background-color: transparent;
+
+    cursor: pointer;
+}
+#titlebar > .space {
+    flex-basis: 100%;
+}
+#titlebar > :last-child {
+    margin-left: 10px;
+}
+
+#mount > .page {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    height: calc(100% - 20px);
+    max-height: calc(100% - 20px);
+}
+
+#PAGE {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#PAGE > .side {
+    width: 15%;
+    max-width: 15%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v2-8);
+    border-radius: 10px;
+}
+#PAGE > .content {
+    width: 85%;
+    max-width: 85%;
+    
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 10px;
+}

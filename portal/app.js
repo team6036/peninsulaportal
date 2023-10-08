@@ -51,7 +51,7 @@ class FeatureButton extends core.Target {
     get tooltip() { return this.eTooltip.textContent; }
     set tooltip(v) {
         this.eTooltip.textContent = v;
-        if (this.eTooltip.textContent.length > 0) this.eTooltip.style.visibility = "inherit";
+        if (this.eTooltip.textContent.length > 0) this.eTooltip.style.visibility = "";
         else this.eTooltip.style.visibility = "hidden";
     }
     get tooltipColor() { return this.eTooltip.style.getPropertyValue("--bg"); }
@@ -155,11 +155,11 @@ export default class App extends core.App {
         this.#upperFeatureButtons = new Set();
 
         this.addHandler("start-begin", data => {
-            this.eLoadingTo = document.querySelector("#TITLEPAGE > .main > .title");
+            this.eLoadingTo = document.querySelector("#PAGE > .main > .title");
         });
         this.addHandler("start-complete", data => {
-            this.#eBackground = document.querySelector("#TITLEPAGE > .background");
-            this.#eCanvas = document.querySelector("#TITLEPAGE > .background > div > #canvas");
+            this.#eBackground = document.querySelector("#PAGE > .background");
+            this.#eCanvas = document.querySelector("#PAGE > .background > div > #canvas");
             if (this.hasECanvas()) {
                 const canvas = this.eCanvas;
                 const ctx = canvas.getContext("2d");
@@ -250,8 +250,8 @@ export default class App extends core.App {
                     if (first) first = false;
                 });
             }
-            this.#eMain = document.querySelector("#TITLEPAGE > .main");
-            this.#eContent = document.querySelector("#TITLEPAGE > .content");
+            this.#eMain = document.querySelector("#PAGE > .main");
+            this.#eContent = document.querySelector("#PAGE > .content");
             if (this.hasEContent()) {
                 const converter = new showdown.Converter({
                     ghCompatibleHeaderId: true,
@@ -264,7 +264,7 @@ export default class App extends core.App {
                 (async () => {
                     let resp = await fetch("../README.md");
                     let text = await resp.text();
-                    this.eContent.innerHTML = "<article>"+converter.makeHtml(text)+"</article>";
+                    this.eContent.innerHTML = "<article class='md'>"+converter.makeHtml(text)+"</article>";
                     const dfs = async elem => {
                         if (elem instanceof HTMLAnchorElement) {
                             let href = elem.href;
@@ -330,9 +330,9 @@ export default class App extends core.App {
                     else this.eTitleBar.classList.remove("this");
                 });
             }
-            this.#eNav = document.querySelector("#TITLEPAGE > .main > .nav");
-            this.#eDown = document.querySelector("#TITLEPAGE > .main > button");
-            this.#eUp = document.querySelector("#TITLEPAGE > button");
+            this.#eNav = document.querySelector("#PAGE > .main > .nav");
+            this.#eDown = document.querySelector("#PAGE > .main > button");
+            this.#eUp = document.querySelector("#PAGE > button");
             if (this.hasEDown())
                 this.eDown.addEventListener("click", e => {
                     if (!this.hasEContent()) return;
@@ -344,7 +344,7 @@ export default class App extends core.App {
                     if (!this.hasEContent()) return;
                     this.eContent.scrollTo({ top: 0, behavior: "smooth" });
                 });
-            this.#eInfo = document.querySelector("#TITLEPAGE > .info");
+            this.#eInfo = document.querySelector("#PAGE > .info");
             if (this.hasEInfo()) {
                 this.eInfo.innerHTML = "<div class='loading' style='--size:5px;--color:var(--v2);padding:5px;'></div>";
                 (async () => {
@@ -362,7 +362,7 @@ export default class App extends core.App {
                     }
                 })();
             }
-            this.#eLoads = document.querySelector("#TITLEPAGE > .loads");
+            this.#eLoads = document.querySelector("#PAGE > .loads");
 
             this.addHandler("cmd-spawn", async name => {
                 let isDevMode = await window.api.get("devmode");
@@ -399,6 +399,12 @@ export default class App extends core.App {
             btn.tooltipColor = "var(--a)";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
 
+            btn = this.addFeatureButton(new FeatureButton("Presets"));
+            btn.iconSrc = "../assets/icons/settings.svg";
+            btn.tooltip = "Experimental!";
+            btn.tooltipColor = "var(--cr)";
+            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
+
             btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
 
@@ -410,6 +416,10 @@ export default class App extends core.App {
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("eye"));
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
+
+            btn = this.addUpperFeatureButton(new UpperFeatureButton());
+            btn.iconSrc = "../assets/icons/settings.svg";
+            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
 
             let prevLoads = [];
             let lock = false;

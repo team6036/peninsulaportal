@@ -35,7 +35,7 @@ body {
     height: 100%;
     max-height: 100%;
 }
-#TITLEPAGE {
+#PAGE {
     overflow: hidden;
 
     display: flex;
@@ -47,7 +47,7 @@ body {
 
     background: var(--gradient);
 }
-#TITLEPAGE > .background {
+#PAGE > .background {
     z-index: -1;
 
     position: absolute;
@@ -61,7 +61,7 @@ body {
     max-height: 100%;
     overflow: hidden;
 }
-#TITLEPAGE > .background > div {
+#PAGE > .background > div {
     z-index: -1;
 
     position: absolute;
@@ -69,7 +69,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
 }
-#TITLEPAGE > .main {
+#PAGE > .main {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -91,17 +91,17 @@ body {
 
     pointer-events: none;
 }
-#TITLEPAGE > .main > .title {
+#PAGE > .main > .title {
     font-size: 50px;
     font-weight: 500;
 }
-#TITLEPAGE > .main > .subtitle {
+#PAGE > .main > .subtitle {
     color: var(--v7);
 
     text-align: center;
     font-size: 16px;
 }
-#TITLEPAGE > .main > .nav {
+#PAGE > .main > .nav {
     --n: 4;
 
     width: min(calc(var(--n)*100px + (var(--n)-1)*10px), calc(100vw - 20px));
@@ -118,7 +118,7 @@ body {
 
     pointer-events: auto;
 }
-#TITLEPAGE > .main > .nav > button.item {
+#PAGE > .main > .nav > button.item {
     width: 100px;
     aspect-ratio: 1 / 1;
 
@@ -134,11 +134,11 @@ body {
 
     font-size: 16px;
 }
-#TITLEPAGE > .main > .nav > button.item > ion-icon {
+#PAGE > .main > .nav > button.item > ion-icon {
     font-size: 32px;
 }
-#TITLEPAGE > .main > button,
-#TITLEPAGE > button {
+#PAGE > .main > button,
+#PAGE > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -156,17 +156,17 @@ body {
 
     pointer-events: auto;
 }
-#TITLEPAGE > button {
+#PAGE > button {
     opacity: 0%;
     visibility: hidden;
 
-    transition: opacity var(--t), visibility var(--t);
+    transition: color var(--t), opacity var(--t), visibility var(--t);
 }
-#TITLEPAGE > button.this {
+#PAGE > button.this {
     opacity: 100%;
     visibility: inherit;
 }
-#TITLEPAGE > .content {
+#PAGE > .content {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -185,105 +185,20 @@ body {
     align-items: center;
     align-content: center;
 }
-#TITLEPAGE > .content::-webkit-scrollbar {
+#PAGE > .content::-webkit-scrollbar {
     display: none;
 }
-#TITLEPAGE > .content > article {
+#PAGE > .content > article {
     max-width: min(calc(100vw - 100px), 750px);
     margin-top: calc(125vh + 100px);
     margin-bottom: 100px;
 }
-#TITLEPAGE > button {
+#PAGE > button {
     position: absolute;
     right: 20px;
     bottom: 20px;
 }
-article {
-    color: var(--v7);
-
-    line-height: 1.5;
-}
-article a {
-    color: var(--a);
-
-    text-decoration: none;
-}
-article blockquote {
-    margin-left: 0px;
-    margin-right: 0px;
-    padding: 0px 16px;
-
-    color: var(--v6);
-    border-left: 5px solid var(--v2);
-}
-article code.hljs {
-    background-color: var(--v2);
-    border-radius: 10px;
-
-    font-family: monospace;
-    white-space: break-spaces;
-}
-article code:not(.hljs) {
-    padding: 3px 5px;
-
-    background-color: var(--v2);
-    color: var(--v8);
-    border-radius: 5px;
-
-    font-family: monospace;
-    white-space: break-spaces;
-}
-article code * {
-    font-family: monospace;
-}
-article h1,
-article h2 {
-    padding-bottom: 0.3em;
-
-    border-bottom: 2px solid var(--v2);
-}
-article h3 {
-    margin-top: 24px;
-    margin-bottom: 16px;
-}
-article h1,
-article h2,
-article h3,
-article h4,
-article h5,
-article h6 {
-    color: var(--v8);
-}
-article pre:not(:has(> code.hljs)) {
-    padding: 15px;
-
-    background-color: var(--v2);
-    border-radius: 10px;
-}
-article kbd {
-    padding: 0px 5px;
-
-    display: inline-block;
-
-    background-color: var(--v2);
-    color: var(--v8);
-    border-radius: 5px;
-    filter: drop-shadow(0px 2px 0px var(--v3));
-
-    font-family: monospace;
-}
-article blockquote,
-article details,
-article dl,
-article ol,
-article p,
-article pre,
-article table,
-article ul {
-    margin-top: 0px;
-    margin-bottom: 16px;
-}
-#TITLEPAGE > .info {
+#PAGE > .info {
     position: absolute;
     bottom: 20px;
     left: 20px;
@@ -300,10 +215,10 @@ article ul {
     font-size: 12px;
     font-family: monospace;
 }
-#TITLEPAGE > .info * {
+#PAGE > .info * {
     font-family: monospace;
 }
-#TITLEPAGE > .loads {
+#PAGE > .loads {
     position: absolute;
     top: calc((20px * var(--fs)) + (var(--TOP) * (1 - var(--fs))));
     left: 20px;
@@ -320,6 +235,6 @@ article ul {
     font-size: 12px;
     font-family: monospace;
 }
-#TITLEPAGE > .loads * {
+#PAGE > .loads * {
     font-family: monospace;
 }
