@@ -1061,7 +1061,7 @@ const MAIN = async () => {
                 maximizable: false,
 
                 titleBarStyle: "hidden",
-                trafficLightPosition: { x: 17, y: 17 },
+                trafficLightPosition: { x: (40-16)/2, y: (40-16)/2 },
 
                 webPreferences: {
                     preload: path.join(__dirname, "preload.js"),
@@ -1426,20 +1426,17 @@ const MAIN = async () => {
                 fs.watchFile(path.join(this.portal.dataPath, ".config"), () => checkConfig());
                 await checkLocalConfig();
                 await checkConfig();
-                if (!this.hasName()) return;
-                if (!this.hasPortal()) return;
-                await this.portal.affirm();
+                if (!this.canOperate) return;
+                await this.affirm();
                 let stateContent = "";
                 try {
-                    stateContent = await this.portal.fileRead(".state");
+                    stateContent = await this.fileRead(".state");
                 } catch (e) {}
                 let state = null;
                 try {
                     state = JSON.parse(stateContent);
                 } catch (e) {}
                 state = util.ensure(state, "obj");
-                if (!(this.name in state)) return;
-                state = state[this.name];
                 if (!("bounds" in state)) return;
                 let bounds = util.ensure(state.bounds, "obj");
                 if (!this.hasWindow()) return;
@@ -1459,25 +1456,22 @@ const MAIN = async () => {
                 this.perm = await this.getPerm();
             }
             this.log(`STOP - perm: ${this.perm}`);
-            if (!this.perm) return false;
-            this.#started = false;
-            this.manager.processes.forEach(process => process.terminate());
-            if (this.hasPortal()) {
-                await this.portal.affirm();
+            if (!this.perm) return false;if (this.canOperate) {
+                await this.affirm();
                 let stateContent = "";
                 try {
-                    stateContent = await this.portal.fileRead(".state");
+                    stateContent = await this.fileRead(".state");
                 } catch (e) {}
                 let state = null;
                 try {
                     state = JSON.parse(stateContent);
                 } catch (e) {}
                 state = util.ensure(state, "obj");
-                if (!util.is(state[this.name], "obj")) state[this.name] = {};
-                if (this.hasWindow())
-                    state[this.name].bounds = this.window.getBounds();
-                await this.portal.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                if (this.hasWindow()) state.bounds = this.window.getBounds();
+                await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
             }
+            this.#started = false;
+            this.manager.processes.forEach(process => process.terminate());
             if (this.hasWindow()) this.window.close();
             this.#window = null;
             this.#menu = null;
@@ -1501,6 +1495,8 @@ const MAIN = async () => {
             await portal.affirm();
             let hasFeatureData = await Portal.dirHas(this.getDataPath(portal, name, started));
             if (!hasFeatureData) await Portal.dirMake(this.getDataPath(portal, name, started));
+            let hasState = await Portal.fileHas([this.getDataPath(portal, name, started), ".state"]);
+            if (!hasState) await Portal.fileWrite([this.getDataPath(portal, name, started), ".state"], "");
             return true;
         }
         async affirm() { return await Portal.Feature.affirm(this.portal, this.name, this.started); }
