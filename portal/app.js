@@ -284,13 +284,19 @@ export default class App extends core.App {
                             location = location.join("/");
                             if (elem.src.startsWith(location)) {
                                 let path = elem.src.substring(location.length);
-                                if (path.endsWith("icon.png"))
-                                    if (await window.api.get("spooky"))
-                                        path = path.substring(0, path.length-"icon.png".length) + "icon-spooky.png";
                                 location = location.split("/");
                                 location.pop();
                                 location = location.join("/");
-                                elem.src = location + path;
+                                if (path.endsWith("icon.png")) {
+                                    const onSpookyState = is => {
+                                        elem.src = location + (is ? path.substring(0, path.length-"icon.png".length) + "icon-spooky.png" : path);
+                                    };
+                                    this.addHandler("cmd-win-spooky", async args => {
+                                        args = util.ensure(args, "arr");
+                                        onSpookyState(!!args[0]);
+                                    });
+                                    onSpookyState(await window.api.get("spooky"));
+                                } else elem.src = location + path;
                             }
                         }
                         await Promise.all(Array.from(elem.children).map(child => dfs(child)));
