@@ -2080,6 +2080,17 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     }
 
     async enter(data) {
+        let projectOnly = [
+            "addnode", "addobstacle", "addpath",
+            "savecopy",
+            "delete", "close",
+            "maxmin", "resetdivider",
+        ];
+        let changes = {};
+        projectOnly.forEach(id => {
+            changes[id] = { ".enabled": true };
+        });
+        await window.api.menuChange(changes);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
         if (!this.hasApp()) return;
         await this.refresh();
@@ -2141,6 +2152,17 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         }
     }
     async leave(data) {
+        let projectOnly = [
+            "addnode", "addobstacle", "addpath",
+            "savecopy",
+            "delete", "close",
+            "maxmin", "resetdivider",
+        ];
+        let changes = {};
+        projectOnly.forEach(id => {
+            changes[id] = { ".enabled": false };
+        });
+        await window.api.menuChange(changes);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         if (!this.hasApp()) return;
         this.app.markChange("*all");
