@@ -604,35 +604,6 @@ const MAIN = async () => {
             ipc.handle("get", async (e, k) => {
                 k = String(k);
                 let kfs = {
-                    feature: async () => {
-                        let feat = identifyFeature(e);
-                        if (!(feat instanceof Portal.Feature)) return null;
-                        return feat.name;
-                    },
-                    fullscreenable: async () => {
-                        let feat = identifyFeature(e);
-                        if (!(feat instanceof Portal.Feature)) return null;
-                        if (!feat.hasWindow()) return null;
-                        return feat.window.isFullScreenable();
-                    },
-                    fullscreen: async () => {
-                        let feat = identifyFeature(e);
-                        if (!(feat instanceof Portal.Feature)) return null;
-                        if (!feat.hasWindow()) return null;
-                        return feat.window.isFullScreen();
-                    },
-                    closeable: async () => {
-                        let feat = identifyFeature(e);
-                        if (!(feat instanceof Portal.Feature)) return null;
-                        if (!feat.hasWindow()) return null;
-                        return feat.window.isClosable();
-                    },
-                    devmode: async () => {
-                        return await this.isDevMode();
-                    },
-                    spooky: async () => {
-                        return await this.isSpooky();
-                    },
                     loads: async () => {
                         return this.loads;
                     },
@@ -706,33 +677,18 @@ const MAIN = async () => {
                     },
                 };
                 if (k in kfs) return await kfs[k]();
-                return null;
+                let feat = identifyFeature(e);
+                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                return await feat.get(k);
             });
             ipc.handle("set", async (e, k, v) => {
                 k = String(k);
                 let kfs = {
-                    fullscreenable: async () => {
-                        let feat = identifyFeature(e);
-                        if (!(feat instanceof Portal.Feature)) return;
-                        if (!feat.hasWindow()) return;
-                        feat.window.setFullScreenable(!!v);
-                    },
-                    fullscreen: async () => {
-                        let feat = identifyFeature(e);
-                        if (!(feat instanceof Portal.Feature)) return;
-                        if (!feat.hasWindow()) return;
-                        feat.window.setFullScreen(!!v);
-                    },
-                    closeable: async () => {
-                        let feat = identifyFeature(e);
-                        if (!(feat instanceof Portal.Feature)) return;
-                        if (!feat.hasWindow()) return;
-                        let maximizable = feat.window.isMaximizable();
-                        feat.window.setClosable(!!v);
-                        feat.window.setMaximizable(maximizable);
-                    },
                 };
-                if (k in kfs) await kfs[k]();
+                if (k in kfs) return await kfs[k]();
+                let feat = identifyFeature(e);
+                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                return await feat.set(k, v);
             });
 
             ipc.handle("file-has", async (e, pth) => {
@@ -1553,6 +1509,61 @@ const MAIN = async () => {
         async dirMake(pth) { return Portal.Feature.dirMake(this.portal, this.name, pth, this.started); }
         async dirDelete(pth) { return Portal.Feature.dirDelete(this.portal, this.name, pth, this.started); }
 
+        async get(k) {
+            if (!this.started) return;
+            if (!this.hasName()) return;
+            k = String(k);
+            this.log(`GET - ${k}`);
+            let kfs = {
+                name: async () => {
+                    return this.name;
+                },
+                fullscreenable: async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFullScreenable();
+                },
+                fullscreen: async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFullScreen();
+                },
+                closeable: async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isClosable();
+                },
+                devmode: async () => {
+                    return await this.isDevMode();
+                },
+                spooky: async () => {
+                    return await this.isSpooky();
+                },
+            };
+            if (k in kfs) return await kfs[k]();
+            return null;
+        }
+        async set(k, v) {
+            if (!this.started) return;
+            if (!this.hasName()) return;
+            k = String(k);
+            this.log(`SET - ${k} = ${JSON.stringify(v)}`);
+            let kfs = {
+                fullscreenable: async () => {
+                    if (!this.hasWindow()) return;
+                    this.window.setFullScreenable(!!v);
+                },
+                fullscreen: async () => {
+                    if (!this.hasWindow()) return;
+                    this.window.setFullScreen(!!v);
+                },
+                closeable: async () => {
+                    if (!this.hasWindow()) return;
+                    let maximizable = this.window.isMaximizable();
+                    this.window.setClosable(!!v);
+                    this.window.setMaximizable(maximizable);
+                },
+            };
+            if (k in kfs) return await kfs[k]();
+            return null;
+        }
         async on(k, args) {
             if (!this.started) return;
             if (!this.hasName()) return;

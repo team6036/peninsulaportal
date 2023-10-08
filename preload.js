@@ -12,11 +12,11 @@ contextBridge.exposeInMainWorld("api", {
     onPerm: f => ipcRenderer.on("perm", f),
     sendPerm: perm => ipcRenderer.send("perm", perm),
 
-    on: f => ipcRenderer.on("send", f),
-    send: (k, args) => ipcRenderer.invoke("on", k, args),
-
     get: k => ipcRenderer.invoke("get", k),
     set: (k, v) => ipcRenderer.invoke("set", k, v),
+    
+    on: f => ipcRenderer.on("send", f),
+    send: (k, args) => ipcRenderer.invoke("on", k, args),
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
     fileRead: path => ipcRenderer.invoke("file-read", path),
