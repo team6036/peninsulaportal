@@ -104,9 +104,15 @@ export class App extends Target {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
                 (async () => {
-                    this.post("start-begin", null);
+                    await this.post("start-begin", null);
                     await this.setup();
-                    this.post("start-complete", null);
+                    await this.post("start-complete", null);
+                    let page = await window.api.send("state-get", ["page"]);
+                    let pageState = await window.api.send("state-get", ["page-state"]);
+                    if (this.hasPage(page)) {
+                        await this.getPage(page).loadState(util.ensure(pageState, "obj"));
+                        if (this.page != page) this.page = page;
+                    }
                     const update = () => {
                         this.post("update", null);
                         window.requestAnimationFrame(update);
@@ -152,6 +158,13 @@ export class App extends Target {
             args = util.ensure(args, "arr");
             this.post("cmd", { cmd: cmd, args: args });
             this.post("cmd-"+cmd, args);
+        });
+        this.addHandler("perm", async data => {
+            if (this.hasPage(this.page)) {
+                await window.api.send("state-set", ["page", this.page]);
+                await window.api.send("state-set", ["page-state", this.getPage(this.page).state]);
+            }
+            return true;
         });
         this.addHandler("cmd-about", async args => {
             let name = String(await window.api.get("name"));
@@ -1166,6 +1179,9 @@ App.Page = class AppPage extends Target {
     get app() { return this.#app; }
     hasApp() { return this.app instanceof App; }
     get elem() { return this.#elem; }
+
+    get state() { return {}; }
+    async loadState(state) {}
 
     async enter(data) {}
     async leave(data) {}

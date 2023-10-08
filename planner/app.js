@@ -999,7 +999,6 @@ App.TitlePage = class AppTitlePage extends core.App.Page {
     constructor(app) {
         super("TITLE", app);
 
-
         this.#eTitle = document.createElement("div");
         this.elem.appendChild(this.eTitle);
         this.eTitle.classList.add("title");
@@ -1187,6 +1186,17 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     get eContent() { return this.#eContent; }
     get eLoading() { return this.#eLoading; }
     get eEmpty() { return this.#eEmpty; }
+
+    get state() {
+        return {
+            query: this.eSearchInput.value,
+        };
+    }
+    async loadState(state) {
+        state = util.ensure(state, "obj");
+        this.eSearchInput.value = state.query || "";
+        await this.refresh();
+    }
 
     async enter(data) {
         if (this.hasApp() && this.app.hasEProjectsBtn())
@@ -2077,6 +2087,17 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             this.eEdit.style.width = "calc("+((1-this.divPos)*100)+"% - 6px)";
             this.eDivider.style.display = "";
         }
+    }
+
+    get state() {
+        return {
+            id: this.projectId,
+        };
+    }
+    async loadState(state) {
+        state = util.ensure(state, "obj");
+        if (!this.hasApp()) return;
+        await this.app.setPage(this.name, { id: state.id });
     }
 
     async enter(data) {

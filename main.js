@@ -1377,18 +1377,7 @@ const MAIN = async () => {
                 await checkLocalConfig();
                 await checkConfig();
                 if (!this.canOperate) return;
-                await this.affirm();
-                let stateContent = "";
-                try {
-                    stateContent = await this.fileRead(".state");
-                } catch (e) {}
-                let state = null;
-                try {
-                    state = JSON.parse(stateContent);
-                } catch (e) {}
-                state = util.ensure(state, "obj");
-                if (!("bounds" in state)) return;
-                let bounds = util.ensure(state.bounds, "obj");
+                let bounds = util.ensure(await this.on("state-get", ["bounds"]), "obj");
                 if (!this.hasWindow()) return;
                 if (("width" in bounds) && (bounds.width < 50)) return;
                 if (("height" in bounds) && (bounds.height < 50)) return;
@@ -1406,20 +1395,8 @@ const MAIN = async () => {
                 this.perm = await this.getPerm();
             }
             this.log(`STOP - perm: ${this.perm}`);
-            if (!this.perm) return false;if (this.canOperate) {
-                await this.affirm();
-                let stateContent = "";
-                try {
-                    stateContent = await this.fileRead(".state");
-                } catch (e) {}
-                let state = null;
-                try {
-                    state = JSON.parse(stateContent);
-                } catch (e) {}
-                state = util.ensure(state, "obj");
-                if (this.hasWindow()) state.bounds = this.window.getBounds();
-                await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
-            }
+            if (!this.perm) return false;
+            if (this.canOperate) await this.on("state-set", ["bounds", this.window.getBounds()]);
             this.#started = false;
             this.manager.processes.forEach(process => process.terminate());
             if (this.hasWindow()) this.window.close();
@@ -1768,12 +1745,12 @@ const MAIN = async () => {
                 let feats = this.portal.features;
                 let hasFeat = null;
                 feats.forEach(feat => {
-                    if (feat.name != name) return;
+                    if (feat.name != name) return false;
                     hasFeat = feat;
                 });
                 if (hasFeat instanceof Portal.Feature) {
                     if (hasFeat.hasWindow()) hasFeat.window.show();
-                    return;
+                    return false;
                 }
                 if (!FEATURES.includes(name)) return false;
                 let feat = new Portal.Feature(name);
@@ -1789,6 +1766,52 @@ const MAIN = async () => {
                     menu.enabled = able;
                 }
                 return;
+            }
+            if (k == "state-get") {
+                let k = String(args[0]);
+                await this.affirm();
+                let stateContent = "";
+                try {
+                    stateContent = await this.fileRead(".state");
+                } catch (e) {}
+                let state = null;
+                try {
+                    state = JSON.parse(stateContent);
+                } catch (e) {}
+                state = util.ensure(state, "obj");
+                return state[k];
+            }
+            if (k == "state-set") {
+                let k = String(args[0]), v = args[1];
+                await this.affirm();
+                let stateContent = "";
+                try {
+                    stateContent = await this.fileRead(".state");
+                } catch (e) {}
+                let state = null;
+                try {
+                    state = JSON.parse(stateContent);
+                } catch (e) {}
+                state = util.ensure(state, "obj");
+                state[k] = v;
+                await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                return v;
+            }
+            if (k == "state-del") {
+                let k = String(args[0]);
+                await this.affirm();
+                let stateContent = "";
+                try {
+                    stateContent = await this.fileRead(".state");
+                } catch (e) {}
+                let state = null;
+                try {
+                    state = JSON.parse(stateContent);
+                } catch (e) {}
+                state = util.ensure(state, "obj");
+                let v = state[k];
+                delete state[k];
+                return v;
             }
             if (namefs[this.name])
                 if (namefs[this.name][k])
