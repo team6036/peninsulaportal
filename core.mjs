@@ -643,18 +643,6 @@ export class App extends Target {
 
         this.#page = name;
 
-        let projectOnly = [
-            "addnode", "addobstacle", "addpath",
-            "savecopy",
-            "delete", "close",
-            "maxmin", "resetdivider",
-        ];
-        let changes = {};
-        projectOnly.forEach(id => {
-            changes[id] = { ".enabled": this.page == "PROJECT" };
-        });
-        await window.api.menuChange(changes);
-
         if (this.hasPage(this.page)) await this.getPage(this.page).enter(data);
 
         this.pages.forEach(name => this.getPage(name).elem.classList[(name == this.page ? "add" : "remove")]("this"));
