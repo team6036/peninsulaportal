@@ -1186,8 +1186,8 @@ const MAIN = async () => {
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
             });
 
-            window.on("enter-full-screen", () => { window.webContents.send("send", "set-fullscreen", [true]); });
-            window.on("leave-full-screen", () => { window.webContents.send("send", "set-fullscreen", [false]); });
+            window.on("enter-full-screen", () => { window.webContents.send("send", "win-fullscreen", [true]); });
+            window.on("leave-full-screen", () => { window.webContents.send("send", "win-fullscreen", [false]); });
 
             this.perm = false;
             window.on("close", e => {
@@ -1475,12 +1475,30 @@ const MAIN = async () => {
                 window.setMenu(this.menu);
             
             (async () => {
-                const checkDevMode = async () => {
-                    let is = await this.isDevMode();
-                    this.menuChange({ toggleDevTools: { ".enabled": is } });
+                let prevIsDevMode = null;
+                const checkLocalConfig = async () => {
+                    let isDevMode = await this.isDevMode();
+                    this.menuChange({ toggleDevTools: { ".enabled": isDevMode } });
+                    if (prevIsDevMode != isDevMode) {
+                        console.log("devmode = "+isDevMode);
+                        prevIsDevMode = isDevMode;
+                        window.webContents.send("send", "win-devmode", [isDevMode]);
+                    }
                 };
-                fs.watch(path.join(__dirname, ".config"), () => checkDevMode());
-                await checkDevMode();
+                let prevIsSpooky = null;
+                const checkConfig = async () => {
+                    let isSpooky = await this.isSpooky();
+                    if (prevIsSpooky != isSpooky) {
+                        console.log("spooky = "+isSpooky);
+                        prevIsSpooky = isSpooky;
+                        window.webContents.send("send", "win-spooky", [isSpooky]);
+                    }
+                };
+                fs.watchFile(path.join(__dirname, ".config"), () => checkLocalConfig());
+                fs.watchFile(path.join(this.portal.dataPath, ".config"), () => checkConfig());
+                console.log(path.join(this.portal.dataPath, ".config"));
+                await checkLocalConfig();
+                await checkConfig();
                 if (!this.hasName()) return;
                 if (!this.hasPortal()) return;
                 await this.portal.affirm();

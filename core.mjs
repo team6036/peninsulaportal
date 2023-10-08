@@ -178,7 +178,7 @@ export class App extends Target {
             document.documentElement.style.setProperty("--fs", (is ? 1 : 0));
             document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
         };
-        this.addHandler("cmd-set-fullscreen", async args => {
+        this.addHandler("cmd-win-fullscreen", async args => {
             args = util.ensure(args, "arr");
             onFullScreenState(!!args[0]);
         });
@@ -202,9 +202,37 @@ export class App extends Target {
                 delete window.colors;
             }
         };
-        this.addHandler("cmd-devmode", async args => {
+        this.addHandler("cmd-win-devmode", async args => {
             args = util.ensure(args, "arr");
             onDevModeState(!!args[0]);
+        });
+        let isSpooky = false, id = null, accent = null;
+        const onSpookyState = is => {
+            is = !!is;
+            if (this.accent == null) {
+                if (isSpooky != is) isSpooky = is;
+                if (id != null) return;
+                id = setInterval(() => {
+                    if (this.accent == null) return;
+                    accent = this.accent;
+                    if (isSpooky) this.accent = "o";
+                    clearInterval(id);
+                }, 10);
+                return;
+            }
+            if (isSpooky == is) return;
+            isSpooky = is;
+            if (isSpooky) {
+                accent = this.accent;
+                this.accent = "o";
+            } else {
+                this.accent = accent;
+            }
+            // if (is) this.accent = "o";
+        };
+        this.addHandler("cmd-win-spooky", async args => {
+            args = util.ensure(args, "arr");
+            onSpookyState(!!args[0]);
         });
 
         this.#eCoreStyle = document.createElement("link");
@@ -290,6 +318,7 @@ export class App extends Target {
         
         onFullScreenState(await window.api.get("fullscreen"));
         onDevModeState(await window.api.get("devmode"));
+        onSpookyState(await window.api.get("spooky"));
 
         let resp = null;
         try {
@@ -316,8 +345,8 @@ export class App extends Target {
         };
         this.accent = data.accent || "b";
 
-        let spooky = await window.api.get("spooky");
-        if (spooky) this.accent = "o";
+        // let spooky = await window.api.get("spooky");
+        // if (spooky) this.accent = "o";
 
         await this.post("setup", null);
 
