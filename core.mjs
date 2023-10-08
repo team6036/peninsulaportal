@@ -169,8 +169,9 @@ export class App extends Target {
         this.addHandler("cmd-about", async args => {
             let name = String(await window.api.get("name"));
             let about = await this.getAbout();
+            let spooky = await window.api.get("spooky");
             let pop = this.alert();
-            pop.iconSrc = root+"/assets/icon.svg";
+            pop.iconSrc = root+"/assets/app/" + (spooky ? "icon-spooky.svg" : "icon.svg");
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+util.capitalize(name);
             let lines = new Array(4).fill("");
