@@ -154,7 +154,7 @@ export class App extends Target {
             this.post("cmd-"+cmd, args);
         });
         this.addHandler("cmd-about", async args => {
-            let name = String(await window.api.get("feature"));
+            let name = String(await window.api.get("name"));
             let about = await this.getAbout();
             let pop = this.alert();
             pop.iconSrc = root+"/assets/icon.svg";
