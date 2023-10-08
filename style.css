@@ -311,6 +311,92 @@ label.switch > input[type="checkbox"]:checked + span::before {
     transform: translateX(15px);
 }
 
+article.md {
+    color: var(--v7);
+
+    line-height: 1.5;
+}
+article.md a {
+    color: var(--a);
+
+    text-decoration: none;
+}
+article.md blockquote {
+    margin-left: 0px;
+    margin-right: 0px;
+    padding: 0px 16px;
+
+    color: var(--v6);
+    border-left: 5px solid var(--v2);
+}
+article.md code.hljs {
+    background-color: var(--v2);
+    border-radius: 10px;
+
+    font-family: monospace;
+    white-space: break-spaces;
+}
+article.md code:not(.hljs) {
+    padding: 3px 5px;
+
+    background-color: var(--v2);
+    color: var(--v8);
+    border-radius: 5px;
+
+    font-family: monospace;
+    white-space: break-spaces;
+}
+article.md code * {
+    font-family: monospace;
+}
+article.md h1,
+article.md h2 {
+    padding-bottom: 0.3em;
+
+    border-bottom: 2px solid var(--v2);
+}
+article.md h3 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+}
+article.md h1,
+article.md h2,
+article.md h3,
+article.md h4,
+article.md h5,
+article.md h6 {
+    color: var(--v8);
+}
+article.md pre:not(:has(> code.hljs)) {
+    padding: 15px;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+}
+article.md kbd {
+    padding: 0px 5px;
+
+    display: inline-block;
+
+    background-color: var(--v2);
+    color: var(--v8);
+    border-radius: 5px;
+    filter: drop-shadow(0px 2px 0px var(--v3));
+
+    font-family: monospace;
+}
+article.md blockquote,
+article.md details,
+article.md dl,
+article.md ol,
+article.md p,
+article.md pre,
+article.md table,
+article.md ul {
+    margin-top: 0px;
+    margin-bottom: 16px;
+}
+
 #titlebar {
     --loading: 0%;
 

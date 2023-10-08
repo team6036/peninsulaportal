@@ -1434,8 +1434,8 @@ const MAIN = async () => {
                 if (!("bounds" in state)) return;
                 let bounds = util.ensure(state.bounds, "obj");
                 if (!this.hasWindow()) return;
-                if (("width" in bounds) && (bounds.width < 50)) delete bounds.width;
-                if (("height" in bounds) && (bounds.height < 50)) delete bounds.height;
+                if (("width" in bounds) && (bounds.width < 50)) return;
+                if (("height" in bounds) && (bounds.height < 50)) return;
                 this.window.setContentBounds(bounds);
             })();
 
