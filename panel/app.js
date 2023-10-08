@@ -5379,7 +5379,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             }
         });
 
-        this.rootSource = null;
+        this.rootSource = new NTSource(null);
 
         if (this.app.hasEProjectInfoNameInput())
             this.app.eProjectInfoNameInput.addEventListener("change", e => {
@@ -5388,15 +5388,14 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (this.app.hasEProjectInfoAddressInput())
             this.app.eProjectInfoAddressInput.addEventListener("change", e => {
                 this.project.config.ip = this.app.eProjectInfoAddressInput.value;
-                this.rootSource = null;
+                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
+                this.rootSource.address = null;
             });
         if (this.app.hasEProjectInfoConnectionBtn())
             this.app.eProjectInfoConnectionBtn.addEventListener("click", e => {
-                if (!this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected)) {
-                    this.rootSource = new NTSource(this.project.config.ip);
-                    return;
-                }
-                this.rootSource = null;
+                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
+                if (!this.rootSource.connecting && !this.rootSource.connected) this.rootSource.address = this.project.config.ip;
+                else this.rootSource.address = null;
             });
 
         this.addHandler("update", data => {
@@ -5533,6 +5532,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         v = (v instanceof NTSource) ? v : null;
         if (this.rootSource == v) return;
         if (this.hasRootSource()) {
+            this.rootSource.address = null;
             this.rootSource.remHandler("change", this.rootSource.root._onChange);
             delete this.rootSource._onChange;
         }

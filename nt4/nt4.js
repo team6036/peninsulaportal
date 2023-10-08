@@ -1,19 +1,9 @@
+import * as util from "../util.mjs";
+
 import "./msgpack.js";
 
-/**
- * nt4.js - Pure-javascript module implementation of the NetworkTables 4 spec 
- *          for the FIRST robotics Competition
- * 
- * See https://github.com/wpilibsuite/allwpilib/blob/main/ntcore/doc/networktables4.adoc
- * for the full spec.
- */
-
-
-/**
- * Lookup from type string to type integer
- */
-var typestrIdxLookup = {
-    NT4_TYPESTR: 0,
+const typestrIdxLookup = {
+    "boolean": 0,
     "double": 1,
     "int": 2,
     "float": 3,
@@ -28,619 +18,438 @@ var typestrIdxLookup = {
     "int[]": 18,
     "float[]": 19,
     "string[]": 20
-}
+};
 
-
-/**
- * JS Definition of the topic type strings
- */
-class NT4_TYPESTR {
-    static BOOL = "boolean";
-    static FLOAT_64 = "double";
-    static INT = "int";
-    static FLOAT_32 = "float";
-    static STR = "string";
-    static JSON = "json";
-    static BIN_RAW = "raw";
-    static BIN_RPC = "rpc";
-    static BIN_MSGPACK = "msgpack";
-    static BIN_PROTOBUF = "protobuf";
-    static BOOL_ARR = "boolean[]";
-    static FLOAT_64_ARR = "double[]";
-    static INT_ARR = "int[]";
-    static FLOAT_32_ARR = "float[]";
-    static STR_ARR = "string[]";
-}
-
-/**
- * Class to describe a client's subscription to topics
- */
-export class NT4_Subscription {
-    topics = new Set();
-    options = new NT4_SubscriptionOptions();
+class Subscription {
     uid = -1;
-
+    topics = new Set();
+    options = new SubscriptionOptions();
+  
     toSubscribeObj() {
         return {
-            "topics": Array.from(this.topics),
-            "options": this.options.toObj(),
-            "subuid": this.uid,
+            topics: Array.from(this.topics),
+            subuid: this.uid,
+            options: this.options.toObj(),
         };
     }
-
-    toUnSubscribeObj() {
+  
+    toUnsubscribeObj() {
         return {
-            "subuid": this.uid,
+            subuid: this.uid,
         };
     }
 }
 
-/**
- * Class to describe the options associated with a client's subscription to topics
- */
-export class NT4_SubscriptionOptions {
-    periodicRate_s = 0.1;
+class SubscriptionOptions {
+    periodic = 0.1;
     all = false;
-    topicsonly = false;
-    prefix = true; //nonstandard default
+    topicsOnly = false;
+    prefix = false;
 
     toObj() {
         return {
-            "periodic": this.periodicRate_s,
-            "all": this.all,
-            "topicsonly": this.topicsonly,
-            "prefix": this.prefix,
+            periodic: this.periodic,
+            all: this.all,
+            topicsonly: this.topicsOnly,
+            prefix: this.prefix,
         };
     }
 }
 
-/**
- * Class to describe a topic that the client and server both know about
- */
-export class NT4_Topic {
+export class Topic {
+    uid = -1;
     name = "";
     type = "";
-    id = 0;
-    pubuid = 0;
-    properties = {}; //Properties are free-form, might have anything in them
+    properties = {};
 
     toPublishObj() {
         return {
-            "name": this.name,
-            "type": this.type,
-            "pubuid": this.pubuid,
-        }
+            name: this.name,
+            type: this.type,
+            pubuid: this.uid,
+            properties: this.properties,
+        };
     }
 
-    toUnPublishObj() {
+    toUnpublishObj() {
         return {
-            "name": this.name,
-            "pubuid": this.pubuid,
-        }
-    }
-
-    toPropertiesObj() {
-        return {
-            "name": this.name,
-            "update": this.properties,
-        }
+            pubuid: this.uid,
+        };
     }
 
     getTypeIdx() {
-        return typestrIdxLookup[this.type];
-    }
-
-    getPropertiesString(){
-        var retStr = "{"
-        for (var key in this.properties){
-            retStr += key + ":" + this.properties[key] + ", ";
-        }
-        retStr += "}";
-        return retStr;
+        if (this.type in typestrIdxLookup)
+            return typestrIdxLookup[this.type];
+        return 5;
     }
 }
 
-export class NT4_Client {
+export class Client {
+    #name;
+    #onTopicAnnounce;
+    #onTopicUnannounce;
+    #onNewTopicData;
+    #onConnect;
+    #onDisconnect;
 
+    #baseAddr;
+    #ws;
+    #timestampInterval;
+    #addr;
+    #connectionActive;
+    #connectionRequested;
+    #serverTimeOffset;
+    #networkLatency;
+    #rxLengthCounter;
 
-    /**
-     * Main client class. User code should instantiate one of these.
-     * Client will immediately start to try to connect to the server on instantiation
-     * and continue to reconnect in the background if disconnected.
-     * As long as the server is connected, time synchronization will occur in the background.
-     * @param {string} serverAddr String representing the network address of the server
-     * @param {function} onTopicAnnounce_in User-supplied callback function for whenever a new topic is announced.
-     * @param {function} onTopicUnAnnounce_in User-supplied callback function for whenever a topic is unnanounced.
-     * @param {function} onNewTopicData_in User-supplied callback function for when the client gets new values for a topic
-     * @param {function} onConnect_in User-supplied callback function for when the client successfully connects to the server
-     * @param {function} onDisconnect_in User-supplied callback for when the client is disconnected from the server
-     * @param {function} log
-     * @param {function} error
-     */
-    constructor(serverAddr,
-        onTopicAnnounce_in,   
-        onTopicUnAnnounce_in, 
-        onNewTopicData_in,    
-        onConnect_in,         
-        onDisconnect_in,
-        log=console.log,
-        error=console.error) {    
-        
-        this.log = log;
-        this.error = error;
+    #subscriptions;
+    #publishedTopics;
+    #serverTopics;
 
-        this.onTopicAnnounce = onTopicAnnounce_in;
-        this.onTopicUnAnnounce = onTopicUnAnnounce_in;
-        this.onNewTopicData = onNewTopicData_in;
-        this.onConnect = onConnect_in;
-        this.onDisconnect = onDisconnect_in;
+    constructor(addr, name, onTopicAnnounce, onTopicUnannounce, onNewTopicData, onConnect, onDisconnect) {
+        this.#name = String(name);
+        this.#onTopicAnnounce = () => {};
+        this.#onTopicUnannounce = () => {};
+        this.#onNewTopicData = () => {};
+        this.#onConnect = () => {};
+        this.#onDisconnect = () => {};
 
-        this.subscriptions = new Map();
-        this.subscription_uid_counter = 0;
-        this.publish_uid_counter = 0;
+        this.#baseAddr = "";
+        this.#ws = null;
+        this.#timestampInterval = null;
+        this.#addr = "";
+        this.#connectionActive = false;
+        this.#connectionRequested = false;
+        this.#serverTimeOffset = 0;
+        this.#networkLatency = 0;
+        this.#rxLengthCounter = 0;
 
-        this.clientPublishedTopics = new Map();
-        this.announcedTopics = new Map();
+        this.#subscriptions = {};
+        this.#publishedTopics = {};
+        this.#serverTopics = {};
 
-        this.timeSyncBgEvent = setInterval(this.ws_sendTimestamp.bind(this), 5000);
+        this.baseAddr = addr;
 
-        // WS Connection State (with defaults)
-        this.serverBaseAddr = serverAddr;
-        this.clientIdx = 0;
-        this.serverAddr = "";
-        this.serverConnectionActive = false;
-        this.serverTimeOffset_us = 0;
-
-        //Trigger the websocket to connect automatically
-        this.ws_connect();
-
+        this.onTopicAnnounce = onTopicAnnounce;
+        this.onTopicUnannounce = onTopicUnannounce;
+        this.onNewTopicData = onNewTopicData;
+        this.onConnect = onConnect;
+        this.onDisconnect = onDisconnect;
     }
 
-    //////////////////////////////////////////////////////////////
-    // PUBLIC API
-
-    /**
-     * Add a new subscription which requests announcement of topics, but no data
-     * Generally, this must be called first before the server will announce any topics.
-     * @param {List<String>} topicPatterns wildcard-enabled list of patterns that this client will care about.
-     * @returns a NT4_Subscription object describing the subscription
-     */
-    subscribeTopicNames(topicPatterns) {
-        var newSub = new NT4_Subscription();
-        newSub.uid = this.getNewSubUID();
-        newSub.options.topicsonly = true;
-        newSub.options.periodicRate_s = 1.0;
-        newSub.topics = new Set(topicPatterns);
-
-        this.subscriptions.set(newSub.uid, newSub);
-        if (this.serverConnectionActive) {
-            this.ws_subscribe(newSub);
-        }
-        return newSub;
+    get name() { return this.#name; }
+    get onTopicAnnounce() { return this.#onTopicAnnounce; }
+    set onTopicAnnounce(v) {
+        v = util.is(v, "func") ? v : (() => {});
+        if (this.onTopicAnnounce == v) return;
+        this.#onTopicAnnounce = v;
+    }
+    get onTopicUnannounce() { return this.#onTopicUnannounce; }
+    set onTopicUnannounce(v) {
+        v = util.is(v, "func") ? v : (() => {});
+        if (this.onTopicUnannounce == v) return;
+        this.#onTopicUnannounce = v;
+    }
+    get onNewTopicData() { return this.#onNewTopicData; }
+    set onNewTopicData(v) {
+        v = util.is(v, "func") ? v : (() => {});
+        if (this.onNewTopicData == v) return;
+        this.#onNewTopicData = v;
+    }
+    get onConnect() { return this.#onConnect; }
+    set onConnect(v) {
+        v = util.is(v, "func") ? v : (() => {});
+        if (this.onConnect == v) return;
+        this.#onConnect = v;
+    }
+    get onDisconnect() { return this.#onDisconnect; }
+    set onDisconnect(v) {
+        v = util.is(v, "func") ? v : (() => {});
+        if (this.onDisconnect == v) return;
+        this.#onDisconnect = v;
     }
 
-    /**
-     * Subscribe to topics, requesting the server send value updates periodically.
-     * This means the server may skip sending some value updates.
-     * @param {List<String>} topicPatterns wildcard-enabled list of patterns that this client wants data from.
-     * @param {double} period Requested data rate, in seconds
-     * @returns a NT4_Subscription object describing the subscription
-     */
-    subscribePeriodic(topicPatterns, period) {
-        var newSub = new NT4_Subscription();
-        newSub.uid = this.getNewSubUID();
-        newSub.options.periodicRate_s = period;
-        newSub.topics = new Set(topicPatterns);
+    get baseAddr() { return this.#baseAddr; }
+    set baseAddr(v) {
+        v = String(v);
+        if (this.baseAddr == v) return;
+        this.#baseAddr = v;
+    }
+    #hasWS() { return this.#ws instanceof WebSocket; }
+    get addr() { return this.#addr; }
 
-        this.subscriptions.set(newSub.uid, newSub);
-        if (this.serverConnectionActive) {
-            this.ws_subscribe(newSub);
-        }
-        return newSub;
+    get connectionActive() { return this.#connectionActive; }
+    get connectionRequested() { return this.#connectionRequested; }
+    set connectionRequested(v) {
+        v = !!v;
+        if (this.connectionRequested == v) return;
+        console.log("connection req = "+v);
+        this.#connectionRequested = v;
     }
 
-    /**
-     * Subscribe to topics, requesting the server send all value updates. 
-     * @param {List<String>} topicPatterns wildcard-enabled list of patterns that this client wants data from.
-     * @returns a NT4_Subscription object describing the subscription
-     */
-    subscribeAllSamples(topicPatterns) {
-        var newSub = new NT4_Subscription();
-        newSub.uid = this.getNewSubUID();
-        newSub.topics = new Set(topicPatterns);
-        newSub.options.all = true;
-
-        this.subscriptions.set(newSub.uid, newSub);
-        if (this.serverConnectionActive) {
-            this.ws_subscribe(newSub);
-        }
-        return newSub;
+    connect() {
+        if (this.connectionRequested) return;
+        this.connectionRequested = true;
+        this.#ws_connect();
+        this.#timestampInterval = setInterval(() => {
+            this.#ws_sendTimestamp();
+            let bitrateKbPerSec = ((this.#rxLengthCounter / 1000) * 8) / 5;
+            this.#rxLengthCounter = 0;
+            // console.log("[NT4] Bitrate: " + Math.round(bitrateKbPerSec).toString() + " kb/s");
+        }, 5000);
     }
 
-    /**
-     * Request the server stop sending value updates and topic announcements
-     * @param {NT4_Subscription} sub The subscription object generated by a call to a subscribe*() method.
-     */
-    unSubscribe(sub) {
-        this.subscriptions.delete(sub.uid);
-        if (this.serverConnectionActive) {
-            this.ws_unsubscribe(sub);
-        }
+    disconnect() {
+        if (!this.connectionRequested) return;
+        this.connectionRequested = false;
+        if (this.connectionActive && this.#hasWS()) this.#ws.close();
+        clearInterval(this.#timestampInterval);
     }
 
-    /**
-     * Unsubscribe from all current subscriptions
-     */
-    clearAllSubscriptions() {
-        for (const sub of this.subscriptions.values()) {
-            this.unSubscribe(sub);
-        }
+    subscribe(patterns, prefix, all=false, periodic=0.1) {
+        let sub = new Subscription();
+        sub.uid = this.#newUID();
+        sub.topics = new Set(patterns);
+        sub.options.prefix = !!prefix;
+        sub.options.all = !!all;
+        sub.options.periodic = Math.max(0, util.ensure(periodic, "num"));
+        this.#subscriptions[sub.uid] = sub;
+        if (this.connectionActive) this.#ws_subscribe(sub);
+        return sub.uid;
     }
 
-    /**
-     * Set the properties of a particular topic
-     * @param {NT4_Topic} topic the topic to update
-     * @param {boolean} isPersistent set whether the topic should be persistent
-     * @param {boolean} isRetained set whether the topic should be retained
-     */
-    setProperties(topic, isPersistent, isRetained) {
-        topic.properties.persistent = isPersistent;
-        topic.properties.retained = isRetained;
-        if (this.serverConnectionActive) {
-            this.ws_setproperties(topic);
-        }
+    subscribeTopicsOnly(patterns, prefix) {
+        let sub = new Subscription();
+        sub.uid = this.#newUID();
+        sub.topics = new Set(patterns);
+        sub.options.prefix = !!prefix;
+        sub.options.topicsOnly = true;
+        this.#subscriptions[sub.uid] = sub;
+        if (this.connectionActive) this.#ws_subscribe(sub);
+        return sub.uid;
     }
 
-    /**
-     * Publish a new topic from this client
-     * @param {String} name Topic's full name
-     * @param {NT4_TYPESTR} type Topic Type
-     * @returns 
-     */
-    publishNewTopic(name, type) {
-        var newTopic = new NT4_Topic();
-        newTopic.name = name;
-        newTopic.type = type;
-        this.publishTopic(newTopic);
-        return newTopic;
+    unsubscribe(uid) {
+        let sub = this.#subscriptions[uid];
+        if (!(sub instanceof Subscription)) return;
+        delete this.#subscriptions[uid];
+        if (this.connectionActive)
+            this.#ws_unsubscribe(subscription);
+    }
+    
+    clearSubscriptions() {
+        for (let uid in this.#subscriptions)
+            this.unsubscribe(uid);
     }
 
-    /**
-     * Publish a new topic from this client
-     * @param {NT4_Topic} topic the topic to publish
-     * @returns 
-     */
-    publishTopic(topic) {
-        topic.pubuid = this.getNewPubUID();
-        this.clientPublishedTopics.set(topic.name, topic);
-        if (this.serverConnectionActive) {
-            this.ws_publish(topic);
-        }
-    }
+    setProperties(topic, properties) {
+        topic = String(topic);
+        properties = util.ensure(properties, "obj");
 
-    /**
-     * Un-Publish a previously-published topic from this client
-     * @param {NT4_Topic} oldTopic the topic to un-publish
-     * @returns 
-     */    
-    unPublishTopic(oldTopic) {
-        this.clientPublishedTopics.delete(oldTopic.name);
-        if (this.serverConnectionActive) {
-            this.ws_unpublish(oldTopic);
-        }
-    }
-
-    /**
-     * Send some new value to the server
-     * Timestamp is whatever the current time is.
-     * @param {NT4_Topic} topic The topic to update a value for
-     * @param {*} value The value to pass in
-     */
-    addSample(topic, value) {
-        var timestamp = this.getServerTime_us();
-        this.addSample(topic, timestamp, value);
-    }
-
-    /**
-     * Send some new value to the server
-     * Timestamp is whatever the current time is.
-     * @param {NT4_Topic} topic The topic to update a value for
-     * @param {double} timestamp The server time at which the update happened, in microseconds. Should be a value returned from getServerTime_us().
-     * @param {*} value The value to pass in
-     */
-    addSample(topic, timestamp, value) {
-
-        if (typeof topic === 'string') {
-            var topicFound = false;
-            //Slow-lookup - strings are assumed to be topic names for things the server has already announced.
-            for (const topicIter of this.announcedTopics.values()) {
-                if (topicIter.name === topic) {
-                    topic = topicIter;
-                    topicFound = true;
-                    break;
-                }
-            }
-            if (!topicFound) {
-                throw "Topic " + topic + " not found in announced server topics!";
+        let top = (topic in this.#publishedTopics) ? this.#publishedTopics[topic] : (topic in this.#serverTopics) ? this.#serverTopics[topic] : null;
+        if (top instanceof Topic) {
+            for (let k in properties) {
+                let v = properties[k];
+                if (v == null) delete top.properties[k];
+                else top.properties[k] = v;
             }
         }
-
-        var sourceData = [topic.pubuid, timestamp, topic.getTypeIdx(), value];
-        var txData = msgpack.serialize(sourceData);
-
-        this.ws_sendBinary(txData);
+        if (this.connectionActive)
+            this.#ws_setProperties(topic, properties);
+    }
+    setPersistent(topic, persistent) {
+        this.setProperties(topic, { persistent: !!persistent });
+    }
+    setRetained(topic, retained) {
+        this.setProperties(topic, { retained: !!retained });
     }
 
-    /**
-     * Gets the server time. This is equal to the client current time, offset
-     * by the most recent results from running Cristian’s Algorithm with the server
-     * to synchronize timebases. 
-     * @returns The current time on the server, in microseconds
-     */
-    getServerTime_us(clientTime=null) {
-        return ((clientTime == null) ? this.getClientTime_us() : clientTime) + this.serverTimeOffset_us;
+    publishTopic(topic, type) {
+        topic = String(topic);
+        type = String(type);
+        let top = new Topic();
+        top.name = topic;
+        top.uid = this.#newUID();
+        top.type = type;
+        this.#publishedTopics[topic] = top;
+        if (this.connectionActive)
+            this.#ws_publish(top);
+    }
+    unpublishTopic(topic) {
+        topic = String(topic);
+        let top = this.#publishedTopics[topic];
+        if (!(top instanceof Topic)) return;
+        delete this.#publishedTopics[topic];
+        if (this.connectionActive)
+            this.#ws_unpublish(top);
     }
 
-    //////////////////////////////////////////////////////////////
-    // Server/Client Time Sync Handling
-
-    getClientTime_us() {
-        return Math.round(performance.now() * 1000.0);
+    addSample(topic, v) {
+        this.addTimestampedSample(topic, this.serverTime, v);
+    }
+    addTSSample(topic, ts, v) {
+        topic = String(topic);
+        ts = util.ensure(ts, "num");
+        let top = this.#publishedTopics[topic];
+        if (!(top instanceof Topic)) return;
+        let txData = msgpack.serialize([top.uid, ts, top.getTypeIdx(), v]);
+        this.#ws_sendBinary(txData);
     }
 
-    ws_sendTimestamp() {
-        var timeTopic = this.announcedTopics.get(-1);
-        if (timeTopic) {
-            var timeToSend = this.getClientTime_us();
-            this.addSample(timeTopic, 0, timeToSend);
-        }
+    get clientTime() { return util.getTime() * 1000; }
+    clientToServer(ts) {
+        ts = util.ensure(ts, "num", this.clientTime);
+        return ts + this.#serverTimeOffset;
+    }
+    get serverTime() { return this.clientToServer(); }
+    get networkLatency() { return this.#networkLatency; }
+
+    #ws_sendTimestamp() {
+        let ts = this.clientTime;
+        let txData = msgpack.serialize([-1, 0, typestrIdxLookup["int"], ts]);
+        this.#ws_sendBinary(txData);
+    }
+    #ws_handleReceiveTimestamp(serverTS, clientTS) {
+        let rxTime = this.clientTime;
+        let rtt = rxTime - clientTS;
+        this.#networkLatency = rtt / 2.0;
+        let serverTSAtRx = serverTS + this.#networkLatency;
+        this.#serverTimeOffset = serverTSAtRx - rxTime;
     }
 
-    ws_handleReceiveTimestamp(serverTimestamp, clientTimestamp) {
-        var rxTime = this.getClientTime_us();
-
-        //Recalculate server/client offset based on round trip time
-        var rtt = rxTime - clientTimestamp;
-        var serverTimeAtRx = serverTimestamp - rtt / 2.0;
-        this.serverTimeOffset_us = serverTimeAtRx - rxTime;
-
+    #ws_subscribe(sub) {
+        this.#ws_sendJSON("subscribe", sub.toSubscribeObj());
+    }
+    #ws_unsubscribe(sub) {
+        this.#ws_sendJSON("unsubscribe", sub.toUnsubscribeObj());
+    }
+    #ws_publish(topic) {
+        this.#ws_sendJSON("publish", topic.toPublishObj());
+    }
+    #ws_unpublish(topic) {
+        this.#ws_sendJSON("unpublish", topic.toUnpublishObj());
+    }
+    #ws_setProperties(topic, properties) {
+        this.#ws_sendJSON("setproperties", {
+            name: topic,
+            update: properties,
+        });
+    }
+    #ws_sendJSON(method, params) {
+        if (!this.#hasWS()) return;
+        if (this.#ws.readyState != WebSocket.OPEN) return;
+        this.#ws.send(JSON.stringify([{ method: method, params: params }]));
+    }
+    #ws_sendBinary(data) {
+        if (!this.#hasWS()) return;
+        if (this.#ws.readyState != WebSocket.OPEN) return;
+        this.#ws.send(data);
     }
 
-    //////////////////////////////////////////////////////////////
-    // Websocket Message Send Handlers
-
-    ws_subscribe(sub) {
-        this.ws_sendJSON("subscribe", sub.toSubscribeObj());
-    }
-
-    ws_unsubscribe(sub) {
-        this.ws_sendJSON("unsubscribe", sub.toUnSubscribeObj());
-    }
-
-    ws_publish(topic) {
-        this.ws_sendJSON("publish", topic.toPublishObj());
-    }
-
-    ws_unpublish(topic) {
-        this.ws_sendJSON("unpublish", topic.toUnPublishObj());
-    }
-
-    ws_setproperties(topic) {
-        this.ws_sendJSON("setproperties", topic.toPropertiesObj());
-    }
-
-    ws_sendJSON(method, params) { //Sends a single json message
-        if (this.ws.readyState === WebSocket.OPEN) {
-            var txObj = [{
-                "method": method,
-                "params": params
-            }];
-            var txJSON = JSON.stringify(txObj);
-
-            this.log("[NT4] Client Says: " + txJSON);
-
-            this.ws.send(txJSON);
-        }
-    }
-
-    ws_sendBinary(data) {
-        if (this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(data);
-        }
-    }
-
-    //////////////////////////////////////////////////////////////
-    // Websocket connection Maintenance
-
-    ws_onOpen() {
-
-        // Add default time topic
-        var timeTopic = new NT4_Topic();
-        timeTopic.name = "Time";
-        timeTopic.id = -1;
-        timeTopic.pubuid = -1;
-        timeTopic.type = NT4_TYPESTR.INT;
-        this.announcedTopics.set(timeTopic.id, timeTopic);
-
-        // Set the flag allowing general server communication
-        this.serverConnectionActive = true;
-
-        //Publish any existing topics
-        for (const topic of this.clientPublishedTopics.values()) {
-            this.ws_publish(topic);
-            this.ws_setproperties(topic);
-        }
-
-        //Subscribe to existing subscriptions
-        for (const sub of this.subscriptions.values()) {
-            this.ws_subscribe(sub);
-        }
-
-        // User connection-opened hook
+    #ws_onOpen() {
+        this.#connectionActive = true;
+        this.#ws_sendTimestamp();
+        Object.values(this.#publishedTopics).forEach(topic => this.#ws_publish(topic));
+        Object.values(this.#subscriptions).forEach(sub => this.#ws_subscribe(sub));
         this.onConnect();
     }
-
-    ws_onClose(e) {
-        //Clear flags to stop server communication
-        this.ws = null;
-        this.serverConnectionActive = false;
-
-        // User connection-closed hook
+    #ws_onClose(e) {
+        this.#ws = null;
+        this.#connectionActive = false;
         this.onDisconnect();
-
-        //Clear out any local cache of server state
-        this.announcedTopics.clear();
-
-        this.log('[NT4] Socket is closed. Reconnect will be attempted in 0.5 second.', e.reason);
-        setTimeout(this.ws_connect.bind(this), 500);
-
-        if (!e.wasClean) {
-            this.error('Socket encountered error!');
-        }
-
+        this.#serverTopics = {};
+        if (this.connectionRequested)
+            setTimeout(() => this.#ws_connect(), 500);
+        if (e.reason != "") throw e.reason;
     }
-
-    ws_onError(e) {
-        this.log("[NT4] Websocket error - " + e.toString());
-        this.ws.close();
+    #ws_onError() {
+        if (!this.#hasWS()) return;
+        this.#ws.close();
     }
-
-    ws_onMessage(e) {
-        if (typeof e.data === 'string') {
-            this.log("[NT4] Server Says: " + e.data);
-            //JSON Message
-            var rxArray = JSON.parse(e.data);
-
-            rxArray.forEach(function (msg) {
-
-                //Validate proper format of message
-                if (typeof msg !== 'object') {
-                    this.log("[NT4] Ignoring text message, JSON parsing did not produce an object.");
-                    return;
-                }
-
-                if (!("method" in msg) || !("params" in msg)) {
-                    this.log("[NT4] Ignoring text message, JSON parsing did not find all required fields.");
-                    return;
-                }
-
-                var method = msg["method"];
-                var params = msg["params"];
-
-                if (typeof method !== 'string') {
-                    this.log("[NT4] Ignoring text message, JSON parsing found \"method\", but it wasn't a string.");
-                    return;
-                }
-
-                if (typeof params !== 'object') {
-                    this.log("[NT4] Ignoring text message, JSON parsing found \"params\", but it wasn't an object.");
-                    return;
-                }
-
-                // Message validates reasonably, switch based on supported methods
-                if (method === "announce") {
-
-                    //Check to see if we already knew about this topic. If not, make a new object.
-
-                    var newTopic = null;
-                    for (const topic of this.clientPublishedTopics.values()) {
-                        if (params.name === topic.name) {
-                            newTopic = topic; //Existing topic, use it.
+    #ws_onMessage(e) {
+        if (util.is(e.data, "str")) {
+            this.#rxLengthCounter += e.data.length;
+            let msgData = JSON.parse(e.data);
+            if (!util.is(msgData, "arr")) return;
+            msgData.forEach(msg => {
+                if (!util.is(msg, "obj")) return;
+                if (!("method" in msg) || !("params" in msg)) return;
+                let method = msg["method"];
+                let params = msg["params"];
+                if (!util.is(method, "str")) return;
+                if (!util.is(params, "obj")) return;
+                let methodfs = {
+                    announce: () => {
+                        let top = new Topic();
+                        top.uid = params.id;
+                        top.name = params.name;
+                        top.type = params.type;
+                        top.properties = params.properties;
+                        this.#serverTopics[top.name] = top;
+                        this.onTopicAnnounce(top);
+                    },
+                    unannounce: () => {
+                        let top = this.#serverTopics.get(params.name);
+                        if (!(top instanceof Topic)) return;
+                        delete this.#serverTopics[top.name];
+                        this.onTopicUnannounce(top);
+                    },
+                    properties: () => {
+                        let top = this.#serverTopics.get(params.name);
+                        if (!(top instanceof Topic)) return;
+                        for (let k in params.update) {
+                            let v = params.update[k];
+                            if (v == null) delete top.properties[k];
+                            else top.properties[k] = v;
                         }
-                    }
-
-                    // Did not know about the topic. Make a new one.
-                    if(newTopic === null){
-                        newTopic = new NT4_Topic();
-                    }
-
-                    newTopic.name = params.name;
-                    newTopic.id = params.id;
-
-                    //Strategy - if server sends a pubid use it
-                    // otherwise, preserve whatever we had?
-                    //TODO - ask peter about this. It smells wrong.
-                    if (params.pubid != null) {
-                        newTopic.pubuid = params.pubuid;
-                    }
-
-                    newTopic.type = params.type;
-                    newTopic.properties = params.properties;
-                    this.announcedTopics.set(newTopic.id, newTopic);
-                    this.onTopicAnnounce(newTopic);
-                } else if (method === "unannounce") {
-                    var removedTopic = this.announcedTopics.get(params.id);
-                    if (!removedTopic) {
-                        this.log("[NT4] Ignorining unannounce, topic was not previously announced.");
-                        return;
-                    }
-                    this.announcedTopics.delete(removedTopic.id);
-                    this.onTopicUnAnnounce(removedTopic);
-
-                } else if (method === "properties") {
-                    //TODO support property changes
-                } else {
-                    this.log("[NT4] Ignoring text message - unknown method " + method);
+                    },
+                };
+                if (method in methodfs) methodfs[method]();
+            });
+        } else {
+            this.#rxLengthCounter += e.data.byteLength;
+            let rxArray = msgpack.deserialize(e.data, { multiple: true });
+            util.ensure(rxArray, "arr").forEach(data => {
+                data = util.ensure(data, "arr");
+                let uid = util.ensure(data[0], "num");
+                let ts = util.ensure(data[1], "num");
+                let typeIdx = util.ensure(data[2], "num");
+                let v = data[3];
+                if (uid >= 0) {
+                    let topic = null;
+                    Object.values(this.#serverTopics).forEach(thisTopic => {
+                        if (topic instanceof Topic) return;
+                        if (uid != thisTopic.uid) return;
+                        topic = thisTopic;
+                    });
+                    if (!(topic instanceof Topic)) return;
+                    this.onNewTopicData(topic, ts, v);
                     return;
                 }
-            }, this);
-
-        } else {
-            //MSGPack
-            var rxArray = msgpack.deserialize(e.data, { multiple: true });
-
-            rxArray.forEach(function (unpackedData) { //For every value update...
-                var topicID = unpackedData[0];
-                var timestamp_us = unpackedData[1];
-                var typeIdx = unpackedData[2];
-                var value = unpackedData[3];
-
-                if (topicID >= 0) {
-                    var topic = this.announcedTopics.get(topicID);
-                    this.onNewTopicData(topic, timestamp_us, value);
-                } else if (topicID === -1) {
-                    this.ws_handleReceiveTimestamp(timestamp_us, value);
-                } else {
-                    this.log("[NT4] Ignoring binary data - invalid topic id " + topicID.toString());
+                if (uid == -1) {
+                    this.#ws_handleReceiveTimestamp(ts, v);
+                    return;
                 }
-            }, this);
-
+            });
         }
     }
 
-    ws_connect() {
+    #ws_connect() {
+        const port = 5810;
+        const prefix = "ws://";
 
-        this.clientIdx = Math.floor(Math.random() * 99999999); //Not great, but using it for now
+        this.#addr = prefix + this.#baseAddr + ":" + port + "/nt/" + this.name;
+        console.log("connect to", this.addr);
 
-        var port = 5810; //fallback - unsecured
-        var prefix = "ws://";
-
-        this.serverAddr = prefix + this.serverBaseAddr + ":" + port.toString() + "/nt/" + "JSClient_" + this.clientIdx.toString();
-
-        this.ws = new WebSocket(this.serverAddr, "networktables.first.wpi.edu");
-        this.ws.binaryType = "arraybuffer";
-        this.ws.onopen = this.ws_onOpen.bind(this);
-        this.ws.onmessage = this.ws_onMessage.bind(this);
-        this.ws.onclose = this.ws_onClose.bind(this);
-        this.ws.onerror = this.ws_onError.bind(this);
-
-        this.log("[NT4] Connected with idx " + this.clientIdx.toString());
+        this.#ws = new WebSocket(this.addr, "networktables.first.wpi.edu");
+        this.#ws.binaryType = "arraybuffer";
+        this.#ws.addEventListener("open", () => this.#ws_onOpen());
+        this.#ws.addEventListener("message", e => this.#ws_onMessage(e));
+        this.#ws.addEventListener("close", e => this.#ws_onClose(e));
+        this.#ws.addEventListener("error", () => this.#ws_onError());
     }
 
-
-
-    //////////////////////////////////////////////////////////////
-    // General utilties
-
-    getNewSubUID() {
-        this.subscription_uid_counter++;
-        return this.subscription_uid_counter + this.clientIdx;
+    #newUID() {
+        return Math.floor(Math.random() * 100000000);
     }
-
-    getNewPubUID() {
-        this.publish_uid_counter++;
-        return this.publish_uid_counter + this.clientIdx;
-    }
-
-
 }

@@ -3,7 +3,7 @@ import { V } from "../util.mjs";
 
 import * as core from "../core.mjs";
 
-import { NT4_Subscription, NT4_SubscriptionOptions, NT4_Topic, NT4_Client } from "./nt4.js";
+import { Client } from "./nt4.js";
 
 
 export default class NTSource extends core.Target {
@@ -21,7 +21,7 @@ export default class NTSource extends core.Target {
         this.address = address;
     }
 
-    #hasClient() { return this.#client instanceof NT4_Client; }
+    #hasClient() { return this.#client instanceof Client; }
     get root() { return this.#root; }
     hasRoot() { return this.#root instanceof NTSource.Table; }
 
@@ -225,11 +225,12 @@ export default class NTSource extends core.Target {
         */
     }
 
-    get address() { return this.#hasClient() ? this.#client.serverBaseAddr : null; }
+    get address() { return this.#hasClient() ? this.#client.baseAddr : null; }
     set address(v) {
         v = (v == null) ? null : String(v);
         if (this.address == v) return;
-        if (this.#hasClient()) this.#client.ws.close();
+        console.log("NEW ADDR: "+v);
+        if (this.#hasClient()) this.#client.disconnect();
         if (this.hasRoot()) {
             this.root.remHandler("change", this.root._onChange);
             delete this.root._onChange;
@@ -240,8 +241,9 @@ export default class NTSource extends core.Target {
             this.root.addHandler("change", this.root._onChange);
         }
         this.#logs = (v == null) ? null : {};
-        const client = this.#client = (v == null) ? null : new NT4_Client(
+        const client = this.#client = (v == null) ? null : new Client(
             v,
+            "Peninsula",
             topic => {
                 if (client != this.#client) return;
                 this.announceTopic(topic.name, topic.type);
@@ -250,38 +252,36 @@ export default class NTSource extends core.Target {
                 if (client != this.#client) return;
                 this.unannounceTopic(topic.name);
             },
-            (topic, ts, value) => {
+            (topic, ts, v) => {
                 if (client != this.#client) return;
                 ts /= 1000;
-                this.updateTopic(topic.name, value, ts);
+                this.updateTopic(topic.name, v, ts);
             },
             () => {
                 if (client != this.#client) return;
-                this.#client.connected = true;
-                this.#client.startTime = this.#client.getClientTime_us();
+                this.#client.startTime = this.#client.clientTime;
                 this.post("connected", null);
                 this.post("connect-state", this.connected);
-                client.subscribePeriodic(["/"], 0.001);
+                client.subscribe(["/"], true, true, 0.001);
             },
             () => {
                 if (client != this.#client) return;
-                this.#client.connected = false;
                 this.post("disconnected", null);
                 this.post("connect-state", this.connected);
             },
-            () => {},
-            () => {},
         );
+        if (this.#hasClient()) this.#client.connect();
     }
+    get fullAddress() { return this.#hasClient() ? this.#client.addr : null; }
 
     get connecting() { return this.#hasClient() && this.disconnected; }
-    get connected() { return this.#hasClient() ? this.#client.connected : false; }
+    get connected() { return this.#hasClient() ? this.#client.connectionActive : false; }
     get disconnected() { return !this.connected; }
 
     get clientStartTime() { return this.#hasClient() ? this.#client.startTime/1000 : null; }
-    get serverStartTime() { return this.#hasClient() ? this.#client.getServerTime_us(this.#client.startTime)/1000 : null; }
-    get clientTime() { return this.#hasClient() ? this.#client.getClientTime_us()/1000 : null; }
-    get serverTime() { return this.#hasClient() ? this.#client.getServerTime_us(this.#client.getClientTime_us())/1000 : null; }
+    get serverStartTime() { return this.#hasClient() ? this.#client.clientToServer(this.#client.startTime)/1000 : null; }
+    get clientTime() { return this.#hasClient() ? this.#client.clientTime/1000 : null; }
+    get serverTime() { return this.#hasClient() ? this.#client.clientToServer(this.#client.clientTime)/1000 : null; }
     get clientTimeSince() { return this.#hasClient() ? (this.clientTime - this.clientStartTime) : null; }
     get serverTimeSince() { return this.#hasClient() ? (this.serverTime - this.serverStartTime) : null; }
 }
