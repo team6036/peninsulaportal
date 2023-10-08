@@ -2086,11 +2086,9 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             "delete", "close",
             "maxmin", "resetdivider",
         ];
-        let changes = {};
-        projectOnly.forEach(id => {
-            changes[id] = { ".enabled": true };
-        });
-        await window.api.menuChange(changes);
+        let ables = {};
+        projectOnly.forEach(id => (ables[id] = true));
+        await window.api.send("menu-ables", [ables]);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
         if (!this.hasApp()) return;
         await this.refresh();
@@ -2158,11 +2156,9 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             "delete", "close",
             "maxmin", "resetdivider",
         ];
-        let changes = {};
-        projectOnly.forEach(id => {
-            changes[id] = { ".enabled": false };
-        });
-        await window.api.menuChange(changes);
+        let ables = {};
+        projectOnly.forEach(id => (ables[id] = false));
+        await window.api.send("menu-ables", [ables]);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         if (!this.hasApp()) return;
         this.app.markChange("*all");
