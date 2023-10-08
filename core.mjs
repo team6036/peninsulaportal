@@ -228,7 +228,6 @@ export class App extends Target {
             } else {
                 this.accent = accent;
             }
-            // if (is) this.accent = "o";
         };
         this.addHandler("cmd-win-spooky", async args => {
             args = util.ensure(args, "arr");
@@ -344,9 +343,6 @@ export class App extends Target {
             m: [255, 0, 255],
         };
         this.accent = data.accent || "b";
-
-        // let spooky = await window.api.get("spooky");
-        // if (spooky) this.accent = "o";
 
         await this.post("setup", null);
 

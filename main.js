@@ -600,18 +600,6 @@ const MAIN = async () => {
                 }
                 return null;
             };
-            /*
-            const identifyPopup = e => {
-                if (!util.is(e, "obj")) return null;
-                if (!util.is(e.sender, "obj")) return null;
-                let feats = this.features;
-                for (let i = 0; i < feats.length; i++)
-                    for (let j = 0; j < feats[i].popups.length; j++)
-                        if (e.sender.id == feats[i].popups[j].webContents.id)
-                            return feats[i].popups[j];
-                return null;
-            };
-            */
 
             ipc.handle("get", async (e, k) => {
                 k = String(k);
@@ -800,31 +788,11 @@ const MAIN = async () => {
                 return feat.menuChange(changes);
             });
 
-            /*
-            ipc.handle("popup", (e, type) => {
-                let feat = identifyFeature(e);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                feat.addPopup(new Portal.Feature.Popup(type));
-                return true;
-            });
-            */
-
             ipc.handle("on", async (e, k, args) => {
                 let feat = identifyFeature(e);
-                if (feat instanceof Portal.Feature) return await feat.on(k, args);
-                throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                // let pop = identifyPopup(e);
-                // if (pop instanceof Portal.Feature.Popup) return await pop.on(k, args);
-                // throw "Nonexistent feature and popup corresponding with id: "+e.sender.id;
+                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                return await feat.on(k, args);
             });
-
-            /*
-            ipc.handle("submit", async (e, result) => {
-                let pop = identifyPopup(e);
-                if (!(pop instanceof Portal.Feature.Popup)) throw "Nonexistent popup corresponding with id: "+e.sender.id;
-                return await pop.submit(result);
-            });
-            */
 
             (async () => {
                 await this.affirm();
@@ -991,8 +959,6 @@ const MAIN = async () => {
 
         #name;
 
-        // #popups;
-
         #window;
         #menu;
         #perm;
@@ -1008,8 +974,6 @@ const MAIN = async () => {
 
             name = String(name).toUpperCase();
             this.#name = FEATURES.includes(name) ? name : null;
-
-            // this.#popups = new Set();
             
             this.#window = null;
             this.#menu = null;
@@ -1051,40 +1015,6 @@ const MAIN = async () => {
         
         get name() { return this.#name; }
         hasName() { return util.is(this.name, "str"); }
-
-        /*
-        get popups() { return [...this.#popups]; }
-        set popups(v) {
-            v = util.ensure(v, "arr");
-            this.clearPopups();
-            v.forEach(v => this.addPopup(v));
-        }
-        clearPopups() {
-            let pops = this.popups;
-            pops.forEach(pop => this.remPopup(pop));
-            return pops;
-        }
-        hasPopup(pop) {
-            if (!(pop instanceof Portal.Feature.Popup)) return false;
-            return this.#popups.has(pop) && pop.feature == this;
-        }
-        addPopup(pop) {
-            if (!(pop instanceof Portal.Feature.Popup)) return false;
-            if (this.hasPopup(pop)) return false;
-            this.#popups.add(pop);
-            pop.feature = this;
-            pop.start();
-            return pop;
-        }
-        remPopup(pop) {
-            if (!(pop instanceof Portal.Feature.Popup)) return false;
-            if (!this.hasPopup(pop)) return false;
-            this.#popups.delete(pop);
-            pop.feature = null;
-            pop.stop();
-            return pop;
-        }
-        */
 
         get window() { return this.#window; }
         hasWindow() { return this.window instanceof electron.BrowserWindow; }
@@ -1551,7 +1481,6 @@ const MAIN = async () => {
                     state[this.name].bounds = this.window.getBounds();
                 await this.portal.fileWrite(".state", JSON.stringify(state, null, "\t"));
             }
-            // this.popups.forEach(pop => pop.stop());
             if (this.hasWindow()) this.window.close();
             this.#window = null;
             this.#menu = null;
@@ -1675,7 +1604,6 @@ const MAIN = async () => {
                         id = String(id);
                         pathId = String(pathId);
 
-                        // const subcore = require("./planner/core-node");
                         const subcore = await import("./planner/core.mjs");
 
                         if (!this.hasPortal()) throw "No linked portal";
@@ -1810,7 +1738,6 @@ const MAIN = async () => {
                     exec_get: async id => {
                         id = String(id);
 
-                        // const subcore = require("./planner/core-node");
                         const subcore = await import("./planner/core.mjs");
 
                         if (!this.hasPortal()) throw "No linked portal";
@@ -1895,93 +1822,6 @@ const MAIN = async () => {
         }
         log(...a) { Portal.Feature.log(this.name, ...a); }
     };
-    /*
-    Portal.Feature.Popup = class PortalFeaturePopup extends core.Target {
-        #feature;
-
-        #type;
-
-        #resolutions;
-        #rejections;
-
-        #window;
-
-        #started;
-
-        constructor(type) {
-            super();
-
-            this.#feature = null;
-
-            type = String(type).toUpperCase();
-            this.#type = POPUPS.includes(type) ? type : null;
-
-            this.#resolutions = [];
-            this.#rejections = [];
-
-            this.#window = null;
-
-            this.#started = false;
-
-            this.log();
-        }
-
-        async isDevMode() {
-            if (!this.hasFeature()) return false;
-            return await this.feature.isDevMode();
-        }
-
-        get feature() { return this.#feature; }
-        set feature(v) {
-            v = (v instanceof Portal.Feature) ? v : null;
-            if (this.feature == v) return;
-            (async () => {
-                if (this.hasFeature()) {
-                    await this.feature.remPopup(this);
-                    this.post("feature-unhook", { feature: this.feature });
-                }
-                this.#feature = v;
-                if (this.hasFeature()) {
-                    this.portal.addPopup(this);
-                    this.post("feature-hook", { feature: this.feature });
-                }
-            })();
-        }
-        hasFeature() { return this.feature instanceof Portal.Feature; }
-        
-        get type() { return this.#type; }
-        hasType() { return util.is(this.type, "str"); }
-
-        get window() { return this.#window; }
-        hasWindow() { return this.window instanceof electron.BrowserWindow; }
-
-        get started() { return this.#started; }
-        start() {
-            if (this.started) return false;
-            if (!this.hasName()) return false;
-            this.log("START");
-            this.#started = true;
-        }
-        stop() {
-            if (!this.started) return false;
-            if (!this.hasType()) return false;
-            this.log("STOP");
-            if (this.window instanceof electron.BrowserWindow)
-                this.window.close();
-            this.#window = null;
-            this.#menu = null;
-            this.submit(null);
-            this.feature = null;
-            return this;
-        }
-
-        update() { this.post("update", null); }
-
-        log(...a) {
-            return log(`[${this.hasFeature() ? this.feature.name : null}] [${this.name}]`, ...a);
-        }
-    };
-    */
 
     log("< BUILT PORTAL >");
 

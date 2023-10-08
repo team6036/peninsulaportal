@@ -871,7 +871,6 @@ export default class App extends core.App {
                 let id = projectIds[i];
                 log("CHANGE:*all > creating/updating project id:"+id);
                 let project = this.getProject(id);
-                // project.meta.thumb = this.generateRepresentation(project);
                 let projectContent = JSON.stringify(project, null, "\t");
                 await window.api.fileWrite(["projects", id+".json"], projectContent);
             }
@@ -900,7 +899,6 @@ export default class App extends core.App {
                 log("CHANGE:proj:"+id+" > creating/updating project id:"+id);
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
-                // project.meta.thumb = this.generateRepresentation(project);
                 let projectContent = JSON.stringify(project, null, "\t");
                 await window.api.fileWrite(["projects", id+".json"], projectContent);
             }
@@ -963,44 +961,6 @@ export default class App extends core.App {
         this.markChange("proj:"+id);
         return proj;
     }
-
-    generateRepresentation(proj) {
-        if (!(proj instanceof subcore.Project)) return null;
-        let style = getComputedStyle(document.body);
-        let canv = document.createElement("canvas");
-        canv.width = proj.w;
-        canv.height = proj.h;
-        let ctx = canv.getContext("2d");
-        ctx.fillStyle = style.getPropertyValue("--v1");
-        ctx.fillRect(0, 0, canv.width, canv.height);
-        proj.items.forEach(id => {
-            let itm = proj.getItem(id);
-            if (itm instanceof subcore.Project.Node) {
-                ctx.fillStyle = style.getPropertyValue("--cb");
-                ctx.beginPath();
-                ctx.arc(itm.x, proj.h-itm.y, 10, 0, 2*Math.PI);
-                ctx.fill();
-                ctx.strokeStyle = style.getPropertyValue("--v8");
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                let corners = [[+1,+1], [+1,-1], [-1,-1], [-1,+1]];
-                corners = corners.map(v => new V(proj.robotW).div(2).mul(v).rotateOrigin(itm.heading));
-                for (let i = 0; i <= corners.length; i++) {
-                    let p = corners[i % corners.length];
-                    if (i < 0) ctx.moveTo(itm.x+p.x, proj.h-(itm.y+p.y));
-                    else ctx.lineTo(itm.x+p.x, proj.h-(itm.y+p.y));
-                }
-                ctx.stroke();
-            }
-            if (itm instanceof subcore.Project.Obstacle) {
-                ctx.fillStyle = style.getPropertyValue("--cr");
-                ctx.beginPath();
-                ctx.arc(itm.x, proj.h-itm.y, itm.radius, 0, 2*Math.PI);
-                ctx.fill();
-            }
-        });
-        return canv.toDataURL();
-    };
 
     get eTitleBtn() { return this.#eTitleBtn; }
     hasETitleBtn() { return this.eTitleBtn instanceof HTMLButtonElement; }
@@ -2151,10 +2111,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             this.post("refresh-options", null);
         }
         if (this.hasProject()) {
-            // REMOVE WHEN ALL FIXED
-            if (this.project.meta.backgroundImage)
-                if (this.project.meta.backgroundImage.endsWith("template.png"))
-                    this.project.meta.backgroundImage = globalTemplateImages[activeTemplate];
             for (let name in globalTemplates) {
                 if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
                 const globalTemplate = globalTemplates[name];
@@ -2164,7 +2120,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 template[".robotMass"] = globalTemplate["robotMass"];
                 template[".meta.backgroundScale"] = globalTemplate["imageScale"];
                 template[".meta.backgroundImage"] = globalTemplateImages[name];
-                // template[".meta.backgroundPos"] = new V(template[".size"]).div(2);
                 for (let k in template) {
                     let v = template[k];
                     k = String(k).split(".");
