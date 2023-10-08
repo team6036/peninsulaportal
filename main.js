@@ -782,12 +782,6 @@ const MAIN = async () => {
                 return await feat.dirDelete(pth);
             });
 
-            ipc.handle("menu-change", (e, changes) => {
-                let feat = identifyFeature(e);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                return feat.menuChange(changes);
-            });
-
             ipc.handle("on", async (e, k, args) => {
                 let feat = identifyFeature(e);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
@@ -1408,7 +1402,7 @@ const MAIN = async () => {
                 let prevIsDevMode = null;
                 const checkLocalConfig = async () => {
                     let isDevMode = await this.isDevMode();
-                    this.menuChange({ toggleDevTools: { ".enabled": isDevMode } });
+                    this.on("menu-ables", [{ toggleDevTools: isDevMode }]);
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
                         window.webContents.send("send", "win-devmode", [isDevMode]);
@@ -1559,32 +1553,6 @@ const MAIN = async () => {
         async dirMake(pth) { return Portal.Feature.dirMake(this.portal, this.name, pth, this.started); }
         async dirDelete(pth) { return Portal.Feature.dirDelete(this.portal, this.name, pth, this.started); }
 
-        menuChange(changes) {
-            if (!this.hasMenu()) return false;
-            changes = util.ensure(changes, "obj");
-            for (let id in changes) {
-                let change = util.ensure(changes[id], "obj");
-                let menu = this.menu.getMenuItemById(id);
-                if (!(menu instanceof electron.MenuItem)) continue;
-                for (let k in change) {
-                    let v = change[k];
-                    k = String(k).split(".");
-                    while (k.length > 0 && k.at(0).length <= 0) k.shift();
-                    while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-                    let obj = menu;
-                    while (k.length > 1) {
-                        if (!util.is(obj, "obj")) {
-                            obj = null;
-                            break;
-                        }
-                        obj = obj[k.shift()];
-                    }
-                    if (obj == null || k.length != 1) continue;
-                    obj[k] = v;
-                }
-            }
-        }
-
         async on(k, args) {
             if (!this.started) return;
             if (!this.hasName()) return;
@@ -1722,13 +1690,13 @@ const MAIN = async () => {
                             process.addHandler("error", data => reject(data));
                         });
                     },
-                    exec_term: async () => {
+                    "exec-term": async () => {
                         this.log("SPAWN term");
                         const process = this.manager.getProcessById("script");
                         if (!(process instanceof Process)) return;
                         process.terminate();
                     },
-                    exec_get: async id => {
+                    "exec-get": async id => {
                         id = String(id);
 
                         const subcore = await import("./planner/core.mjs");
@@ -1780,7 +1748,6 @@ const MAIN = async () => {
                     },
                 },
             };
-            k = String(k).replace("-", "_");
             if (k == "back")
                 if (this.name != "PORTAL")
                     return await this.stop();
@@ -1801,6 +1768,16 @@ const MAIN = async () => {
                 let feat = new Portal.Feature(name);
                 this.portal.addFeature(feat);
                 return true;
+            }
+            if (k == "menu-ables") {
+                let menuAbles = util.ensure(args[0], "obj");
+                for (let id in menuAbles) {
+                    let able = !!menuAbles[id];
+                    let menu = this.menu.getMenuItemById(id);
+                    if (!(menu instanceof electron.MenuItem)) continue;
+                    menu.enabled = able;
+                }
+                return;
             }
             if (namefs[this.name])
                 if (namefs[this.name][k])
