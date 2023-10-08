@@ -1410,7 +1410,6 @@ const MAIN = async () => {
                     let isDevMode = await this.isDevMode();
                     this.menuChange({ toggleDevTools: { ".enabled": isDevMode } });
                     if (prevIsDevMode != isDevMode) {
-                        console.log("devmode = "+isDevMode);
                         prevIsDevMode = isDevMode;
                         window.webContents.send("send", "win-devmode", [isDevMode]);
                     }
@@ -1419,14 +1418,12 @@ const MAIN = async () => {
                 const checkConfig = async () => {
                     let isSpooky = await this.isSpooky();
                     if (prevIsSpooky != isSpooky) {
-                        console.log("spooky = "+isSpooky);
                         prevIsSpooky = isSpooky;
                         window.webContents.send("send", "win-spooky", [isSpooky]);
                     }
                 };
                 fs.watchFile(path.join(__dirname, ".config"), () => checkLocalConfig());
                 fs.watchFile(path.join(this.portal.dataPath, ".config"), () => checkConfig());
-                console.log(path.join(this.portal.dataPath, ".config"));
                 await checkLocalConfig();
                 await checkConfig();
                 if (!this.hasName()) return;
