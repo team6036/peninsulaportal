@@ -1,6 +1,6 @@
 import * as util from "../util.mjs";
 
-import "./msgpack.js";
+import * as msgpack from "./msgpack.js";
 
 const typestrIdxLookup = {
     "boolean": 0,

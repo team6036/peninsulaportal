@@ -394,7 +394,6 @@ Project.Meta = class ProjectMeta extends core.Target {
     #thumb;
 
     #backgroundImage;
-    // #backgroundPos;
     #backgroundScale;
 
     constructor(...a) {
@@ -406,28 +405,23 @@ Project.Meta = class ProjectMeta extends core.Target {
         this.#thumb = null;
 
         this.#backgroundImage = null;
-        // this.#backgroundPos = new V();
         this.#backgroundScale = 1;
 
         if (a.length <= 0 || [3, 5].includes(a.length) || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
-            // if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
             if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
             else if (util.is(a, "arr")) {
                 a = new Project.Meta(...a);
-                // a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
                 a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
             }
             else if (util.is(a, "str")) a = [a, null];
-            // else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundPos, a.backgroundScale];
             else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
             else a = ["Unnamed", null];
         }
         if (a.length == 2) a = [a[0], 0, 0, a[1]];
         if (a.length == 4) a = [...a, null, 0];
         
-        // [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundPos, this.backgroundScale] = a;
         [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundScale] = a;
     }
 
@@ -467,10 +461,6 @@ Project.Meta = class ProjectMeta extends core.Target {
         this.#backgroundImage = v;
         this.post("change", null);
     }
-    /*
-    get backgroundPos() { return this.#backgroundPos; }
-    set backgroundPos(v) { this.#backgroundPos.set(v); }
-    */
     get backgroundX() { return this.backgroundPos.x; }
     set backgroundX(v) { this.backgroundPos.x = v; }
     get backgroundY() { return this.backgroundPos.y; }
@@ -493,7 +483,6 @@ Project.Meta = class ProjectMeta extends core.Target {
                 modified: this.modified, created: this.created,
                 thumb: this.thumb,
                 backgroundImage: this.backgroundImage,
-                // backgroundPos: this.backgroundPos,
                 backgroundScale: this.backgroundScale,
             }],
         };
@@ -748,7 +737,6 @@ Project.Path = class ProjectPath extends core.Target {
         return false;
     }
     addNode(node) {
-        // if (this.hasNode(node)) this.remNode(node);
         if (util.is(node, "str")) {
             this.#nodes.push(node);
             this.post("change", null);
