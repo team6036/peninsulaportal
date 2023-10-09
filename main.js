@@ -40,7 +40,7 @@ const MAIN = async () => {
 
     log("< IMPORTED ASYNCHRONOUSLY >");
 
-    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER"];
+    const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
 
     const PLATFORM = process.platform;
 
