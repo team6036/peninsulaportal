@@ -142,6 +142,150 @@ export class App extends Target {
         };
     }
 
+    async createMarkdown(text) {
+        const converter = new showdown.Converter({
+            ghCompatibleHeaderId: true,
+            strikethrough: true,
+            tables: true,
+            tasklists: true,
+            openLinksInNewWindow: false,
+        });
+        converter.setFlavor("github");
+        let article = document.createElement("article");
+        document.querySelector("#PAGE > .content").appendChild(article);
+        article.classList.add("md");
+        article.innerHTML = converter.makeHtml(text);
+        const dfs = async elem => {
+            if (elem instanceof HTMLAnchorElement) {
+                let href = elem.href;
+                if (href.startsWith(window.location.href)) {
+                    let hash = href.substring(window.location.href.length);
+                    elem.addEventListener("click", e => {
+                        e.preventDefault();
+                        let target = document.querySelector(hash);
+                        if (!(target instanceof HTMLElement)) return;
+                        this.eContent.scrollTo({ top: target.offsetTop-100, behavior: "smooth" });
+                    });
+                }
+            }
+            if (elem instanceof HTMLImageElement) {
+                let location = window.location.href.split("/");
+                location.pop();
+                location = location.join("/");
+                if (elem.src.startsWith(location)) {
+                    let path = elem.src.substring(location.length);
+                    location = location.split("/");
+                    location.pop();
+                    location = location.join("/");
+                    if (path.endsWith("icon.png")) {
+                        const onSpookyState = is => {
+                            elem.src = location + (is ? path.substring(0, path.length-"icon.png".length) + "icon-spooky.png" : path);
+                        };
+                        this.addHandler("cmd-win-spooky", async args => {
+                            args = util.ensure(args, "arr");
+                            onSpookyState(!!args[0]);
+                        });
+                        onSpookyState(await window.api.get("spooky"));
+                    } else elem.src = location + path;
+                }
+            }
+            await Promise.all(Array.from(elem.children).map(child => dfs(child)));
+        };
+        await dfs(article);
+        hljs.configure({ cssSelector: "article.md pre code" });
+        hljs.highlightAll();
+        return article;
+    }
+    static evaluateLoad(load) {
+        let ogLoad = load = String(load);
+        let elem = document.createElement("div");
+        load = load.split(":");
+        let name = load.shift();
+        (() => {
+            let namefs = {
+                find: () => (elem.textContent += "Finding database"),
+                poll: () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
+                    return elem.textContent += "Polling database";
+                },
+                /*
+                "version-get": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Getting version failed: "+load.join(":");
+                    return elem.textContent += "Getting version";
+                },
+                "version-set": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Setting version failed: "+load.join(":");
+                    return elem.textContent += "Setting version";
+                },
+                */
+                config: () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
+                    return elem.textContent += "Configuring";
+                },
+                "templates.json": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
+                    return elem.textContent += "Downloading template datas";
+                },
+                "robots.json": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Error while downloading robot datas: "+load.join(":");
+                    return elem.textContent += "Downloading robot datas";
+                },
+            };
+            if (name in namefs) return namefs[name]();
+            if (name.startsWith("templates/") && name.endsWith(".png")) {
+                name = name.substring(10, name.length-4);
+                if (load.length > 0) elem.style.color = "var(--cr)";
+                if (load.length > 0) return elem.textContent += "Error while downloading template image "+name+": "+load.join(":");
+                return elem.textContent += "Downloading template image "+name;
+            }
+            if (name.startsWith("templates/") && name.endsWith(".glb")) {
+                name = name.substring(10, name.length-4);
+                if (load.length > 0) elem.style.color = "var(--cr)";
+                if (load.length > 0) return elem.textContent += "Error while downloading template model "+name+": "+load.join(":");
+                return elem.textContent += "Downloading template model "+name;
+            }
+            if (name.startsWith("robots/") && name.endsWith(".glb")) {
+                name = name.substring(7, name.length-4);
+                if (load.length > 0) elem.style.color = "var(--cr)";
+                if (load.length > 0) return elem.textContent += "Error while downloading robot model "+name+": "+load.join(":");
+                return elem.textContent += "Downloading robot model "+name;
+            }
+            if (name.toUpperCase() == name) {
+                let fName = name;
+                name = load.shift();
+                elem.textContent += "["+util.capitalize(fName)+"] ";
+                let namefs = {
+                    PLANNER: () => {
+                        let namefs = {
+                            solver: () => {
+                                if (load.length > 0) elem.style.color = "var(--cr)";
+                                if (load.length > 0) return elem.textContent += "Error while copying default solver: "+load.join(":");
+                                return elem.textContent += "Copying default solver";
+                            },
+                            "templates.json": () => {
+                                if (load.length > 0) elem.style.color = "var(--cr)";
+                                if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
+                                return elem.textContent += "Downloading template datas";
+                            },
+                        };
+                        if (name in namefs) return namefs[name]();
+                    },
+                };
+                if (name == "search") return elem.textContent += "Searching";
+                if (fName in namefs) return namefs[fName]();
+            }
+            elem.style.color = "var(--cy)";
+            elem.textContent = ogLoad;
+        })();
+        return elem;
+    }
+
     async setup() {
         if (this.setupDone) return false;
 

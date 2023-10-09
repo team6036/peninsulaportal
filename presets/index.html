@@ -3,7 +3,8 @@
     <head>
 		<title>Peninsula Presets</title>
 		<meta charset="UTF-8">
-		<script src="../assets/modules/fuse.min.js"></script>
+		<script src="../assets/modules/showdown.min.js"></script>
+		<script src="../assets/modules/highlight.min.js"></script>
 		<script type="module">
 			import App from "./app.js";
 			const app = new App();
@@ -14,7 +15,9 @@
 		<div id="mount">
 			<div id="PAGE" class="page this">
 				<div class="side"></div>
-				<article class="md"></article>
+				<div class="content">
+					<div class="loads"></div>
+				</div>
 			</div>
 		</div>
 		<div id="loading">
