@@ -1,3 +1,12 @@
+button:not(.override) {
+    padding: 5px 10px;
+
+    display: inline-flex;
+    gap: 10px;
+
+    border-radius: 5px;
+}
+
 #titlebar {
     gap: 0px;
 }
@@ -33,8 +42,8 @@
     align-content: center;
 }
 #PAGE > .side {
-    width: 15%;
-    max-width: 15%;
+    width: 0%;
+    max-width: 0%;
 
     display: flex;
     flex-direction: column;
@@ -47,15 +56,77 @@
     border-radius: 10px;
 }
 #PAGE > .content {
-    width: 85%;
-    max-width: 85%;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: auto;
     
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    align-items: stretch;
+    align-items: center;
     align-content: center;
 
     border-radius: 10px;
+}
+#PAGE > .content > article {
+    width: min(100%, 750px);
+    max-width: min(100%, 750px);
+    margin: 50px 0px;
+}
+#PAGE > .content > article p > button {
+    float: right;
+
+    margin-left: 10px;
+}
+#PAGE > .content > article p > button.on {
+    --bg: var(--cg3);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cg2);
+    --fgd: var(--v6);
+}
+#PAGE > .content > article p > button.off {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cr3);
+    --fgd: var(--v6);
+}
+#PAGE > .content > article p > input {
+    float: right;
+
+    width: 300px;
+    padding: 5px;
+    margin-left: 10px;
+
+    background-color: var(--v2-8);
+    border-radius: 5px;
+}
+#PAGE > .content > article p > input[type="text"] {
+    color: var(--cy);
+}
+#PAGE > .content > .loads {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: flex-start;
+    align-content: center;
+
+    color: var(--v2);
+
+    font-size: 12px;
+    font-family: monospace;
+}
+#PAGE > .content > .loads * {
+    font-family: monospace;
 }

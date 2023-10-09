@@ -190,6 +190,7 @@ const MAIN = async () => {
         #features;
 
         #loads;
+        #isLoading;
 
         constructor() {
             super();
@@ -203,6 +204,7 @@ const MAIN = async () => {
             this.#features = new Set();
 
             this.#loads = new Set();
+            this.#isLoading = false;
 
             // electron.nativeTheme.themeSource = "dark";
         }
@@ -338,239 +340,245 @@ const MAIN = async () => {
             this.post("load-change", { loads: this.loads });
             return true;
         }
+        get isLoading() { return this.#isLoading; }
         async tryLoad() {
-            await this.affirm();
-            const fetch = (await import("node-fetch")).default;
-            this.log("DB finding host");
-            this.clearLoads();
-            this.addLoad("find");
-            let content = "";
-            try {
-                content = await this.fileRead(".config");
-            } catch (e) {}
-            let data = null;
-            try {
-                data = JSON.parse(content);
-            } catch (e) {}
-            data = util.ensure(data, "obj");
-            this.remLoad("find");
-            const host = data.dbHost || "https://peninsula-db.jfancode.repl.co";
-            this.log(`DB poll - ${host}`);
-            this.addLoad("poll");
-            try {
-                await fetch(host);
-            } catch (e) {
-                this.log(`DB poll - ${host} - fail`);
+            this.#isLoading = true;
+            let r = await (async () => {
+                await this.affirm();
+                const fetch = (await import("node-fetch")).default;
+                this.log("DB finding host");
+                this.clearLoads();
+                this.addLoad("find");
+                let content = "";
+                try {
+                    content = await this.fileRead(".config");
+                } catch (e) {}
+                let data = null;
+                try {
+                    data = JSON.parse(content);
+                } catch (e) {}
+                data = util.ensure(data, "obj");
+                this.remLoad("find");
+                const host = data.dbHost || "https://peninsula-db.jfancode.repl.co";
+                this.log(`DB poll - ${host}`);
+                this.addLoad("poll");
+                try {
+                    await fetch(host);
+                } catch (e) {
+                    this.log(`DB poll - ${host} - fail`);
+                    this.remLoad("poll");
+                    this.addLoad("poll:"+e);
+                    return false;
+                }
+                this.log(`DB poll - ${host} - success`);
                 this.remLoad("poll");
-                this.addLoad("poll:"+e);
-                return false;
-            }
-            this.log(`DB poll - ${host} - success`);
-            this.remLoad("poll");
-            const fetchAndPipe = async (url, pth) => {
-                let fileName = path.basename(pth);
-                let superPth = path.dirname(pth);
-                let thePth = path.join(superPth, fileName);
-                let tmpPth = path.join(superPth, fileName+"-tmp");
-                let resp = await fetch(url);
-                if (resp.status != 200) throw resp.status;
-                await new Promise((res, rej) => {
-                    const stream = fs.createWriteStream(tmpPth);
-                    stream.on("open", () => {
-                        resp.body.pipe(stream);
-                        resp.body.on("end", () => res(true));
-                        resp.body.on("error", e => rej(e));
+                const fetchAndPipe = async (url, pth) => {
+                    let fileName = path.basename(pth);
+                    let superPth = path.dirname(pth);
+                    let thePth = path.join(superPth, fileName);
+                    let tmpPth = path.join(superPth, fileName+"-tmp");
+                    let resp = await fetch(url);
+                    if (resp.status != 200) throw resp.status;
+                    await new Promise((res, rej) => {
+                        const stream = fs.createWriteStream(tmpPth);
+                        stream.on("open", () => {
+                            resp.body.pipe(stream);
+                            resp.body.on("end", () => res(true));
+                            resp.body.on("error", e => rej(e));
+                        });
                     });
-                });
-                await fs.promises.rename(tmpPth, thePth);
-            };
-            /*
-            this.log("DB version get");
-            this.addLoad("version-get");
-            let newVersion = "";
-            try {
-                let resp = await fetch(host+"/version.txt");
-                newVersion = await resp.text();
-            } catch (e) {
-                this.log(`DB version get - error - ${e}`);
+                    await fs.promises.rename(tmpPth, thePth);
+                };
+                /*
+                this.log("DB version get");
+                this.addLoad("version-get");
+                let newVersion = "";
+                try {
+                    let resp = await fetch(host+"/version.txt");
+                    newVersion = await resp.text();
+                } catch (e) {
+                    this.log(`DB version get - error - ${e}`);
+                    this.remLoad("version-get");
+                    this.addLoad("version-get:"+e);
+                    return false;
+                }
+                this.log("DB version get - success");
                 this.remLoad("version-get");
-                this.addLoad("version-get:"+e);
-                return false;
-            }
-            this.log("DB version get - success");
-            this.remLoad("version-get");
-            this.log("DB version set");
-            this.addLoad("version-set");
-            let oldVersion = "";
-            try {
-                oldVersion = (await this.fileHas(".version")) ? (await this.fileRead(".version")) : "";
-            } catch (e) {
-                this.log(`DB version set - error - ${e}`);
+                this.log("DB version set");
+                this.addLoad("version-set");
+                let oldVersion = "";
+                try {
+                    oldVersion = (await this.fileHas(".version")) ? (await this.fileRead(".version")) : "";
+                } catch (e) {
+                    this.log(`DB version set - error - ${e}`);
+                    this.remLoad("version-set");
+                    this.addLoad("version-set:"+e);
+                    return false;
+                }
+                this.log("DB version set - success");
                 this.remLoad("version-set");
-                this.addLoad("version-set:"+e);
-                return false;
-            }
-            this.log("DB version set - success");
-            this.remLoad("version-set");
-            if (oldVersion == newVersion) {
-                this.log(`DB version same (${JSON.stringify(oldVersion)} == ${JSON.stringify(newVersion)}) - skipping`);
-                return true;
-            }
-            this.log(`DB version diff (${JSON.stringify(oldVersion)} != ${JSON.stringify(newVersion)}) - continuing`);
-            await this.fileWrite(".version", newVersion);
-            */
-            await Promise.all([
-                (async () => {
-                    this.log("DB config");
-                    this.addLoad("config");
-                    try {
-                        await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
-                        this.log("DB config - success");
-                    } catch (e) {
-                        this.log(`DB config - error - ${e}`);
-                        this.addLoad("config:"+e);
-                    }
-                    this.remLoad("config");
-                })(),
-                (async () => {
-                    this.log("DB templates.json");
-                    this.addLoad("templates.json");
-                    try {
-                        await fetchAndPipe(host+"/templates.json", path.join(this.dataPath, "templates", "templates.json"));
-                        this.log("DB templates.json - success");
-                    } catch (e) {
-                        this.log(`DB templates.json - error - ${e}`);
-                        this.addLoad("templates.json:"+e);
-                    }
-                    this.remLoad("templates.json");
-                    this.log("DB checking templates.json");
-                    let content = await this.fileRead(["templates", "templates.json"]);
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                        this.log("DB checking templates.json - success");
-                    } catch (e) {
-                        log(`DB checking templates.json - error - ${e}`);
-                        this.remLoad("templates.json-check:"+e);
-                    }
-                    this.remLoad("templates.json-check");
-                    data = util.ensure(data, "obj");
-                    let templates = util.ensure(data.templates, "obj");
-                    await Promise.all(Object.keys(templates).map(async name => {
-                        name = String(name);
-                        await Promise.all(["images", "models"].map(async section => {
-                            let tag = { "images": "png", "models": "glb" }[section];
-                            this.log(`DB templates/${name}.${tag}`);
-                            this.addLoad(`templates/${name}.${tag}`);
-                            try {
-                                await fetchAndPipe(host+"/templates/"+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
-                                this.log(`DB templates/${name}.${tag} - success`);
-                            } catch (e) {
-                                this.log(`DB templates/${name}.${tag} - error - ${e}`);
-                                this.addLoad(`templates/${name}.${tag}:`+e);
-                            }
-                            this.remLoad(`templates/${name}.${tag}`);
+                if (oldVersion == newVersion) {
+                    this.log(`DB version same (${JSON.stringify(oldVersion)} == ${JSON.stringify(newVersion)}) - skipping`);
+                    return true;
+                }
+                this.log(`DB version diff (${JSON.stringify(oldVersion)} != ${JSON.stringify(newVersion)}) - continuing`);
+                await this.fileWrite(".version", newVersion);
+                */
+                await Promise.all([
+                    (async () => {
+                        this.log("DB config");
+                        this.addLoad("config");
+                        try {
+                            await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
+                            this.log("DB config - success");
+                        } catch (e) {
+                            this.log(`DB config - error - ${e}`);
+                            this.addLoad("config:"+e);
+                        }
+                        this.remLoad("config");
+                    })(),
+                    (async () => {
+                        this.log("DB templates.json");
+                        this.addLoad("templates.json");
+                        try {
+                            await fetchAndPipe(host+"/templates.json", path.join(this.dataPath, "templates", "templates.json"));
+                            this.log("DB templates.json - success");
+                        } catch (e) {
+                            this.log(`DB templates.json - error - ${e}`);
+                            this.addLoad("templates.json:"+e);
+                        }
+                        this.remLoad("templates.json");
+                        this.log("DB checking templates.json");
+                        let content = await this.fileRead(["templates", "templates.json"]);
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                            this.log("DB checking templates.json - success");
+                        } catch (e) {
+                            log(`DB checking templates.json - error - ${e}`);
+                            this.remLoad("templates.json-check:"+e);
+                        }
+                        this.remLoad("templates.json-check");
+                        data = util.ensure(data, "obj");
+                        let templates = util.ensure(data.templates, "obj");
+                        await Promise.all(Object.keys(templates).map(async name => {
+                            name = String(name);
+                            await Promise.all(["images", "models"].map(async section => {
+                                let tag = { "images": "png", "models": "glb" }[section];
+                                this.log(`DB templates/${name}.${tag}`);
+                                this.addLoad(`templates/${name}.${tag}`);
+                                try {
+                                    await fetchAndPipe(host+"/templates/"+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
+                                    this.log(`DB templates/${name}.${tag} - success`);
+                                } catch (e) {
+                                    this.log(`DB templates/${name}.${tag} - error - ${e}`);
+                                    this.addLoad(`templates/${name}.${tag}:`+e);
+                                }
+                                this.remLoad(`templates/${name}.${tag}`);
+                            }));
                         }));
-                    }));
-                })(),
-                (async () => {
-                    this.log("DB robots.json");
-                    this.addLoad("robots.json");
-                    try {
-                        await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
-                        this.log("DB robots.json - success");
-                    } catch (e) {
-                        this.log(`DB robots.json - error - ${e}`);
-                        this.addLoad("robots.json:"+e);
-                    }
-                    this.remLoad("robots.json");
-                    this.log("DB checking robots.json");
-                    let content = await this.fileRead(["robots", "robots.json"]);
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                        this.log("DB checking robots.json - success");
-                    } catch (e) {
-                        log(`DB checking robots.json - error - ${e}`);
-                        this.remLoad("robots.json-check:"+e);
-                    }
-                    this.remLoad("robots.json-check");
-                    data = util.ensure(data, "obj");
-                    let robots = util.ensure(data.robots, "obj");
-                    await Promise.all(Object.keys(robots).map(async name => {
-                        name = String(name);
-                        await Promise.all(["models"].map(async section => {
-                            let tag = { "models": "glb" }[section];
-                            this.log(`DB robots/${name}.${tag}`);
-                            this.addLoad(`robots/${name}.${tag}`);
-                            try {
-                                await fetchAndPipe(host+"/robots/"+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
-                                this.log(`DB robots/${name}.${tag} - success`);
-                            } catch (e) {
-                                this.log(`DB robots/${name}.${tag} - error - ${e}`);
-                                this.addLoad(`robots/${name}.${tag}:`+e);
-                            }
-                            this.remLoad(`robots/${name}.${tag}`);
+                    })(),
+                    (async () => {
+                        this.log("DB robots.json");
+                        this.addLoad("robots.json");
+                        try {
+                            await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
+                            this.log("DB robots.json - success");
+                        } catch (e) {
+                            this.log(`DB robots.json - error - ${e}`);
+                            this.addLoad("robots.json:"+e);
+                        }
+                        this.remLoad("robots.json");
+                        this.log("DB checking robots.json");
+                        let content = await this.fileRead(["robots", "robots.json"]);
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                            this.log("DB checking robots.json - success");
+                        } catch (e) {
+                            log(`DB checking robots.json - error - ${e}`);
+                            this.remLoad("robots.json-check:"+e);
+                        }
+                        this.remLoad("robots.json-check");
+                        data = util.ensure(data, "obj");
+                        let robots = util.ensure(data.robots, "obj");
+                        await Promise.all(Object.keys(robots).map(async name => {
+                            name = String(name);
+                            await Promise.all(["models"].map(async section => {
+                                let tag = { "models": "glb" }[section];
+                                this.log(`DB robots/${name}.${tag}`);
+                                this.addLoad(`robots/${name}.${tag}`);
+                                try {
+                                    await fetchAndPipe(host+"/robots/"+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
+                                    this.log(`DB robots/${name}.${tag} - success`);
+                                } catch (e) {
+                                    this.log(`DB robots/${name}.${tag} - error - ${e}`);
+                                    this.addLoad(`robots/${name}.${tag}:`+e);
+                                }
+                                this.remLoad(`robots/${name}.${tag}`);
+                            }));
                         }));
-                    }));
-                })(),
-                ...FEATURES.map(async name => {
-                    const subhost = host+"/"+name.toLowerCase();
-                    const log = (...a) => this.log(`DB [${name}]`, ...a);
-                    log("search");
-                    this.addLoad(name+":search");
-                    try {
-                        let resp = await fetch(subhost+"/confirm.txt");
-                        if (resp.status != 200) throw resp.status;
-                    } catch (e) {
-                        log(`search - not found - ${e}`);
+                    })(),
+                    ...FEATURES.map(async name => {
+                        const subhost = host+"/"+name.toLowerCase();
+                        const log = (...a) => this.log(`DB [${name}]`, ...a);
+                        log("search");
+                        this.addLoad(name+":search");
+                        try {
+                            let resp = await fetch(subhost+"/confirm.txt");
+                            if (resp.status != 200) throw resp.status;
+                        } catch (e) {
+                            log(`search - not found - ${e}`);
+                            this.remLoad(name+":search");
+                            return;
+                        }
+                        log("search - found");
                         this.remLoad(name+":search");
-                        return;
-                    }
-                    log("search - found");
-                    this.remLoad(name+":search");
-                    let namefs = {
-                        PLANNER: async () => {
-                            await Portal.Feature.affirm(this, name);
-                            await Promise.all([
-                                async () => {
-                                    log("solver");
-                                    this.addLoad(name+":solver");
-                                    try {
-                                        if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
-                                            await fs.promises.cp(
-                                                path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
-                                                {
-                                                    force: true,
-                                                    recursive: true,
-                                                }
-                                            );
-                                        log("solver - success");
-                                    } catch (e) {
-                                        log(`solver - error - ${e}`);
-                                        this.addLoad(name+":solver:"+e);
-                                    }
-                                    this.remLoad(name+":solver");
-                                },
-                                async () => {
-                                    log("templates.json");
-                                    this.addLoad(name+":templates.json");
-                                    try {
-                                        await fetchAndPipe(subhost+"/templates.json", path.join(Portal.Feature.getDataPath(this, name), "templates.json"));
-                                        log("templates.json - success");
-                                    } catch (e) {
-                                        log(`templates.json - error - ${e}`);
-                                        this.addLoad(name+":templates.json:"+e);
-                                    }
-                                    this.remLoad(name+":templates.json");
-                                },
-                            ].map(f => f()));
-                        },
-                    };
-                    if (name in namefs) await namefs[name]();
-                }),
-            ]);
-            return true;
+                        let namefs = {
+                            PLANNER: async () => {
+                                await Portal.Feature.affirm(this, name);
+                                await Promise.all([
+                                    async () => {
+                                        log("solver");
+                                        this.addLoad(name+":solver");
+                                        try {
+                                            if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                                await fs.promises.cp(
+                                                    path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
+                                                    {
+                                                        force: true,
+                                                        recursive: true,
+                                                    }
+                                                );
+                                            log("solver - success");
+                                        } catch (e) {
+                                            log(`solver - error - ${e}`);
+                                            this.addLoad(name+":solver:"+e);
+                                        }
+                                        this.remLoad(name+":solver");
+                                    },
+                                    async () => {
+                                        log("templates.json");
+                                        this.addLoad(name+":templates.json");
+                                        try {
+                                            await fetchAndPipe(subhost+"/templates.json", path.join(Portal.Feature.getDataPath(this, name), "templates.json"));
+                                            log("templates.json - success");
+                                        } catch (e) {
+                                            log(`templates.json - error - ${e}`);
+                                            this.addLoad(name+":templates.json:"+e);
+                                        }
+                                        this.remLoad(name+":templates.json");
+                                    },
+                                ].map(f => f()));
+                            },
+                        };
+                        if (name in namefs) await namefs[name]();
+                    }),
+                ]);
+                return true;
+            })();
+            this.#isLoading = false;
+            return r;
         }
 
         get started() { return this.#started; }
@@ -606,6 +614,9 @@ const MAIN = async () => {
                 let kfs = {
                     loads: async () => {
                         return this.loads;
+                    },
+                    loading: async () => {
+                        return this.isLoading;
                     },
                     templates: async () => {
                         let content = "";
@@ -677,6 +688,23 @@ const MAIN = async () => {
                     },
                 };
                 if (k in kfs) return await kfs[k]();
+                if (k.startsWith("val-")) {
+                    let valfs = {
+                        "db-host": async () => {
+                            let content = "";
+                            try {
+                                content = await this.fileRead(".config");
+                            } catch (e) {}
+                            let data = null;
+                            try {
+                                data = JSON.parse(content);
+                            } catch (e) {}
+                            data = util.ensure(data, "obj");
+                            return data.dbHost || "https://peninsula-db.jfancode.repl.co";
+                        },
+                    };
+                    if (k.substring(4) in valfs) return await valfs[k.substring(4)]();
+                }
                 let feat = identifyFeature(e);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.get(k);
@@ -686,6 +714,25 @@ const MAIN = async () => {
                 let kfs = {
                 };
                 if (k in kfs) return await kfs[k]();
+                if (k.startsWith("val-")) {
+                    let valfs = {
+                        "db-host": async () => {
+                            let content = "";
+                            try {
+                                content = await this.fileRead(".config");
+                            } catch (e) {}
+                            let data = null;
+                            try {
+                                data = JSON.parse(content);
+                            } catch (e) {}
+                            data = util.ensure(data, "obj");
+                            data.dbHost = String(v);
+                            content = JSON.stringify(data, null, "\t");
+                            await this.fileWrite(".config", content);
+                        },
+                    };
+                    if (k.substring(4) in valfs) return await valfs[k.substring(4)]();
+                }
                 let feat = identifyFeature(e);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.set(k, v);
@@ -1548,6 +1595,32 @@ const MAIN = async () => {
             args = Array.isArray(args) ? Array.from(args) : [];
             this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
             let namefs = {
+                PRESETS: {
+                    "cmd-open-app-data-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await new Promise((res, rej) => {
+                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
+                            process.addHandler("exit", data => res(data.code));
+                            process.addHandler("error", data => rej(data.e));
+                        });
+                    },
+                    "cmd-open-app-log-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await new Promise((res, rej) => {
+                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
+                            process.addHandler("exit", data => res(data.code));
+                            process.addHandler("error", data => rej(data.e));
+                        });
+                    },
+                    "cmd-clear-app-log-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await Promise.all((await this.portal.dirList("logs")).map(dirent => this.portal.fileDelete(["logs", dirent.name])));
+                    },
+                    "cmd-poll-db-host": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        this.portal.tryLoad();
+                    },
+                },
                 PLANNER: {
                     exec: async (id, pathId) => {
                         id = String(id);
@@ -1648,7 +1721,7 @@ const MAIN = async () => {
                                 data = util.ensure(data, "obj");
                                 if (already) return;
                                 already = true;
-                                this.log("SPAWN exit", data.e);
+                                this.log("SPAWN exit", data.code);
                                 await finish();
                                 if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                     const notif = new electron.Notification({
@@ -1657,7 +1730,7 @@ const MAIN = async () => {
                                     });
                                     notif.show();
                                 }
-                                return res(data.e);
+                                return res(data.code);
                             };
                             const reject = async data => {
                                 data = util.ensure(data, "obj");

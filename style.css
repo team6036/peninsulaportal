@@ -260,11 +260,15 @@ label.checkbox:hover > input[type="checkbox"]:checked ~ span > ion-icon {
 }
 
 label.switch {
+    --width: 30px;
+    --height: 15px;
+    --padding: 2px;
+
     position: relative;
-    min-width: 30px;
-    max-width: 30px;
-    min-height: 15px;
-    max-height: 15px;
+    min-width: var(--width);
+    max-width: var(--width);
+    min-height: var(--height);
+    max-height: var(--height);
 
     display: inline-block;
 }
@@ -282,7 +286,7 @@ label.switch > span {
     bottom: 0px;
 
     background-color: var(--cr);
-    border-radius: 15px;
+    border-radius: var(--height);
 
     cursor: pointer;
 
@@ -292,11 +296,11 @@ label.switch > span::before {
     content: "";
 
     position: absolute;
-    left: 2px;
-    top: 2px;
+    left: var(--padding);
+    top: var(--padding);
     transform: translateX(0px);
 
-    width: 11px;
+    width: calc(var(--height) - 2*var(--padding));
     aspect-ratio: 1 / 1;
 
     background-color: var(--v8);
@@ -308,7 +312,7 @@ label.switch > input[type="checkbox"]:checked + span {
     background-color: var(--cg);
 }
 label.switch > input[type="checkbox"]:checked + span::before {
-    transform: translateX(15px);
+    transform: translateX(calc(var(--width) - var(--height)));
 }
 
 article.md {

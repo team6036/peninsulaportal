@@ -253,56 +253,10 @@ export default class App extends core.App {
             this.#eMain = document.querySelector("#PAGE > .main");
             this.#eContent = document.querySelector("#PAGE > .content");
             if (this.hasEContent()) {
-                const converter = new showdown.Converter({
-                    ghCompatibleHeaderId: true,
-                    strikethrough: true,
-                    tables: true,
-                    tasklists: true,
-                    openLinksInNewWindow: false,
-                });
-                converter.setFlavor("github");
                 (async () => {
                     let resp = await fetch("../README.md");
                     let text = await resp.text();
-                    this.eContent.innerHTML = "<article class='md'>"+converter.makeHtml(text)+"</article>";
-                    const dfs = async elem => {
-                        if (elem instanceof HTMLAnchorElement) {
-                            let href = elem.href;
-                            if (href.startsWith(window.location.href)) {
-                                let hash = href.substring(window.location.href.length);
-                                elem.addEventListener("click", e => {
-                                    e.preventDefault();
-                                    let target = document.querySelector(hash);
-                                    if (!(target instanceof HTMLElement)) return;
-                                    this.eContent.scrollTo({ top: target.offsetTop-100, behavior: "smooth" });
-                                });
-                            }
-                        }
-                        if (elem instanceof HTMLImageElement) {
-                            let location = window.location.href.split("/");
-                            location.pop();
-                            location = location.join("/");
-                            if (elem.src.startsWith(location)) {
-                                let path = elem.src.substring(location.length);
-                                location = location.split("/");
-                                location.pop();
-                                location = location.join("/");
-                                if (path.endsWith("icon.png")) {
-                                    const onSpookyState = is => {
-                                        elem.src = location + (is ? path.substring(0, path.length-"icon.png".length) + "icon-spooky.png" : path);
-                                    };
-                                    this.addHandler("cmd-win-spooky", async args => {
-                                        args = util.ensure(args, "arr");
-                                        onSpookyState(!!args[0]);
-                                    });
-                                    onSpookyState(await window.api.get("spooky"));
-                                } else elem.src = location + path;
-                            }
-                        }
-                        await Promise.all(Array.from(elem.children).map(child => dfs(child)));
-                    };
-                    await dfs(this.eContent);
-                    hljs.highlightAll();
+                    this.eContent.appendChild(await this.createMarkdown(text));
                 })();
                 this.addHandler("update", data => {
                     let scroll = this.eContent.scrollTop / window.innerHeight;
@@ -439,93 +393,7 @@ export default class App extends core.App {
                 prevLoads = loads;
                 if (this.hasELoads()) {
                     this.eLoads.innerHTML = "";
-                    loads.forEach(load => {
-                        let ogLoad = load;
-                        let elem = document.createElement("div");
-                        this.eLoads.appendChild(elem);
-                        load = load.split(":");
-                        let name = load[0];
-                        load = load.slice(1);
-                        let namefs = {
-                            find: () => (elem.textContent += "Finding database"),
-                            poll: () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
-                                return elem.textContent += "Polling database";
-                            },
-                            /*
-                            "version-get": () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Getting version failed: "+load.join(":");
-                                return elem.textContent += "Getting version";
-                            },
-                            "version-set": () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Setting version failed: "+load.join(":");
-                                return elem.textContent += "Setting version";
-                            },
-                            */
-                            config: () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
-                                return elem.textContent += "Configuring";
-                            },
-                            "templates.json": () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
-                                return elem.textContent += "Downloading template datas";
-                            },
-                            "robots.json": () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Error while downloading robot datas: "+load.join(":");
-                                return elem.textContent += "Downloading robot datas";
-                            },
-                        };
-                        if (name in namefs) return namefs[name]();
-                        if (name.startsWith("templates/") && name.endsWith(".png")) {
-                            name = name.substring(10, name.length-4);
-                            if (load.length > 0) elem.style.color = "var(--cr)";
-                            if (load.length > 0) return elem.textContent += "Error while downloading template image "+name+": "+load.join(":");
-                            return elem.textContent += "Downloading template image "+name;
-                        }
-                        if (name.startsWith("templates/") && name.endsWith(".glb")) {
-                            name = name.substring(10, name.length-4);
-                            if (load.length > 0) elem.style.color = "var(--cr)";
-                            if (load.length > 0) return elem.textContent += "Error while downloading template model "+name+": "+load.join(":");
-                            return elem.textContent += "Downloading template model "+name;
-                        }
-                        if (name.startsWith("robots/") && name.endsWith(".glb")) {
-                            name = name.substring(7, name.length-4);
-                            if (load.length > 0) elem.style.color = "var(--cr)";
-                            if (load.length > 0) return elem.textContent += "Error while downloading robot model "+name+": "+load.join(":");
-                            return elem.textContent += "Downloading robot model "+name;
-                        }
-                        if (name.toUpperCase() == name) {
-                            elem.textContent += "["+util.capitalize(name)+"] ";
-                            let namefs = {
-                                PLANNER: () => {
-                                    let name = load[0];
-                                    load = load.slice(1);
-                                    let namefs = {
-                                        search: () => (elem.textContent += "Searching"),
-                                        solver: () => {
-                                            if (load.length > 0) elem.style.color = "var(--cr)";
-                                            if (load.length > 0) return elem.textContent += "Error while copying default solver: "+load.join(":");
-                                            return elem.textContent += "Copying default solver";
-                                        },
-                                        "templates.json": () => {
-                                            if (load.length > 0) elem.style.color = "var(--cr)";
-                                            if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
-                                            return elem.textContent += "Downloading template datas";
-                                        },
-                                    };
-                                    if (name in namefs) return namefs[name]();
-                                },
-                            };
-                            if (name in namefs) return namefs[name]();
-                        }
-                        elem.textContent = ogLoad;
-                    });
+                    loads.forEach(load => this.eLoads.appendChild(core.App.evaluateLoad(load)));
                 }
                 lock = false;
             });
