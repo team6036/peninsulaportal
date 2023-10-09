@@ -363,7 +363,7 @@ const MAIN = async () => {
                 this.log(`DB poll - ${host}`);
                 this.addLoad("poll");
                 try {
-                    await fetch(host);
+                    await util.timeout(10000, fetch(host));
                 } catch (e) {
                     this.log(`DB poll - ${host} - fail`);
                     this.remLoad("poll");
@@ -377,7 +377,7 @@ const MAIN = async () => {
                     let superPth = path.dirname(pth);
                     let thePth = path.join(superPth, fileName);
                     let tmpPth = path.join(superPth, fileName+"-tmp");
-                    let resp = await fetch(url);
+                    let resp = await util.timeout(10000, fetch(url));
                     if (resp.status != 200) throw resp.status;
                     await new Promise((res, rej) => {
                         const stream = fs.createWriteStream(tmpPth);
@@ -526,7 +526,7 @@ const MAIN = async () => {
                         log("search");
                         this.addLoad(name+":search");
                         try {
-                            let resp = await fetch(subhost+"/confirm.txt");
+                            let resp = await util.timeout(10000, fetch(subhost+"/confirm.txt"));
                             if (resp.status != 200) throw resp.status;
                         } catch (e) {
                             log(`search - not found - ${e}`);

@@ -51,7 +51,7 @@ This should create a `./build` directory with the packaged apps. Check with `pac
 
 <div>
     <h1 id="peninsula-panel" align="center">Peninsula Panel</h1>
-    <p align="center">A networktables viewing software for a visual display</p>
+    <p align="center">A networktables viewing software for a visual debugging process</p>
 </div>
 
 ## Capabilities
