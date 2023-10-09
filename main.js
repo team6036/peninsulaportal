@@ -237,7 +237,7 @@ const MAIN = async () => {
             data = util.ensure(data, "obj");
             return data.isDevMode;
         }
-        async isSpooky() {
+        async getHoliday() {
             await this.affirm();
             let content = "";
             try {
@@ -248,7 +248,7 @@ const MAIN = async () => {
                 data = JSON.parse(content);
             } catch (e) {}
             data = util.ensure(data, "obj");
-            return !!data.spooky;
+            return (data.holiday == null) ? null : String(data.holiday);
         }
 
         get stream() { return this.#stream; }
@@ -385,6 +385,7 @@ const MAIN = async () => {
                             resp.body.pipe(stream);
                             resp.body.on("end", () => res(true));
                             resp.body.on("error", e => rej(e));
+                            resp.body.on("progress", e => console.log(url, e.loaded/e.total));
                         });
                     });
                     await fs.promises.rename(tmpPth, thePth);
@@ -985,9 +986,9 @@ const MAIN = async () => {
             if (!this.hasPortal()) return false;
             return await this.portal.isDevMode();
         }
-        async isSpooky() {
-            if (!this.hasPortal()) return false;
-            return await this.portal.isSpooky();
+        async getHoliday() {
+            if (!this.hasPortal()) return null;
+            return await this.portal.getHoliday();
         }
 
         get manager() { return this.#manager; }
@@ -1064,14 +1065,14 @@ const MAIN = async () => {
                     preload: path.join(__dirname, "preload.js"),
                 },
             };
-            const onSpookyState = is => {
+            const onHolidayState = holiday => {
                 let tag = ".png";
-                let icon = path.join(__dirname, "assets", "app", (is ? "icon-spooky" : "icon")+tag);
+                let icon = path.join(__dirname, "assets", "app", ((holiday == null) ? "icon" : "icon-"+holiday)+tag);
                 if (PLATFORM == "win32") window.setIcon(icon);
                 if (PLATFORM == "darwin") app.dock.setIcon(icon);
                 if (PLATFORM == "linux") window.setIcon(icon);
             };
-            (async () => onSpookyState(await this.isSpooky()))();
+            (async () => onHolidayState(await this.getHoliday()))();
             const window = this.#window = new electron.BrowserWindow(options);
             window.once("ready-to-show", () => {
                 window.show();
@@ -1121,6 +1122,13 @@ const MAIN = async () => {
                         click: () => window.webContents.send("send", "about"),
                     },
                 ],
+                settings: [
+                    {
+                        label: "Settings",
+                        accelerator: "CmdOrCtrl+,",
+                        click: () => this.on("spawn", ["PRESETS"]),
+                    },
+                ],
                 hide: [
                     { role: "hide" },
                     { role: "hideOthers" },
@@ -1152,6 +1160,12 @@ const MAIN = async () => {
                     { role: "front" },
                 ],
                 help: [
+                    {
+                        label: "Ionicons",
+                        click: () => {
+                            electron.shell.openExternal("https://ionic.io/ionicons");
+                        },
+                    },
                     {
                         label: "Github Repository",
                         click: () => {
@@ -1202,6 +1216,8 @@ const MAIN = async () => {
                     label: util.capitalize(this.name),
                     submenu: [
                         ...build.about,
+                        build.div,
+                        ...build.settings,
                         build.div,
                         ...build.hide,
                         build.div,
@@ -1398,13 +1414,13 @@ const MAIN = async () => {
                         window.webContents.send("send", "win-devmode", [isDevMode]);
                     }
                 };
-                let prevIsSpooky = null;
+                let prevHoliday = null;
                 const checkConfig = async () => {
-                    let isSpooky = await this.isSpooky();
-                    onSpookyState(isSpooky);
-                    if (prevIsSpooky != isSpooky) {
-                        prevIsSpooky = isSpooky;
-                        window.webContents.send("send", "win-spooky", [isSpooky]);
+                    let holiday = await this.getHoliday();
+                    onHolidayState(holiday);
+                    if (prevHoliday != holiday) {
+                        prevHoliday = holiday;
+                        window.webContents.send("send", "win-holiday", [holiday]);
                     }
                 };
                 fs.watchFile(path.join(__dirname, ".config"), () => checkLocalConfig());
@@ -1545,8 +1561,8 @@ const MAIN = async () => {
                 devmode: async () => {
                     return await this.isDevMode();
                 },
-                spooky: async () => {
-                    return await this.isSpooky();
+                holiday: async () => {
+                    return await this.getHoliday();
                 },
             };
             if (k in kfs) return await kfs[k]();

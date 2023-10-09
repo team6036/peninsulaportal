@@ -740,6 +740,8 @@ article.md ul {
 }
 
 .introtitle {
+    position: relative;
+
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -750,7 +752,7 @@ article.md ul {
     text-align: center;
     user-select: none;
 }
-.introtitle > div:first-child {
+.introtitle > div:first-of-type {
     transform: translateX(0.04em);
 
     display: flex;
@@ -762,18 +764,32 @@ article.md ul {
 
     color: var(--a);
 }
-.introtitle > div:first-child > div:last-child {
+.introtitle > div:first-of-type > div:last-of-type {
     overflow: hidden;
 
     animation: introtitle-name-shrink 0s forwards;
 }
-.introtitle:not(.noanimation) > div:first-child > div:last-child {
+.introtitle:not(.noanimation) > div:first-of-type > div:last-of-type {
     animation: introtitle-name-shrink 1s 0.25s forwards;
 }
-.introtitle > div:last-child {
+.introtitle > div:last-of-type {
     transform: translateX(-0.04em);
 
     color: var(--v8);
+}
+.introtitle > img.special {
+    position: absolute;
+    left: 0.5em;
+    top: 0.5em;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    
+    width: 2em;
+    height: auto;
+
+    visibility: hidden;
+}
+.introtitle.special > img.special {
+    visibility: inherit;
 }
 @keyframes introtitle-name-shrink {
     0% { max-width: 9em; }

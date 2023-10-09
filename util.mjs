@@ -3,7 +3,8 @@ export const EPSILON = 0.000001;
 export const NUMBERS = "0123456789";
 export const ALPHABETUPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const ALPHABETLOWER = ALPHABETUPPER.toLowerCase();
-export const BASE64 = ALPHABETLOWER+ALPHABETUPPER+NUMBERS+"-_";
+export const ALPHABETALL = ALPHABETLOWER+ALPHABETUPPER;
+export const BASE64 = ALPHABETALL+NUMBERS+"-_";
 
 export const MAGIC = "_*[[;ƒ";
 

@@ -227,7 +227,6 @@ body {
     justify-content: flex-start;
     align-items: center;
     align-content: center;
-    gap: 5px;
 }
 #PAGE > .info > .nav > button,
 #PAGE > .info > .nav > a > button {

@@ -1,9 +1,4 @@
-<div>
-    <p align="center">
-        <img src="../assets/app/icon.png" width="100px" style="filter: drop-shadow(0px 5px 5px #0008)">
-    </p>
-    <h1 align="center"><span style="color:var(--a);">Peninsula</span>Presets</h1>
-</div>
+<h1 align="center"><span style="color:var(--a);">Peninsula</span>Presets</h1>
 
 ## Application Data
 
