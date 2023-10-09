@@ -326,6 +326,11 @@ export default class App extends core.App {
                 this.#eSettingsBtn = this.eInfo.querySelector(":scope > .nav > button#settings");
                 if (this.hasESettingsBtn())
                     this.eSettingsBtn.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
+                setInterval(async () => {
+                    const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
+                    if (!(dbHostAnchor instanceof HTMLAnchorElement)) return;
+                    dbHostAnchor.href = await window.api.get("val-db-host");
+                }, 250);
             }
             this.#eLoads = document.querySelector("#PAGE > .loads");
 

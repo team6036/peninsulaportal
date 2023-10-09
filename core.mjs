@@ -178,14 +178,14 @@ export class App extends Target {
                     location.pop();
                     location = location.join("/");
                     if (path.endsWith("icon.png")) {
-                        const onSpookyState = is => {
-                            elem.src = location + (is ? path.substring(0, path.length-"icon.png".length) + "icon-spooky.png" : path);
+                        const onHolidayState = holiday => {
+                            elem.src = location + ((holiday == null) ? path : path.substring(0, path.length-"icon.png".length) + `icon-${holiday}.png`);
                         };
-                        this.addHandler("cmd-win-spooky", async args => {
+                        this.addHandler("cmd-win-holiday", async args => {
                             args = util.ensure(args, "arr");
-                            onSpookyState(!!args[0]);
+                            onHolidayState(args[0]);
                         });
-                        onSpookyState(await window.api.get("spooky"));
+                        onHolidayState(await window.api.get("holiday"));
                     } else elem.src = location + path;
                 }
             }
@@ -313,9 +313,9 @@ export class App extends Target {
         this.addHandler("cmd-about", async args => {
             let name = String(await window.api.get("name"));
             let about = await this.getAbout();
-            let spooky = await window.api.get("spooky");
+            let holiday = await window.api.get("holiday");
             let pop = this.alert();
-            pop.iconSrc = root+"/assets/app/" + (spooky ? "icon-spooky.svg" : "icon.svg");
+            pop.iconSrc = root+"/assets/app/" + ((holiday == null) ? "icon.svg" : `icon-${holiday}.svg`);
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+util.capitalize(name);
             let lines = new Array(4).fill("");
@@ -355,7 +355,7 @@ export class App extends Target {
                         console.log(...out);
                     });
                 };
-            } else {
+            } else { 
                 if (window.app == this) delete window.app;
                 delete window.colors;
             }
@@ -364,32 +364,37 @@ export class App extends Target {
             args = util.ensure(args, "arr");
             onDevModeState(!!args[0]);
         });
-        let isSpooky = false, id = null, accent = null;
-        const onSpookyState = is => {
-            is = !!is;
+        let prevHoliday = null, id = null, accent = null;
+        const onHolidayState = holiday => {
+            holiday = (holiday == null) ? null : String(holiday);
             if (this.accent == null) {
-                if (isSpooky != is) isSpooky = is;
+                if (prevHoliday != holiday) prevHoliday = holiday;
                 if (id != null) return;
                 id = setInterval(() => {
                     if (this.accent == null) return;
                     accent = this.accent;
-                    if (isSpooky) this.accent = "o";
+                    if (prevHoliday != null)
+                        this.accent = {
+                            halloween: "o",
+                        }[prevHoliday];
                     clearInterval(id);
                 }, 10);
                 return;
             }
-            if (isSpooky == is) return;
-            isSpooky = is;
-            if (isSpooky) {
-                accent = this.accent;
-                this.accent = "o";
-            } else {
+            if (prevHoliday == holiday) return;
+            prevHoliday = holiday;
+            if (prevHoliday == null) {
                 this.accent = accent;
+            } else {
+                accent = this.accent;
+                this.accent = {
+                    halloween: "o",
+                }[prevHoliday];
             }
         };
-        this.addHandler("cmd-win-spooky", async args => {
+        this.addHandler("cmd-win-holiday", async args => {
             args = util.ensure(args, "arr");
-            onSpookyState(!!args[0]);
+            onHolidayState(args[0]);
         });
 
         this.#eCoreStyle = document.createElement("link");
@@ -464,6 +469,40 @@ export class App extends Target {
                     input.click();
                 });
             });
+            Array.from(document.querySelectorAll(".introtitle")).forEach(async elem => {
+                let both = 0;
+                if (!(elem.querySelector(".special.back") instanceof HTMLImageElement)) {
+                    let eSpecialBack = document.createElement("img");
+                    if (elem.children[0] instanceof HTMLElement) elem.insertBefore(eSpecialBack, elem.children[0]);
+                    else elem.appendChild(eSpecialBack);
+                    eSpecialBack.classList.add("special");
+                    eSpecialBack.classList.add("back");
+                    both++;
+                }
+                if (!(elem.querySelector(".special.front") instanceof HTMLImageElement)) {
+                    let eSpecialFront = document.createElement("img");
+                    elem.appendChild(eSpecialFront);
+                    eSpecialFront.classList.add("special");
+                    eSpecialFront.classList.add("front");
+                    both++;
+                }
+                if (both < 2) return;
+                const onHolidayState = holiday => {
+                    if (holiday == null) return elem.classList.remove("special");
+                    elem.classList.add("special");
+                    let eSpecialBack = elem.querySelector(".special.back");
+                    if (eSpecialBack instanceof HTMLImageElement)
+                        eSpecialBack.src = `../assets/app/${holiday}-hat-2.svg`;
+                    let eSpecialFront = elem.querySelector(".special.front");
+                    if (eSpecialFront instanceof HTMLImageElement)
+                        eSpecialFront.src = `../assets/app/${holiday}-hat-1.svg`;
+                };
+                this.addHandler("cmd-win-holiday", async args => {
+                    args = util.ensure(args, "arr");
+                    onHolidayState(args[0]);
+                });
+                onHolidayState(await window.api.get("holiday"));
+            });
         };
         setInterval(updatePage, 500);
         updatePage();
@@ -475,7 +514,7 @@ export class App extends Target {
         
         onFullScreenState(await window.api.get("fullscreen"));
         onDevModeState(await window.api.get("devmode"));
-        onSpookyState(await window.api.get("spooky"));
+        onHolidayState(await window.api.get("holiday"));
 
         let resp = null;
         try {
@@ -589,7 +628,7 @@ export class App extends Target {
     }
     get accent() { return this.#accent; }
     set accent(v) {
-        v = this.hasColor(v) ? String(v) : null;
+        v = this.hasColor(v) ? String(v) : "_";
         if (this.accent == v) return;
         this.#accent = v;
         this.updateDynamicStyle();
