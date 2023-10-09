@@ -146,6 +146,7 @@ export default class App extends core.App {
     #eDown; #eUp;
     #eNav;
     #eInfo;
+    #eSettingsBtn;
     #eLoads;
 
     constructor() {
@@ -300,21 +301,31 @@ export default class App extends core.App {
                 });
             this.#eInfo = document.querySelector("#PAGE > .info");
             if (this.hasEInfo()) {
-                this.eInfo.innerHTML = "<div class='loading' style='--size:5px;--color:var(--v2);padding:5px;'></div>";
+                let eLoading = document.createElement("div");
+                eLoading.classList.add("loading");
+                eLoading.style.setProperty("--size", "5px");
+                eLoading.style.setProperty("--color", "var(--v2)");
+                eLoading.style.padding = "5px";
+                this.eInfo.appendChild(eLoading);
                 (async () => {
                     let about = await this.getAbout();
-                    this.eInfo.innerHTML = new Array(4).fill("<div></div>").join("");
-                    this.eInfo.children[0].textContent = "NodeJS: "+about.node;
-                    this.eInfo.children[1].textContent = "Chrome: "+about.chrome;
-                    this.eInfo.children[2].textContent = "Electron: "+about.electron;
-                    this.eInfo.children[3].textContent = "OS: "+about.os.platform+" "+about.os.arch;
+                    eLoading.remove();
+                    let lines = new Array(4).fill(null).map(_ => document.createElement("div"));
+                    lines.forEach(line => this.eInfo.appendChild(line));
+                    lines[0].textContent = "NodeJS: "+about.node;
+                    lines[1].textContent = "Chrome: "+about.chrome;
+                    lines[2].textContent = "Electron: "+about.electron;
+                    lines[3].textContent = "OS: "+about.os.platform+" "+about.os.arch;
                     if (about.os.cpus.length > 0) {
                         let models = [...new Set(about.os.cpus.map(obj => obj.model))];
-                        this.eInfo.children[3].textContent += " / ";
-                        if (models.length > 1) this.eInfo.children[4].textContent += "CPUS: "+models.join(", ");
-                        else this.eInfo.children[3].textContent += models[0];
+                        lines[3].textContent += " / ";
+                        if (models.length > 1) lines[3].textContent += "CPUS: "+models.join(", ");
+                        else lines[3].textContent += models[0];
                     }
                 })();
+                this.#eSettingsBtn = this.eInfo.querySelector(":scope > .nav > button#settings");
+                if (this.hasESettingsBtn())
+                    this.eSettingsBtn.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
             }
             this.#eLoads = document.querySelector("#PAGE > .loads");
 
@@ -353,12 +364,6 @@ export default class App extends core.App {
             btn.tooltipColor = "var(--a)";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
 
-            btn = this.addFeatureButton(new FeatureButton("Presets"));
-            btn.iconSrc = "../assets/icons/settings.svg";
-            btn.tooltip = "Experimental!";
-            btn.tooltipColor = "var(--cr)";
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
-
             btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
 
@@ -370,10 +375,6 @@ export default class App extends core.App {
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("eye"));
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
-
-            btn = this.addUpperFeatureButton(new UpperFeatureButton());
-            btn.iconSrc = "../assets/icons/settings.svg";
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
 
             let prevLoads = [];
             let lock = false;
@@ -476,6 +477,8 @@ export default class App extends core.App {
     hasEUp() { return this.eUp instanceof HTMLButtonElement; }
     get eInfo() { return this.#eInfo; }
     hasEInfo() { return this.eInfo instanceof HTMLDivElement; }
+    get eSettingsBtn() { return this.#eSettingsBtn; }
+    hasESettingsBtn() { return this.eSettingsBtn instanceof HTMLButtonElement; }
     get eLoads() { return this.#eLoads; }
     hasELoads() { return this.eLoads instanceof HTMLDivElement; }
 }

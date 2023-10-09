@@ -218,6 +218,28 @@ body {
 #PAGE > .info * {
     font-family: monospace;
 }
+#PAGE > .info > .nav {
+    margin-bottom: 5px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PAGE > .info > .nav > button,
+#PAGE > .info > .nav > a > button {
+    --bg: transparent;
+    --fg: var(--v2);
+    --bgh: transparent;
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v2);
+
+    font-size: 20px;
+}
 #PAGE > .loads {
     position: absolute;
     top: calc((20px * var(--fs)) + (var(--TOP) * (1 - var(--fs))));
