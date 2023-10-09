@@ -1064,27 +1064,14 @@ const MAIN = async () => {
                     preload: path.join(__dirname, "preload.js"),
                 },
             };
-            namefs = {
-                _: () => {
-                    (async () => {
-                        let spooky = await this.isSpooky();
-                        if (PLATFORM == "win32") {
-                            if (spooky) window.setIcon(path.join(__dirname, ...["assets", "app", "icon-spooky.png"]));
-                            else window.setIcon(path.join(__dirname, ...["assets", "app", "icon.png"]));
-                        }
-                        if (PLATFORM == "darwin") {
-                            if (spooky) app.dock.setIcon(path.join(__dirname, ...["assets", "app", "icon-spooky.png"]));
-                            else app.dock.setIcon(path.join(__dirname, ...["assets", "app", "icon.png"]));
-                        }
-                        if (PLATFORM == "linux") {
-                            if (spooky) window.setIcon(path.join(__dirname, ...["assets", "app", "icon-spooky.png"]));
-                            else window.setIcon(path.join(__dirname, ...["assets", "app", "icon.png"]));
-                        }
-                    })();
-                },
+            const onSpookyState = is => {
+                let tag = ".png";
+                let icon = path.join(__dirname, "assets", "app", (is ? "icon-spooky" : "icon")+tag);
+                if (PLATFORM == "win32") window.setIcon(icon);
+                if (PLATFORM == "darwin") app.dock.setIcon(icon);
+                if (PLATFORM == "linux") window.setIcon(icon);
             };
-            if ("_" in namefs) namefs._();
-            if (this.name in namefs) namefs[this.name]();
+            (async () => onSpookyState(await this.isSpooky()))();
             const window = this.#window = new electron.BrowserWindow(options);
             window.once("ready-to-show", () => {
                 window.show();
@@ -1414,6 +1401,7 @@ const MAIN = async () => {
                 let prevIsSpooky = null;
                 const checkConfig = async () => {
                     let isSpooky = await this.isSpooky();
+                    onSpookyState(isSpooky);
                     if (prevIsSpooky != isSpooky) {
                         prevIsSpooky = isSpooky;
                         window.webContents.send("send", "win-spooky", [isSpooky]);
