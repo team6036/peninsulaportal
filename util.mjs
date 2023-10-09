@@ -40,6 +40,9 @@ export function is(o, type) {
         func: () => {
             return typeof(o) == "function";
         },
+        async_func: () => {
+            return typefs.func() && o.constructor.name == "AsyncFunction";
+        },
         null: () => {
             return o == null;
         },
@@ -85,6 +88,11 @@ export function ensure(o, type, def=ENSURE_NONE) {
         func: () => {
             if (is(o, "func")) return o;
             return (def == ENSURE_NONE) ? ()=>{} : def;
+        },
+        async_func: () => {
+            if (is(o, "async_func")) return o;
+            if (is(o, "func")) return async () => o();
+            return (def == ENSURE_NONE) ? async()=>{} : def;
         },
         null: () => {
             return null;
@@ -212,30 +220,33 @@ export function loadImage(src) {
 export async function wait(t) {
     return await new Promise((res, rej) => setTimeout(() => res(), t));
 }
-
-export function promiseTimeout(v, time) {
-    time = Math.max(0, ensure(time, "num"));
-    return new Promise((res, rej) => {
-        setTimeout(() => rej("timeout"), time);
-        if (typeof(v) == "function") {
-            if (v.constructor.name == "AsyncFunction") (async () => {
+export async function timeout(t, v) {
+    return await new Promise((res, rej) => {
+        (async () => {
+            if (is(v, "async_func")) {
                 try {
-                    res(await f());
+                    res(await v());
                 } catch (e) { rej(e); }
-            })();
-            else (() => {
+                return;
+            }
+            if (is(v, "func")) {
                 try {
-                    res(f());
+                    res(v());
                 } catch (e) { rej(e); }
-            })();
-            return;
-        }
-        if (v instanceof Promise) return (async () => {
-            try {
-                res(await f);
-            } catch (e) { rej(e); }
-        });
-        res(v);
+                return;
+            }
+            if (v instanceof Promise) {
+                try {
+                    res(await v);
+                } catch (e) { rej(e); }
+                return;
+            }
+            return rej(v);
+        })();
+        (async () => {
+            await wait(t);
+            rej("timeout");
+        })();
     });
 }
 
