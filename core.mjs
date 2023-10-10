@@ -372,11 +372,11 @@ export class App extends Target {
                 return;
             }
             if (prevHoliday == holiday) return;
+            if (prevHoliday == null) accent = this.accent;
             prevHoliday = holiday;
             if (prevHoliday == null) {
                 this.accent = accent;
             } else {
-                accent = this.accent;
                 this.accent = {
                     halloween: "o",
                     christmas: "r",

@@ -687,6 +687,18 @@ const MAIN = async () => {
                             data = util.ensure(data, "obj");
                             return !!data.isCompMode;
                         },
+                        "holiday": async () => {
+                            let content = "";
+                            try {
+                                content = await this.fileRead(".config");
+                            } catch (e) {}
+                            let data = null;
+                            try {
+                                data = JSON.parse(content);
+                            } catch (e) {}
+                            data = util.ensure(data, "obj");
+                            return data.holiday;
+                        },
                     };
                     if (k.substring(4) in valfs) return await valfs[k.substring(4)]();
                 }

@@ -49,11 +49,41 @@ export default class App extends core.App {
                     let type = {
                         "db-host": "str",
                         "comp-mode": "bool",
+                        "holiday": "str",
                     }[elem.id];
-                    elem.disabled = true;
-                    if (type == "bool") elem.checked = await window.api.get("val-"+elem.id);
-                    else elem.value = await window.api.get("val-"+elem.id);
-                    elem.disabled = false;
+                    let lock = false;
+                    const updateValue = async () => {
+                        if (lock) return;
+                        lock = true;
+                        const disabled = elem.disabled;
+                        elem.disabled = true;
+                        if (type == "bool") {
+                            let checked = !!await window.api.get("val-"+elem.id);
+                            if (elem.checked == checked) {
+                                elem.disabled = disabled;
+                                lock = false;
+                                return;
+                            }
+                            elem.checked = checked;
+                        } else {
+                            let value = String(await window.api.get("val-"+elem.id));
+                            if (elem.value == value) {
+                                elem.disabled = disabled;
+                                lock = false;
+                                return;
+                            }
+                            elem.value = value;
+                        }
+                        let idfs = {
+                            "holiday": async () => {
+                                elem.value = (elem.value == "null") ? "" : elem.value.split(" ").map(v => util.capitalize(v)).join(" ");
+                            },
+                        };
+                        if (elem.id in idfs) await idfs[elem.id]();
+                        elem.disabled = disabled;
+                        lock = false;
+                    };
+                    await updateValue();
                     let typefs = {
                         any_num: async () => await typefs.num(),
                         num: async () => {
@@ -73,6 +103,9 @@ export default class App extends core.App {
                     };
                     if (type in typefs) await typefs[type]();
                     let idfs = {
+                        "holiday": async () => {
+                            elem.disabled = true;
+                        },
                     };
                     if (elem.id in idfs) await idfs[elem.id]();
                     elem.addEventListener("change", async e => {
@@ -82,17 +115,19 @@ export default class App extends core.App {
                             let idfs = {
                             };
                             if (elem.id in idfs) v = await idfs[elem.id](v);
+                            if (lock) return;
+                            lock = true;
+                            const disabled = elem.disabled;
                             elem.disabled = true;
                             await window.api.set("val-"+elem.id, v);
-                            if (type == "bool") elem.checked = await window.api.get("val-"+elem.id);
-                            else elem.value = await window.api.get("val-"+elem.id);
-                            elem.disabled = false;
+                            elem.disabled = disabled;
+                            lock = false;
+                            await updateValue();
                         }
                     });
                     setInterval(async () => {
                         if (document.activeElement == elem) return;
-                        if (type == "bool") return;
-                        elem.value = await window.api.get("val-"+elem.id);
+                        await updateValue();
                     }, 250);
                 });
             })();
