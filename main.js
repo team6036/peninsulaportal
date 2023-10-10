@@ -856,6 +856,7 @@ const MAIN = async () => {
             return r;
         }
         static async cleanup(dataPath) {
+            log(". cleanup");
             const l = (...a) => log(". deleting "+Portal.makePath(...a));
             const format = [
                 // ./logs

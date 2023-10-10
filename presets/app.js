@@ -12,7 +12,7 @@ export default class App extends core.App {
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
-        this.addHandler("start-complete", async data => {   
+        this.addHandler("start-complete", async data => {
             this.addBackButton();
 
             (async () => {
@@ -27,12 +27,19 @@ export default class App extends core.App {
                         }, 250);
                     }
                     elem.addEventListener("click", async e => {
-                        let disabled;
+                        let disabled, willDo = true;
                         if (elem.id != "poll-db-host") {
                             disabled = elem.disabled;
                             elem.disabled = true;
                         }
-                        await window.api.send("cmd-"+elem.id, []);
+                        if (elem.id == "cleanup-app-data-dir") {
+                            willDo = await new Promise((res, rej) => {
+                                let pop = this.confirm();
+                                pop.eContent.innerText = "Are you sure you want to cleanup application data?\nThis might accidentally delete some files - backup the entire application directory!\n(Or trust that I wrote this code well)";
+                                pop.addHandler("result", async data => res(!!util.ensure(data, "obj").v));
+                            });
+                        }
+                        if (willDo) await window.api.send("cmd-"+elem.id, []);
                         if (elem.id != "poll-db-host") {
                             elem.disabled = disabled;
                         }
