@@ -19,13 +19,14 @@
     - [Getting Started](#getting-started-2)
 - Peninsula Pursuit - <kbd>TBD</kbd>
 - Peninsula Perception - <kbd>TBD</kbd>
+- [Peninsula Presets](#peninsula-presets)
 - [Resources](#resources)
 
 ## Getting Started
 
 ### Releases
 Check the releases for different packages  
-MacOS (Darwin) requires running a few more commands to authorize the application - otherwise application will be marked as "damaged"
+MacOS (Darwin) requires running a few more commands to authorize the application - otherwise application will be marked as "damaged."
 1. `cd` to the directory containing the application
 2. `xattr -cr Peninsula.app`
 
@@ -64,10 +65,10 @@ This should create a `./build` directory with the packaged apps. Check with `pac
 ## Pages and Tools
 
 ### Add Page
-Your home page, where you can pick what page to add, including any of the pages listed below. Includes searching for quick access to wanted tables, topics, and tools
+Your home page, where you can pick what page to add, including any of the pages listed below. Includes searching for quick access to wanted tables, topics, and tools.
 
 ### Browser Page
-Views any table or topic, similar to your operating system's file explorer
+Views any table or topic, similar to your operating system's file explorer.
 
 ### Graph Page
 Graphs numerical and discrete topics in NT. Choose window view, in `ms`, of the graph to see. Pick colors for different variables.
@@ -81,9 +82,9 @@ Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Ch
 ## Getting Started
 
 ### FAQ
-> How can I graph topics in the Graph or Odometry 2D?
+> How can I graph topics in the Graph, Odometry 2D, or Odometry 3D?
 
-Drag topics from the left or from the Browser to the sections you wanted to graph
+Drag topics from the left or from the Browser to the axis you want for Graph, or into the pose section for Odometry 2D and 3D.
 
 ### Development
 
@@ -104,15 +105,15 @@ Drag topics from the left or from the Browser to the sections you wanted to grap
 ### FAQ
 > How can I reset the divider to it's original position?  
 
-On the view menu of the app, click "Reset divider"
+On the view menu of the app, click "Reset divider."
 
 > How can I delete nodes when creating or editing a path?  
 
-When clicking a node, hold down <kbd>shift</kbd> to remove it instead
+When clicking a node, hold down <kbd>shift</kbd> to remove it instead.
 
 > How can I select multiple nodes or obstacles at once?
 
-By dragging on the display area, you can create a rectangular seletion. This allows you to select multiple objects at once. Additionally, holding down <kbd>shift</kbd> while clicking adds or removes objects to your selection
+By dragging on the display area, you can create a rectangular seletion. This allows you to select multiple objects at once. Additionally, holding down <kbd>shift</kbd> while clicking adds or removes objects to your selection.
 
 ### Development
 This program does not generate the trajectory by itself. It relies on a python file, which you can change, to generate the path.
@@ -159,7 +160,42 @@ Here is what the python script should expect as input and what it should output:
 ```
 `vx`, `vy`, `vt`, and `theta` of `data.in` can be `null` to ignore a velocity or angle override. Adjust your script accordingly.
 
-## Resources
+<div>
+    <h1 id="peninsula-presets" align="center">Peninsula Presets</h1>
+    <p align="center">Settings for Peninsula Portal</p>
+</div>
+
+### Application Data Directory
+The location where any data stored within the application is located on the computer.
+- Windows: `%APPDATA%`
+- MacOS: `~/Library/Application Support/`
+- Linux: `$XDG_CONFIG_HOME` or `~/.config`  
+
+More information can be found on [Electron's documentation](https://www.electronjs.org/docs/latest/api/app#appgetpathname).
+
+### Application Log Directory
+The location where any logs are stored for the application, a subset of the app data directory called `./logs`.
+
+### Database Host URL
+The url of which is fetched to obtain globalized data for the application, such as templates, configurations, images, and models. The structure of the database is as follows:
+```js
+| config.json // contains redirect url + holiday
+| templates.json // for ./templates dir
+| robots.json // for ./robots dir
++ templates
+| | <name>.png
+| | <name>.glb
++ robots
+| | <name>.glb
++ <feature-name> // different for each feature
+| ...
+```
+Repolling the database will pull what it needs from this database, though it might take some time to finish polling `.glb`s.
+
+<div>
+    <h1 id="resources" align="center">Resources</h1>
+</div>
+
 - [Electron](https://www.electronjs.org/) - Window display and management
 - [Fuse.js](https://www.fusejs.io/) - Fuzzy search
 - [Highlight.js](https://highlightjs.org/) - Syntax coloring for code blocks in `.md`
