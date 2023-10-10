@@ -280,17 +280,18 @@ const MAIN = async () => {
             this.#features.add(feat);
             feat.portal = this;
             feat.start();
-            const window = feat.window;
             feat._onFocus = () => {
                 if (feat.hasMenu()) {
                     if (PLATFORM == "darwin")
                         electron.Menu.setApplicationMenu(feat.menu);
                     return;
                 }
-                window.removeListener("focus", feat._onFocus);
+                if (feat.hasWindow())
+                    feat.window.removeListener("focus", feat._onFocus);
                 delete feat._onFocus;
             };
-            window.on("focus", feat._onFocus);
+            if (feat.hasWindow())
+                feat.window.on("focus", feat._onFocus);
             this.post("feature-start", { feat: feat });
             return feat;
         }
@@ -1130,7 +1131,7 @@ const MAIN = async () => {
         hasName() { return util.is(this.name, "str"); }
 
         get window() { return this.#window; }
-        hasWindow() { return this.window instanceof electron.BrowserWindow; }
+        hasWindow() { return (this.window instanceof electron.BrowserWindow) && !this.window.isDestroyed() && !this.window.webContents.isDestroyed(); }
         get menu() { return this.#menu; }
         hasMenu() { return this.menu instanceof electron.Menu; }
         get perm() { return this.#perm; }
@@ -1183,44 +1184,47 @@ const MAIN = async () => {
             const onHolidayState = holiday => {
                 let tag = ".png";
                 let icon = path.join(__dirname, "assets", "app", ((holiday == null) ? "icon" : "icon-"+holiday)+tag);
-                if (PLATFORM == "win32") window.setIcon(icon);
+                if (!this.hasWindow()) return;
+                if (PLATFORM == "win32") this.window.setIcon(icon);
                 if (PLATFORM == "darwin") app.dock.setIcon(icon);
-                if (PLATFORM == "linux") window.setIcon(icon);
+                if (PLATFORM == "linux") this.window.setIcon(icon);
             };
             (async () => onHolidayState(await this.getHoliday()))();
-            const window = this.#window = new electron.BrowserWindow(options);
-            window.once("ready-to-show", () => {
-                window.show();
+            this.#window = new electron.BrowserWindow(options);
+            this.window.once("ready-to-show", () => {
+                if (!this.hasWindow()) return;
+                this.window.show();
                 this.post("show", null);
             });
 
-            window.on("unresponsive", () => {});
-            window.webContents.on("did-fail-load", () => window.close());
-            window.webContents.on("will-navigate", (e, url) => {
-                if (url != window.webContents.getURL()) {
+            this.window.on("unresponsive", () => {});
+            this.window.webContents.on("did-fail-load", () => { if (this.hasWindow()) this.window.close(); });
+            this.window.webContents.on("will-navigate", (e, url) => {
+                if (!this.hasWindow()) return;
+                if (url != this.window.webContents.getURL()) {
                     e.preventDefault();
                     electron.shell.openExternal(url);
                 }
             });
             if (this.hasPortal()) {
                 let any = false;
-                this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => (any ||= feat.window.webContents.isDevToolsOpened()));
-                if (any) window.webContents.openDevTools();
+                this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => (any ||= feat.hasWindow() && feat.window.webContents.isDevToolsOpened()));
+                if (this.hasWindow() && any) this.window.webContents.openDevTools();
             }
-            window.webContents.on("devtools-opened", () => {
+            this.window.webContents.on("devtools-opened", () => {
                 if (!this.hasPortal()) return;
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.openDevTools());
             });
-            window.webContents.on("devtools-closed", () => {
+            this.window.webContents.on("devtools-closed", () => {
                 if (!this.hasPortal()) return;
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
             });
 
-            window.on("enter-full-screen", () => { window.webContents.send("send", "win-fullscreen", [true]); });
-            window.on("leave-full-screen", () => { window.webContents.send("send", "win-fullscreen", [false]); });
+            this.window.on("enter-full-screen", () => { if (this.hasWindow()) this.window.webContents.send("send", "win-fullscreen", [true]); });
+            this.window.on("leave-full-screen", () => { if (this.hasWindow()) this.window.webContents.send("send", "win-fullscreen", [false]); });
 
             this.perm = false;
-            window.on("close", e => {
+            this.window.on("close", e => {
                 this.log("CLOSE");
                 if (this.perm) return this.log("CLOSE - yes perm");
                 this.log("CLOSE - no perm");
@@ -1228,13 +1232,13 @@ const MAIN = async () => {
                 this.stop();
             });
 
-            window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
+            this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
             const build = {
                 about: [
                     {
                         label: "About Peninsula "+util.capitalize(this.name),
-                        click: () => window.webContents.send("send", "about"),
+                        click: () => { if (this.hasWindow()) this.window.webContents.send("send", "about"); },
                     },
                 ],
                 settings: [
@@ -1388,10 +1392,11 @@ const MAIN = async () => {
                 PORTAL: () => {
                     const checkForShow = () => {
                         if (!this.hasPortal()) return;
+                        if (!this.hasWindow()) return;
                         let feats = this.portal.features;
                         let nFeats = 0;
                         feats.forEach(feat => (["PORTAL"].includes(feat.name) ? null : nFeats++));
-                        (nFeats > 0) ? window.hide() : window.show();
+                        (nFeats > 0) ? this.window.hide() : this.window.show();
                     };
                     const hook = () => {
                         if (!this.hasPortal()) return;
@@ -1415,57 +1420,57 @@ const MAIN = async () => {
                             id: "newproject",
                             label: "New Project",
                             accelerator: "CmdOrCtrl+N",
-                            click: () => window.webContents.send("send", "newproject"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "newproject"); },
                         },
                         {
                             id: "newtab",
                             label: "New Tab",
                             accelerator: "CmdOrCtrl+Shift+N",
-                            click: () => window.webContents.send("send", "newtab"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "newtab"); },
                         },
                         build.div,
                         {
                             id: "openclose",
                             label: "Toggle Open / Closed",
                             accelerator: "Ctrl+F",
-                            click: () => window.webContents.send("send", "openclose"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "openclose"); },
                         },
                         {
                             id: "expandcollapse",
                             label: "Toggle Title Collapsed",
                             accelerator: "Ctrl+Shift+F",
-                            click: () => window.webContents.send("send", "expandcollapse"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "expandcollapse"); },
                         },
                         build.div,
                         {
                             id: "save",
                             label: "Save",
                             accelerator: "CmdOrCtrl+S",
-                            click: () => window.webContents.send("send", "save"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "save"); },
                         },
                         {
                             id: "savecopy",
                             label: "Save as copy",
                             accelerator: "CmdOrCtrl+Shift+S",
-                            click: () => window.webContents.send("send", "savecopy"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "savecopy"); },
                         },
                         build.div,
                         {
                             id: "delete",
                             label: "Delete Project",
-                            click: () => window.webContents.send("send", "delete"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "delete"); },
                         },
                         {
                             id: "closetab",
                             label: "Close Tab",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => window.webContents.send("send", "close"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "close"); },
                         },
                         {
                             id: "close",
                             label: "Close Project",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => window.webContents.send("send", "close"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "close"); },
                         },
                     );
                 },
@@ -1476,48 +1481,48 @@ const MAIN = async () => {
                             id: "newproject",
                             label: "New Project",
                             accelerator: "CmdOrCtrl+N",
-                            click: () => window.webContents.send("send", "newproject"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "newproject"); },
                         },
                         build.div,
                         {
                             id: "addnode",
                             label: "Add Node",
-                            click: () => window.webContents.send("send", "addnode"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "addnode"); },
                         },
                         {
                             id: "addobstacle",
                             label: "Add Obstacle",
-                            click: () => window.webContents.send("send", "addobstacle"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "addobstacle"); },
                         },
                         {
                             id: "addpath",
                             label: "Add Path",
-                            click: () => window.webContents.send("send", "addpath"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "addpath"); },
                         },
                         build.div,
                         {
                             id: "save",
                             label: "Save",
                             accelerator: "CmdOrCtrl+S",
-                            click: () => window.webContents.send("send", "save"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "save"); },
                         },
                         {
                             id: "savecopy",
                             label: "Save as copy",
                             accelerator: "CmdOrCtrl+Shift+S",
-                            click: () => window.webContents.send("send", "savecopy"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "savecopy"); },
                         },
                         build.div,
                         {
                             id: "delete",
                             label: "Delete Project",
-                            click: () => window.webContents.send("send", "delete"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "delete"); },
                         },
                         {
                             id: "close",
                             label: "Close Project",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => window.webContents.send("send", "close"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "close"); },
                         },
                     );
                     template[3].submenu.unshift(
@@ -1525,12 +1530,12 @@ const MAIN = async () => {
                             id: "maxmin",
                             label: "Toggle Maximized",
                             accelerator: "Ctrl+F",
-                            click: () => window.webContents.send("send", "maxmin"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "maxmin"); },
                         },
                         {
                             id: "resetdivider",
                             label: "Reset Divider",
-                            click: () => window.webContents.send("send", "resetdivider"),
+                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "resetdivider"); },
                         },
                         build.div,
                     );
@@ -1541,7 +1546,7 @@ const MAIN = async () => {
 
             this.#menu = electron.Menu.buildFromTemplate(template);
             if (PLATFORM == "linux" || PLATFORM == "win32")
-                window.setMenu(this.menu);
+                this.window.setMenu(this.menu);
             
             (async () => {
                 let prevIsDevMode = null;
@@ -1550,7 +1555,8 @@ const MAIN = async () => {
                     this.on("menu-ables", [{ toggleDevTools: isDevMode }]);
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
-                        window.webContents.send("send", "win-devmode", [isDevMode]);
+                        if (!this.hasWindow()) return;
+                        this.window.webContents.send("send", "win-devmode", [isDevMode]);
                     }
                 };
                 let prevHoliday = null;
@@ -1559,7 +1565,8 @@ const MAIN = async () => {
                     onHolidayState(holiday);
                     if (prevHoliday != holiday) {
                         prevHoliday = holiday;
-                        window.webContents.send("send", "win-holiday", [holiday]);
+                        if (!this.hasWindow()) return;
+                        this.window.webContents.send("send", "win-holiday", [holiday]);
                     }
                 };
                 fs.watchFile(path.join(__dirname, ".config"), () => checkLocalConfig());
@@ -1586,7 +1593,7 @@ const MAIN = async () => {
             }
             this.log(`STOP - perm: ${this.perm}`);
             if (!this.perm) return false;
-            if (this.canOperate) await this.on("state-set", ["bounds", this.window.getBounds()]);
+            if (this.canOperate && this.hasWindow()) await this.on("state-set", ["bounds", this.window.getBounds()]);
             this.#started = false;
             this.manager.processes.forEach(process => process.terminate());
             if (this.hasWindow()) this.window.close();
