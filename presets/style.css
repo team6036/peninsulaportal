@@ -108,14 +108,10 @@ button:not(.override) {
     --fgd: var(--v6);
 }
 #PAGE > .content > article p > input {
-    min-width: 300px;
     padding: 5px;
 
     background-color: var(--v2-8);
     border-radius: 5px;
-}
-#PAGE > .content > article p > input[type="text"] {
-    color: var(--cy);
 }
 #PAGE > .content > .loads {
     position: absolute;

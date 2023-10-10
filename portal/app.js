@@ -95,7 +95,7 @@ class Star extends core.Target {
     #color;
     #alpha;
 
-    constructor(pos, size, color="#fff") {
+    constructor(pos, size, color="--v8") {
         super();
 
         this.#pos = new util.V3();
@@ -198,7 +198,7 @@ export default class App extends core.App {
                                 let star = new Star([pos.x, pos.y, aspectBase*starMaxDist], aspectBase*starSize, "");
                                 star._speed = -0.01 * util.lerp(0.5, 1.5, Math.random());
                                 star.size *= util.lerp(0.75, 1.25, Math.random());
-                                star.color = getComputedStyle(document.body).getPropertyValue(colors[Math.floor(colors.length*Math.random())]);
+                                star.color = colors[Math.floor(colors.length*Math.random())];
                                 star.alpha *= util.lerp(0.5, 1, Math.random());
                                 stars.push(star);
                             }
@@ -220,7 +220,7 @@ export default class App extends core.App {
                             let pos2 = new V(star.x, star.y).div(z2).div(aspectBase).mul(scale * quality).mul(+1,-1).add(canvas.width/2, canvas.height/2);
                             let r2 = star.size / z2 * quality;
                             let a = star.alpha * ((star.z/aspectBase < (starMaxDist-starFadeDist)) ? 1 : 1-(star.z/aspectBase-(starMaxDist-starFadeDist))/starFadeDist);
-                            ctx.fillStyle = star.color;
+                            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue(star.color);
                             ctx.globalAlpha = a;
                             ctx.beginPath();
                             if (star.streakSize <= 0) {
