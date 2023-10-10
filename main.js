@@ -796,7 +796,6 @@ const MAIN = async () => {
                 this.addFeature(new Portal.Feature("PORTAL"));
                 setTimeout(async () => {
                     await this.tryLoad();
-                    await this.cleanup();
                 }, 1000);
             })();
 
