@@ -1323,8 +1323,32 @@ const MAIN = async () => {
                         },
                         build.div,
                         {
-                            id: "close",
+                            id: "save",
+                            label: "Save",
+                            accelerator: "CmdOrCtrl+S",
+                            click: () => window.webContents.send("send", "save"),
+                        },
+                        {
+                            id: "savecopy",
+                            label: "Save as copy",
+                            accelerator: "CmdOrCtrl+Shift+S",
+                            click: () => window.webContents.send("send", "savecopy"),
+                        },
+                        build.div,
+                        {
+                            id: "delete",
+                            label: "Delete Project",
+                            click: () => window.webContents.send("send", "delete"),
+                        },
+                        {
+                            id: "closetab",
                             label: "Close Tab",
+                            accelerator: "CmdOrCtrl+Shift+W",
+                            click: () => window.webContents.send("send", "close"),
+                        },
+                        {
+                            id: "close",
+                            label: "Close Project",
                             accelerator: "CmdOrCtrl+Shift+W",
                             click: () => window.webContents.send("send", "close"),
                         },
