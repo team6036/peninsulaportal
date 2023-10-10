@@ -192,6 +192,9 @@ The url of which is fetched to obtain globalized data for the application, such 
 ```
 Repolling the database will pull what it needs from this database, though it might take some time to finish polling `.glb`s.
 
+### Competition Mode
+Toggling competition mode on disables polling of database, if constant repolling or rewriting of existing files causes lag.
+
 <div>
     <h1 id="resources" align="center">Resources</h1>
 </div>

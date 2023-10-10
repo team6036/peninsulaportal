@@ -336,7 +336,7 @@ export default class App extends core.App {
 
             this.addHandler("cmd-spawn", async name => {
                 let isDevMode = await window.api.get("devmode");
-                if (!isDevMode && ["PRESETS", "PANEL"].includes(name)) {
+                if (!isDevMode && [].includes(name)) {
                     let pop = this.confirm();
                     pop.eContent.innerText = "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs";
                     pop.addHandler("result", async data => {
@@ -352,8 +352,8 @@ export default class App extends core.App {
             let btn;
 
             btn = this.addFeatureButton(new FeatureButton("Panel", "grid"));
-            btn.tooltip = "Experimental!";
-            btn.tooltipColor = "var(--cr)";
+            // btn.tooltip = "Experimental!";
+            // btn.tooltipColor = "var(--cr)";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
 
             btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
