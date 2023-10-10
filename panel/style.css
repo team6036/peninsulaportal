@@ -293,15 +293,274 @@
     max-width: calc(100% - 20px);
     height: calc(100% - 20px);
     max-height: calc(100% - 20px);
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
 }
 
-#PROJECTPAGE {
+#TITLEPAGE {
+    background: var(--gradient);
+}
+#TITLEPAGE > .title {
+    font-size: 50px;
+}
+#TITLEPAGE > .title > span:first-child {
+    color: var(--a);
+}
+#TITLEPAGE > .title > span:last-child {
+    color: var(--v8);
+}
+#TITLEPAGE > .subtitle {
+    color: var(--v7);
+
+    font-size: 16px;
+}
+#TITLEPAGE > .nav {
+    width: min(300px, 100%);
+    margin-top: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#TITLEPAGE > .nav > button {
+    position: relative;
+
+    padding: 10px 30px;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+}
+#TITLEPAGE > .nav > button.special {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+}
+#TITLEPAGE > .nav > button > ion-icon {
+    position: absolute;
+    top: 50%;
+    right: 0%;
+    transform: translateY(-50%) translateX(-0px);
+
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: transform var(--t), opacity var(--t), visibility var(--t);
+}
+#TITLEPAGE > .nav > button:not(:disabled):hover > ion-icon {
+    transform: translateY(-50%) translateX(-10px);
+
+    opacity: 100%;
+    visibility: inherit;
+}
+
+#PROJECTSPAGE {
+    width: calc(100% - 320px) !important;
+    max-width: calc(100% - 320px) !important;
+    padding: 0px 160px !important;
+
+    justify-content: flex-start !important;
+
+    align-items: stretch !important;
+}
+#PROJECTSPAGE > .title {
+    margin-top: 20px;
+
+    color: var(--v8);
+
+    text-align: left;
+    font-size: 50px;
+}
+#PROJECTSPAGE > .nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+}
+#PROJECTSPAGE > .nav > .nav {
+    flex-basis: 75%;
+
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .nav > .nav > button {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+
+    width: max-content;
+    padding: 10px 20px;
+
+    gap: 10px;
+
+    border-radius: 10px;
+}
+#PROJECTSPAGE > .nav > .search {
+    flex-basis: 25%;
+
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    background-color: var(--v8);
+    border-radius: 10px;
+}
+#PROJECTSPAGE > .nav > .search > input {
+    flex-basis: 100%;
+
+    padding: 5px;
+
+    background-color: transparent;
+    color: var(--v1);
+}
+#PROJECTSPAGE > .nav > .search > input::placeholder {
+    color: var(--v6);
+}
+#PROJECTSPAGE > .nav > .search > button {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--v7);
+    --fgh: var(--v1);
+    --bgd: var(--v8);
+    --fgd: var(--v4);
+
+    width: 25px;
+    min-width: 25px;
+    height: 25px;
+    margin-right: 5px;
+
+    border-radius: 100%;
+}
+#PROJECTSPAGE > .content {
+    padding: 2px;
+    margin-top: 20px;
+
+    flex-basis: 100%;
+
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .content > .empty {
+    color: var(--v2);
+
+    text-align: center;
+    font-style: italic;
+}
+#PROJECTSPAGE > .content > .item {
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v2-8);
+    border-radius: 10px;
+    outline: 2px solid var(--a-0);
+
+    transition: outline var(--t);
+}
+#PROJECTSPAGE > .content > .item:hover {
+    outline: 2px solid var(--a);
+}
+#PROJECTSPAGE > .content > .item > .image {
+    height: 100px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--v1-8);
+    border-radius: 10px;
+
+    background-image: none;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+}
+#PROJECTSPAGE > .content > .item > .info {
+    flex-basis: 100%;
+
+    padding-left: 20px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .content > .item > .info > .name {
+    color: var(--v8);
+}
+#PROJECTSPAGE > .content > .item > .info > .time {
+    color: var(--v4);
+}
+#PROJECTSPAGE > .content > .item > .nav {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 10px;
+}
+#PROJECTSPAGE > .content > .item > .nav > button {
+    --bg: var(--v2);
+    --bgh: var(--v3);
+    --bgd: var(--v2);
+
+    padding: 10px 20px;
+
+    gap: 10px;
+
+    border-radius: 10px;
+}
+
+#PROJECTPAGE {
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    align-content: center !important;
 }
 #PROJECTPAGE > .side {
     width: 15%;

@@ -4767,6 +4767,10 @@ REVIVER.addRuleAndAllSub(Panel);
 REVIVER.addRuleAndAllSub(Project);
 
 export default class App extends core.App {
+    #changes;
+    
+    #projects;
+
     #eBlock;
 
     #eTitleBtn;
@@ -4788,6 +4792,20 @@ export default class App extends core.App {
     constructor() {
         super();
 
+        this.#changes = new Set();
+
+        this.#projects = {};
+
+        this.addHandler("setup", async data => {
+            try {
+                await this.syncWithFiles();
+            } catch (e) {
+                let alert = this.alert("There was an error loading your projects!", "warning");
+                alert.hasInfo = true;
+                alert.info = String(e);
+                alert.iconColor = "var(--cr)";
+            }
+        });
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
@@ -4797,14 +4815,17 @@ export default class App extends core.App {
             this.#eTitleBtn = document.getElementById("titlebtn");
             if (this.hasETitleBtn())
                 this.eTitleBtn.addEventListener("click", e => {
+                    this.page = "TITLE";
                 });
             this.#eProjectsBtn = document.querySelector("#titlebar > button.nav#projectsbtn");
             if (this.hasEProjectsBtn())
                 this.eProjectsBtn.addEventListener("click", e => {
+                    this.page = "PROJECTS";
                 });
             this.#eCreateBtn = document.querySelector("#titlebar > button.nav#createbtn");
             if (this.hasECreateBtn())
                 this.eCreateBtn.addEventListener("click", e => {
+                    this.page = "PROJECT";
                 });
             
             this.#eFileBtn = document.querySelector("#titlebar > button.nav#filebtn");
@@ -4873,6 +4894,22 @@ export default class App extends core.App {
                     e.stopPropagation();
                     this.post("cmd-save", null);
                 });
+            let saving = false;
+            this.addHandler("sync-files-with", data => {
+                saving = true;
+            });
+            this.addHandler("synced-files-with", data => {
+                saving = false;
+            });
+            this.addHandler("update", data => {
+                if (this.hasESaveBtn()) this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
+            });
+
+            this.clearChanges();
+
+            this.addHandler("cmd-newproject", async () => {
+                this.page = "PROJECT";
+            });
 
             this.#eBlock = document.getElementById("block");
 
@@ -5114,7 +5151,6 @@ export default class App extends core.App {
                 }
                 page.rootWidget.collapse();
             });
-
             const getWidgetFromElem = (widget, elem) => {
                 if (!(widget instanceof Widget)) return null;
                 if (widget.elem == elem) return widget;
@@ -5134,7 +5170,7 @@ export default class App extends core.App {
                 if (!(active instanceof Panel)) return;
                 active.addTab(new Panel.AddTab());
             });
-            this.addHandler("cmd-close", data => {
+            this.addHandler("cmd-closetab", data => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 const elem = document.activeElement;
@@ -5159,11 +5195,245 @@ export default class App extends core.App {
                 if (!(active instanceof Panel)) return;
                 active.isTitleCollapsed = !active.isTitleCollapsed;
             });
+            this.addHandler("cmd-save", async () => {
+                try {
+                    await this.syncFilesWith();
+                } catch (e) {
+                    let alert = this.alert("There was an error saving your projects!", "warning");
+                    alert.hasInfo = true;
+                    alert.info = String(e);
+                    alert.iconColor = "var(--cr)";
+                }
+            });
+            this.addHandler("cmd-savecopy", async source => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
+                if (page.choosing) return;
+                if (!(source instanceof subcore.Project)) source = page.project;
+                if (!(source instanceof subcore.Project)) return;
+                let project = new subcore.Project(source);
+                project.meta.name += " copy";
+                await this.setPage("PROJECT", { project: project });
+                await this.post("cmd-save", null);
+            });
+            this.addHandler("cmd-delete", id => {
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
+                if (page.choosing) return;
+                if (!this.hasProject(String(id))) id = page.projectId;
+                if (!this.hasProject(String(id))) return;
+                let pop = this.confirm();
+                pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
+                pop.addHandler("result", async data => {
+                    let v = !!util.ensure(data, "obj").v;
+                    if (v) {
+                        this.remProject(id);
+                        await this.post("cmd-save", null);
+                        this.page = "PROJECTS";
+                    }
+                });
+            });
+            this.addHandler("cmd-close", () => {
+                if (this.page != "PROJECT") return;
+                this.page = "PROJECTS";
+            });
             
+            this.addPage(new App.TitlePage(this));
+            this.addPage(new App.ProjectsPage(this));
             this.addPage(new App.ProjectPage(this));
 
-            this.page = "PROJECT";
+            this.page = "TITLE";
         });
+    }
+
+    get changes() { return [...this.#changes]; }
+    markChange(change) {
+        change = String(change);
+        if (this.hasChange(change)) return true;
+        this.#changes.add(change);
+        this.post("change", { change: change });
+        return true;
+    }
+    hasChange(change) {
+        change = String(change);
+        return this.#changes.has(change);
+    }
+    clearChanges() {
+        let changes = this.changes;
+        this.#changes.clear();
+        this.post("change-clear", { changes: changes });
+        return changes;
+    }
+    async syncWithFiles() {
+        const log = () => {};
+        // const log = console.log;
+        try {
+            await this.post("sync-with-files", null);
+        } catch (e) {}
+        let hasProjectIds = await window.api.fileHas("projects.json");
+        if (!hasProjectIds) {
+            log("no projects.json found > creating");
+            await window.api.fileWrite("projects.json", "[]");
+        }
+        let projectIdsContent = "";
+        try {
+            projectIdsContent = await window.api.fileRead("projects.json");
+        } catch (e) {
+            log("error reading projects.json:");
+            log(e);
+            projectIdsContent = "";
+        }
+        let projectIds = null;
+        try {
+            projectIds = JSON.parse(projectIdsContent, REVIVER.f);
+        } catch (e) {
+            log("error parsing projects.json:", projectIdsContent);
+            log(e);
+            projectIds = null;
+        }
+        projectIds = util.ensure(projectIds, "arr").map(id => String(id));
+        log("projects.json: ", projectIds);
+        let hasProjectsDir = await window.api.dirHas("projects");
+        if (!hasProjectsDir) {
+            log("no projects directory found > creating");
+            await window.api.dirMake("projects");
+        }
+        let projects = {};
+        for (let i = 0; i < projectIds.length; i++) {
+            let id = projectIds[i];
+            let projectContent = "";
+            try {
+                projectContent = await window.api.fileRead(["projects", id+".json"]);
+            } catch (e) {
+                log("error reading projects/"+id+".json:");
+                log(e);
+                projectContent = "";
+            }
+            let project = null;
+            try {
+                project = JSON.parse(projectContent, REVIVER.f);
+            } catch (e) {
+                log("error parsing projects/"+id+".json:", projectContent);
+                log(e);
+                project = null;
+            }
+            if (!(project instanceof Project)) continue;
+            log("projects/"+id+".json: ", project);
+            projects[id] = project;
+        }
+        this.projects = projects;
+        this.clearChanges();
+        try {
+            await this.post("synced-with-files", null);
+        } catch (e) {}
+    }
+    async syncFilesWith() {
+        const log = () => {};
+        // const log = console.log;
+        try {
+            await this.post("sync-files-with", null);
+        } catch (e) {}
+        let changes = new Set(this.changes);
+        this.clearChanges();
+        log("CHANGES:", [...changes]);
+        if (changes.has("*all")) {
+            log("CHANGE:*all > updating global list");
+            let projectIds = this.projects;
+            let projectIdsContent = JSON.stringify(projectIds, null, "\t");
+            await window.api.fileWrite("projects.json", projectIdsContent);
+            for (let i = 0; i < projectIds.length; i++) {
+                let id = projectIds[i];
+                log("CHANGE:*all > creating/updating project id:"+id);
+                let project = this.getProject(id);
+                let projectContent = JSON.stringify(project, null, "\t");
+                await window.api.fileWrite(["projects", id+".json"], projectContent);
+            }
+            if (await window.api.dirHas("projects")) {
+                let dirents = await window.api.dirList("projects");
+                for (let i = 0; i < dirents.length; i++) {
+                    let dirent = dirents[i];
+                    if (dirent.type != "file") continue;
+                    let id = dirent.name.split(".")[0];
+                    if (this.hasProject(id)) continue;
+                    log("CHANGE:*all > removing project id:"+id);
+                    if (await window.api.fileHas(["projects", id+".json"]))
+                        await window.api.fileDelete(["projects", id+".json"]);
+                }
+            }
+        } else {
+            let projectIds = this.projects;
+            if (changes.has("*")) {
+                log("CHANGE:* > updating global list");
+                let projectIdsContent = JSON.stringify(projectIds, null, "\t");
+                await window.api.fileWrite("projects.json", projectIdsContent);
+            }
+            for (let i = 0; i < projectIds.length; i++) {
+                let id = projectIds[i];
+                if (!changes.has("proj:"+id)) continue;
+                log("CHANGE:proj:"+id+" > creating/updating project id:"+id);
+                let project = this.getProject(id);
+                project.meta.modified = util.getTime();
+                let projectContent = JSON.stringify(project, null, "\t");
+                await window.api.fileWrite(["projects", id+".json"], projectContent);
+            }
+            for (let i = 0; i < [...changes].length; i++) {
+                let change = [...changes][i];
+                if (!change.startsWith("proj:")) continue;
+                let id = change.substring(5);
+                if (this.hasProject(id)) continue;
+                log("CHANGE:proj:"+id+" > removing project id:"+id);
+                if (await window.api.fileHas(["projects", id+".json"]))
+                    await window.api.fileDelete(["projects", id+".json"]);
+            }
+        }
+        try {
+            await this.post("synced-files-with", null);
+        } catch (e) {}
+    }
+    get projects() { return Object.keys(this.#projects); }
+    set projects(v) {
+        v = util.ensure(v, "obj");
+        this.clearProjects();
+        for (let id in v) this.addProject(id, v[id]);
+    }
+    clearProjects() {
+        let projs = this.projects;
+        projs.forEach(id => this.remProject(id));
+        return projs;
+    }
+    hasProject(id) {
+        id = String(id);
+        return id in this.#projects;
+    }
+    getProject(id) {
+        id = String(id);
+        if (!this.hasProject(id)) return null;
+        return this.#projects[id];
+    }
+    addProject(id, proj) {
+        id = String(id);
+        if (!(proj instanceof Project)) return false;
+        if (this.hasProject(proj.id)) return false;
+        if (this.hasProject(id)) return false;
+        this.#projects[id] = proj;
+        proj.id = id;
+        proj._onChange = () => this.markChange("proj:"+proj.id);
+        proj.addHandler("change", proj._onChange);
+        this.markChange("*");
+        this.markChange("proj:"+id);
+        return proj;
+    }
+    remProject(id) {
+        id = String(id);
+        if (!this.hasProject(id)) return false;
+        let proj = this.getProject(id);
+        delete this.#projects[id];
+        proj.remHandler("change", proj._onChange);
+        delete proj._onChange;
+        proj.id = null;
+        this.markChange("*");
+        this.markChange("proj:"+id);
+        return proj;
     }
 
     get eTitleBtn() { return this.#eTitleBtn; }
@@ -5218,8 +5488,323 @@ export default class App extends core.App {
         this.eBlock.style.height = Math.max(0, r.h-4)+"px";
     }
 }
-App.ProjectPage = class AppProjectPage extends core.App.Page {
+App.TitlePage = class AppTitlePage extends core.App.Page {
+    #eTitle;
+    #eSubtitle;
+    #eNav;
+    #eCreateBtn;
+    #eProjectsBtn;
+
+    constructor(app) {
+        super("TITLE", app);
+
+        this.#eTitle = document.createElement("div");
+        this.elem.appendChild(this.eTitle);
+        this.eTitle.classList.add("title");
+        this.eTitle.innerHTML = "<span>Peninsula</span><span>Panel</span>";
+        this.#eSubtitle = document.createElement("div");
+        this.elem.appendChild(this.eSubtitle);
+        this.eSubtitle.classList.add("subtitle");
+        this.eSubtitle.textContent = "The tool for debugging network tables";
+        this.#eNav = document.createElement("div");
+        this.elem.appendChild(this.eNav);
+        this.eNav.classList.add("nav");
+
+        this.#eCreateBtn = document.createElement("button");
+        this.eNav.appendChild(this.eCreateBtn);
+        this.eCreateBtn.classList.add("special");
+        this.eCreateBtn.innerHTML = "Create<ion-icon name='add'></ion-icon>";
+        this.eCreateBtn.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            this.app.page = "PROJECT";
+        });
+        this.#eProjectsBtn = document.createElement("button");
+        this.eNav.appendChild(this.eProjectsBtn);
+        this.eProjectsBtn.innerHTML = "Projects<ion-icon name='chevron-forward'></ion-icon>";
+        this.eProjectsBtn.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            this.app.page = "PROJECTS";
+        });
+    }
+
+    get eTitle() { return this.#eTitle; }
+    get eSubtitle() { return this.#eSubtitle; }
+    get eNav() { return this.#eNav; }
+    get eCreateBtn() { return this.#eCreateBtn; }
+    get eProjectsBtn() { return this.#eProjectsBtn; }
+};
+App.ProjectsPage = class AppProjectsPage extends core.App.Page {
+    #buttons;
+
+    #eTitle;
+    #eNav;
+    #eSubNav;
+    #eCreateBtn;
+    #eSearchBox;
+    #eSearchInput;
+    #eSearchBtn;
+    #eContent;
+    #eLoading;
+    #eEmpty;
+
+    constructor(app) {
+        super("PROJECTS", app);
+
+        this.#buttons = new Set();
+
+        this.addHandler("update", data => this.buttons.forEach(btn => btn.update()));
+
+        this.#eTitle = document.createElement("div");
+        this.elem.appendChild(this.eTitle);
+        this.eTitle.classList.add("title");
+        this.eTitle.textContent = "Projects";
+        this.#eNav = document.createElement("div");
+        this.elem.append(this.eNav);
+        this.eNav.classList.add("nav");
+        this.#eSubNav = document.createElement("div");
+        this.eNav.append(this.eSubNav);
+        this.eSubNav.classList.add("nav");
+        this.#eCreateBtn = document.createElement("button");
+        this.eSubNav.appendChild(this.eCreateBtn);
+        this.eCreateBtn.innerHTML = "Create<ion-icon name='add'></ion-icon>";
+        this.eCreateBtn.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            this.app.page = "PROJECT";
+        });
+        this.#eSearchBox = document.createElement("div");
+        this.eNav.appendChild(this.eSearchBox);
+        this.eSearchBox.classList.add("search");
+        this.#eSearchInput = document.createElement("input");
+        this.eSearchBox.appendChild(this.eSearchInput);
+        this.eSearchInput.type = "text";
+        this.eSearchInput.placeholder = "Search...";
+        this.eSearchInput.autocomplete = "off";
+        this.eSearchInput.spellcheck = false;
+        this.eSearchInput.addEventListener("input", e => {
+            this.refresh();
+        });
+        this.#eSearchBtn = document.createElement("button");
+        this.eSearchBox.appendChild(this.eSearchBtn);
+        this.eSearchBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
+        this.eSearchBtn.addEventListener("click", e => {
+            if (this.eSearchInput instanceof HTMLInputElement)
+                this.eSearchInput.value = "";
+            this.refresh();
+        });
+        this.#eContent = document.createElement("div");
+        this.elem.appendChild(this.eContent);
+        this.eContent.classList.add("content");
+        this.#eLoading = document.createElement("div");
+        this.eContent.appendChild(this.eLoading);
+        this.#eEmpty = document.createElement("div");
+        this.eContent.appendChild(this.eEmpty);
+        this.eEmpty.classList.add("empty");
+        this.eEmpty.textContent = "No projects here yet!";
+        if (this.hasApp()) {
+            this.app.addHandler("synced-files-with", () => this.refresh());
+            this.app.addHandler("synced-with-files", () => this.refresh());
+        }
+
+        this.addHandler("update", data => this.buttons.forEach(btn => btn.update()));
+    }
+
+    async refresh() {
+        this.clearButtons();
+        this.eLoading.style.display = "block";
+        this.eEmpty.style.display = "none";
+        this.eLoading.style.display = "none";
+        let projects = (this.hasApp() ? this.app.projects : []).map(id => this.app.getProject(id));
+        if (projects.length > 0) {
+            projects = util.search(projects, [ "meta.name" ], this.eSearchInput.value);
+            projects.forEach(project => this.addButton(new App.ProjectsPage.Button(project)));
+        } else this.eEmpty.style.display = "block";
+    }
+
+    get buttons() { return [...this.#buttons]; }
+    set buttons(v) {
+        v = util.ensure(v, "arr");
+        this.clearButtons();
+        v.forEach(v => this.addButton(v));
+    }
+    clearButtons() {
+        let btns = this.buttons;
+        btns.forEach(btn => this.remButton(btn));
+        return btns;
+    }
+    hasButton(btn) {
+        if (!(btn instanceof App.ProjectsPage.Button)) return false;
+        return this.#buttons.has(btn);
+    }
+    addButton(btn) {
+        if (!(btn instanceof App.ProjectsPage.Button)) return false;
+        if (this.hasButton(btn)) return false;
+        this.#buttons.add(btn);
+        btn.page = this;
+        this.eContent.appendChild(btn.elem);
+        return btn;
+    }
+    remButton(btn) {
+        if (!(btn instanceof App.ProjectsPage.Button)) return false;
+        if (!this.hasButton(btn)) return false;
+        this.#buttons.delete(btn);
+        btn.page = null;
+        this.eContent.removeChild(btn.elem);
+        return btn;
+    }
+
+    get eTitle() { return this.#eTitle; }
+    get eNav() { return this.#eNav; }
+    get eSubNav() { return this.#eSubNav; }
+    get eCreateBtn() { return this.#eCreateBtn; }
+    get eSearchBox() { return this.#eSearchBox; }
+    get eSearchInput() { return this.#eSearchInput; }
+    get eSearchBtn() { return this.#eSearchBtn; }
+    get eContent() { return this.#eContent; }
+    get eLoading() { return this.#eLoading; }
+    get eEmpty() { return this.#eEmpty; }
+
+    get state() {
+        return {
+            query: this.eSearchInput.value,
+        };
+    }
+    async loadState(state) {
+        state = util.ensure(state, "obj");
+        this.eSearchInput.value = state.query || "";
+        await this.refresh();
+    }
+
+    async enter(data) {
+        if (this.hasApp() && this.app.hasEProjectsBtn())
+            this.app.eProjectsBtn.classList.add("this");
+        await this.refresh();
+    }
+    async leave(data) {
+        if (this.hasApp() && this.app.hasEProjectsBtn())
+            this.app.eProjectsBtn.classList.remove("this");
+    }
+};
+App.ProjectsPage.Button = class AppProjectsPageButton extends core.Target {
+    #page;
+
     #project;
+
+    #time;
+
+    #elem;
+    #eImage;
+    #eInfo;
+    #eName;
+    #eTime;
+    #eNav;
+    #eEdit;
+
+    constructor(project) {
+        super();
+
+        this.#page = null;
+
+        this.#project = null;
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("item");
+        this.#eImage = document.createElement("div");
+        this.elem.appendChild(this.eImage);
+        this.eImage.classList.add("image");
+        this.#eInfo = document.createElement("div");
+        this.elem.appendChild(this.eInfo);
+        this.eInfo.classList.add("info");
+        this.#eName = document.createElement("div");
+        this.eInfo.appendChild(this.eName);
+        this.eName.classList.add("name");
+        this.#eTime = document.createElement("div");
+        this.eInfo.appendChild(this.eTime);
+        this.eTime.classList.add("time");
+        this.#eNav = document.createElement("div");
+        this.elem.appendChild(this.eNav);
+        this.eNav.classList.add("nav");
+        this.#eEdit = document.createElement("button");
+        this.eNav.appendChild(this.eEdit);
+        this.eEdit.innerHTML = "Edit <ion-icon name='arrow-forward'></ion-icon>";
+
+        this.elem.addEventListener("contextmenu", e => {
+            let itm;
+            let menu = new core.App.ContextMenu();
+            itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
+            itm.addHandler("trigger", data => {
+                this.eEdit.click();
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
+            itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
+            itm.addHandler("trigger", data => {
+                this.app.post("cmd-delete", this.project.id);
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item("Duplicate"));
+            itm.addHandler("trigger", data => {
+                this.app.post("cmd-savecopy", this.project);
+            });
+            if (!this.hasApp()) return;
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
+        this.eEdit.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            this.app.setPage("PROJECT", { id: this.project.id });
+        });
+
+        this.project = project;
+
+        this.addHandler("update", data => {
+            if (!this.hasProject()) return;
+            this.name = this.project.meta.name;
+            this.time = this.project.meta.modified;
+            this.eImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
+        });
+    }
+
+    get page() { return this.#page; }
+    set page(v) {
+        v = (v instanceof App.ProjectsPage) ? v : null;
+        if (this.page == v) return;
+        this.#page = v;
+    }
+    hasPage() { return this.page instanceof App.ProjectsPage; }
+    get app() { return this.hasPage() ? this.page.app : null; }
+    hasApp() { return this.app instanceof App; }
+
+    get project() { return this.#project; }
+    set project(v) {
+        v = (v instanceof Project) ? v : null;
+        if (this.project == v) return;
+        this.#project = v;
+        this.post("set", { v: v });
+    }
+    hasProject() { return this.project instanceof Project; }
+
+    get name() { return this.eName.textContent; }
+    set name(v) { this.eName.textContent = v; }
+
+    get time() { return this.#time; }
+    set time(v) {
+        v = util.ensure(v, "num");
+        if (this.time == v) return;
+        this.#time = v;
+        let date = new Date(this.time);
+        this.eTime.textContent = "Modified "+[date.getMonth()+1, date.getDate(), date.getFullYear()].join("-");
+    }
+
+    get elem() { return this.#elem; }
+    get eImage() { return this.#eImage; }
+    get eInfo() { return this.#eInfo; }
+    get eName() { return this.#eName; }
+    get eTime() { return this.#eTime; }
+    get eNav() { return this.#eNav; }
+    get eEdit() { return this.#eEdit; }
+
+    update() { this.post("update", null); }
+};
+App.ProjectPage = class AppProjectPage extends core.App.Page {
+    #projectId;
 
     #browserItems;
     #toolButtons;
@@ -5236,7 +5821,50 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
 
         if (!this.hasApp()) return;
 
-        this.#project = new Project();
+        this.app.addHandler("perm", async data => {
+            this.app.markChange("*all");
+            try {
+                await this.app.syncFilesWith();
+            } catch (e) {
+                let alert = this.app.alert("There was an error saving your projects!", "warning");
+                alert.hasInfo = true;
+                alert.info = String(e);
+                alert.iconColor = "var(--cr)";
+                return false;
+            }
+            return true;
+        });
+
+        let lock = false;
+        setInterval(async () => {
+            if (lock) return;
+            lock = true;
+            await this.app.post("cmd-save", null);
+            lock = false;
+        }, 10000);
+
+        if (this.app.hasEProjectInfoNameInput())
+            this.app.eProjectInfoNameInput.addEventListener("change", e => {
+                if (this.choosing) return;
+                if (!this.hasProject()) return;
+                this.project.meta.name = this.app.eProjectInfoNameInput.value;
+                this.post("refresh-options", null);
+            });
+        if (this.app.hasEProjectInfoAddressInput())
+            this.app.eProjectInfoAddressInput.addEventListener("change", e => {
+                if (this.hasProject())
+                    this.project.config.ip = this.app.eProjectInfoAddressInput.value;
+                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
+                this.rootSource.address = null;
+            });
+        if (this.app.hasEProjectInfoConnectionBtn())
+            this.app.eProjectInfoConnectionBtn.addEventListener("click", e => {
+                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
+                if (!this.rootSource.connecting && !this.rootSource.connected) this.rootSource.address = this.hasProject() ? this.project.config.ip : null;
+                else this.rootSource.address = null;
+            });
+
+        this.#projectId = null;
 
         this.#browserItems = [];
         this.#toolButtons = new Set();
@@ -5311,8 +5939,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
 
         this.format();
 
-        this.getESideSection("browser").open();
-
         let refactor = false;
         this.addHandler("refactor-browser-queue", data => { refactor = true; });
         this.addHandler("update", data => {
@@ -5381,23 +6007,9 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
 
         this.rootSource = new NTSource(null);
 
-        if (this.app.hasEProjectInfoNameInput())
-            this.app.eProjectInfoNameInput.addEventListener("change", e => {
-                this.project.meta.name = this.app.eProjectInfoNameInput.value;
-            });
-        if (this.app.hasEProjectInfoAddressInput())
-            this.app.eProjectInfoAddressInput.addEventListener("change", e => {
-                this.project.config.ip = this.app.eProjectInfoAddressInput.value;
-                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
-                this.rootSource.address = null;
-            });
-        if (this.app.hasEProjectInfoConnectionBtn())
-            this.app.eProjectInfoConnectionBtn.addEventListener("click", e => {
-                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
-                if (!this.rootSource.connecting && !this.rootSource.connected) this.rootSource.address = this.project.config.ip;
-                else this.rootSource.address = null;
-            });
-
+        this.addHandler("project-set", data => {
+            this.rootWidget = this.project.buildRootWidget();
+        });
         this.addHandler("update", data => {
             if (this.hasRootWidget()) {
                 this.rootWidget.collapse();
@@ -5410,13 +6022,13 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             if (!this.hasApp()) return;
             if (this.app.hasEProjectInfoBtn())
                 if (this.app.eProjectInfoBtn.querySelector(":scope > .value") instanceof HTMLDivElement)
-                    this.app.eProjectInfoBtn.querySelector(":scope > .value").textContent = this.project.meta.name;
+                    this.app.eProjectInfoBtn.querySelector(":scope > .value").textContent = this.hasProject() ? this.project.meta.name : "";
             if (this.app.hasEProjectInfoNameInput())
                 if (document.activeElement != this.app.eProjectInfoNameInput)
-                    this.app.eProjectInfoNameInput.value = this.project.meta.name;
+                    this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
             if (this.app.hasEProjectInfoAddressInput())
                 if (document.activeElement != this.app.eProjectInfoAddressInput)
-                    this.app.eProjectInfoAddressInput.value = this.project.config.ip;
+                    this.app.eProjectInfoAddressInput.value = this.hasProject() ? this.project.config.ip : "";
             if (this.app.hasEProjectInfoConnectionBtn()) {
                 let on = !this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected);
                 this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
@@ -5428,7 +6040,45 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         });
     }
 
-    get project() { return this.#project; }
+    async refresh() {
+        if (!this.hasApp()) return;
+        try {
+            await this.app.syncWithFiles();
+        } catch (e) {
+            let alert = this.app.alert("There was an error loading your projects!", "warning");
+            alert.hasInfo = true;
+            alert.info = String(e);
+            alert.iconColor = "var(--cr)";
+        }
+        this.getESideSection("browser").open();
+        this.app.dragging = false;
+    }
+
+    get projectId() { return this.#projectId; }
+    set projectId(v) {
+        v = String(v);
+        v = (this.hasApp() && this.app.hasProject(v)) ? v : null;
+        if (this.projectId == v) return;
+        this.#projectId = v;
+        this.post("project-set", { v: this.projectId });
+    }
+    get project() { return this.hasApp() ? this.app.getProject(this.projectId) : null; }
+    set project(v) {
+        v = (v instanceof Project) ? v : null;
+        if (this.project == v) return;
+        if (!this.hasApp()) return;
+        if (v instanceof Project) {
+            if (!this.app.hasProject(v.id)) {
+                let id;
+                do {
+                    id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(64*Math.random())]).join("");
+                } while (this.app.hasProject(id));
+                this.app.addProject(id, v);
+            }
+            this.projectId = v.id;
+        } else this.projectId = null;
+    }
+    hasProject() { return this.project instanceof Project; }
 
     get browserItems() { return [...this.#browserItems]; }
     set browserItems(v) {
@@ -5517,13 +6167,15 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (this.hasRootWidget()) {
             this.rootWidget.parent = this;
             this.rootWidget._onChange = () => {
-                this.project.rootData = JSON.stringify(this.rootWidget);
+                if (this.hasProject())
+                    this.project.rootData = JSON.stringify(this.rootWidget);
             };
             this.rootWidget.addHandler("change", this.rootWidget._onChange);
             this.eContent.appendChild(this.rootWidget.elem);
             this.rootWidget.elem.focus();
         }
-        this.project.rootData = JSON.stringify(this.rootWidget);
+        if (this.hasProject())
+            this.project.rootData = JSON.stringify(this.rootWidget);
         this.formatContent();
     }
     hasRootWidget() { return this.rootWidget instanceof Widget; }
@@ -5580,5 +6232,55 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.rootWidget.elem.style.setProperty("--h", r.height+"px");
         this.rootWidget.format();
         return true;
+    }
+
+    get state() {
+        return {
+            id: this.projectId,
+        };
+    }
+    async loadState(state) {
+        state = util.ensure(state, "obj");
+        if (!this.hasApp()) return;
+        await this.app.setPage(this.name, { id: state.id });
+    }
+
+    async enter(data) {
+        let projectOnly = [
+            "newtab",
+            "openclose", "expandcollapse",
+            "savecopy",
+            "delete", "closetab", "close",
+        ];
+        let ables = {};
+        projectOnly.forEach(id => (ables[id] = true));
+        await window.api.send("menu-ables", [ables]);
+        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
+        if (!this.hasApp()) return;
+        await this.refresh();
+        if (this.app.hasProject(data.id)) {
+            this.project = this.app.getProject(data.id);
+        } else if (data.project instanceof Project) {
+            this.project = data.project;
+        } else {
+            this.project = new Project();
+            this.project.meta.created = this.project.meta.modified = util.getTime();
+        }
+    }
+    async leave(data) {
+        let projectOnly = [
+            "newtab",
+            "openclose", "expandcollapse",
+            "savecopy",
+            "delete", "closetab", "close",
+        ];
+        let ables = {};
+        projectOnly.forEach(id => (ables[id] = false));
+        await window.api.send("menu-ables", [ables]);
+        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
+        if (!this.hasApp()) return;
+        this.app.markChange("*all");
+        await this.app.post("cmd-save", null);
+        this.project = null;
     }
 };
