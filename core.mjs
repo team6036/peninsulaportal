@@ -365,7 +365,7 @@ export class App extends Target {
                     if (prevHoliday != null)
                         this.accent = {
                             halloween: "o",
-                            christmas: "g",
+                            christmas: "r",
                         }[prevHoliday];
                     clearInterval(id);
                 }, 10);
@@ -379,7 +379,7 @@ export class App extends Target {
                 accent = this.accent;
                 this.accent = {
                     halloween: "o",
-                    christmas: "g",
+                    christmas: "r",
                 }[prevHoliday];
             }
         };
