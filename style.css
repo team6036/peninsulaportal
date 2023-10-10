@@ -787,6 +787,8 @@ article.md ul {
     height: auto;
 
     visibility: hidden;
+
+    animation: introtitle-hat-wiggle 1s infinite;
 }
 .introtitle.special > img.special {
     visibility: inherit;
@@ -794,6 +796,11 @@ article.md ul {
 @keyframes introtitle-name-shrink {
     0% { max-width: 9em; }
     100% { max-width: 0px; }
+}
+@keyframes introtitle-hat-wiggle {
+    0% { transform: translate(-50%, -50%) rotate(-20deg); }
+    50% { transform: translate(-50%, -50%) rotate(-10deg); }
+    100% { transform: translate(-50%, -50%) rotate(-20deg); }
 }
 
 .logo {
