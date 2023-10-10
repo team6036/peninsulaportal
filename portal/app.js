@@ -359,11 +359,6 @@ export default class App extends core.App {
             btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PLANNER"));
 
-            btn = this.addFeatureButton(new FeatureButton("Pursuit", "flash"));
-            btn.tooltip = "Coming soon!";
-            btn.tooltipColor = "var(--a)";
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PURSUIT"));
-
             btn = this.addFeatureButton(new FeatureButton("Perception", "eye"));
             btn.tooltip = "Coming soon!";
             btn.tooltipColor = "var(--a)";
@@ -374,9 +369,6 @@ export default class App extends core.App {
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("analytics"));
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PLANNER"));
-
-            btn = this.addUpperFeatureButton(new UpperFeatureButton("flash"));
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PURSUIT"));
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("eye"));
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
