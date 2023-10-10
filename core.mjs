@@ -204,23 +204,12 @@ export class App extends Target {
         (() => {
             let namefs = {
                 find: () => (elem.textContent += "Finding database"),
+                "comp-mode": () => (elem.textContent += "Competition mode"),
                 poll: () => {
                     if (load.length > 0) elem.style.color = "var(--cr)";
                     if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
                     return elem.textContent += "Polling database";
                 },
-                /*
-                "version-get": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Getting version failed: "+load.join(":");
-                    return elem.textContent += "Getting version";
-                },
-                "version-set": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Setting version failed: "+load.join(":");
-                    return elem.textContent += "Setting version";
-                },
-                */
                 config: () => {
                     if (load.length > 0) elem.style.color = "var(--cr)";
                     if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
@@ -376,6 +365,7 @@ export class App extends Target {
                     if (prevHoliday != null)
                         this.accent = {
                             halloween: "o",
+                            christmas: "g",
                         }[prevHoliday];
                     clearInterval(id);
                 }, 10);
@@ -389,6 +379,7 @@ export class App extends Target {
                 accent = this.accent;
                 this.accent = {
                     halloween: "o",
+                    christmas: "g",
                 }[prevHoliday];
             }
         };

@@ -39,12 +39,14 @@ export default class App extends core.App {
                     });
                 });
                 Array.from(document.querySelectorAll("#PAGE > .content > article input.val")).forEach(async elem => {
-                    elem.disabled = true;
-                    elem.value = await window.api.get("val-"+elem.id);
-                    elem.disabled = false;
                     let type = {
                         "db-host": "str",
+                        "comp-mode": "bool",
                     }[elem.id];
+                    elem.disabled = true;
+                    if (type == "bool") elem.checked = await window.api.get("val-"+elem.id);
+                    else elem.value = await window.api.get("val-"+elem.id);
+                    elem.disabled = false;
                     let typefs = {
                         any_num: async () => await typefs.num(),
                         num: async () => {
@@ -67,20 +69,22 @@ export default class App extends core.App {
                     };
                     if (elem.id in idfs) await idfs[elem.id]();
                     elem.addEventListener("change", async e => {
-                        let v = elem.value;
-                        if (v.length > 0) {
+                        let v = (type == "bool") ? elem.checked : elem.value;
+                        if (type == "bool" || v.length > 0) {
                             v = util.ensure(v, type);
                             let idfs = {
                             };
                             if (elem.id in idfs) v = await idfs[elem.id](v);
                             elem.disabled = true;
                             await window.api.set("val-"+elem.id, v);
-                            elem.value = await window.api.get("val-"+elem.id);
+                            if (type == "bool") elem.checked = await window.api.get("val-"+elem.id);
+                            else elem.value = await window.api.get("val-"+elem.id);
                             elem.disabled = false;
                         }
                     });
                     setInterval(async () => {
                         if (document.activeElement == elem) return;
+                        if (type == "bool") return;
                         elem.value = await window.api.get("val-"+elem.id);
                     }, 250);
                 });

@@ -76,10 +76,20 @@ button:not(.override) {
     max-width: min(100%, 750px);
     margin: 50px 0px;
 }
-#PAGE > .content > article p > button {
-    float: right;
-
-    margin-left: 10px;
+#PAGE > .content > article p {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PAGE > .content > article p > span {
+    min-width: max-content;
+}
+#PAGE > .content > article p > span.space {
+    flex-basis: 100%;
 }
 #PAGE > .content > article p > button.on {
     --bg: var(--cg3);
@@ -98,11 +108,8 @@ button:not(.override) {
     --fgd: var(--v6);
 }
 #PAGE > .content > article p > input {
-    float: right;
-
-    width: 300px;
+    min-width: 300px;
     padding: 5px;
-    margin-left: 10px;
 
     background-color: var(--v2-8);
     border-radius: 5px;

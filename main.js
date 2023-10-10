@@ -360,6 +360,12 @@ const MAIN = async () => {
                 data = util.ensure(data, "obj");
                 this.remLoad("find");
                 const host = data.dbHost || "https://peninsula-db.jfancode.repl.co";
+                const isCompMode = !!data.isCompMode;
+                if (isCompMode) {
+                    this.log("DB competition mode (no poll)");
+                    this.addLoad("comp-mode");
+                    return true;
+                }
                 this.log(`DB poll - ${host}`);
                 this.addLoad("poll");
                 try {
@@ -390,41 +396,6 @@ const MAIN = async () => {
                     });
                     await fs.promises.rename(tmpPth, thePth);
                 };
-                /*
-                this.log("DB version get");
-                this.addLoad("version-get");
-                let newVersion = "";
-                try {
-                    let resp = await fetch(host+"/version.txt");
-                    newVersion = await resp.text();
-                } catch (e) {
-                    this.log(`DB version get - error - ${e}`);
-                    this.remLoad("version-get");
-                    this.addLoad("version-get:"+e);
-                    return false;
-                }
-                this.log("DB version get - success");
-                this.remLoad("version-get");
-                this.log("DB version set");
-                this.addLoad("version-set");
-                let oldVersion = "";
-                try {
-                    oldVersion = (await this.fileHas(".version")) ? (await this.fileRead(".version")) : "";
-                } catch (e) {
-                    this.log(`DB version set - error - ${e}`);
-                    this.remLoad("version-set");
-                    this.addLoad("version-set:"+e);
-                    return false;
-                }
-                this.log("DB version set - success");
-                this.remLoad("version-set");
-                if (oldVersion == newVersion) {
-                    this.log(`DB version same (${JSON.stringify(oldVersion)} == ${JSON.stringify(newVersion)}) - skipping`);
-                    return true;
-                }
-                this.log(`DB version diff (${JSON.stringify(oldVersion)} != ${JSON.stringify(newVersion)}) - continuing`);
-                await this.fileWrite(".version", newVersion);
-                */
                 await Promise.all([
                     (async () => {
                         this.log("DB config");
@@ -703,6 +674,18 @@ const MAIN = async () => {
                             data = util.ensure(data, "obj");
                             return data.dbHost || "https://peninsula-db.jfancode.repl.co";
                         },
+                        "comp-mode": async () => {
+                            let content = "";
+                            try {
+                                content = await this.fileRead(".config");
+                            } catch (e) {}
+                            let data = null;
+                            try {
+                                data = JSON.parse(content);
+                            } catch (e) {}
+                            data = util.ensure(data, "obj");
+                            return !!data.isCompMode;
+                        },
                     };
                     if (k.substring(4) in valfs) return await valfs[k.substring(4)]();
                 }
@@ -728,6 +711,20 @@ const MAIN = async () => {
                             } catch (e) {}
                             data = util.ensure(data, "obj");
                             data.dbHost = String(v);
+                            content = JSON.stringify(data, null, "\t");
+                            await this.fileWrite(".config", content);
+                        },
+                        "comp-mode": async () => {
+                            let content = "";
+                            try {
+                                content = await this.fileRead(".config");
+                            } catch (e) {}
+                            let data = null;
+                            try {
+                                data = JSON.parse(content);
+                            } catch (e) {}
+                            data = util.ensure(data, "obj");
+                            data.isCompMode = !!v;
                             content = JSON.stringify(data, null, "\t");
                             await this.fileWrite(".config", content);
                         },
