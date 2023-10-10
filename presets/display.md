@@ -5,6 +5,7 @@
 <p>
     <span>Application Data Directory</span>
     <span class="space"></span>
+    <button class="cmd off" id="cleanup-app-data-dir">Cleanup</button>
     <button class="cmd" id="open-app-data-dir">Open<ion-icon name="open-outline"></ion-icon></button>
 </p>
 <p>

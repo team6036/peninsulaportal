@@ -794,7 +794,10 @@ const MAIN = async () => {
                 await this.post("start", null);
 
                 this.addFeature(new Portal.Feature("PORTAL"));
-                setTimeout(() => this.tryLoad(), 1000);
+                setTimeout(async () => {
+                    await this.tryLoad();
+                    await this.cleanup();
+                }, 1000);
             })();
 
             return true;
@@ -853,6 +856,121 @@ const MAIN = async () => {
             }
             return r;
         }
+        static async cleanup(dataPath) {
+            const l = (...a) => log(". deleting "+Portal.makePath(...a));
+            const format = [
+                // ./logs
+                {
+                    type: "dir", name: "logs",
+                    children: [
+                        { type: "file", match: (_, name) => name.endsWith(".log") },
+                    ],
+                },
+                // ./templates
+                {
+                    type: "dir", name: "templates",
+                    children: [
+                        // ./templates/images
+                        {
+                            type: "dir", name: "images",
+                            children: [
+                                // ./templates/images/*.png
+                                // ./templates/images/*.png-tmp
+                                { type: "file", match: (_, name) => (name.endsWith(".png") || name.endsWith(".png-tmp")) },
+                            ],
+                        },
+                        // ./templates/models
+                        {
+                            type: "dir", name: "models",
+                            children: [
+                                // ./templates/models/*.glb
+                                // ./templates/models/*.glb-tmp
+                                { type: "file", match: (_, name) => (name.endsWith(".glb") || name.endsWith(".glb-tmp")) }
+                            ],
+                        },
+                        // ./templates/templates.json
+                        { type: "file", name: "templates.json" }
+                    ],
+                },
+                // ./robots
+                {
+                    type: "dir", name: "robots",
+                    children: [
+                        // ./robots/models
+                        {
+                            type: "dir", name: "models",
+                            children: [
+                                // ./robots/models/*.glb
+                                // ./robots/models/*.glb-tmp
+                                { type: "file", match: (_, name) => (name.endsWith(".glb") || name.endsWith(".glb-tmp")) }
+                            ],
+                        },
+                        // ./robots/robots.json
+                        { type: "file", name: "robots.json" }
+                    ],
+                },
+                // ./<feature>
+                { type: "dir", match: (_, name) => FEATURES.includes(name.toUpperCase()) },
+                // ./panel
+                {
+                    type: "dir", name: "panel",
+                    children: [
+                        // ./panel/projects
+                        {
+                            type: "dir", name: "projects",
+                            children: [
+                                // ./panel/projects/*.json
+                                { type: "file", match: (_, name) => name.endsWith(".json") },
+                            ],
+                        },
+                        // ./panel/projects.json
+                        { type: "file", name: "projects.json" },
+                    ],
+                },
+                // ./planner
+                {
+                    type: "dir", name: "planner",
+                    children: [
+                        // ./planner/projects
+                        {
+                            type: "dir", name: "projects",
+                            children: [
+                                // ./planner/projects/*.json
+                                { type: "file", match: (_, name) => name.endsWith(".json") },
+                            ],
+                        },
+                        // ./planner/projects.json
+                        { type: "file", name: "projects.json" },
+                        // ./planner/templates.json
+                        { type: "file", name: "templates.json" },
+                        // ./planner/solver
+                        { type: "dir", name: "solver" },
+                    ],
+                },
+            ];
+            const cleanup = async (pth, patterns) => {
+                let dirents = await this.dirList(pth);
+                await Promise.all(dirents.map(async dirent => {
+                    if (dirent.name[0] == ".") return;
+                    let any = false;
+                    await Promise.all(patterns.map(async pattern => {
+                        if (("type" in pattern) && (dirent.type != pattern.type)) return;
+                        if (("name" in pattern) && (dirent.name != pattern.name)) return;
+                        if (("match" in pattern) && !pattern.match(dirent.type, dirent.name)) return;
+                        any = true;
+                        if (("children" in pattern) && (dirent.type == "dir"))
+                            await cleanup([...pth, dirent.name], pattern.children);
+                    }));
+                    if (any) return;
+                    l(...pth, dirent.name);
+                    if (dirent.type == "dir") await this.dirDelete([...pth, dirent.name]);
+                    else await this.fileDelete([...pth, dirent.name]);
+                }));
+            };
+            await cleanup([dataPath], format);
+            return true;
+        }
+        async cleanup() { return await Portal.cleanup(this.dataPath); }
 
         static makePath(...pth) {
             let flattened = [];
@@ -1628,6 +1746,10 @@ const MAIN = async () => {
                             process.addHandler("exit", data => res(data.code));
                             process.addHandler("error", data => rej(data.e));
                         });
+                    },
+                    "cmd-cleanup-app-data-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await this.portal.cleanup();
                     },
                     "cmd-open-app-log-dir": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
