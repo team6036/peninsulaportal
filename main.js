@@ -222,33 +222,7 @@ const MAIN = async () => {
                 this.stream.write.apply(this.stream, a);
             };
             this.log();
-        }
-
-        async isDevMode() {
-            if (!(await Portal.fileHas(path.join(__dirname, ".config")))) return false;
-            let content = "";
-            try {
-                content = await Portal.fileRead(path.join(__dirname, ".config"));
-            } catch (e) { return false; }
-            let data = null;
-            try {
-                data = JSON.parse(content);
-            } catch (e) { return false; }
-            data = util.ensure(data, "obj");
-            return data.isDevMode;
-        }
-        async getHoliday() {
-            await this.affirm();
-            let content = "";
-            try {
-                content = await this.fileRead(".config");
-            } catch (e) {}
-            let data = null;
-            try {
-                data = JSON.parse(content);
-            } catch (e) {}
-            data = util.ensure(data, "obj");
-            return (data.holiday == null) ? null : String(data.holiday);
+            return true;
         }
 
         get stream() { return this.#stream; }
@@ -258,7 +232,7 @@ const MAIN = async () => {
 
         get features() { return [...this.#features]; }
         set features(v) {
-            v = Array.isArray(v) ? Array.from(v) : [];
+            v = util.ensure(v, "arr");
             (async () => {
                 await this.clearFeatures();
                 v.forEach(v => this.addFeature(v));
@@ -350,20 +324,11 @@ const MAIN = async () => {
                 this.log("DB finding host");
                 this.clearLoads();
                 this.addLoad("find");
-                let content = "";
-                try {
-                    content = await this.fileRead(".config");
-                } catch (e) {}
-                let data = null;
-                try {
-                    data = JSON.parse(content);
-                } catch (e) {}
-                data = util.ensure(data, "obj");
+                const host = (await this.get("val-db-host")) || "https://peninsula-db.jfancode.repl.co";
+                const isCompMode = await this.get("val-comp-mode");
                 this.remLoad("find");
-                const host = data.dbHost || "https://peninsula-db.jfancode.repl.co";
-                const isCompMode = !!data.isCompMode;
                 if (isCompMode) {
-                    this.log("DB competition mode (no poll)");
+                    this.log(`DB poll - ${host} - SKIP (COMP MODE)`);
                     this.addLoad("comp-mode");
                     return true;
                 }
@@ -570,236 +535,58 @@ const MAIN = async () => {
                 };
             });
 
-            const identifyFeature = e => {
-                if (!util.is(e, "obj")) return null;
-                if (!util.is(e.sender, "obj")) return null;
-                let feats = this.features;
-                for (let i = 0; i < feats.length; i++) {
-                    if (!feats[i].hasWindow()) continue;
-                    if (e.sender.id == feats[i].window.webContents.id)
-                        return feats[i];
-                }
-                return null;
-            };
-
-            ipc.handle("get", async (e, k) => {
-                k = String(k);
-                let kfs = {
-                    loads: async () => {
-                        return this.loads;
-                    },
-                    loading: async () => {
-                        return this.isLoading;
-                    },
-                    templates: async () => {
-                        let content = "";
-                        try {
-                            content = await this.fileRead(["templates", "templates.json"]);
-                        } catch (e) {}
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                        } catch (e) {}
-                        data = util.ensure(data, "obj");
-                        return util.ensure(data.templates, "obj");
-                    },
-                    "template-images": async () => {
-                        let templates = await kfs.templates();
-                        let images = {};
-                        Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "templates", "images", name+".png")));
-                        return images;
-                    },
-                    "template-models": async () => {
-                        let templates = await kfs.templates();
-                        let models = {};
-                        Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, "templates", "models", name+".glb")));
-                        return models;
-                    },
-                    "active-template": async () => {
-                        let content = "";
-                        try {
-                            content = await this.fileRead(["templates", "templates.json"]);
-                        } catch (e) {}
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                        } catch (e) {}
-                        data = util.ensure(data, "obj");
-                        let templates = await kfs.templates();
-                        return (data.active in templates) ? data.active : null;
-                    },
-                    robots: async () => {
-                        let content = "";
-                        try {
-                            content = await this.fileRead(["robots", "robots.json"]);
-                        } catch (e) {}
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                        } catch (e) {}
-                        data = util.ensure(data, "obj");
-                        return util.ensure(data.robots, "obj");
-                    },
-                    "robot-models": async () => {
-                        let robots = await kfs.robots();
-                        let models = {};
-                        Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, "robots", "models", name+".glb")));
-                        return models;
-                    },
-                    "active-robot": async () => {
-                        let content = "";
-                        try {
-                            content = await this.fileRead(["robots", "robots.json"]);
-                        } catch (e) {}
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                        } catch (e) {}
-                        data = util.ensure(data, "obj");
-                        let robots = await kfs.robots();
-                        return (data.active in robots) ? data.active : null;
-                    },
-                };
-                if (k in kfs) return await kfs[k]();
-                if (k.startsWith("val-")) {
-                    let valfs = {
-                        "db-host": async () => {
-                            let content = "";
-                            try {
-                                content = await this.fileRead(".config");
-                            } catch (e) {}
-                            let data = null;
-                            try {
-                                data = JSON.parse(content);
-                            } catch (e) {}
-                            data = util.ensure(data, "obj");
-                            return data.dbHost || "https://peninsula-db.jfancode.repl.co";
-                        },
-                        "comp-mode": async () => {
-                            let content = "";
-                            try {
-                                content = await this.fileRead(".config");
-                            } catch (e) {}
-                            let data = null;
-                            try {
-                                data = JSON.parse(content);
-                            } catch (e) {}
-                            data = util.ensure(data, "obj");
-                            return !!data.isCompMode;
-                        },
-                        "holiday": async () => {
-                            let content = "";
-                            try {
-                                content = await this.fileRead(".config");
-                            } catch (e) {}
-                            let data = null;
-                            try {
-                                data = JSON.parse(content);
-                            } catch (e) {}
-                            data = util.ensure(data, "obj");
-                            return data.holiday;
-                        },
-                    };
-                    if (k.substring(4) in valfs) return await valfs[k.substring(4)]();
-                }
-                let feat = identifyFeature(e);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                return await feat.get(k);
-            });
-            ipc.handle("set", async (e, k, v) => {
-                k = String(k);
-                let kfs = {
-                };
-                if (k in kfs) return await kfs[k]();
-                if (k.startsWith("val-")) {
-                    let valfs = {
-                        "db-host": async () => {
-                            let content = "";
-                            try {
-                                content = await this.fileRead(".config");
-                            } catch (e) {}
-                            let data = null;
-                            try {
-                                data = JSON.parse(content);
-                            } catch (e) {}
-                            data = util.ensure(data, "obj");
-                            data.dbHost = String(v);
-                            content = JSON.stringify(data, null, "\t");
-                            await this.fileWrite(".config", content);
-                        },
-                        "comp-mode": async () => {
-                            let content = "";
-                            try {
-                                content = await this.fileRead(".config");
-                            } catch (e) {}
-                            let data = null;
-                            try {
-                                data = JSON.parse(content);
-                            } catch (e) {}
-                            data = util.ensure(data, "obj");
-                            data.isCompMode = !!v;
-                            content = JSON.stringify(data, null, "\t");
-                            await this.fileWrite(".config", content);
-                        },
-                    };
-                    if (k.substring(4) in valfs) return await valfs[k.substring(4)]();
-                }
-                let feat = identifyFeature(e);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                return await feat.set(k, v);
-            });
+            ipc.handle("get", async (e, k) => await this.getCallback(e.sender.id, k));
+            ipc.handle("set", async (e, k, v) => await this.setCallback(e.sender.id, k, v));
 
             ipc.handle("file-has", async (e, pth) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.fileHas(pth);
             });
             ipc.handle("file-read", async (e, pth) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.fileRead(pth);
             });
             ipc.handle("file-write", async (e, pth, content) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.fileWrite(pth, content);
             });
             ipc.handle("file-append", async (e, pth, content) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.fileAppend(pth, content);
             });
             ipc.handle("file-delete", async (e, pth) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.fileDelete(pth);
             });
 
             ipc.handle("dir-has", async (e, pth) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.dirHas(pth);
             });
             ipc.handle("dir-list", async (e, pth) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.dirList(pth);
             });
             ipc.handle("dir-make", async (e, pth) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.dirMake(pth);
             });
             ipc.handle("dir-delete", async (e, pth) => {
-                let feat = identifyFeature(e);
+                let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.dirDelete(pth);
             });
 
             ipc.handle("on", async (e, k, args) => {
-                let feat = identifyFeature(e);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                return await feat.on(k, args);
+                return await this.onCallback(e.sender.id, k, args);
             });
 
             (async () => {
@@ -1065,6 +852,218 @@ const MAIN = async () => {
         async dirMake(pth) { return Portal.dirMake([this.dataPath, pth]); }
         async dirDelete(pth) { return Portal.dirDelete([this.dataPath, pth]); }
 
+        identifyFeature(id) {
+            let feats = this.features;
+            for (let i = 0; i < feats.length; i++) {
+                if (!feats[i].hasWindow()) continue;
+                if (id == feats[i].window.webContents.id)
+                    return feats[i];
+            }
+            return null;
+        }
+
+        async get(k) {
+            k = String(k);
+            let kfs = {
+                loads: async () => {
+                    return this.loads;
+                },
+                loading: async () => {
+                    return this.isLoading;
+                },
+                _fulltemplates: async () => {
+                    let content = "";
+                    try {
+                        content = await this.fileRead(["templates", "templates.json"]);
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
+                },
+                templates: async () => {
+                    return util.ensure((await kfs._fulltemplates()).templates, "obj");
+                },
+                "template-images": async () => {
+                    let templates = await kfs.templates();
+                    let images = {};
+                    Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "templates", "images", name+".png")));
+                    return images;
+                },
+                "template-models": async () => {
+                    let templates = await kfs.templates();
+                    let models = {};
+                    Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, "templates", "models", name+".glb")));
+                    return models;
+                },
+                "active-template": async () => {
+                    let active = (await kfs._fulltemplates()).active;
+                    let templates = await kfs.templates();
+                    return (active in templates) ? active : null;
+                },
+                _fullrobots: async () => {
+                    let content = "";
+                    try {
+                        content = await this.fileRead(["robots", "robots.json"]);
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
+                },
+                robots: async () => {
+                    return util.ensure((await kfs._fullrobots()).robots, "obj");
+                },
+                "robot-models": async () => {
+                    let robots = await kfs.robots();
+                    let models = {};
+                    Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, "robots", "models", name+".glb")));
+                    return models;
+                },
+                "active-robot": async () => {
+                    let active = (await kfs._fullrobots()).active;
+                    let robots = await kfs.robots();
+                    return (active in robots) ? active : null;
+                },
+                _fulldevconfig: async () => {
+                    let content = "";
+                    try {
+                        content = await Portal.fileRead(path.join(__dirname, ".config"));
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
+                },
+                devmode: async () => {
+                    return !!(await kfs._fulldevconfig()).isDevMode;
+                },
+                _fullconfig: async () => {
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".config");
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
+                },
+                "db-host": async () => {
+                    let host = (await kfs._fullconfig()).dbHost;
+                    return host || "https://peninsula-db.jfancode.repl.co";
+                },
+                holiday: async () => {
+                    let holiday = (await kfs._fullconfig()).holiday;
+                    return (holiday == null) ? null : String(holiday);
+                },
+                "comp-mode": async () => {
+                    return !!(await kfs._fullconfig()).isCompMode;
+                },
+            };
+            if (k in kfs) return await kfs[k]();
+            if (k.startsWith("val-")) {
+                try {
+                    return await this.getValue(k.substring(4));
+                } catch (e) { if (!String(e).startsWith("No possible \"getValue\" for key: ")) throw e; }
+            }
+            throw "No possible \"get\" for key: "+k;
+        }
+        async getValue(k) {
+            k = String(k);
+            let kfs = {
+                "db-host": async () => await this.get("db-host"),
+                "holiday": async () => await this.get("holiday"),
+                "comp-mode": async () => await this.get("comp-mode"),
+            };
+            if (k in kfs) return await kfs[k]();
+            throw "No possible \"getValue\" for key: "+k;
+        }
+        async getCallback(id, k) {
+            try {
+                return await this.get(k);
+            } catch (e) { if (!String(e).startsWith("No possible \"get\" for key: ")) throw e; }
+            let feat = this.identifyFeature(id);
+            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
+            return await feat.get(k);
+        }
+        async set(k, v) {
+            k = String(k);
+            let kfs = {
+                _fullconfig: async (k=null, v=null) => {
+                    if (k == null) return;
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".config");
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    data[k] = v;
+                    content = JSON.stringify(data, null, "\t");
+                    await this.fileWrite(".config", content);
+                },
+                "db-host": async () => await kfs._fullconfig("dbHost", String(v)),
+                "holiday": async () => await kfs._fullconfig("holiday", (v == null) ? null : String(v)),
+                "comp-mode": async () => await kfs._fullconfig("isCompMode", !!v),
+            };
+            if (k in kfs) return await kfs[k]();
+            if (k.startsWith("val-")) {
+                try {
+                    return await this.setValue(k.substring(4), v);
+                } catch (e) { if (!String(e).startsWith("No possible \"setValue\" for key: ")) throw e; }
+            }
+            throw "No possible \"set\" for key: "+k;
+        }
+        async setValue(k, v) {
+            k = String(k);
+            let kfs = {
+                "db-host": async () => await this.set("db-host", v),
+                "holiday": async () => await this.set("holiday", v),
+                "comp-mode": async () => await this.set("comp-mode", v),
+            };
+            if (k in kfs) return await kfs[k]();
+            throw "No possible \"setValue\" for key: "+k;
+        }
+        async setCallback(id, k, v) {
+            try {
+                return await this.set(k, v);
+            } catch (e) { if (!String(e).startsWith("No possible \"set\" for key: ")) throw e; }
+            let feat = this.identifyFeature(id);
+            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
+            return await feat.set(k, v);
+        }
+        async on(k, args) {
+            k = String(k);
+            args = util.ensure(args, "arr");
+            let kfs = {
+            };
+            if (k in kfs) return await kfs[k]();
+            throw "No possible \"on\" for key: "+k;
+        }
+        async onCallback(id, k, args) {
+            try {
+                return await this.on(k, args);
+            } catch (e) { if (!String(e).startsWith("No possible \"on\" for key: ")) throw e; }
+            let feat = this.identifyFeature(id);
+            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
+            return await feat.on(k, args);
+        }
+        async send(k, args) {
+            await Promise.all(this.features.map(async feat => await feat.send(k, args)));
+            return true;
+        }
+
         update() {
             this.post("update", null);
             this.features.forEach(feat => feat.update());
@@ -1108,15 +1107,6 @@ const MAIN = async () => {
             this.#started = false;
 
             this.log();
-        }
-
-        async isDevMode() {
-            if (!this.hasPortal()) return false;
-            return await this.portal.isDevMode();
-        }
-        async getHoliday() {
-            if (!this.hasPortal()) return null;
-            return await this.portal.getHoliday();
         }
 
         get manager() { return this.#manager; }
@@ -1201,7 +1191,7 @@ const MAIN = async () => {
                 if (PLATFORM == "darwin") app.dock.setIcon(icon);
                 if (PLATFORM == "linux") this.window.setIcon(icon);
             };
-            (async () => onHolidayState(await this.getHoliday()))();
+            (async () => onHolidayState(await this.portal.get("holiday")))();
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
@@ -1232,8 +1222,8 @@ const MAIN = async () => {
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
             });
 
-            this.window.on("enter-full-screen", () => { if (this.hasWindow()) this.window.webContents.send("send", "win-fullscreen", [true]); });
-            this.window.on("leave-full-screen", () => { if (this.hasWindow()) this.window.webContents.send("send", "win-fullscreen", [false]); });
+            this.window.on("enter-full-screen", () => this.send("win-fullscreen", [true]));
+            this.window.on("leave-full-screen", () => this.send("win-fullscreen", [false]));
 
             this.perm = false;
             this.window.on("close", e => {
@@ -1250,7 +1240,7 @@ const MAIN = async () => {
                 about: [
                     {
                         label: "About Peninsula "+util.capitalize(this.name),
-                        click: () => { if (this.hasWindow()) this.window.webContents.send("send", "about"); },
+                        click: () => this.send("about"),
                     },
                 ],
                 settings: [
@@ -1308,17 +1298,7 @@ const MAIN = async () => {
                         click: () => {
                             (async () => {
                                 if (!this.hasPortal()) return;
-                                await this.portal.affirm();
-                                let content = "";
-                                try {
-                                    content = await this.portal.fileRead(".config");
-                                } catch (e) {}
-                                let data = null;
-                                try {
-                                    data = JSON.parse(content);
-                                } catch (e) {}
-                                data = util.ensure(data, "obj");
-                                electron.shell.openExternal(data.dbHost);
+                                electron.shell.openExternal(await this.portal.get("db-host"));
                             })();
                         },
                     },
@@ -1432,57 +1412,57 @@ const MAIN = async () => {
                             id: "newproject",
                             label: "New Project",
                             accelerator: "CmdOrCtrl+N",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "newproject"); },
+                            click: () => this.send("newproject"),
                         },
                         {
                             id: "newtab",
                             label: "New Tab",
                             accelerator: "CmdOrCtrl+Shift+N",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "newtab"); },
+                            click: () => this.send("newtab"),
                         },
                         build.div,
                         {
                             id: "openclose",
                             label: "Toggle Open / Closed",
                             accelerator: "Ctrl+F",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "openclose"); },
+                            click: () => this.send("openclose"),
                         },
                         {
                             id: "expandcollapse",
                             label: "Toggle Title Collapsed",
                             accelerator: "Ctrl+Shift+F",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "expandcollapse"); },
+                            click: () => this.send("expandcollapse"),
                         },
                         build.div,
                         {
                             id: "save",
                             label: "Save",
                             accelerator: "CmdOrCtrl+S",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "save"); },
+                            click: () => this.send("save"),
                         },
                         {
                             id: "savecopy",
                             label: "Save as copy",
                             accelerator: "CmdOrCtrl+Shift+S",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "savecopy"); },
+                            click: () => this.send("savecopy"),
                         },
                         build.div,
                         {
                             id: "delete",
                             label: "Delete Project",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "delete"); },
+                            click: () => this.send("delete"),
                         },
                         {
                             id: "closetab",
                             label: "Close Tab",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "close"); },
+                            click: () => this.send("close"),
                         },
                         {
                             id: "close",
                             label: "Close Project",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "close"); },
+                            click: () => this.send("close"),
                         },
                     );
                 },
@@ -1493,48 +1473,48 @@ const MAIN = async () => {
                             id: "newproject",
                             label: "New Project",
                             accelerator: "CmdOrCtrl+N",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "newproject"); },
+                            click: () => this.send("newproject"),
                         },
                         build.div,
                         {
                             id: "addnode",
                             label: "Add Node",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "addnode"); },
+                            click: () => this.send("addnode"),
                         },
                         {
                             id: "addobstacle",
                             label: "Add Obstacle",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "addobstacle"); },
+                            click: () => this.send("addobstacle"),
                         },
                         {
                             id: "addpath",
                             label: "Add Path",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "addpath"); },
+                            click: () => this.send("addpath"),
                         },
                         build.div,
                         {
                             id: "save",
                             label: "Save",
                             accelerator: "CmdOrCtrl+S",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "save"); },
+                            click: () => this.send("save"),
                         },
                         {
                             id: "savecopy",
                             label: "Save as copy",
                             accelerator: "CmdOrCtrl+Shift+S",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "savecopy"); },
+                            click: () => this.send("savecopy"),
                         },
                         build.div,
                         {
                             id: "delete",
                             label: "Delete Project",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "delete"); },
+                            click: () => this.send("delete"),
                         },
                         {
                             id: "close",
                             label: "Close Project",
                             accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "close"); },
+                            click: () => this.send("close"),
                         },
                     );
                     template[3].submenu.unshift(
@@ -1542,12 +1522,12 @@ const MAIN = async () => {
                             id: "maxmin",
                             label: "Toggle Maximized",
                             accelerator: "Ctrl+F",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "maxmin"); },
+                            click: () => this.send("maxmin"),
                         },
                         {
                             id: "resetdivider",
                             label: "Reset Divider",
-                            click: () => { if (this.hasWindow()) this.window.webContents.send("send", "resetdivider"); },
+                            click: () => this.send("resetdivider"),
                         },
                         build.div,
                     );
@@ -1563,22 +1543,20 @@ const MAIN = async () => {
             (async () => {
                 let prevIsDevMode = null;
                 const checkLocalConfig = async () => {
-                    let isDevMode = await this.isDevMode();
+                    let isDevMode = this.hasPortal() && (await this.portal.get("devmode"));
                     this.on("menu-ables", [{ toggleDevTools: isDevMode }]);
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
-                        if (!this.hasWindow()) return;
-                        this.window.webContents.send("send", "win-devmode", [isDevMode]);
+                        this.send("win-devmode", [isDevMode]);
                     }
                 };
                 let prevHoliday = null;
                 const checkConfig = async () => {
-                    let holiday = await this.getHoliday();
+                    let holiday = this.hasPortal() ? (await this.portal.get("holiday")) : null;
                     onHolidayState(holiday);
                     if (prevHoliday != holiday) {
                         prevHoliday = holiday;
-                        if (!this.hasWindow()) return;
-                        this.window.webContents.send("send", "win-holiday", [holiday]);
+                        this.send("win-holiday", [holiday]);
                     }
                 };
                 fs.watchFile(path.join(__dirname, ".config"), () => checkLocalConfig());
@@ -1696,8 +1674,8 @@ const MAIN = async () => {
         async dirDelete(pth) { return Portal.Feature.dirDelete(this.portal, this.name, pth, this.started); }
 
         async get(k) {
-            if (!this.started) return;
-            if (!this.hasName()) return;
+            if (!this.started) return null;
+            if (!this.hasName()) return null;
             k = String(k);
             this.log(`GET - ${k}`);
             let kfs = {
@@ -1716,45 +1694,42 @@ const MAIN = async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.isClosable();
                 },
-                devmode: async () => {
-                    return await this.isDevMode();
-                },
-                holiday: async () => {
-                    return await this.getHoliday();
-                },
             };
             if (k in kfs) return await kfs[k]();
             return null;
         }
         async set(k, v) {
-            if (!this.started) return;
-            if (!this.hasName()) return;
+            if (!this.started) return false;
+            if (!this.hasName()) return false;
             k = String(k);
             this.log(`SET - ${k} = ${JSON.stringify(v)}`);
             let kfs = {
                 fullscreenable: async () => {
-                    if (!this.hasWindow()) return;
+                    if (!this.hasWindow()) return false;
                     this.window.setFullScreenable(!!v);
+                    return true;
                 },
                 fullscreen: async () => {
-                    if (!this.hasWindow()) return;
+                    if (!this.hasWindow()) return false;
                     this.window.setFullScreen(!!v);
+                    return true;
                 },
                 closeable: async () => {
-                    if (!this.hasWindow()) return;
+                    if (!this.hasWindow()) return false;
                     let maximizable = this.window.isMaximizable();
                     this.window.setClosable(!!v);
                     this.window.setMaximizable(maximizable);
+                    return true;
                 },
             };
             if (k in kfs) return await kfs[k]();
-            return null;
+            return false;
         }
         async on(k, args) {
-            if (!this.started) return;
-            if (!this.hasName()) return;
+            if (!this.started) return null;
+            if (!this.hasName()) return null;
             k = String(k);
-            args = Array.isArray(args) ? Array.from(args) : [];
+            args = util.ensure(args, "arr");
             this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
             let namefs = {
                 PRESETS: {
@@ -1920,8 +1895,9 @@ const MAIN = async () => {
                     "exec-term": async () => {
                         this.log("SPAWN term");
                         const process = this.manager.getProcessById("script");
-                        if (!(process instanceof Process)) return;
+                        if (!(process instanceof Process)) return false;
                         process.terminate();
+                        return true;
                     },
                     "exec-get": async id => {
                         id = String(id);
@@ -1975,87 +1951,100 @@ const MAIN = async () => {
                     },
                 },
             };
-            if (k == "back")
-                if (this.name != "PORTAL")
-                    return await this.stop();
-            if (k == "spawn") {
-                let name = String(args[0]);
-                if (!this.hasPortal()) return false;
-                let feats = this.portal.features;
-                let hasFeat = null;
-                feats.forEach(feat => {
-                    if (feat.name != name) return false;
-                    hasFeat = feat;
-                });
-                if (hasFeat instanceof Portal.Feature) {
-                    if (hasFeat.hasWindow()) hasFeat.window.show();
-                    return false;
-                }
-                if (!FEATURES.includes(name)) return false;
-                let feat = new Portal.Feature(name);
-                this.portal.addFeature(feat);
-                return true;
-            }
-            if (k == "menu-ables") {
-                let menuAbles = util.ensure(args[0], "obj");
-                for (let id in menuAbles) {
-                    let able = !!menuAbles[id];
-                    let menu = this.menu.getMenuItemById(id);
-                    if (!(menu instanceof electron.MenuItem)) continue;
-                    menu.enabled = able;
-                }
-                return;
-            }
-            if (k == "state-get") {
-                let k = String(args[0]);
-                await this.affirm();
-                let stateContent = "";
-                try {
-                    stateContent = await this.fileRead(".state");
-                } catch (e) {}
-                let state = null;
-                try {
-                    state = JSON.parse(stateContent);
-                } catch (e) {}
-                state = util.ensure(state, "obj");
-                return state[k];
-            }
-            if (k == "state-set") {
-                let k = String(args[0]), v = args[1];
-                await this.affirm();
-                let stateContent = "";
-                try {
-                    stateContent = await this.fileRead(".state");
-                } catch (e) {}
-                let state = null;
-                try {
-                    state = JSON.parse(stateContent);
-                } catch (e) {}
-                state = util.ensure(state, "obj");
-                state[k] = v;
-                await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
-                return v;
-            }
-            if (k == "state-del") {
-                let k = String(args[0]);
-                await this.affirm();
-                let stateContent = "";
-                try {
-                    stateContent = await this.fileRead(".state");
-                } catch (e) {}
-                let state = null;
-                try {
-                    state = JSON.parse(stateContent);
-                } catch (e) {}
-                state = util.ensure(state, "obj");
-                let v = state[k];
-                delete state[k];
-                return v;
-            }
-            if (namefs[this.name])
-                if (namefs[this.name][k])
+            let kfs = {
+                back: async () => await this.stop(),
+                spawn: async name => {
+                    name = String(name);
+                    if (!this.hasPortal()) return false;
+                    let feats = this.portal.features;
+                    let hasFeat = null;
+                    feats.forEach(feat => {
+                        if (feat.name != name) return false;
+                        hasFeat = feat;
+                    });
+                    if (hasFeat instanceof Portal.Feature) {
+                        if (hasFeat.hasWindow()) hasFeat.window.show();
+                        return false;
+                    }
+                    if (!FEATURES.includes(name)) return false;
+                    let feat = new Portal.Feature(name);
+                    this.portal.addFeature(feat);
+                    return true;
+                },
+                "menu-ables": async menuAbles => {
+                    menuAbles = util.ensure(menuAbles, "obj");
+                    for (let id in menuAbles) {
+                        let able = !!menuAbles[id];
+                        let menu = this.menu.getMenuItemById(id);
+                        if (!(menu instanceof electron.MenuItem)) continue;
+                        menu.enabled = able;
+                    }
+                    return true;
+                },
+                "state-get": async k => {
+                    k = String(k);
+                    await this.affirm();
+                    let stateContent = "";
+                    try {
+                        stateContent = await this.fileRead(".state");
+                    } catch (e) {}
+                    let state = null;
+                    try {
+                        state = JSON.parse(stateContent);
+                    } catch (e) {}
+                    state = util.ensure(state, "obj");
+                    return state[k];
+                },
+                "state-set": async (k, v) => {
+                    k = String(k);
+                    await this.affirm();
+                    let stateContent = "";
+                    try {
+                        stateContent = await this.fileRead(".state");
+                    } catch (e) {}
+                    let state = null;
+                    try {
+                        state = JSON.parse(stateContent);
+                    } catch (e) {}
+                    state = util.ensure(state, "obj");
+                    state[k] = v;
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
+                "state-del": async k => {
+                    k = String(k);
+                    await this.affirm();
+                    let stateContent = "";
+                    try {
+                        stateContent = await this.fileRead(".state");
+                    } catch (e) {}
+                    let state = null;
+                    try {
+                        state = JSON.parse(stateContent);
+                    } catch (e) {}
+                    state = util.ensure(state, "obj");
+                    let v = state[k];
+                    delete state[k];
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
+            };
+            if (k in kfs)
+                return await kfs[k](...args);
+            if (this.name in namefs)
+                if (k in namefs[this.name])
                     return await namefs[this.name][k](...args);
             return null;
+        }
+        async send(k, args) {
+            if (!this.started) return false;
+            if (!this.hasName()) return false;
+            k = String(k);
+            args = util.ensure(args, "arr");
+            this.log(`SEND - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("send", k, args);
+            return true;
         }
 
         update() { this.post("update", null); }
