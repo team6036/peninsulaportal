@@ -538,6 +538,10 @@ const MAIN = async () => {
             ipc.handle("get", async (e, k) => await this.getCallback(e.sender.id, k));
             ipc.handle("set", async (e, k, v) => await this.setCallback(e.sender.id, k, v));
 
+            ipc.handle("on", async (e, k, args) => {
+                return await this.onCallback(e.sender.id, k, args);
+            });
+
             ipc.handle("file-has", async (e, pth) => {
                 let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
@@ -583,10 +587,6 @@ const MAIN = async () => {
                 let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.dirDelete(pth);
-            });
-
-            ipc.handle("on", async (e, k, args) => {
-                return await this.onCallback(e.sender.id, k, args);
             });
 
             (async () => {
