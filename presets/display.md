@@ -5,7 +5,7 @@
 <p>
     <span>Application Data Directory</span>
     <span class="space"></span>
-    <button class="cmd off" id="cleanup-app-data-dir">Cleanup</button>
+    <button class="cmd" id="cleanup-app-data-dir">Cleanup</button>
     <button class="cmd" id="open-app-data-dir">Open<ion-icon name="open-outline"></ion-icon></button>
 </p>
 <p>
@@ -34,5 +34,9 @@
 <p>
     <span>Holiday</span>
     <span class="space"></span>
-    <input class="val" id="holiday" placeholder="No holiday :(" style="background-color:transparent;color:var(--a);text-align:right;">
+    <input class="val" id="holiday" placeholder="No holiday" style="background-color:transparent;color:var(--a);text-align:right;">
 </p>
+
+Colorsheet  
+
+<div id="colorsheet"></div>
