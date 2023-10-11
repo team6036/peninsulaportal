@@ -663,6 +663,7 @@ const MAIN = async () => {
                 {
                     type: "dir", name: "logs",
                     children: [
+                        // ./logs/*.log
                         { type: "file", match: (_, name) => name.endsWith(".log") },
                     ],
                 },

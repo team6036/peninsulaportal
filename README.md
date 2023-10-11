@@ -25,7 +25,7 @@
 ## Getting Started
 
 ### Releases
-Check the releases for different packages  
+Check the releases for different packages.  
 MacOS (Darwin) requires running a few more commands to authorize the application - otherwise application will be marked as "damaged."
 1. `cd` to the directory containing the application
 2. `xattr -cr Peninsula.app`
@@ -85,6 +85,10 @@ Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Ch
 > How can I graph topics in the Graph, Odometry 2D, or Odometry 3D?
 
 Drag topics from the left or from the Browser to the axis you want for Graph, or into the pose section for Odometry 2D and 3D.
+
+> How can I change the color, or display type of topics being graphed or displayed in Graph, Odometry 2D, or Odometry 3d?
+
+Click on them to open a more extensive menu of the options available to you. Clicking on the eye can also hide the topic if needed.
 
 ### Development
 
@@ -165,6 +169,8 @@ Here is what the python script should expect as input and what it should output:
     <p align="center">Settings for Peninsula Portal</p>
 </div>
 
+## Application Data
+
 ### Application Data Directory
 The location where any data stored within the application is located on the computer.
 - Windows: `%APPDATA%`
@@ -194,6 +200,11 @@ Repolling the database will pull what it needs from this database, though it mig
 
 ### Competition Mode
 Toggling competition mode on disables polling of database, if constant repolling or rewriting of existing files causes lag.
+
+## Appearance
+
+### Holiday
+The current application holiday!
 
 <div>
     <h1 id="resources" align="center">Resources</h1>
