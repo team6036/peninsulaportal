@@ -91,6 +91,14 @@ button:not(.override) {
 #PAGE > .content > article p > span.space {
     flex-basis: 100%;
 }
+#PAGE > .content > article p > button.special {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a3);
+    --fgd: var(--v6);
+}
 #PAGE > .content > article p > button.on {
     --bg: var(--cg3);
     --fg: var(--v8);
@@ -112,6 +120,11 @@ button:not(.override) {
 
     background-color: var(--v2-8);
     border-radius: 5px;
+}
+#PAGE > .content > article > #colorsheet {
+    display: inline-grid;
+    grid-template-columns: repeat(9, 30px);
+    gap: 2px;
 }
 #PAGE > .content > .loads {
     position: absolute;

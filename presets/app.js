@@ -19,6 +19,22 @@ export default class App extends core.App {
                 let resp = await fetch("./display.md");
                 let text = await resp.text();
                 document.querySelector("#PAGE > .content").appendChild(await this.createMarkdown(text));
+                const eColorsheet = document.getElementById("colorsheet");
+                if (eColorsheet instanceof HTMLDivElement) {
+                    let headers = ["v", "a", ...this.colors.map(c => "c"+c)];
+                    eColorsheet.style.gridTemplateRows = "repeat("+headers.length+", 20px)";
+                    eColorsheet.innerHTML = "";
+                    headers.forEach((header, i) => {
+                        for (let x = 0; x <= 8; x++) {
+                            let elem = document.createElement("div");
+                            eColorsheet.appendChild(elem);
+                            elem.style.gridRow = (i+1)+" / "+(i+2);
+                            elem.style.gridColumn = (x+1)+" / "+(x+2);
+                            elem.style.backgroundColor = "var(--"+header+x+")";
+                            elem.style.border = "2px solid var(--v4)";
+                        }
+                    });
+                }
                 Array.from(document.querySelectorAll("#PAGE > .content > article button.cmd")).forEach(async elem => {
                     if (elem.id == "poll-db-host") {
                         setInterval(async () => {
@@ -67,6 +83,12 @@ export default class App extends core.App {
                             elem.checked = checked;
                         } else {
                             let value = String(await window.api.get("val-"+elem.id));
+                            let idfs = {
+                                "holiday": async () => {
+                                    value = (value == "null") ? "" : value.split(" ").map(v => util.capitalize(v)).join(" ");
+                                },
+                            };
+                            if (elem.id in idfs) await idfs[elem.id]();
                             if (elem.value == value) {
                                 elem.disabled = disabled;
                                 lock = false;
@@ -74,12 +96,6 @@ export default class App extends core.App {
                             }
                             elem.value = value;
                         }
-                        let idfs = {
-                            "holiday": async () => {
-                                elem.value = (elem.value == "null") ? "" : elem.value.split(" ").map(v => util.capitalize(v)).join(" ");
-                            },
-                        };
-                        if (elem.id in idfs) await idfs[elem.id]();
                         elem.disabled = disabled;
                         lock = false;
                     };
