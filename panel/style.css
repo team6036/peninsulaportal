@@ -1314,6 +1314,22 @@
     align-content: center;
     gap: 5px;
 }
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .content > .info {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+
+    color: var(--v8-4);
+
+    font-family: monospace;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+
+    visibility: hidden;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .content.showinfo > .info {
+    visibility: inherit;
+}
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .content > .nav {
     z-index: 3;
     

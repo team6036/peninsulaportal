@@ -3722,6 +3722,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     constructor(...a) {
         super("3d");
 
+        const eInfo = document.createElement("div");
+        this.eContent.appendChild(eInfo);
+        eInfo.classList.add("info");
+        eInfo.innerHTML = "   [W]\n[A][S][D]\n[ Space ] Up\n[ Shift ] Down\n[  Esc  ] Leave Pointer Lock";
+
         this.quality = 3;
 
         this.#scene = new THREE.Scene();
@@ -3777,10 +3782,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         const loader = new GLTFLoader();
 
-        this.#isProjection = false;
-        this.#isOrbit = false;
-        this.#isMeters = true;
-        this.#isDegrees = true;
+        this.#isProjection = null;
+        this.#isOrbit = null;
+        this.#isMeters = null;
+        this.#isDegrees = null;
 
         const eField = this.getEOptionSection("f");
         let eNav;
@@ -4035,6 +4040,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             if (this.controls instanceof OrbitControls) {
                 this.controls.target.set(0, 0, 0);
                 this.controls.update();
+                this.eContent.classList.remove("showinfo");
             } else if (this.controls instanceof PointerLockControls) {
                 if (this.controls.isLocked) {
                     let z = (keys.has("KeyW") || keys.has("ArrowUp")) - (keys.has("KeyS") || keys.has("ArrowDown"));
@@ -4046,7 +4052,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     this.controls.moveForward(velocity.z);
                     this.controls.moveRight(velocity.x);
                     this.camera.position.y += velocity.y;
-                } else velocity.imul(0);
+                    this.eContent.classList.add("showinfo");
+                } else {
+                    velocity.imul(0);
+                    this.eContent.classList.remove("showinfo");
+                }
             }
             this.camera.position.x = Math.round(this.camera.position.x*10000)/10000;
             this.camera.position.y = Math.round(this.camera.position.y*10000)/10000;
