@@ -32,7 +32,6 @@ export default class App extends core.App {
                             elem.style.gridRow = (i+1)+" / "+(i+2);
                             elem.style.gridColumn = (x+1)+" / "+(x+2);
                             elem.style.backgroundColor = "var(--"+header+x+")";
-                            elem.style.border = "2px solid var(--v4)";
                         }
                     });
                 }

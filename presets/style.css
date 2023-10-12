@@ -124,7 +124,8 @@ button:not(.override) {
 #PAGE > .content > article > #colorsheet {
     display: inline-grid;
     grid-template-columns: repeat(9, 30px);
-    gap: 2px;
+
+    border: 2px solid var(--v8);
 }
 #PAGE > .content > .info {
     position: absolute;
