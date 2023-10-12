@@ -14,7 +14,6 @@ const ignores = [
     "^build*",
     "^temp*",
     "^.gitignore",
-    "^.devconfig",
     "^package.js$",
 ];
 

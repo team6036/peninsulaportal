@@ -1,5 +1,11 @@
 <h1 align="center"><span style="color:var(--a);">Peninsula</span>Presets</h1>
 
+<p>
+    <span>Version</span>
+    <span class="space"></span>
+    <input class="val" id="version" placeholder="No version" style="background-color:transparent;text-align:right;">
+</p>
+
 ## Application Data
 
 <p>

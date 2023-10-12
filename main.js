@@ -930,6 +930,9 @@ const MAIN = async () => {
                     let robots = await kfs.robots();
                     return (active in robots) ? active : null;
                 },
+                production: async () => {
+                    return app.isPackaged;
+                },
                 _fulldevconfig: async () => {
                     let content = "";
                     try {
@@ -943,7 +946,10 @@ const MAIN = async () => {
                     return data;
                 },
                 devmode: async () => {
-                    return !!(await kfs._fulldevconfig()).isDevMode;
+                    return !(await kfs.production()) && (!!(await kfs._fulldevconfig()).isDevMode);
+                },
+                version: async () => {
+                    return String((await kfs._fulldevconfig()).version);
                 },
                 _fullconfig: async () => {
                     await this.affirm();
@@ -981,6 +987,7 @@ const MAIN = async () => {
         async getValue(k) {
             k = String(k);
             let kfs = {
+                "version": async () => await this.get("version"),
                 "db-host": async () => await this.get("db-host"),
                 "holiday": async () => await this.get("holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
