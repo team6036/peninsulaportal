@@ -1651,8 +1651,10 @@ const MAIN = async () => {
             await portal.affirm();
             let hasFeatureData = await Portal.dirHas(this.getDataPath(portal, name, started));
             if (!hasFeatureData) await Portal.dirMake(this.getDataPath(portal, name, started));
+            let hasConfig = await Portal.fileHas([this.getDataPath(portal, name, started), ".config"]);
+            if (!hasConfig) await Portal.fileWrite([this.getDataPath(portal, name, started), ".config"], JSON.stringify({}, null, "\t"));
             let hasState = await Portal.fileHas([this.getDataPath(portal, name, started), ".state"]);
-            if (!hasState) await Portal.fileWrite([this.getDataPath(portal, name, started), ".state"], "");
+            if (!hasState) await Portal.fileWrite([this.getDataPath(portal, name, started), ".state"], JSON.stringify({}, null, "\t"));
             return true;
         }
         async affirm() { return await Portal.Feature.affirm(this.portal, this.name, this.started); }
@@ -1773,6 +1775,87 @@ const MAIN = async () => {
             k = String(k);
             args = util.ensure(args, "arr");
             this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
+            let kfs = {
+                back: async () => await this.stop(),
+                "menu-ables": async menuAbles => {
+                    menuAbles = util.ensure(menuAbles, "obj");
+                    for (let id in menuAbles) {
+                        let able = !!menuAbles[id];
+                        let menu = this.menu.getMenuItemById(id);
+                        if (!(menu instanceof electron.MenuItem)) continue;
+                        menu.enabled = able;
+                    }
+                    return true;
+                },
+                _config: async () => {
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".config");
+                    } catch (e) {}
+                    let config = null;
+                    try {
+                        config = JSON.parse(content);
+                    } catch (e) {}
+                    config = util.ensure(config, "obj");
+                    return config;
+                },
+                "config-get": async k => {
+                    k = String(k);
+                    let config = await kfs._config();
+                    return config[k];
+                },
+                "config-set": async (k, v) => {
+                    k = String(k);
+                    let config = await kfs._config();
+                    config[k] = v;
+                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
+                    return v;
+                },
+                "config-del": async k => {
+                    k = String(k);
+                    let config = await kfs._config();
+                    let v = config[k];
+                    delete config[k];
+                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
+                    return v;
+                },
+                _state: async () => {
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".state");
+                    } catch (e) {}
+                    let state = null;
+                    try {
+                        state = JSON.parse(content);
+                    } catch (e) {}
+                    state = util.ensure(state, "obj");
+                    return state;
+                },
+                "state-get": async k => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    return state[k];
+                },
+                "state-set": async (k, v) => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    state[k] = v;
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
+                "state-del": async k => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    let v = state[k];
+                    delete state[k];
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
+            };
+            if (k in kfs)
+                return await kfs[k](...args);
             let namefs = {
                 PRESETS: {
                     "cmd-open-app-data-dir": async () => {
@@ -1993,68 +2076,6 @@ const MAIN = async () => {
                     },
                 },
             };
-            let kfs = {
-                back: async () => await this.stop(),
-                "menu-ables": async menuAbles => {
-                    menuAbles = util.ensure(menuAbles, "obj");
-                    for (let id in menuAbles) {
-                        let able = !!menuAbles[id];
-                        let menu = this.menu.getMenuItemById(id);
-                        if (!(menu instanceof electron.MenuItem)) continue;
-                        menu.enabled = able;
-                    }
-                    return true;
-                },
-                "state-get": async k => {
-                    k = String(k);
-                    await this.affirm();
-                    let stateContent = "";
-                    try {
-                        stateContent = await this.fileRead(".state");
-                    } catch (e) {}
-                    let state = null;
-                    try {
-                        state = JSON.parse(stateContent);
-                    } catch (e) {}
-                    state = util.ensure(state, "obj");
-                    return state[k];
-                },
-                "state-set": async (k, v) => {
-                    k = String(k);
-                    await this.affirm();
-                    let stateContent = "";
-                    try {
-                        stateContent = await this.fileRead(".state");
-                    } catch (e) {}
-                    let state = null;
-                    try {
-                        state = JSON.parse(stateContent);
-                    } catch (e) {}
-                    state = util.ensure(state, "obj");
-                    state[k] = v;
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
-                    return v;
-                },
-                "state-del": async k => {
-                    k = String(k);
-                    await this.affirm();
-                    let stateContent = "";
-                    try {
-                        stateContent = await this.fileRead(".state");
-                    } catch (e) {}
-                    let state = null;
-                    try {
-                        state = JSON.parse(stateContent);
-                    } catch (e) {}
-                    state = util.ensure(state, "obj");
-                    let v = state[k];
-                    delete state[k];
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
-                    return v;
-                },
-            };
-            if (k in kfs)
-                return await kfs[k](...args);
             if (this.name in namefs)
                 if (k in namefs[this.name])
                     return await namefs[this.name][k](...args);
