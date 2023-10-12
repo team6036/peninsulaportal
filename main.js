@@ -222,6 +222,23 @@ const MAIN = async () => {
                 this.stream.write.apply(this.stream, a);
             };
             this.log();
+            app.dock.setMenu(electron.Menu.buildFromTemplate([
+                {
+                    label: "New Feature",
+                    submenu: [
+                        {
+                            label: "Peninsula Panel",
+                            accelerator: "CmdOrCtrl+1",
+                            click: () => this.on("spawn", ["PANEL"]),
+                        },
+                        {
+                            label: "Peninsula Planner",
+                            accelerator: "CmdOrCtrl+2",
+                            click: () => this.on("spawn", ["PLANNER"]),
+                        },
+                    ],
+                },
+            ]));
             return true;
         }
 
@@ -1055,8 +1072,25 @@ const MAIN = async () => {
             k = String(k);
             args = util.ensure(args, "arr");
             let kfs = {
+                spawn: async name => {
+                    name = String(name);
+                    let feats = this.features;
+                    let hasFeat = null;
+                    feats.forEach(feat => {
+                        if (feat.name != name) return false;
+                        hasFeat = feat;
+                    });
+                    if (hasFeat instanceof Portal.Feature) {
+                        if (hasFeat.hasWindow()) hasFeat.window.show();
+                        return false;
+                    }
+                    if (!FEATURES.includes(name)) return false;
+                    let feat = new Portal.Feature(name);
+                    this.addFeature(feat);
+                    return true;
+                },
             };
-            if (k in kfs) return await kfs[k]();
+            if (k in kfs) return await kfs[k](...args);
             throw "No possible \"on\" for key: "+k;
         }
         async onCallback(id, k, args) {
@@ -1255,7 +1289,7 @@ const MAIN = async () => {
                     {
                         label: "Settings",
                         accelerator: "CmdOrCtrl+,",
-                        click: () => this.on("spawn", ["PRESETS"]),
+                        click: () => { if (this.hasPortal()) this.portal.on("spawn", ["PRESETS"]); },
                     },
                 ],
                 hide: [
@@ -1318,12 +1352,12 @@ const MAIN = async () => {
                             {
                                 label: "Peninsula Panel",
                                 accelerator: "CmdOrCtrl+1",
-                                click: () => this.on("spawn", ["PANEL"]),
+                                click: () => { if (this.hasPortal()) this.portal.on("spawn", ["PANEL"]); },
                             },
                             {
                                 label: "Peninsula Planner",
                                 accelerator: "CmdOrCtrl+2",
-                                click: () => this.on("spawn", ["PLANNER"]),
+                                click: () => { if (this.hasPortal()) this.portal.on("spawn", ["PLANNER"]); },
                             },
                         ],
                     },
@@ -1961,24 +1995,6 @@ const MAIN = async () => {
             };
             let kfs = {
                 back: async () => await this.stop(),
-                spawn: async name => {
-                    name = String(name);
-                    if (!this.hasPortal()) return false;
-                    let feats = this.portal.features;
-                    let hasFeat = null;
-                    feats.forEach(feat => {
-                        if (feat.name != name) return false;
-                        hasFeat = feat;
-                    });
-                    if (hasFeat instanceof Portal.Feature) {
-                        if (hasFeat.hasWindow()) hasFeat.window.show();
-                        return false;
-                    }
-                    if (!FEATURES.includes(name)) return false;
-                    let feat = new Portal.Feature(name);
-                    this.portal.addFeature(feat);
-                    return true;
-                },
                 "menu-ables": async menuAbles => {
                     menuAbles = util.ensure(menuAbles, "obj");
                     for (let id in menuAbles) {
