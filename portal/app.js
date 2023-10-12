@@ -308,20 +308,12 @@ export default class App extends core.App {
                 eLoading.style.padding = "5px";
                 this.eInfo.appendChild(eLoading);
                 (async () => {
-                    let about = await this.getAbout();
                     eLoading.remove();
-                    let lines = new Array(4).fill(null).map(_ => document.createElement("div"));
-                    lines.forEach(line => this.eInfo.appendChild(line));
-                    lines[0].textContent = "NodeJS: "+about.node;
-                    lines[1].textContent = "Chrome: "+about.chrome;
-                    lines[2].textContent = "Electron: "+about.electron;
-                    lines[3].textContent = "OS: "+about.os.platform+" "+about.os.arch;
-                    if (about.os.cpus.length > 0) {
-                        let models = [...new Set(about.os.cpus.map(obj => obj.model))];
-                        lines[3].textContent += " / ";
-                        if (models.length > 1) lines[3].textContent += "CPUS: "+models.join(", ");
-                        else lines[3].textContent += models[0];
-                    }
+                    (await this.getAboutLines()).forEach(line => {
+                        let elem = document.createElement("div");
+                        this.eInfo.appendChild(elem);
+                        elem.textContent = line;
+                    });
                 })();
                 this.#eSettingsBtn = this.eInfo.querySelector(":scope > .nav > button#settings");
                 if (this.hasESettingsBtn())

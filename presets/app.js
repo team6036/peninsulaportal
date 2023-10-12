@@ -4,6 +4,7 @@ import { V } from "../util.mjs";
 import * as core from "../core.mjs";
 
 export default class App extends core.App {
+    #eInfo;
     #eLoads;
 
     constructor() {
@@ -63,6 +64,7 @@ export default class App extends core.App {
                 });
                 Array.from(document.querySelectorAll("#PAGE > .content > article input.val")).forEach(async elem => {
                     let type = {
+                        "version": "str",
                         "db-host": "str",
                         "comp-mode": "bool",
                         "holiday": "str",
@@ -84,6 +86,10 @@ export default class App extends core.App {
                         } else {
                             let value = String(await window.api.get("val-"+elem.id));
                             let idfs = {
+                                "version": async () => {
+                                    let isProduction = !!await window.api.get("production");
+                                    if (!isProduction) value += "-dev";
+                                },
                                 "holiday": async () => {
                                     value = (value == "null") ? "" : value.split(" ").map(v => util.capitalize(v)).join(" ");
                                 },
@@ -119,6 +125,9 @@ export default class App extends core.App {
                     };
                     if (type in typefs) await typefs[type]();
                     let idfs = {
+                        "version": async () => {
+                            elem.disabled = true;
+                        },
                         "holiday": async () => {
                             elem.disabled = true;
                         },
@@ -148,6 +157,28 @@ export default class App extends core.App {
                 });
             })();
 
+            this.#eInfo = document.querySelector("#PAGE > .content > .info");
+            if (this.hasEInfo()) {
+                let eLoading = document.createElement("div");
+                eLoading.classList.add("loading");
+                eLoading.style.setProperty("--size", "5px");
+                eLoading.style.setProperty("--color", "var(--v2)");
+                eLoading.style.padding = "5px";
+                this.eInfo.appendChild(eLoading);
+                (async () => {
+                    eLoading.remove();
+                    (await this.getAboutLines()).forEach(line => {
+                        let elem = document.createElement("div");
+                        this.eInfo.appendChild(elem);
+                        elem.textContent = line;
+                    });
+                })();
+                setInterval(async () => {
+                    const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
+                    if (!(dbHostAnchor instanceof HTMLAnchorElement)) return;
+                    dbHostAnchor.href = await window.api.get("val-db-host");
+                }, 250);
+            }
             this.#eLoads = document.querySelector("#PAGE > .content > .loads");
 
             let prevLoads = [];
@@ -175,6 +206,8 @@ export default class App extends core.App {
         });
     }
 
+    get eInfo() { return this.#eInfo; }
+    hasEInfo() { return this.eInfo instanceof HTMLDivElement; }
     get eLoads() { return this.#eLoads; }
     hasELoads() { return this.eLoads instanceof HTMLDivElement; }
 }

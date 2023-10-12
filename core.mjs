@@ -134,12 +134,31 @@ export class App extends Target {
 
     async getAbout() {
         let os = await window.version.os();
+        let app = await window.api.get("version");
+        let isProduction = await window.api.get("production");
         return {
             node: window.version.node(),
             chrome: window.version.chrome(),
             electron: window.version.electron(),
             os: os,
+            app: app, isProduction: isProduction,
         };
+    }
+    async getAboutLines() {
+        let about = await this.getAbout();
+        let lines = new Array(5).fill("");
+        lines[0] = "NodeJS: "+about.node;
+        lines[1] = "Chrome: "+about.chrome;
+        lines[2] = "Electron: "+about.electron;
+        lines[3] = "OS: "+about.os.platform+" "+about.os.arch;
+        if (about.os.cpus.length > 0) {
+            let models = [...new Set(about.os.cpus.map(obj => obj.model))];
+            lines[3] += " / ";
+            if (models.length > 1) lines[3] += "CPUS: "+models.join(", ");
+            else lines[3] += models[0];
+        }
+        lines[4] = "App: "+about.app+(about.isProduction ? "" : "-dev");
+        return lines;
     }
 
     async createMarkdown(text) {
@@ -301,24 +320,12 @@ export class App extends Target {
         });
         this.addHandler("cmd-about", async args => {
             let name = String(await window.api.get("name"));
-            let about = await this.getAbout();
             let holiday = await window.api.get("holiday");
             let pop = this.alert();
             pop.iconSrc = root+"/assets/app/" + ((holiday == null) ? "icon.svg" : `icon-${holiday}.svg`);
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+util.capitalize(name);
-            let lines = new Array(4).fill("");
-            lines[0] = "NodeJS: "+about.node;
-            lines[1] = "Chrome: "+about.chrome;
-            lines[2] = "Electron: "+about.electron;
-            lines[3] = "OS: "+about.os.platform+" "+about.os.arch;
-            if (about.os.cpus.length > 0) {
-                let models = [...new Set(about.os.cpus.map(obj => obj.model))];
-                lines[3] += " / ";
-                if (models.length > 1) lines[3] += "CPUS: "+models.join(", ");
-                else lines[3] += models[0];
-            }
-            pop.info = lines.join("\n");
+            pop.info = (await this.getAboutLines()).join("\n");
             pop.hasInfo = true;
         });
         const onFullScreenState = is => {
