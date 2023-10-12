@@ -12,6 +12,8 @@ const electron = require("electron");
 const app = electron.app;
 const ipc = electron.ipcMain;
 
+const fetch = require("electron-fetch").default;
+
 const log = (...a) => {
     let now = new Date();
     let yr = now.getFullYear();
@@ -337,7 +339,6 @@ const MAIN = async () => {
             this.#isLoading = true;
             let r = await (async () => {
                 await this.affirm();
-                const fetch = (await import("node-fetch")).default;
                 this.log("DB finding host");
                 this.clearLoads();
                 this.addLoad("find");
