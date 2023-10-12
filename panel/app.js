@@ -4844,6 +4844,42 @@ export default class App extends core.App {
                     e.stopPropagation();
                     let itm;
                     let menu = new core.App.ContextMenu();
+                    itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
+                    itm.shortcut = "⌘N";
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-newproject", null);
+                    });
+                    itm = menu.addItem(new core.App.ContextMenu.Item("New Tab", "add"));
+                    itm.shortcut = "⇧⌘N";
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-newtab", null);
+                    });
+                    menu.addItem(new core.App.ContextMenu.Divider());
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
+                    itm.shortcut = "⌘S";
+                    itm.addHandler("trigger", async data => {
+                        this.post("cmd-save", null);
+                    });
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
+                    itm.shortcut = "⇧⌘S";
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-savecopy", null);
+                    });
+                    menu.addItem(new core.App.ContextMenu.Divider());
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-delete", null);
+                    });
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
+                    itm.shortcut = "⌥⌘W";
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-closetab", null);
+                    });
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
+                    itm.shortcut = "⇧⌘W";
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-close", null);
+                    });
                     this.contextMenu = menu;
                     let r = this.eFileBtn.getBoundingClientRect();
                     this.placeContextMenu(r.left, r.bottom);
@@ -4854,6 +4890,10 @@ export default class App extends core.App {
                     e.stopPropagation();
                     let itm;
                     let menu = new core.App.ContextMenu();
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Connect / Disconnect"));
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-conndisconn", null);
+                    });
                     this.contextMenu = menu;
                     let r = this.eEditBtn.getBoundingClientRect();
                     this.placeContextMenu(r.left, r.bottom);
@@ -4864,6 +4904,16 @@ export default class App extends core.App {
                     e.stopPropagation();
                     let itm;
                     let menu = new core.App.ContextMenu();
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Options Opened / Closed"));
+                    itm.shortcut = "⌃F";
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-openclose", null);
+                    });
+                    itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Title Collapsed"));
+                    itm.shortcut = "⇧⌘F";
+                    itm.addHandler("trigger", data => {
+                        this.post("cmd-expandcollapse", null);
+                    });
                     this.contextMenu = menu;
                     let r = this.eViewBtn.getBoundingClientRect();
                     this.placeContextMenu(r.left, r.bottom);
@@ -4888,6 +4938,8 @@ export default class App extends core.App {
                 this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
                 this.#eProjectInfoAddressInput = this.eProjectInfo.querySelector(":scope > .content > input#infoaddress");
                 this.#eProjectInfoConnectionBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infoconnection");
+                if (this.hasEProjectInfoConnectionBtn())
+                    this.eProjectInfoConnectionBtn.addEventListener("click", e => this.post("cmd-conndisconn"));
                 this.#eProjectInfoSaveBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infosave");
                 this.#eProjectInfoCopyBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infocopy");
                 this.#eProjectInfoDeleteBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infodelete");
@@ -5219,9 +5271,9 @@ export default class App extends core.App {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (page.choosing) return;
-                if (!(source instanceof subcore.Project)) source = page.project;
-                if (!(source instanceof subcore.Project)) return;
-                let project = new subcore.Project(source);
+                if (!(source instanceof Project)) source = page.project;
+                if (!(source instanceof Project)) return;
+                let project = new Project(source);
                 project.meta.name += " copy";
                 await this.setPage("PROJECT", { project: project });
                 await this.post("cmd-save", null);
@@ -5867,12 +5919,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 if (!this.hasRootSource()) this.rootSource = new NTSource(null);
                 this.rootSource.address = null;
             });
-        if (this.app.hasEProjectInfoConnectionBtn())
-            this.app.eProjectInfoConnectionBtn.addEventListener("click", e => {
-                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
-                if (!this.rootSource.connecting && !this.rootSource.connected) this.rootSource.address = this.hasProject() ? this.project.config.ip : null;
-                else this.rootSource.address = null;
-            });
+        this.app.addHandler("cmd-conndisconn", data => {
+            if (!this.hasRootSource()) this.rootSource = new NTSource(null);
+            if (!this.rootSource.connecting && !this.rootSource.connected) this.rootSource.address = this.hasProject() ? this.project.config.ip : null;
+            else this.rootSource.address = null;
+        });
 
         this.#projectId = null;
 
@@ -6018,7 +6069,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.rootSource = new NTSource(null);
 
         this.addHandler("project-set", data => {
-            this.rootWidget = this.project.buildRootWidget();
+            this.rootWidget = this.hasProject() ? this.project.buildRootWidget() : null;
         });
         this.addHandler("update", data => {
             if (this.hasRootWidget()) {

@@ -1465,19 +1465,6 @@ const MAIN = async () => {
                         },
                         build.div,
                         {
-                            id: "openclose",
-                            label: "Toggle Open / Closed",
-                            accelerator: "Ctrl+F",
-                            click: () => this.send("openclose"),
-                        },
-                        {
-                            id: "expandcollapse",
-                            label: "Toggle Title Collapsed",
-                            accelerator: "Ctrl+Shift+F",
-                            click: () => this.send("expandcollapse"),
-                        },
-                        build.div,
-                        {
                             id: "save",
                             label: "Save",
                             accelerator: "CmdOrCtrl+S",
@@ -1498,8 +1485,8 @@ const MAIN = async () => {
                         {
                             id: "closetab",
                             label: "Close Tab",
-                            accelerator: "CmdOrCtrl+Shift+W",
-                            click: () => this.send("close"),
+                            accelerator: "CmdOrCtrl+Option+W",
+                            click: () => this.send("closetab"),
                         },
                         {
                             id: "close",
@@ -1507,6 +1494,29 @@ const MAIN = async () => {
                             accelerator: "CmdOrCtrl+Shift+W",
                             click: () => this.send("close"),
                         },
+                    );
+                    template[2].submenu.unshift(
+                        {
+                            id: "conndisconn",
+                            label: "Toggle Connect / Disconnect",
+                            click: () => this.send("conndisconn"),
+                        },
+                        build.div,
+                    );
+                    template[3].submenu.unshift(
+                        {
+                            id: "openclose",
+                            label: "Toggle Options Opened / Closed",
+                            accelerator: "Ctrl+F",
+                            click: () => this.send("openclose"),
+                        },
+                        {
+                            id: "expandcollapse",
+                            label: "Toggle Title Collapsed",
+                            accelerator: "Ctrl+Shift+F",
+                            click: () => this.send("expandcollapse"),
+                        },
+                        build.div,
                     );
                 },
                 PLANNER: () => {
