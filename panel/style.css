@@ -791,7 +791,7 @@
     border-radius: 10px;
     outline: none;
 }
-#PROJECTPAGE > .content .item.panel:focus {
+#PROJECTPAGE > .content .item.panel.active {
     border: 2px solid var(--v3);
 }
 #PROJECTPAGE > .content .item.panel > button.options {

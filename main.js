@@ -1078,7 +1078,7 @@ const MAIN = async () => {
                     let feats = this.features;
                     let hasFeat = null;
                     feats.forEach(feat => {
-                        if (feat.name != name) return false;
+                        if (feat.name != name) return;
                         hasFeat = feat;
                     });
                     if (hasFeat instanceof Portal.Feature) {
@@ -1485,13 +1485,12 @@ const MAIN = async () => {
                         {
                             id: "closetab",
                             label: "Close Tab",
-                            accelerator: "CmdOrCtrl+Option+W",
+                            accelerator: "CmdOrCtrl+Shift+W",
                             click: () => this.send("closetab"),
                         },
                         {
                             id: "close",
                             label: "Close Project",
-                            accelerator: "CmdOrCtrl+Shift+W",
                             click: () => this.send("close"),
                         },
                     );
