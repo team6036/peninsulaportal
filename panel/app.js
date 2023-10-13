@@ -441,15 +441,12 @@ class Widget extends core.Target {
     }
     hasApp() { return this.app instanceof App; }
 
+    contains(v) { return v == this; }
+
     format() {}
     collapse() {}
 
     update() { this.post("update", null); }
-
-    get path() {
-        return null;
-        if (!this.hasParent()) return "";
-    }
 }
 
 class Container extends Widget {
@@ -600,6 +597,16 @@ class Container extends Widget {
         this.format();
     }
 
+    contains(v) {
+        if (v == this) return true;
+        let contains = false;
+        this.children.forEach(child => {
+            if (contains) return;
+            contains ||= child.contains(v);
+        });
+        return contains;
+    }
+
     format() {
         this.elem.classList.remove("x");
         this.elem.classList.remove("y");
@@ -708,7 +715,11 @@ class Panel extends Widget {
         super();
 
         this.elem.classList.add("panel");
-        this.elem.tabIndex = 0;
+        this.elem.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.hasPage()) return;
+            this.page.activeWidget = this;
+        });
 
         this.#tabs = [];
         this.#tabIndex = null;
@@ -741,7 +752,6 @@ class Panel extends Widget {
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Close Panel", "close"));
-            // itm.shortcut = "⇧⌘W";
             itm.addHandler("trigger", data => {
                 if (this.hasPageParent()) return this.parent.rootWidget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
@@ -1009,11 +1019,6 @@ Panel.Tab = class PanelTab extends core.Target {
     set name(v) { this.eTabName.textContent = v; }
 
     update() { this.post("update", null); }
-
-    get path() {
-        if (!this.hasParent()) return "";
-        return this.parent.path + "-" + this.parent.tabs.indexOf(this);
-    }
 
     getHovered(pos, options) {
         pos = new V(pos);
@@ -4871,12 +4876,11 @@ export default class App extends core.App {
                         this.post("cmd-delete", null);
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
-                    itm.shortcut = "⌥⌘W";
+                    itm.shortcut = "⇧⌘W";
                     itm.addHandler("trigger", data => {
                         this.post("cmd-closetab", null);
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
-                    itm.shortcut = "⇧⌘W";
                     itm.addHandler("trigger", data => {
                         this.post("cmd-close", null);
                     });
@@ -5213,48 +5217,33 @@ export default class App extends core.App {
                 }
                 page.rootWidget.collapse();
             });
-            const getWidgetFromElem = (widget, elem) => {
-                if (!(widget instanceof Widget)) return null;
-                if (widget.elem == elem) return widget;
-                if (widget instanceof Container) {
-                    for (let i = 0; i < widget.children.length; i++) {
-                        let child = getWidgetFromElem(widget.children[i], elem);
-                        if (child instanceof Widget) return child;
-                    }
-                }
-                return null;
-            };
             this.addHandler("cmd-newtab", data => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
-                const elem = document.activeElement;
-                const active = getWidgetFromElem(page.rootWidget, elem);
-                if (!(active instanceof Panel)) return;
+                if (!page.hasActivePanel()) return;
+                const active = page.activeWidget;
                 active.addTab(new Panel.AddTab());
             });
             this.addHandler("cmd-closetab", data => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
-                const elem = document.activeElement;
-                const active = getWidgetFromElem(page.rootWidget, elem);
-                if (!(active instanceof Panel)) return;
+                if (!page.hasActivePanel()) return;
+                const active = page.activeWidget;
                 active.remTab(active.tabs[active.tabIndex]);
             });
             this.addHandler("cmd-openclose", data => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
-                const elem = document.activeElement;
-                const active = getWidgetFromElem(page.rootWidget, elem);
-                if (!(active instanceof Panel)) return;
+                if (!page.hasActivePanel()) return;
+                const active = page.activeWidget;
                 if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
                 active.tabs[active.tabIndex].post("openclose", null);
             });
             this.addHandler("cmd-expandcollapse", data => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
-                const elem = document.activeElement;
-                const active = getWidgetFromElem(page.rootWidget, elem);
-                if (!(active instanceof Panel)) return;
+                if (!page.hasActivePanel()) return;
+                const active = page.activeWidget;
                 active.isTitleCollapsed = !active.isTitleCollapsed;
             });
             this.addHandler("cmd-save", async () => {
@@ -5871,6 +5860,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     #browserItems;
     #toolButtons;
     #rootWidget;
+    #activeWidget;
     #rootSource;
 
     #eSide;
@@ -5930,6 +5920,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.#browserItems = [];
         this.#toolButtons = new Set();
         this.#rootWidget = null;
+        this.#activeWidget = null;
         this.#rootSource = null;
 
         this.#eSide = document.createElement("div");
@@ -6076,6 +6067,8 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 this.rootWidget.collapse();
                 if (this.hasRootWidget()) this.rootWidget.update();
             } else this.rootWidget = new Panel();
+            if (!this.hasRootWidget() || !this.rootWidget.contains(this.activeWidget))
+                this.activeWidget = null;
             this.eSideMeta.textContent = (!this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected)) ? "Disconnected" : this.rootSource.connecting ? "Connecting to "+this.rootSource.address : (() => {
                 let nFields = this.rootSource.root.nFields;
                 return nFields + " field" + (nFields==1 ? "" : "s");
@@ -6233,13 +6226,24 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             };
             this.rootWidget.addHandler("change", this.rootWidget._onChange);
             this.eContent.appendChild(this.rootWidget.elem);
-            this.rootWidget.elem.focus();
+            this.activeWidget = this.rootWidget;
         }
         if (this.hasProject())
             this.project.rootData = JSON.stringify(this.rootWidget);
         this.formatContent();
     }
     hasRootWidget() { return this.rootWidget instanceof Widget; }
+    get activeWidget() { return this.#activeWidget; }
+    set activeWidget(v) {
+        v = (v instanceof Widget) ? v : null;
+        if (this.activeWidget == v) return;
+        if (this.hasActiveWidget()) this.activeWidget.elem.classList.remove("active");
+        this.#activeWidget = v;
+        if (this.hasActiveWidget()) this.activeWidget.elem.classList.add("active");
+    }
+    hasActiveWidget() { return this.activeWidget instanceof Widget; }
+    hasActiveContainer() { return this.activeWidget instanceof Container; }
+    hasActivePanel() { return this.activeWidget instanceof Panel; }
     get rootSource() { return this.#rootSource; }
     set rootSource(v) {
         v = (v instanceof NTSource) ? v : null;
