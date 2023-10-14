@@ -204,7 +204,7 @@ export class App extends Target {
                             args = util.ensure(args, "arr");
                             await onHolidayState(args[0]);
                         });
-                        await onHolidayState(await window.api.get("holiday"));
+                        await onHolidayState(await window.api.get("active-holiday"));
                     } else elem.src = location + path;
                 }
             }
@@ -331,7 +331,7 @@ export class App extends Target {
         });
         this.addHandler("cmd-about", async args => {
             let name = String(await window.api.get("name"));
-            let holiday = await window.api.get("holiday");
+            let holiday = await window.api.get("active-holiday");
             let pop = this.alert();
             pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
@@ -513,7 +513,7 @@ export class App extends Target {
                     args = util.ensure(args, "arr");
                     await onHolidayState(args[0]);
                 });
-                await onHolidayState(await window.api.get("holiday"));
+                await onHolidayState(await window.api.get("active-holiday"));
             });
         };
         setInterval(updatePage, 500);
@@ -526,7 +526,7 @@ export class App extends Target {
         
         onFullScreenState(await window.api.get("fullscreen"));
         onDevModeState(await window.api.get("devmode"));
-        onHolidayState(await window.api.get("holiday"));
+        onHolidayState(await window.api.get("active-holiday"));
 
         let resp = null;
         try {
