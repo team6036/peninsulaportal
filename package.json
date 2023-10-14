@@ -16,6 +16,7 @@
     "electron": "^26.1.0",
     "electron-fetch": "^1.9.1",
     "ionicons": "^7.1.2",
+    "png2icons": "^2.0.1",
     "three": "^0.157.0"
   },
   "devDependencies": {

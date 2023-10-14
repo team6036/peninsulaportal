@@ -275,6 +275,12 @@ export class App extends Target {
                 if (load.length > 0) return elem.textContent += "Error while downloading holiday icon "+name+": "+load.join(":");
                 return elem.textContent += "Downloading holiday icon "+name;
             }
+            if (name.startsWith("holidays/") && name.endsWith("-conv")) {
+                name = name.substring(9, name.length-5);
+                if (load.length > 0) elem.style.color = "var(--cr)";
+                if (load.length > 0) return elem.textContent += "Error while converting holiday icon "+name+": "+load.join(":");
+                return elem.textContent += "Converting holiday icon "+name;
+            }
             if (name.toUpperCase() == name) {
                 let fName = name;
                 name = load.shift();
