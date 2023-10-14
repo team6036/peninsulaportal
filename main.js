@@ -1050,6 +1050,11 @@ const MAIN = async () => {
                     }));
                     return icons;
                 },
+                "active-holiday": async () => {
+                    let active = (await kfs._fullholidays()).active;
+                    let holidays = await kfs.holidays();
+                    return (active in holidays) ? active : null;
+                },
                 production: async () => {
                     return app.isPackaged;
                 },
@@ -1100,10 +1105,6 @@ const MAIN = async () => {
                     let host = (await kfs._fullconfig()).dbHost;
                     return host || "https://peninsula-db.jfancode.repl.co";
                 },
-                holiday: async () => {
-                    let holiday = (await kfs._fullconfig()).holiday;
-                    return (holiday == null) ? null : String(holiday);
-                },
                 "comp-mode": async () => {
                     return !!(await kfs._fullconfig()).isCompMode;
                 },
@@ -1121,7 +1122,7 @@ const MAIN = async () => {
             let kfs = {
                 "version": async () => await this.get("version"),
                 "db-host": async () => await this.get("db-host"),
-                "holiday": async () => await this.get("holiday"),
+                "holiday": async () => await this.get("active-holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
             };
             if (k in kfs) return await kfs[k]();
@@ -1154,7 +1155,6 @@ const MAIN = async () => {
                     await this.fileWrite(".config", content);
                 },
                 "db-host": async () => await kfs._fullconfig("dbHost", String(v)),
-                "holiday": async () => await kfs._fullconfig("holiday", (v == null) ? null : String(v)),
                 "comp-mode": async () => await kfs._fullconfig("isCompMode", !!v),
             };
             if (k in kfs) return await kfs[k]();
@@ -1169,7 +1169,6 @@ const MAIN = async () => {
             k = String(k);
             let kfs = {
                 "db-host": async () => await this.set("db-host", v),
-                "holiday": async () => await this.set("holiday", v),
                 "comp-mode": async () => await this.set("comp-mode", v),
             };
             if (k in kfs) return await kfs[k]();
@@ -1343,14 +1342,13 @@ const MAIN = async () => {
             const onHolidayState = async holiday => {
                 if (!this.hasPortal()) return;
                 let tag = "png";
-                // let icon = path.join(__dirname, "assets", "app", ((holiday == null) ? "icon" : "icon-"+holiday)+tag);
                 let icon = (holiday == null) ? path.join(__dirname, "assets", "app", "icon."+tag) : util.ensure((await this.portal.get("holiday-icons"))[holiday], "obj")[tag];
                 if (!this.hasWindow()) return;
                 if (PLATFORM == "win32") this.window.setIcon(icon);
                 if (PLATFORM == "darwin") app.dock.setIcon(icon);
                 if (PLATFORM == "linux") this.window.setIcon(icon);
             };
-            (async () => await onHolidayState(await this.portal.get("holiday")))();
+            (async () => await onHolidayState(await this.portal.get("active-holiday")))();
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
@@ -1719,8 +1717,8 @@ const MAIN = async () => {
                     }
                 };
                 let prevHoliday = null;
-                const checkConfig = async () => {
-                    let holiday = this.hasPortal() ? (await this.portal.get("holiday")) : null;
+                const checkHoliday = async () => {
+                    let holiday = this.hasPortal() ? (await this.portal.get("active-holiday")) : null;
                     await onHolidayState(holiday);
                     if (prevHoliday != holiday) {
                         prevHoliday = holiday;
@@ -1728,9 +1726,9 @@ const MAIN = async () => {
                     }
                 };
                 fs.watchFile(path.join(__dirname, ".config"), () => checkLocalConfig());
-                fs.watchFile(path.join(this.portal.dataPath, ".config"), () => checkConfig());
+                fs.watchFile(path.join(this.portal.dataPath, "holidays", "holidays.json"), () => checkHoliday());
                 await checkLocalConfig();
-                await checkConfig();
+                await checkHoliday();
                 if (!this.canOperate) return;
                 let bounds = util.ensure(await this.on("state-get", ["bounds"]), "obj");
                 if (!this.hasWindow()) return;
