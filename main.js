@@ -13,8 +13,8 @@ const app = electron.app;
 const ipc = electron.ipcMain;
 
 const fetch = require("electron-fetch").default;
-
 const png2icons = require("png2icons");
+const compareVersions = require("compare-versions");
 
 const log = (...a) => {
     let now = new Date();
@@ -337,7 +337,9 @@ const MAIN = async () => {
             return true;
         }
         get isLoading() { return this.#isLoading; }
-        async tryLoad() {
+        async tryLoad(version) {
+            if (this.isLoading) return false;
+            version = String(version);
             this.#isLoading = true;
             let r = await (async () => {
                 await this.affirm();
@@ -364,6 +366,21 @@ const MAIN = async () => {
                 }
                 this.log(`DB poll - ${host} - success`);
                 this.remLoad("poll");
+                let fsVersion = "";
+                try {
+                    fsVersion = await this.fileRead(".version");
+                } catch (e) {}
+                this.log(`DB fs-version check (${fsVersion} ?<= ${version})`);
+                this.addLoad("fs-version");
+                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
+                    this.log(`DB fs-version mismatch (${fsVersion} !<= ${version})`);
+                    this.remLoad("fs-version");
+                    this.addLoad("fs-version:"+fsVersion+" > "+version);
+                    return false;
+                }
+                this.log(`DB fs-version match (${fsVersion} <= ${version})`);
+                this.remLoad("fs-version");
+                await this.fileWrite(".version", version);
                 const fetchAndPipe = async (url, pth) => {
                     let fileName = path.basename(pth);
                     let superPth = path.dirname(pth);
@@ -676,7 +693,7 @@ const MAIN = async () => {
 
                 this.addFeature(new Portal.Feature("PORTAL"));
                 setTimeout(async () => {
-                    await this.tryLoad();
+                    await this.tryLoad(await this.get("version"));
                 }, 1000);
             })();
 
@@ -714,6 +731,10 @@ const MAIN = async () => {
             if (!hasHolidaysDir) await this.dirMake([dataPath, "holidays"]);
             let hasHolidayIconsDir = await this.dirHas([dataPath, "holidays", "icons"]);
             if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
+            let hasConfig = await this.fileHas([dataPath, ".config"]);
+            if (!hasConfig) await this.fileWrite([dataPath, ".config"], JSON.stringify({}, null, "\t"));
+            let hasVersion = await this.fileHas([dataPath, ".version"]);
+            if (!hasVersion) await this.fileWrite([dataPath, ".version"], "");
             return true;
         }
         async affirm() {
@@ -740,8 +761,20 @@ const MAIN = async () => {
             }
             return r;
         }
-        static async cleanup(dataPath) {
+        static async cleanup(dataPath, version) {
+            version = String(version);
             log(". cleanup");
+            let fsVersion = "";
+            try {
+                fsVersion = await this.fileRead([dataPath, ".version"]);
+            } catch (e) {}
+            log(`. cleanup - fs-version check (${fsVersion} ?<= ${version})`);
+            if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
+                log(`. cleanup - fs-version mismatch (${fsVersion} !<= ${version})`);
+                return false;
+            }
+            log(`. cleanup - fs-version match (${fsVersion} <= ${version})`);
+            await this.fileWrite([dataPath, ".version"], version);
             const l = (...a) => log(". deleting "+Portal.makePath(...a));
             const format = [
                 // ./logs
@@ -888,7 +921,7 @@ const MAIN = async () => {
             await cleanup([dataPath], format);
             return true;
         }
-        async cleanup() { return await Portal.cleanup(this.dataPath); }
+        async cleanup() { return await Portal.cleanup(this.dataPath, await this.get("version")); }
 
         static makePath(...pth) {
             let flattened = [];
@@ -1083,6 +1116,7 @@ const MAIN = async () => {
                 production: async () => {
                     return app.isPackaged;
                 },
+                "fs-version": async () => await this.fileRead(".version"),
                 _fullpackage: async () => {
                     let content = "";
                     try {
@@ -1096,7 +1130,7 @@ const MAIN = async () => {
                     return data;
                 },
                 version: async () => {
-                    return String((await kfs._fullpackage()).version);
+                    return String((await kfs._fullpackage()).version) + ((await this.get("production")) ? "" : "-dev");
                 },
                 _fulldevconfig: async () => {
                     let content = "";
@@ -1732,6 +1766,13 @@ const MAIN = async () => {
                 this.window.setMenu(this.menu);
             
             (async () => {
+                let fsVersion = await this.portal.get("fs-version");
+                let version = await this.portal.get("version");
+                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
+                    setTimeout(() => {
+                        this.send("deprecated", [version]);
+                    }, 500);
+                }
                 let prevIsDevMode = null;
                 const checkLocalConfig = async () => {
                     let isDevMode = this.hasPortal() && (await this.portal.get("devmode"));
@@ -1925,7 +1966,7 @@ const MAIN = async () => {
             args = util.ensure(args, "arr");
             this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
             let kfs = {
-                back: async () => await this.stop(),
+                close: async () => await this.stop(),
                 "menu-ables": async menuAbles => {
                     menuAbles = util.ensure(menuAbles, "obj");
                     for (let id in menuAbles) {
@@ -2033,7 +2074,9 @@ const MAIN = async () => {
                     },
                     "cmd-poll-db-host": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
-                        this.portal.tryLoad();
+                        (async () => {
+                            await this.portal.tryLoad(await this.portal.get("version"));
+                        })();
                     },
                 },
                 PLANNER: {

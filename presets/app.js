@@ -85,10 +85,6 @@ export default class App extends core.App {
                         } else {
                             let value = String(await window.api.get("val-"+elem.id));
                             let idfs = {
-                                "version": async () => {
-                                    let isProduction = !!await window.api.get("production");
-                                    if (!isProduction) value += "-dev";
-                                },
                                 "holiday": async () => {
                                     value = (value == "null") ? "" : value.split(" ").map(v => util.capitalize(v)).join(" ");
                                 },

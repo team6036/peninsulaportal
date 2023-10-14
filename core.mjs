@@ -135,13 +135,12 @@ export class App extends Target {
     async getAbout() {
         let os = await window.version.os();
         let app = await window.api.get("version");
-        let isProduction = await window.api.get("production");
         return {
             node: window.version.node(),
             chrome: window.version.chrome(),
             electron: window.version.electron(),
             os: os,
-            app: app, isProduction: isProduction,
+            app: app,
         };
     }
     async getAboutLines() {
@@ -157,7 +156,7 @@ export class App extends Target {
             if (models.length > 1) lines[3] += "CPUS: "+models.join(", ");
             else lines[3] += models[0];
         }
-        lines[4] = "App: "+about.app+(about.isProduction ? "" : "-dev");
+        lines[4] = "App: "+about.app;
         return lines;
     }
 
@@ -228,6 +227,11 @@ export class App extends Target {
                     if (load.length > 0) elem.style.color = "var(--cr)";
                     if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
                     return elem.textContent += "Polling database";
+                },
+                "fs-version": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "App data directory verison mismatch: "+load.join(":");
+                    return elem.textContent += "Checking app data version";
                 },
                 config: () => {
                     if (load.length > 0) elem.style.color = "var(--cr)";
@@ -344,6 +348,14 @@ export class App extends Target {
             pop.content = "Peninsula "+util.capitalize(name);
             pop.info = (await this.getAboutLines()).join("\n");
             pop.hasInfo = true;
+        });
+        this.addHandler("cmd-deprecated", async args => {
+            let pop = this.alert();
+            pop.iconColor = "var(--cr)";
+            pop.content = `This version of the application (${args[0]}) is deprecated. Please install the latest version of this application`;
+            pop.addHandler("close", data => {
+                window.api.send("close");
+            });
         });
         const onFullScreenState = is => {
             document.documentElement.style.setProperty("--fs", (is ? 1 : 0));
@@ -873,7 +885,7 @@ export class App extends Target {
         btn.style.setProperty("--bgd", "transparent");
         btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
         btn.addEventListener("click", e => {
-            window.api.send("back");
+            window.api.send("close");
         });
         return btn;
     }

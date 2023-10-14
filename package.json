@@ -1,7 +1,7 @@
 {
   "name": "peninsula",
   "productName": "Pensinula",
-  "version": "2023.2.0",
+  "version": "2023.2.1",
   "description": "Toolbox application for 6036",
   "author": {
     "name": "Jeffrey Fan",
@@ -13,6 +13,7 @@
     "package": "node package.js"
   },
   "dependencies": {
+    "compare-versions": "^6.1.0",
     "electron": "^26.1.0",
     "electron-fetch": "^1.9.1",
     "ionicons": "^7.1.2",
