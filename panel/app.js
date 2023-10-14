@@ -3735,6 +3735,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.quality = 3;
 
         this.#scene = new THREE.Scene();
+        this.scene.fog = new THREE.Fog(0x000000, 20, 25);
         this.#camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
 
         this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
@@ -4013,6 +4014,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             let colorG = new util.Color(getComputedStyle(document.body).getPropertyValue("--cg"));
             let colorB = new util.Color(getComputedStyle(document.body).getPropertyValue("--cb"));
             let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v4"));
+            this.scene.fog.color.set(colorV.toHex(false));
             this.axisScene.xAxis.material.color.set(colorR.toHex(false));
             this.axisScene.yAxis.material.color.set(colorG.toHex(false));
             this.axisScene.zAxis.material.color.set(colorB.toHex(false));
