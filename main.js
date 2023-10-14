@@ -951,6 +951,21 @@ const MAIN = async () => {
                 production: async () => {
                     return app.isPackaged;
                 },
+                _fullpackage: async () => {
+                    let content = "";
+                    try {
+                        content = await Portal.fileRead(path.join(__dirname, "package.json"));
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
+                },
+                version: async () => {
+                    return String((await kfs._fullpackage()).version);
+                },
                 _fulldevconfig: async () => {
                     let content = "";
                     try {
@@ -965,9 +980,6 @@ const MAIN = async () => {
                 },
                 devmode: async () => {
                     return !(await kfs.production()) && (!!(await kfs._fulldevconfig()).isDevMode);
-                },
-                version: async () => {
-                    return String((await kfs._fulldevconfig()).version);
                 },
                 _fullconfig: async () => {
                     await this.affirm();

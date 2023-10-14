@@ -1,11 +1,17 @@
 {
-  "name": "Pensinula",
+  "name": "peninsula",
   "productName": "Pensinula",
+  "version": "2023.2.0",
+  "description": "Toolbox application for 6036",
+  "author": {
+    "name": "Jeffrey Fan",
+    "email": "jeffrey.fanjf@gmail.com"
+  },
+  "main": "main.js",
   "scripts": {
     "start": "electron .",
     "package": "node package.js"
   },
-  "main": "main.js",
   "dependencies": {
     "electron": "^26.1.0",
     "electron-fetch": "^1.9.1",
