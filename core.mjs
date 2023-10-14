@@ -197,14 +197,14 @@ export class App extends Target {
                     location.pop();
                     location = location.join("/");
                     if (path.endsWith("icon.png")) {
-                        const onHolidayState = holiday => {
-                            elem.src = location + ((holiday == null) ? path : path.substring(0, path.length-"icon.png".length) + `icon-${holiday}.png`);
+                        const onHolidayState = async holiday => {
+                            elem.src = (holiday == null) ? (location + path) : util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").png;
                         };
                         this.addHandler("cmd-win-holiday", async args => {
                             args = util.ensure(args, "arr");
-                            onHolidayState(args[0]);
+                            await onHolidayState(args[0]);
                         });
-                        onHolidayState(await window.api.get("holiday"));
+                        await onHolidayState(await window.api.get("holiday"));
                     } else elem.src = location + path;
                 }
             }
@@ -244,6 +244,11 @@ export class App extends Target {
                     if (load.length > 0) return elem.textContent += "Error while downloading robot datas: "+load.join(":");
                     return elem.textContent += "Downloading robot datas";
                 },
+                "holidays.json": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Error while downloading holiday datas: "+load.join(":");
+                    return elem.textContent += "Downloading holiday datas";
+                },
             };
             if (name in namefs) return namefs[name]();
             if (name.startsWith("templates/") && name.endsWith(".png")) {
@@ -263,6 +268,12 @@ export class App extends Target {
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading robot model "+name+": "+load.join(":");
                 return elem.textContent += "Downloading robot model "+name;
+            }
+            if (name.startsWith("holidays/")) {
+                name = name.substring(9);
+                if (load.length > 0) elem.style.color = "var(--cr)";
+                if (load.length > 0) return elem.textContent += "Error while downloading holiday icon "+name+": "+load.join(":");
+                return elem.textContent += "Downloading holiday icon "+name;
             }
             if (name.toUpperCase() == name) {
                 let fName = name;
@@ -322,7 +333,7 @@ export class App extends Target {
             let name = String(await window.api.get("name"));
             let holiday = await window.api.get("holiday");
             let pop = this.alert();
-            pop.iconSrc = root+"/assets/app/" + ((holiday == null) ? "icon.svg" : `icon-${holiday}.svg`);
+            pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+util.capitalize(name);
             pop.info = (await this.getAboutLines()).join("\n");
@@ -360,21 +371,27 @@ export class App extends Target {
             args = util.ensure(args, "arr");
             onDevModeState(!!args[0]);
         });
-        let prevHoliday = null, id = null, accent = null;
+        let prevHoliday = null, id = null, accent = null, holidayT = 0;
         const onHolidayState = holiday => {
             holiday = (holiday == null) ? null : String(holiday);
-            if (this.accent == null) {
+            if (accent == null) {
                 if (prevHoliday != holiday) prevHoliday = holiday;
                 if (id != null) return;
                 id = setInterval(() => {
+                    if (accent != null) {
+                        if (util.getTime()-holidayT < 1000) return;
+                        holidayT = util.getTime();
+                        if (this.accent != null) return;
+                        (async () => {
+                            let holidayData = util.ensure((await window.api.get("holidays"))[prevHoliday], "obj");
+                            this.accent = holidayData.accent;
+                        })();
+                        return;
+                    }
                     if (this.accent == null) return;
                     accent = this.accent;
                     if (prevHoliday != null)
-                        this.accent = {
-                            halloween: "o",
-                            christmas: "r",
-                        }[prevHoliday];
-                    clearInterval(id);
+                        this.accent = null;
                 }, 10);
                 return;
             }
@@ -384,10 +401,7 @@ export class App extends Target {
             if (prevHoliday == null) {
                 this.accent = accent;
             } else {
-                this.accent = {
-                    halloween: "o",
-                    christmas: "r",
-                }[prevHoliday];
+                this.accent = null;
             }
         };
         this.addHandler("cmd-win-holiday", async args => {
@@ -485,21 +499,21 @@ export class App extends Target {
                     both++;
                 }
                 if (both < 2) return;
-                const onHolidayState = holiday => {
+                const onHolidayState = async holiday => {
                     if (holiday == null) return elem.classList.remove("special");
                     elem.classList.add("special");
                     let eSpecialBack = elem.querySelector(".special.back");
                     if (eSpecialBack instanceof HTMLImageElement)
-                        eSpecialBack.src = `../assets/app/${holiday}-hat-2.svg`;
+                        eSpecialBack.src = util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").hat2;
                     let eSpecialFront = elem.querySelector(".special.front");
                     if (eSpecialFront instanceof HTMLImageElement)
-                        eSpecialFront.src = `../assets/app/${holiday}-hat-1.svg`;
+                        eSpecialFront.src = util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").hat1;
                 };
                 this.addHandler("cmd-win-holiday", async args => {
                     args = util.ensure(args, "arr");
-                    onHolidayState(args[0]);
+                    await onHolidayState(args[0]);
                 });
-                onHolidayState(await window.api.get("holiday"));
+                await onHolidayState(await window.api.get("holiday"));
             });
         };
         setInterval(updatePage, 500);
@@ -626,7 +640,7 @@ export class App extends Target {
     }
     get accent() { return this.#accent; }
     set accent(v) {
-        v = this.hasColor(v) ? String(v) : "_";
+        v = this.hasColor(v) ? String(v) : null;
         if (this.accent == v) return;
         this.#accent = v;
         this.updateDynamicStyle();
