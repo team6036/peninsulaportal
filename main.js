@@ -14,6 +14,8 @@ const ipc = electron.ipcMain;
 
 const fetch = require("electron-fetch").default;
 
+const png2icons = require("png2icons");
+
 const log = (...a) => {
     let now = new Date();
     let yr = now.getFullYear();
@@ -496,10 +498,10 @@ const MAIN = async () => {
                         await Promise.all(Object.keys(holidays).map(async name => {
                             name = String(name);
                             await Promise.all([
-                                "svg", "png", "ico", "icns",
+                                "svg", "png", // "ico", "icns",
                                 "hat1", "hat2",
-                            ].map(async id => {
-                                let pth = name+((id == "hat1") ? "-hat-1.svg" : (id == "hat2") ? "-hat-2.svg" : "."+id);
+                            ].map(async tag => {
+                                let pth = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
                                 this.log(`DB holidays/${pth}`);
                                 this.addLoad(`holidays/${pth}`);
                                 try {
@@ -510,6 +512,29 @@ const MAIN = async () => {
                                     this.addLoad(`holidays/${pth}:`+e);
                                 }
                                 this.remLoad(`holidays/${pth}`);
+                            }));
+                        }));
+                        await Promise.all(Object.keys(holidays).map(async name => {
+                            name = String(name);
+                            let input = await fs.promises.readFile(path.join(this.dataPath, "holidays", "icons", name+".png"));
+                            await Promise.all([
+                                "ico", "icns",
+                            ].map(async tag => {
+                                let pth = name+"."+tag;
+                                this.log(`DB holidays/${pth} conversion`);
+                                this.addLoad(`holidays/${pth}-conv`);
+                                try {
+                                    let output = {
+                                        ico: () => png2icons.createICO(input, png2icons.BILINEAR, 0, true, true),
+                                        icns: () => png2icons.createICNS(input, png2icons.BILINEAR, 0),
+                                    }[tag]();
+                                    await fs.promises.writeFile(path.join(this.dataPath, "holidays", "icons", pth), output);
+                                    this.log(`DB holidays/${pth} conversion - success`);
+                                } catch (e) {
+                                    this.log(`DB holidays/${pth} conversion - error - ${e}`);
+                                    this.addLoad(`holidays/${pth}-conv:`+e);
+                                }
+                                this.remLoad(`holidays/${pth}-conv`);
                             }));
                         }));
                     })(),
