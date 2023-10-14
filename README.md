@@ -17,7 +17,6 @@
 - [Peninsula Planner](#peninsula-planner)
     - [Capabilities](#capabilities-1)
     - [Getting Started](#getting-started-2)
-- Peninsula Pursuit - <kbd>TBD</kbd>
 - Peninsula Perception - <kbd>TBD</kbd>
 - [Peninsula Presets](#peninsula-presets)
 - [Resources](#resources)

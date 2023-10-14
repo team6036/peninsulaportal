@@ -1762,8 +1762,7 @@ const MAIN = async () => {
             if (namefs[this.name]) namefs[this.name]();
 
             this.#menu = electron.Menu.buildFromTemplate(template);
-            if (PLATFORM == "linux" || PLATFORM == "win32")
-                this.window.setMenu(this.menu);
+            this.window.setMenu(this.menu);
             
             (async () => {
                 let fsVersion = await this.portal.get("fs-version");
@@ -1772,9 +1771,11 @@ const MAIN = async () => {
                     setTimeout(() => {
                         this.send("deprecated", [version]);
                     }, 500);
+                } else {
+                    await this.portal.fileWrite(".version", version);
                 }
                 let prevIsDevMode = null;
-                const checkLocalConfig = async () => {
+                const checkDevConfig = async () => {
                     let isDevMode = this.hasPortal() && (await this.portal.get("devmode"));
                     this.on("menu-ables", [{ toggleDevTools: isDevMode }]);
                     if (prevIsDevMode != isDevMode) {
@@ -1791,9 +1792,9 @@ const MAIN = async () => {
                         this.send("win-holiday", [holiday]);
                     }
                 };
-                fs.watchFile(path.join(__dirname, ".config"), () => checkLocalConfig());
+                fs.watchFile(path.join(__dirname, ".config"), () => checkDevConfig());
                 fs.watchFile(path.join(this.portal.dataPath, "holidays", "holidays.json"), () => checkHoliday());
-                await checkLocalConfig();
+                await checkDevConfig();
                 await checkHoliday();
                 if (!this.canOperate) return;
                 let bounds = util.ensure(await this.on("state-get", ["bounds"]), "obj");
