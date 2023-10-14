@@ -412,9 +412,7 @@ const MAIN = async () => {
                             this.log("DB checking templates.json - success");
                         } catch (e) {
                             log(`DB checking templates.json - error - ${e}`);
-                            this.remLoad("templates.json-check:"+e);
                         }
-                        this.remLoad("templates.json-check");
                         data = util.ensure(data, "obj");
                         let templates = util.ensure(data.templates, "obj");
                         await Promise.all(Object.keys(templates).map(async name => {
@@ -453,9 +451,7 @@ const MAIN = async () => {
                             this.log("DB checking robots.json - success");
                         } catch (e) {
                             log(`DB checking robots.json - error - ${e}`);
-                            this.remLoad("robots.json-check:"+e);
                         }
-                        this.remLoad("robots.json-check");
                         data = util.ensure(data, "obj");
                         let robots = util.ensure(data.robots, "obj");
                         await Promise.all(Object.keys(robots).map(async name => {
@@ -472,6 +468,48 @@ const MAIN = async () => {
                                     this.addLoad(`robots/${name}.${tag}:`+e);
                                 }
                                 this.remLoad(`robots/${name}.${tag}`);
+                            }));
+                        }));
+                    })(),
+                    (async () => {
+                        this.log("DB holidays.json");
+                        this.addLoad("holidays.json");
+                        try {
+                            await fetchAndPipe(host+"/holidays.json", path.join(this.dataPath, "holidays", "holidays.json"));
+                            this.log("DB holidays.json - success");
+                        } catch (e) {
+                            this.log(`DB holidays.json - error - ${e}`);
+                            this.addLoad("holidays.json:"+e);
+                        }
+                        this.remLoad("holidays.json");
+                        this.log("DB checking holidays.json");
+                        let content = await this.fileRead(["holidays", "holidays.json"]);
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                            this.log("DB checking holidays.json - success");
+                        } catch (e) {
+                            log(`DB checking holidays.json - error - ${e}`);
+                        }
+                        data = util.ensure(data, "obj");
+                        let holidays = util.ensure(data.holidays, "obj");
+                        await Promise.all(Object.keys(holidays).map(async name => {
+                            name = String(name);
+                            await Promise.all([
+                                "svg", "png", "ico", "icns",
+                                "hat1", "hat2",
+                            ].map(async id => {
+                                let pth = name+((id == "hat1") ? "-hat-1.svg" : (id == "hat2") ? "-hat-2.svg" : "."+id);
+                                this.log(`DB holidays/${pth}`);
+                                this.addLoad(`holidays/${pth}`);
+                                try {
+                                    await fetchAndPipe(host+"/holidays/"+pth, path.join(this.dataPath, "holidays", "icons", pth));
+                                    this.log(`DB holidays/${pth} - success`);
+                                } catch (e) {
+                                    this.log(`DB holidays/${pth} - error - ${e}`);
+                                    this.addLoad(`holidays/${pth}:`+e);
+                                }
+                                this.remLoad(`holidays/${pth}`);
                             }));
                         }));
                     })(),
@@ -647,6 +685,10 @@ const MAIN = async () => {
             if (!hasRobotsDir) await this.dirMake([dataPath, "robots"]);
             let hasRobotModelsDir = await this.dirHas([dataPath, "robots", "models"]);
             if (!hasRobotModelsDir) await this.dirMake([dataPath, "robots", "models"]);
+            let hasHolidaysDir = await this.dirHas([dataPath, "holidays"]);
+            if (!hasHolidaysDir) await this.dirMake([dataPath, "holidays"]);
+            let hasHolidayIconsDir = await this.dirHas([dataPath, "holidays", "icons"]);
+            if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
             return true;
         }
         async affirm() {
@@ -726,6 +768,38 @@ const MAIN = async () => {
                         },
                         // ./robots/robots.json
                         { type: "file", name: "robots.json" }
+                    ],
+                },
+                // ./holidays
+                {
+                    type: "dir", name: "holidays",
+                    children: [
+                        // ./holidays/icons
+                        {
+                            type: "dir", name: "icons",
+                            children: [
+                                // ./holidays/icons/*.svg
+                                // ./holidays/icons/*.png
+                                // ./holidays/icons/*.ico
+                                // ./holidays/icons/*.icns
+                                // ./holidays/icons/*.svg-tmp
+                                // ./holidays/icons/*.png-tmp
+                                // ./holidays/icons/*.ico-tmp
+                                // ./holidays/icons/*.icns-tmp
+                                { type: "file", match: (_, name) => (
+                                    name.endsWith(".svg") ||
+                                    name.endsWith(".png") ||
+                                    name.endsWith(".ico") ||
+                                    name.endsWith(".icns") ||
+                                    name.endsWith(".svg-tmp") ||
+                                    name.endsWith(".png-tmp") ||
+                                    name.endsWith(".ico-tmp") ||
+                                    name.endsWith(".icns-tmp")
+                                ) }
+                            ],
+                        },
+                        // ./holidays/holidays.json
+                        { type: "file", name: "holidays.json" }
                     ],
                 },
                 // ./<feature>
@@ -947,6 +1021,34 @@ const MAIN = async () => {
                     let active = (await kfs._fullrobots()).active;
                     let robots = await kfs.robots();
                     return (active in robots) ? active : null;
+                },
+                _fullholidays: async () => {
+                    let content = "";
+                    try {
+                        content = await this.fileRead(["holidays", "holidays.json"]);
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
+                },
+                holidays: async () => {
+                    return util.ensure((await kfs._fullholidays()).holidays, "obj");
+                },
+                "holiday-icons": async () => {
+                    let holidays = await kfs.holidays();
+                    let icons = {};
+                    Object.keys(holidays).map(name => (icons[name] = {
+                        svg: path.join(this.dataPath, "holidays", "icons", name+".svg"),
+                        png: path.join(this.dataPath, "holidays", "icons", name+".png"),
+                        ico: path.join(this.dataPath, "holidays", "icons", name+".ico"),
+                        icns: path.join(this.dataPath, "holidays", "icons", name+".icns"),
+                        hat1: path.join(this.dataPath, "holidays", "icons", name+"-hat-1.svg"),
+                        hat2: path.join(this.dataPath, "holidays", "icons", name+"-hat-2.svg"),
+                    }));
+                    return icons;
                 },
                 production: async () => {
                     return app.isPackaged;
@@ -1238,15 +1340,17 @@ const MAIN = async () => {
                     preload: path.join(__dirname, "preload.js"),
                 },
             };
-            const onHolidayState = holiday => {
-                let tag = ".png";
-                let icon = path.join(__dirname, "assets", "app", ((holiday == null) ? "icon" : "icon-"+holiday)+tag);
+            const onHolidayState = async holiday => {
+                if (!this.hasPortal()) return;
+                let tag = "png";
+                // let icon = path.join(__dirname, "assets", "app", ((holiday == null) ? "icon" : "icon-"+holiday)+tag);
+                let icon = (holiday == null) ? path.join(__dirname, "assets", "app", "icon."+tag) : util.ensure((await this.portal.get("holiday-icons"))[holiday], "obj")[tag];
                 if (!this.hasWindow()) return;
                 if (PLATFORM == "win32") this.window.setIcon(icon);
                 if (PLATFORM == "darwin") app.dock.setIcon(icon);
                 if (PLATFORM == "linux") this.window.setIcon(icon);
             };
-            (async () => onHolidayState(await this.portal.get("holiday")))();
+            (async () => await onHolidayState(await this.portal.get("holiday")))();
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
@@ -1617,7 +1721,7 @@ const MAIN = async () => {
                 let prevHoliday = null;
                 const checkConfig = async () => {
                     let holiday = this.hasPortal() ? (await this.portal.get("holiday")) : null;
-                    onHolidayState(holiday);
+                    await onHolidayState(holiday);
                     if (prevHoliday != holiday) {
                         prevHoliday = holiday;
                         this.send("win-holiday", [holiday]);
