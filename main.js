@@ -1145,7 +1145,7 @@ const MAIN = async () => {
                     return data;
                 },
                 devmode: async () => {
-                    return !(await kfs.production()) && (await kfs._fulldevconfig().isDevMode);
+                    return !(await kfs.production()) && ((await kfs._fulldevconfig()).isDevMode);
                 },
                 _fullconfig: async () => {
                     await this.affirm();
