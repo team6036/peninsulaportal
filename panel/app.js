@@ -17,7 +17,7 @@ import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 import NTSource from "../nt4/source.js";
 
 
-export const VERSION = 1;
+export const VERSION = 2;
 
 class RLine extends core.Odometry2d.Render {
     #a; #b;
@@ -3174,7 +3174,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
     get isOpen() { return this.elem.classList.contains("open"); }
     set isOpen(v) {
         v = !!v;
-        if (this.open == v) return;
+        if (this.isOpen == v) return;
         if (v) this.elem.classList.add("open");
         else this.elem.classList.remove("open");
     }
@@ -3536,7 +3536,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     }
 };
 Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTab.Pose {
-    #ghost;
+    #isGhost;
     #type;
 
     #eGhostBtn;
@@ -3545,14 +3545,14 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     constructor(...a) {
         super();
 
-        this.#ghost = false;
+        this.#isGhost = false;
         this.#type = null;
 
         this.#eGhostBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eGhostBtn);
         this.eGhostBtn.classList.add("custom");
         this.eGhostBtn.textContent = "Ghost";
-        this.eGhostBtn.addEventListener("click", e => (this.ghost = !this.ghost));
+        this.eGhostBtn.addEventListener("click", e => (this.isGhost = !this.isGhost));
 
         this.#eDisplayType = document.createElement("button");
         this.eContent.appendChild(this.eDisplayType);
@@ -3563,25 +3563,28 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         if (a.length <= 0 || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.ghost, a.type];
+            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.isGhost, a.type];
             else if (util.is(a, "arr")) {
                 a = new this.constructor(...a);
-                a = [a.name, a.color, a.isShown, a.ghost, a.type];
+                a = [a.name, a.color, a.isShown, a.isGhost, a.type];
             }
-            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.ghost, a.type];
+            // REMOVE WHEN FIXED
+            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.ghost || a.isGhost, a.type];
             else a = [null, null];
         }
         if (a.length == 2) a = [...a, true];
         if (a.length == 3) a = [...a, false];
         if (a.length == 4) a = [...a, core.Odometry2d.Robot.Types.DEFAULT];
 
-        [this.name, this.color, this.isShown, this.ghost, this.type] = a;
+        [this.name, this.color, this.isShown, this.isGhost, this.type] = a;
     }
 
-    get ghost() { return this.#ghost; }
-    set ghost(v) {
-        this.#ghost = !!v;
-        if (this.ghost) this.eGhostBtn.classList.add("this");
+    get isGhost() { return this.#isGhost; }
+    set isGhost(v) {
+        v = !!v;
+        if (this.isGhost == v) return;
+        this.#isGhost = v;
+        if (this.isGhost) this.eGhostBtn.classList.add("this");
         else this.eGhostBtn.classList.remove("this");
         this.post("change", null);
     }
@@ -3606,7 +3609,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
                 name: this.name,
                 color: this.color,
                 isShown: this.isShown,
-                ghost: this.ghost,
+                isGhost: this.isGhost,
                 type: this.type,
             }],
         };
@@ -3643,14 +3646,14 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     render.b = [this.value[i*2 + 2], this.value[i*2 + 3]];
                     render.b.imul(this.tab.isMeters ? 100 : 1);
                     render.color = this.pose.color;
-                    render.alpha = this.pose.ghost ? 0.5 : 1;
+                    render.alpha = this.pose.isGhost ? 0.5 : 1;
                 });
                 this.pose.eDisplayType.style.display = "none";
             } else if (this.value.length == 3) {
                 let render = renders[0];
                 render.color = this.pose.color.substring(2);
                 render.colorH = this.pose.color.substring(2)+5;
-                render.alpha = this.pose.ghost ? 0.5 : 1;
+                render.alpha = this.pose.isGhost ? 0.5 : 1;
                 render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
                 render.pos = new V(this.value[0], this.value[1]).mul(this.tab.isMeters ? 100 : 1);
                 render.heading = this.value[2] * (this.tab.isDegrees ? 1 : (180/Math.PI));
@@ -3983,11 +3986,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 const template = this.template;
                 preloadedFields[template] = null;
                 loader.load(templateModels[template], gltf => {
-                    gltf.scene.traverse(mesh => {
-                        if (!mesh.isMesh) return;
-                        if (mesh.material instanceof THREE.MeshStandardMaterial) {
-                            mesh.material.metalness = 0;
-                            mesh.material.roughness = 1;
+                    gltf.scene.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        if (obj.material instanceof THREE.MeshStandardMaterial) {
+                            obj.material.metalness = 0;
+                            obj.material.roughness = 1;
                         }
                     });
                     let obj, pobj;
@@ -4255,14 +4258,32 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     }
 };
 Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTab.Pose {
+    #isGhost;
+    #isSolid;
     #type;
 
+    #eGhostBtn;
+    #eSolidBtn;
     #eDisplayType;
 
     constructor(...a) {
         super();
 
+        this.#isGhost = false;
+        this.#isSolid = false;
         this.#type = "";
+
+        this.#eGhostBtn = document.createElement("button");
+        this.eColorPicker.appendChild(this.eGhostBtn);
+        this.eGhostBtn.classList.add("custom");
+        this.eGhostBtn.textContent = "Ghost";
+        this.eGhostBtn.addEventListener("click", e => (this.isGhost = !this.isGhost));
+
+        this.#eSolidBtn = document.createElement("button");
+        this.eColorPicker.appendChild(this.eSolidBtn);
+        this.eSolidBtn.classList.add("custom");
+        this.eSolidBtn.textContent = "Solid";
+        this.eSolidBtn.addEventListener("click", e => (this.isSolid = !this.isSolid));
 
         this.#eDisplayType = document.createElement("button");
         this.eContent.appendChild(this.eDisplayType);
@@ -4270,23 +4291,41 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
         this.eDisplayType.addEventListener("click", e => this.post("type", null));
 
-        if (a.length <= 0 || a.length > 4) a = [null];
+        if (a.length <= 0 || [3, 4].includes(a.length) || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.type];
+            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
             else if (util.is(a, "arr")) {
                 a = new this.constructor(...a);
-                a = [a.name, a.color, a.isShown, a.type];
+                a = [a.name, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
             }
-            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.type];
+            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
             else a = [null, null];
         }
-        if (a.length == 2) a = [...a, true];
-        if (a.length == 3) a = [...a, "KitBot"];
+        if (a.length == 2) a = [...a, true, false, false];
+        if (a.length == 4) a = [...a, "KitBot"];
 
-        [this.name, this.color, this.isShown, this.type] = a;
+        [this.name, this.color, this.isShown, this.isGhost, this.isSolid, this.type] = a;
     }
 
+    get isGhost() { return this.#isGhost; }
+    set isGhost(v) {
+        v = !!v;
+        if (this.isGhost == v) return;
+        this.#isGhost = v;
+        if (this.isGhost) this.eGhostBtn.classList.add("this");
+        else this.eGhostBtn.classList.remove("this");
+        this.post("change", null);
+    }
+    get isSolid() { return this.#isSolid; }
+    set isSolid(v) {
+        v = !!v;
+        if (this.isSolid == v) return;
+        this.#isSolid = v;
+        if (this.isSolid) this.eSolidBtn.classList.add("this");
+        else this.eSolidBtn.classList.remove("this");
+        this.post("change", null);
+    }
     get type() { return this.#type; }
     set type(v) {
         v = String(v);
@@ -4301,8 +4340,11 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             }[type];
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
             this.eDisplayType.children[0].textContent = type;
+        this.post("change", null);
     }
 
+    get eGhostBtn() { return this.#eGhostBtn; }
+    get eSolidBtn() { return this.#eSolidBtn; }
     get eDisplayType() { return this.#eDisplayType; }
 
     toJSON() {
@@ -4313,6 +4355,8 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
                 name: this.name,
                 color: this.color,
                 isShown: this.isShown,
+                isGhost: this.isGhost,
+                isSolid: this.isSolid,
                 type: this.type,
             }],
         };
@@ -4328,10 +4372,10 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
     #scene;
     #camera;
 
-    #meshes;
+    #objs;
     #passes;
 
-    #preloadedMeshes;
+    #preloadedObjs;
     
     constructor() {
         super();
@@ -4345,20 +4389,20 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#scene = null;
         this.#camera = null;
 
-        this.#meshes = [];
+        this.#objs = [];
         this.#passes = [];
 
-        this.#preloadedMeshes = {};
+        this.#preloadedObjs = {};
         const node = new THREE.Mesh(
             new THREE.SphereGeometry(0.1, 8, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
-        this.#preloadedMeshes["§node"] = node;
+        this.#preloadedObjs["§node"] = node;
         const cube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
-        this.#preloadedMeshes["§cube"] = cube;
+        this.#preloadedObjs["§cube"] = cube;
         const radius = 0.05, arrowLength = 0.25, arrowRadius = 0.1;
         const arrow = new THREE.Object3D();
         const tip = new THREE.Mesh(
@@ -4373,7 +4417,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         );
         line.position.set(0, -arrowLength/2, 0);
         arrow.add(line);
-        this.#preloadedMeshes["§arrow"] = arrow;
+        this.#preloadedObjs["§arrow"] = arrow;
 
         const loader = new GLTFLoader();
 
@@ -4387,6 +4431,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         })();
 
         let type = null, model = null;
+        let isGhost = null, isSolid = null;
 
         this.addHandler("update", data => {
             if (!this.hasTab()) return;
@@ -4398,11 +4443,11 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     const robot = this.pose.type;
                     preloadedRobots[robot] = null;
                     loader.load(robotModels[robot], gltf => {
-                        gltf.scene.traverse(mesh => {
-                            if (!mesh.isMesh) return;
-                            if (mesh.material instanceof THREE.MeshStandardMaterial) {
-                                mesh.material.metalness = 0;
-                                mesh.material.roughness = 1;
+                        gltf.scene.traverse(obj => {
+                            if (!obj.isMesh) return;
+                            if (obj.material instanceof THREE.MeshStandardMaterial) {
+                                obj.material.metalness = 0;
+                                obj.material.roughness = 1;
                             }
                         });
                         let obj, pobj;
@@ -4423,44 +4468,82 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         preloadedRobots[robot] = obj;
                     }, null, err => { delete preloadedRobots[template]; });
                 }
-                let mesh = this.#meshes[0];
-                if (!this.#has || type != this.pose.type || model != (this.pose.type.startsWith("§") ? this.#preloadedMeshes[this.pose.type] : preloadedRobots[this.pose.type])) {
+                let obj = this.#objs[0];
+                if (!this.#has || type != this.pose.type || model != (this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type])) {
                     this.#has = true;
                     type = this.pose.type;
-                    model =(this.pose.type.startsWith("§") ? this.#preloadedMeshes[this.pose.type] : preloadedRobots[this.pose.type]);
-                    if (mesh instanceof THREE.Object3D) this.scene.remove(mesh);
-                    mesh = (model instanceof THREE.Object3D) ? model.clone() : null;
-                    if (mesh instanceof THREE.Object3D) this.scene.add(mesh);
+                    model = (this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type]);
+                    if (obj instanceof THREE.Object3D) this.scene.remove(obj);
+                    obj = (model instanceof THREE.Object3D) ? model.clone() : null;
+                    if (obj instanceof THREE.Object3D) this.scene.add(obj);
+                    isGhost = null;
+                    isSolid = null;
                 }
-                this.#meshes = (mesh instanceof THREE.Object3D) ? [mesh] : [];
-                if (mesh instanceof THREE.Object3D) {
+                this.#objs = (obj instanceof THREE.Object3D) ? [obj] : [];
+                if (isGhost != this.pose.isGhost) {
+                    isGhost = this.pose.isGhost;
+                    this.#objs.forEach(obj => {
+                        obj.traverse(obj => {
+                            if (!obj.isMesh) return;
+                            if (obj.material instanceof THREE.Material) {
+                                obj.material.transparent = isGhost;
+                                if (isGhost) {
+                                    obj.material._opacity = obj.material.opacity;
+                                    obj.material.opacity *= 0.5;
+                                } else {
+                                    if ("_opacity" in obj.material)
+                                        obj.material.opacity = obj.material._opacity;
+                                }
+                            }
+                        });
+                    });
+                }
+                if (isSolid != this.pose.isSolid) {
+                    isSolid = this.pose.isSolid;
+                    this.#objs.forEach(obj => {
+                        obj.traverse(obj => {
+                            if (!obj.isMesh) return;
+                            if (obj.material instanceof THREE.Material) {
+                                if (isSolid) {
+                                    obj.material._color = obj.material.color.clone();
+                                    obj.material.color.set(color.toHex(false));
+                                } else {
+                                    if ("_color" in obj.material)
+                                        obj.material.color.set(obj.material._color);
+                                }
+                            }
+                        });
+                    });
+                }
+                if (obj instanceof THREE.Object3D) {
                     if (this.value.length == 3) {
-                        let bbox = new THREE.Box3().setFromObject(mesh);
-                        mesh.position.set(
+                        let bbox = new THREE.Box3().setFromObject(obj);
+                        obj.position.set(
                             (this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
                             ((bbox.max.y-bbox.min.y)/2) + (this.offsetY/100),
                             (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
                         );
-                        mesh.rotation.set(0, -this.value[2] * (this.tab.isDegrees ? (Math.PI/180) : 1), 0, "XYZ");
+                        obj.rotation.set(0, -this.value[2] * (this.tab.isDegrees ? (Math.PI/180) : 1), 0, "XYZ");
                     } else {
-                        mesh.position.set(
+                        obj.position.set(
                             (this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
                             (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
                             (this.value[2] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
                         );
-                        mesh.rotation.setFromQuaternion(new THREE.Quaternion(...this.value.slice(3)), "XYZ");
+                        obj.rotation.setFromQuaternion(new THREE.Quaternion(...this.value.slice(3)), "XYZ");
                     }
                     if (this.pose.type.startsWith("§")) {
                         let typefs = {
                             "§node": () => {
-                                mesh.material.color.set(color.toHex(false));
+                                obj.material.color.set(color.toHex(false));
                             },
                             "§cube": () => {
-                                mesh.material.color.set(color.toHex(false));
+                                obj.material.color.set(color.toHex(false));
                             },
                             "§arrow": () => {
-                                mesh.children.forEach(mesh => {
-                                    mesh.material.color.set(color.toHex(false));
+                                obj.traverse(obj => {
+                                    if (!obj.isMesh) return;
+                                    obj.material.color.set(color.toHex(false));
                                 });
                             },
                         };
@@ -4470,7 +4553,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                 let pass = this.#passes[0];
                 pass.visibleEdgeColor.set(color.toHex(false));
                 pass.hiddenEdgeColor.set(util.lerp(color, new util.Color(), 0.5).toHex(false));
-                pass.selectedObjects = this.#meshes;
+                pass.selectedObjects = this.#objs;
                 if (this.pose.type.startsWith("§")) {
                     if (this.composer.passes.includes(pass))
                         this.composer.removePass(pass);
@@ -4537,10 +4620,10 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#has = false;
         if (!this.hasComposer()) return;
         if (!this.hasThree()) return;
-        this.#meshes.forEach(mesh => {
-            this.scene.remove(mesh);
+        this.#objs.forEach(obj => {
+            this.scene.remove(obj);
         });
-        this.#meshes = [];
+        this.#objs = [];
         this.#passes.forEach(pass => {
             this.composer.removePass(pass);
         });
@@ -4551,15 +4634,15 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         if (!this.hasPose()) return;
         if (!this.hasThree()) return;
         if (this.value.length == 3 || this.value.length == 7) {
-            this.#meshes = [];
+            this.#objs = [];
             let pass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
             pass.edgeStrength = 10;
             pass.edgeGlow = 0;
             pass.edgeThickness = 5;
             this.#passes = [pass];
         }
-        this.#meshes.forEach(mesh => {
-            this.scene.add(mesh);
+        this.#objs.forEach(obj => {
+            this.scene.add(obj);
         });
         this.#passes.forEach(pass => {
             this.composer.addPass(pass);
