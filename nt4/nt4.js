@@ -183,7 +183,6 @@ export class Client {
     set connectionRequested(v) {
         v = !!v;
         if (this.connectionRequested == v) return;
-        console.log("connection req = "+v);
         this.#connectionRequested = v;
     }
 
@@ -439,7 +438,6 @@ export class Client {
         const prefix = "ws://";
 
         this.#addr = prefix + this.#baseAddr + ":" + port + "/nt/" + this.name;
-        console.log("connect to", this.addr);
 
         this.#ws = new WebSocket(this.addr, "networktables.first.wpi.edu");
         this.#ws.binaryType = "arraybuffer";

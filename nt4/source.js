@@ -186,7 +186,6 @@ export default class NTSource extends core.Target {
     set address(v) {
         v = (v == null) ? null : String(v);
         if (this.address == v) return;
-        console.log("NEW ADDR: "+v);
         if (this.#hasClient()) this.#client.disconnect();
         if (this.hasRoot()) {
             this.root.remHandler("change", this.root._onChange);
