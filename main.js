@@ -1016,13 +1016,13 @@ const MAIN = async () => {
         async get(k) {
             k = String(k);
             let kfs = {
-                loads: async () => {
+                "loads": async () => {
                     return this.loads;
                 },
-                loading: async () => {
+                "loading": async () => {
                     return this.isLoading;
                 },
-                _fulltemplates: async () => {
+                "_fulltemplates": async () => {
                     let content = "";
                     try {
                         content = await this.fileRead(["templates", "templates.json"]);
@@ -1034,7 +1034,7 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     return data;
                 },
-                templates: async () => {
+                "templates": async () => {
                     return util.ensure((await kfs._fulltemplates()).templates, "obj");
                 },
                 "template-images": async () => {
@@ -1054,7 +1054,7 @@ const MAIN = async () => {
                     let templates = await kfs.templates();
                     return (active in templates) ? active : null;
                 },
-                _fullrobots: async () => {
+                "_fullrobots": async () => {
                     let content = "";
                     try {
                         content = await this.fileRead(["robots", "robots.json"]);
@@ -1066,7 +1066,7 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     return data;
                 },
-                robots: async () => {
+                "robots": async () => {
                     return util.ensure((await kfs._fullrobots()).robots, "obj");
                 },
                 "robot-models": async () => {
@@ -1080,7 +1080,7 @@ const MAIN = async () => {
                     let robots = await kfs.robots();
                     return (active in robots) ? active : null;
                 },
-                _fullholidays: async () => {
+                "_fullholidays": async () => {
                     let content = "";
                     try {
                         content = await this.fileRead(["holidays", "holidays.json"]);
@@ -1092,7 +1092,7 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     return data;
                 },
-                holidays: async () => {
+                "holidays": async () => {
                     return util.ensure((await kfs._fullholidays()).holidays, "obj");
                 },
                 "holiday-icons": async () => {
@@ -1113,11 +1113,11 @@ const MAIN = async () => {
                     let holidays = await kfs.holidays();
                     return (active in holidays) ? active : null;
                 },
-                production: async () => {
+                "production": async () => {
                     return app.isPackaged;
                 },
                 "fs-version": async () => await this.fileRead(".version"),
-                _fullpackage: async () => {
+                "_fullpackage": async () => {
                     let content = "";
                     try {
                         content = await Portal.fileRead(path.join(__dirname, "package.json"));
@@ -1129,10 +1129,14 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     return data;
                 },
-                version: async () => {
+                "version": async () => {
                     return String((await kfs._fullpackage()).version) + ((await this.get("production")) ? "" : "-dev");
                 },
-                _fulldevconfig: async () => {
+                "repo": async () => {
+                    let repo = (await kfs._fullpackage()).repository;
+                    return String(util.is(repo, "obj") ? repo.url : repo);
+                },
+                "_fulldevconfig": async () => {
                     let content = "";
                     try {
                         content = await Portal.fileRead(path.join(__dirname, ".config"));
@@ -1144,10 +1148,10 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     return data;
                 },
-                devmode: async () => {
+                "devmode": async () => {
                     return !(await kfs.production()) && ((await kfs._fulldevconfig()).isDevMode);
                 },
-                _fullconfig: async () => {
+                "_fullconfig": async () => {
                     await this.affirm();
                     let content = "";
                     try {
@@ -1181,6 +1185,7 @@ const MAIN = async () => {
             let kfs = {
                 "version": async () => await this.get("version"),
                 "db-host": async () => await this.get("db-host"),
+                "repo": async () => await this.get("repo"),
                 "holiday": async () => await this.get("active-holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
             };
@@ -1198,7 +1203,7 @@ const MAIN = async () => {
         async set(k, v) {
             k = String(k);
             let kfs = {
-                _fullconfig: async (k=null, v=null) => {
+                "_fullconfig": async (k=null, v=null) => {
                     if (k == null) return;
                     let content = "";
                     try {
@@ -1245,7 +1250,7 @@ const MAIN = async () => {
             k = String(k);
             args = util.ensure(args, "arr");
             let kfs = {
-                spawn: async name => {
+                "spawn": async name => {
                     name = String(name);
                     let feats = this.features;
                     let hasFeat = null;
@@ -1262,7 +1267,7 @@ const MAIN = async () => {
                     this.addFeature(feat);
                     return true;
                 },
-                notify: async options => {
+                "notify": async options => {
                     const notif = new electron.Notification(options);
                     notif.show();
                 },
@@ -1503,24 +1508,15 @@ const MAIN = async () => {
                 help: [
                     {
                         label: "Ionicons",
-                        click: () => {
-                            electron.shell.openExternal("https://ionic.io/ionicons");
-                        },
+                        click: () => electron.shell.openExternal("https://ionic.io/ionicons"),
                     },
                     {
                         label: "Github Repository",
-                        click: () => {
-                            electron.shell.openExternal("https://github.com/team6036/peninsulaportal");
-                        },
+                        click: async () => await electron.shell.openExternal(await this.get("repo")),
                     },
                     {
                         label: "Open Database",
-                        click: () => {
-                            (async () => {
-                                if (!this.hasPortal()) return;
-                                electron.shell.openExternal(await this.get("db-host"));
-                            })();
-                        },
+                        click: async () => await electron.shell.openExternal(await this.get("db-host")),
                     },
                 ],
                 spawn: [
@@ -1924,18 +1920,18 @@ const MAIN = async () => {
             }
             this.log(`GET - ${k}`);
             let kfs = {
-                name: async () => {
+                "name": async () => {
                     return this.name;
                 },
-                fullscreenable: async () => {
+                "fullscreenable": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.isFullScreenable();
                 },
-                fullscreen: async () => {
+                "fullscreen": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.isFullScreen();
                 },
-                closeable: async () => {
+                "closeable": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.isClosable();
                 },
@@ -1954,17 +1950,17 @@ const MAIN = async () => {
             }
             this.log(`SET - ${k} = ${JSON.stringify(v)}`);
             let kfs = {
-                fullscreenable: async () => {
+                "fullscreenable": async () => {
                     if (!this.hasWindow()) return false;
                     this.window.setFullScreenable(!!v);
                     return true;
                 },
-                fullscreen: async () => {
+                "fullscreen": async () => {
                     if (!this.hasWindow()) return false;
                     this.window.setFullScreen(!!v);
                     return true;
                 },
-                closeable: async () => {
+                "closeable": async () => {
                     if (!this.hasWindow()) return false;
                     let maximizable = this.window.isMaximizable();
                     this.window.setClosable(!!v);
@@ -1987,7 +1983,7 @@ const MAIN = async () => {
             }
             this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
             let kfs = {
-                close: async () => await this.stop(),
+                "close": async () => await this.stop(),
                 "menu-ables": async menuAbles => {
                     menuAbles = util.ensure(menuAbles, "obj");
                     for (let id in menuAbles) {
@@ -1998,7 +1994,7 @@ const MAIN = async () => {
                     }
                     return true;
                 },
-                _config: async () => {
+                "_config": async () => {
                     await this.affirm();
                     let content = "";
                     try {
@@ -2031,7 +2027,7 @@ const MAIN = async () => {
                     await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
                     return v;
                 },
-                _state: async () => {
+                "_state": async () => {
                     await this.affirm();
                     let content = "";
                     try {
@@ -2101,7 +2097,7 @@ const MAIN = async () => {
                     },
                 },
                 PLANNER: {
-                    exec: async (id, pathId) => {
+                    "exec": async (id, pathId) => {
                         id = String(id);
                         pathId = String(pathId);
 

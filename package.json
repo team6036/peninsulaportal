@@ -1,6 +1,6 @@
 {
-  "name": "peninsula",
-  "productName": "Pensinula",
+  "name": "peninsula-app",
+  "productName": "Pensinula App",
   "version": "2023.2.1",
   "description": "Toolbox application for 6036",
   "author": {
@@ -12,6 +12,12 @@
     "start": "electron .",
     "package": "node package.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/team6036/peninsulaportal.git"
+  },
+  "bugs": "https://github.com/team6036/peninsulaportal/issues",
+  "homepage": "https://github.com/team6036/peninsulaportal",
   "dependencies": {
     "compare-versions": "^6.1.0",
     "electron": "^26.1.0",

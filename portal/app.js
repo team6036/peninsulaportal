@@ -320,8 +320,11 @@ export default class App extends core.App {
                     this.eSettingsBtn.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
                 setInterval(async () => {
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
-                    if (!(dbHostAnchor instanceof HTMLAnchorElement)) return;
-                    dbHostAnchor.href = await window.api.get("val-db-host");
+                    if (dbHostAnchor instanceof HTMLAnchorElement)
+                        dbHostAnchor.href = await window.api.get("val-db-host");
+                    const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
+                    if (repoAnchor instanceof HTMLAnchorElement)
+                        repoAnchor.href = await window.api.get("val-repo");
                 }, 250);
             }
             this.#eLoads = document.querySelector("#PAGE > .loads");
