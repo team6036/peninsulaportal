@@ -133,8 +133,15 @@ export class App extends Target {
     start() { this.post("start", null); }
 
     async getAbout() {
-        let os = await window.version.os();
-        let app = await window.api.get("version");
+        let os = util.ensure(await window.version.os(), "obj");
+        os.platform = util.ensure(os.platform, "str", "?");
+        os.arch = util.ensure(os.arch, "str", "?");
+        os.cpus = util.ensure(os.cpus, "arr").map(cpu => {
+            cpu = util.ensure(cpu, "obj");
+            cpu.model = util.ensure(cpu.model, "str", "?");
+            return cpu;
+        });
+        let app = String(await window.api.get("version"));
         return {
             node: window.version.node(),
             chrome: window.version.chrome(),
@@ -197,7 +204,7 @@ export class App extends Target {
                     location = location.join("/");
                     if (path.endsWith("icon.png")) {
                         const onHolidayState = async holiday => {
-                            elem.src = (holiday == null) ? (location + path) : util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").png;
+                            elem.src = (holiday == null) ? (location + path) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
                         };
                         this.addHandler("cmd-win-holiday", async args => {
                             args = util.ensure(args, "arr");
@@ -343,7 +350,7 @@ export class App extends Target {
             let name = String(await window.api.get("name"));
             let holiday = await window.api.get("active-holiday");
             let pop = this.alert();
-            pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").svg;
+            pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.content = "Peninsula "+util.capitalize(name);
             pop.info = (await this.getAboutLines()).join("\n");
@@ -401,7 +408,7 @@ export class App extends Target {
                         holidayT = util.getTime();
                         if (this.accent != null) return;
                         (async () => {
-                            let holidayData = util.ensure((await window.api.get("holidays"))[prevHoliday], "obj");
+                            let holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[prevHoliday], "obj");
                             this.accent = holidayData.accent;
                         })();
                         return;
@@ -522,10 +529,10 @@ export class App extends Target {
                     elem.classList.add("special");
                     let eSpecialBack = elem.querySelector(".special.back");
                     if (eSpecialBack instanceof HTMLImageElement)
-                        eSpecialBack.src = util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").hat2;
+                        eSpecialBack.src = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").hat2;
                     let eSpecialFront = elem.querySelector(".special.front");
                     if (eSpecialFront instanceof HTMLImageElement)
-                        eSpecialFront.src = util.ensure((await window.api.get("holiday-icons"))[holiday], "obj").hat1;
+                        eSpecialFront.src = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").hat1;
                 };
                 this.addHandler("cmd-win-holiday", async args => {
                     args = util.ensure(args, "arr");

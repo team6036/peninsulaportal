@@ -370,7 +370,7 @@ export default class App extends core.App {
             this.addHandler("update", async data => {
                 if (lock) return;
                 lock = true;
-                let loads = await window.api.get("loads");
+                let loads = util.ensure(await window.api.get("loads"));
                 if (prevLoads.length == loads.length) {
                     let all = true;
                     for (let i = 0; i < loads.length; i++) {

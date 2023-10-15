@@ -2736,7 +2736,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
         let templates = {};
         (async () => {
-            templates = await window.api.get("templates");
+            templates = util.ensure(await window.api.get("templates"), "obj");
             this.template = await window.api.get("active-template");
         })();
 
@@ -3396,8 +3396,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         let templateImages = {};
         let finished = false;
         (async () => {
-            templates = await window.api.get("templates");
-            templateImages = await window.api.get("template-images");
+            templates = util.ensure(await window.api.get("templates"), "obj");
+            templateImages = util.ensure(await window.api.get("template-images"), "obj");
             finished = true;
         })();
 
@@ -3428,9 +3428,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
             if (!finished) return;
 
-            this.odometry.size = (this.template in templates) ? templates[this.template].size : this.size;
+            this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
-            this.odometry.imageScale = (this.template in templates) ? templates[this.template].imageScale : 0;
+            this.odometry.imageScale = (this.template in templates) ? util.ensure(templates[this.template], "obj").imageScale : 0;
             if (this.isClosed) return;
             let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
             this.poses.forEach(pose => {
@@ -3626,7 +3626,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
 
         let templates = {};
         (async () => {
-            templates = await window.api.get("templates");
+            templates = util.ensure(await window.api.get("templates"), "obj");
         })();
 
         this.addHandler("update", data => {
@@ -3651,7 +3651,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                 render.color = this.pose.color.substring(2);
                 render.colorH = this.pose.color.substring(2)+5;
                 render.alpha = this.pose.ghost ? 0.5 : 1;
-                render.size = (this.tab.template in templates) ? templates[this.tab.template].robotSize : this.tab.robotSize;
+                render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
                 render.pos = new V(this.value[0], this.value[1]).mul(this.tab.isMeters ? 100 : 1);
                 render.heading = this.value[2] * (this.tab.isDegrees ? 1 : (180/Math.PI));
                 render.type = this.pose.type;
@@ -3920,8 +3920,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let templateModels = {};
         let finished = false;
         (async () => {
-            templates = await window.api.get("templates");
-            templateModels = await window.api.get("template-models");
+            templates = util.ensure(await window.api.get("templates"), "obj");
+            templateModels = util.ensure(await window.api.get("template-models"), "obj");
             finished = true;
         })();
 
@@ -3970,8 +3970,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
-                pose.state.offsetX = -((this.template in templates) ? new V(templates[this.template].size).x : 0)/2;
-                pose.state.offsetZ = -((this.template in templates) ? new V(templates[this.template].size).y : 0)/2;
+                pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
+                pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
                 pose.state.value = (source instanceof NTSource) ? source.getValueAt(pose.name, source.serverStartTime+this.nowTime) : [];
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
@@ -4097,7 +4097,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let r = super.addPose(pose);
         if (r instanceof this.constructor.Pose) {
             r._onType = async () => {
-                let robots = await window.api.get("robots");;
+                let robots = util.ensure(await window.api.get("robots"), "obj");
                 let current = r.type;
                 if (!this.hasApp()) return;
                 let itm;
@@ -4381,8 +4381,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         let robotModels = {};
         let finished = false;
         (async () => {
-            robots = await window.api.get("robots");
-            robotModels = await window.api.get("robot-models");
+            robots = util.ensure(await window.api.get("robots"), "obj");
+            robotModels = util.ensure(await window.api.get("robot-models"), "obj");
             finished = true;
         })();
 
