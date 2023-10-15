@@ -1145,7 +1145,7 @@ const MAIN = async () => {
                     return data;
                 },
                 devmode: async () => {
-                    return !(await kfs.production()) && (!!(await kfs._fulldevconfig()).isDevMode);
+                    return !(await kfs.production()) && (await kfs._fulldevconfig().isDevMode);
                 },
                 _fullconfig: async () => {
                     await this.affirm();
@@ -1172,9 +1172,9 @@ const MAIN = async () => {
             if (k.startsWith("val-")) {
                 try {
                     return await this.getValue(k.substring(4));
-                } catch (e) { if (!String(e).startsWith("No possible \"getValue\" for key: ")) throw e; }
+                } catch (e) { if (!String(e).startsWith("§GV ")) throw e; }
             }
-            throw "No possible \"get\" for key: "+k;
+            throw "§G No possible \"get\" for key: "+k;
         }
         async getValue(k) {
             k = String(k);
@@ -1185,12 +1185,12 @@ const MAIN = async () => {
                 "comp-mode": async () => await this.get("comp-mode"),
             };
             if (k in kfs) return await kfs[k]();
-            throw "No possible \"getValue\" for key: "+k;
+            throw "§GV No possible \"getValue\" for key: "+k;
         }
         async getCallback(id, k) {
             try {
                 return await this.get(k);
-            } catch (e) { if (!String(e).startsWith("No possible \"get\" for key: ")) throw e; }
+            } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
             let feat = this.identifyFeature(id);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
             return await feat.get(k);
@@ -1220,9 +1220,9 @@ const MAIN = async () => {
             if (k.startsWith("val-")) {
                 try {
                     return await this.setValue(k.substring(4), v);
-                } catch (e) { if (!String(e).startsWith("No possible \"setValue\" for key: ")) throw e; }
+                } catch (e) { if (!String(e).startsWith("§SV ")) throw e; }
             }
-            throw "No possible \"set\" for key: "+k;
+            throw "§S No possible \"set\" for key: "+k;
         }
         async setValue(k, v) {
             k = String(k);
@@ -1231,12 +1231,12 @@ const MAIN = async () => {
                 "comp-mode": async () => await this.set("comp-mode", v),
             };
             if (k in kfs) return await kfs[k]();
-            throw "No possible \"setValue\" for key: "+k;
+            throw "§SV No possible \"setValue\" for key: "+k;
         }
         async setCallback(id, k, v) {
             try {
                 return await this.set(k, v);
-            } catch (e) { if (!String(e).startsWith("No possible \"set\" for key: ")) throw e; }
+            } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             let feat = this.identifyFeature(id);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
             return await feat.set(k, v);
@@ -1262,9 +1262,13 @@ const MAIN = async () => {
                     this.addFeature(feat);
                     return true;
                 },
+                notify: async options => {
+                    const notif = new electron.Notification(options);
+                    notif.show();
+                },
             };
             if (k in kfs) return await kfs[k](...args);
-            throw "No possible \"on\" for key: "+k;
+            throw "§O No possible \"on\" for key: "+k;
         }
         async onCallback(id, k, args) {
             try {
@@ -1401,13 +1405,13 @@ const MAIN = async () => {
             const onHolidayState = async holiday => {
                 if (!this.hasPortal()) return;
                 let tag = "png";
-                let icon = (holiday == null) ? path.join(__dirname, "assets", "app", "icon."+tag) : util.ensure((await this.portal.get("holiday-icons"))[holiday], "obj")[tag];
+                let icon = (holiday == null) ? path.join(__dirname, "assets", "app", "icon."+tag) : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
                 if (!this.hasWindow()) return;
                 if (PLATFORM == "win32") this.window.setIcon(icon);
                 if (PLATFORM == "darwin") app.dock.setIcon(icon);
                 if (PLATFORM == "linux") this.window.setIcon(icon);
             };
-            (async () => await onHolidayState(await this.portal.get("active-holiday")))();
+            (async () => await onHolidayState(await this.get("active-holiday")))();
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
@@ -1463,7 +1467,7 @@ const MAIN = async () => {
                     {
                         label: "Settings",
                         accelerator: "CmdOrCtrl+,",
-                        click: () => { if (this.hasPortal()) this.portal.on("spawn", ["PRESETS"]); },
+                        click: () => this.on("spawn", ["PRESETS"]),
                     },
                 ],
                 hide: [
@@ -1514,7 +1518,7 @@ const MAIN = async () => {
                         click: () => {
                             (async () => {
                                 if (!this.hasPortal()) return;
-                                electron.shell.openExternal(await this.portal.get("db-host"));
+                                electron.shell.openExternal(await this.get("db-host"));
                             })();
                         },
                     },
@@ -1526,12 +1530,12 @@ const MAIN = async () => {
                             {
                                 label: "Peninsula Panel",
                                 accelerator: "CmdOrCtrl+1",
-                                click: () => { if (this.hasPortal()) this.portal.on("spawn", ["PANEL"]); },
+                                click: () => this.on("spawn", ["PANEL"]),
                             },
                             {
                                 label: "Peninsula Planner",
                                 accelerator: "CmdOrCtrl+2",
-                                click: () => { if (this.hasPortal()) this.portal.on("spawn", ["PLANNER"]); },
+                                click: () => this.on("spawn", ["PLANNER"]),
                             },
                         ],
                     },
@@ -1765,8 +1769,8 @@ const MAIN = async () => {
             this.window.setMenu(this.menu);
             
             (async () => {
-                let fsVersion = await this.portal.get("fs-version");
-                let version = await this.portal.get("version");
+                let fsVersion = String(await this.get("fs-version"));
+                let version = String(await this.get("version"));
                 if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
                     setTimeout(() => {
                         this.send("deprecated", [version]);
@@ -1776,7 +1780,7 @@ const MAIN = async () => {
                 }
                 let prevIsDevMode = null;
                 const checkDevConfig = async () => {
-                    let isDevMode = this.hasPortal() && (await this.portal.get("devmode"));
+                    let isDevMode = !!(await this.get("devmode"));
                     this.on("menu-ables", [{ toggleDevTools: isDevMode }]);
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
@@ -1785,7 +1789,8 @@ const MAIN = async () => {
                 };
                 let prevHoliday = null;
                 const checkHoliday = async () => {
-                    let holiday = this.hasPortal() ? (await this.portal.get("active-holiday")) : null;
+                    let holiday = await this.get("active-holiday");
+                    holiday = (holiday == null) ? null : String(holiday);
                     await onHolidayState(holiday);
                     if (prevHoliday != holiday) {
                         prevHoliday = holiday;
@@ -1912,6 +1917,11 @@ const MAIN = async () => {
             if (!this.started) return null;
             if (!this.hasName()) return null;
             k = String(k);
+            if (this.hasPortal()) {
+                try {
+                    return await this.portal.get(k);
+                } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
+            }
             this.log(`GET - ${k}`);
             let kfs = {
                 name: async () => {
@@ -1937,6 +1947,11 @@ const MAIN = async () => {
             if (!this.started) return false;
             if (!this.hasName()) return false;
             k = String(k);
+            if (this.hasPortal()) {
+                try {
+                    return await this.portal.set(k, v);
+                } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
+            }
             this.log(`SET - ${k} = ${JSON.stringify(v)}`);
             let kfs = {
                 fullscreenable: async () => {
@@ -1965,6 +1980,11 @@ const MAIN = async () => {
             if (!this.hasName()) return null;
             k = String(k);
             args = util.ensure(args, "arr");
+            if (this.hasPortal()) {
+                try {
+                    return await this.portal.on(k, args);
+                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
+            }
             this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
             let kfs = {
                 close: async () => await this.stop(),
@@ -2076,7 +2096,7 @@ const MAIN = async () => {
                     "cmd-poll-db-host": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
                         (async () => {
-                            await this.portal.tryLoad(await this.portal.get("version"));
+                            await this.portal.tryLoad(await this.get("version"));
                         })();
                     },
                 },

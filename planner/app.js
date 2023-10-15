@@ -1116,7 +1116,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     async refresh() {
         this.clearButtons();
         this.eTemplates.innerHTML = "";
-        const globalTemplates = await window.api.get("templates");
+        const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
         for (let name in globalTemplates) {
             let btn = document.createElement("button");
             this.eTemplates.appendChild(btn);
@@ -2111,21 +2111,17 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (!this.hasApp()) return;
         await this.refresh();
         this.eDisplay.focus();
-        const globalTemplates = await window.api.get("templates");
-        const globalTemplateImages = await window.api.get("template-images");
-        const activeTemplate = await window.api.get("active-template");
-        let hasTemplates = await window.api.fileHas("templates.json");
-        if (!hasTemplates) return console.log("no templates found");
-        let templatesContent = null;
+        const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
+        const globalTemplateImages = util.ensure(await window.api.get("template-images"), "obj");
+        const activeTemplate = util.ensure(await window.api.get("active-template"), "obj");
+        let templatesContent = "";
         try {
             templatesContent = await window.api.fileRead("templates.json");
         } catch (e) {}
-        if (templatesContent == null) return console.log("invalid templates content");
         let templates = null;
         try {
             templates = JSON.parse(templatesContent);
         } catch (e) {}
-        if (templates == null) return console.log("error parsing templates");
         templates = util.ensure(templates, "obj");
         if (this.app.hasProject(data.id)) {
             this.project = this.app.getProject(data.id);
@@ -2140,7 +2136,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (this.hasProject()) {
             for (let name in globalTemplates) {
                 if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
-                const globalTemplate = globalTemplates[name];
+                const globalTemplate = util.ensure(globalTemplates[name], "obj");
                 let template = util.ensure(templates[name], "obj");
                 template[".size"] = globalTemplate["size"];
                 template[".robotW"] = globalTemplate["robotSize"];

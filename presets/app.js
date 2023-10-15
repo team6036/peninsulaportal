@@ -75,7 +75,7 @@ export default class App extends core.App {
                         const disabled = elem.disabled;
                         elem.disabled = true;
                         if (type == "bool") {
-                            let checked = !!await window.api.get("val-"+elem.id);
+                            let checked = !!(await window.api.get("val-"+elem.id));
                             if (elem.checked == checked) {
                                 elem.disabled = disabled;
                                 lock = false;
@@ -181,7 +181,7 @@ export default class App extends core.App {
             this.addHandler("update", async data => {
                 if (lock) return;
                 lock = true;
-                let loads = await window.api.get("loads");
+                let loads = util.ensure(await window.api.get("loads"), "arr");
                 if (prevLoads.length == loads.length) {
                     let all = true;
                     for (let i = 0; i < loads.length; i++) {
