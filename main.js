@@ -1273,7 +1273,7 @@ const MAIN = async () => {
         async onCallback(id, k, args) {
             try {
                 return await this.on(k, args);
-            } catch (e) { if (!String(e).startsWith("No possible \"on\" for key: ")) throw e; }
+            } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             let feat = this.identifyFeature(id);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
             return await feat.on(k, args);
