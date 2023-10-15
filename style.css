@@ -12,8 +12,13 @@
     font-family: REM;
     src: url("./assets/REM.ttf");
 }
+@font-face {
+    font-family: Oswald;
+    src: url("./assets/Oswald.ttf");
+}
 
 * {
+    /*font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";*/
     font-family: REM, Arial, Helvetica, sans-serif;
 }
 
@@ -271,6 +276,28 @@ label.switch {
     max-height: var(--height);
 
     display: inline-block;
+}
+label.switch::after {
+    content: "OFF";
+
+    position: absolute;
+    top: 50%;
+    left: calc(2 * var(--padding));
+    transform: translate(calc(var(--width) - (4 * var(--padding)) - 100%), -50%);
+
+    display: none;
+
+    color: var(--v8);
+
+    font-size: 8px;
+    font-family: Oswald, Arial, Helvetica, sans-serif;
+
+    transition: transform var(--t);
+}
+label.switch:has(input[type="checkbox"]:checked)::after {
+    content: "ON";
+
+    transform: translate(0px, -50%);
 }
 label.switch > input[type="checkbox"] {
     width: 0px;
