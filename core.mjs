@@ -62,6 +62,7 @@ export class App extends Target {
     #pages;
     #page;
 
+    #eTitle;
     #eCoreStyle;
     #eStyle;
     #eDynamicStyle;
@@ -434,6 +435,11 @@ export class App extends Target {
             onHolidayState(args[0]);
         });
 
+        this.#eTitle = document.querySelector("head > title");
+        if (!(this.eTitle instanceof HTMLTitleElement)) this.#eTitle = document.createElement("title");
+        document.head.appendChild(this.eTitle);
+        this.title = "Peninsula "+util.capitalize(await window.api.get("name"));
+
         this.#eCoreStyle = document.createElement("link");
         document.head.appendChild(this.eCoreStyle);
         this.eCoreStyle.rel = "stylesheet";
@@ -484,11 +490,11 @@ export class App extends Target {
 
         const updatePage = () => {
             Array.from(document.querySelectorAll(".loading")).forEach(elem => {
-                if (elem.innerHTML.length > 0) return;
+                if (elem.children.length > 0) return;
                 elem.innerHTML = "<div>"+new Array(4).fill("<div></div>").join("")+"</div>";
             });
             Array.from(document.querySelectorAll("label.filedialog")).forEach(elem => {
-                if (elem.innerHTML.length > 0) return;
+                if (elem.children.length > 0) return;
                 elem.innerHTML = "<input type='file'><div class='value'></div><button></button>";
                 const input = elem.input = elem.children[0];
                 const value = elem.value = elem.children[1];
@@ -507,6 +513,10 @@ export class App extends Target {
                 });
             });
             Array.from(document.querySelectorAll(".introtitle")).forEach(async elem => {
+                if (elem.children.length <= 0) {
+                    elem.innerHTML = "<div><div>p</div><div>eninsula</div></div><div></div>";
+                    elem.children[1].textContent = util.capitalize(await window.api.get("name"));
+                }
                 let both = 0;
                 if (!(elem.querySelector(".special.back") instanceof HTMLImageElement)) {
                     let eSpecialBack = document.createElement("img");
@@ -897,6 +907,10 @@ export class App extends Target {
         return btn;
     }
 
+    get title() { return this.eTitle.textContent; }
+    set title(v) { this.eTitle.textContent = v; }
+
+    get eTitle() { return this.#eTitle; }
     get eCoreStyle() { return this.#eCoreStyle; }
     get eStyle() { return this.#eStyle; }
     get eDynamicStyle() { return this.#eDynamicStyle; }
