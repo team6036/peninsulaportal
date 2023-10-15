@@ -528,12 +528,43 @@ article.md ul {
     --space: 10px;
     --tooltip-size-v: 100%;
 
+    --x: 0;
+    --y: 0;
+    --ax: 0;
+    --ay: 0;
+
     z-index: 1;
 
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    left: calc(50% + (50% * var(--x)));
+    top: calc(50% + (50% * var(--y)));
+    transform-origin: calc(50% - (50% * var(--x))) calc(50% - (50% * var(--y)));
+    transform:
+    translate(
+        calc(var(--ay) * (var(--space) * var(--x))),
+        /*
+        if (ay) { space * x }
+        else { 0px }
+        */
+        calc(var(--ax) * (var(--space) * var(--y)))
+        /*
+        if (ax) { space * y }
+        else { 0px }
+        */
+    )
+    translate(
+        calc(-50% + (var(--ay) - var(--ax)) * (50% * var(--x))),
+        /*
+        if (ax) { -50% - (50% * x) }
+        else { -50% + (50% * x) }
+        */
+        calc(-50% + (var(--ax) - var(--ay)) * (50% * var(--y)))
+        /*
+        if (ax) { -50% + (50% * y) }
+        else { -50% - (50% * y) }
+        */
+    )
+    scale(var(--tooltip-size-v));
 
     width: max-content;
     height: max-content;
@@ -549,15 +580,30 @@ article.md ul {
     transition: --tooltip-size-v var(--t), transform var(--t), background-color var(--t), opacity var(--t), visibility var(--t);
 }
 .tooltip::before {
+    content: "";
+
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: calc(
+        (50% + ((var(--ay) - var(--ax)) * ((50% - (var(--ay) * 10px)) * var(--y))))
+        /*
+        if (ax) { 50% - (50% * y) }
+        else { 50% + ((50%-10px) * y) }
+        */
+    );
+    left: calc(
+        (50% + ((var(--ax) - var(--ay)) * ((50% - (var(--ax) * 10px)) * var(--x))))
+        /*
+        if (ax) { 50% + ((50%-10px) * x) }
+        else { 50% - (50% * x) }
+        */
+    );
     transform: translate(-50%, -50%) rotate(45deg);
 
     width: 10px;
     aspect-ratio: 1 / 1;
 
     background-color: var(--bg);
+    opacity: calc(100% * min(1, var(--ax) + var(--ay)));
 
     transition: background-color var(--t);
 }
@@ -573,149 +619,49 @@ article.md ul {
     opacity: 100%;
     visibility: inherit;
 }
-.tooltip.nex {
-    top: 0%;
-    left: 100%;
-    transform-origin: 100% 100%;
-    transform: translateY(calc(-1*var(--space))) translate(-100%, -100%) scale(var(--tooltip-size-v));
-}
-.tooltip.nx {
-    top: 0%;
-    left: 50%;
-    transform-origin: 50% 100%;
-    transform: translateY(calc(-1*var(--space))) translate(-50%, -100%) scale(var(--tooltip-size-v));
-}
-.tooltip.nwx {
-    top: 0%;
-    left: 0%;
-    transform-origin: 0% 100%;
-    transform: translateY(calc(-1*var(--space))) translate(0%, -100%) scale(var(--tooltip-size-v));
-}
-.tooltip.sex {
-    top: 100%;
-    left: 100%;
-    transform-origin: 100% 0%;
-    transform: translateY(calc(+1*var(--space))) translate(-100%, 0%) scale(var(--tooltip-size-v));
-}
-.tooltip.sx {
-    top: 100%;
-    left: 50%;
-    transform-origin: 50% 0%;
-    transform: translateY(calc(+1*var(--space))) translate(-50%, 0%) scale(var(--tooltip-size-v));
-}
+.tooltip.nex,
+.tooltip.nx,
+.tooltip.nwx,
+.tooltip.sex,
+.tooltip.sx,
 .tooltip.swx {
-    top: 100%;
-    left: 0%;
-    transform-origin: 0% 0%;
-    transform: translateY(calc(+1*var(--space))) translate(0%, 0%) scale(var(--tooltip-size-v));
+    --ax: 1;
 }
-.tooltip.ney {
-    top: 0%;
-    left: 100%;
-    transform-origin: 0% 0%;
-    transform: translateX(calc(+1*var(--space))) translate(0%, 0%) scale(var(--tooltip-size-v));
-}
-.tooltip.ey {
-    top: 50%;
-    left: 100%;
-    transform-origin: 0% 50%;
-    transform: translateX(calc(+1*var(--space))) translate(0%, -50%) scale(var(--tooltip-size-v));
-}
-.tooltip.sey {
-    top: 100%;
-    left: 100%;
-    transform-origin: 0% 100%;
-    transform: translateX(calc(+1*var(--space))) translate(0%, -100%) scale(var(--tooltip-size-v));
-}
-.tooltip.nwy {
-    top: 0%;
-    left: 0%;
-    transform-origin: 100% 0%;
-    transform: translateX(calc(-1*var(--space))) translate(-100%, 0%) scale(var(--tooltip-size-v));
-}
-.tooltip.wy {
-    top: 50%;
-    left: 0%;
-    transform-origin: 100% 50%;
-    transform: translateX(calc(-1*var(--space))) translate(-100%, -50%) scale(var(--tooltip-size-v));
-}
+.tooltip.ney,
+.tooltip.ey,
+.tooltip.sey,
+.tooltip.nwy,
+.tooltip.wy,
 .tooltip.swy {
-    top: 100%;
-    left: 0%;
-    transform-origin: 100% 100%;
-    transform: translateX(calc(-1*var(--space))) translate(-100%, -100%) scale(var(--tooltip-size-v));
+    --ay: 1;
 }
-.tooltip.nex::before {
-    content: "";
-
-    top: 100%;
-    left: calc(100% - 10px);
+.tooltip.nex,
+.tooltip.sex,
+.tooltip.ney,
+.tooltip.ey,
+.tooltip.sey {
+    --x: +1;
 }
-.tooltip.nx::before {
-    content: "";
-
-    top: 100%;
-    left: 50%;
+.tooltip.nwx,
+.tooltip.swx,
+.tooltip.nwy,
+.tooltip.wy,
+.tooltip.swy {
+    --x: -1;
 }
-.tooltip.nwx::before {
-    content: "";
-
-    top: 100%;
-    left: calc(0% + 10px);
+.tooltip.nex,
+.tooltip.nx,
+.tooltip.nwx,
+.tooltip.ney,
+.tooltip.nwy {
+    --y: -1;
 }
-.tooltip.sex::before {
-    content: "";
-
-    top: 0%;
-    left: calc(100% - 10px);
-}
-.tooltip.sx::before {
-    content: "";
-
-    top: 0%;
-    left: 50%;
-}
-.tooltip.swx::before {
-    content: "";
-
-    top: 0%;
-    left: calc(0% + 10px);
-}
-.tooltip.ney::before {
-    content: "";
-
-    top: calc(0% + 10px);
-    left: 0%;
-}
-.tooltip.ey::before {
-    content: "";
-
-    top: 50%;
-    left: 0%;
-}
-.tooltip.sey::before {
-    content: "";
-
-    top: calc(100% - 10px);
-    left: 0%;
-}
-.tooltip.nwy::before {
-    content: "";
-
-    top: calc(0% + 10px);
-    left: 100%;
-}
-.tooltip.wy::before {
-    content: "";
-
-    top: 50%;
-    left: 100%;
-}
-.tooltip.swy::before {
-    content: "";
-
-    top: calc(100% - 10px);
-    left: 100%;
+.tooltip.sex,
+.tooltip.sx,
+.tooltip.swx,
+.tooltip.sey,
+.tooltip.swy {
+    --y: +1;
 }
 
 .loading {
