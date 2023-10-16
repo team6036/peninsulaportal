@@ -534,108 +534,19 @@
     left: 50%;
     transform: translate(-50%, -50%);
 }
-#PROJECTPAGE > .display > .render > .item {
-    position: absolute;
-    bottom: 0%;
-    left: 0%;
-}
 .global.item {
     position: absolute;
     bottom: 50%;
     left: 50%;
     transform: translate(-50%, 50%);
 }
-#PROJECTPAGE > .display > .render > .item.background {
-    z-index: -2;
-
-    opacity: 25%;
-
-    pointer-events: none;
-
-    mix-blend-mode: difference;
-}
-#PROJECTPAGE > .display > .render > .item.background > img {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    transform: translate(-50%, -50%);
-}
-#PROJECTPAGE > .display > .render > .item.pathindex {
-    bottom: 30px;
-
-    padding: 5px 10px;
-
-    background-color: var(--cg-8);
-    color: var(--v8);
-
-    font-size: 15px;
-
-    pointer-events: none;
-}
-#PROJECTPAGE > .display > .render > .item.pathindex::before {
-    content: "";
-
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translate(-50%, -50%) translateY(2.5px);
-
-    border-style: solid;
-    border-width: 5px 5px 0 5px;
-    border-color: var(--cg-8) transparent transparent transparent;
-}
-#PROJECTPAGE > .display > .render > .item.pathline {
-    --dist: 0px;
-
-    pointer-events: none;
-}
-#PROJECTPAGE > .display > .render > .item.pathline::before {
-    content: "";
-
-    position: absolute;
-    top: 50%;
-    left: calc(15px / var(--scale));
-    transform: translateY(-50%);
-
-    width: calc(var(--dist) - (30px / var(--scale)));
-    height: calc(5px / var(--scale));
-
-    background-color: var(--cg-8);
-}
-#PROJECTPAGE > .display > .render > .item.pathvisual {
-    z-index: -1;
-
-    pointer-events: none;
-}
-#PROJECTPAGE > .display > .render > .item.pathvisual > canvas {
-    transform: translateY(2.25px);
-
-    padding: 0px;
-    margin: 0px;
-}
-#PROJECTPAGE > .display > .render > .item.pathvisualitem {
-    z-index: -1;
-
-    pointer-events: none;
-}
-#PROJECTPAGE > .display > .render > .item.select {
-    outline: calc(2px / var(--scale)) solid var(--v8);
-
-    pointer-events: none;
-}
-#PROJECTPAGE > .display > .render > .item.selectable,
 .global.item.selectable {
     outline: 0px solid var(--v8);
     border-radius: 100%;
 }
-#PROJECTPAGE > .display > .render > .item.selectable.this {
-    z-index: 1;
-}
-#PROJECTPAGE > .display > .render > .item.selectable.this,
 .global.item.selectable.this {
     outline: 2px solid var(--v8);
 }
-#PROJECTPAGE > .display > .render > .item.selectable > button,
 .global.item.selectable > .button {
     padding: 0px;
     aspect-ratio: 1 / 1;
@@ -647,13 +558,6 @@
 .global.item.selectable > .button {
     cursor: inherit;
 }
-#PROJECTPAGE > .display > .render > .item.selectable.node {
-    --dir-vel: 0deg;
-    --dir-head: 0deg;
-    --dist: 0px;
-    --body-w: 0px;
-    --body-h: 0px;
-}
 .global.item.selectable.node {
     --dir-vel: 0deg;
     --dir-head: 0deg;
@@ -661,64 +565,11 @@
     --body-w: 50px;
     --body-h: 50px;
 }
-#PROJECTPAGE > .display > .render > .item.selectable.node > button:first-child {
-    --bg: var(--cb);
-    --fg: var(--v8);
-    --bgh: var(--cb5);
-    --fgh: var(--v8);
-    --bgd: var(--cb2);
-    --fgd: var(--v6);
-
-    width: 15px;
-}
 .global.item.selectable.node > .button {
     background-color: var(--cb);
     color: var(--v8);
 
     width: 15px;
-}
-#PROJECTPAGE > .display > .render > .item.selectable.node > button.arrow {
-    --bg: var(--v8);
-    --fg: var(--v1);
-    --bgh: var(--a);
-    --fgh: var(--v8);
-    --bgd: var(--v6);
-    --fgd: var(--v1);
-
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(var(--dir-vel)) translateX(calc(var(--scale) * var(--dist)));
-
-    width: 10px;
-    aspect-ratio: 1 / 1;
-    border-radius: 100%;
-    opacity: 0%;
-    visibility: hidden;
-
-    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), opacity var(--t), visibility var(--t);
-}
-#PROJECTPAGE > .display > .render > .item.selectable.node.this.velocity > button.arrow {
-    opacity: 50%;
-    visibility: inherit;
-}
-#PROJECTPAGE > .display > .render > .item.selectable.node.this.velocity > button.arrow:not(:disabled):hover {
-    opacity: 100%;
-}
-#PROJECTPAGE > .display > .render > .item.selectable.node > button.arrow::before {
-    content: "";
-    
-    position: absolute;
-    top: 50%;
-    left: 0%;
-    transform: translate(-100%, -50%);
-
-    width: calc((var(--scale) * var(--dist)) - 2.5px - 10px);
-    height: 2px;
-
-    background-color: var(--v8);
-
-    pointer-events: none;
 }
 .global.item.selectable.node > .arrow {
     position: absolute;
@@ -748,63 +599,9 @@
 
     pointer-events: none;
 }
-#PROJECTPAGE > .display > .render > .item.selectable.node > button.body {
-    --bg: var(--v8);
-    --fg: var(--v1);
-    --bgh: var(--a);
-    --fgh: var(--v8);
-    --bgd: var(--v6);
-    --fgd: var(--v1);
-
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(var(--dir-head)) translateX(calc((var(--scale) * var(--body-w)) / 2 + 1px));
-
-    width: 10px;
-    aspect-ratio: 1 / 1;
-
-    border-radius: 100%;
-    opacity: 0%;
-    visibility: hidden;
-
-    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), opacity var(--t), visibility var(--t);
-}
-#PROJECTPAGE > .display > .render > .item.selectable.node.heading > button.body {
-    opacity: 100%;
-    visibility: inherit;
-}
-#PROJECTPAGE > .display > .render > .item.selectable.node > button.body::before {
-    z-index: -1;
-    content: "";
-
-    position: absolute;
-    top: 50%;
-    right: 100%;
-    transform: translate(4px, -50%);
-
-    width: calc(var(--scale) * var(--body-w));
-    height: calc(var(--scale) * var(--body-h));
-
-    opacity: 50%;
-    outline: 2px solid var(--v8);
-
-    pointer-events: none;
-}
-#PROJECTPAGE > .display > .render > .item.selectable.obstacle,
 .global.item.selectable.obstacle {
     --radius: 25px;
     --dir: 0deg;
-}
-#PROJECTPAGE > .display > .render > .item.selectable.obstacle > button:first-child {
-    --bg: var(--cr-4);
-    --fg: var(--v8);
-    --bgh: var(--cr-8);
-    --fgh: var(--v8);
-    --bgd: var(--cr-2);
-    --fgd: var(--v6);
-
-    width: calc(calc(var(--scale) * var(--radius)) * 2);
 }
 .global.item.selectable.obstacle > .button {
     background-color: var(--cr);
@@ -812,42 +609,16 @@
 
     width: calc(var(--radius) * 2);
 }
-#PROJECTPAGE > .display > .render > .item.selectable.obstacle > .radius {
-    width: calc(var(--scale) * var(--radius));
-}
-.global.item.selectable.obstacle > .radius {
-    width: var(--radius);
-}
-#PROJECTPAGE > .display > .render > .item.selectable.obstacle > .radius,
 .global.item.selectable.obstacle > .radius {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translateY(-50%);
 
+    width: var(--radius);
     height: 2px;
 
     background-color: var(--v8);
-}
-#PROJECTPAGE > .display > .render > .item.selectable.obstacle > button.radiusdrag {
-    --bg: var(--v8);
-    --fg: var(--v1);
-    --bgh: var(--a);
-    --fgh: var(--v8);
-    --bgd: var(--v6);
-    --fgd: var(--v1);
-
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(calc(calc(var(--scale) * var(--radius)) - 50%), -50%);
-
-    width: 10px;
-    aspect-ratio: 1 / 1;
-
-    border-radius: 100%;
-
-    cursor: move;
 }
 .global.item.selectable.obstacle > .button.radiusdrag {
     position: absolute;
