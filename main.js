@@ -1522,6 +1522,17 @@ const MAIN = async () => {
                         click: async () => await electron.shell.openExternal(await this.get("db-host")),
                     },
                 ],
+                reload: [
+                    {
+                        label: "Reload Feature",
+                        accelerator: "CmdOrCtrl+R",
+                        click: () => {
+                            const portal = this.portal, name = this.name;
+                            portal.remFeature(this);
+                            portal.addFeature(new Portal.Feature(name));
+                        },
+                    },
+                ],
                 spawn: [
                     {
                         label: "New Feature",
@@ -1557,6 +1568,7 @@ const MAIN = async () => {
                 {
                     label: "File",
                     submenu: [
+                        ...build.reload,
                         ...build.spawn,
                         build.div,
                         ...build.close,
