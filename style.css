@@ -1,4 +1,8 @@
 :root {
+    --WIN32: 0;
+    --DARWIN: 0;
+    --LINUX: 0;
+
     --TOP: 40px;
     --LEFT: 80px;
     --fs: 0;

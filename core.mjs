@@ -146,13 +146,13 @@ export class App extends Target {
             cpu.model = util.ensure(cpu.model, "str", "?");
             return cpu;
         });
-        let app = String(await window.api.get("version"));
+        let app = await window.api.get("version");
         return {
-            node: window.version.node(),
-            chrome: window.version.chrome(),
-            electron: window.version.electron(),
+            node: String(window.version.node()),
+            chrome: String(window.version.chrome()),
+            electron: String(window.version.electron()),
             os: os,
-            app: app,
+            app: String(app),
         };
     }
     async getAboutLines() {
@@ -369,9 +369,10 @@ export class App extends Target {
                 window.api.send("close");
             });
         });
-        const onFullScreenState = is => {
+        const onFullScreenState = async is => {
+            let about = await this.getAbout();
             document.documentElement.style.setProperty("--fs", (is ? 1 : 0));
-            document.documentElement.style.setProperty("--LEFT", (is ? 0 : 80)+"px");
+            document.documentElement.style.setProperty("--LEFT", ((is || about.os.platform != "darwin") ? 0 : 80)+"px");
         };
         this.addHandler("cmd-win-fullscreen", async args => {
             args = util.ensure(args, "arr");
@@ -566,6 +567,11 @@ export class App extends Target {
         onFullScreenState(await window.api.get("fullscreen"));
         onDevModeState(await window.api.get("devmode"));
         onHolidayState(await window.api.get("active-holiday"));
+
+        let about = await this.getAbout();
+        document.documentElement.style.setProperty("--WIN32", ((about.os.platform == "win32") ? 1 : 0));
+        document.documentElement.style.setProperty("--DARWIN", ((about.os.platform == "darwin") ? 1 : 0));
+        document.documentElement.style.setProperty("--LINUX", ((about.os.platform == "linux") ? 1 : 0));
 
         let resp = null;
         try {

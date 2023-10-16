@@ -241,7 +241,7 @@ body {
 }
 #PAGE > .loads {
     position: absolute;
-    top: calc((20px * var(--fs)) + (var(--TOP) * (1 - var(--fs))));
+    top: calc((var(--DARWIN) * ((20px * var(--fs)) + (var(--TOP) * (1 - var(--fs))))) + ((1 - var(--DARWIN)) * 20px));
     left: 20px;
 
     display: flex;

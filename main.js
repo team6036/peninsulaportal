@@ -34,6 +34,13 @@ const log = (...a) => {
     return console.log(`[${yr}-${mon}-${d}/${hr}:${min}:${s}.${ms}]`, ...a);
 };
 
+const OS = {
+    arch: os.arch(),
+    platform: os.platform(),
+    cpus: os.cpus(),
+    user: os.userInfo(),
+};
+
 const MAIN = async () => {
     log("< IMPORTING ASYNCHRONOUSLY >");
 
@@ -45,8 +52,6 @@ const MAIN = async () => {
     log("< IMPORTED ASYNCHRONOUSLY >");
 
     const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
-
-    const PLATFORM = process.platform;
 
     class Process extends core.Target {
         #id;
@@ -277,7 +282,7 @@ const MAIN = async () => {
             feat.start();
             feat._onFocus = () => {
                 if (feat.hasMenu()) {
-                    if (PLATFORM == "darwin")
+                    if (OS.platform == "darwin")
                         electron.Menu.setApplicationMenu(feat.menu);
                     return;
                 }
@@ -625,12 +630,7 @@ const MAIN = async () => {
             this.log("START");
 
             ipc.handle("os", async () => {
-                return {
-                    arch: os.arch(),
-                    platform: os.platform(),
-                    cpus: os.cpus(),
-                    user: os.userInfo(),
-                };
+                return OS;
             });
 
             ipc.handle("get", async (e, k) => await this.getCallback(e.sender.id, k));
@@ -1400,7 +1400,7 @@ const MAIN = async () => {
                 resizable: true,
                 maximizable: false,
 
-                titleBarStyle: "hidden",
+                titleBarStyle: (OS.platform == "darwin" ? "hidden" : "default"),
                 trafficLightPosition: { x: (40-16)/2, y: (40-16)/2 },
 
                 webPreferences: {
@@ -1413,9 +1413,9 @@ const MAIN = async () => {
                 let tag = "png";
                 let icon = (holiday == null) ? path.join(__dirname, "assets", "app", "icon."+tag) : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
                 if (!this.hasWindow()) return;
-                if (PLATFORM == "win32") this.window.setIcon(icon);
-                if (PLATFORM == "darwin") app.dock.setIcon(icon);
-                if (PLATFORM == "linux") this.window.setIcon(icon);
+                if (OS.platform == "win32") this.window.setIcon(icon);
+                if (OS.platform == "darwin") app.dock.setIcon(icon);
+                if (OS.platform == "linux") this.window.setIcon(icon);
             };
             (async () => await onHolidayState(await this.get("active-holiday")))();
             this.#window = new electron.BrowserWindow(options);
@@ -1579,7 +1579,7 @@ const MAIN = async () => {
                     submenu: [
                         ...build.window,
                         ...(
-                            (PLATFORM == "darwin") ?
+                            (OS.platform == "darwin") ?
                             [
                                 { type: "separator" },
                                 { role: "front" },
