@@ -1039,11 +1039,7 @@ const MAIN = async () => {
                     let content = "";
                     try {
                         content = await this.fileRead("theme.json");
-                    } catch (e) {
-                        try {
-                            content = await Portal.fileRead(path.join(__dirname, "theme.json"));
-                        } catch (e) {}
-                    }
+                    } catch (e) {}
                     let data = null;
                     try {
                         data = JSON.parse(content);
