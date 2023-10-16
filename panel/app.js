@@ -5668,6 +5668,10 @@ App.TitlePage = class AppTitlePage extends core.App.Page {
     get eNav() { return this.#eNav; }
     get eCreateBtn() { return this.#eCreateBtn; }
     get eProjectsBtn() { return this.#eProjectsBtn; }
+
+    async enter(data) {
+        if (this.hasApp()) this.app.title = "";
+    }
 };
 App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     #buttons;
@@ -5811,6 +5815,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     }
 
     async enter(data) {
+        if (this.hasApp()) this.app.title = "Projects";
         if (this.hasApp() && this.app.hasEProjectsBtn())
             this.app.eProjectsBtn.classList.add("this");
         await this.refresh();
@@ -6079,6 +6084,18 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         let refactor = false;
         this.addHandler("refactor-browser-queue", data => { refactor = true; });
         this.addHandler("update", data => {
+            if (this.app.page == this.name)
+                this.app.title = this.hasProject() ?
+                    (
+                        this.project.meta.name + " — " +
+                        (
+                            (!this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected)) ?
+                            "Disconnected" :
+                            this.rootSource.connecting ?
+                            "Connecting to "+this.rootSource.address :
+                            this.rootSource.address
+                        )
+                    ) : "?";
             if (!refactor) return;
             refactor = false;
             this.post("refactor-browser", null);
