@@ -76,7 +76,7 @@ Graphs numerical and discrete topics in NT. Choose window view, in `ms`, of the 
 Displays the robot as shown from `double[3]`, `float[3]`, and `int[3]` in NT. Choose field template, set your own, and change units. Pick colors for different poses, including toggling ghost effect and render type.
 
 ### Odometry 3D Page
-Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Choose field template, or use axis, and change units. Pick colors for different poses, including render type.
+Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Choose field template, or use axis, and change units. Pick colors for different poses, including toggling ghost effect, render type, and solid color display.
 
 ## Getting Started
 
