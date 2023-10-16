@@ -332,7 +332,7 @@ label.switch > span::before {
     top: var(--padding);
     transform: translateX(0px);
 
-    width: var(--height);
+    width: calc(var(--height) - (2 * var(--padding)));
     aspect-ratio: 1 / 1;
 
     background-color: var(--v8);
