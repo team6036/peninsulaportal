@@ -1,7 +1,5 @@
 #titlebar {
     padding-left: 10px;
-    width: calc(100% - 20px);
-    max-width: calc(100% - 20px);
 
     gap: 0px;
 

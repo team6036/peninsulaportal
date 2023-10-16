@@ -24,6 +24,7 @@
 * {
     /*font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";*/
     font-family: REM, Arial, Helvetica, sans-serif;
+    box-sizing: border-box;
 }
 
 body {
@@ -331,7 +332,7 @@ label.switch > span::before {
     top: var(--padding);
     transform: translateX(0px);
 
-    width: calc(var(--height) - 2*var(--padding));
+    width: var(--height);
     aspect-ratio: 1 / 1;
 
     background-color: var(--v8);
@@ -440,8 +441,8 @@ article.md ul {
     left: 50%;
     transform: translateX(-50%);
 
-    width: calc(100% - var(--LEFT) - 10px);
-    max-width: calc(100% - var(--LEFT) - 10px);
+    width: 100%;
+    max-width: 100%;
     height: var(--TOP);
     max-height: var(--TOP);
     padding: 0px 10px;
