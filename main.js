@@ -561,16 +561,16 @@ const MAIN = async () => {
                         }));
                     })(),
                     (async () => {
-                        this.log("DB theme.json");
-                        this.addLoad("theme.json");
+                        this.log("DB themes.json");
+                        this.addLoad("themes.json");
                         try {
-                            await fetchAndPipe(host+"/theme.json", path.join(this.dataPath, "theme.json"));
-                            this.log("DB theme.json - success");
+                            await fetchAndPipe(host+"/themes.json", path.join(this.dataPath, "themes.json"));
+                            this.log("DB themes.json - success");
                         } catch (e) {
-                            this.log(`DB theme.json - error - ${e}`);
-                            this.addLoad("theme.json:"+e);
+                            this.log(`DB themes.json - error - ${e}`);
+                            this.addLoad("themes.json:"+e);
                         }
-                        this.remLoad("theme.json");
+                        this.remLoad("themes.json");
                         await this.send("theme");
                     })(),
                     ...FEATURES.map(async name => {
@@ -746,6 +746,8 @@ const MAIN = async () => {
             if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
             let hasConfig = await this.fileHas([dataPath, ".config"]);
             if (!hasConfig) await this.fileWrite([dataPath, ".config"], JSON.stringify({}, null, "\t"));
+            let hasClientConfig = await this.fileHas([dataPath, ".clientconfig"]);
+            if (!hasClientConfig) await this.fileWrite([dataPath, ".clientconfig"], JSON.stringify({}, null, "\t"));
             let hasVersion = await this.fileHas([dataPath, ".version"]);
             if (!hasVersion) await this.fileWrite([dataPath, ".version"], "");
             return true;
@@ -911,6 +913,8 @@ const MAIN = async () => {
                         { type: "dir", name: "solver" },
                     ],
                 },
+                // ./themes.json
+                { type: "file", name: "themes.json" }
             ];
             const cleanup = async (pth, patterns) => {
                 let dirents = await this.dirList(pth);
@@ -1035,10 +1039,10 @@ const MAIN = async () => {
                 "loading": async () => {
                     return this.isLoading;
                 },
-                "theme": async () => {
+                "_fullthemes": async () => {
                     let content = "";
                     try {
-                        content = await this.fileRead("theme.json");
+                        content = await this.fileRead("themes.json");
                     } catch (e) {}
                     let data = null;
                     try {
@@ -1046,6 +1050,14 @@ const MAIN = async () => {
                     } catch (e) {}
                     data = util.ensure(data, "obj");
                     return data;
+                },
+                "themes": async () => {
+                    return util.ensure((await kfs._fullthemes()).themes, "obj");
+                },
+                "active-theme": async () => {
+                    let active = (await kfs._fullthemes()).active;
+                    let themes = await kfs.themes();
+                    return (active in themes) ? active : null;
                 },
                 "_fulltemplates": async () => {
                     let content = "";
@@ -1193,8 +1205,24 @@ const MAIN = async () => {
                     let host = (await kfs._fullconfig()).dbHost;
                     return host || "https://peninsula-db.jfancode.repl.co";
                 },
+                "_fullclientconfig": async () => {
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".clientconfig");
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
+                },
                 "comp-mode": async () => {
-                    return !!(await kfs._fullconfig()).isCompMode;
+                    return !!(await kfs._fullclientconfig()).isCompMode;
+                },
+                "theme": async () => {
+                    return util.ensure((await kfs._fullclientconfig()).theme, "str", await kfs["active-theme"]());
                 },
             };
             if (k in kfs) return await kfs[k]();
@@ -1213,6 +1241,7 @@ const MAIN = async () => {
                 "repo": async () => await this.get("repo"),
                 "holiday": async () => await this.get("active-holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
+                "theme": async () => await this.get("theme"),
             };
             if (k in kfs) return await kfs[k]();
             throw "§GV No possible \"getValue\" for key: "+k;
@@ -1244,7 +1273,26 @@ const MAIN = async () => {
                     await this.fileWrite(".config", content);
                 },
                 "db-host": async () => await kfs._fullconfig("dbHost", String(v)),
-                "comp-mode": async () => await kfs._fullconfig("isCompMode", !!v),
+                "_fullclientconfig": async (k=null, v=null) => {
+                    if (k == null) return;
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".clientconfig");
+                    } catch (e) {}
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    data[k] = v;
+                    content = JSON.stringify(data, null, "\t");
+                    await this.fileWrite(".clientconfig", content);
+                },
+                "comp-mode": async () => await kfs._fullclientconfig("isCompMode", !!v),
+                "theme": async () => {
+                    await kfs._fullclientconfig("theme", String(v));
+                    await this.send("theme");
+                },
             };
             if (k in kfs) return await kfs[k]();
             if (k.startsWith("val-")) {
