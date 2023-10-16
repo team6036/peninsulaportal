@@ -46,6 +46,10 @@ export class App extends Target {
     #setupConfig;
     #setupDone;
 
+    #fullscreen;
+    #devMode;
+    #holiday;
+
     #popups;
 
     #contextMenu;
@@ -78,6 +82,10 @@ export class App extends Target {
 
         this.#setupConfig = {};
         this.#setupDone = false;
+
+        this.#fullscreen = false;
+        this.#devMode = false;
+        this.#holiday = null;
 
         this.#popups = [];
 
@@ -265,6 +273,11 @@ export class App extends Target {
                     if (load.length > 0) return elem.textContent += "Error while downloading holiday datas: "+load.join(":");
                     return elem.textContent += "Downloading holiday datas";
                 },
+                "theme.json": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Error while downloading theme: "+load.join(":");
+                    return elem.textContent += "Downloading theme";
+                },
             };
             if (name in namefs) return namefs[name]();
             if (name.startsWith("templates/") && name.endsWith(".png")) {
@@ -327,6 +340,49 @@ export class App extends Target {
         return elem;
     }
 
+    get fullscreen() { return this.#fullscreen; }
+    set fullscreen(v) {
+        v = !!v;
+        if (this.fullscreen == v) return;
+        this.#fullscreen = v;
+        (async () => {
+            let about = await this.getAbout();
+            document.documentElement.style.setProperty("--fs", (v ? 1 : 0));
+            document.documentElement.style.setProperty("--LEFT", ((v || about.os.platform != "darwin") ? 0 : 80)+"px");
+        })();
+    }
+    get devMode() { return this.#devMode; }
+    set devMode(v) {
+        v = !!v;
+        if (this.devMode == v) return;
+        this.#devMode = v;
+        if (v) {
+            window.app = this;
+            window.colors = () => {
+                "roygbpm_".split("").forEach(c => {
+                    let out = [new Array(9).fill("%c...").join("")];
+                    for (let i = 0; i <= 8; i++) {
+                        let rgb;
+                        if (c == "_") rgb = getComputedStyle(document.body).getPropertyValue("--v"+i);
+                        else rgb = getComputedStyle(document.body).getPropertyValue("--c"+c+i);
+                        out.push("padding:10px;background:"+rgb+";");
+                    }
+                    console.log(...out);
+                });
+            };
+        } else { 
+            if (window.app == this) delete window.app;
+            delete window.colors;
+        }
+    }
+    get holiday() { return this.#holiday; }
+    set holiday(v) {
+        v = (v == null) ? null : String(v);
+        if (this.holiday == v) return;
+        this.#holiday = v;
+        this.updateDynamicStyle();
+    }
+
     async setup() {
         if (this.setupDone) return false;
 
@@ -369,75 +425,17 @@ export class App extends Target {
                 window.api.send("close");
             });
         });
-        const onFullScreenState = async is => {
-            let about = await this.getAbout();
-            document.documentElement.style.setProperty("--fs", (is ? 1 : 0));
-            document.documentElement.style.setProperty("--LEFT", ((is || about.os.platform != "darwin") ? 0 : 80)+"px");
-        };
         this.addHandler("cmd-win-fullscreen", async args => {
             args = util.ensure(args, "arr");
-            onFullScreenState(!!args[0]);
+            this.fullscreen = args[0];
         });
-        const onDevModeState = is => {
-            if (is) {
-                window.app = this;
-                window.colors = () => {
-                    "roygbpm_".split("").forEach(c => {
-                        let out = [new Array(9).fill("%c...").join("")];
-                        for (let i = 0; i <= 8; i++) {
-                            let rgb;
-                            if (c == "_") rgb = getComputedStyle(document.body).getPropertyValue("--v"+i);
-                            else rgb = getComputedStyle(document.body).getPropertyValue("--c"+c+i);
-                            out.push("padding:10px;background:"+rgb+";");
-                        }
-                        console.log(...out);
-                    });
-                };
-            } else { 
-                if (window.app == this) delete window.app;
-                delete window.colors;
-            }
-        };
         this.addHandler("cmd-win-devmode", async args => {
             args = util.ensure(args, "arr");
-            onDevModeState(!!args[0]);
+            this.devMode = args[0];
         });
-        let prevHoliday = null, id = null, accent = null, holidayT = 0;
-        const onHolidayState = holiday => {
-            holiday = (holiday == null) ? null : String(holiday);
-            if (accent == null) {
-                if (prevHoliday != holiday) prevHoliday = holiday;
-                if (id != null) return;
-                id = setInterval(() => {
-                    if (accent != null) {
-                        if (util.getTime()-holidayT < 1000) return;
-                        holidayT = util.getTime();
-                        if (this.accent != null) return;
-                        (async () => {
-                            let holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[prevHoliday], "obj");
-                            this.accent = holidayData.accent;
-                        })();
-                        return;
-                    }
-                    if (this.accent == null) return;
-                    accent = this.accent;
-                    if (prevHoliday != null)
-                        this.accent = null;
-                }, 10);
-                return;
-            }
-            if (prevHoliday == holiday) return;
-            if (prevHoliday == null) accent = this.accent;
-            prevHoliday = holiday;
-            if (prevHoliday == null) {
-                this.accent = accent;
-            } else {
-                this.accent = null;
-            }
-        };
         this.addHandler("cmd-win-holiday", async args => {
             args = util.ensure(args, "arr");
-            onHolidayState(args[0]);
+            this.holiday = args[0];
         });
 
         this.#eTitle = document.querySelector("head > title");
@@ -564,39 +562,32 @@ export class App extends Target {
         
         let t = util.getTime();
         
-        onFullScreenState(await window.api.get("fullscreen"));
-        onDevModeState(await window.api.get("devmode"));
-        onHolidayState(await window.api.get("active-holiday"));
+        this.fullscreen = await window.api.get("fullscreen");
+        this.devMode = await window.api.get("devmode");
+        this.holiday = await window.api.get("active-holiday");
 
         let about = await this.getAbout();
         document.documentElement.style.setProperty("--WIN32", ((about.os.platform == "win32") ? 1 : 0));
         document.documentElement.style.setProperty("--DARWIN", ((about.os.platform == "darwin") ? 1 : 0));
         document.documentElement.style.setProperty("--LINUX", ((about.os.platform == "linux") ? 1 : 0));
 
-        let resp = null;
-        try {
-            resp = await fetch(root+"/theme.json");
-            if (resp.status != 200) throw resp.status;
-        } catch (e) { resp = null; }
-        let data = null;
-        if (resp instanceof Response) {
-            try {
-                data = await resp.json();
-            } catch (e) {}
-        }
-        data = util.ensure(data, "obj");
-        this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
-        this.colors = data.colors || {
-            r: [255, 0, 0],
-            o: [255, 128, 0],
-            y: [255, 255, 0],
-            g: [0, 255, 0],
-            c: [0, 255, 255],
-            b: [0, 0, 255],
-            p: [128, 0, 255],
-            m: [255, 0, 255],
+        const themeUpdate = async () => {
+            let data = util.ensure(await window.api.get("theme"), "obj");
+            this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
+            this.colors = data.colors || {
+                r: [255, 0, 0],
+                o: [255, 128, 0],
+                y: [255, 255, 0],
+                g: [0, 255, 0],
+                c: [0, 255, 255],
+                b: [0, 0, 255],
+                p: [128, 0, 255],
+                m: [255, 0, 255],
+            };
+            this.accent = data.accent || "b";
         };
-        this.accent = data.accent || "b";
+        this.addHandler("cmd-theme", () => themeUpdate());
+        await themeUpdate();
 
         await this.post("setup", null);
 
@@ -690,7 +681,8 @@ export class App extends Target {
         this.#accent = v;
         this.updateDynamicStyle();
     }
-    updateDynamicStyle() {
+    async updateDynamicStyle() {
+        let accent = (this.holiday == null) ? this.accent : util.ensure(util.ensure(await window.api.get("holidays"), "obj")[this.holiday], "obj").accent;
         let style = {};
         for (let i = 0; i <= 9; i++) {
             let normal = (i < 9);
@@ -706,7 +698,7 @@ export class App extends Target {
         let black = this.getBase(1), white = this.getBase(8);
         let colors = {};
         this.colors.forEach(name => (colors[name] = this.getColor(name)));
-        colors._ = new util.Color(this.hasColor(this.accent) ? this.getColor(this.accent) : this.getBase(4));
+        colors._ = new util.Color(this.hasColor(accent) ? this.getColor(accent) : this.getBase(4));
         for (let name in colors) {
             let color = colors[name];
             let header = (name == "_") ? "a" : "c"+name;

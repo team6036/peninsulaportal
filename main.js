@@ -186,9 +186,7 @@ const MAIN = async () => {
         }
         getProcessesByTag(tag) {
             tag = String(tag);
-            let processes = [];
-            this.processes.forEach(process => (process.hasTag(tag) ? processes.push(process) : null));
-            return processes;
+            return this.processes.filter(process => process.hasTag(tag));
         }
     }
     class Portal extends core.Target {
@@ -561,6 +559,19 @@ const MAIN = async () => {
                                 this.remLoad(`holidays/${pth}-conv`);
                             }));
                         }));
+                    })(),
+                    (async () => {
+                        this.log("DB theme.json");
+                        this.addLoad("theme.json");
+                        try {
+                            await fetchAndPipe(host+"/theme.json", path.join(this.dataPath, "theme.json"));
+                            this.log("DB theme.json - success");
+                        } catch (e) {
+                            this.log(`DB theme.json - error - ${e}`);
+                            this.addLoad("theme.json:"+e);
+                        }
+                        this.remLoad("theme.json");
+                        await this.send("theme");
                     })(),
                     ...FEATURES.map(async name => {
                         const subhost = host+"/"+name.toLowerCase();
@@ -1023,6 +1034,22 @@ const MAIN = async () => {
                 },
                 "loading": async () => {
                     return this.isLoading;
+                },
+                "theme": async () => {
+                    let content = "";
+                    try {
+                        content = await this.fileRead("theme.json");
+                    } catch (e) {
+                        try {
+                            content = await Portal.fileRead(path.join(__dirname, "theme.json"));
+                        } catch (e) {}
+                    }
+                    let data = null;
+                    try {
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    return data;
                 },
                 "_fulltemplates": async () => {
                     let content = "";

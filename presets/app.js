@@ -56,7 +56,7 @@ export default class App extends core.App {
                                 pop.addHandler("result", async data => res(!!util.ensure(data, "obj").v));
                             });
                         }
-                        if (willDo) await window.api.send("cmd-"+elem.id, []);
+                        if (willDo) await window.api.send("cmd-"+elem.id);
                         if (elem.id != "poll-db-host") {
                             elem.disabled = disabled;
                         }
