@@ -16,6 +16,7 @@ const fetch = require("electron-fetch").default;
 const png2icons = require("png2icons");
 const compareVersions = require("compare-versions");
 
+
 const log = (...a) => {
     let now = new Date();
     let yr = now.getFullYear();
@@ -40,6 +41,7 @@ const OS = {
     cpus: os.cpus(),
     user: os.userInfo(),
 };
+
 
 const MAIN = async () => {
     log("< IMPORTING ASYNCHRONOUSLY >");
