@@ -88,6 +88,11 @@ button:not(.override) {
 #PAGE > .content > article p:not(.override) > span.space {
     flex-basis: 100%;
 }
+#PAGE > .content > article p:not(.override) > button {
+    min-width: max-content;
+    
+    gap: 10px;
+}
 #PAGE > .content > article p:not(.override) > button.special {
     --bg: var(--a);
     --fg: var(--v8);

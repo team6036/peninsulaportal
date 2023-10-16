@@ -273,10 +273,10 @@ export class App extends Target {
                     if (load.length > 0) return elem.textContent += "Error while downloading holiday datas: "+load.join(":");
                     return elem.textContent += "Downloading holiday datas";
                 },
-                "theme.json": () => {
+                "themes.json": () => {
                     if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Error while downloading theme: "+load.join(":");
-                    return elem.textContent += "Downloading theme";
+                    if (load.length > 0) return elem.textContent += "Error while downloading themes: "+load.join(":");
+                    return elem.textContent += "Downloading themes";
                 },
             };
             if (name in namefs) return namefs[name]();
@@ -572,7 +572,7 @@ export class App extends Target {
         document.documentElement.style.setProperty("--LINUX", ((about.os.platform == "linux") ? 1 : 0));
 
         const themeUpdate = async () => {
-            let data = util.ensure(await window.api.get("theme"), "obj");
+            let data = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj");
             this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
             this.colors = data.colors || {
                 r: [255, 0, 0],

@@ -151,6 +151,29 @@ export default class App extends core.App {
                         await updateValue();
                     }, 250);
                 });
+                const eThemeBtn = document.getElementById("theme");
+                if (eThemeBtn instanceof HTMLButtonElement) {
+                    eThemeBtn.addEventListener("click", async e => {
+                        e.stopPropagation();
+                        const themes = util.ensure(await window.api.get("themes"), "obj");
+                        const theme = await window.api.get("theme");
+                        let itm;
+                        let menu = new core.App.ContextMenu();
+                        for (let id in themes) {
+                            itm = menu.addItem(new core.App.ContextMenu.Item(util.ensure(themes[id], "obj").name, (theme == id) ? "checkmark" : ""));
+                            itm.addHandler("trigger", data => {
+                                window.api.set("theme", [id]);
+                            });
+                        }
+                        this.contextMenu = menu;
+                        let r = eThemeBtn.getBoundingClientRect();
+                        this.placeContextMenu(r.left, r.bottom);
+                    });
+                    setInterval(async () => {
+                        if (eThemeBtn.children[1] instanceof HTMLDivElement)
+                            eThemeBtn.children[1].textContent = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj").name;
+                    }, 250);
+                }
             })();
 
             this.#eInfo = document.querySelector("#PAGE > .content > .info");
