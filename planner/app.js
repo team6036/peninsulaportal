@@ -1033,6 +1033,10 @@ App.TitlePage = class AppTitlePage extends core.App.Page {
     get eNav() { return this.#eNav; }
     get eCreateBtn() { return this.#eCreateBtn; }
     get eProjectsBtn() { return this.#eProjectsBtn; }
+
+    async enter(data) {
+        if (this.hasApp()) this.app.title = "";
+    }
 };
 App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     #buttons;
@@ -1199,6 +1203,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
     }
 
     async enter(data) {
+        if (this.hasApp()) this.app.title = "Projects";
         if (this.hasApp() && this.app.hasEProjectsBtn())
             this.app.eProjectsBtn.classList.add("this");
         await this.refresh();
@@ -1754,6 +1759,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             if (this.app.hasEProjectInfoBtn())
                 if (this.app.eProjectInfoBtn.querySelector(":scope > .value") instanceof HTMLDivElement)
                     this.app.eProjectInfoBtn.querySelector(":scope > .value").textContent = this.hasProject() ? this.project.meta.name : "";
+            if (this.app.page == this.name) this.app.title = this.hasProject() ? this.project.meta.name : "?";
         });
 
         this.addHandler("project-set", data => {

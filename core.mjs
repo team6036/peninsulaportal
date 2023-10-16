@@ -62,6 +62,8 @@ export class App extends Target {
     #pages;
     #page;
 
+    #title;
+
     #eTitle;
     #eCoreStyle;
     #eStyle;
@@ -94,6 +96,8 @@ export class App extends Target {
 
         this.#pages = {};
         this.#page = null;
+
+        this.#title = null;
 
         window.api.onPerm(() => {
             if (this.setupDone) return;
@@ -438,7 +442,7 @@ export class App extends Target {
         this.#eTitle = document.querySelector("head > title");
         if (!(this.eTitle instanceof HTMLTitleElement)) this.#eTitle = document.createElement("title");
         document.head.appendChild(this.eTitle);
-        this.title = "Peninsula "+util.capitalize(await window.api.get("name"));
+        this.title = "";
 
         this.#eCoreStyle = document.createElement("link");
         document.head.appendChild(this.eCoreStyle);
@@ -907,8 +911,16 @@ export class App extends Target {
         return btn;
     }
 
-    get title() { return this.eTitle.textContent; }
-    set title(v) { this.eTitle.textContent = v; }
+    get title() { return this.#title; }
+    set title(v) {
+        v = String(v);
+        if (this.title == v) return;
+        this.#title = v;
+        (async () => {
+            let name = util.capitalize(await window.api.get("name"));
+            this.eTitle.textContent = (v.length > 0) ? (v+" — "+name) : name;
+        })();
+    }
 
     get eTitle() { return this.#eTitle; }
     get eCoreStyle() { return this.#eCoreStyle; }
