@@ -3,6 +3,10 @@ import { V } from "../util.mjs";
 
 import * as core from "../core.mjs";
 
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+
 class FeatureButton extends core.Target {
     #elem;
     #eName;
@@ -163,93 +167,159 @@ export default class App extends core.App {
             this.#eCanvas = document.querySelector("#PAGE > .background > div > #canvas");
             if (this.hasECanvas()) {
                 const canvas = this.eCanvas;
-                const ctx = canvas.getContext("2d");
+
                 const quality = 3;
-                const aspect = 16 / 9;
-                const aspectBase = 1000;
-                let zNear = 1;
-                let stars = [], starSpawn = 0;
-                let starSize = 0.01, starMaxDist = 0.01, starFadeDist = starMaxDist*0.5, starSpeed = 1;
-                let first = true;
-                this.addHandler("update", data => {
-                    let scroll = (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
-                    starSpeed = util.lerp(1, 25, (scroll<0) ? 0 : (scroll>1) ? 1 : scroll);
-                    canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
-                    let scale = Math.max(window.innerWidth/aspect, window.innerHeight/1);
-                    let w = scale*aspect, h = scale;
-                    if (canvas.width != w*quality) canvas.width = w*quality;
-                    if (canvas.height != w*quality) canvas.height = h*quality;
-                    canvas.style.width = w+"px";
-                    canvas.style.height = h+"px";
-                    for (let f = (first ? 60*10 : 1)-1; f >= 0; f--) {
-                        if (f <= 0) ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        if (stars.length < 1000) {
-                            while (starSpawn < 0) {
-                                starSpawn += util.lerp(0.01, 0.1, Math.random());
-                                let boundW = aspectBase * aspect * zNear;
-                                let boundH = aspectBase * zNear;
-                                let outerW = aspectBase * aspect * zNear * 5;
-                                let outerH = aspectBase * zNear * 5;
-                                let pos;
-                                do {
-                                    pos = new V(util.lerp(-outerW/2, +outerW/2, Math.random()), util.lerp(-outerH/2, +outerH/2, Math.random()));
-                                } while (Math.abs(pos.x) < boundW/2 && Math.abs(pos.y) < boundH/2);
-                                let colors = ["--v8", "--a"];
-                                let star = new Star([pos.x, pos.y, aspectBase*starMaxDist], aspectBase*starSize, "");
-                                star._speed = -0.01 * util.lerp(0.5, 1.5, Math.random());
-                                star.size *= util.lerp(0.75, 1.25, Math.random());
-                                star.color = colors[Math.floor(colors.length*Math.random())];
-                                star.alpha *= util.lerp(0.5, 1, Math.random());
-                                stars.push(star);
-                            }
-                            starSpawn -= 0.01 * starSpeed;
-                        }
-                        [...stars].sort((a, b) => b.z-a.z).forEach(star => {
-                            star.speed = star._speed * starSpeed;
-                            star.streakSize = star.size * Math.abs(star.speed) * 0.25;
-                            star.update();
-                            if (star.z + star.streakSize/2 < zNear) {
-                                stars.splice(stars.indexOf(star), 1);
-                                return;
-                            }
-                            if (f > 0) return;
-                            let z1 = Math.max(zNear, star.z + star.streakSize/2);
-                            let z2 = Math.max(zNear, star.z - star.streakSize/2);
-                            let pos1 = new V(star.x, star.y).div(z1).div(aspectBase).mul(scale * quality).mul(+1,-1).add(canvas.width/2, canvas.height/2);
-                            let r1 = star.size / z1 * quality;
-                            let pos2 = new V(star.x, star.y).div(z2).div(aspectBase).mul(scale * quality).mul(+1,-1).add(canvas.width/2, canvas.height/2);
-                            let r2 = star.size / z2 * quality;
-                            let a = star.alpha * ((star.z/aspectBase < (starMaxDist-starFadeDist)) ? 1 : 1-(star.z/aspectBase-(starMaxDist-starFadeDist))/starFadeDist);
-                            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue(star.color);
-                            ctx.globalAlpha = a;
-                            ctx.beginPath();
-                            if (star.streakSize <= 0) {
-                                for (let i = 0; i <= 12; i++) {
-                                    let pos = pos1.add(V.dir((i/12)*360, r1).mul(+1,-1));
-                                    if (i > 0) ctx.lineTo(...pos.xy);
-                                    else ctx.moveTo(...pos.xy);
-                                }
-                            } else {
-                                let dir = pos1.towards(pos2);
-                                let rDiff = r2 - r1;
-                                let d = pos2.dist(pos1);
-                                let theta = new V().towards(d, rDiff);
-                                let poly = [];
-                                for (let i = 0; i <= 12; i++)
-                                    poly.push(pos1.add(V.dir(util.lerp(dir-1*theta+270, dir-3*theta+90, i/12), r1)));
-                                for (let i = 0; i <= 12; i++)
-                                    poly.push(pos2.add(V.dir(util.lerp(dir-3*theta+90, dir-5*theta-90, i/12), r2)));
-                                for (let i = 0; i <= poly.length; i++) {
-                                    let pos = poly[i%poly.length];
-                                    if (i > 0) ctx.lineTo(...pos.xy);
-                                    else ctx.moveTo(...pos.xy);
-                                }
-                            }
-                            ctx.fill();
-                        });
+
+                if (0) {
+                    const scene = new THREE.Scene();
+                    scene.fog = new THREE.Fog(0x000000, 10, 15);
+                    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                    
+                    const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+
+                    const controls = new OrbitControls(camera, renderer.domElement);
+
+                    const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
+                    scene.add(hemLight);
+
+                    const starGeometry = new THREE.SphereGeometry(0.02, 8, 8);
+                    const starMaterials = [
+                        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                    ];
+                    const stars = [];
+                    let dMin = 5, dMax = 10;
+                    for (let i = 0; i < 200; i++) {
+                        let star = new THREE.Mesh(starGeometry, starMaterials[Math.floor(starMaterials.length*Math.random())]);
+                        stars.push(star);
+                        let pos;
+                        do {
+                            pos = new util.V3(Math.random(), Math.random(), Math.random()).map(v => util.lerp(-dMax, +dMax, v));
+                        } while (Math.abs(pos.x) < dMin && Math.abs(pos.y) < dMin && Math.abs(pos.z) < dMin);
+                        star.position.set(pos.x, pos.y, pos.z);
                     }
-                    if (first) first = false;
-                });
+                    stars.forEach(star => scene.add(star));
+
+                    this.addHandler("update", data => {
+                        controls.target.set(0, 0, 0);
+                        controls.update();
+
+                        let colorW = new util.Color(getComputedStyle(document.body).getPropertyValue("--v8"));
+                        let colorA = new util.Color(getComputedStyle(document.body).getPropertyValue("--a"));
+                        let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v2"));
+                        starMaterials[0].color.set(colorW.toHex(false));
+                        starMaterials[1].color.set(colorA.toHex(false));
+                        scene.fog.color.set(colorV.toHex(false));
+
+                        let v = V.dir(util.lerp(0, 360, (util.getTime()/1000)/30), 10);
+                        camera.position.x = v.x;
+                        camera.position.y = 5;
+                        camera.position.z = v.y;
+
+                        camera.position.x = Math.round(camera.position.x*10000)/10000;
+                        camera.position.y = Math.round(camera.position.y*10000)/10000;
+                        camera.position.z = Math.round(camera.position.z*10000)/10000;
+                        
+                        camera.aspect = window.innerWidth/window.innerHeight;
+                        camera.updateProjectionMatrix();
+
+                        renderer.setSize(window.innerWidth*quality, window.innerHeight*quality);
+                        renderer.domElement.style.transform = "scale("+(100*(1/quality))+"%)";
+                        renderer.render(scene, camera);
+                    });
+                } else {
+                    const ctx = canvas.getContext("2d");
+
+                    const aspect = 16 / 9;
+                    const aspectBase = 1000;
+
+                    let zNear = 1;
+                    let stars = [], starSpawn = 0;
+                    let starSize = 0.01, starMaxDist = 0.01, starFadeDist = starMaxDist*0.5, starSpeed = 1;
+                    let first = true;
+
+                    this.addHandler("update", data => {
+                        let scroll = (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
+                        starSpeed = util.lerp(1, 25, (scroll<0) ? 0 : (scroll>1) ? 1 : scroll);
+
+                        canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
+
+                        let scale = Math.max(window.innerWidth/aspect, window.innerHeight/1);
+                        let w = scale*aspect, h = scale;
+                        if (canvas.width != w*quality) canvas.width = w*quality;
+                        if (canvas.height != w*quality) canvas.height = h*quality;
+                        canvas.style.width = w+"px";
+                        canvas.style.height = h+"px";
+                        for (let f = (first ? 60*10 : 1)-1; f >= 0; f--) {
+                            if (f <= 0) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            if (stars.length < 1000) {
+                                while (starSpawn < 0) {
+                                    starSpawn += util.lerp(0.01, 0.1, Math.random());
+                                    let boundW = aspectBase * aspect * zNear;
+                                    let boundH = aspectBase * zNear;
+                                    let outerW = aspectBase * aspect * zNear * 5;
+                                    let outerH = aspectBase * zNear * 5;
+                                    let pos;
+                                    do {
+                                        pos = new V(util.lerp(-outerW/2, +outerW/2, Math.random()), util.lerp(-outerH/2, +outerH/2, Math.random()));
+                                    } while (Math.abs(pos.x) < boundW/2 && Math.abs(pos.y) < boundH/2);
+                                    let colors = ["--v8", "--a"];
+                                    let star = new Star([pos.x, pos.y, aspectBase*starMaxDist], aspectBase*starSize, "");
+                                    star._speed = -0.01 * util.lerp(0.5, 1.5, Math.random());
+                                    star.size *= util.lerp(0.75, 1.25, Math.random());
+                                    star.color = colors[Math.floor(colors.length*Math.random())];
+                                    star.alpha *= util.lerp(0.5, 1, Math.random());
+                                    stars.push(star);
+                                }
+                                starSpawn -= 0.01 * starSpeed;
+                            }
+                            [...stars].sort((a, b) => b.z-a.z).forEach(star => {
+                                star.speed = star._speed * starSpeed;
+                                star.streakSize = star.size * Math.abs(star.speed) * 0.25;
+                                star.update();
+                                if (star.z + star.streakSize/2 < zNear) {
+                                    stars.splice(stars.indexOf(star), 1);
+                                    return;
+                                }
+                                if (f > 0) return;
+                                let z1 = Math.max(zNear, star.z + star.streakSize/2);
+                                let z2 = Math.max(zNear, star.z - star.streakSize/2);
+                                let pos1 = new V(star.x, star.y).div(z1).div(aspectBase).mul(scale * quality).mul(+1,-1).add(canvas.width/2, canvas.height/2);
+                                let r1 = star.size / z1 * quality;
+                                let pos2 = new V(star.x, star.y).div(z2).div(aspectBase).mul(scale * quality).mul(+1,-1).add(canvas.width/2, canvas.height/2);
+                                let r2 = star.size / z2 * quality;
+                                let a = star.alpha * ((star.z/aspectBase < (starMaxDist-starFadeDist)) ? 1 : 1-(star.z/aspectBase-(starMaxDist-starFadeDist))/starFadeDist);
+                                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue(star.color);
+                                ctx.globalAlpha = a;
+                                ctx.beginPath();
+                                if (star.streakSize <= 0) {
+                                    for (let i = 0; i <= 12; i++) {
+                                        let pos = pos1.add(V.dir((i/12)*360, r1).mul(+1,-1));
+                                        if (i > 0) ctx.lineTo(...pos.xy);
+                                        else ctx.moveTo(...pos.xy);
+                                    }
+                                } else {
+                                    let dir = pos1.towards(pos2);
+                                    let rDiff = r2 - r1;
+                                    let d = pos2.dist(pos1);
+                                    let theta = new V().towards(d, rDiff);
+                                    let poly = [];
+                                    for (let i = 0; i <= 12; i++)
+                                        poly.push(pos1.add(V.dir(util.lerp(dir-1*theta+270, dir-3*theta+90, i/12), r1)));
+                                    for (let i = 0; i <= 12; i++)
+                                        poly.push(pos2.add(V.dir(util.lerp(dir-3*theta+90, dir-5*theta-90, i/12), r2)));
+                                    for (let i = 0; i <= poly.length; i++) {
+                                        let pos = poly[i%poly.length];
+                                        if (i > 0) ctx.lineTo(...pos.xy);
+                                        else ctx.moveTo(...pos.xy);
+                                    }
+                                }
+                                ctx.fill();
+                            });
+                        }
+                        if (first) first = false;
+                    });
+                }
             }
             this.#eMain = document.querySelector("#PAGE > .main");
             this.#eContent = document.querySelector("#PAGE > .content");
