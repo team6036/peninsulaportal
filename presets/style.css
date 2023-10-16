@@ -27,10 +27,7 @@ button:not(.override) {
 }
 
 #mount > .page {
-    width: calc(100% - 20px);
-    max-width: calc(100% - 20px);
-    height: calc(100% - 20px);
-    max-height: calc(100% - 20px);
+    padding: 10px;
 }
 
 #PAGE {
