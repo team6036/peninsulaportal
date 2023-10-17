@@ -706,7 +706,7 @@ const MAIN = async () => {
 
                 this.addFeature(new Portal.Feature("PORTAL"));
                 setTimeout(async () => {
-                    await this.tryLoad(await this.get("version"));
+                    await this.tryLoad(await this.get("base-version"));
                 }, 1000);
             })();
 
@@ -938,7 +938,7 @@ const MAIN = async () => {
             await cleanup([dataPath], format);
             return true;
         }
-        async cleanup() { return await Portal.cleanup(this.dataPath, await this.get("version")); }
+        async cleanup() { return await Portal.cleanup(this.dataPath, await this.get("base-version")); }
 
         static makePath(...pth) {
             let flattened = [];
@@ -1166,8 +1166,11 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     return data;
                 },
+                "base-version": async () => {
+                    return String((await kfs._fullpackage()).version);
+                },
                 "version": async () => {
-                    return String((await kfs._fullpackage()).version) + ((await this.get("production")) ? "" : "-dev");
+                    return String((await kfs["base-version"]()) + ((await this.get("production")) ? "" : "-dev"));
                 },
                 "repo": async () => {
                     let repo = (await kfs._fullpackage()).repository;
@@ -1852,7 +1855,7 @@ const MAIN = async () => {
             
             (async () => {
                 let fsVersion = String(await this.get("fs-version"));
-                let version = String(await this.get("version"));
+                let version = String(await this.get("base-version"));
                 if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
                     setTimeout(() => {
                         this.send("deprecated", [version]);
@@ -2178,7 +2181,7 @@ const MAIN = async () => {
                     "cmd-poll-db-host": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
                         (async () => {
-                            await this.portal.tryLoad(await this.get("version"));
+                            await this.portal.tryLoad(await this.get("base-version"));
                         })();
                     },
                 },

@@ -168,6 +168,17 @@ Here is what the python script should expect as input and what it should output:
     <p align="center">Settings for Peninsula Portal</p>
 </div>
 
+### Version
+The version of the application. The application version is usually written like so:
+```
+<year>.<major>.<patch>
+```
+Additionally, tags can be added to the version like so:
+```
+<year>.<major>.<patch>-<tag>
+```
+If you currently actively developing this application, an additional `-dev` tag will be applied to the version. It will not be considered interally and is entirely for visual comprehension.
+
 ## Application Data
 
 ### Application Data Directory
@@ -201,6 +212,9 @@ Repolling the database will pull what it needs from this database, though it mig
 Toggling competition mode on disables polling of database, if constant repolling or rewriting of existing files causes lag.
 
 ## Appearance
+
+### Theme
+The current application theme. Feel free to pick from the list supplied.
 
 ### Holiday
 The current application holiday!
