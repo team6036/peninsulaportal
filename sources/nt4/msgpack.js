@@ -1,4 +1,4 @@
-import * as util from "../util.mjs";
+import * as util from "../../util.mjs";
 
 const pow32 = 0x100000000;
 

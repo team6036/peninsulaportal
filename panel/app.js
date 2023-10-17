@@ -14,7 +14,7 @@ import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 // import { SAOPass } from "three/addons/postprocessing/SAOPass.js";
 // import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
-import NTSource from "../nt4/source.js";
+import NTSource from "../sources/nt4/source.js";
 
 
 export const VERSION = 2;

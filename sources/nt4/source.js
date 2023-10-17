@@ -1,7 +1,7 @@
-import * as util from "../util.mjs";
-import { V } from "../util.mjs";
+import * as util from "../../util.mjs";
+import { V } from "../../util.mjs";
 
-import * as core from "../core.mjs";
+import * as core from "../../core.mjs";
 
 import { Client } from "./nt4.js";
 
