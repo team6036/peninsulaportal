@@ -40,7 +40,7 @@
 <p>
     <span>Theme</span>
     <span class="space"></span>
-    <button id="theme"><ion-icon name="chevron-forward"></ion-icon><div></div></button>
+    <button id="theme"><div></div><ion-icon name="chevron-forward"></ion-icon></button>
 </p>
 
 <p>

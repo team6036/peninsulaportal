@@ -170,8 +170,8 @@ export default class App extends core.App {
                         this.placeContextMenu(r.left, r.bottom);
                     });
                     setInterval(async () => {
-                        if (eThemeBtn.children[1] instanceof HTMLDivElement)
-                            eThemeBtn.children[1].textContent = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj").name;
+                        if (eThemeBtn.children[0] instanceof HTMLDivElement)
+                            eThemeBtn.children[0].textContent = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj").name;
                     }, 250);
                 }
             })();
