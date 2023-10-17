@@ -1,4 +1,4 @@
-import * as util from "../util.mjs";
+import * as util from "../../util.mjs";
 
 import * as msgpack from "./msgpack.js";
 
