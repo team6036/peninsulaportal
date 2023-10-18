@@ -84,7 +84,7 @@ export class Topic {
     }
 }
 
-export class Client {
+export default class Client {
     #name;
     #onTopicAnnounce;
     #onTopicUnannounce;

@@ -1,5 +1,6 @@
 import * as util from "../../util.mjs";
 
+
 const pow32 = 0x100000000;
 
 export function serialize(data, options) {
