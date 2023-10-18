@@ -14,6 +14,7 @@ import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 // import { SAOPass } from "three/addons/postprocessing/SAOPass.js";
 // import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
+import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
 
 
@@ -67,7 +68,7 @@ class RLine extends core.Odometry2d.Render {
 
 function getDisplay(t, v) {
     t = String(t);
-    if (!NTSource.Topic.TYPES.includes(t)) return null;
+    if (!Source.Topic.TYPES.includes(t)) return null;
     if (t.endsWith("[]")) {
         t = t.substring(0, t.length-2);
         let display = getDisplay(t, (t == "boolean") ? true : null);
@@ -289,7 +290,7 @@ class BrowserTopic extends BrowserItem {
     get type() { return this.#type; }
     set type(v) {
         v = String(v);
-        if (!NTSource.Topic.TYPES.includes(v)) v = "raw";
+        if (!Source.Topic.TYPES.includes(v)) v = "raw";
         if (this.type == v) return;
         this.#type = v;
         this.post("type-set", { v: v });
@@ -303,7 +304,19 @@ class BrowserTopic extends BrowserItem {
     }
     get value() { return (this.isArray && util.is(this.#value, "arr")) ? [...this.#value] : this.#value; }
     set value(v) {
-        this.#value = NTSource.Topic.ensureType(this.type, v);
+        v = Source.Topic.ensureType(this.type, v);
+        if (this.isArray) {
+            if (util.is(this.#value, "arr") && this.#value.length == v.length) {
+                let all = true;
+                for (let i = 0; i < this.#value.length; i++) {
+                    if (this.#value[i] == v[i]) continue;
+                    all = false;
+                    break;
+                }
+                if (all) return;
+            }
+        } else if (this.#value == v) return;
+        this.#value = v;
         this.post("value-set", { v: this.value });
         this.icon = "";
         this.eIcon.style.color = "";
@@ -768,23 +781,25 @@ class Panel extends Widget {
             this.tabs.forEach(tab => tab.update());
         });
 
-        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel) a = [a.tabs, false];
-            else if (a instanceof Panel.Tab) a = [[a], false];
+            if (a instanceof Panel) a = [a.tabs, a.tabIndex, a.isTitleCollapsed];
+            else if (a instanceof Panel.Tab) a = [[a], 0];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.Tab) a = [a, false];
+                if (a[0] instanceof Panel.Tab) a = [a, 0];
                 else {
                     a = new Panel(...a);
-                    a = [a.tabs, a.isTitleCollapsed];
+                    a = [a.tabs, a.tabIndex, a.isTitleCollapsed];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.tabs, a.isCollapsed];
-            else a = [[], false];
+            else if (util.is(a, "obj")) a = [a.tabs, a.tabIndex, a.isCollapsed];
+            else a = [[], 0];
         }
+        if (a.length == 2)
+            a = [...a, false];
 
-        [this.tabs, this.isTitleCollapsed] = a;
+        [this.tabs, this.tabIndex, this.isTitleCollapsed] = a;
 
         if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
 
@@ -892,6 +907,7 @@ class Panel extends Widget {
             "%CUSTOM": true,
             "%ARGS": [{
                 tabs: this.tabs,
+                tabIndex: this.tabIndex,
                 isCollapsed: this.isTitleCollapsed,
             }],
         };
@@ -1155,7 +1171,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.query.length > 0) {
                 toolItems = util.search(toolItems, ["name"], this.query);
                 let genericItems = [];
-                if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
+                if (this.hasPage() && this.page.hasRootSource()) {
                     let root = this.page.rootSource.root;
                     const dfs = generic => {
                         let itm = new Panel.AddTab.GenericButton(generic);
@@ -1168,7 +1184,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 this.parent.remTab(this);
                             },
                         });
-                        if (generic instanceof NTSource.Table) generic.children.forEach(generic => dfs(generic));
+                        if (generic instanceof Source.Table) generic.children.forEach(generic => dfs(generic));
                     };
                     dfs(root);
                 }
@@ -1221,11 +1237,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
-            if (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) {
+            if (this.hasPage() && this.page.hasRootSource()) {
                 let root = this.page.rootSource.root;
                 const dfs = generic => {
                     let itm = new Panel.AddTab.GenericButton(generic);
-                    if (generic instanceof { tables: NTSource.Table, topics: NTSource.Topic, all: NTSource.Generic }[this.searchPart]) items.push({
+                    if (generic instanceof { tables: Source.Table, topics: Source.Topic, all: Source.Generic }[this.searchPart]) items.push({
                         item: itm,
                         trigger: () => {
                             if (!this.hasParent()) return;
@@ -1234,7 +1250,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                             this.parent.remTab(this);
                         },
                     });
-                    if (generic instanceof NTSource.Table) generic.children.forEach(generic => dfs(generic));
+                    if (generic instanceof Source.Table) generic.children.forEach(generic => dfs(generic));
                 };
                 dfs(root);
             }
@@ -1505,12 +1521,12 @@ Panel.AddTab.GenericButton = class PanelAddTabGenericButton extends Panel.AddTab
             }
             this.name = this.generic.path;
             if (this.name.length <= 0) this.name = "/";
-            if (this.generic instanceof NTSource.Table) {
+            if (this.generic instanceof Source.Table) {
                 this.icon = "folder-outline";
                 this.iconColor = "";
                 this.info = "";
-            } else if (this.generic instanceof NTSource.Topic) {
-                let display = getDisplay(this.generic.type, this.generic.value);
+            } else if (this.generic instanceof Source.Topic) {
+                let display = getDisplay(this.generic.type, this.generic.get());
                 if (display != null) {
                     if ("src" in display) this.iconSrc = display.src;
                     else this.icon = display.name;
@@ -1526,11 +1542,11 @@ Panel.AddTab.GenericButton = class PanelAddTabGenericButton extends Panel.AddTab
 
     get generic() { return this.#generic; }
     set generic(v) {
-        v = (v instanceof NTSource.Generic) ? v : null;
+        v = (v instanceof Source.Generic) ? v : null;
         if (this.generic == v) return;
         this.#generic = v;
     }
-    hasGeneric() { return this.generic instanceof NTSource.Generic; }
+    hasGeneric() { return this.generic instanceof Source.Generic; }
 };
 Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #path;
@@ -1585,7 +1601,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 state = {};
             }
             this.eTabIcon.style.color = "";
-            if (generic instanceof NTSource.Table) {
+            if (generic instanceof Source.Table) {
                 this.eBrowser.classList.add("this");
                 this.eDisplay.classList.remove("this");
                 this.icon = "folder-outline";
@@ -1599,7 +1615,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 const dfsGeneric = generic => {
                     path.push(generic.name);
                     newPaths[path.slice(1).join("/")] = generic;
-                    if (generic instanceof NTSource.Table) generic.children.forEach(generic => dfsGeneric(generic));
+                    if (generic instanceof Source.Table) generic.children.forEach(generic => dfsGeneric(generic));
                     path.pop();
                 };
                 dfsGeneric(generic);
@@ -1615,7 +1631,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     if (path.length <= 0) continue;
                     if (path in oldPaths) continue;
                     let generic = newPaths[path];
-                    let item = (generic instanceof NTSource.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                    let item = (generic instanceof Source.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.get());
                     let superPath = path.split("/");
                     superPath.pop();
                     superPath = superPath.join("/");
@@ -1661,11 +1677,20 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         this.eBrowser.removeChild(item.elem);
                     }
                 }
+                for (let path in newPaths) {
+                    let generic = newPaths[path];
+                    if (!(generic instanceof Source.Topic)) continue;
+                    if (!(path in oldPaths)) continue;
+                    let item = oldPaths[path];
+                    if (!(item instanceof BrowserItem)) continue;
+                    item.value = generic.get();
+                }
                 state.items.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => (itm.elem.style.order = i));
-            } else if (generic instanceof NTSource.Topic) {
+            } else if (generic instanceof Source.Topic) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
-                let display = getDisplay(generic.type, generic.value);
+                let value = generic.get();
+                let display = getDisplay(generic.type, value);
                 if (display != null) {
                     if ("src" in display) this.iconSrc = display.src;
                     else this.icon = display.name;
@@ -1685,10 +1710,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         eType.classList.add("type");
                         let items = [];
                         state.update = () => {
-                            let display = getDisplay(generic.type, generic.value);
-                            eType.innerHTML = "<span style='color:"+((display == null || !("color" in display)) ? "var(--v8)" : display.color)+";'>"+generic.arraylessType+"</span>[<span style='color:var(--a);'>"+generic.value.length+"</span>]";
-                            while (items.length > generic.value.length) this.eDisplay.removeChild(items.pop().elem);
-                            while (items.length < generic.value.length) {
+                            let display = getDisplay(generic.type, value);
+                            eType.innerHTML = "<span style='color:"+((display == null || !("color" in display)) ? "var(--v8)" : display.color)+";'>"+generic.arraylessType+"</span>[<span style='color:var(--a);'>"+value.length+"</span>]";
+                            while (items.length > value.length) this.eDisplay.removeChild(items.pop().elem);
+                            while (items.length < value.length) {
                                 let item = {};
                                 items.push(item);
                                 let elem = item.elem = document.createElement("button");
@@ -1708,21 +1733,21 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                                 item.index = i;
                                 item.eIndex.textContent = i;
                                 if (generic.arraylessType == "boolean") {
-                                    item.eValue.style.backgroundColor = generic.value[i] ? "var(--cg)" : "var(--cr)";
+                                    item.eValue.style.backgroundColor = value[i] ? "var(--cg)" : "var(--cr)";
                                     item.eValue.style.color = "var(--v8)";
                                     if (item.eValue.children[0] instanceof HTMLElement)
-                                        item.eValue.children[0].setAttribute("name", generic.value[i] ? "checkmark" : "close");
+                                        item.eValue.children[0].setAttribute("name", value[i] ? "checkmark" : "close");
                                 } else {
                                     item.eValue.style.backgroundColor = "var(--v2-8)";
-                                    let display = getDisplay(generic.arraylessType, generic.value[i]);
+                                    let display = getDisplay(generic.arraylessType, value[i]);
                                     item.eValue.style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
                                     item.eValue.style.fontFamily = "monospace";
                                     if (generic.arraylessType == "raw") {
-                                        let value = generic.value[i];
-                                        try { value = JSON.stringify(value); }
+                                        let subvalue = value[i];
+                                        try { subvalue = JSON.stringify(subvalue); }
                                         catch (e) {}
-                                        item.eValue.textContent = value;
-                                    } else item.eValue.textContent = String(generic.value[i]);
+                                        item.eValue.textContent = subvalue;
+                                    } else item.eValue.textContent = String(value[i]);
                                 }
                             });
                         };
@@ -1734,10 +1759,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         else item.innerHTML = "<div></div><div></div>";
                         state.update = () => {
                             if (generic.type == "boolean") {
-                                item.style.backgroundColor = generic.value ? "var(--cg3)" : "var(--cr3)";
+                                item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
                                 item.style.color = "var(--v1)";
                                 if (item.children[0] instanceof HTMLElement) {
-                                    item.children[0].setAttribute("name", generic.value ? "checkmark" : "close");
+                                    item.children[0].setAttribute("name", value ? "checkmark" : "close");
                                     let r = item.getBoundingClientRect();
                                     item.children[0].style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                                 }
@@ -1757,16 +1782,16 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                                     item.children[1].style.position = "";
                                     item.children[1].style.top = "";
                                     item.children[1].style.left = "";
-                                    let display = getDisplay(generic.type, generic.value);
+                                    let display = getDisplay(generic.type, value);
                                     item.children[1].style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
                                     item.children[1].style.fontSize = "32px";
                                     item.children[1].style.fontFamily = "monospace";
                                     if (generic.type == "raw") {
-                                        let value = generic.value;
-                                        try { value = JSON.stringify(value); }
+                                        let subvalue = value;
+                                        try { subvalue = JSON.stringify(subvalue); }
                                         catch (e) {}
-                                        item.children[1].textContent = value;
-                                    } else item.children[1].textContent = String(generic.value);
+                                        item.children[1].textContent = subvalue;
+                                    } else item.children[1].textContent = String(value);
                                 }
                             }
                         };
@@ -2114,7 +2139,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             
             const ctx = this.ctx;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            if (!this.hasPage() || !this.page.hasRootSource() || !this.page.rootSource.hasRoot()) return;
+            if (!this.hasPage() || !this.page.hasRootSource()) return;
             const source = this.page.rootSource;
             const graphRange = {
                 left: () => [
@@ -2147,10 +2172,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (!v.isShown) return;
                     if (!v.hasName()) return;
                     let topic = source.root.lookup(v.name);
+                    if (!(topic instanceof Source.Topic)) return;
                     if (topic.isArray) return;
-                    let log = source.getLogFor(v.name, ...graphRange);
+                    let log = topic.getRange(...graphRange);
                     if (!util.is(log, "arr")) return;
-                    let start = source.getValueAt(v.name, graphRange[0]), stop = source.getValueAt(v.name, graphRange[1]);
+                    let start = topic.get(graphRange[0]), stop = topic.get(graphRange[1]);
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
                     if (stop != null) log.push({ ts: graphRange[1], v: stop });
                     if (log.length <= 0) return;
@@ -2483,7 +2509,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             let idfs = {
                 _: side => {
-                    if (!(data instanceof NTSource.Topic)) return null;
+                    if (!(data instanceof Source.Topic)) return null;
                     return {
                         r: r,
                         submit: () => {
@@ -2508,7 +2534,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(name, "--c"+nextColor));
                             };
                             if (data.isArray)
-                                for (let i = 0; i < data.value.length; i++)
+                                for (let i = 0; i < data.get().length; i++)
                                     addVar(data.path+"/"+i);
                             else addVar(data.path);
                         },
@@ -2939,7 +2965,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         this.post("change", null);
     }
 
-    get totalTime() { return (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? (this.page.rootSource.serverTime-this.page.rootSource.serverStartTime) : 0; }
+    get totalTime() { return (this.hasPage() && this.page.hasRootSource()) ? (this.page.rootSource.serverTime-this.page.rootSource.serverStartTime) : 0; }
     get nowTime() { return this.#t; }
     set nowTime(v) {
         v = Math.min(this.totalTime, Math.max(0, util.ensure(v, "num")));
@@ -2976,7 +3002,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             const numbers = ["double", "float", "int"];
             let idfs = {
                 p: () => {
-                    if (!(data instanceof NTSource.Topic)) return null;
+                    if (!(data instanceof Source.Topic)) return null;
                     if (!data.isArray || !numbers.includes(data.arraylessType)) return null;
                     if (!this.isValidPose(data)) return null;
                     return {
@@ -3432,10 +3458,11 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
             this.odometry.imageScale = (this.template in templates) ? util.ensure(templates[this.template], "obj").imageScale : 0;
             if (this.isClosed) return;
-            let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
+            let source = (this.hasPage() && this.page.hasRootSource()) ? this.page.rootSource : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
-                pose.state.value = (source instanceof NTSource) ? source.getValueAt(pose.name, this.nowTime+source.serverStartTime) : [];
+                const topic = (source instanceof Source) ? source.root.lookup(pose.name) : null;
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.serverStartTime) : null;
                 pose.state.update();
             });
             this.odometry.update();
@@ -3517,7 +3544,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     get eUnitsDegrees() { return this.#eUnitsDegrees; }
     get eUnitsRadians() { return this.#eUnitsRadians; }
 
-    isValidPose(topic) { return (topic.value.length % 2 == 0) || (topic.value.length == 3); }
+    isValidPose(topic) { return (topic.get().length % 2 == 0) || (topic.get().length == 3); }
 
     toJSON() {
         return {
@@ -3970,12 +3997,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             if (document.activeElement != this.eCameraPosZInput)
                 this.eCameraPosZInput.value = Math.round((this.camera.position.z * (this.isMeters ? 1 : 100))*10000)/10000;
             
-            let source = (this.hasPage() && this.page.hasRootSource() && this.page.rootSource.hasRoot()) ? this.page.rootSource : null;
+            let source = (this.hasPage() && this.page.hasRootSource()) ? this.page.rootSource : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
                 pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
-                pose.state.value = (source instanceof NTSource) ? source.getValueAt(pose.name, source.serverStartTime+this.nowTime) : [];
+                const topic = (source instanceof Source) ? source.root.lookup(pose.name) : null;
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.serverStartTime) : [];
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
@@ -4239,7 +4267,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get eCameraPosYInput() { return this.#eCameraPosYInput; }
     get eCameraPosZInput() { return this.#eCameraPosZInput; }
 
-    isValidPose(topic) { return topic.value.length == 3 || topic.value.length == 7; }
+    isValidPose(topic) { return topic.get().length == 3 || topic.get().length == 7; }
 
     toJSON() {
         return {
@@ -5142,43 +5170,43 @@ export default class App extends core.App {
                 };
             };
             const isValid = o => {
-                if (o instanceof NTSource.Generic) return true;
+                if (o instanceof Source.Generic) return true;
                 if (o instanceof Widget) return true;
                 if (o instanceof Panel.Tab) return true;
                 return false;
             };
             const canGetWidgetFromData = () => {
-                if (this.dragData instanceof NTSource.Generic) return true;
+                if (this.dragData instanceof Source.Generic) return true;
                 if (this.dragData instanceof Widget) return true;
                 if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
             const getWidgetFromData = () => {
-                if (this.dragData instanceof NTSource.Generic) return new Panel([new Panel.BrowserTab(this.dragData.path)]);
+                if (this.dragData instanceof Source.Generic) return new Panel([new Panel.BrowserTab(this.dragData.path)]);
                 if (this.dragData instanceof Widget) return this.dragData;
                 if (this.dragData instanceof Panel.Tab) return new Panel([this.dragData]);
                 return null;
             };
             const canGetTabFromData = () => {
-                if (this.dragData instanceof NTSource.Generic) return true;
+                if (this.dragData instanceof Source.Generic) return true;
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
             const getTabFromData = () => {
-                if (this.dragData instanceof NTSource.Generic) return new Panel.BrowserTab(this.dragData.path);
+                if (this.dragData instanceof Source.Generic) return new Panel.BrowserTab(this.dragData.path);
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return this.dragData;
                 return null;
             };
             const canGetGenericFromData = () => {
-                if (this.dragData instanceof NTSource.Generic) return true;
+                if (this.dragData instanceof Source.Generic) return true;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.hasPage("PROJECT") && this.getPage("PROJECT").lookup(this.dragData.path) instanceof NTSource.Generic);
+                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.hasPage("PROJECT") && this.getPage("PROJECT").lookup(this.dragData.path) instanceof Source.Generic);
                 return false;
             };
             const getGenericFromData = () => {
-                if (this.dragData instanceof NTSource.Generic) return this.dragData;
+                if (this.dragData instanceof Source.Generic) return this.dragData;
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return ((this.dragData instanceof Panel.BrowserTab) && this.hasPage("PROJECT")) ? this.getPage("PROJECT").lookup(this.dragData.path) : null;
                 return null;
@@ -5194,10 +5222,10 @@ export default class App extends core.App {
                     let btn = this.eDrag.children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (generic.name.length > 0) ? generic.name : "/";
-                    if (generic instanceof NTSource.Table) {
+                    if (generic instanceof Source.Table) {
                         icon.setAttribute("name", "folder-outline");
                     } else {
-                        let display = getDisplay(generic.type, generic.value);
+                        let display = getDisplay(generic.type, generic.get());
                         if (display != null) {
                             if ("src" in display) icon.setAttribute("src", display.src);
                             else icon.setAttribute("name", display.name);
@@ -5233,7 +5261,7 @@ export default class App extends core.App {
                     page.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof NTSource.Generic || this.dragData instanceof Panel.Tab),
+                        canTop: (this.dragData instanceof Source.Generic || this.dragData instanceof Panel.Tab),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel))
@@ -5271,7 +5299,7 @@ export default class App extends core.App {
                     page.rootWidget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
-                        canTop: (this.dragData instanceof NTSource.Generic || this.dragData instanceof Panel.Tab),
+                        canTop: (this.dragData instanceof Source.Generic || this.dragData instanceof Panel.Tab),
                     },
                 );
                 if (!util.is(hovered, "obj") || !(hovered.widget instanceof Panel)) return;
@@ -5755,7 +5783,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
         this.eLoading.style.display = "none";
         let projects = (this.hasApp() ? this.app.projects : []).map(id => this.app.getProject(id));
         if (projects.length > 0) {
-            projects = util.search(projects, [ "meta.name" ], this.eSearchInput.value);
+            projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
             projects.forEach(project => this.addButton(new App.ProjectsPage.Button(project)));
         } else this.eEmpty.style.display = "block";
     }
@@ -6102,13 +6130,13 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         });
         this.addHandler("refactor-browser", data => {
             let newPaths = {};
-            if (this.hasRootSource() && this.rootSource.hasRoot()) {
+            if (this.hasRootSource()) {
                 this.rootSource.root.children.forEach(generic => {
                     let path = [];
                     const dfs = generic => {
                         path.push(generic.name);
                         newPaths[path.join("/")] = generic;
-                        if (generic instanceof NTSource.Table)
+                        if (generic instanceof Source.Table)
                             generic.children.forEach(generic => dfs(generic));
                         path.pop();
                     };
@@ -6148,14 +6176,18 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 let superPath = path.slice(0, path.length-1).join("/");
                 path = path.join("/");
                 let generic = newPaths[path];
-                let itm = (generic instanceof NTSource.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.value);
+                let itm = (generic instanceof Source.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.get());
                 if (superPath in oldPaths) oldPaths[superPath].addChild(itm);
                 else this.addBrowserItem(itm);
                 oldPaths[path] = itm;
             });
             for (let path in newPaths) {
+                let generic = newPaths[path];
+                if (!(generic instanceof Source.Topic)) continue;
                 if (!(path in oldPaths)) continue;
-                oldPaths[path].value = newPaths[path].value;
+                let item = oldPaths[path];
+                if (!(item instanceof BrowserItem)) continue;
+                item.value = generic.get();
             }
         });
 
@@ -6258,7 +6290,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         itm._onDrag = data => {
             data = util.ensure(data, "obj");
             let generic = this.lookup(data.path);
-            if (!(generic instanceof NTSource.Generic)) return;
+            if (!(generic instanceof Source.Generic)) return;
             if (!this.hasApp()) return;
             this.app.dragData = generic;
             this.app.dragging = true;
@@ -6348,7 +6380,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     hasActivePanel() { return this.activeWidget instanceof Panel; }
     get rootSource() { return this.#rootSource; }
     set rootSource(v) {
-        v = (v instanceof NTSource) ? v : null;
+        v = (v instanceof Source) ? v : null;
         if (this.rootSource == v) return;
         if (this.hasRootSource()) {
             this.rootSource.address = null;
@@ -6362,9 +6394,9 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         }
         this.post("refactor-browser", null);
     }
-    hasRootSource() { return this.rootSource instanceof NTSource; }
+    hasRootSource() { return this.rootSource instanceof Source; }
     lookup(path) {
-        if (!this.hasRootSource() || !this.rootSource.hasRoot()) return null;
+        if (!this.hasRootSource()) return null;
         return this.rootSource.root.lookup(path);
     }
 
