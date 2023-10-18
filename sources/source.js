@@ -4,24 +4,32 @@ import * as core from "../core.mjs";
 
 
 export default class Source extends core.Target {
-    #root;
+    #useNestRoot;
+
+    #nestRoot;
     #flatRoot;
 
     #ts;
 
-    constructor() {
+    constructor(root) {
         super();
 
-        this.#root = new Source.Table(this, "");
+        this.#useNestRoot = String(root) == "nest";
+
+        this.#nestRoot = new Source.Table(this, "");
         this.#flatRoot = new Source.Table(this, "");
 
-        this.root.addHandler("change", data => this.post("change", data));
+        this.nestRoot.addHandler("change", data => this.post("change", data));
         this.flatRoot.addHandler("change", data => this.post("change", data));
 
         this.#ts = 0;
     }
 
-    get root() { return this.#root; }
+    get useNestRoot() { return this.#useNestRoot; }
+    get useFlatRoot() { return !this.useNestRoot; }
+
+    get root() { return this.useNestRoot ? this.nestRoot : this.flatRoot; }
+    get nestRoot() { return this.#nestRoot; }
     get flatRoot() { return this.#flatRoot; }
 
     get ts() { return this.#ts; }
@@ -29,15 +37,13 @@ export default class Source extends core.Target {
 
     create(k, type) {
         if (!Source.Topic.TYPES.includes(type)) return false;
-        this.flatRoot.add(new Source.Topic(this.flatRoot, k, type));
-        k = String(k).split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        let o = this.root, oPrev = this;
+        this.flatRoot.add(new Source.Topic(this.flatRoot, k.join("/"), type));
+        let o = this.nestRoot, oPrev = this;
         while (k.length > 0) {
             let name = k.shift();
-            [o, oPrev] = [o.lookup(name), o];
+            [o, oPrev] = [o.lookup([name]), o];
             if (k.length > 0) {
                 if (!(o instanceof Source.Table)) {
                     oPrev.rem(o);
@@ -56,15 +62,13 @@ export default class Source extends core.Target {
         return true;
     }
     delete(k) {
-        this.flatRoot.rem(this.flatRoot.lookup(k));
-        k = String(k).split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        let o = this.root, oPrev = this;
+        this.flatRoot.rem(this.flatRoot.lookup([k.join("/")]));
+        let o = this.nestRoot, oPrev = this;
         while (k.length > 0) {
             let name = k.shift();
-            [o, oPrev] = [o.lookup(name), o];
+            [o, oPrev] = [o.lookup([name]), o];
             if (k.length > 0) {
                 if (!(o instanceof Source.Table)) {
                     oPrev.rem(o);
@@ -87,17 +91,15 @@ export default class Source extends core.Target {
     }
     update(k, v, ts=null) {
         ts = util.ensure(ts, "num", this.ts);
-        let oFlat = this.flatRoot.lookup(k);
+        k = util.ensure(k, "arr");
+        if (k.length <= 0) return false;
+        let oFlat = this.flatRoot.lookup([k.join("/")]);
         if (oFlat instanceof Source.Topic)
             oFlat.update(v, ts);
-        k = String(k).split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-        if (k.length <= 0) return false;
-        let o = this.root, oPrev = this;
+        let o = this.nestRoot, oPrev = this;
         while (k.length > 0) {
             let name = k.shift();
-            [o, oPrev] = [o.lookup(name), o];
+            [o, oPrev] = [o.lookup([name]), o];
             if (k.length > 0) {
                 if (!(o instanceof Source.Table)) {
                     oPrev.rem(o);
@@ -112,7 +114,7 @@ export default class Source extends core.Target {
         return true;
     }
     clear() {
-        this.root.children.forEach(child => this.root.rem(child));
+        this.nestRoot.children.forEach(child => this.nestRoot.rem(child));
         this.flatRoot.children.forEach(child => this.flatRoot.rem(child));
         this.cleanup();
     }
@@ -126,7 +128,7 @@ export default class Source extends core.Target {
             if (generic instanceof Source.Table)
                 generic.children.forEach(child => dfs(child));
         };
-        dfs(this.root);
+        dfs(this.nestRoot);
         dfs(this.flatRoot);
     }
 }
@@ -150,16 +152,15 @@ Source.Generic = class SourceGeneric extends core.Target {
     get source() { return this.hasSourceParent() ? this.parent : this.parent.source; }
 
     get path() {
-        if (this.parent instanceof Source) return this.name;
-        return this.parent.path + "/" + this.name;
+        if (this.hasSourceParent()) return [this.name];
+        return [...this.parent.path, this.name];
     }
+    get textPath() { return this.path.join("/"); }
 
     get nFields() { return 0; }
 
     lookup(k) {
-        k = String(k).split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        k = util.ensure(k, "arr");
         if (k.length > 0) return null;
         return this;
     }
@@ -195,7 +196,7 @@ Source.Table = class SourceTable extends Source.Generic {
         if (child.parent != this) return false;
         this.#children.add(child);
         child._onChange = data => {
-            let path = this.name+"/"+util.ensure(data, "obj").path;
+            let path = [this.name, ...util.ensure(util.ensure(data, "obj").path, "arr")];
             this.post("change", { path: path });
         }
         child.addHandler("change", child._onChange);
@@ -213,14 +214,12 @@ Source.Table = class SourceTable extends Source.Generic {
     }
 
     lookup(k) {
-        k = String(k).split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        k = util.ensure(k, "arr");
         if (k.length <= 0) return this;
         let name = k.shift();
         for (let i = 0; i < this.children.length; i++)
             if (this.get(i).name == name)
-                return this.get(i).lookup(k.join("/"));
+                return this.get(i).lookup(k);
         return null;
     }
 };
@@ -317,12 +316,10 @@ Source.Topic = class SourceTopic extends Source.Generic {
     }
 
     lookup(k) {
-        k = String(k).split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        k = util.ensure(k, "arr");
         if (k.length <= 0) return this;
         if (!this.isArray) return null;
-        let i = parseInt(k);
+        let i = parseInt(k[0]);
         if (!util.is(i, "int")) return null;
         if (i < 0 || i >= this.#arrTopics.length) return null;
         return this.#arrTopics[i];

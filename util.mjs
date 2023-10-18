@@ -109,6 +109,15 @@ export function strictlyIs(o, cls) {
     return (o instanceof cls) && !(o.constructor.prototype instanceof cls);
 }
 
+export function arrEquals(a1, a2) {
+    a1 = ensure(a1, "arr");
+    a2 = ensure(a2, "arr");
+    if (a1.length != a2.length) return false;
+    for (let i = 0; i < a1.length; i++)
+        if (a1[i] != a2[i]) return false;
+    return true;
+}
+
 export function sin(x) {
     x = ensure(x, "num");
     return Math.sin(x * (Math.PI/180));

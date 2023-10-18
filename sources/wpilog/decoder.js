@@ -1,5 +1,4 @@
 import * as util from "../../util.mjs";
-import { V } from "../../util.mjs";
 
 import * as core from "../../core.mjs";
 
@@ -12,9 +11,88 @@ const CONTROLFINISH = 1;
 const CONTROLMETADATA = 2;
 
 const TEXTDECODER = new TextDecoder("UTF-8");
+const TEXTENCODER = new TextEncoder("UTF-8");
 
+export function toUint8Array(v) {
+    if (v instanceof Uint8Array) return v;
+    if (util.is(v, "str")) return TEXTENCODER.encode(v);
+    try {
+        return Uint8Array.from(v);
+    } catch (e) {}
+    return new Uint8Array();
+}
 
-export class Record extends core.Target {
+export default class WPILOGDecoder extends core.Target {
+    #data;
+    #dataView;
+
+    #records;
+
+    constructor(data) {
+        super();
+
+        this.#data = toUint8Array(data);
+        this.#dataView = new DataView(this.data.buffer);
+
+        this.#records = [];
+    }
+
+    get data() { return this.#data; }
+    get dataView() { return this.#dataView; }
+
+    isValid() {
+        return (
+            this.data.length >= 12 &&
+            TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
+            this.version == HEADERVERSION
+        );
+    }
+    get version() {
+        if (this.data.length < 12) return 0;
+        return this.dataView.getUint16(6, true);
+    }
+    get extraHeader() {
+        if (this.data.length < 12) return "";
+        let l = this.dataView.getUint32(8, true);
+        return TEXTDECODER.decode(this.data.subarray(12, 12+l));
+    }
+
+    #readVariableInteger(x, l) {
+        let v = 0;
+        for (let i = 0; i < l; i++)
+            v |= this.data[x+i] << (i*8);
+        return v;
+    }
+
+    get records() { return [...this.#records]; }
+
+    build() {
+        this.#records = [];
+        if (!this.isValid()) return this.records;
+        let x = 8;
+        let extraHeaderL = this.dataView.getUint32(8, true);
+        x += 4 + extraHeaderL;
+        while (1) {
+            if (this.data.length < x+4) break;
+            let entryL = (this.data[x] & 0x3) + 1;
+            let sizeL = ((this.data[x] >> 2) & 0x3) + 1;
+            let tsL = ((this.data[x] >> 4) & 0x7) + 1;
+            let headerL = 1 + entryL + sizeL + tsL;
+            if (this.data.length < x+headerL) break;
+            let entry = this.#readVariableInteger(x+1, entryL);
+            let size = this.#readVariableInteger(x+1+entryL, sizeL);
+            let ts = this.#readVariableInteger(x+1+entryL+sizeL, tsL);
+            if (this.data.length < x+headerL+size || entry < 0 || size < 0 || ts < 0) break;
+            this.#records.push(new Decoder.Record(
+                entry, ts,
+                this.data.subarray(x+headerL, x+headerL+size)
+            ));
+            x += headerL+size;
+        }
+        return this.records;
+    }
+}
+WPILOGDecoder.Record = class WPILOGDecoderRecord extends core.Target {
     #entryId;
     #ts;
     #data;
@@ -25,7 +103,7 @@ export class Record extends core.Target {
 
         this.#entryId = util.ensure(entryId, "int");
         this.#ts = util.ensure(ts, "num");
-        this.#data = new Uint8Array(data);
+        this.#data = toUint8Array(data);
         this.#dataView = new DataView(this.data.buffer.slice(this.data.byteOffset, this.data.byteOffset+this.data.byteLength));
     }
     
@@ -108,75 +186,4 @@ export class Record extends core.Target {
             shift: 4+l,
         };
     }
-}
-
-export class Decoder extends core.Target {
-    #data;
-    #dataView;
-
-    #records;
-
-    constructor(data) {
-        super();
-
-        this.#data = new Uint8Array(data);
-        this.#dataView = new DataView(this.data.buffer);
-
-        this.#records = [];
-    }
-
-    get data() { return this.#data; }
-    get dataView() { return this.#dataView; }
-
-    isValid() {
-        return (
-            this.data.length >= 12 &&
-            TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
-            this.version == HEADERVERSION
-        );
-    }
-    get version() {
-        if (this.data.length < 12) return 0;
-        return this.dataView.getUint16(6, true);
-    }
-    get extraHeader() {
-        if (this.data.length < 12) return "";
-        let l = this.dataView.getUint32(8, true);
-        return TEXTDECODER.decode(this.data.subarray(12, 12+l));
-    }
-
-    #readVariableInteger(x, l) {
-        let v = 0;
-        for (let i = 0; i < l; i++)
-            v |= this.data[x+i] << (i*8);
-        return v;
-    }
-
-    get records() { return [...this.#records]; }
-
-    build() {
-        this.#records = [];
-        if (!this.isValid()) return this.records;
-        let x = 8;
-        let extraHeaderL = this.dataView.getUint32(8, true);
-        x += 4 + extraHeaderL;
-        while (1) {
-            if (this.data.length < x+4) break;
-            let entryL = (this.data[x] & 0x3) + 1;
-            let sizeL = ((this.data[x] >> 2) & 0x3) + 1;
-            let tsL = ((this.data[x] >> 4) & 0x7) + 1;
-            let headerL = 1 + entryL + sizeL + tsL;
-            if (this.data.length < x+headerL) break;
-            let entry = this.readVariableInteger(x+1, entryL);
-            let size = this.readVariableInteger(x+1+entryL, sizeL);
-            let ts = this.readVariableInteger(x+1+entryL+sizeL, tsL);
-            if (this.data.length < x+headerL+size || entry < 0 || size < 0 || ts < 0) break;
-            this.#records.push(new Record(
-                entry, ts,
-                this.data.subarray(x+headerL, x+headerL+size)
-            ));
-            x += headerL+size;
-        }
-        return this.records;
-    }
-}
+};
