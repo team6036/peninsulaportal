@@ -2,7 +2,7 @@ import * as util from "../../util.mjs";
 
 import * as core from "../../core.mjs";
 
-import Client from "./nt4.js";
+import NTClient from "./nt4.js";
 
 import Source from "../source.js";
 
@@ -11,20 +11,35 @@ export default class NTSource extends Source {
     #client;
 
     constructor(address) {
-        super();
+        super("nest");
 
         this.#client = null;
 
         this.address = address;
     }
 
-    #hasClient() { return this.#client instanceof Client; }
+    #hasClient() { return this.#client instanceof NTClient; }
 
     hasRoot() { return true; }
 
-    announceTopic(k, type) { return this.create(k, type); }
-    unannounceTopic(k) { return this.delete(k); }
-    updateTopic(k, v, ts=null) { return this.update(k, v, ts); }
+    announceTopic(k, type) {
+        k = k.split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        return this.create(k, type);
+    }
+    unannounceTopic(k) {
+        k = k.split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        return this.delete(k);
+    }
+    updateTopic(k, v, ts=null) {
+        k = k.split("/");
+        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+        return this.update(k, v, ts);
+    }
 
     get address() { return this.#hasClient() ? this.#client.baseAddr : null; }
     set address(v) {
@@ -32,7 +47,7 @@ export default class NTSource extends Source {
         if (this.address == v) return;
         if (this.#hasClient()) this.#client.disconnect();
         this.clear();
-        const client = this.#client = (v == null) ? null : new Client(
+        const client = this.#client = (v == null) ? null : new NTClient(
             v,
             "Peninsula",
             topic => {

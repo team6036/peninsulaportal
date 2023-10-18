@@ -20,10 +20,10 @@ const typestrIdxLookup = {
     "string[]": 20
 };
 
-class Subscription {
+class NTSubscription {
     uid = -1;
     topics = new Set();
-    options = new SubscriptionOptions();
+    options = new NTSubscriptionOptions();
   
     toSubscribeObj() {
         return {
@@ -40,7 +40,7 @@ class Subscription {
     }
 }
 
-class SubscriptionOptions {
+class NTSubscriptionOptions {
     periodic = 0.1;
     all = false;
     topicsOnly = false;
@@ -56,7 +56,7 @@ class SubscriptionOptions {
     }
 }
 
-export class Topic {
+export class NTTopic {
     uid = -1;
     name = "";
     type = "";
@@ -84,7 +84,7 @@ export class Topic {
     }
 }
 
-export default class Client {
+export default class NTClient {
     #name;
     #onTopicAnnounce;
     #onTopicUnannounce;
@@ -206,7 +206,7 @@ export default class Client {
     }
 
     subscribe(patterns, prefix, all=false, periodic=0.1) {
-        let sub = new Subscription();
+        let sub = new NTSubscription();
         sub.uid = this.#newUID();
         sub.topics = new Set(patterns);
         sub.options.prefix = !!prefix;
@@ -218,7 +218,7 @@ export default class Client {
     }
 
     subscribeTopicsOnly(patterns, prefix) {
-        let sub = new Subscription();
+        let sub = new NTSubscription();
         sub.uid = this.#newUID();
         sub.topics = new Set(patterns);
         sub.options.prefix = !!prefix;
@@ -230,7 +230,7 @@ export default class Client {
 
     unsubscribe(uid) {
         let sub = this.#subscriptions[uid];
-        if (!(sub instanceof Subscription)) return;
+        if (!(sub instanceof NTSubscription)) return;
         delete this.#subscriptions[uid];
         if (this.connectionActive)
             this.#ws_unsubscribe(subscription);
@@ -246,7 +246,7 @@ export default class Client {
         properties = util.ensure(properties, "obj");
 
         let top = (topic in this.#publishedTopics) ? this.#publishedTopics[topic] : (topic in this.#serverTopics) ? this.#serverTopics[topic] : null;
-        if (top instanceof Topic) {
+        if (top instanceof NTTopic) {
             for (let k in properties) {
                 let v = properties[k];
                 if (v == null) delete top.properties[k];
@@ -266,7 +266,7 @@ export default class Client {
     publishTopic(topic, type) {
         topic = String(topic);
         type = String(type);
-        let top = new Topic();
+        let top = new NTTopic();
         top.name = topic;
         top.uid = this.#newUID();
         top.type = type;
@@ -277,7 +277,7 @@ export default class Client {
     unpublishTopic(topic) {
         topic = String(topic);
         let top = this.#publishedTopics[topic];
-        if (!(top instanceof Topic)) return;
+        if (!(top instanceof NTTopic)) return;
         delete this.#publishedTopics[topic];
         if (this.connectionActive)
             this.#ws_unpublish(top);
@@ -290,7 +290,7 @@ export default class Client {
         topic = String(topic);
         ts = util.ensure(ts, "num");
         let top = this.#publishedTopics[topic];
-        if (!(top instanceof Topic)) return;
+        if (!(top instanceof NTTopic)) return;
         let txData = msgpack.serialize([top.uid, ts, top.getTypeIdx(), v]);
         this.#ws_sendBinary(txData);
     }
@@ -379,7 +379,7 @@ export default class Client {
                 if (!util.is(params, "obj")) return;
                 let methodfs = {
                     announce: () => {
-                        let top = new Topic();
+                        let top = new NTTopic();
                         top.uid = params.id;
                         top.name = params.name;
                         top.type = params.type;
@@ -389,13 +389,13 @@ export default class Client {
                     },
                     unannounce: () => {
                         let top = this.#serverTopics.get(params.name);
-                        if (!(top instanceof Topic)) return;
+                        if (!(top instanceof NTTopic)) return;
                         delete this.#serverTopics[top.name];
                         this.onTopicUnannounce(top);
                     },
                     properties: () => {
                         let top = this.#serverTopics.get(params.name);
-                        if (!(top instanceof Topic)) return;
+                        if (!(top instanceof NTTopic)) return;
                         for (let k in params.update) {
                             let v = params.update[k];
                             if (v == null) delete top.properties[k];
@@ -417,11 +417,11 @@ export default class Client {
                 if (uid >= 0) {
                     let topic = null;
                     Object.values(this.#serverTopics).forEach(thisTopic => {
-                        if (topic instanceof Topic) return;
+                        if (topic instanceof NTTopic) return;
                         if (uid != thisTopic.uid) return;
                         topic = thisTopic;
                     });
-                    if (!(topic instanceof Topic)) return;
+                    if (!(topic instanceof NTTopic)) return;
                     this.onNewTopicData(topic, ts, v);
                     return;
                 }

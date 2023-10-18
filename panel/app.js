@@ -133,7 +133,7 @@ class BrowserItem extends core.Target {
             this.isOpen = !this.isOpen;
         });
         this.eDisplay.addEventListener("dblclick", e => {
-            this.post("trigger", { path: this.name });
+            this.post("trigger", { path: [this.name] });
         });
         this.eDisplay.addEventListener("mousedown", e => {
             const mouseup = () => {
@@ -143,7 +143,7 @@ class BrowserItem extends core.Target {
             const mousemove = () => {
                 if (cancel > 0) return cancel--;
                 mouseup();
-                this.post("drag", { path: this.name });
+                this.post("drag", { path: [this.name] });
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -237,11 +237,11 @@ class BrowserTable extends BrowserItem {
         this.#children.push(child);
         child._onTrigger = data => {
             data = util.ensure(data, "obj");
-            this.post("trigger", { path: this.name+"/"+data.path });
+            this.post("trigger", { path: [this.name, ...util.ensure(data.path, "arr")] });
         };
         child._onDrag = data => {
             data = util.ensure(data, "obj");
-            this.post("drag", { path: this.name+"/"+data.path });
+            this.post("drag", { path: [this.name, ...util.ensure(data.path, "arr")] });
         };
         child.addHandler("trigger", child._onTrigger);
         child.addHandler("drag", child._onDrag);
@@ -306,15 +306,8 @@ class BrowserTopic extends BrowserItem {
     set value(v) {
         v = Source.Topic.ensureType(this.type, v);
         if (this.isArray) {
-            if (util.is(this.#value, "arr") && this.#value.length == v.length) {
-                let all = true;
-                for (let i = 0; i < this.#value.length; i++) {
-                    if (this.#value[i] == v[i]) continue;
-                    all = false;
-                    break;
-                }
-                if (all) return;
-            }
+            if (util.is(this.#value, "arr") && util.arrEquals(this.#value, v))
+                return;
         } else if (this.#value == v) return;
         this.#value = v;
         this.post("value-set", { v: this.value });
@@ -333,11 +326,11 @@ class BrowserTopic extends BrowserItem {
                     let itm = this.#sub[i] = new BrowserTopic(i, null, null);
                     itm.addHandler("trigger", data => {
                         data = util.ensure(data, "obj");
-                        this.post("trigger", { path: this.name+"/"+data.path });
+                        this.post("trigger", { path: [this.name, ...util.ensure(data.path, "arr")] });
                     });
                     itm.addHandler("drag", data => {
                         data = util.ensure(data, "obj");
-                        this.post("drag", { path: this.name+"/"+data.path });
+                        this.post("drag", { path: [this.name, ...util.ensure(data.path, "arr")] });
                     });
                     this.eContent.appendChild(itm.elem);
                 }
@@ -1193,7 +1186,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     item.item.addHandler("trigger", item.trigger);
                     return item.item;
                 });
-                genericItems = util.search(genericItems, ["generic.path", "generic.type"], this.query);
+                genericItems = util.search(genericItems, ["generic.textPath", "generic.type"], this.query);
                 this.items = [
                     new Panel.AddTab.Header("Tools"),
                     ...toolItems,
@@ -1259,7 +1252,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 item.item.addHandler("trigger", item.trigger);
                 return item.item;
             });
-            items = util.search(items, ["generic.path", "generic.type"], this.query);
+            items = util.search(items, ["generic.textPath", "generic.type"], this.query);
             this.items = items;
         }
         this.eSearchInput.focus();
@@ -1519,7 +1512,7 @@ Panel.AddTab.GenericButton = class PanelAddTabGenericButton extends Panel.AddTab
                 this.name = "NONE";
                 return;
             }
-            this.name = this.generic.path;
+            this.name = this.generic.textPath;
             if (this.name.length <= 0) this.name = "/";
             if (this.generic instanceof Source.Table) {
                 this.icon = "folder-outline";
@@ -1560,7 +1553,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         this.elem.classList.add("browser_");
 
-        this.#path = null;
+        this.#path = [];
 
         this.#ePath = document.createElement("div");
         this.elem.appendChild(this.ePath);
@@ -1577,7 +1570,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             a = a[0];
             if (a instanceof Panel.BrowserTab) a = [a.path];
             else if (util.is(a, "arr")) {
-                if (util.is(a[0], "str")) a = [a.join("/")];
+                if (util.is(a[0], "str")) a = [a];
                 else {
                     a = new Panel.BrowserTab(...a);
                     a = [a.path];
@@ -1611,43 +1604,44 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     state.items = [];
                     this.eBrowser.innerHTML = "";
                 }
-                let newPaths = {}, path = [];
+                let newPaths = [], path = [];
                 const dfsGeneric = generic => {
                     path.push(generic.name);
-                    newPaths[path.slice(1).join("/")] = generic;
+                    newPaths.push([[...path.slice(1)], generic]);
                     if (generic instanceof Source.Table) generic.children.forEach(generic => dfsGeneric(generic));
                     path.pop();
                 };
                 dfsGeneric(generic);
-                let oldPaths = {};
+                let oldPaths = [];
                 const dfsItem = item => {
                     path.push(item.name);
-                    oldPaths[path.join("/")] = item;
+                    oldPaths.push([[...path], item]);
                     if (item instanceof BrowserTable) item.children.forEach(item => dfsItem(item));
                     path.pop();
                 };
                 state.items.forEach(item => dfsItem(item));
-                for (let path in newPaths) {
-                    if (path.length <= 0) continue;
-                    if (path in oldPaths) continue;
-                    let generic = newPaths[path];
+                newPaths.forEach(data => {
+                    let path = data[0];
+                    if (path.length <= 0) return;
+                    let i = oldPaths.findIndex(data => util.arrEquals(data[0], path));
+                    if (i >= 0) return;
+                    let generic = data[1];
                     let item = (generic instanceof Source.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.get());
-                    let superPath = path.split("/");
-                    superPath.pop();
-                    superPath = superPath.join("/");
+                    let superPath = path.slice(0, path.length-1);
                     if (superPath.length > 0) {
-                        if (!(superPath in oldPaths)) continue;
-                        let parentItem = oldPaths[superPath];
-                        oldPaths[path] = parentItem.addChild(item);
+                        let j = oldPaths.findIndex(data => util.arrEquals(data[0], superPath));
+                        if (j < 0) return;
+                        let parentItem = oldPaths[j][1];
+                        oldPaths.push([[...path], parentItem.addChild(item)]);
                     } else {
                         state.items.push(item);
                         item._onTrigger = data => {
                             data = util.ensure(data, "obj");
-                            this.path += "/" + data.path;
+                            this.path = [...this.path, ...util.ensure(data.path, "arr")];
                         };
                         item._onDrag = data => {
                             data = util.ensure(data, "obj");
-                            let path = this.path + "/" + data.path;
+                            let path = [...this.path, ...util.ensure(data.path, "arr")];
                             if (!this.hasApp() || !this.hasPage()) return;
                             this.app.dragData = this.page.lookup(path);
                             this.app.dragging = true;
@@ -1656,18 +1650,19 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         item.addHandler("drag", item._onDrag);
                         this.eBrowser.appendChild(item.elem);
                     }
-                }
-                for (let path in oldPaths) {
-                    if (path in newPaths) continue;
-                    let item = oldPaths[path];
-                    let superPath = path.split("/");
-                    superPath.pop();
-                    superPath = superPath.join("/");
+                });
+                oldPaths.forEach(data => {
+                    let path = data[0];
+                    let i = newPaths.findIndex(v => util.arrEquals(v[0], path));
+                    if (i >= 0) return;
+                    let item = data[1];
+                    let superPath = path.slice(0, path.length-1);
                     if (superPath.length > 0) {
-                        if (!(superPath in oldPaths)) continue;
-                        let parentItem = oldPaths[superPath];
+                        let j = oldPaths.findIndex(v => util.arrEquals(v[0], superPath));
+                        if (j < 0) return;
+                        let parentItem = oldPaths[j][1];
                         parentItem.remChild(item);
-                        delete oldPaths[path];
+                        oldPaths.splice(j, 1);
                     } else {
                         state.items.splice(state.items.indexOf(item), 1);
                         item.remHandler("trigger", item._onTrigger);
@@ -1676,15 +1671,16 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         delete item._onDrag;
                         this.eBrowser.removeChild(item.elem);
                     }
-                }
-                for (let path in newPaths) {
-                    let generic = newPaths[path];
-                    if (!(generic instanceof Source.Topic)) continue;
-                    if (!(path in oldPaths)) continue;
-                    let item = oldPaths[path];
-                    if (!(item instanceof BrowserItem)) continue;
+                });
+                newPaths.forEach(data => {
+                    let path = data[0], generic = data[1];
+                    if (!(generic instanceof Source.Topic)) return;
+                    let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
+                    if (i < 0) return;
+                    let item = oldPaths[i][1];
+                    if (!(item instanceof BrowserItem)) return;
                     item.value = generic.get();
-                }
+                });
                 state.items.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => (itm.elem.style.order = i));
             } else if (generic instanceof Source.Topic) {
                 this.eBrowser.classList.remove("this");
@@ -1727,7 +1723,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                                 eValue.classList.add("value");
                                 if (generic.arraylessType == "boolean")
                                     eValue.innerHTML = "<ion-icon></ion-icon>";
-                                elem.addEventListener("dblclick", e => { this.path += "/"+item.index; });
+                                elem.addEventListener("dblclick", e => { this.path = [...this.path, item.index]; });
                             }
                             items.forEach((item, i) => {
                                 item.index = i;
@@ -1803,50 +1799,44 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 this.eDisplay.classList.remove("this");
                 this.icon = "document-outline";
                 this.name = "NONE";
-                this.path = "/";
+                this.path = [];
             }
         });
     }
 
-    get path() { return this.#path; }
+    get path() { return [...this.#path]; }
     set path(v) {
-        v = String(v).split("/");
-        while (v.length > 0 && v.at(0).length <= 0) v.shift();
-        while (v.length > 0 && v.at(-1).length <= 0) v.pop();
-        v = v.join("/");
-        if (this.path == v) return;
+        v = util.ensure(v, "arr");
+        if (util.arrEquals(this.path, v)) return;
         this.#path = v;
         this.ePath.innerHTML = "";
-        let path = this.path.split("/");
-        if (path.length > 0 && path[0].length > 0) {
+        let path = this.path;
+        if (path.length > 0) {
             let btn = document.createElement("button");
             this.ePath.appendChild(btn);
             btn.classList.add("back");
             btn.classList.add("icon");
             btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
             btn.addEventListener("click", e => {
-                let path = this.path.split("/");
-                if (path.length <= 0 || path[0].length <= 0) return;
                 path.pop();
-                this.path = path.join("/");
+                this.path = path;
             });
         }
-        path.unshift(null);
-        path.forEach((name, i) => {
+        for (let i = 0; i <= path.length; i++) {
             if (i > 1) {
                 let divider = document.createElement("div");
                 this.ePath.appendChild(divider);
                 divider.classList.add("divider");
                 divider.textContent = "/";
             }
-            let pth = path.slice(0, i+1).join("/");
+            let pth = path.slice(0, i);
             let btn = document.createElement("button");
             this.ePath.appendChild(btn);
             btn.classList.add("item");
             btn.classList.add("override");
-            btn.textContent = (name == null) ? "/" : name;
+            btn.textContent = (i > 0) ? path[i-1] : "/";
             btn.addEventListener("click", e => { this.path = pth; });
-        });
+        }
         this.post("change", null);
     }
 
@@ -2514,7 +2504,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         r: r,
                         submit: () => {
                             const colors = "rybgpocm";
-                            const addVar = name => {
+                            const addVar = pth => {
+                                let name = pth.join("/");
                                 let taken = new Array(colors.length).fill(false);
                                 [...this.lVars, ...this.rVars].forEach(v => {
                                     colors.split("").forEach((c, i) => {
@@ -2535,7 +2526,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             };
                             if (data.isArray)
                                 for (let i = 0; i < data.get().length; i++)
-                                    addVar(data.path+"/"+i);
+                                    addVar([...data.path, i]);
                             else addVar(data.path);
                         },
                     };
@@ -3009,7 +3000,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         r: r,
                         submit: () => {
                             const colors = "rybgpocm";
-                            const addPose = name => {
+                            const addPose = pth => {
+                                let name = pth.join("/");
                                 let taken = new Array(colors.length).fill(false);
                                 this.poses.forEach(pose => {
                                     colors.split("").forEach((c, i) => {
@@ -6129,13 +6121,13 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             this.post("refactor-browser", null);
         });
         this.addHandler("refactor-browser", data => {
-            let newPaths = {};
+            let newPaths = [];
             if (this.hasRootSource()) {
                 this.rootSource.root.children.forEach(generic => {
                     let path = [];
                     const dfs = generic => {
                         path.push(generic.name);
-                        newPaths[path.join("/")] = generic;
+                        newPaths.push([[...path], generic]);
                         if (generic instanceof Source.Table)
                             generic.children.forEach(generic => dfs(generic));
                         path.pop();
@@ -6143,12 +6135,12 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                     dfs(generic);
                 });
             }
-            let oldPaths = {};
+            let oldPaths = [];
             this.browserItems.forEach(itm => {
                 let path = [];
                 const dfs = itm => {
                     path.push(itm.name);
-                    oldPaths[path.join("/")] = itm;
+                    oldPaths.push([[...path], itm]);
                     if (itm instanceof BrowserTable)
                         itm.children.forEach(itm => dfs(itm));
                     path.pop();
@@ -6156,39 +6148,46 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 dfs(itm);
             });
             let needRem = [], needAdd = [];
-            for (let path in oldPaths)
-                if (!(path in newPaths))
-                    needRem.push(path.split("/"));
-            for (let path in newPaths)
-                if (!(path in oldPaths))
-                    needAdd.push(path.split("/"));
+            oldPaths.forEach(data => {
+                let path = data[0];
+                if (newPaths.find(v => util.arrEquals(v[0], path))) return;
+                needRem.push(path); 
+            });
+            newPaths.forEach(data => {
+                let path = data[0];
+                if (oldPaths.find(v => util.arrEquals(v[0], path))) return;
+                needAdd.push(path);
+            });
             needRem.sort((a, b) => b.length-a.length);
             needAdd.sort((a, b) => a.length-b.length);
             needRem.forEach(path => {
-                let superPath = path.slice(0, path.length-1).join("/");
-                path = path.join("/");
-                let itm = oldPaths[path];
-                if (superPath in oldPaths) oldPaths[superPath].remChild(itm);
+                let superPath = path.slice(0, path.length-1);
+                let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
+                let itm = oldPaths[i][1];
+                let j = oldPaths.findIndex(v => util.arrEquals(v[0], superPath));
+                if (j >= 0) oldPaths[j][1].remChild(itm);
                 else this.remBrowserItem(itm);
-                delete oldPaths[path];
+                oldPaths.splice(i, 1);
             });
             needAdd.forEach(path => {
-                let superPath = path.slice(0, path.length-1).join("/");
-                path = path.join("/");
-                let generic = newPaths[path];
+                let superPath = path.slice(0, path.length-1);
+                let i = newPaths.findIndex(v => util.arrEquals(v[0], path));
+                let generic = newPaths[i][1];
                 let itm = (generic instanceof Source.Table) ? new BrowserTable(generic.name) : new BrowserTopic(generic.name, generic.type, generic.get());
-                if (superPath in oldPaths) oldPaths[superPath].addChild(itm);
+                let j = oldPaths.findIndex(v => util.arrEquals(v[0], superPath));
+                if (j >= 0) oldPaths[j][1].addChild(itm);
                 else this.addBrowserItem(itm);
-                oldPaths[path] = itm;
+                oldPaths.push([[...path], itm]);
             });
-            for (let path in newPaths) {
-                let generic = newPaths[path];
-                if (!(generic instanceof Source.Topic)) continue;
-                if (!(path in oldPaths)) continue;
-                let item = oldPaths[path];
-                if (!(item instanceof BrowserItem)) continue;
+            newPaths.forEach(data => {
+                let path = data[0], generic = data[1];
+                if (!(generic instanceof Source.Topic)) return;
+                let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
+                if (i < 0) return;
+                let item = oldPaths[i][1];
+                if (!(item instanceof BrowserItem)) return;
                 item.value = generic.get();
-            }
+            });
         });
 
         this.rootSource = new NTSource(null);
