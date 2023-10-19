@@ -93,6 +93,6 @@ export default class NTSource extends Source {
 
     get ts() { return this.serverTime; }
     set ts(v) { return; }
-    get minTs() { return this.serverStartTime; }
-    get maxTs() { return this.serverTime; }
+    get minTS() { return this.serverStartTime; }
+    get maxTS() { return this.serverTime; }
 }

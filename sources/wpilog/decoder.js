@@ -58,10 +58,17 @@ export default class WPILOGDecoder extends core.Target {
     }
 
     #readVariableInteger(x, l) {
-        let v = 0;
-        for (let i = 0; i < l; i++)
-            v |= this.data[x+i] << (i*8);
-        return v;
+        let v = BigInt(0);
+        for (let i = 0; i < Math.min(8,l); i++) {
+            let byte = this.data[x+i];
+            if (i == 7) {
+                if ((byte & (1 << 7)) != 0)
+                    v -= (BigInt(1) << BigInt(63));
+                byte &= ~(1 << 7);
+            }
+            v |= BigInt(byte) << BigInt(i * 8);
+        }
+        return Number(v);
     }
 
     get records() { return [...this.#records]; }
@@ -69,9 +76,8 @@ export default class WPILOGDecoder extends core.Target {
     build() {
         this.#records = [];
         if (!this.isValid()) return this.records;
-        let x = 8;
         let extraHeaderL = this.dataView.getUint32(8, true);
-        x += 4 + extraHeaderL;
+        let x = 12 + extraHeaderL;
         while (1) {
             if (this.data.length < x+4) break;
             let entryL = (this.data[x] & 0x3) + 1;
@@ -82,8 +88,8 @@ export default class WPILOGDecoder extends core.Target {
             let entry = this.#readVariableInteger(x+1, entryL);
             let size = this.#readVariableInteger(x+1+entryL, sizeL);
             let ts = this.#readVariableInteger(x+1+entryL+sizeL, tsL);
-            if (this.data.length < x+headerL+size || entry < 0 || size < 0 || ts < 0) break;
-            this.#records.push(new Decoder.Record(
+            if (this.data.length < x+headerL+size || entry < 0 || size < 0) break;
+            this.#records.push(new WPILOGDecoder.Record(
                 entry, ts,
                 this.data.subarray(x+headerL, x+headerL+size)
             ));
