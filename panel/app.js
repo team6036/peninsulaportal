@@ -16,9 +16,10 @@ import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 
 import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
+import WPILOGSource from "../sources/wpilog/source.js";
 
 
-export const VERSION = 2;
+export const VERSION = 3;
 
 class RLine extends core.Odometry2d.Render {
     #a; #b;
@@ -668,14 +669,14 @@ class Container extends Widget {
     collapse() {
         this.children.forEach(child => child.collapse());
         if (this.children.length <= 0) {
-            if (this.hasPageParent()) this.parent.rootWidget = null;
+            if (this.hasPageParent()) this.parent.widget = null;
             else if (this.hasParent()) this.parent.remChild(this);
             return;
         }
         if (this.children.length <= 1) {
             let child = this.children[0];
             this.clearChildren();
-            if (this.hasPageParent()) this.parent.rootWidget = child;
+            if (this.hasPageParent()) this.parent.widget = child;
             else if (this.hasParent()) this.parent.replaceChild(child, this.parent.children.indexOf(this));
             return;
         }
@@ -759,7 +760,7 @@ class Panel extends Widget {
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Close Panel", "close"));
             itm.addHandler("trigger", data => {
-                if (this.hasPageParent()) return this.parent.rootWidget = null;
+                if (this.hasPageParent()) return this.parent.widget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
             });
             this.app.contextMenu = menu;
@@ -873,7 +874,7 @@ class Panel extends Widget {
     }
     collapse() {
         if (this.tabs.length > 0) return;
-        if (this.hasPageParent()) this.parent.rootWidget = null;
+        if (this.hasPageParent()) this.parent.widget = null;
         if (this.hasParent()) this.parent.remChild(this);
     }
 
@@ -1164,8 +1165,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.query.length > 0) {
                 toolItems = util.search(toolItems, ["name"], this.query);
                 let genericItems = [];
-                if (this.hasPage() && this.page.hasRootSource()) {
-                    let root = this.page.rootSource.root;
+                if (this.hasPage() && this.page.hasSource()) {
+                    let root = this.page.source.root;
                     const dfs = generic => {
                         let itm = new Panel.AddTab.GenericButton(generic);
                         genericItems.push({
@@ -1230,8 +1231,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
-            if (this.hasPage() && this.page.hasRootSource()) {
-                let root = this.page.rootSource.root;
+            if (this.hasPage() && this.page.hasSource()) {
+                let root = this.page.source.root;
                 const dfs = generic => {
                     let itm = new Panel.AddTab.GenericButton(generic);
                     if (generic instanceof { tables: Source.Table, topics: Source.Topic, all: Source.Generic }[this.searchPart]) items.push({
@@ -1587,7 +1588,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         this.addHandler("update", data => {
             window.log = true;
-            let generic = this.hasPage() ? this.page.lookup(this.path) : null;
+            let generic = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(this.path) : null;
             window.log = false;
             if (prevGeneric != generic) {
                 prevGeneric = generic;
@@ -1643,7 +1644,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                             data = util.ensure(data, "obj");
                             let path = [...this.path, ...util.ensure(data.path, "arr")];
                             if (!this.hasApp() || !this.hasPage()) return;
-                            this.app.dragData = this.page.lookup(path);
+                            this.app.dragData = this.page.hasSource() ? this.page.source.root.lookup(path) : null;
                             this.app.dragging = true;
                         };
                         item.addHandler("trigger", item._onTrigger);
@@ -2129,26 +2130,27 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             
             const ctx = this.ctx;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            if (!this.hasPage() || !this.page.hasRootSource()) return;
-            const source = this.page.rootSource;
+            if (!this.hasPage() || !this.page.hasSource()) return;
+            const source = this.page.source;
+            let minTime = source.minTs, maxTime = source.maxTs;
             const graphRange = {
                 left: () => [
-                    source.serverStartTime,
-                    Math.min(source.serverTime, source.serverStartTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    minTime,
+                    Math.min(maxTime, minTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
                 ],
                 right: () => [
-                    Math.max(source.serverStartTime, source.serverTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
-                    source.serverTime,
+                    Math.max(minTime, maxTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    maxTime,
                 ],
                 section: () => {
-                    let start = util.ensure(source.serverStartTime+this.viewParams.start, "num", source.serverStartTime);
-                    let stop = util.ensure(source.serverStartTime+this.viewParams.stop, "num", source.serverTime);
-                    start = Math.min(source.serverTime, Math.max(source.serverStartTime, start));
-                    stop = Math.min(source.serverTime, Math.max(source.serverStartTime, stop));
+                    let start = util.ensure(minTime+this.viewParams.start, "num", minTime);
+                    let stop = util.ensure(minTime+this.viewParams.stop, "num", maxTime);
+                    start = Math.min(maxTime, Math.max(minTime, start));
+                    stop = Math.min(maxTime, Math.max(minTime, stop));
                     stop = Math.max(start, stop);
                     return [start, stop];
                 },
-                all: () => [source.serverStartTime, source.serverTime],
+                all: () => [minTime, maxTime],
             }[this.viewMode]();
             let graphVars = [
                 { vars: this.lVars },
@@ -2490,7 +2492,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = this.hasPage() ? this.page.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -2956,7 +2958,12 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         this.post("change", null);
     }
 
-    get totalTime() { return (this.hasPage() && this.page.hasRootSource()) ? (this.page.rootSource.serverTime-this.page.rootSource.serverStartTime) : 0; }
+    get totalTime() {
+        if (!this.hasPage()) return 0;
+        if (!this.page.hasSource()) return 0;
+        const source = this.page.source;
+        return source.maxTs-source.minTs;
+    }
     get nowTime() { return this.#t; }
     set nowTime(v) {
         v = Math.min(this.totalTime, Math.max(0, util.ensure(v, "num")));
@@ -2983,7 +2990,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = this.hasPage() ? this.page.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -3421,8 +3428,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         window.hottest2d = () => {
             const page = app.getPage("PROJECT");
-            page.rootSource.announceTopic("k", "double[]");
-            page.rootSource.updateTopic("k", [2, 2, 0]);
+            page.source.announceTopic("k", "double[]");
+            page.source.updateTopic("k", [2, 2, 0]);
         };
 
         this.addHandler("update", () => {
@@ -3450,11 +3457,11 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
             this.odometry.imageScale = (this.template in templates) ? util.ensure(templates[this.template], "obj").imageScale : 0;
             if (this.isClosed) return;
-            let source = (this.hasPage() && this.page.hasRootSource()) ? this.page.rootSource : null;
+            let source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
                 const topic = (source instanceof Source) ? source.root.lookup(pose.name) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.serverStartTime) : null;
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTs) : null;
                 pose.state.update();
             });
             this.odometry.update();
@@ -3949,8 +3956,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         window.hottest3d = () => {
             const page = app.getPage("PROJECT");
-            page.rootSource.announceTopic("k", "double[]");
-            page.rootSource.updateTopic("k", [0, 0, 0, 0, 0, 0, 0]);
+            page.source.announceTopic("k", "double[]");
+            page.source.updateTopic("k", [0, 0, 0, 0, 0, 0, 0]);
         };
 
         let template = null, model = null;
@@ -3989,13 +3996,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             if (document.activeElement != this.eCameraPosZInput)
                 this.eCameraPosZInput.value = Math.round((this.camera.position.z * (this.isMeters ? 1 : 100))*10000)/10000;
             
-            let source = (this.hasPage() && this.page.hasRootSource()) ? this.page.rootSource : null;
+            let source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
                 pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
                 const topic = (source instanceof Source) ? source.root.lookup(pose.name) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.serverStartTime) : [];
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTs) : [];
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
@@ -4675,7 +4682,7 @@ class Project extends core.Target {
 
     #cache;
 
-    #rootData;
+    #widgetData;
     #config;
     #meta;
 
@@ -4686,47 +4693,48 @@ class Project extends core.Target {
 
         this.#cache = {};
 
-        this.#rootData = "";
+        this.#widgetData = "";
         this.#config = new Project.Config();
         this.#meta = new Project.Meta();
 
         if (a.length <= 0 || [2].includes(a.length) || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project) a = [a.rootData, a.config, a.meta];
+            if (a instanceof Project) a = [a.widgetData, a.config, a.meta];
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
-                a = [a.rootData, a.config, a.meta];
+                a = [a.widgetData, a.config, a.meta];
             }
             else if (a instanceof Project.Config) a = ["", a, null];
             else if (a instanceof Project.Meta) a = ["", null, a];
             else if (util.is(a, "str")) a = ["", null, { name: a }];
-            else if (util.is(a, "obj")) a = [a.rootData, a.config, a.meta];
+            // REMOVE WHEN FIXED
+            else if (util.is(a, "obj")) a = [a.rootData || a.widgetData, a.config, a.meta];
             else a = ["", null, null];
         }
 
-        [this.rootData, this.config, this.meta] = a;
+        [this.widgetData, this.config, this.meta] = a;
     }
 
     get id() { return this.#id; }
     set id(v) { this.#id = (v == null) ? null : String(v); }
 
-    get rootData() { return this.#rootData; }
-    set rootData(v) {
+    get widgetData() { return this.#widgetData; }
+    set widgetData(v) {
         v = String(v);
-        if (this.rootData == v) return;
-        this.#rootData = v;
+        if (this.widgetData == v) return;
+        this.#widgetData = v;
         this.post("change", null);
     }
 
-    buildRootWidget() {
+    buildWidget() {
         try {
-            let widget = JSON.parse(this.rootData, REVIVER.f);
+            let widget = JSON.parse(this.widgetData, REVIVER.f);
             if (!(widget instanceof Widget)) throw widget;
             return widget;
         } catch (e) {}
-        this.rootData = JSON.stringify(new Panel());
-        return this.buildRootWidget();
+        this.widgetData = JSON.stringify(new Panel());
+        return this.buildWidget();
     }
 
     get config() { return this.#config; }
@@ -4766,35 +4774,49 @@ class Project extends core.Target {
             "%CUSTOM": true,
             "%ARGS": [{
                 VERSION: VERSION,
-                rootData: this.rootData,
+                widgetData: this.widgetData,
                 config: this.config, meta: this.meta,
             }],
         };
     }
 }
 Project.Config = class ProjectConfig extends core.Target {
-    #ip;
+    #source;
+    #sourceType;
 
     constructor(...a) {
         super();
 
-        if (a.length <= 0 || a.length > 1) a = [null];
+        this.#source = "";
+        this.#sourceType = "";
+
+        if (a.length <= 0 || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Config) a = [a.ip];
-            else if (util.is(a, "arr")) a = [(new Project.Config(...a)).ip];
-            else if (util.is(a, "obj")) a = [a.ip];
-            else a = [a];
+            if (a instanceof Project.Config) a = [a.source, a.sourceType];
+            else if (util.is(a, "arr")) {
+                a = new Project.Config(...a);
+                a = [a.source, a.sourceType];
+            }
+            else if (util.is(a, "obj")) a = [a.source || a.ip, a.sourceType];
+            else a = [a, "nt"];
         }
 
-        [this.ip] = a;
+        [this.source, this.sourceType] = a;
     }
 
-    get ip() { return this.#ip; }
-    set ip(v) {
-        v = (v == null) ? "localhost" : String(v);
-        if (this.ip == v) return;
-        this.#ip = v;
+    get source() { return this.#source; }
+    set source(v) {
+        v = (v == null) ? "" : String(v);
+        if (this.source == v) return;
+        this.#source = v;
+        this.post("change", null);
+    }
+    get sourceType() { return this.#sourceType; }
+    set sourceType(v) {
+        v = (v == null) ? "" : String(v);
+        if (this.sourceType == v) return;
+        this.#sourceType = v;
         this.post("change", null);
     }
 
@@ -4804,7 +4826,8 @@ Project.Config = class ProjectConfig extends core.Target {
             "%CUSTOM": true,
             "%ARGS": [{
                 VERSION: VERSION,
-                ip: this.ip,
+                source: this.source,
+                sourceType: this.sourceType,
             }],
         };
     }
@@ -4902,7 +4925,7 @@ export default class App extends core.App {
     #eProjectInfo;
     #eProjectInfoBtn;
     #eProjectInfoNameInput;
-    #eProjectInfoAddressInput;
+    #eProjectInfoSourceInput;
     #eProjectInfoConnectionBtn;
     #eProjectInfoSaveBtn;
     #eProjectInfoCopyBtn;
@@ -5045,7 +5068,7 @@ export default class App extends core.App {
                         }
                     });
                 this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
-                this.#eProjectInfoAddressInput = this.eProjectInfo.querySelector(":scope > .content > input#infoaddress");
+                this.#eProjectInfoSourceInput = this.eProjectInfo.querySelector(":scope > .content > input#infosource");
                 this.#eProjectInfoConnectionBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infoconnection");
                 if (this.hasEProjectInfoConnectionBtn())
                     this.eProjectInfoConnectionBtn.addEventListener("click", e => this.post("cmd-conndisconn"));
@@ -5194,13 +5217,26 @@ export default class App extends core.App {
             const canGetGenericFromData = () => {
                 if (this.dragData instanceof Source.Generic) return true;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Tab) return (this.dragData instanceof Panel.BrowserTab) && (this.hasPage("PROJECT") && this.getPage("PROJECT").lookup(this.dragData.path) instanceof Source.Generic);
+                if (this.dragData instanceof Panel.Tab) {
+                    if (!(this.dragData instanceof Panel.BrowserTab)) return false;
+                    if (!this.hasPage("PROJECT")) return false;
+                    const page = this.getPage("PROJECT");
+                    if (!page.hasSource()) return false;
+                    if (!(page.source.root.lookup(this.dragData.path) instanceof Source.Generic)) return false;
+                    return true;
+                }
                 return false;
             };
             const getGenericFromData = () => {
                 if (this.dragData instanceof Source.Generic) return this.dragData;
                 if (this.dragData instanceof Widget);
-                if (this.dragData instanceof Panel.Tab) return ((this.dragData instanceof Panel.BrowserTab) && this.hasPage("PROJECT")) ? this.getPage("PROJECT").lookup(this.dragData.path) : null;
+                if (this.dragData instanceof Panel.Tab) {
+                    if (!(this.dragData instanceof Panel.BrowserTab)) return null;
+                    if (!this.hasPage("PROJECT")) return null;
+                    const page = this.getPage("PROJECT");
+                    if (!page.hasSource()) return null;
+                    return page.source.root.lookup(this.dragData.path);
+                }
                 return null;
             };
             this.addHandler("drag-start", () => {
@@ -5244,13 +5280,13 @@ export default class App extends core.App {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!isValid(this.dragData)) return;
-                if (!page.hasRootWidget()) {
+                if (!page.hasWidget()) {
                     this.showBlock();
                     this.placeBlock(page.eContent.getBoundingClientRect());
                     return;
                 }
                 const hovered = getHovered(
-                    page.rootWidget, new V(e.pageX, e.pageY),
+                    page.widget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
                         canTop: (this.dragData instanceof Source.Generic || this.dragData instanceof Panel.Tab),
@@ -5283,12 +5319,12 @@ export default class App extends core.App {
                 this.hideBlock();
                 let canWidget = canGetWidgetFromData();
                 let canTab = canGetTabFromData();
-                if (!page.hasRootWidget()) {
-                    page.rootWidget = getWidgetFromData();
+                if (!page.hasWidget()) {
+                    page.widget = getWidgetFromData();
                     return;
                 }
                 const hovered = getHovered(
-                    page.rootWidget, new V(e.pageX, e.pageY),
+                    page.widget, new V(e.pageX, e.pageY),
                     {
                         canSub: true,
                         canTop: (this.dragData instanceof Source.Generic || this.dragData instanceof Panel.Tab),
@@ -5300,11 +5336,11 @@ export default class App extends core.App {
                     let widget = getWidgetFromData();
                     let container = new Container();
                     container.axis = at[1];
-                    if (hovered.widget == page.rootWidget) {
-                        page.rootWidget = null;
+                    if (hovered.widget == page.widget) {
+                        page.widget = null;
                         container.addChild((at[0] == "+") ? hovered.widget : widget);
                         container.addChild((at[0] != "+") ? hovered.widget : widget);
-                        page.rootWidget = container;
+                        page.widget = container;
                     } else {
                         let parent = hovered.widget.parent;
                         let weights = parent.weights, thisAt = parent.children.indexOf(hovered.widget);
@@ -5320,7 +5356,7 @@ export default class App extends core.App {
                     let data = util.ensure(hovered.data, "obj");
                     if (util.is(data.submit, "func")) data.submit();
                 }
-                page.rootWidget.collapse();
+                page.widget.collapse();
             });
             this.addHandler("cmd-newtab", data => {
                 if (!this.hasPage("PROJECT")) return;
@@ -5610,8 +5646,8 @@ export default class App extends core.App {
     hasEProjectInfoBtn() { return this.eProjectInfoBtn instanceof HTMLButtonElement; }
     get eProjectInfoNameInput() { return this.#eProjectInfoNameInput; }
     hasEProjectInfoNameInput() { return this.eProjectInfoNameInput instanceof HTMLInputElement; }
-    get eProjectInfoAddressInput() { return this.#eProjectInfoAddressInput; }
-    hasEProjectInfoAddressInput() { return this.eProjectInfoAddressInput instanceof HTMLInputElement; }
+    get eProjectInfoSourceInput() { return this.#eProjectInfoSourceInput; }
+    hasEProjectInfoSourceInput() { return this.eProjectInfoSourceInput instanceof HTMLInputElement; }
     get eProjectInfoSaveBtn() { return this.#eProjectInfoSaveBtn; }
     hasEProjectInfoSaveBtn() { return this.eProjectInfoSaveBtn instanceof HTMLButtonElement; }
     get eProjectInfoCopyBtn() { return this.#eProjectInfoCopyBtn; }
@@ -5969,9 +6005,9 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
 
     #browserItems;
     #toolButtons;
-    #rootWidget;
+    #widget;
     #activeWidget;
-    #rootSource;
+    #source;
 
     #eSide;
     #eSideMeta;
@@ -6012,26 +6048,52 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 this.project.meta.name = this.app.eProjectInfoNameInput.value;
                 this.post("refresh-options", null);
             });
-        if (this.app.hasEProjectInfoAddressInput())
-            this.app.eProjectInfoAddressInput.addEventListener("change", e => {
-                if (this.hasProject())
-                    this.project.config.ip = this.app.eProjectInfoAddressInput.value;
-                if (!this.hasRootSource()) this.rootSource = new NTSource(null);
-                this.rootSource.address = null;
+        if (this.app.hasEProjectInfoSourceInput())
+            this.app.eProjectInfoSourceInput.addEventListener("change", e => {
+                if (!this.hasProject()) return this.source = null;
+                this.project.config.source = this.app.eProjectInfoSourceInput.value;
+                const constructor = {
+                    nt: NTSource,
+                    wpilog: WPILOGSource,
+                }[this.project.config.sourceType];
+                if (!util.is(constructor, "func")) return this.source = null;
+                if (!(this.source instanceof constructor)) this.source = {
+                    nt: () => new NTSource(null),
+                    wpilog: () => new WPILOGSource(null),
+                }[this.project.config.sourceType]();
+                let typefs = {
+                    nt: () => {
+                        this.source.address = null;
+                    },
+                };
+                if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
             });
         this.app.addHandler("cmd-conndisconn", data => {
-            if (!this.hasRootSource()) this.rootSource = new NTSource(null);
-            if (!this.rootSource.connecting && !this.rootSource.connected) this.rootSource.address = this.hasProject() ? this.project.config.ip : null;
-            else this.rootSource.address = null;
+            if (!this.hasProject()) return this.source = null;
+            const constructor = {
+                nt: NTSource,
+                wpilog: WPILOGSource,
+            }[this.project.config.sourceType];
+            if (!util.is(constructor, "func")) return this.source = null;
+            if (!(this.source instanceof constructor)) this.source = {
+                nt: () => new NTSource(null),
+                wpilog: () => new WPILOGSource(null),
+            }[this.project.config.sourceType]();
+            let typefs = {
+                nt: () => {
+                    this.source.address = (this.source.address == null) ? this.project.config.source : null;
+                },
+            };
+            if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
         });
 
         this.#projectId = null;
 
         this.#browserItems = [];
         this.#toolButtons = new Set();
-        this.#rootWidget = null;
+        this.#widget = null;
         this.#activeWidget = null;
-        this.#rootSource = null;
+        this.#source = null;
 
         this.#eSide = document.createElement("div");
         this.elem.appendChild(this.eSide);
@@ -6105,25 +6167,15 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.addHandler("refactor-browser-queue", data => { refactor = true; });
         this.addHandler("update", data => {
             if (this.app.page == this.name)
-                this.app.title = this.hasProject() ?
-                    (
-                        this.project.meta.name + " — " +
-                        (
-                            (!this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected)) ?
-                            "Disconnected" :
-                            this.rootSource.connecting ?
-                            "Connecting to "+this.rootSource.address :
-                            this.rootSource.address
-                        )
-                    ) : "?";
+                this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
             if (!refactor) return;
             refactor = false;
             this.post("refactor-browser", null);
         });
         this.addHandler("refactor-browser", data => {
             let newPaths = [];
-            if (this.hasRootSource()) {
-                this.rootSource.root.children.forEach(generic => {
+            if (this.hasSource()) {
+                this.source.root.children.forEach(generic => {
                     let path = [];
                     const dfs = generic => {
                         path.push(generic.name);
@@ -6190,22 +6242,19 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             });
         });
 
-        this.rootSource = new NTSource(null);
+        this.source = new NTSource(null);
 
         this.addHandler("project-set", data => {
-            this.rootWidget = this.hasProject() ? this.project.buildRootWidget() : null;
+            this.widget = this.hasProject() ? this.project.buildWidget() : null;
         });
         this.addHandler("update", data => {
-            if (this.hasRootWidget()) {
-                this.rootWidget.collapse();
-                if (this.hasRootWidget()) this.rootWidget.update();
-            } else this.rootWidget = new Panel();
-            if (!this.hasRootWidget() || !this.rootWidget.contains(this.activeWidget))
+            if (this.hasWidget()) {
+                this.widget.collapse();
+                if (this.hasWidget()) this.widget.update();
+            } else this.widget = new Panel();
+            if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;
-            this.eSideMeta.textContent = (!this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected)) ? "Disconnected" : this.rootSource.connecting ? "Connecting to "+this.rootSource.address : (() => {
-                let nFields = this.rootSource.root.nFields;
-                return nFields + " field" + (nFields==1 ? "" : "s");
-            })();
+            this.eSideMeta.textContent = this.sourceInfo;
             if (!this.hasApp()) return;
             if (this.app.hasEProjectInfoBtn())
                 if (this.app.eProjectInfoBtn.querySelector(":scope > .value") instanceof HTMLDivElement)
@@ -6213,11 +6262,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             if (this.app.hasEProjectInfoNameInput())
                 if (document.activeElement != this.app.eProjectInfoNameInput)
                     this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
-            if (this.app.hasEProjectInfoAddressInput())
-                if (document.activeElement != this.app.eProjectInfoAddressInput)
-                    this.app.eProjectInfoAddressInput.value = this.hasProject() ? this.project.config.ip : "";
+            if (this.app.hasEProjectInfoSourceInput())
+                if (document.activeElement != this.app.eProjectInfoSourceInput)
+                    this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
             if (this.app.hasEProjectInfoConnectionBtn()) {
-                let on = !this.hasRootSource() || (!this.rootSource.connecting && !this.rootSource.connected);
+                let on = !this.hasSource() || !(this.source instanceof NTSource) || (!this.source.connecting && !this.source.connected);
                 this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
                 if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
                 else this.app.eProjectInfoConnectionBtn.classList.remove("on");
@@ -6288,7 +6337,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.#browserItems.push(itm);
         itm._onDrag = data => {
             data = util.ensure(data, "obj");
-            let generic = this.lookup(data.path);
+            let generic = this.hasSource() ? this.source.root.lookup(data.path) : null;
             if (!(generic instanceof Source.Generic)) return;
             if (!this.hasApp()) return;
             this.app.dragData = generic;
@@ -6340,32 +6389,32 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         return btn;
     }
 
-    get rootWidget() { return this.#rootWidget; }
-    set rootWidget(v) {
+    get widget() { return this.#widget; }
+    set widget(v) {
         v = (v instanceof Widget) ? v : null;
-        if (this.rootWidget == v) return;
-        if (this.hasRootWidget()) {
-            this.rootWidget.parent = null;
-            this.rootWidget.remHandler("change", this.rootWidget._onChange);
-            delete this.rootWidget._onChange;
-            this.eContent.removeChild(this.rootWidget.elem);
+        if (this.widget == v) return;
+        if (this.hasWidget()) {
+            this.widget.parent = null;
+            this.widget.remHandler("change", this.widget._onChange);
+            delete this.widget._onChange;
+            this.eContent.removeChild(this.widget.elem);
         }
-        this.#rootWidget = v;
-        if (this.hasRootWidget()) {
-            this.rootWidget.parent = this;
-            this.rootWidget._onChange = () => {
+        this.#widget = v;
+        if (this.hasWidget()) {
+            this.widget.parent = this;
+            this.widget._onChange = () => {
                 if (this.hasProject())
-                    this.project.rootData = JSON.stringify(this.rootWidget);
+                    this.project.widgetData = JSON.stringify(this.widget);
             };
-            this.rootWidget.addHandler("change", this.rootWidget._onChange);
-            this.eContent.appendChild(this.rootWidget.elem);
-            this.activeWidget = this.rootWidget;
+            this.widget.addHandler("change", this.widget._onChange);
+            this.eContent.appendChild(this.widget.elem);
+            this.activeWidget = this.widget;
         }
         if (this.hasProject())
-            this.project.rootData = JSON.stringify(this.rootWidget);
+            this.project.widgetData = JSON.stringify(this.widget);
         this.formatContent();
     }
-    hasRootWidget() { return this.rootWidget instanceof Widget; }
+    hasWidget() { return this.widget instanceof Widget; }
     get activeWidget() { return this.#activeWidget; }
     set activeWidget(v) {
         v = (v instanceof Widget) ? v : null;
@@ -6377,26 +6426,35 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     hasActiveWidget() { return this.activeWidget instanceof Widget; }
     hasActiveContainer() { return this.activeWidget instanceof Container; }
     hasActivePanel() { return this.activeWidget instanceof Panel; }
-    get rootSource() { return this.#rootSource; }
-    set rootSource(v) {
+    get source() { return this.#source; }
+    set source(v) {
         v = (v instanceof Source) ? v : null;
-        if (this.rootSource == v) return;
-        if (this.hasRootSource()) {
-            this.rootSource.address = null;
-            this.rootSource.remHandler("change", this.rootSource.root._onChange);
-            delete this.rootSource._onChange;
+        if (this.source == v) return;
+        if (this.hasSource()) {
+            if (this.source instanceof NTSource) this.source.address = null;
+            this.source.remHandler("change", this.source.root._onChange);
+            delete this.source._onChange;
         }
-        this.#rootSource = v;
-        if (this.hasRootSource()) {
-            this.rootSource._onChange = data => this.post("refactor-browser-queue", null);
-            this.rootSource.addHandler("change", this.rootSource._onChange);
+        this.#source = v;
+        if (this.hasSource()) {
+            this.source._onChange = data => this.post("refactor-browser-queue", null);
+            this.source.addHandler("change", this.source._onChange);
         }
         this.post("refactor-browser", null);
     }
-    hasRootSource() { return this.rootSource instanceof Source; }
-    lookup(path) {
-        if (!this.hasRootSource()) return null;
-        return this.rootSource.root.lookup(path);
+    hasSource() { return this.source instanceof Source; }
+    get sourceInfo() {
+        if (this.source instanceof NTSource) {
+            if (!this.source.connecting && !this.source.connected) return "Disconnected";
+            if (this.source.connecting) return "Connecting to "+this.source.address;
+            const n = this.source.root.nFields;
+            return this.source.address+" : "+n+" field"+(n==1?"":"s");
+        }
+        if (this.source instanceof WPILOGSource) {
+            return "WPILOG: "+this.source;
+        }
+        if (this.hasSource()) return "Unknown source: "+this.source.constructor.name;
+        return "No source";
     }
 
     get eSide() { return this.#eSide; }
@@ -6424,11 +6482,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         return true;
     }
     formatContent() {
-        if (!this.hasRootWidget()) return false;
+        if (!this.hasWidget()) return false;
         let r = this.eContent.getBoundingClientRect();
-        this.rootWidget.elem.style.setProperty("--w", r.width+"px");
-        this.rootWidget.elem.style.setProperty("--h", r.height+"px");
-        this.rootWidget.format();
+        this.widget.elem.style.setProperty("--w", r.width+"px");
+        this.widget.elem.style.setProperty("--h", r.height+"px");
+        this.widget.format();
         return true;
     }
 

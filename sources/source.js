@@ -34,6 +34,8 @@ export default class Source extends core.Target {
 
     get ts() { return this.#ts; }
     set ts(v) { this.#ts = util.ensure(v, "num"); }
+    get minTs() { return 0; }
+    get maxTs() { return 0; }
 
     create(k, type) {
         if (!Source.Topic.TYPES.includes(type)) return false;
