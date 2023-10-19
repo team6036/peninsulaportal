@@ -663,6 +663,11 @@ const MAIN = async () => {
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
                 return await feat.fileRead(pth);
             });
+            ipc.handle("file-read-raw", async (e, pth) => {
+                let feat = this.identifyFeature(e.sender.id);
+                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                return await feat.fileReadRaw(pth);
+            });
             ipc.handle("file-write", async (e, pth, content) => {
                 let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
@@ -962,6 +967,11 @@ const MAIN = async () => {
             this.log(`fs:file-read ${pth}`);
             return await fs.promises.readFile(pth, { encoding: "utf-8" });
         }
+        static async fileReadRaw(pth) {
+            pth = this.makePath(pth);
+            this.log(`fs:file-read-raw ${pth}`);
+            return [...(await fs.promises.readFile(pth))];
+        }
         static async fileWrite(pth, content) {
             pth = this.makePath(pth);
             this.log(`fs:file-write ${pth}`);
@@ -1009,16 +1019,17 @@ const MAIN = async () => {
             return await fs.promises.rmdir(pth);
         }
 
-        async fileHas(pth) { return Portal.fileHas([this.dataPath, pth]); }
-        async fileRead(pth) { return Portal.fileRead([this.dataPath, pth]); }
-        async fileWrite(pth, content) { return Portal.fileWrite([this.dataPath, pth], content); }
-        async fileAppend(pth, content) { return Portal.fileAppend([this.dataPath, pth], content); }
-        async fileDelete(pth) { return Portal.fileDelete([this.dataPath, pth]); }
+        async fileHas(pth) { return await Portal.fileHas([this.dataPath, pth]); }
+        async fileRead(pth) { return await Portal.fileRead([this.dataPath, pth]); }
+        async fileReadRaw(pth) { return await Portal.fileReadRaw([this.dataPath, pth]); }
+        async fileWrite(pth, content) { return await Portal.fileWrite([this.dataPath, pth], content); }
+        async fileAppend(pth, content) { return await Portal.fileAppend([this.dataPath, pth], content); }
+        async fileDelete(pth) { return await Portal.fileDelete([this.dataPath, pth]); }
 
-        async dirHas(pth) { return Portal.dirHas([this.dataPath, pth]); }
-        async dirList(pth) { return Portal.dirList([this.dataPath, pth]); }
-        async dirMake(pth) { return Portal.dirMake([this.dataPath, pth]); }
-        async dirDelete(pth) { return Portal.dirDelete([this.dataPath, pth]); }
+        async dirHas(pth) { return await Portal.dirHas([this.dataPath, pth]); }
+        async dirList(pth) { return await Portal.dirList([this.dataPath, pth]); }
+        async dirMake(pth) { return await Portal.dirMake([this.dataPath, pth]); }
+        async dirDelete(pth) { return await Portal.dirDelete([this.dataPath, pth]); }
 
         identifyFeature(id) {
             let feats = this.features;
@@ -1950,6 +1961,11 @@ const MAIN = async () => {
             await this.affirm(portal, name, started);
             return await Portal.fileRead(Portal.makePath(this.getDataPath(portal, name, started), pth));
         }
+        static async fileReadRaw(portal, name, pth, started=true) {
+            if (!this.getCanOperate(portal, name, started)) return null;
+            await this.affirm(portal, name, started);
+            return await Portal.fileReadRaw(Portal.makePath(this.getDataPath(portal, name, started), pth));
+        }
         static async fileWrite(portal, name, pth, content, started=true) {
             if (!this.getCanOperate(portal, name, started)) return null;
             await this.affirm(portal, name, started);
@@ -1989,6 +2005,7 @@ const MAIN = async () => {
 
         async fileHas(pth) { return Portal.Feature.fileHas(this.portal, this.name, pth, this.started); }
         async fileRead(pth) { return Portal.Feature.fileRead(this.portal, this.name, pth, this.started); }
+        async fileReadRaw(pth) { return Portal.Feature.fileReadRaw(this.portal, this.name, pth, this.started); }
         async fileWrite(pth, content) { return Portal.Feature.fileWrite(this.portal, this.name, pth, content, this.started); }
         async fileAppend(pth, content) { return Portal.Feature.fileAppend(this.portal, this.name, pth, content, this.started); }
         async fileDelete(pth) { return Portal.Feature.fileDelete(this.portal, this.name, pth, this.started); }

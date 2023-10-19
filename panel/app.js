@@ -1808,7 +1808,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     get path() { return [...this.#path]; }
     set path(v) {
         v = util.ensure(v, "arr");
-        if (util.arrEquals(this.path, v)) return;
+        if (util.arrEquals(v, this.path)) return;
         this.#path = v;
         this.ePath.innerHTML = "";
         let path = this.path;
@@ -2132,7 +2132,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             if (!this.hasPage() || !this.page.hasSource()) return;
             const source = this.page.source;
-            let minTime = source.minTs, maxTime = source.maxTs;
+            let minTime = source.minTS, maxTime = source.maxTS;
             const graphRange = {
                 left: () => [
                     minTime,
@@ -2162,8 +2162,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let logs = {}, topics = {};
                 vars.forEach(v => {
                     if (!v.isShown) return;
-                    if (!v.hasName()) return;
-                    let topic = source.root.lookup(v.name);
+                    let topic = source.root.lookup(v.path);
                     if (!(topic instanceof Source.Topic)) return;
                     if (topic.isArray) return;
                     let log = topic.getRange(...graphRange);
@@ -2172,8 +2171,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
                     if (stop != null) log.push({ ts: graphRange[1], v: stop });
                     if (log.length <= 0) return;
-                    logs[v.name] = log;
-                    topics[v.name] = topic;
+                    logs[v.path] = log;
+                    topics[v.path] = topic;
                     if (!["double", "float", "int"].includes(topic.type)) return;
                     let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
                     if (range[0] == null || range[1] == null) return range = subrange;
@@ -2272,9 +2271,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ctx.fillText(j*step, x3, y);
                 }
                 vars.forEach(v => {
-                    if (!(v.name in logs)) return;
-                    let log = logs[v.name];
-                    let topic = topics[v.name];
+                    if (!(v.path in logs)) return;
+                    let log = logs[v.path];
+                    let topic = topics[v.path];
                     if (!["double", "float", "int"].includes(topic.type)) {
                         log.forEach((p, i) => {
                             let pts = p.ts, pv = p.v;
@@ -2507,7 +2506,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         submit: () => {
                             const colors = "rybgpocm";
                             const addVar = pth => {
-                                let name = pth.join("/");
                                 let taken = new Array(colors.length).fill(false);
                                 [...this.lVars, ...this.rVars].forEach(v => {
                                     colors.split("").forEach((c, i) => {
@@ -2522,9 +2520,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 });
                                 if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
                                 let has = false;
-                                this[side+"Vars"].forEach(v => (v.name == name) ? (has = true) : null);
+                                this[side+"Vars"].forEach(v => util.arrEquals(v.path, pth) ? (has = true) : null);
                                 if (has) return;
-                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(name, "--c"+nextColor));
+                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
                             };
                             if (data.isArray)
                                 for (let i = 0; i < data.get().length; i++)
@@ -2559,7 +2557,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     }
 };
 Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
-    #name;
+    #path;
     #color;
 
     #elem;
@@ -2576,7 +2574,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
     constructor(...a) {
         super();
 
-        this.#name = null;
+        this.#path = [];
         this.#color = null;
 
         this.#elem = document.createElement("div");
@@ -2642,26 +2640,30 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphTab.Variable) a = [a.name, a.color, a.isShown];
+            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.color, a.isShown];
             else if (util.is(a, "arr")) {
-                a = new Panel.GraphTab.Variable(...a);
-                a = [a.name, a.color, a.isShown];
+                if (util.is(a[0], "str")) a = [a, null];
+                else {
+                    a = new Panel.GraphTab.Variable(...a);
+                    a = [a.path, a.color, a.isShown];
+                }
             }
-            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown];
-            else a = [null, null, true];
+            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown];
+            else a = [[], null];
         }
         if (a.length == 2) a = [...a, true];
 
-        [this.name, this.color, this.isShown] = a;
+        [this.path, this.color, this.isShown] = a;
     }
 
-    get name() { return this.#name; }
-    set name(v) {
-        this.#name = (v == null) ? null : String(v);
-        this.eDisplayName.textContent = this.hasName() ? this.name : "?";
+    get path() { return [...this.#path]; }
+    set path(v) {
+        v = util.ensure(v, "arr");
+        if (util.arrEquals(v, this.path)) return;
+        this.#path = v;
+        this.eDisplayName.textContent = this.path.join("/");
         this.post("change", null);
     }
-    hasName() { return this.name != null; }
     get color() { return this.#color; }
     set color(v) {
         this.#color = (v == null) ? null : String(v);
@@ -2715,7 +2717,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                name: this.name,
+                path: this.path,
                 color: this.color,
                 isShown: this.isShown,
             }],
@@ -2962,7 +2964,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!this.hasPage()) return 0;
         if (!this.page.hasSource()) return 0;
         const source = this.page.source;
-        return source.maxTs-source.minTs;
+        return source.maxTS-source.minTS;
     }
     get nowTime() { return this.#t; }
     set nowTime(v) {
@@ -3008,7 +3010,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         submit: () => {
                             const colors = "rybgpocm";
                             const addPose = pth => {
-                                let name = pth.join("/");
                                 let taken = new Array(colors.length).fill(false);
                                 this.poses.forEach(pose => {
                                     colors.split("").forEach((c, i) => {
@@ -3023,9 +3024,9 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                                 });
                                 if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
                                 let has = false;
-                                this.poses.forEach(v => (v.name == name) ? (has = true) : null);
+                                this.poses.forEach(v => util.arrEquals(v.path, pth) ? (has = true) : null);
                                 if (has) return;
-                                this.addPose(new this.constructor.Pose(name, "--c"+nextColor));
+                                this.addPose(new this.constructor.Pose(pth, "--c"+nextColor));
                             };
                             addPose(data.path);
                         },
@@ -3051,7 +3052,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     get eTemplateSelect() { return this.#eTemplateSelect; }
 };
 Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
-    #name;
+    #path;
     #color;
 
     #state;
@@ -3070,7 +3071,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
     constructor(...a) {
         super();
 
-        this.#name = null;
+        this.#path = [];
         this.#color = null;
 
         this.#state = new this.constructor.State();
@@ -3138,26 +3139,30 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown];
+            if (a instanceof this.constructor) a = [a.path, a.color, a.isShown];
             else if (util.is(a, "arr")) {
-                a = new this.constructor(...a);
-                a = [a.name, a.color, a.isShown];
+                if (util.is(a[0], "str")) a = [a, null];
+                else {
+                    a = new this.constructor(...a);
+                    a = [a.path, a.color, a.isShown];
+                }
             }
-            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown];
-            else a = [null, null];
+            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown];
+            else a = [[], null];
         }
         if (a.length == 2) a = [...a, true];
 
-        [this.name, this.color, this.isShown] = a;
+        [this.path, this.color, this.isShown] = a;
     }
 
-    get name() { return this.#name; }
-    set name(v) {
-        this.#name = (v == null) ? null : String(v);
-        this.eDisplayName.textContent = this.hasName() ? this.name : "?";
+    get path() { return [...this.#path]; }
+    set path(v) {
+        v = util.ensure(v, "arr");
+        if (util.arrEquals(v, this.path)) return;
+        this.#path = v;
+        this.eDisplayName.textContent = this.path.join("/");
         this.post("change", null);
     }
-    hasName() { return this.name != null; }
     get color() { return this.#color; }
     set color(v) {
         this.#color = (v == null) ? null : String(v);
@@ -3213,7 +3218,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                name: this.name,
+                path: this.path,
                 color: this.color,
                 isShown: this.isShown,
             }],
@@ -3460,8 +3465,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             let source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
-                const topic = (source instanceof Source) ? source.root.lookup(pose.name) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTs) : null;
+                const topic = (source instanceof Source) ? source.root.lookup(pose.path) : null;
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTS) : null;
                 pose.state.update();
             });
             this.odometry.update();
@@ -3589,20 +3594,23 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         if (a.length <= 0 || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.isGhost, a.type];
+            if (a instanceof this.constructor) a = [a.path, a.color, a.isShown, a.isGhost, a.type];
             else if (util.is(a, "arr")) {
-                a = new this.constructor(...a);
-                a = [a.name, a.color, a.isShown, a.isGhost, a.type];
+                if (util.is(a[0], "str")) a = [a, null];
+                else {
+                    a = new this.constructor(...a);
+                    a = [a.path, a.color, a.isShown, a.isGhost, a.type];
+                }
             }
             // REMOVE WHEN FIXED
-            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.ghost || a.isGhost, a.type];
-            else a = [null, null];
+            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown, a.ghost || a.isGhost, a.type];
+            else a = [[], null];
         }
         if (a.length == 2) a = [...a, true];
         if (a.length == 3) a = [...a, false];
         if (a.length == 4) a = [...a, core.Odometry2d.Robot.Types.DEFAULT];
 
-        [this.name, this.color, this.isShown, this.isGhost, this.type] = a;
+        [this.path, this.color, this.isShown, this.isGhost, this.type] = a;
     }
 
     get isGhost() { return this.#isGhost; }
@@ -3632,7 +3640,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                name: this.name,
+                path: this.path,
                 color: this.color,
                 isShown: this.isShown,
                 isGhost: this.isGhost,
@@ -4001,8 +4009,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
-                const topic = (source instanceof Source) ? source.root.lookup(pose.name) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTs) : [];
+                const topic = (source instanceof Source) ? source.root.lookup(pose.path) : null;
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTS) : [];
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
@@ -4321,18 +4329,21 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         if (a.length <= 0 || [3, 4].includes(a.length) || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.name, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
+            if (a instanceof this.constructor) a = [a.path, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
             else if (util.is(a, "arr")) {
-                a = new this.constructor(...a);
-                a = [a.name, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
+                if (util.is(a[0], "str")) a = [a, null];
+                else {
+                    a = new this.constructor(...a);
+                    a = [a.path, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
+                }
             }
-            else if (util.is(a, "obj")) a = [a.name, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
+            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
             else a = [null, null];
         }
         if (a.length == 2) a = [...a, true, false, false];
         if (a.length == 4) a = [...a, "KitBot"];
 
-        [this.name, this.color, this.isShown, this.isGhost, this.isSolid, this.type] = a;
+        [this.path, this.color, this.isShown, this.isGhost, this.isSolid, this.type] = a;
     }
 
     get isGhost() { return this.#isGhost; }
@@ -4379,7 +4390,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             "%OBJ": this.constructor.name,
             "%CUSTOM": true,
             "%ARGS": [{
-                name: this.name,
+                path: this.path,
                 color: this.color,
                 isShown: this.isShown,
                 isGhost: this.isGhost,
@@ -4814,7 +4825,7 @@ Project.Config = class ProjectConfig extends core.Target {
     }
     get sourceType() { return this.#sourceType; }
     set sourceType(v) {
-        v = (v == null) ? "" : String(v);
+        v = ((v == null) ? "" : String(v)).toLowerCase();
         if (this.sourceType == v) return;
         this.#sourceType = v;
         this.post("change", null);
@@ -6086,6 +6097,13 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             };
             if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
         });
+
+        window.hottestwpilog = async () => {
+            this.project.config.sourceType = "wpilog";
+            let content = await window.api.fileReadRaw(["..", "..", "..", "..", "projects", "peninsulaportal", "temp", "wpilog_sample.wpilog"]);
+            this.source = new WPILOGSource(content);
+            this.source.build();
+        };
 
         this.#projectId = null;
 

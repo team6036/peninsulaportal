@@ -34,8 +34,8 @@ export default class Source extends core.Target {
 
     get ts() { return this.#ts; }
     set ts(v) { this.#ts = util.ensure(v, "num"); }
-    get minTs() { return 0; }
-    get maxTs() { return 0; }
+    get minTS() { return 0; }
+    get maxTS() { return 0; }
 
     create(k, type) {
         if (!Source.Topic.TYPES.includes(type)) return false;
@@ -95,10 +95,10 @@ export default class Source extends core.Target {
         ts = util.ensure(ts, "num", this.ts);
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        let oFlat = this.flatRoot.lookup([k.join("/")]);
-        if (oFlat instanceof Source.Topic)
-            oFlat.update(v, ts);
-        let o = this.nestRoot, oPrev = this;
+        let o = this.flatRoot.lookup([k.join("/")]);
+        if (o instanceof Source.Topic)
+            o.update(v, ts);
+        o = this.nestRoot; let oPrev = this;
         while (k.length > 0) {
             let name = k.shift();
             [o, oPrev] = [o.lookup([name]), o];
@@ -154,7 +154,7 @@ Source.Generic = class SourceGeneric extends core.Target {
     get source() { return this.hasSourceParent() ? this.parent : this.parent.source; }
 
     get path() {
-        if (this.hasSourceParent()) return [this.name];
+        if (this.hasSourceParent()) return [];
         return [...this.parent.path, this.name];
     }
     get textPath() { return this.path.join("/"); }

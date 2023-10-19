@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("api", {
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
     fileRead: path => ipcRenderer.invoke("file-read", path),
+    fileReadRaw: path => ipcRenderer.invoke("file-read-raw", path),
     fileWrite: (path, content) => ipcRenderer.invoke("file-write", path, content),
     fileAppend: (path, content) => ipcRenderer.invoke("file-append", path, content),
     fileDelete: path => ipcRenderer.invoke("file-delete", path),
