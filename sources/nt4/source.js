@@ -46,7 +46,7 @@ export default class NTSource extends Source {
         v = (v == null) ? null : String(v);
         if (this.address == v) return;
         if (this.#hasClient()) this.#client.disconnect();
-        this.clear();
+        if (v != null) this.clear();
         const client = this.#client = (v == null) ? null : new NTClient(
             v,
             "Peninsula",
@@ -93,4 +93,6 @@ export default class NTSource extends Source {
 
     get ts() { return this.serverTime; }
     set ts(v) { return; }
+    get minTs() { return this.serverStartTime; }
+    get maxTs() { return this.serverTime; }
 }

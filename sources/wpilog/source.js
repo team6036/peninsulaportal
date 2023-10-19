@@ -7,7 +7,7 @@ import WPILOGDecoder, { toUint8Array } from "./decoder.js";
 import Source from "../source.js";
 
 
-export class WPILOGSource extends Source {
+export default class WPILOGSource extends Source {
     #decoder;
 
     constructor(data) {
