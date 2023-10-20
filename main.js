@@ -1374,6 +1374,18 @@ const MAIN = async () => {
             await Promise.all(this.features.map(async feat => await feat.send(k, args)));
             return true;
         }
+        cacheSet(k, v) {
+            this.features.map(async feat => await feat.cacheSet(k, v))
+            return true;
+        }
+        cacheDel(k) {
+            this.features.map(async feat => await feat.cacheDel(k))
+            return true;
+        }
+        cacheClear() {
+            this.features.map(async feat => await feat.cacheClear())
+            return true;
+        }
 
         update() {
             this.post("update", null);
@@ -2388,7 +2400,14 @@ const MAIN = async () => {
                     },
                     "cmd-clear-app-log-dir": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
-                        await Promise.all((await this.portal.dirList("logs")).map(dirent => this.portal.fileDelete(["logs", dirent.name])));
+                        let dirents = await this.portal.dirList("logs");
+                        let n = 0, nTotal = dirents.length;
+                        await Promise.all(dirents.map(async dirent => {
+                            await this.portal.fileDelete(["logs", dirent.name]);
+                            n++;
+                            this.cacheSet("clear-app-log-dir-progress", n/nTotal);
+                        }));
+                        this.cacheSet("clear-app-log-dir-progress", 1);
                     },
                     "cmd-poll-db-host": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
@@ -2412,6 +2431,26 @@ const MAIN = async () => {
             if (!this.hasWindow()) return false;
             this.window.webContents.send("send", k, args);
             return true;
+        }
+        cacheSet(k, v) {
+            if (!this.started) return false;
+            if (!this.hasName()) return false;
+            k = String(k);
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("cache-set", k, v);
+        }
+        cacheDel(k) {
+            if (!this.started) return false;
+            if (!this.hasName()) return false;
+            k = String(k);
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("cache-del", k);
+        }
+        cacheClear() {
+            if (!this.started) return false;
+            if (!this.hasName()) return false;
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("cache-clear");
         }
 
         update() { this.post("update", null); }
