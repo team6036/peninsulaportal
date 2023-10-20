@@ -4997,9 +4997,7 @@ export default class App extends core.App {
         this.addHandler("start-begin", data => {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
-        this.addHandler("start-complete", data => {       
-            this.addBackButton();
-
+        this.addHandler("start-complete", data => {
             this.#eTitleBtn = document.getElementById("titlebtn");
             if (this.hasETitleBtn())
                 this.eTitleBtn.addEventListener("click", e => {

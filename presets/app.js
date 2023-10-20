@@ -15,8 +15,6 @@ export default class App extends core.App {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
         this.addHandler("start-complete", async data => {
-            this.addBackButton();
-
             (async () => {
                 let resp = await fetch("./display.md");
                 let text = await resp.text();
