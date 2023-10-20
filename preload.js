@@ -1,5 +1,20 @@
 const { ipcRenderer, contextBridge } = require("electron");
 
+const cache = {};
+
+ipcRenderer.on("cache-set", (_, k, v) => {
+    cache[k] = v;
+    // console.log("cache-set: "+k+" = "+v);
+});
+ipcRenderer.on("cache-del", (_, k) => {
+    cache[k] = null;
+    // console.log("cache-del: "+k);
+});
+ipcRenderer.on("cache-clear", _ => {
+    cache = {};
+    // console.log("cache-clear");
+});
+
 contextBridge.exposeInMainWorld("version", {
     node: () => process.versions.node,
     chrome: () => process.versions.chrome,
@@ -29,4 +44,6 @@ contextBridge.exposeInMainWorld("api", {
     dirList: path => ipcRenderer.invoke("dir-list", path),
     dirMake: path => ipcRenderer.invoke("dir-make", path),
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
+
+    cacheGet: k => cache[k],
 });

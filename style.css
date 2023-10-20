@@ -434,7 +434,7 @@ article.md ul {
 }
 
 #titlebar {
-    --loading: 0%;
+    --progress: 0%;
 
     position: absolute;
     top: 0%;
@@ -467,12 +467,10 @@ article.md ul {
     -webkit-app-region: no-drag;
 }
 #titlebar::before {
-    --progress: 0%;
-
     content: "";
 
     position: absolute;
-    bottom: 0px;
+    top: 100%;
     left: 0px;
 
     width: var(--progress);
@@ -483,7 +481,7 @@ article.md ul {
 
     transition: width var(--t), opacity var(--t);
 }
-#titlebar.loading::before {
+#titlebar.progress::before {
     opacity: 100%;
 }
 

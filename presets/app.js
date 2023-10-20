@@ -4,6 +4,87 @@ import { V } from "../util.mjs";
 import * as core from "../core.mjs";
 
 
+class Action extends core.Target {
+    #app;
+    #elem;
+
+    #checkDisabled;
+
+    constructor(app, elem) {
+        super();
+
+        this.#app = app;
+        this.#elem = elem;
+
+        this.#checkDisabled = true;
+
+        if (!this.hasElem()) return;
+
+        const action = this.action.bind(this);
+        let idfs = {
+            "cleanup-app-data-dir": () => {
+                this.action = async () => {
+                    let confirmed = await new Promise((res, rej) => {
+                        let pop = this.confirm();
+                        pop.eContent.innerText = "Are you sure you want to cleanup application data?\nThis might accidentally delete some files - backup the entire application directory!\n(Or trust that I wrote this code well)";
+                        pop.addHandler("result", async data => res(!!util.ensure(data, "obj").v));
+                    });
+                    if (!confirmed) return;
+                    await action();
+                };
+            },
+            "clear-app-log-dir": () => {
+                this.action = async () => {
+                    let id = setInterval(() => {
+                        const progress = Math.min(1, Math.max(0, util.ensure(window.api.cacheGet(this.id+"-progress"), "num")));
+                        if (this.hasApp()) this.app.progress = progress;
+                        if (progress < 1) return;
+                        if (this.hasApp()) this.app.progress = null;
+                    }, 10);
+                    await action();
+                    clearInterval(id);
+                    if (!this.hasApp()) return;
+                    this.app.progress = 1;
+                    this.app.progress = null;
+                };
+            },
+            "poll-db-host": () => {
+                this.#checkDisabled = false;
+                this.init = async () => {
+                    setInterval(async () => {
+                        let isLoading = await window.api.get("loading");
+                        elem.disabled = isLoading;
+                    }, 250);
+                };
+            },
+        };
+        if (this.id in idfs) idfs[this.id]();
+        this.elem.addEventListener("click", e => this.click());
+    }
+
+    get app() { return this.#app; }
+    hasApp() { return this.app instanceof App; }
+    get elem() { return this.#elem; }
+    hasElem() { return this.elem instanceof HTMLButtonElement; }
+    get id() { return this.hasElem() ? this.elem.id : null; }
+
+    async init() {}
+    async click() {
+        if (!this.hasElem()) return;
+        let disabled;
+        console.log("action-s");
+        if (this.#checkDisabled) {
+            disabled = this.elem.disabled;
+            this.elem.disabled = true;
+        }
+        await this.action();
+        if (this.#checkDisabled) this.elem.disabled = disabled;
+        console.log("action-f");
+    }
+    async action() { await window.api.send("cmd-"+this.id); }
+}
+
+
 export default class App extends core.App {
     #eInfo;
     #eLoads;
@@ -35,30 +116,8 @@ export default class App extends core.App {
                     });
                 }
                 Array.from(document.querySelectorAll("#PAGE > .content > article button.cmd")).forEach(async elem => {
-                    if (elem.id == "poll-db-host") {
-                        setInterval(async () => {
-                            let isLoading = await window.api.get("loading");
-                            elem.disabled = isLoading;
-                        }, 250);
-                    }
-                    elem.addEventListener("click", async e => {
-                        let disabled, willDo = true;
-                        if (elem.id != "poll-db-host") {
-                            disabled = elem.disabled;
-                            elem.disabled = true;
-                        }
-                        if (elem.id == "cleanup-app-data-dir") {
-                            willDo = await new Promise((res, rej) => {
-                                let pop = this.confirm();
-                                pop.eContent.innerText = "Are you sure you want to cleanup application data?\nThis might accidentally delete some files - backup the entire application directory!\n(Or trust that I wrote this code well)";
-                                pop.addHandler("result", async data => res(!!util.ensure(data, "obj").v));
-                            });
-                        }
-                        if (willDo) await window.api.send("cmd-"+elem.id);
-                        if (elem.id != "poll-db-host") {
-                            elem.disabled = disabled;
-                        }
-                    });
+                    const action = new Action(this, elem);
+                    await action.init();
                 });
                 Array.from(document.querySelectorAll("#PAGE > .content > article input.val")).forEach(async elem => {
                     let type = {
