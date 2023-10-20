@@ -40,8 +40,13 @@
 				<div class="content">
 					<div>Name</div>
 					<input id="infoname" type="text" placeholder="Name your project..." autocomplete="off" spellcheck="false">
+					<div>Source Type</div>
+					<div class="nav source">
+						<button id="nt">NetworkTables</button>
+						<button id="wpilog">WPILOG</button>
+					</div>
 					<div>Source</div>
-					<input id="infosource" type="text" placeholder="Provide an IP..." autocomplete="off" spellcheck="false">
+					<input id="infosource" type="text" autocomplete="off" spellcheck="false">
 					<div class="nav">
 						<button id="infoconnection" class="on"></button>
 					</div>
@@ -49,7 +54,7 @@
 					<div class="nav">
 						<button id="infosave">Save</button>
 						<button id="infocopy">Copy</button>
-						<button id="infodelete">Delete</button>
+						<button id="infodelete" class="off">Delete</button>
 					</div>
 				</div>
 			</div>

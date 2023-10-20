@@ -113,12 +113,28 @@
 
     border-radius: 10px;
 }
-#titlebar > #projectinfo > .content > .nav > button#infodelete {
+#titlebar > #projectinfo > .content > .nav > button.on {
+    --bg: var(--cg3);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--cg2);
+    --fgd: var(--v6);
+}
+#titlebar > #projectinfo > .content > .nav > button.off {
     --bg: var(--cr);
     --fg: var(--v8);
     --bgh: var(--v8);
     --fgh: var(--v1);
     --bgd: var(--cr2);
+    --fgd: var(--v6);
+}
+#titlebar > #projectinfo > .content > .nav > button.special {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
     --fgd: var(--v6);
 }
 #titlebar > .space {

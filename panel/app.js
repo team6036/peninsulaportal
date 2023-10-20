@@ -4886,7 +4886,7 @@ Project.Meta = class ProjectMeta extends core.Target {
     constructor(...a) {
         super();
 
-        this.#name = "Unnamed";
+        this.#name = "New Project";
         this.#modified = 0;
         this.#created = 0;
         this.#thumb = null;
@@ -4901,7 +4901,7 @@ Project.Meta = class ProjectMeta extends core.Target {
             }
             else if (util.is(a, "str")) a = [a, null];
             else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
-            else a = ["Unnamed", null];
+            else a = ["New Project", null];
         }
         if (a.length == 2) a = [a[0], 0, 0, a[1]];
         
@@ -4910,7 +4910,7 @@ Project.Meta = class ProjectMeta extends core.Target {
 
     get name() { return this.#name; }
     set name(v) {
-        v = (v == null) ? "Unnamed" : String(v);
+        v = (v == null) ? "New Project" : String(v);
         if (this.name == v) return;
         this.#name = v;
         this.post("change", null);
@@ -4970,6 +4970,7 @@ export default class App extends core.App {
     #eProjectInfo;
     #eProjectInfoBtn;
     #eProjectInfoNameInput;
+    #eProjectInfoSourceTypes;
     #eProjectInfoSourceInput;
     #eProjectInfoConnectionBtn;
     #eProjectInfoSaveBtn;
@@ -4983,6 +4984,8 @@ export default class App extends core.App {
         this.#changes = new Set();
 
         this.#projects = {};
+
+        this.#eProjectInfoSourceTypes = {};
 
         this.addHandler("setup", async data => {
             try {
@@ -5110,6 +5113,12 @@ export default class App extends core.App {
                         }
                     });
                 this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
+                const eNavSource = this.eProjectInfo.querySelector(":scope > .content > .nav.source");
+                if (eNavSource instanceof HTMLDivElement)
+                    Array.from(eNavSource.querySelectorAll(":scope > button")).forEach(elem => {
+                        this.#eProjectInfoSourceTypes[elem.id] = elem;
+                        elem.addEventListener("click", e => this.post("cmd-source-type", elem.id));
+                    });
                 this.#eProjectInfoSourceInput = this.eProjectInfo.querySelector(":scope > .content > input#infosource");
                 this.#eProjectInfoConnectionBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infoconnection");
                 if (this.hasEProjectInfoConnectionBtn())
@@ -5685,6 +5694,9 @@ export default class App extends core.App {
     hasEProjectInfoBtn() { return this.eProjectInfoBtn instanceof HTMLButtonElement; }
     get eProjectInfoNameInput() { return this.#eProjectInfoNameInput; }
     hasEProjectInfoNameInput() { return this.eProjectInfoNameInput instanceof HTMLInputElement; }
+    get eProjectInfoSourceTypes() { return Object.keys(this.#eProjectInfoSourceTypes); }
+    hasEProjectInfoSourceType(type) { return type in this.#eProjectInfoSourceTypes; }
+    getEProjectInfoSourceType(type) { return this.#eProjectInfoSourceTypes[type]; }
     get eProjectInfoSourceInput() { return this.#eProjectInfoSourceInput; }
     hasEProjectInfoSourceInput() { return this.eProjectInfoSourceInput instanceof HTMLInputElement; }
     get eProjectInfoSaveBtn() { return this.#eProjectInfoSaveBtn; }
@@ -6089,6 +6101,12 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             this.app.eProjectInfoSourceInput.addEventListener("change", e => {
                 this.project.config.source = this.app.eProjectInfoSourceInput.value;
             });
+        this.app.addHandler("cmd-source-type", type => {
+            if (!this.hasProject()) return;
+            type = String(type);
+            if (!["nt", "wpilog"].includes(type)) return;
+            this.project.config.sourceType = type;
+        });
         this.app.addHandler("cmd-conndisconn", data => {
             if (!this.hasProject() || !this.hasSource()) return;
             if (this.source instanceof NTSource) {
@@ -6099,7 +6117,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 if (this.source.importing) return;
                 (async () => {
                     this.source.importing = true;
-                    this.source.file = this.project.config.source;
+                    let source = this.project.config.source;
+                    let i1 = source.lastIndexOf("/");
+                    let i2 = source.lastIndexOf("\\");
+                    let i = Math.max(i1, i2);
+                    this.source.file = source.substring(i+1);
                     let data = null;
                     try {
                         data = await window.api.send("wpilog-read", [this.project.config.source]);
@@ -6108,26 +6130,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                         this.source.importing = false;
                         return;
                     }
-                    console.log(data);
+                    this.source.data = data;
+                    delete this.source.importing;
                 })();
                 return;
             }
-        });
-
-        window.hottestwpilog = async () => {
-            let content = await window.api.fileReadRaw(["..", "..", "..", "..", "projects", "peninsulaportal", "temp", "wpilog_sample.wpilog"]);
-            this.source = new WPILOGSource(content);
-            this.source.build();
-        };
-
-        document.body.addEventListener("dragenter", e => {
-            this.eDragBox.classList.add("this");
-        });
-        document.body.addEventListener("dragend", e => {
-            this.eDragBox.classList.remove("this");
-        });
-        document.body.addEventListener("dragleave", e => {
-            this.eDragBox.classList.remove("this");
         });
 
         this.#projectId = null;
@@ -6287,6 +6294,28 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.#eDragBox = document.createElement("div");
         this.elem.appendChild(this.eDragBox);
         this.eDragBox.classList.add("dragbox");
+        this.eDragBox.innerHTML = "<div></div><div></div>";
+        ["dragenter", "dragover"].forEach(name => document.body.addEventListener(name, e => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.eDragBox.classList.add("this");
+        }, { capture: true }));
+        ["dragleave", "drop"].forEach(name => document.body.addEventListener(name, e => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.eDragBox.classList.remove("this");
+        }, { capture: true }));
+        document.body.addEventListener("drop", e => {
+            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+            items = items.filter(item => item instanceof File);
+            if (items.length <= 0) return;
+            const file = items[0];
+            if (!this.hasProject()) return;
+            this.project.config.sourceType = "wpilog";
+            this.project.config.source = file.path;
+        }, { capture: true });
 
         this.source = null;
 
@@ -6315,6 +6344,12 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                     if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
                 }
             } else this.source = null;
+            if (this.hasApp())
+                this.app.eProjectInfoSourceTypes.forEach(type => {
+                    let elem = this.app.getEProjectInfoSourceType(type);
+                    if (this.hasProject() && this.project.config.sourceType == type) elem.classList.add("special");
+                    else elem.classList.remove("special");
+                });
             if (this.hasWidget()) {
                 this.widget.collapse();
                 if (this.hasWidget()) this.widget.update();
@@ -6329,9 +6364,15 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             if (this.app.hasEProjectInfoNameInput())
                 if (document.activeElement != this.app.eProjectInfoNameInput)
                     this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
-            if (this.app.hasEProjectInfoSourceInput())
+            if (this.app.hasEProjectInfoSourceInput()) {
                 if (document.activeElement != this.app.eProjectInfoSourceInput)
                     this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
+                if (this.source instanceof NTSource)
+                    this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
+                else if (this.source instanceof WPILOGSource)
+                    this.app.eProjectInfoSourceInput.placeholder = "Path...";
+                else this.app.eProjectInfoNameInput.placeholder = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+            }
             if (this.app.hasEProjectInfoConnectionBtn()) {
                 if (this.source instanceof NTSource) {
                     this.app.eProjectInfoConnectionBtn.disabled = false;
