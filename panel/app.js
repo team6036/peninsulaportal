@@ -6106,6 +6106,8 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             type = String(type);
             if (!["nt", "wpilog"].includes(type)) return;
             this.project.config.sourceType = type;
+            this.update();
+            this.app.post("cmd-conndisconn");
         });
         this.app.addHandler("cmd-conndisconn", data => {
             if (!this.hasProject() || !this.hasSource()) return;
@@ -6315,6 +6317,8 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             if (!this.hasProject()) return;
             this.project.config.sourceType = "wpilog";
             this.project.config.source = file.path;
+            this.update();
+            this.app.post("cmd-conndisconn");
         }, { capture: true });
 
         this.source = null;
