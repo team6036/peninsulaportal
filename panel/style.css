@@ -232,15 +232,7 @@
 
     border-radius: 10px;
 }
-#titlebar > #projectinfo > .content > .nav > button#infodelete {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--cr2);
-    --fgd: var(--v6);
-}
-#titlebar > #projectinfo > .content > .nav > button#infoconnection.on {
+#titlebar > #projectinfo > .content > .nav > button.on {
     --bg: var(--cg3);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -248,7 +240,7 @@
     --bgd: var(--cg2);
     --fgd: var(--v6);
 }
-#titlebar > #projectinfo > .content > .nav > button#infoconnection.off {
+#titlebar > #projectinfo > .content > .nav > button.off {
     --bg: var(--cr);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -256,7 +248,7 @@
     --bgd: var(--cr2);
     --fgd: var(--v6);
 }
-#titlebar > #projectinfo > .content > .nav > button#infoconnection.special {
+#titlebar > #projectinfo > .content > .nav > button.special {
     --bg: var(--a);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -566,6 +558,8 @@
     align-content: center !important;
 }
 #PROJECTPAGE > .dragbox {
+    z-index: 1;
+
     position: absolute;
     top: 50%;
     left: 50%;
@@ -574,12 +568,49 @@
     width: 100%;
     height: 100%;
 
-    background-color: var(--a-8);
+    background-color: var(--a-4);
 
     visibility: hidden;
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .dragbox::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
+
+    border: 5px solid var(--v8);
 }
 #PROJECTPAGE > .dragbox.this {
     visibility: inherit;
+}
+#PROJECTPAGE > .dragbox > div:nth-child(1) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: min(10vw, 10vh);
+    height: min(2vw, 2vh);
+
+    background-color: var(--v8);
+}
+#PROJECTPAGE > .dragbox > div:nth-child(2) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: min(2vw, 2vh);
+    height: min(10vw, 10vh);
+
+    background-color: var(--v8);
 }
 #PROJECTPAGE > .side {
     width: 15%;
