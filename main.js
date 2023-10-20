@@ -391,7 +391,7 @@ const MAIN = async () => {
                     let superPth = path.dirname(pth);
                     let thePth = path.join(superPth, fileName);
                     let tmpPth = path.join(superPth, fileName+"-tmp");
-                    let resp = await util.timeout(10000, fetch(url));
+                    let resp = await util.timeout(30000, fetch(url));
                     if (resp.status != 200) throw resp.status;
                     await new Promise((res, rej) => {
                         const stream = fs.createWriteStream(tmpPth);
