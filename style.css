@@ -467,13 +467,15 @@ article.md ul {
     -webkit-app-region: no-drag;
 }
 #titlebar::before {
+    --progress: 0%;
+
     content: "";
 
     position: absolute;
     bottom: 0px;
     left: 0px;
 
-    width: var(--loading);
+    width: var(--progress);
     height: 2px;
 
     background-color: var(--a);

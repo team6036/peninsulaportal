@@ -922,17 +922,17 @@ export class App extends Target {
     hasELoadingTo() { return this.eLoadingTo instanceof HTMLElement; }
     get eMount() { return this.#eMount; }
 
-    get loading() {
-        if (!this.eTitleBar.classList.contains("loading")) return null;
-        let loading = this.eTitleBar.style.getPropertyValue("--loading");
-        loading = loading.substring(0, loading.length-1);
-        return Math.min(1, Math.max(0, util.ensure(parseFloat(loading), "num")/100));
+    get progress() {
+        if (!this.eTitleBar.classList.contains("progress")) return null;
+        let progress = this.eTitleBar.style.getPropertyValue("--progress");
+        progress = progress.substring(0, progress.length-1);
+        return Math.min(1, Math.max(0, util.ensure(parseFloat(progress), "num")/100));
     }
-    set loading(v) {
+    set progress(v) {
         v = (v == null) ? null : Math.min(1, Math.max(0, util.ensure(v, "num")));
-        if (v == null) return this.eTitleBar.classList.remove("loading");
-        this.eTitleBar.classList.add("loading");
-        this.eTitleBar.style.setProperty("--loading", (v*100)+"%");
+        if (v == null) return this.eTitleBar.classList.remove("progress");
+        this.eTitleBar.classList.add("progress");
+        this.eTitleBar.style.setProperty("--progress", (v*100)+"%");
     }
 }
 App.PopupBase = class AppPopupBase extends Target {
