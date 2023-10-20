@@ -22,9 +22,6 @@ button:not(.override) {
 #titlebar > .space {
     flex-basis: 100%;
 }
-#titlebar > :last-child {
-    margin-left: 10px;
-}
 
 #mount > .page {
     padding: 10px;

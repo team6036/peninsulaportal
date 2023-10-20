@@ -284,9 +284,6 @@
     --bgd: var(--a3);
     --fgd: var(--v6);
 }
-#titlebar > :last-child {
-    margin-left: 10px;
-}
 
 #mount > .page {
     padding: 10px;

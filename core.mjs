@@ -895,21 +895,6 @@ export class App extends Target {
         this.pages.forEach(name => this.getPage(name).elem.classList[(name == this.page ? "add" : "remove")]("this"));
     }
 
-    addBackButton() {
-        if (!(this.eTitleBar instanceof HTMLDivElement)) return false;
-        let btn = document.createElement("button");
-        this.eTitleBar.appendChild(btn);
-        btn.classList.add("icon");
-        btn.style.setProperty("--bg", "transparent");
-        btn.style.setProperty("--bgh", "var(--v2)");
-        btn.style.setProperty("--bgd", "transparent");
-        btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
-        btn.addEventListener("click", e => {
-            window.api.send("close");
-        });
-        return btn;
-    }
-
     get title() { return this.#title; }
     set title(v) {
         v = String(v);
