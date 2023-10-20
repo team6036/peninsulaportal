@@ -2107,7 +2107,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.eDisplay.focus();
         const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
         const globalTemplateImages = util.ensure(await window.api.get("template-images"), "obj");
-        const activeTemplate = util.ensure(await window.api.get("active-template"), "obj");
+        const activeTemplate = await window.api.get("active-template");
         let templatesContent = "";
         try {
             templatesContent = await window.api.fileRead("templates.json");
@@ -2116,7 +2116,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         try {
             templates = JSON.parse(templatesContent);
         } catch (e) {}
-        templates = util.ensure(templates, "obj");
+        templates = util.ensure(util.ensure(templates, "obj").templates, "obj");
         if (this.app.hasProject(data.id)) {
             this.project = this.app.getProject(data.id);
         } else if (data.project instanceof subcore.Project) {
@@ -2155,6 +2155,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 }
                 break;
             }
+            this.post("refresh-options", null);
         }
     }
     async leave(data) {
