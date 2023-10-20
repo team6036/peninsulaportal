@@ -399,7 +399,7 @@ Project.Meta = class ProjectMeta extends core.Target {
     constructor(...a) {
         super();
 
-        this.#name = "Unnamed";
+        this.#name = "New Project";
         this.#modified = 0;
         this.#created = 0;
         this.#thumb = null;
@@ -417,7 +417,7 @@ Project.Meta = class ProjectMeta extends core.Target {
             }
             else if (util.is(a, "str")) a = [a, null];
             else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
-            else a = ["Unnamed", null];
+            else a = ["New Project", null];
         }
         if (a.length == 2) a = [a[0], 0, 0, a[1]];
         if (a.length == 4) a = [...a, null, 0];
@@ -427,7 +427,7 @@ Project.Meta = class ProjectMeta extends core.Target {
 
     get name() { return this.#name; }
     set name(v) {
-        v = (v == null) ? "Unnamed" : String(v);
+        v = (v == null) ? "New Project" : String(v);
         if (this.name == v) return;
         this.#name = v;
         this.post("change", null);

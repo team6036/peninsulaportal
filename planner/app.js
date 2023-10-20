@@ -1735,21 +1735,21 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             let names = new Set();
             this.app.projects.forEach(id => {
                 let project = this.app.getProject(id);
-                if (project.meta.name.length <= 0) project.meta.name = "Unnamed";
+                if (project.meta.name.length <= 0) project.meta.name = "New Project";
                 if (names.has(project.meta.name)) {
-                    let n = 2;
-                    while (names.has(project.meta.name+" "+n)) n++;
-                    project.meta.name += " "+n;
+                    let n = 1;
+                    while (names.has(project.meta.name+" (" + n + ")")) n++;
+                    project.meta.name += " (" + n + ")";
                 }
                 names.add(project.meta.name);
                 let pathNames = new Set();
                 project.paths.forEach(id => {
                     let path = project.getPath(id);
-                    if (path.name.length <= 0) path.name = "Unnamed";
+                    if (path.name.length <= 0) path.name = "New Path";
                     if (pathNames.has(path.name)) {
-                        let n = 2;
-                        while (pathNames.has(path.name+" "+n)) n++;
-                        path.name += " "+n;
+                        let n = 1;
+                        while (pathNames.has(path.name+ " (" + n + ")")) n++;
+                        path.name += " (" + n + ")";
                     }
                     pathNames.add(path.name);
                 });
