@@ -1654,6 +1654,7 @@ const MAIN = async () => {
                     label: "File",
                     submenu: [
                         ...build.reload,
+                        build.div,
                         ...build.spawn,
                         build.div,
                         ...build.close,
@@ -2170,36 +2171,10 @@ const MAIN = async () => {
             if (k in kfs)
                 return await kfs[k](...args);
             let namefs = {
-                PRESETS: {
-                    "cmd-open-app-data-dir": async () => {
+                PANEL: {
+                    "wpilog-read": async pth => {
                         if (!this.hasPortal()) throw "No linked portal";
-                        await new Promise((res, rej) => {
-                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
-                            process.addHandler("exit", data => res(data.code));
-                            process.addHandler("error", data => rej(data.e));
-                        });
-                    },
-                    "cmd-cleanup-app-data-dir": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
-                        await this.portal.cleanup();
-                    },
-                    "cmd-open-app-log-dir": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
-                        await new Promise((res, rej) => {
-                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
-                            process.addHandler("exit", data => res(data.code));
-                            process.addHandler("error", data => rej(data.e));
-                        });
-                    },
-                    "cmd-clear-app-log-dir": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
-                        await Promise.all((await this.portal.dirList("logs")).map(dirent => this.portal.fileDelete(["logs", dirent.name])));
-                    },
-                    "cmd-poll-db-host": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
-                        (async () => {
-                            await this.portal.tryLoad(await this.get("base-version"));
-                        })();
+                        return await Portal.fileReadRaw(pth);
                     },
                 },
                 PLANNER: {
@@ -2388,6 +2363,38 @@ const MAIN = async () => {
                             datas[pathId] = dataOut;
                         }
                         return datas;
+                    },
+                },
+                PRESETS: {
+                    "cmd-open-app-data-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await new Promise((res, rej) => {
+                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
+                            process.addHandler("exit", data => res(data.code));
+                            process.addHandler("error", data => rej(data.e));
+                        });
+                    },
+                    "cmd-cleanup-app-data-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await this.portal.cleanup();
+                    },
+                    "cmd-open-app-log-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await new Promise((res, rej) => {
+                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
+                            process.addHandler("exit", data => res(data.code));
+                            process.addHandler("error", data => rej(data.e));
+                        });
+                    },
+                    "cmd-clear-app-log-dir": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        await Promise.all((await this.portal.dirList("logs")).map(dirent => this.portal.fileDelete(["logs", dirent.name])));
+                    },
+                    "cmd-poll-db-host": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        (async () => {
+                            await this.portal.tryLoad(await this.get("base-version"));
+                        })();
                     },
                 },
             };

@@ -25,9 +25,15 @@ export default class WPILOGSource extends Source {
 
     get data() { return this.#hasDecoder() ? this.#decoder.data : null; }
     set data(v) {
-        v = toUint8Array(v);
+        v = (v == null) ? null : toUint8Array(v);
         if (this.data == v) return;
-        this.#decoder = new WPILOGDecoder(v);
+        if (v == null) {
+            this.#decoder = null;
+            this.clear();
+        } else {
+            this.#decoder = new WPILOGDecoder(v);
+            this.build();
+        }
     }
     hasData() { return this.data instanceof Uint8Array; }
 
@@ -37,8 +43,8 @@ export default class WPILOGSource extends Source {
 
     build() {
         this.#minTS = this.#maxTS = 0;
-        this.clear();
         if (!this.#hasDecoder()) return;
+        this.clear();
         this.#decoder.build();
         let entryId2Name = {};
         let entryId2Type = {};

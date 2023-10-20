@@ -773,6 +773,7 @@ export class App extends Target {
         return pop;
     }
     alert(...a) { return this.addPopup(new App.Alert(...a)); }
+    error(...a) { return this.addPopup(new App.Error(...a)); }
     confirm(...a) { return this.addPopup(new App.Confirm(...a)); }
     prompt(...a) { return this.addPopup(new App.Prompt(...a)); }
 
@@ -1069,6 +1070,16 @@ App.Alert = class AppAlert extends App.PopupBase {
 
     get button() { return this.eButton.textContent; }
     set button(v) { this.eButton.textContent = v; }
+};
+App.Error = class AppError extends App.Alert {
+    constructor(content, info) {
+        super(content, "warning");
+
+        this.iconColor = "var(--cr)";
+
+        this.hasInfo = true;
+        this.info = info;
+    }
 };
 App.Confirm = class AppConfirm extends App.PopupBase {
     #eIcon;

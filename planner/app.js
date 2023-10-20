@@ -419,10 +419,7 @@ export default class App extends core.App {
             try {
                 await this.syncWithFiles();
             } catch (e) {
-                let alert = this.alert("There was an error loading your projects!", "warning");
-                alert.hasInfo = true;
-                alert.info = String(e);
-                alert.iconColor = "var(--cr)";
+                this.error("There was an error loading your projects!", e);
             }
         });
         this.addHandler("start-begin", data => {
@@ -560,10 +557,10 @@ export default class App extends core.App {
                             this.eProjectInfo.classList.add("this");
                             const click = e => {
                                 if (this.eProjectInfo.contains(e.target)) return;
-                                document.body.removeEventListener("click", click);
+                                document.body.removeEventListener("click", click, { capture: true });
                                 this.eProjectInfo.classList.remove("this");
                             };
-                            document.body.addEventListener("click", click);
+                            document.body.addEventListener("click", click, { capture: true });
                         }
                     });
                 this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
@@ -715,10 +712,7 @@ export default class App extends core.App {
                 try {
                     await this.syncFilesWith();
                 } catch (e) {
-                    let alert = this.alert("There was an error saving your projects!", "warning");
-                    alert.hasInfo = true;
-                    alert.info = String(e);
-                    alert.iconColor = "var(--cr)";
+                    this.error("There was an error saving your projects!", e);
                 }
             });
             this.addHandler("cmd-savecopy", async source => {
@@ -1375,10 +1369,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             try {
                 await this.app.syncFilesWith();
             } catch (e) {
-                let alert = this.app.alert("There was an error saving your projects!", "warning");
-                alert.hasInfo = true;
-                alert.info = String(e);
-                alert.iconColor = "var(--cr)";
+                this.error("There was an error saving your projects!", e);
                 return false;
             }
             return true;
@@ -1829,10 +1820,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         try {
             await this.app.syncWithFiles();
         } catch (e) {
-            let alert = this.app.alert("There was an error loading your projects!", "warning");
-            alert.hasInfo = true;
-            alert.info = String(e);
-            alert.iconColor = "var(--cr)";
+            this.error("There was an error loading your projects!", e);
         }
         this.panel = "objects";
         this.maximized = false;
@@ -2939,10 +2927,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     this.generating = false;
                 } catch (e) {
                     this.generating = false;
-                    let alert = this.app.alert("There was an error executing the generation script!", "warning");
-                    alert.hasInfo = true;
-                    alert.info = String(e);
-                    alert.iconColor = "var(--cr)";
+                    this.error("There was an error executing the generation script!", e);
                 }
             })();
         });
@@ -3298,10 +3283,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         } catch (e) {
             return;
             if (!this.hasApp()) return;
-            let alert = this.app.alert("There was an error checking for generated trajectories!", "warning");
-            alert.hasInfo = true;
-            alert.info = String(e);
-            alert.iconColor = "var(--cr)";
+            this.app.error("There was an error checking for generated trajectories!", e);
         }
     };
 
