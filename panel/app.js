@@ -4792,40 +4792,74 @@ class Project extends core.Target {
     }
 }
 Project.Config = class ProjectConfig extends core.Target {
-    #source;
+    #sources;
     #sourceType;
 
     constructor(...a) {
         super();
 
-        this.#source = "";
+        this.#sources = {};
         this.#sourceType = "";
 
         if (a.length <= 0 || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Config) a = [a.source, a.sourceType];
+            if (a instanceof Project.Config) a = [a.#sources, a.sourceType];
             else if (util.is(a, "arr")) {
                 a = new Project.Config(...a);
-                a = [a.source, a.sourceType];
+                a = [a.#sources, a.sourceType];
             }
-            else if (util.is(a, "obj")) a = [a.source || a.ip, a.sourceType];
-            else a = [a, "nt"];
+            else if (util.is(a, "obj")) a = [a.sources, a.sourceType];
+            else a = [{}, "nt"];
         }
 
-        [this.source, this.sourceType] = a;
+        [this.sources, this.sourceType] = a;
     }
 
-    get source() { return this.#source; }
-    set source(v) {
-        v = (v == null) ? "" : String(v);
-        if (this.source == v) return;
-        this.#source = v;
+    get sources() { return Object.keys(this.#sources); }
+    set sources(v) {
+        v = util.ensure(v, "obj");
+        this.clearSources();
+        for (let k in v) this.addSource(k, v[k]);
+    }
+    clearSources() {
+        let sources = this.sources;
+        sources.forEach(type => this.remSource(type));
+        return sources;
+    }
+    hasSource(type) {
+        type = String(type);
+        return type in this.#sources;
+    }
+    getSource(type) {
+        type = String(type);
+        if (!this.hasSource(type)) return null;
+        return this.#sources[type];
+    }
+    addSource(type, v) {
+        type = String(type);
+        v = (v == null) ? null : String(v);
+        if (this.getSource(type) == v) return v;
+        this.#sources[type] = v;
         this.post("change", null);
+        return v;
+    }
+    remSource(type) {
+        type = String(type);
+        let v = this.getSource(type);
+        delete this.#sources[type];
+        this.post("change", null);
+        return v;
+    }
+    get source() { return this.getSource(this.sourceType); }
+    set source(v) {
+        v = (v == null) ? null : String(v);
+        if (this.source == v) return;
+        this.addSource(this.sourceType, v);
     }
     get sourceType() { return this.#sourceType; }
     set sourceType(v) {
-        v = ((v == null) ? "" : String(v)).toLowerCase();
+        v = String(v).toLowerCase();
         if (this.sourceType == v) return;
         this.#sourceType = v;
         this.post("change", null);
@@ -4837,7 +4871,7 @@ Project.Config = class ProjectConfig extends core.Target {
             "%CUSTOM": true,
             "%ARGS": [{
                 VERSION: VERSION,
-                source: this.source,
+                sources: this.#sources,
                 sourceType: this.sourceType,
             }],
         };
@@ -4954,10 +4988,7 @@ export default class App extends core.App {
             try {
                 await this.syncWithFiles();
             } catch (e) {
-                let alert = this.alert("There was an error loading your projects!", "warning");
-                alert.hasInfo = true;
-                alert.info = String(e);
-                alert.iconColor = "var(--cr)";
+                this.error("There was an error loading your projects!", e);
             }
         });
         this.addHandler("start-begin", data => {
@@ -5072,10 +5103,10 @@ export default class App extends core.App {
                             this.eProjectInfo.classList.add("this");
                             const click = e => {
                                 if (this.eProjectInfo.contains(e.target)) return;
-                                document.body.removeEventListener("click", click);
+                                document.body.removeEventListener("click", click, { capture: true });
                                 this.eProjectInfo.classList.remove("this");
                             };
-                            document.body.addEventListener("click", click);
+                            document.body.addEventListener("click", click, { capture: true });
                         }
                     });
                 this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
@@ -5402,10 +5433,7 @@ export default class App extends core.App {
                 try {
                     await this.syncFilesWith();
                 } catch (e) {
-                    let alert = this.alert("There was an error saving your projects!", "warning");
-                    alert.hasInfo = true;
-                    alert.info = String(e);
-                    alert.iconColor = "var(--cr)";
+                    this.error("There was an error saving your projects!", e);
                 }
             });
             this.addHandler("cmd-savecopy", async source => {
@@ -6024,6 +6052,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     #eSideMeta;
     #eSideSections;
     #eContent;
+    #eDragBox;
     
     constructor(app) {
         super("PROJECT", app);
@@ -6035,10 +6064,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             try {
                 await this.app.syncFilesWith();
             } catch (e) {
-                let alert = this.app.alert("There was an error saving your projects!", "warning");
-                alert.hasInfo = true;
-                alert.info = String(e);
-                alert.iconColor = "var(--cr)";
+                this.error("There was an error saving your projects!", e);
                 return false;
             }
             return true;
@@ -6061,49 +6087,48 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             });
         if (this.app.hasEProjectInfoSourceInput())
             this.app.eProjectInfoSourceInput.addEventListener("change", e => {
-                if (!this.hasProject()) return this.source = null;
                 this.project.config.source = this.app.eProjectInfoSourceInput.value;
-                const constructor = {
-                    nt: NTSource,
-                    wpilog: WPILOGSource,
-                }[this.project.config.sourceType];
-                if (!util.is(constructor, "func")) return this.source = null;
-                if (!(this.source instanceof constructor)) this.source = {
-                    nt: () => new NTSource(null),
-                    wpilog: () => new WPILOGSource(null),
-                }[this.project.config.sourceType]();
-                let typefs = {
-                    nt: () => {
-                        this.source.address = null;
-                    },
-                };
-                if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
             });
         this.app.addHandler("cmd-conndisconn", data => {
-            if (!this.hasProject()) return this.source = null;
-            const constructor = {
-                nt: NTSource,
-                wpilog: WPILOGSource,
-            }[this.project.config.sourceType];
-            if (!util.is(constructor, "func")) return this.source = null;
-            if (!(this.source instanceof constructor)) this.source = {
-                nt: () => new NTSource(null),
-                wpilog: () => new WPILOGSource(null),
-            }[this.project.config.sourceType]();
-            let typefs = {
-                nt: () => {
-                    this.source.address = (this.source.address == null) ? this.project.config.source : null;
-                },
-            };
-            if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
+            if (!this.hasProject() || !this.hasSource()) return;
+            if (this.source instanceof NTSource) {
+                this.source.address = (this.source.address == null) ? this.project.config.source : null;
+                return;
+            }
+            if (this.source instanceof WPILOGSource) {
+                if (this.source.importing) return;
+                (async () => {
+                    this.source.importing = true;
+                    this.source.file = this.project.config.source;
+                    let data = null;
+                    try {
+                        data = await window.api.send("wpilog-read", [this.project.config.source]);
+                    } catch (e) {
+                        if (this.hasApp()) this.app.error("There was an error loading the WPILOG!", e);
+                        this.source.importing = false;
+                        return;
+                    }
+                    console.log(data);
+                })();
+                return;
+            }
         });
 
         window.hottestwpilog = async () => {
-            this.project.config.sourceType = "wpilog";
             let content = await window.api.fileReadRaw(["..", "..", "..", "..", "projects", "peninsulaportal", "temp", "wpilog_sample.wpilog"]);
             this.source = new WPILOGSource(content);
             this.source.build();
         };
+
+        document.body.addEventListener("dragenter", e => {
+            this.eDragBox.classList.add("this");
+        });
+        document.body.addEventListener("dragend", e => {
+            this.eDragBox.classList.remove("this");
+        });
+        document.body.addEventListener("dragleave", e => {
+            this.eDragBox.classList.remove("this");
+        });
 
         this.#projectId = null;
 
@@ -6259,13 +6284,37 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 item.value = generic.get();
             });
         });
+        this.#eDragBox = document.createElement("div");
+        this.elem.appendChild(this.eDragBox);
+        this.eDragBox.classList.add("dragbox");
 
-        this.source = new NTSource(null);
+        this.source = null;
 
         this.addHandler("project-set", data => {
             this.widget = this.hasProject() ? this.project.buildWidget() : null;
         });
         this.addHandler("update", data => {
+            if (this.hasProject()) {
+                const constructor = {
+                    nt: NTSource,
+                    wpilog: WPILOGSource,
+                }[this.project.config.sourceType];
+                if (!util.is(constructor, "func")) this.source = null;
+                else {
+                    if (!(this.source instanceof constructor)) this.source = {
+                        nt: () => new NTSource(null),
+                        wpilog: () => new WPILOGSource(null),
+                    }[this.project.config.sourceType]();
+                    let typefs = {
+                        nt: () => {
+                            if (this.source.address == null) return;
+                            if (this.source.address == this.project.config.source) return;
+                            this.source.address = null;
+                        },
+                    };
+                    if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
+                }
+            } else this.source = null;
             if (this.hasWidget()) {
                 this.widget.collapse();
                 if (this.hasWidget()) this.widget.update();
@@ -6284,12 +6333,28 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 if (document.activeElement != this.app.eProjectInfoSourceInput)
                     this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
             if (this.app.hasEProjectInfoConnectionBtn()) {
-                let on = !this.hasSource() || !(this.source instanceof NTSource) || (!this.source.connecting && !this.source.connected);
-                this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
-                if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
-                else this.app.eProjectInfoConnectionBtn.classList.remove("on");
-                if (!on) this.app.eProjectInfoConnectionBtn.classList.add("off");
-                else this.app.eProjectInfoConnectionBtn.classList.remove("off");
+                if (this.source instanceof NTSource) {
+                    this.app.eProjectInfoConnectionBtn.disabled = false;
+                    let on = !this.source.connecting && !this.source.connected;
+                    if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
+                    else this.app.eProjectInfoConnectionBtn.classList.remove("on");
+                    if (!on) this.app.eProjectInfoConnectionBtn.classList.add("off");
+                    else this.app.eProjectInfoConnectionBtn.classList.remove("off");
+                    this.app.eProjectInfoConnectionBtn.classList.remove("special");
+                    this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
+                } else if (this.source instanceof WPILOGSource) {
+                    this.app.eProjectInfoConnectionBtn.disabled = false;
+                    this.app.eProjectInfoConnectionBtn.classList.remove("on");
+                    this.app.eProjectInfoConnectionBtn.classList.remove("off");
+                    this.app.eProjectInfoConnectionBtn.classList.add("special");
+                    this.app.eProjectInfoConnectionBtn.textContent = "Import";
+                } else {
+                    this.app.eProjectInfoConnectionBtn.disabled = true;
+                    this.app.eProjectInfoConnectionBtn.classList.remove("on");
+                    this.app.eProjectInfoConnectionBtn.classList.remove("off");
+                    this.app.eProjectInfoConnectionBtn.classList.remove("special");
+                    this.app.eProjectInfoConnectionBtn.textContent = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+                }
             }
         });
     }
@@ -6299,10 +6364,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         try {
             await this.app.syncWithFiles();
         } catch (e) {
-            let alert = this.app.alert("There was an error loading your projects!", "warning");
-            alert.hasInfo = true;
-            alert.info = String(e);
-            alert.iconColor = "var(--cr)";
+            this.error("There was an error loading your projects!", e);
         }
         this.getESideSection("browser").open();
         this.app.dragging = false;
@@ -6469,7 +6531,10 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             return this.source.address+" : "+n+" field"+(n==1?"":"s");
         }
         if (this.source instanceof WPILOGSource) {
-            return "WPILOG: "+this.source;
+            if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
+            if (this.source.importing) return "Importing from "+this.source.file;
+            const n = this.source.root.nFields;
+            return this.source.file+" : "+n+" field"+(n==1?"":"s");
         }
         if (this.hasSource()) return "Unknown source: "+this.source.constructor.name;
         return "No source";
@@ -6481,6 +6546,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     hasESideSection(id) { return id in this.#eSideSections; }
     getESideSection(id) { return this.#eSideSections[id]; }
     get eContent() { return this.#eContent; }
+    get eDragBox() { return this.#eDragBox; }
 
     format() {
         this.formatSide();

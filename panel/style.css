@@ -173,10 +173,10 @@
 #titlebar > #projectinfo > .content {
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translate(-50%, -10px);
+    left: 0%;
+    transform: translateY(-10px);
 
-    width: 200px;
+    width: 300px;
     padding: 10px;
 
     display: flex;
@@ -196,7 +196,7 @@
     transition: transform var(--t), opacity var(--t), visibility var(--t);
 }
 #titlebar > #projectinfo.this > .content {
-    transform: translate(-50%, 0px);
+    transform: translateY(0px);
 
     opacity: 100%;
     visibility: inherit;
@@ -254,6 +254,14 @@
     --bgh: var(--v8);
     --fgh: var(--v1);
     --bgd: var(--cr2);
+    --fgd: var(--v6);
+}
+#titlebar > #projectinfo > .content > .nav > button#infoconnection.special {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
     --fgd: var(--v6);
 }
 #titlebar > .space {
@@ -556,6 +564,22 @@
     justify-content: flex-start !important;
     align-items: stretch !important;
     align-content: center !important;
+}
+#PROJECTPAGE > .dragbox {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    height: 100%;
+
+    background-color: var(--a-8);
+
+    visibility: hidden;
+}
+#PROJECTPAGE > .dragbox.this {
+    visibility: inherit;
 }
 #PROJECTPAGE > .side {
     width: 15%;

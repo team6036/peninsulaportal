@@ -54,8 +54,8 @@
 #titlebar > #projectinfo > .content {
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translate(-50%, -10px);
+    left: 0%;
+    transform: translateY(-10px);
 
     width: 200px;
     padding: 10px;
@@ -77,7 +77,7 @@
     transition: transform var(--t), opacity var(--t), visibility var(--t);
 }
 #titlebar > #projectinfo.this > .content {
-    transform: translate(-50%, 0px);
+    transform: translateY(0px);
 
     opacity: 100%;
     visibility: inherit;
