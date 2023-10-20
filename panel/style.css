@@ -570,9 +570,16 @@
 
     background-color: var(--a-4);
 
+    opacity: 0%;
     visibility: hidden;
 
     pointer-events: none;
+
+    transition: opacity calc(0.5 * var(--t)), visibility calc(0.5 * var(--t));
+}
+#PROJECTPAGE > .dragbox.this {
+    opacity: 100%;
+    visibility: inherit;
 }
 #PROJECTPAGE > .dragbox::before {
     content: "";
@@ -582,35 +589,37 @@
     left: 50%;
     transform: translate(-50%, -50%);
 
-    width: calc(100% - 10px);
-    height: calc(100% - 10px);
+    width: calc(100% + 10px);
+    height: calc(100% + 10px);
 
     border: 5px solid var(--v8);
+
+    transition: width var(--t), height var(--t);
 }
-#PROJECTPAGE > .dragbox.this {
-    visibility: inherit;
+#PROJECTPAGE > .dragbox.this::before {
+    width: calc(100% - 20px);
+    height: calc(100% - 20px);
+}
+#PROJECTPAGE > .dragbox > div {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(75%);
+
+    background-color: var(--v8);
+
+    transition: transform var(--t);
+}
+#PROJECTPAGE > .dragbox.this > div {
+    transform: translate(-50%, -50%) scale(100%);
 }
 #PROJECTPAGE > .dragbox > div:nth-child(1) {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-
     width: min(10vw, 10vh);
     height: min(2vw, 2vh);
-
-    background-color: var(--v8);
 }
 #PROJECTPAGE > .dragbox > div:nth-child(2) {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-
     width: min(2vw, 2vh);
     height: min(10vw, 10vh);
-
-    background-color: var(--v8);
 }
 #PROJECTPAGE > .side {
     width: 15%;
