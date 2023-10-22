@@ -783,62 +783,18 @@ export default class App extends core.App {
         return changes;
     }
     async syncWithFiles() {
-        const log = () => {};
-        // const log = console.log;
         try {
             await this.post("sync-with-files", null);
         } catch (e) {}
-        let hasProjectIds = await window.api.fileHas("projects.json");
-        if (!hasProjectIds) {
-            log("no projects.json found > creating");
-            await window.api.fileWrite("projects.json", "[]");
-        }
-        let projectIdsContent = "";
-        try {
-            projectIdsContent = await window.api.fileRead("projects.json");
-        } catch (e) {
-            log("error reading projects.json:");
-            log(e);
-            projectIdsContent = "";
-        }
-        let projectIds = null;
-        try {
-            projectIds = JSON.parse(projectIdsContent, subcore.REVIVER.f);
-        } catch (e) {
-            log("error parsing projects.json:", projectIdsContent);
-            log(e);
-            projectIds = null;
-        }
+        let projectIdsContent = await window.api.send("projects-get");
+        let projectIds = JSON.parse(projectIdsContent);
         projectIds = util.ensure(projectIds, "arr").map(id => String(id));
-        log("projects.json: ", projectIds);
-        let hasProjectsDir = await window.api.dirHas("projects");
-        if (!hasProjectsDir) {
-            log("no projects directory found > creating");
-            await window.api.dirMake("projects");
-        }
         let projects = {};
-        for (let i = 0; i < projectIds.length; i++) {
-            let id = projectIds[i];
-            let projectContent = "";
-            try {
-                projectContent = await window.api.fileRead(["projects", id+".json"]);
-            } catch (e) {
-                log("error reading projects/"+id+".json:");
-                log(e);
-                projectContent = "";
-            }
-            let project = null;
-            try {
-                project = JSON.parse(projectContent, subcore.REVIVER.f);
-            } catch (e) {
-                log("error parsing projects/"+id+".json:", projectContent);
-                log(e);
-                project = null;
-            }
-            if (!(project instanceof subcore.Project)) continue;
-            log("projects/"+id+".json: ", project);
+        await Promise.all(projectIds.map(async id => {
+            let projectContent = await window.api.send("project-get", [id]);
+            let project = JSON.parse(projectContent, subcore.REVIVER.f);
             projects[id] = project;
-        }
+        }));
         this.projects = projects;
         this.clearChanges();
         try {
@@ -846,63 +802,45 @@ export default class App extends core.App {
         } catch (e) {}
     }
     async syncFilesWith() {
-        const log = () => {};
-        // const log = console.log;
         try {
             await this.post("sync-files-with", null);
         } catch (e) {}
         let changes = new Set(this.changes);
         this.clearChanges();
-        log("CHANGES:", [...changes]);
         if (changes.has("*all")) {
-            log("CHANGE:*all > updating global list");
             let projectIds = this.projects;
             let projectIdsContent = JSON.stringify(projectIds, null, "\t");
-            await window.api.fileWrite("projects.json", projectIdsContent);
-            for (let i = 0; i < projectIds.length; i++) {
-                let id = projectIds[i];
-                log("CHANGE:*all > creating/updating project id:"+id);
+            await window.api.send("projects-set", [projectIdsContent]);
+            await Promise.all(projectIds.map(async id => {
                 let project = this.getProject(id);
                 let projectContent = JSON.stringify(project, null, "\t");
-                await window.api.fileWrite(["projects", id+".json"], projectContent);
-            }
-            if (await window.api.dirHas("projects")) {
-                let dirents = await window.api.dirList("projects");
-                for (let i = 0; i < dirents.length; i++) {
-                    let dirent = dirents[i];
-                    if (dirent.type != "file") continue;
-                    let id = dirent.name.split(".")[0];
-                    if (this.hasProject(id)) continue;
-                    log("CHANGE:*all > removing project id:"+id);
-                    if (await window.api.fileHas(["projects", id+".json"]))
-                        await window.api.fileDelete(["projects", id+".json"]);
-                }
-            }
+                await window.api.send("project-set", [id, projectContent]);
+            }));
+            await Promise.all(util.ensure(await window.api.send("projects-list"), "arr").map(async dirent => {
+                if (dirent.type != "file") return;
+                let id = dirent.name.split(".")[0];
+                if (this.hasProject(id)) return;
+                await window.api.send("project-del", [id]);
+            }));
         } else {
             let projectIds = this.projects;
             if (changes.has("*")) {
-                log("CHANGE:* > updating global list");
                 let projectIdsContent = JSON.stringify(projectIds, null, "\t");
-                await window.api.fileWrite("projects.json", projectIdsContent);
+                await window.api.send("projects-set", [projectIdsContent]);
             }
-            for (let i = 0; i < projectIds.length; i++) {
-                let id = projectIds[i];
-                if (!changes.has("proj:"+id)) continue;
-                log("CHANGE:proj:"+id+" > creating/updating project id:"+id);
+            await Promise.all(projectIds.map(async id => {
+                if (!changes.has("proj:"+id)) return;
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
                 let projectContent = JSON.stringify(project, null, "\t");
-                await window.api.fileWrite(["projects", id+".json"], projectContent);
-            }
-            for (let i = 0; i < [...changes].length; i++) {
-                let change = [...changes][i];
-                if (!change.startsWith("proj:")) continue;
+                await window.api.send("project-set", [id, projectContent]);
+            }));
+            await Promise.all([...changes].map(async change => {
+                if (!change.startsWith("proj:")) return;
                 let id = change.substring(5);
-                if (this.hasProject(id)) continue;
-                log("CHANGE:proj:"+id+" > removing project id:"+id);
-                if (await window.api.fileHas(["projects", id+".json"]))
-                    await window.api.fileDelete(["projects", id+".json"]);
-            }
+                if (this.hasProject(id)) return;
+                await window.api.send("project-del", [id]);
+            }));
         }
         try {
             await this.post("synced-files-with", null);
