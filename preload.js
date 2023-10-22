@@ -2,18 +2,9 @@ const { ipcRenderer, contextBridge } = require("electron");
 
 const cache = {};
 
-ipcRenderer.on("cache-set", (_, k, v) => {
-    cache[k] = v;
-    // console.log("cache-set: "+k+" = "+v);
-});
-ipcRenderer.on("cache-del", (_, k) => {
-    cache[k] = null;
-    // console.log("cache-del: "+k);
-});
-ipcRenderer.on("cache-clear", _ => {
-    cache = {};
-    // console.log("cache-clear");
-});
+ipcRenderer.on("cache-set", (_, k, v) => (cache[k] = v));
+ipcRenderer.on("cache-del", (_, k) => (cache[k] = null));
+ipcRenderer.on("cache-clear", _ => (cache = {}));
 
 contextBridge.exposeInMainWorld("version", {
     node: () => process.versions.node,
@@ -46,4 +37,6 @@ contextBridge.exposeInMainWorld("api", {
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
 
     cacheGet: k => cache[k],
+    cacheDel: k => (cache[k] = null),
+    cacheClear: () => (cache = {}),
 });

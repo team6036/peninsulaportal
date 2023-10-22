@@ -2,100 +2,51 @@ import * as util from "../../util.mjs";
 
 import * as core from "../../core.mjs";
 
-import WPILOGDecoder, { toUint8Array } from "./decoder.js";
+import { WorkerClient } from "../worker.js";
+
+import { toUint8Array } from "./decoder.js";
 
 import Source from "../source.js";
 
 
 export default class WPILOGSource extends Source {
-    #decoder;
-    #minTS;
-    #maxTS;
+    #data;
 
     constructor(data) {
         super("flat");
 
-        this.#decoder = null;
-        this.#minTS = this.#maxTS = 0;
+        this.postNest = false;
+
+        this.#data = null;
 
         this.data = data;
     }
 
-    #hasDecoder() { return this.#decoder instanceof WPILOGDecoder; }
-
-    get data() { return this.#hasDecoder() ? this.#decoder.data : null; }
+    get data() { return this.#data; }
     set data(v) {
         v = (v == null) ? null : toUint8Array(v);
         if (this.data == v) return;
-        if (v == null) {
-            this.#decoder = null;
-            this.clear();
-        } else {
-            this.#decoder = new WPILOGDecoder(v);
-            this.build();
-        }
+        this.#data = v;
     }
     hasData() { return this.data instanceof Uint8Array; }
 
-    isValid() { return this.#hasDecoder() ? this.#decoder.isValid() : false; }
-    get version() { return this.#hasDecoder() ? this.#decoder.version : null; }
-    get extraHeader() { return this.#hasDecoder() ? this.#decoder.extraHeader : null; }
-
-    build() {
-        this.#minTS = this.#maxTS = 0;
-        if (!this.#hasDecoder()) return;
+    async build() {
+        this.tsMin = this.tsMax = 0;
+        if (!this.hasData()) return false;
         this.clear();
-        this.#decoder.build();
-        let entryId2Name = {};
-        let entryId2Type = {};
-        let first = true;
-        this.#decoder.records.forEach(record => {
-            if (record.isControl()) {
-                if (!record.isControlStart()) return;
-                let startData = record.getControlStartData();
-                let id = startData.entry;
-                let name = entryId2Name[id] = startData.name;
-                let type = entryId2Type[id] = startData.type;
-                if (["int64"].includes(type)) type = "int";
-                if (["int64[]"].includes(type)) type = "int[]";
-                this.create([name], type);
-            } else {
-                let id = record.entryId;
-                if (!(id in entryId2Name)) return;
-                if (!(id in entryId2Type)) return;
-                let name = entryId2Name[id];
-                let type = entryId2Type[id];
-                let ts = record.ts / 1000;
-                let v = record.getRaw();
-                let typefs = {
-                    boolean: () => record.getBool(),
-                    int: () => record.getInt(),
-                    int64: () => typefs["int"](),
-                    float: () => record.getFloat(),
-                    double: () => record.getDouble(),
-                    string: () => record.getStr(),
-                    "boolean[]": () => record.getBoolArr(),
-                    "int[]": () => record.getIntArr(),
-                    "int64[]": () => typefs["int[]"](),
-                    "float[]": () => record.getFloatArr(),
-                    "double[]": () => record.getDoubleArr(),
-                    "string[]": () => record.getStrArr(),
-                    json: () => record.getStr(),
-                };
-                if (type in typefs) v = typefs[type]();
-                this.update([name], v, ts);
-                if (first) {
-                    first = false;
-                    this.#minTS = this.#maxTS = ts;
-                } else {
-                    this.#minTS = Math.min(this.#minTS, ts);
-                    this.#maxTS = Math.max(this.#maxTS, ts);
-                }
-            }
+        const client = new WorkerClient("../sources/wpilog/decoder-worker.js");
+        return await new Promise((res, rej) => {
+            client.addHandler("error", data => rej(util.ensure(data, "obj").e));
+            client.addHandler("stop", data => rej("WORKER TERMINATED"));
+            client.addHandler("cmd-progress", progress => this.post("progress", util.ensure(progress, "obj").progress));
+            client.addHandler("cmd-finish", data => {
+                this.fromSerialized(data);
+                res(true);
+            });
+            client.start([...this.data]);
         });
     }
 
-    get ts() { return this.maxTS; }
-    get minTS() { return this.#minTS; }
-    get maxTS() { return this.#maxTS; }
+    get ts() { return this.tsMax; }
+    set ts(v) { return; }
 }

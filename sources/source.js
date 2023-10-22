@@ -5,16 +5,23 @@ import * as core from "../core.mjs";
 
 export default class Source extends core.Target {
     #useNestRoot;
+    #postNest;
+    #postFlat;
 
     #nestRoot;
     #flatRoot;
 
     #ts;
+    #tsMin;
+    #tsMax;
 
     constructor(root) {
         super();
 
         this.#useNestRoot = String(root) == "nest";
+
+        this.#postNest = true;
+        this.#postFlat = true;
 
         this.#nestRoot = new Source.Table(this, "");
         this.#flatRoot = new Source.Table(this, "");
@@ -23,10 +30,16 @@ export default class Source extends core.Target {
         this.flatRoot.addHandler("change", data => this.post("change", data));
 
         this.#ts = 0;
+        this.#tsMin = this.#tsMax = 0;
     }
 
     get useNestRoot() { return this.#useNestRoot; }
     get useFlatRoot() { return !this.useNestRoot; }
+
+    get postNest() { return this.#postNest; }
+    set postNest(v) { this.#postNest = !!v; }
+    get postFlat() { return this.#postFlat; }
+    set postFlat(v) { this.#postFlat = !!v; }
 
     get root() { return this.useNestRoot ? this.nestRoot : this.flatRoot; }
     get nestRoot() { return this.#nestRoot; }
@@ -34,30 +47,36 @@ export default class Source extends core.Target {
 
     get ts() { return this.#ts; }
     set ts(v) { this.#ts = util.ensure(v, "num"); }
-    get minTS() { return 0; }
-    get maxTS() { return 0; }
+    get tsMin() { return this.#tsMin; }
+    set tsMin(v) { this.#tsMin = util.ensure(v, "num"); }
+    get tsMax() { return this.#tsMax; }
+    set tsMax(v) { this.#tsMax = util.ensure(v, "num"); }
 
     create(k, type) {
         if (!Source.Topic.TYPES.includes(type)) return false;
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        this.flatRoot.add(new Source.Topic(this.flatRoot, k.join("/"), type));
-        let o = this.nestRoot, oPrev = this;
-        while (k.length > 0) {
-            let name = k.shift();
-            [o, oPrev] = [o.lookup([name]), o];
-            if (k.length > 0) {
-                if (!(o instanceof Source.Table)) {
+        if (this.postFlat) {
+            this.flatRoot.add(new Source.Topic(this.flatRoot, k.join("/"), type));
+        }
+        if (this.postNest) {
+            let o = this.nestRoot, oPrev = this;
+            while (k.length > 0) {
+                let name = k.shift();
+                [o, oPrev] = [o.lookup([name]), o];
+                if (k.length > 0) {
+                    if (!(o instanceof Source.Table)) {
+                        oPrev.rem(o);
+                        o = new Source.Table(oPrev, name);
+                        oPrev.add(o);
+                    }
+                    continue;
+                }
+                if (!(o instanceof Source.Topic)) {
                     oPrev.rem(o);
-                    o = new Source.Table(oPrev, name);
+                    o = new Source.Topic(oPrev, name, type);
                     oPrev.add(o);
                 }
-                continue;
-            }
-            if (!(o instanceof Source.Topic)) {
-                oPrev.rem(o);
-                o = new Source.Topic(oPrev, name, type);
-                oPrev.add(o);
             }
         }
         this.cleanup();
@@ -66,26 +85,30 @@ export default class Source extends core.Target {
     delete(k) {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        this.flatRoot.rem(this.flatRoot.lookup([k.join("/")]));
-        let o = this.nestRoot, oPrev = this;
-        while (k.length > 0) {
-            let name = k.shift();
-            [o, oPrev] = [o.lookup([name]), o];
-            if (k.length > 0) {
-                if (!(o instanceof Source.Table)) {
-                    oPrev.rem(o);
-                    o = new Source.Table(oPrev, name);
-                    oPrev.add(o);
+        if (this.postFlat) {
+            this.flatRoot.rem(this.flatRoot.lookup([k.join("/")]));
+        }
+        if (this.postNest) {
+            let o = this.nestRoot, oPrev = this;
+            while (k.length > 0) {
+                let name = k.shift();
+                [o, oPrev] = [o.lookup([name]), o];
+                if (k.length > 0) {
+                    if (!(o instanceof Source.Table)) {
+                        oPrev.rem(o);
+                        o = new Source.Table(oPrev, name);
+                        oPrev.add(o);
+                    }
+                    continue;
                 }
-                continue;
-            }
-            oPrev.rem(o);
-            o = oPrev;
-            while (1) {
-                if (!(o instanceof Source.Table)) break;
-                if (!(o.parent instanceof Source.Table)) break;
-                if (o.children.length > 0) break;
-                o.parent.rem(o);
+                oPrev.rem(o);
+                o = oPrev;
+                while (1) {
+                    if (!(o instanceof Source.Table)) break;
+                    if (!(o.parent instanceof Source.Table)) break;
+                    if (o.children.length > 0) break;
+                    o.parent.rem(o);
+                }
             }
         }
         this.cleanup();
@@ -95,29 +118,33 @@ export default class Source extends core.Target {
         ts = util.ensure(ts, "num", this.ts);
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        let o = this.flatRoot.lookup([k.join("/")]);
-        if (o instanceof Source.Topic)
-            o.update(v, ts);
-        o = this.nestRoot; let oPrev = this;
-        while (k.length > 0) {
-            let name = k.shift();
-            [o, oPrev] = [o.lookup([name]), o];
-            if (k.length > 0) {
-                if (!(o instanceof Source.Table)) {
-                    oPrev.rem(o);
-                    o = new Source.Table(oPrev, name);
-                    oPrev.add(o);
+        if (this.postFlat) {
+            let o = this.flatRoot.lookup([k.join("/")]);
+            if (o instanceof Source.Topic)
+                o.update(v, ts);
+        }
+        if (this.postNest) {
+            let o = this.nestRoot; let oPrev = this;
+            while (k.length > 0) {
+                let name = k.shift();
+                [o, oPrev] = [o.lookup([name]), o];
+                if (k.length > 0) {
+                    if (!(o instanceof Source.Table)) {
+                        oPrev.rem(o);
+                        o = new Source.Table(oPrev, name);
+                        oPrev.add(o);
+                    }
+                    continue;
                 }
-                continue;
+                if (!(o instanceof Source.Topic)) throw "Nonexistent topic with path: "+k;
+                o.update(v, ts);
             }
-            if (!(o instanceof Source.Topic)) throw "Nonexistent topic with path: "+k;
-            o.update(v, ts);
         }
         return true;
     }
     clear() {
-        this.nestRoot.children.forEach(child => this.nestRoot.rem(child));
-        this.flatRoot.children.forEach(child => this.flatRoot.rem(child));
+        if (this.postNest) this.nestRoot.children.forEach(child => this.nestRoot.rem(child));
+        if (this.postFlat) this.flatRoot.children.forEach(child => this.flatRoot.rem(child));
         this.cleanup();
     }
     cleanup() {
@@ -130,8 +157,33 @@ export default class Source extends core.Target {
             if (generic instanceof Source.Table)
                 generic.children.forEach(child => dfs(child));
         };
-        dfs(this.nestRoot);
-        dfs(this.flatRoot);
+        if (this.postNest) dfs(this.nestRoot);
+        if (this.postFlat) dfs(this.flatRoot);
+    }
+
+    toSerialized() {
+        return {
+            postNest: this.postNest,
+            postFlat: this.postFlat,
+            nestRoot: this.nestRoot.toSerialized(),
+            flatRoot: this.flatRoot.toSerialized(),
+            ts: this.ts,
+            tsMin: this.tsMin, tsMax: this.tsMax,
+        };
+    }
+    fromSerialized(data) {
+        data = util.ensure(data, "obj");
+        this.postNest = data.postNest;
+        this.postFlat = data.postFlat;
+        if (this.postNest) this.#nestRoot = Source.Table.fromSerialized(this, data.nestRoot);
+        if (this.postFlat) this.#flatRoot = Source.Table.fromSerialized(this, data.flatRoot);
+        this.nestRoot.addHandler("change", data => this.post("change", data));
+        this.flatRoot.addHandler("change", data => this.post("change", data));
+        this.ts = data.ts;
+        this.tsMin = data.tsMin;
+        this.tsMax = data.tsMax;
+        this.post("change", null);
+        return this;
     }
 }
 Source.Generic = class SourceGeneric extends core.Target {
@@ -165,6 +217,16 @@ Source.Generic = class SourceGeneric extends core.Target {
         k = util.ensure(k, "arr");
         if (k.length > 0) return null;
         return this;
+    }
+
+    toSerialized() {
+        return {
+            name: this.name,
+        };
+    }
+    static fromSerialized(parent, data) {
+        data = util.ensure(data, "obj");
+        return new Source.Generic(parent, data.name);
     }
 };
 Source.Table = class SourceTable extends Source.Generic {
@@ -224,6 +286,19 @@ Source.Table = class SourceTable extends Source.Generic {
                 return this.get(i).lookup(k);
         return null;
     }
+
+    toSerialized() {
+        return {
+            name: this.name,
+            children: this.children.map(child => child.toSerialized()),
+        };
+    }
+    static fromSerialized(parent, data) {
+        data = util.ensure(data, "obj");
+        let table = new Source.Table(parent, data.name);
+        util.ensure(data.children, "arr").forEach(data => table.add(("children" in util.ensure(data, "obj")) ? Source.Table.fromSerialized(table, data) : Source.Topic.fromSerialized(table, data)));
+        return table;
+    }
 };
 Source.Topic = class SourceTopic extends Source.Generic {
     #type;
@@ -276,6 +351,13 @@ Source.Topic = class SourceTopic extends Source.Generic {
         return this.type.substring(0, this.type.length-2);
     }
     get valueLog() { return [...this.#valueLog]; }
+    set valueLog(v) {
+        v = util.ensure(v, "arr");
+        this.#valueLog = v.map(v => {
+            v = util.ensure(v, "obj");
+            return { ts: util.ensure(v.ts, "num"), v: Source.Topic.ensureType(this.type, v.v) };
+        }).sort((a, b) => a.ts-b.ts);
+    }
     getIndex(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
         if (this.#valueLog.length <= 0) return -1;
@@ -325,5 +407,19 @@ Source.Topic = class SourceTopic extends Source.Generic {
         if (!util.is(i, "int")) return null;
         if (i < 0 || i >= this.#arrTopics.length) return null;
         return this.#arrTopics[i];
+    }
+
+    toSerialized() {
+        return {
+            name: this.name,
+            type: this.type,
+            valueLog: this.valueLog,
+        };
+    }
+    static fromSerialized(parent, data) {
+        data = util.ensure(data, "obj");
+        let topic = new Source.Topic(parent, data.name, data.type);
+        topic.valueLog = data.valueLog;
+        return topic;
     }
 };
