@@ -612,11 +612,12 @@ const MAIN = async () => {
                                         try {
                                             if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
                                                 await fs.promises.cp(
-                                                    path.join(__dirname, name.toLowerCase(), "solver"), path.join(Portal.Feature.getDataPath(this, name), "solver"),
+                                                    path.join(__dirname, name.toLowerCase(), "solver"),
+                                                    path.join(Portal.Feature.getDataPath(this, name), "solver"),
                                                     {
                                                         force: true,
                                                         recursive: true,
-                                                    }
+                                                    },
                                                 );
                                             log("solver - success");
                                         } catch (e) {
@@ -2356,16 +2357,52 @@ const MAIN = async () => {
                             const process = this.manager.addProcess(new Process(cp.spawn(project.config.scriptPython, [script], { cwd: root })));
                             process.id = "script";
                             const finish = async () => {
+                                const appRoot = await this.on("root-get");
+                                const doAppRoot = appRoot != this.dataPath;
                                 let hasMainDir = await Portal.dirHas(path.join(root, "paths"));
                                 if (!hasMainDir) await Portal.dirMake(path.join(root, "paths"));
+                                if (doAppRoot) {
+                                    let hasMainDir = await Portal.dirHas(path.join(appRoot, "paths"));
+                                    if (!hasMainDir) await Portal.dirMake(path.join(appRoot, "paths"));
+                                }
                                 let hasProjectDir = await Portal.dirHas(path.join(root, "paths", project.meta.name));
                                 if (!hasProjectDir) await Portal.dirMake(path.join(root, "paths", project.meta.name));
+                                if (doAppRoot) {
+                                    let hasProjectDir = await Portal.dirHas(path.join(appRoot, "paths", project.meta.name));
+                                    if (!hasProjectDir) await Portal.dirMake(path.join(appRoot, "paths", project.meta.name));
+                                }
                                 let hasPathDir = await Portal.dirHas(path.join(root, "paths", project.meta.name, pth.name));
                                 if (!hasPathDir) await Portal.dirMake(path.join(root, "paths", project.meta.name, pth.name));
+                                if (doAppRoot) {
+                                    let hasPathDir = await Portal.dirHas(path.join(appRoot, "paths", project.meta.name, pth.name));
+                                    if (!hasPathDir) await Portal.dirMake(path.join(appRoot, "paths", project.meta.name, pth.name));
+                                }
                                 let hasDataIn = await Portal.fileHas(path.join(root, "data.in"));
-                                if (hasDataIn) await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
+                                if (hasDataIn) {
+                                    if (doAppRoot)
+                                        await fs.promises.cp(
+                                            path.join(root, "data.in"),
+                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.in"),
+                                            {
+                                                force: true,
+                                                recursive: true,
+                                            },
+                                        );
+                                    await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
+                                }
                                 let hasDataOut = await Portal.fileHas(path.join(root, "data.out"));
-                                if (hasDataOut) await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
+                                if (hasDataOut) {
+                                    if (doAppRoot)
+                                        await fs.promises.cp(
+                                            path.join(root, "data.out"),
+                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.out"),
+                                            {
+                                                force: true,
+                                                recursive: true,
+                                            },
+                                        );
+                                    await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
+                                }
                                 let hasOutLog = await Portal.fileHas(path.join(root, "stdout.log"));
                                 if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, "paths", project.meta.name, pth.name, "stdout.log"));
                                 let hasErrLog = await Portal.fileHas(path.join(root, "stderr.log"));
@@ -2421,13 +2458,9 @@ const MAIN = async () => {
 
                         const subcore = await import("./planner/core.mjs");
 
-                        if (!this.hasPortal()) throw "No linked portal";
-                        let hasProjectContent = await this.fileHas(["projects", id+".json"]);
-                        if (!hasProjectContent) throw "Nonexistent project with id: "+id;
-                        let projectContent = await this.fileRead(["projects", id+".json"]);
                         let project = null;
                         try {
-                            project = JSON.parse(projectContent, subcore.REVIVER.f);
+                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
                         } catch (e) {}
                         if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
 
