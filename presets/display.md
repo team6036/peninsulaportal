@@ -52,3 +52,25 @@
 Colorsheet  
 
 <div id="colorsheet"></div>
+
+## Panel
+
+<p>
+    <span>Data Root Directory</span>
+    <span class="space"></span>
+    <label id="panel-root" class="pick-root">
+        <input placeholder="Type a root directory..."></input>
+        <button>Browse</button>
+    </label>
+</p>
+
+## Planner
+
+<p>
+    <span>Data Root Directory</span>
+    <span class="space"></span>
+    <label id="planner-root" class="pick-root">
+        <input placeholder="Type a root directory..."></input>
+        <button>Browse</button>
+    </label>
+</p>
