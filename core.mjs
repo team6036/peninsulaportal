@@ -2114,6 +2114,16 @@ export class Reviver {
             return v;
         };
     }
+
+    static revivable(constructor, ...a) {
+        if (!util.is(constructor, "func")) return null;
+        // TODO: move this and Target to util, then update all core.Target, core.Reviver, and all toJSON()
+        return {
+            "%OBJ": constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": a,
+        };
+    }
 }
 
 export const REVIVER = new Reviver();
