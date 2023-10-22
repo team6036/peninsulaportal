@@ -2255,17 +2255,21 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     let log = logs[v.path];
                     let topic = topics[v.path];
                     if (!["double", "float", "int"].includes(topic.type)) {
+                        log = log.filter((p, i) => {
+                            if (i <= 0) return true;
+                            return p.v != log[i-1].v;
+                        });
                         log.forEach((p, i) => {
                             let pts = p.ts, pv = p.v;
                             let npts = (i+1 >= log.length) ? graphRange[1] : log[i+1].ts;
                             let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             let nx = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
-                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color) : v.color : "#fff";
+                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color+(i%2==0?"2":"")) : v.color : "#fff";
                             ctx.fillRect(
                                 x, (padding+10+20*nDiscrete)*quality,
-                                Math.max(0, nx-x-5*quality), 15*quality,
+                                Math.max(0, nx-x), 15*quality,
                             );
-                            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+                            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v"+(i%2==0?"8":"1"));
                             ctx.font = (12*quality)+"px monospace";
                             ctx.textAlign = "left";
                             ctx.textBaseline = "middle";
