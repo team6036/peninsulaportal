@@ -348,8 +348,23 @@ const MAIN = async () => {
             this.#isLoading = true;
             let r = await (async () => {
                 await this.affirm();
-                this.log("DB finding host");
                 this.clearLoads();
+                let fsVersion = "";
+                try {
+                    fsVersion = await this.fileRead(".version");
+                } catch (e) {}
+                this.log(`DB fs-version check (${fsVersion} ?<= ${version})`);
+                this.addLoad("fs-version");
+                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
+                    this.log(`DB fs-version mismatch (${fsVersion} !<= ${version})`);
+                    this.remLoad("fs-version");
+                    this.addLoad("fs-version:"+fsVersion+" > "+version);
+                    return false;
+                }
+                this.log(`DB fs-version match (${fsVersion} <= ${version})`);
+                this.remLoad("fs-version");
+                await this.fileWrite(".version", version);
+                this.log("DB finding host");
                 this.addLoad("find");
                 const host = (await this.get("val-db-host")) || "https://peninsula-db.jfancode.repl.co";
                 const isCompMode = await this.get("val-comp-mode");
@@ -371,21 +386,6 @@ const MAIN = async () => {
                 }
                 this.log(`DB poll - ${host} - success`);
                 this.remLoad("poll");
-                let fsVersion = "";
-                try {
-                    fsVersion = await this.fileRead(".version");
-                } catch (e) {}
-                this.log(`DB fs-version check (${fsVersion} ?<= ${version})`);
-                this.addLoad("fs-version");
-                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
-                    this.log(`DB fs-version mismatch (${fsVersion} !<= ${version})`);
-                    this.remLoad("fs-version");
-                    this.addLoad("fs-version:"+fsVersion+" > "+version);
-                    return false;
-                }
-                this.log(`DB fs-version match (${fsVersion} <= ${version})`);
-                this.remLoad("fs-version");
-                await this.fileWrite(".version", version);
                 const fetchAndPipe = async (url, pth) => {
                     let fileName = path.basename(pth);
                     let superPth = path.dirname(pth);
@@ -404,19 +404,27 @@ const MAIN = async () => {
                     });
                     await fs.promises.rename(tmpPth, thePth);
                 };
+                this.log("DB config");
+                this.addLoad("config");
+                try {
+                    await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
+                    this.log("DB config - success");
+                } catch (e) {
+                    this.log(`DB config - error - ${e}`);
+                    this.addLoad("config:"+e);
+                }
+                this.remLoad("config");
+                this.log("DB finding next host");
+                this.addLoad("find-next");
+                const nextHost = (await this.get("val-db-host")) || "https://peninsula-db.jfancode.repl.co";
+                this.remLoad("find-next");
+                if (nextHost != host) {
+                    this.log("DB next host and current host mismatch - retrying");
+                    this.#isLoading = false;
+                    return await this.tryLoad(version);
+                }
+                this.log("DB next host and current host match - continuing");
                 await Promise.all([
-                    (async () => {
-                        this.log("DB config");
-                        this.addLoad("config");
-                        try {
-                            await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
-                            this.log("DB config - success");
-                        } catch (e) {
-                            this.log(`DB config - error - ${e}`);
-                            this.addLoad("config:"+e);
-                        }
-                        this.remLoad("config");
-                    })(),
                     (async () => {
                         this.log("DB templates.json");
                         this.addLoad("templates.json");
