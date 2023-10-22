@@ -42,6 +42,12 @@ const OS = {
     user: os.userInfo(),
 };
 
+function simplify(s) {
+    s = String(s);
+    if (s.length > 20) s = s.substring(0, 20)+"...";
+    return s;
+}
+
 
 const MAIN = async () => {
     log("< IMPORTING ASYNCHRONOUSLY >");
@@ -2064,6 +2070,11 @@ const MAIN = async () => {
                 },
             };
             if (k in kfs) return await kfs[k]();
+            let namefs = {
+            };
+            if (this.name in namefs)
+                if (k in namefs[this.name])
+                    return await namefs[this.name][k](...args);
             return null;
         }
         async set(k, v) {
@@ -2075,7 +2086,7 @@ const MAIN = async () => {
                     return await this.portal.set(k, v);
                 } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             }
-            this.log(`SET - ${k} = ${JSON.stringify(v)}`);
+            this.log(`SET - ${k} = ${simplify(JSON.stringify(v))}`);
             let kfs = {
                 "fullscreenable": async () => {
                     if (!this.hasWindow()) return false;
@@ -2096,6 +2107,11 @@ const MAIN = async () => {
                 },
             };
             if (k in kfs) return await kfs[k]();
+            let namefs = {
+            };
+            if (this.name in namefs)
+                if (k in namefs[this.name])
+                    return await namefs[this.name][k](...args);
             return false;
         }
         async on(k, args) {
@@ -2108,7 +2124,7 @@ const MAIN = async () => {
                     return await this.portal.on(k, args);
                 } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             }
-            this.log(`ON - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
+            this.log(`ON - ${k}(${args.map(v => simplify(JSON.stringify(v))).join(', ')})`);
             let kfs = {
                 "close": async () => await this.stop(),
                 "menu-ables": async menuAbles => {
@@ -2187,6 +2203,72 @@ const MAIN = async () => {
                     await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
                     return v;
                 },
+                "project-affirm": async () => {
+                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    try {
+                        let hasProjectsContent = await Portal.fileHas([root, "projects.json"]);
+                        if (!hasProjectsContent) await Portal.fileWrite([root, "projects.json"], "");
+                    } catch (e) {}
+                    try {
+                        let hasProjectsDir = await Portal.dirHas([root, "projects"]);
+                        if (!hasProjectsDir) await Portal.dirMake([root, "projects"]);
+                    } catch (e) {}
+                    return true;
+                },
+                "projects-get": async () => {
+                    await kfs["project-affirm"]();
+                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    let content = null;
+                    try {
+                        content = await Portal.fileRead([root, "projects.json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "projects-set": async content => {
+                    await kfs["project-affirm"]();
+                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    try {
+                        await Portal.fileWrite([root, "projects.json"], content);
+                    } catch (e) { return false; }
+                    return true;
+                },
+                "projects-list": async () => {
+                    await kfs["project-affirm"]();
+                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    let dirents = null;
+                    try {
+                        dirents = Portal.dirList([root, "projects"]);
+                    } catch (e) {}
+                    return util.ensure(dirents, "arr");
+                },
+                "project-get": async id => {
+                    await kfs["project-affirm"]();
+                    id = String(id);
+                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    let content = null;
+                    try {
+                        content = await Portal.fileRead([root, "projects", id+".json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "project-set": async (id, content) => {
+                    await kfs["project-affirm"]();
+                    id = String(id);
+                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    try {
+                        await Portal.fileWrite([root, "projects", id+".json"], content);
+                    } catch (e) { return false; }
+                    return true;
+                },
+                "project-del": async id => {
+                    await kfs["project-affirm"]();
+                    id = String(id);
+                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    try {
+                        await Portal.fileDelete([root, "projects", id+".json"]);
+                    } catch (e) { return false; }
+                    return true;
+                },
             };
             if (k in kfs)
                 return await kfs[k](...args);
@@ -2204,13 +2286,9 @@ const MAIN = async () => {
 
                         const subcore = await import("./planner/core.mjs");
 
-                        if (!this.hasPortal()) throw "No linked portal";
-                        let hasProjectContent = await this.fileHas(["projects", id+".json"]);
-                        if (!hasProjectContent) throw "Nonexistent project with id: "+id;
-                        let projectContent = await this.fileRead(["projects", id+".json"]);
                         let project = null;
                         try {
-                            project = JSON.parse(projectContent, subcore.REVIVER.f);
+                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
                         } catch (e) {}
                         if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
                         if (!project.hasPath(pathId)) throw "Nonexistent path with id: "+pathId+" for project id: "+id;
@@ -2435,7 +2513,7 @@ const MAIN = async () => {
             if (!this.hasName()) return false;
             k = String(k);
             args = util.ensure(args, "arr");
-            this.log(`SEND - ${k}(${args.map(v => JSON.stringify(v)).join(', ')})`);
+            this.log(`SEND - ${k}(${args.map(v => simplify(JSON.stringify(v))).join(', ')})`);
             if (!this.hasWindow()) return false;
             this.window.webContents.send("send", k, args);
             return true;
