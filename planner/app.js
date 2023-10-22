@@ -809,11 +809,11 @@ export default class App extends core.App {
         this.clearChanges();
         if (changes.has("*all")) {
             let projectIds = this.projects;
-            let projectIdsContent = JSON.stringify(projectIds, null, "\t");
+            let projectIdsContent = JSON.stringify(projectIds, null);
             await window.api.send("projects-set", [projectIdsContent]);
             await Promise.all(projectIds.map(async id => {
                 let project = this.getProject(id);
-                let projectContent = JSON.stringify(project, null, "\t");
+                let projectContent = JSON.stringify(project, null);
                 await window.api.send("project-set", [id, projectContent]);
             }));
             await Promise.all(util.ensure(await window.api.send("projects-list"), "arr").map(async dirent => {
@@ -825,14 +825,14 @@ export default class App extends core.App {
         } else {
             let projectIds = this.projects;
             if (changes.has("*")) {
-                let projectIdsContent = JSON.stringify(projectIds, null, "\t");
+                let projectIdsContent = JSON.stringify(projectIds, null);
                 await window.api.send("projects-set", [projectIdsContent]);
             }
             await Promise.all(projectIds.map(async id => {
                 if (!changes.has("proj:"+id)) return;
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
-                let projectContent = JSON.stringify(project, null, "\t");
+                let projectContent = JSON.stringify(project, null);
                 await window.api.send("project-set", [id, projectContent]);
             }));
             await Promise.all([...changes].map(async change => {
