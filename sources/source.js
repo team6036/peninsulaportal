@@ -353,9 +353,20 @@ Source.Topic = class SourceTopic extends Source.Generic {
     get valueLog() { return [...this.#valueLog]; }
     set valueLog(v) {
         v = util.ensure(v, "arr");
+        let typeCheck = {};
         this.#valueLog = v.map(v => {
             v = util.ensure(v, "obj");
-            return { ts: util.ensure(v.ts, "num"), v: Source.Topic.ensureType(this.type, v.v) };
+            let ts = util.ensure(v.ts, "num");
+            v = Source.Topic.ensureType(this.type, v.v);
+            if (this.isArray) {
+                while (this.#arrTopics.length < v.length) this.#arrTopics.push(new Source.Topic(this, this.#arrTopics.length, this.arraylessType));
+                v.forEach((v, i) => {
+                    if ((i in typeCheck) && (typeCheck[i] == v)) return;
+                    typeCheck[i] = v;
+                    this.#arrTopics[i].update(v, ts);
+                });
+            }
+            return { ts: ts, v: v };
         }).sort((a, b) => a.ts-b.ts);
     }
     getIndex(ts=null) {
@@ -380,7 +391,6 @@ Source.Topic = class SourceTopic extends Source.Generic {
         this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
         if (this.isArray) {
             while (this.#arrTopics.length < v.length) this.#arrTopics.push(new Source.Topic(this, this.#arrTopics.length, this.arraylessType));
-            while (this.#arrTopics.length > v.length) this.#arrTopics.pop();
             v.forEach((v, i) => this.#arrTopics[i].update(v, ts));
         }
         this.post("change", { path: this.name });
