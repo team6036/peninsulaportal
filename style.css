@@ -479,7 +479,7 @@ article.md ul {
     background-color: var(--a);
     opacity: 0%;
 
-    transition: width var(--t), opacity var(--t);
+    transition: width calc(0.25 * var(--t)), opacity var(--t);
 }
 #titlebar.progress::before {
     opacity: 100%;

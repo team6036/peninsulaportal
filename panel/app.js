@@ -1911,10 +1911,10 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         if (this.constructor.DO) {
             new ResizeObserver(() => {
                 let r = this.eContent.getBoundingClientRect();
-                this.canvas.width = (r.width-4) * this.quality;
-                this.canvas.height = (r.height-4) * this.quality;
-                this.canvas.style.width = (r.width-4)+"px";
-                this.canvas.style.height = (r.height-4)+"px";
+                this.canvas.width = r.width * this.quality;
+                this.canvas.height = r.height * this.quality;
+                this.canvas.style.width = r.width+"px";
+                this.canvas.style.height = r.height+"px";
                 this.update();
             }).observe(this.eContent);
         }
@@ -2132,7 +2132,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             if (!this.hasPage() || !this.page.hasSource()) return;
             const source = this.page.source;
-            let minTime = source.minTS, maxTime = source.maxTS;
+            let minTime = source.tsMin, maxTime = source.tsMax;
             const graphRange = {
                 left: () => [
                     minTime,
@@ -2964,7 +2964,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!this.hasPage()) return 0;
         if (!this.page.hasSource()) return 0;
         const source = this.page.source;
-        return source.maxTS-source.minTS;
+        return source.tsMax-source.tsMin;
     }
     get nowTime() { return this.#t; }
     set nowTime(v) {
@@ -3466,7 +3466,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
                 const topic = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTS) : null;
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.tsMin) : null;
                 pose.state.update();
             });
             this.odometry.update();
@@ -4010,7 +4010,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
                 const topic = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.minTS) : [];
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.tsMin) : [];
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
@@ -4110,21 +4110,21 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             let r = this.eContent.getBoundingClientRect();
 
             if (this.camera instanceof THREE.PerspectiveCamera) {
-                this.camera.aspect = (r.width-4) / (r.height-4);
+                this.camera.aspect = r.width / r.height;
                 this.camera.updateProjectionMatrix();
             } else if (this.camera instanceof THREE.OrthographicCamera) {
                 let size = 15;
-                let aspect = (r.width-4) / (r.height-4);
+                let aspect = r.width / r.height;
                 this.camera.left = -size/2 * aspect;
                 this.camera.right = +size/2 * aspect;
                 this.camera.top = +size/2;
                 this.camera.bottom = -size/2;
             }
 
-            this.renderer.setSize((r.width-4)*this.quality, (r.height-4)*this.quality);
+            this.renderer.setSize(r.width*this.quality, r.height*this.quality);
             this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
 
-            this.composer.setSize((r.width-4)*this.quality, (r.height-4)*this.quality);
+            this.composer.setSize(r.width*this.quality, r.height*this.quality);
             this.composer.render();
         });
 
@@ -5725,8 +5725,8 @@ export default class App extends core.App {
         r.normalize();
         this.eBlock.style.left = r.x+"px";
         this.eBlock.style.top = r.y+"px";
-        this.eBlock.style.width = Math.max(0, r.w-4)+"px";
-        this.eBlock.style.height = Math.max(0, r.h-4)+"px";
+        this.eBlock.style.width = Math.max(0, r.w)+"px";
+        this.eBlock.style.height = Math.max(0, r.h)+"px";
     }
 }
 App.TitlePage = class AppTitlePage extends core.App.Page {
@@ -6117,20 +6117,23 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 if (this.source.importing) return;
                 (async () => {
                     this.source.importing = true;
-                    let source = this.project.config.source;
-                    let i1 = source.lastIndexOf("/");
-                    let i2 = source.lastIndexOf("\\");
-                    let i = Math.max(i1, i2);
-                    this.source.file = source.substring(i+1);
-                    let data = null;
+                    this.app.progress = 0;
                     try {
-                        data = await window.api.send("wpilog-read", [this.project.config.source]);
+                        let source = this.project.config.source;
+                        let i1 = source.lastIndexOf("/");
+                        let i2 = source.lastIndexOf("\\");
+                        let i = Math.max(i1, i2);
+                        this.source.file = source.substring(i+1);
+                        this.source.data = await window.api.send("wpilog-read", [source]);
+                        const progress = v => (this.app.progress = v);
+                        this.source.addHandler("progress", progress);
+                        await this.source.build();
+                        this.source.remHandler("progress", progress);
+                        this.app.progress = 1;
                     } catch (e) {
                         if (this.hasApp()) this.app.error("There was an error loading the WPILOG!", e);
-                        this.source.importing = false;
-                        return;
                     }
-                    this.source.data = data;
+                    this.app.progress = null;
                     delete this.source.importing;
                 })();
                 return;
@@ -6386,7 +6389,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                     this.app.eProjectInfoConnectionBtn.classList.remove("special");
                     this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
                 } else if (this.source instanceof WPILOGSource) {
-                    this.app.eProjectInfoConnectionBtn.disabled = false;
+                    this.app.eProjectInfoConnectionBtn.disabled = this.source.importing;
                     this.app.eProjectInfoConnectionBtn.classList.remove("on");
                     this.app.eProjectInfoConnectionBtn.classList.remove("off");
                     this.app.eProjectInfoConnectionBtn.classList.add("special");
@@ -6598,8 +6601,14 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     formatSide() {
         let r = this.eSide.getBoundingClientRect();
         let ids = this.eSideSections;
+        let elems = ids.map(id => this.getESideSection(id).elem);
         let idsOpen = ids.filter(id => this.getESideSection(id).getIsOpen());
-        let availableHeight = r.height - 22 - ids.length*22;
+        let availableHeight = r.height - ids.length*22;
+        Array.from(this.eSide.children).forEach(child => {
+            if (elems.includes(child)) return;
+            let r = child.getBoundingClientRect();
+            availableHeight -= r.height;
+        });
         let divideAmong = idsOpen.length;
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
         this.browserItems.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => {

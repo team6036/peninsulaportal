@@ -73,7 +73,7 @@ export default class WPILOGDecoder extends core.Target {
 
     get records() { return [...this.#records]; }
 
-    build() {
+    build(callback) {
         this.#records = [];
         if (!this.isValid()) return this.records;
         let extraHeaderL = this.dataView.getUint32(8, true);
@@ -91,9 +91,11 @@ export default class WPILOGDecoder extends core.Target {
             if (this.data.length < x+headerL+size || entry < 0 || size < 0) break;
             this.#records.push(new WPILOGDecoder.Record(
                 entry, ts,
-                this.data.subarray(x+headerL, x+headerL+size)
+                this.data.subarray(x+headerL, x+headerL+size),
             ));
             x += headerL+size;
+            if (util.is(callback, "func"))
+                callback(this.#records.at(-1), x/this.data.byteLength);
         }
         return this.records;
     }
@@ -104,12 +106,27 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends core.Target {
     #data;
     #dataView;
 
-    constructor(entryId, ts, data) {
+    constructor(...a) {
         super();
 
-        this.#entryId = util.ensure(entryId, "int");
-        this.#ts = util.ensure(ts, "num");
-        this.#data = toUint8Array(data);
+        if (a.length <= 0 || [2].includes(a.length) || a.length > 3) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof WPILOGDecoder.Record) a = [a.entryId, a.ts, a.data];
+            else if (util.is(a, "arr")) {
+                a = new WPILOGDecoder.Record(...a);
+                a = [a.entryId, a.ts, a.data];
+            }
+            else if (util.is(a, "obj")) a = [a.entryId, a.ts, a.data];
+            else a = [0, 0, null];
+        }
+
+        a[0] = util.ensure(a[0], "int");
+        a[1] = util.ensure(a[1], "num");
+        a[2] = toUint8Array(a[2]);
+
+        [this.#entryId, this.#ts, this.#data] = a;
+
         this.#dataView = new DataView(this.data.buffer.slice(this.data.byteOffset, this.data.byteOffset+this.data.byteLength));
     }
     
@@ -190,6 +207,14 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends core.Target {
         return {
             str: TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
             shift: 4+l,
+        };
+    }
+
+    toJSON() {
+        return {
+            entryId: this.entryId,
+            ts: this.ts,
+            data: [...this.data],
         };
     }
 };
