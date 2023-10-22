@@ -697,15 +697,11 @@ class Container extends Widget {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                children: this.children,
-                weights: this.weights,
-                axis: this.axis,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            children: this.children,
+            weights: this.weights,
+            axis: this.axis,
+        });
     }
 }
 
@@ -896,15 +892,11 @@ class Panel extends Widget {
     expandTitle() { return this.isTitleExpanded = true; }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                tabs: this.tabs,
-                tabIndex: this.tabIndex,
-                isCollapsed: this.isTitleCollapsed,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            tabs: this.tabs,
+            tabIndex: this.tabIndex,
+            isCollapsed: this.isTitleCollapsed,
+        });
     }
 }
 Panel.Tab = class PanelTab extends core.Target {
@@ -1037,11 +1029,7 @@ Panel.Tab = class PanelTab extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{}],
-        };
+        return util.Reviver.revivable(this.constructor, {});
     }
 };
 Panel.AddTab = class PanelAddTab extends Panel.Tab {
@@ -1346,14 +1334,10 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                searchPart: this.searchPart,
-                query: this.query,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            searchPart: this.searchPart,
+            query: this.query,
+        });
     }
 };
 Panel.AddTab.Tag = class PanelAddTabTag extends core.Target {
@@ -1846,13 +1830,9 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     get eDisplay() { return this.#eDisplay; }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                path: this.path,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            path: this.path,
+        });
     }
 };
 Panel.ToolTab = class PanelToolTab extends Panel.Tab {
@@ -2543,17 +2523,13 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                lVars: this.lVars,
-                rVars: this.rVars,
-                viewMode: this.viewMode,
-                viewParams: this.viewParams,
-                isOpen: this.isOptionsOpen,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            lVars: this.lVars,
+            rVars: this.rVars,
+            viewMode: this.viewMode,
+            viewParams: this.viewParams,
+            isOpen: this.isOptionsOpen,
+        });
     }
 };
 Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
@@ -2713,15 +2689,11 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
     close() { return this.isClosed = true; }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                path: this.path,
-                color: this.color,
-                isShown: this.isShown,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            path: this.path,
+            color: this.color,
+            isShown: this.isShown,
+        });
     }
 };
 Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
@@ -3214,15 +3186,11 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
     close() { return this.isClosed = true; }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                path: this.path,
-                color: this.color,
-                isShown: this.isShown,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            path: this.path,
+            color: this.color,
+            isShown: this.isShown,
+        });
     }
 };
 Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends core.Target {
@@ -3551,19 +3519,15 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     isValidPose(topic) { return (topic.get().length % 2 == 0) || (topic.get().length == 3); }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                poses: this.poses,
-                template: this.template,
-                size: this.size,
-                robotSize: this.robotSize,
-                isMeters: this.isMeters,
-                isDegrees: this.isDegrees,
-                isOpen: this.isOptionsOpen,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            poses: this.poses,
+            template: this.template,
+            size: this.size,
+            robotSize: this.robotSize,
+            isMeters: this.isMeters,
+            isDegrees: this.isDegrees,
+            isOpen: this.isOptionsOpen,
+        });
     }
 };
 Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTab.Pose {
@@ -3636,17 +3600,13 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     get eDisplayType() { return this.#eDisplayType; }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                path: this.path,
-                color: this.color,
-                isShown: this.isShown,
-                isGhost: this.isGhost,
-                type: this.type,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            path: this.path,
+            color: this.color,
+            isShown: this.isShown,
+            isGhost: this.isGhost,
+            type: this.type,
+        });
     }
 };
 Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel.OdometryTab.Pose.State {
@@ -4277,19 +4237,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     isValidPose(topic) { return topic.get().length == 3 || topic.get().length == 7; }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                poses: this.poses,
-                template: this.template,
-                isProjection: this.isProjection,
-                isOrbit: this.isOrbit,
-                isMeters: this.isMeters,
-                isDegrees: this.isDegrees,
-                isOpen: this.isOptionsOpen,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            poses: this.poses,
+            template: this.template,
+            isProjection: this.isProjection,
+            isOrbit: this.isOrbit,
+            isMeters: this.isMeters,
+            isDegrees: this.isDegrees,
+            isOpen: this.isOptionsOpen,
+        });
     }
 };
 Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTab.Pose {
@@ -4386,18 +4342,14 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     get eDisplayType() { return this.#eDisplayType; }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                path: this.path,
-                color: this.color,
-                isShown: this.isShown,
-                isGhost: this.isGhost,
-                isSolid: this.isSolid,
-                type: this.type,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            path: this.path,
+            color: this.color,
+            isShown: this.isShown,
+            isGhost: this.isGhost,
+            isSolid: this.isSolid,
+            type: this.type,
+        });
     }
 };
 Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel.OdometryTab.Pose.State {
@@ -4780,15 +4732,11 @@ class Project extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                widgetData: this.widgetData,
-                config: this.config, meta: this.meta,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            widgetData: this.widgetData,
+            config: this.config, meta: this.meta,
+        });
     }
 }
 Project.Config = class ProjectConfig extends core.Target {
@@ -4866,15 +4814,11 @@ Project.Config = class ProjectConfig extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                sources: this.#sources,
-                sourceType: this.sourceType,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            sources: this.#sources,
+            sourceType: this.sourceType,
+        });
     }
 };
 Project.Meta = class ProjectMeta extends core.Target {
@@ -4936,20 +4880,16 @@ Project.Meta = class ProjectMeta extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                name: this.name,
-                modified: this.modified, created: this.created,
-                thumb: this.thumb,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            name: this.name,
+            modified: this.modified, created: this.created,
+            thumb: this.thumb,
+        });
     }
 };
 
-const REVIVER = new core.Reviver(core.REVIVER);
+const REVIVER = new util.Reviver(util.REVIVER);
 REVIVER.addRuleAndAllSub(Container);
 REVIVER.addRuleAndAllSub(Panel);
 REVIVER.addRuleAndAllSub(Project);

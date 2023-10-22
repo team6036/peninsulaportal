@@ -674,17 +674,13 @@ export class Color {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                r: this.r,
-                g: this.g,
-                b: this.b,
-                a: this.a,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            r: this.r,
+            g: this.g,
+            b: this.b,
+            a: this.a,
+        });
     }
 }
 
@@ -742,15 +738,11 @@ export class Range {
     toString() { return (this.lInclude ? "[" : "(") + this.l + ", " + this.r + (this.rInclude ? "]" : ")"); }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                l: this.l, r: this.r,
-                lInclude: this.lInclude, rInclude: this.rInclude,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            l: this.l, r: this.r,
+            lInclude: this.lInclude, rInclude: this.rInclude,
+        });
     }
 }
 
@@ -858,15 +850,11 @@ export class V {
     toString() { return "<"+this.xy.join(", ")+">" }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                x: this.x,
-                y: this.y,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            x: this.x,
+            y: this.y,
+        });
     }
 }
 
@@ -986,16 +974,12 @@ export class V3 {
     toString() { return "<"+this.xyz.join(", ")+">" }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                x: this.x,
-                y: this.y,
-                z: this.z,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            x: this.x,
+            y: this.y,
+            z: this.z,
+        });
     }
 }
 
@@ -1109,15 +1093,11 @@ export class Line extends Shape {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                x1: this.x1, y1: this.y1,
-                x2: this.x2, y2: this.y2,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            x1: this.x1, y1: this.y1,
+            x2: this.x2, y2: this.y2,
+        });
     }
 }
 Shape.Line = Line;
@@ -1200,15 +1180,11 @@ export class Circle extends Shape {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                x: this.x, y: this.y,
-                r: this.r,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            x: this.x, y: this.y,
+            r: this.r,
+        });
     }
 }
 Shape.Circle = Circle;
@@ -1441,15 +1417,11 @@ export class Rect extends Shape {
     }
     
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                x: this.x, y: this.y,
-                w: this.w, h: this.h,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            x: this.x, y: this.y,
+            w: this.w, h: this.h,
+        });
     }
 }
 Shape.Rect = Rect;
@@ -1592,15 +1564,102 @@ export class Polygon extends Shape {
     }
     
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                p: this.p,
-                points: this.points,
-            }],
-        };
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            p: this.p,
+            points: this.points,
+        });
     }
 }
 Shape.Polygon = Polygon;
+
+
+export class Reviver {
+    #rules;
+
+    constructor(reviver=null) {
+        this.#rules = {};
+
+        if (reviver instanceof Reviver)
+            reviver.rules.forEach(cons => this.addRule(cons));
+    }
+
+    isConstructor(constructor) {
+        if (!is(constructor, "func")) return false;
+        try {
+            new constructor();
+            return true;
+        } catch (e) {}
+        return false;
+    }
+
+    get rules() { return Object.values(this.#rules); }
+    set rules(v) {
+        v = ensure(v, "arr");
+        this.clearRules();
+        v.forEach(v => this.addRule(v));
+    }
+    clearRules() {
+        let rules = this.rules;
+        rules.forEach(cons => this.remRule(cons));
+        return rules;
+    }
+    hasRule(v) {
+        if (is(v, "str")) return v in this.#rules;
+        if (is(v, "func")) return this.hasRule(v.name);
+        return false;
+    }
+    getRule(name) {
+        name = String(name);
+        if (!this.hasRule(name)) return null;
+        return this.#rules[name];
+    }
+    addRule(constructor) {
+        if (!is(constructor, "func")) return false;
+        this.#rules[constructor.name] = constructor;
+        return constructor;
+    }
+    remRule(constructor) {
+        if (!is(constructor, "func")) return false;
+        delete this.#rules[constructor.name];
+        return constructor;
+    }
+    addRuleAndAllSub(constructor) {
+        if (!is(constructor, "func")) return false;
+        if (this.hasRule(constructor)) return constructor;
+        this.addRule(constructor);
+        for (let k in constructor) this.addRuleAndAllSub(constructor[k]);
+        return constructor;
+    }
+
+    get f() {
+        return (k, v) =>  {
+            if (is(v, "obj")) {
+                if (!("%CUSTOM" in v)) return v;
+                if (!("%OBJ" in v)) return v;
+                if (!("%ARGS" in v)) return v;
+                if (!v["%CUSTOM"]) return v;
+                if (!this.hasRule(v["%OBJ"])) return v;
+                let rule = this.getRule(v["%OBJ"]);
+                return new rule(...ensure(v["%ARGS"], "arr"));
+            }
+            return v;
+        };
+    }
+
+    static revivable(constructor, ...a) {
+        if (!is(constructor, "func")) return null;
+        return {
+            "%OBJ": constructor.name,
+            "%CUSTOM": true,
+            "%ARGS": a,
+        };
+    }
+}
+
+export const REVIVER = new Reviver();
+REVIVER.addRuleAndAllSub(Color);
+REVIVER.addRuleAndAllSub(Range);
+REVIVER.addRuleAndAllSub(V);
+REVIVER.addRuleAndAllSub(V3);
+REVIVER.addRuleAndAllSub(Shape);
