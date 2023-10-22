@@ -3638,18 +3638,23 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                 this.page.project.config.script = (v.length > 0) ? v : null;
             this.page.post("refresh-options", null);
         });
-        this.eScriptBtn.addEventListener("click", e => {
-            let dialog = document.createElement("input");
-            dialog.type = "file";
-            dialog.accept = ".py";
-            dialog.addEventListener("change", e => {
-                if (!this.hasPage()) return;
-                let v = this.eScriptInput.value = (dialog.files[0] instanceof File) ? dialog.files[0].path : "";
-                if (this.page.hasProject())
-                    this.page.project.config.script = (v.length > 0) ? v : null;
-                this.page.post("refresh-options", null);
+        this.eScriptBtn.addEventListener("click", async e => {
+            if (!this.hasApp()) return;
+            let result = await this.app.fileOpenDialog({
+                title: "Choose a python script",
+                filters: [{
+                    name: "Python",
+                    extensions: ["py"],
+                }],
+                properties: [
+                    "openFile",
+                ],
             });
-            dialog.click();
+            result = util.ensure(result, "obj");
+            let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
+            if (this.page.hasProject())
+                this.page.project.config.script = path;
+            this.page.post("refresh-options", null);
         });
 
         this.addItem(new App.ProjectPage.Panel.SubHeader("Script Python", "shell"));

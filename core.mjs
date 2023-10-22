@@ -935,6 +935,9 @@ export class App extends Target {
         this.eTitleBar.classList.add("progress");
         this.eTitleBar.style.setProperty("--progress", (v*100)+"%");
     }
+
+    async fileOpenDialog(options) { return await window.api.send("file-open-dialog", [options]); }
+    async fileSaveDialog(options) { return await window.api.send("file-save-dialog", [options]); }
 }
 App.PopupBase = class AppPopupBase extends Target {
     #elem;

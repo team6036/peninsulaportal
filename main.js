@@ -2170,6 +2170,13 @@ const MAIN = async () => {
                     await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
                     return v;
                 },
+                "root-get": async () => {
+                    return (await kfs["config-get"]("root")) || this.dataPath;
+                },
+                "root-set": async root => {
+                    root = util.ensure(root, "str", this.dataPath);
+                    return await kfs["config-set"]("root", root);
+                },
                 "_state": async () => {
                     await this.affirm();
                     let content = "";
@@ -2203,21 +2210,24 @@ const MAIN = async () => {
                     await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
                     return v;
                 },
+                "file-open-dialog": async options => {
+                    return await electron.dialog.showOpenDialog(this.window, options);
+                },
+                "file-save-dialog": async options => {
+                    return await electron.dialog.showSaveDialog(this.window, options);
+                },
                 "project-affirm": async () => {
-                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
-                    try {
-                        let hasProjectsContent = await Portal.fileHas([root, "projects.json"]);
-                        if (!hasProjectsContent) await Portal.fileWrite([root, "projects.json"], "");
-                    } catch (e) {}
-                    try {
-                        let hasProjectsDir = await Portal.dirHas([root, "projects"]);
-                        if (!hasProjectsDir) await Portal.dirMake([root, "projects"]);
-                    } catch (e) {}
-                    return true;
+                    const root = await kfs["root-get"]();
+                    let hasDir = await Portal.dirHas(root);
+                    if (!hasDir) await Portal.dirMake(root);
+                    let hasProjectsContent = await Portal.fileHas([root, "projects.json"]);
+                    if (!hasProjectsContent) await Portal.fileWrite([root, "projects.json"], "");
+                    let hasProjectsDir = await Portal.dirHas([root, "projects"]);
+                    if (!hasProjectsDir) await Portal.dirMake([root, "projects"]);
                 },
                 "projects-get": async () => {
                     await kfs["project-affirm"]();
-                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    const root = await kfs["root-get"]();
                     let content = null;
                     try {
                         content = await Portal.fileRead([root, "projects.json"]);
@@ -2226,15 +2236,12 @@ const MAIN = async () => {
                 },
                 "projects-set": async content => {
                     await kfs["project-affirm"]();
-                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
-                    try {
-                        await Portal.fileWrite([root, "projects.json"], content);
-                    } catch (e) { return false; }
-                    return true;
+                    const root = await kfs["root-get"]();
+                    await Portal.fileWrite([root, "projects.json"], content);
                 },
                 "projects-list": async () => {
                     await kfs["project-affirm"]();
-                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    const root = await kfs["root-get"]();
                     let dirents = null;
                     try {
                         dirents = Portal.dirList([root, "projects"]);
@@ -2244,7 +2251,7 @@ const MAIN = async () => {
                 "project-get": async id => {
                     await kfs["project-affirm"]();
                     id = String(id);
-                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    const root = await kfs["root-get"]();
                     let content = null;
                     try {
                         content = await Portal.fileRead([root, "projects", id+".json"]);
@@ -2254,16 +2261,13 @@ const MAIN = async () => {
                 "project-set": async (id, content) => {
                     await kfs["project-affirm"]();
                     id = String(id);
-                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
-                    try {
-                        await Portal.fileWrite([root, "projects", id+".json"], content);
-                    } catch (e) { return false; }
-                    return true;
+                    const root = await kfs["root-get"]();
+                    await Portal.fileWrite([root, "projects", id+".json"], content);
                 },
                 "project-del": async id => {
                     await kfs["project-affirm"]();
                     id = String(id);
-                    const root = (await this.on("config-get", ["root"])) || this.dataPath;
+                    const root = await kfs["root-get"]();
                     try {
                         await Portal.fileDelete([root, "projects", id+".json"]);
                     } catch (e) { return false; }
@@ -2500,6 +2504,51 @@ const MAIN = async () => {
                         (async () => {
                             await this.portal.tryLoad(await this.get("base-version"));
                         })();
+                    },
+                    "feature": async (name, cmd, k, ...a) => {
+                        let cmdfs = {
+                            get: {
+                                "root": async () => {
+                                    let content = "";
+                                    try {
+                                        content = await Portal.Feature.fileRead(this.portal, name, [".config"]);
+                                    } catch (e) {}
+                                    let data = null;
+                                    try {
+                                        data = JSON.parse(content);
+                                    } catch (e) {}
+                                    data = util.ensure(data, "obj");
+                                    return util.ensure(data.root, "str", Portal.Feature.getDataPath(this.portal, name));
+                                },
+                            },
+                            set: {
+                                "root": async v => {
+                                    let content = "";
+                                    try {
+                                        content = await Portal.Feature.fileRead(this.portal, name, [".config"]);
+                                    } catch (e) {}
+                                    let data = null;
+                                    try {
+                                        data = JSON.parse(content);
+                                    } catch (e) {}
+                                    data = util.ensure(data, "obj");
+                                    data.root = util.ensure(v, "str", Portal.Feature.getDataPath(this.portal, name));
+                                    if (data.root == Portal.Feature.getDataPath(this.portal, name)) delete data.root;
+                                    content = JSON.stringify(data);
+                                    await Portal.Feature.fileWrite(this.portal, name, [".config"], content);
+                                },
+                            },
+                        };
+                        let namefs = {
+                        };
+                        if (cmd in cmdfs)
+                            if (k in cmdfs[cmd])
+                                return await cmdfs[cmd][k](...a);
+                        if (name in namefs)
+                            if (cmd in namefs[name])
+                                if (k in namefs[name][cmd])
+                                    return await namefs[name][cmd][k](...a);
+                        return null;
                     },
                 },
             };

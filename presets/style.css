@@ -126,6 +126,33 @@ button:not(.override) {
 
     border: 2px solid var(--v8);
 }
+#PAGE > .content > article label.pick-root {
+    min-width: max-content;
+    overflow: hidden;
+    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    border-radius: 5px;
+}
+#PAGE > .content > article label.pick-root > input {
+    min-width: 300px;
+    padding: 5px;
+
+    background-color: var(--v2-8);
+    color: var(--cy);
+    border-radius: 0px;
+}
+#PAGE > .content > article label.pick-root > button {
+    min-width: max-content;
+    padding: 5px 10px;
+
+    border-radius: 0px;
+}
 #PAGE > .content > .info {
     position: absolute;
     bottom: 10px;

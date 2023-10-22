@@ -115,6 +115,37 @@ export default class App extends core.App {
                         }
                     });
                 }
+                ["PANEL", "PLANNER"].forEach(async name => {
+                    let elem = document.getElementById(name.toLowerCase()+"-root");
+                    if (!(elem instanceof HTMLLabelElement)) return;
+                    let input = elem.querySelector(":scope > input");
+                    if (!(input instanceof HTMLInputElement)) return;
+                    let btn = elem.querySelector(":scope > button");
+                    if (!(btn instanceof HTMLButtonElement)) return;
+                    input.addEventListener("change", async e => {
+                        input.disabled = btn.disabled = true;
+                        await window.api.send("feature", [name, "set", "root", input.value]);
+                        input.value = await window.api.send("feature", [name, "get", "root"]);
+                        input.disabled = btn.disabled = false;
+                    });
+                    btn.addEventListener("click", async e => {
+                        input.disabled = btn.disabled = true;
+                        let result = await this.fileOpenDialog({
+                            title: "Choose a directory",
+                            properties: [
+                                "openDirectory",
+                                "createDirectory",
+                                "promptToCreate",
+                            ],
+                        });
+                        result = util.ensure(result, "obj");
+                        let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
+                        await window.api.send("feature", [name, "set", "root", path]);
+                        input.value = await window.api.send("feature", [name, "get", "root"]);
+                        input.disabled = btn.disabled = false;
+                    });
+                    input.value = await window.api.send("feature", [name, "get", "root"]);
+                });
                 Array.from(document.querySelectorAll("#PAGE > .content > article button.cmd")).forEach(async elem => {
                     const action = new Action(this, elem);
                     await action.init();
