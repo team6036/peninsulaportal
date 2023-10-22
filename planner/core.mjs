@@ -271,22 +271,14 @@ export class Project extends core.Target {
     }
     
     toJSON() {
-        let itms = {};
-        this.items.forEach(id => { itms[id] = this.getItem(id); });
-        let pths = {};
-        this.paths.forEach(id => { pths[id] = this.getPath(id); });
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                items: itms,
-                paths: pths,
-                size: this.size,
-                robotSize: this.robotSize, robotMass: this.robotMass,
-                config: this.config, meta: this.meta,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            items: this.#items,
+            paths: this.#paths,
+            size: this.size,
+            robotSize: this.robotSize, robotMass: this.robotMass,
+            config: this.config, meta: this.meta,
+        });
     }
 }
 Project.Config = class ProjectConfig extends core.Target {
@@ -374,17 +366,13 @@ Project.Config = class ProjectConfig extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                script: this.script, scriptPython: this.scriptPython, scriptUseDefault: this.scriptUseDefault,
-                momentOfInertia: this.momentOfInertia,
-                efficiency: this.efficiency,
-                is12MotorMode: this.is12MotorMode,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            script: this.script, scriptPython: this.scriptPython, scriptUseDefault: this.scriptUseDefault,
+            momentOfInertia: this.momentOfInertia,
+            efficiency: this.efficiency,
+            is12MotorMode: this.is12MotorMode,
+        });
     }
 }
 Project.Meta = class ProjectMeta extends core.Target {
@@ -474,18 +462,14 @@ Project.Meta = class ProjectMeta extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                name: this.name,
-                modified: this.modified, created: this.created,
-                thumb: this.thumb,
-                backgroundImage: this.backgroundImage,
-                backgroundScale: this.backgroundScale,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            name: this.name,
+            modified: this.modified, created: this.created,
+            thumb: this.thumb,
+            backgroundImage: this.backgroundImage,
+            backgroundScale: this.backgroundScale,
+        });
     }
 }
 Project.Item = class ProjectItem extends core.Target {
@@ -530,14 +514,10 @@ Project.Item = class ProjectItem extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                pos: this.pos,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            pos: this.pos,
+        });
     }
 }
 Project.Node = class ProjectNode extends Project.Item {
@@ -619,16 +599,12 @@ Project.Node = class ProjectNode extends Project.Item {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                pos: this.pos,
-                heading: this.heading, useHeading: this.useHeading,
-                velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            pos: this.pos,
+            heading: this.heading, useHeading: this.useHeading,
+            velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
+        });
     }
 }
 Project.Obstacle = class ProjectObstacle extends Project.Item {
@@ -669,15 +645,11 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                pos: this.pos,
-                radius: this.radius,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            pos: this.pos,
+            radius: this.radius,
+        });
     }
 }
 Project.Path = class ProjectPath extends core.Target {
@@ -757,17 +729,13 @@ Project.Path = class ProjectPath extends core.Target {
     }
 
     toJSON() {
-        return {
-            "%OBJ": this.constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": [{
-                VERSION: VERSION,
-                name: this.name,
-                nodes: this.nodes,
-            }],
-        };
+        return util.Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            name: this.name,
+            nodes: this.nodes,
+        });
     }
 }
 
-export const REVIVER = new core.Reviver(core.REVIVER);
+export const REVIVER = new util.Reviver(util.REVIVER);
 REVIVER.addRuleAndAllSub(Project);
