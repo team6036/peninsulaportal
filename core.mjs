@@ -241,19 +241,20 @@ export class App extends Target {
         let name = load.shift();
         (() => {
             let namefs = {
-                find: () => (elem.textContent += "Finding database"),
-                "comp-mode": () => (elem.textContent += "Competition mode"),
-                poll: () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
-                    return elem.textContent += "Polling database";
-                },
                 "fs-version": () => {
                     if (load.length > 0) elem.style.color = "var(--cr)";
                     if (load.length > 0) return elem.textContent += "App data directory verison mismatch: "+load.join(":");
                     return elem.textContent += "Checking app data version";
                 },
-                config: () => {
+                "find": () => (elem.textContent += "Finding database"),
+                "find-next": () => (elem.textContent += "Finding next database"),
+                "comp-mode": () => (elem.textContent += "Competition mode"),
+                "poll": () => {
+                    if (load.length > 0) elem.style.color = "var(--cr)";
+                    if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
+                    return elem.textContent += "Polling database";
+                },
+                "config": () => {
                     if (load.length > 0) elem.style.color = "var(--cr)";
                     if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
                     return elem.textContent += "Configuring";
@@ -317,7 +318,7 @@ export class App extends Target {
                 let namefs = {
                     PLANNER: () => {
                         let namefs = {
-                            solver: () => {
+                            "solver": () => {
                                 if (load.length > 0) elem.style.color = "var(--cr)";
                                 if (load.length > 0) return elem.textContent += "Error while copying default solver: "+load.join(":");
                                 return elem.textContent += "Copying default solver";
