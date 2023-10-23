@@ -1,7 +1,5 @@
 import * as util from "../../util.mjs";
 
-import * as core from "../../core.mjs";
-
 import { WorkerClient } from "../worker.js";
 
 import { toUint8Array } from "./decoder.js";

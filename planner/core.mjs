@@ -1,13 +1,11 @@
 import * as util from "../util.mjs";
 import { V } from "../util.mjs";
 
-import * as core from "../core.mjs";
-
 
 export const VERSION = 2;
 
 
-export class Project extends core.Target {
+export class Project extends util.Target {
     #id;
 
     #cache;
@@ -281,7 +279,7 @@ export class Project extends core.Target {
         });
     }
 }
-Project.Config = class ProjectConfig extends core.Target {
+Project.Config = class ProjectConfig extends util.Target {
     #script;
     #scriptPython;
     #scriptUseDefault;
@@ -375,7 +373,7 @@ Project.Config = class ProjectConfig extends core.Target {
         });
     }
 }
-Project.Meta = class ProjectMeta extends core.Target {
+Project.Meta = class ProjectMeta extends util.Target {
     #name;
     #modified;
     #created;
@@ -472,7 +470,7 @@ Project.Meta = class ProjectMeta extends core.Target {
         });
     }
 }
-Project.Item = class ProjectItem extends core.Target {
+Project.Item = class ProjectItem extends util.Target {
     #id;
 
     #pos;
@@ -652,7 +650,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
         });
     }
 }
-Project.Path = class ProjectPath extends core.Target {
+Project.Path = class ProjectPath extends util.Target {
     #id;
 
     #name;
