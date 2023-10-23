@@ -2,6 +2,7 @@ import * as util from "../../util.mjs";
 
 import * as msgpack from "./msgpack.js";
 
+
 const typestrIdxLookup = {
     "boolean": 0,
     "double": 1,
