@@ -1,7 +1,7 @@
 import * as util from "../../util.mjs";
 
 
-const pow32 = 0x100000000;
+const POW32 = 0x100000000;
 
 export function serialize(data, options) {
 	options = util.ensure(options, "obj");
@@ -72,8 +72,8 @@ export function serialize(data, options) {
 			else if (data >= -0x80000000 && data <= 0x7fffffff) appendBytes([0xd2, data >>> 24, data >>> 16, data >>> 8, data]); // int32
 			else if (data > 0 && data <= 0xffffffffffffffff) {
 				// uint64
-				let hi = data / pow32;
-				let lo = data % pow32;
+				let hi = data / POW32;
+				let lo = data % POW32;
 				appendBytes([0xd3, hi >>> 24, hi >>> 16, hi >>> 8, hi, lo >>> 24, lo >>> 16, lo >>> 8, lo]);
 			}
 			else if (data >= -0x8000000000000000 && data <= 0x7fffffffffffffff) {
@@ -138,7 +138,7 @@ export function serialize(data, options) {
 		else if (sec >= 0 && sec < 0x400000000) {
 			// 30 bit nanoseconds, 34 bit seconds
 			let ns = data.getMilliseconds() * 1000000;
-			appendBytes([0xd7, 0xff, ns >>> 22, ns >>> 14, ns >>> 6, ((ns << 2) >>> 0) | (sec / pow32), sec >>> 24, sec >>> 16, sec >>> 8, sec]);
+			appendBytes([0xd7, 0xff, ns >>> 22, ns >>> 14, ns >>> 6, ((ns << 2) >>> 0) | (sec / POW32), sec >>> 24, sec >>> 16, sec >>> 8, sec]);
 		}
 		else {
 			// 32 bit nanoseconds, 64 bit seconds, negative values allowed
@@ -171,12 +171,12 @@ export function serialize(data, options) {
 	function appendInt64(value) {
 		let hi, lo;
 		if (value >= 0) {
-			hi = value / pow32;
-			lo = value % pow32;
+			hi = value / POW32;
+			lo = value % POW32;
 		} else {
 			value++;
-			hi = Math.abs(value) / pow32;
-			lo = Math.abs(value) % pow32;
+			hi = Math.abs(value) / POW32;
+			lo = Math.abs(value) % POW32;
 			hi = ~hi;
 			lo = ~lo;
 		}
@@ -320,7 +320,7 @@ export function deserialize(arr, options) {
 				((data[1] << 14) >>> 0) +
 				((data[2] << 6) >>> 0) +
 				(data[3] >>> 2);
-			let sec = ((data[3] & 0x3) * pow32) +
+			let sec = ((data[3] & 0x3) * POW32) +
 				((data[4] << 24) >>> 0) +
 				((data[5] << 16) >>> 0) +
 				((data[6] << 8) >>> 0) +
