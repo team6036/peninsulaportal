@@ -55,13 +55,11 @@ const MAIN = async () => {
     const util = await import("./util.mjs");
     const V = util.V;
 
-    const core = await import("./core.mjs");
-
     log("< IMPORTED ASYNCHRONOUSLY >");
 
     const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
 
-    class Process extends core.Target {
+    class Process extends util.Target {
         #id;
         #tags;
 
@@ -145,7 +143,7 @@ const MAIN = async () => {
             return true;
         }
     }
-    class ProcessManager extends core.Target {
+    class ProcessManager extends util.Target {
         #processes;
 
         constructor() {
@@ -195,7 +193,7 @@ const MAIN = async () => {
             return this.processes.filter(process => process.hasTag(tag));
         }
     }
-    class Portal extends core.Target {
+    class Portal extends util.Target {
         #started;
 
         #stream;
@@ -1415,7 +1413,7 @@ const MAIN = async () => {
             return log(":", ...a);
         }
     }
-    Portal.Feature = class PortalFeature extends core.Target {
+    Portal.Feature = class PortalFeature extends util.Target {
         #portal;
 
         #manager;

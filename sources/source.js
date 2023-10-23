@@ -1,9 +1,7 @@
 import * as util from "../util.mjs";
 
-import * as core from "../core.mjs";
 
-
-export default class Source extends core.Target {
+export default class Source extends util.Target {
     #useNestRoot;
     #postNest;
     #postFlat;
@@ -186,7 +184,7 @@ export default class Source extends core.Target {
         return this;
     }
 }
-Source.Generic = class SourceGeneric extends core.Target {
+Source.Generic = class SourceGeneric extends util.Target {
     #parent;
     #name;
 

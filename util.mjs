@@ -517,6 +517,46 @@ export const ease = {
     },
 }
 
+export class Target {
+    #handlers;
+
+    constructor() {
+        this.#handlers = {};
+    }
+
+    addHandler(e, f) {
+        e = String(e);
+        if (!is(f, "func")) return false;
+        if (!(e in this.#handlers)) this.#handlers[e] = new Set();
+        if (this.#handlers[e].has(f)) return false;
+        this.#handlers[e].add(f);
+        return f;
+    }
+    remHandler(e, f) {
+        e = String(e);
+        if (!is(f, "func")) return false;
+        if (!(e in this.#handlers)) return false;
+        if (!this.#handlers[e].has(e)) return false;
+        this.#handlers[e].delete(f);
+        return f;
+    }
+    hasHandler(e, f) {
+        e = String(e);
+        if (!is(f, "func")) return false;
+        if (!(e in this.#handlers)) return false;
+        return this.#handlers[e].has(f);
+    }
+    async post(e, data) {
+        if (!(e in this.#handlers)) return [];
+        let fs = [...this.#handlers[e]];
+        fs = fs.map(f => (async () => {
+            if (f.constructor.name == "AsyncFunction") return await f(data);
+            else if (f.constructor.name == "Function") return f(data);
+        }));
+        return await Promise.all(fs.map(f => f()));
+    }
+}
+
 export class Color {
     #r; #g; #b; #a;
 

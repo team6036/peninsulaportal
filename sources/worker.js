@@ -1,9 +1,7 @@
 import * as util from "../util.mjs";
 
-import * as core from "../core.mjs";
 
-
-export class WorkerClient extends core.Target {
+export class WorkerClient extends util.Target {
     #script;
 
     #worker;
@@ -66,7 +64,7 @@ export class WorkerClient extends core.Target {
     }
 }
 
-export class WorkerBase extends core.Target {
+export class WorkerBase extends util.Target {
     #self;
 
     #progressT;

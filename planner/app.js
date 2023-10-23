@@ -1143,7 +1143,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
             this.app.eProjectsBtn.classList.remove("this");
     }
 };
-App.ProjectsPage.Button = class AppProjectsPageButton extends core.Target {
+App.ProjectsPage.Button = class AppProjectsPageButton extends util.Target {
     #page;
 
     #project;
@@ -1913,7 +1913,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         if (this.choosing == v) return;
         this.#choosing = v;
         this.clearSelected();
-        this.#chooseState = this.choosing ? new core.Target() : null;
+        this.#chooseState = this.choosing ? new util.Target() : null;
         if (this.choosing) this.chooseState.temp = {};
         this.choosing ? this.eDisplay.classList.add("choose") : this.eDisplay.classList.remove("choose");
     }
@@ -2117,7 +2117,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         return false;
     }
 };
-App.ProjectPage.Panel = class AppProjectPagePanel extends core.Target {
+App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     #name;
 
     #page;
@@ -2237,7 +2237,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends core.Target {
 
     update() { this.post("update", null); }
 };
-App.ProjectPage.Panel.Item = class AppProjectPagePanelItem extends core.Target {
+App.ProjectPage.Panel.Item = class AppProjectPagePanelItem extends util.Target {
     #elem;
 
     constructor() {
@@ -3228,7 +3228,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     get ePathsBox() { return this.#ePathsBox; }
     get eActivateBtn() { return this.#eActivateBtn; }
 };
-App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends core.Target {
+App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends util.Target {
     #panel;
 
     #id;
@@ -3333,7 +3333,7 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
         this.#tPrev += deltaTime;
     }
 };
-App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends core.Target {
+App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends util.Target {
     #panel;
 
     #path;

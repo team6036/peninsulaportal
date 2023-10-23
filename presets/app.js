@@ -4,7 +4,7 @@ import { V } from "../util.mjs";
 import * as core from "../core.mjs";
 
 
-class Action extends core.Target {
+class Action extends util.Target {
     #app;
     #elem;
 

@@ -1,7 +1,5 @@
 import * as util from "../../util.mjs";
 
-import * as core from "../../core.mjs";
-
 
 const HEADERSTRING = "WPILOG";
 const HEADERVERSION = 0x0100;
@@ -22,7 +20,7 @@ export function toUint8Array(v) {
     return new Uint8Array();
 }
 
-export default class WPILOGDecoder extends core.Target {
+export default class WPILOGDecoder extends util.Target {
     #data;
     #dataView;
 
@@ -100,7 +98,7 @@ export default class WPILOGDecoder extends core.Target {
         return this.records;
     }
 }
-WPILOGDecoder.Record = class WPILOGDecoderRecord extends core.Target {
+WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     #entryId;
     #ts;
     #data;

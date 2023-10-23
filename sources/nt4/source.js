@@ -1,7 +1,5 @@
 import * as util from "../../util.mjs";
 
-import * as core from "../../core.mjs";
-
 import NTClient from "./nt4.js";
 
 import Source from "../source.js";

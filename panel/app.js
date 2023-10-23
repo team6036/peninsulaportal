@@ -95,7 +95,7 @@ function getDisplay(t, v) {
 }
 
 
-class BrowserItem extends core.Target {
+class BrowserItem extends util.Target {
     #elem;
     #eDisplay;
     #eIcon;
@@ -353,7 +353,7 @@ class BrowserTopic extends BrowserItem {
     }
 }
 
-class ToolButton extends core.Target {
+class ToolButton extends util.Target {
     #elem;
     #eIcon;
     #eName;
@@ -412,7 +412,7 @@ class ToolButton extends core.Target {
     set name(v) { this.eName.textContent = v; }
 }
 
-class Widget extends core.Target {
+class Widget extends util.Target {
     #elem;
 
     #parent;
@@ -899,7 +899,7 @@ class Panel extends Widget {
         });
     }
 }
-Panel.Tab = class PanelTab extends core.Target {
+Panel.Tab = class PanelTab extends util.Target {
     #parent;
 
     #elem;
@@ -1340,7 +1340,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         });
     }
 };
-Panel.AddTab.Tag = class PanelAddTabTag extends core.Target {
+Panel.AddTab.Tag = class PanelAddTabTag extends util.Target {
     #elem;
     #eIcon;
     #eName;
@@ -1381,7 +1381,7 @@ Panel.AddTab.Tag = class PanelAddTabTag extends core.Target {
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 };
-Panel.AddTab.Item = class PanelAddTabItem extends core.Target {
+Panel.AddTab.Item = class PanelAddTabItem extends util.Target {
     #elem;
 
     constructor() {
@@ -2536,7 +2536,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         });
     }
 };
-Panel.GraphTab.Variable = class PanelGraphTabVariable extends core.Target {
+Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     #path;
     #color;
 
@@ -3027,7 +3027,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     get eTimeDisplay() { return this.#eTimeDisplay; }
     get eTemplateSelect() { return this.#eTemplateSelect; }
 };
-Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
+Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     #path;
     #color;
 
@@ -3197,7 +3197,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends core.Target {
         });
     }
 };
-Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends core.Target {
+Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Target {
     #tab;
     #pose;
 
@@ -4644,7 +4644,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
     }
 };
 
-class Project extends core.Target {
+class Project extends util.Target {
     #id;
 
     #cache;
@@ -4743,7 +4743,7 @@ class Project extends core.Target {
         });
     }
 }
-Project.Config = class ProjectConfig extends core.Target {
+Project.Config = class ProjectConfig extends util.Target {
     #sources;
     #sourceType;
 
@@ -4825,7 +4825,7 @@ Project.Config = class ProjectConfig extends core.Target {
         });
     }
 };
-Project.Meta = class ProjectMeta extends core.Target {
+Project.Meta = class ProjectMeta extends util.Target {
     #name;
     #modified;
     #created;
@@ -5812,7 +5812,7 @@ App.ProjectsPage = class AppProjectsPage extends core.App.Page {
             this.app.eProjectsBtn.classList.remove("this");
     }
 };
-App.ProjectsPage.Button = class AppProjectsPageButton extends core.Target {
+App.ProjectsPage.Button = class AppProjectsPageButton extends util.Target {
     #page;
 
     #project;
@@ -6042,7 +6042,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             this.eSide.appendChild(elem);
             elem.id = name;
             elem.classList.add("section");
-            let s = this.#eSideSections[name] = new core.Target();
+            let s = this.#eSideSections[name] = new util.Target();
             s.elem = elem;
             s.getIsOpen = () => elem.classList.contains("this");
             s.setIsOpen = v => {

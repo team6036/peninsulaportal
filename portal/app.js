@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 
-class FeatureButton extends core.Target {
+class FeatureButton extends util.Target {
     #elem;
     #eName;
     #eIcon;
@@ -62,7 +62,7 @@ class FeatureButton extends core.Target {
     set tooltipColor(v) { return this.eTooltip.style.setProperty("--bg", v); }
 }
 
-class UpperFeatureButton extends core.Target {
+class UpperFeatureButton extends util.Target {
     #elem;
     #eIcon;
 
@@ -91,7 +91,7 @@ class UpperFeatureButton extends core.Target {
     }
 }
 
-class Star extends core.Target {
+class Star extends util.Target {
     #pos;
     #size;
     #streakSize;

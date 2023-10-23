@@ -2,47 +2,7 @@ import * as util from "./util.mjs";
 import { V } from "./util.mjs";
 
 
-export class Target {
-    #handlers;
-
-    constructor() {
-        this.#handlers = {};
-    }
-
-    addHandler(e, f) {
-        e = String(e);
-        if (!util.is(f, "func")) return false;
-        if (!(e in this.#handlers)) this.#handlers[e] = new Set();
-        if (this.#handlers[e].has(f)) return false;
-        this.#handlers[e].add(f);
-        return f;
-    }
-    remHandler(e, f) {
-        e = String(e);
-        if (!util.is(f, "func")) return false;
-        if (!(e in this.#handlers)) return false;
-        if (!this.#handlers[e].has(e)) return false;
-        this.#handlers[e].delete(f);
-        return f;
-    }
-    hasHandler(e, f) {
-        e = String(e);
-        if (!util.is(f, "func")) return false;
-        if (!(e in this.#handlers)) return false;
-        return this.#handlers[e].has(f);
-    }
-    async post(e, data) {
-        if (!(e in this.#handlers)) return [];
-        let fs = [...this.#handlers[e]];
-        fs = fs.map(f => (async () => {
-            if (f.constructor.name == "AsyncFunction") return await f(data);
-            else if (f.constructor.name == "Function") return f(data);
-        }));
-        return await Promise.all(fs.map(f => f()));
-    }
-}
-
-export class App extends Target {
+export class App extends util.Target {
     #setupConfig;
     #setupDone;
 
@@ -804,7 +764,7 @@ export class App extends Target {
         if (this.dragging == v) return;
         this.#dragging = v;
         if (this.dragging) {
-            this.#dragState = new Target();
+            this.#dragState = new util.Target();
             const mouseup = e => {
                 this.post("drag-submit", e);
                 this.dragState.post("submit", e);
@@ -939,7 +899,7 @@ export class App extends Target {
     async fileOpenDialog(options) { return await window.api.send("file-open-dialog", [options]); }
     async fileSaveDialog(options) { return await window.api.send("file-save-dialog", [options]); }
 }
-App.PopupBase = class AppPopupBase extends Target {
+App.PopupBase = class AppPopupBase extends util.Target {
     #elem;
     #inner;
 
@@ -1223,7 +1183,7 @@ App.Prompt = class AppPrompt extends App.PopupBase {
     set placeholder(v) { this.eInput.placeholder = v; }
 };
 
-App.ContextMenu = class AppContextMenu extends Target {
+App.ContextMenu = class AppContextMenu extends util.Target {
     #items;
 
     #elem;
@@ -1279,7 +1239,7 @@ App.ContextMenu = class AppContextMenu extends Target {
         this.elem.style.transform = "translate("+ox+"px, "+oy+"px)";
     }
 };
-App.ContextMenu.Item = class AppContextMenuItem extends Target {
+App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
     #items;
 
     #elem;
@@ -1405,7 +1365,7 @@ App.ContextMenu.Divider = class AppContextMenuDivider extends App.ContextMenu.It
         this.elem.classList.add("divider");
     }
 };
-App.Page = class AppPage extends Target {
+App.Page = class AppPage extends util.Target {
     #name;
     #app;
     #elem;
@@ -1435,7 +1395,7 @@ App.Page = class AppPage extends Target {
     update() { this.post("update", null); }
 };
 
-export class Odometry2d extends Target {
+export class Odometry2d extends util.Target {
     #canvas;
     #ctx;
     #quality;
@@ -1759,7 +1719,7 @@ export class Odometry2d extends Target {
 
     update() { this.post("update"); }
 }
-Odometry2d.Render = class Odometry2dRender extends Target {
+Odometry2d.Render = class Odometry2dRender extends util.Target {
     #odometry;
     
     #pos;
