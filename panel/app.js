@@ -2324,6 +2324,18 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.lineCap = "square";
             ctx.beginPath();
             ctx.strokeRect(...new V(padding*quality).xy, ...new V(ctx.canvas.width, ctx.canvas.height).sub(2*padding*quality).xy);
+            let progress = 0;
+            if (this.hasPage() && this.page.hasSource())
+                progress = (this.page.source.ts - graphRange[0]) / (graphRange[1] - graphRange[0]);
+            if (progress >= 0 && progress <= 1) {
+                ctx.setLineDash([5*quality, 5*quality]);
+                ctx.beginPath();
+                let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, progress);
+                ctx.moveTo(x, padding*quality);
+                ctx.lineTo(x, ctx.canvas.height-padding*quality);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
         });
 
         if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
@@ -2705,10 +2717,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
     #template;
 
-    #t;
-    #tPrev;
-    #paused;
-
     #eNav;
     #eProgress;
     #eSubNav;
@@ -2726,10 +2734,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         this.#poses = new Set();
 
         this.#template = null;
-
-        this.#t = 0;
-        this.#tPrev = 0;
-        this.#paused = false;
 
         let templates = {};
         (async () => {
@@ -2753,7 +2757,9 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             const mousemove = e => {
                 let r = this.eProgress.getBoundingClientRect();
                 let p = (e.pageX-r.left) / r.width;
-                this.nowTime = this.totalTime*p;
+                if (!this.hasPage()) return;
+                if (!this.page.hasSource()) return;
+                this.page.source.ts = util.lerp(this.page.source.tsMin, this.page.source.tsMax, p);
             };
             mousemove(e);
             document.body.addEventListener("mouseup", mouseup);
@@ -2766,19 +2772,25 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         this.eSubNav.appendChild(this.ePlayPauseBtn);
         this.ePlayPauseBtn.innerHTML = "<ion-icon></ion-icon>";
         this.ePlayPauseBtn.addEventListener("click", e => {
-            this.paused = !this.paused;
+            if (!this.hasPage()) return;
+            if (!this.page.hasSource()) return;
+            this.page.source.playback.paused = !this.page.source.playback.paused;
         });
         this.#eSkipBackBtn = document.createElement("button");
         this.eSubNav.appendChild(this.eSkipBackBtn);
         this.eSkipBackBtn.innerHTML = "<ion-icon name='play-skip-back'></ion-icon>";
         this.eSkipBackBtn.addEventListener("click", e => {
-            this.nowTime = 0;
+            if (!this.hasPage()) return;
+            if (!this.page.hasSource()) return;
+            this.page.source.ts = this.page.source.tsMin;
         });
         this.#eSkipForwardBtn = document.createElement("button");
         this.eSubNav.appendChild(this.eSkipForwardBtn);
         this.eSkipForwardBtn.innerHTML = "<ion-icon name='play-skip-forward'></ion-icon>";
         this.eSkipForwardBtn.addEventListener("click", e => {
-            this.nowTime = this.totalTime;
+            if (!this.hasPage()) return;
+            if (!this.page.hasSource()) return;
+            this.page.source.ts = this.page.source.tsMax;
         });
         this.#eTimeDisplay = document.createElement("div");
         this.eSubNav.appendChild(this.eTimeDisplay);
@@ -2840,14 +2852,17 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         });
 
         this.addHandler("update", data => {
-            let deltaTime = util.getTime() - this.#tPrev;
-            if (this.playing) this.nowTime += deltaTime;
-            this.#tPrev += deltaTime;
-            this.eProgress.style.setProperty("--progress", (100*(this.nowTime/this.totalTime))+"%");
+            let t = 0, tTotal = 0, paused = true;
+            if (this.hasPage() && this.page.hasSource()) {
+                t = this.page.source.ts - this.page.source.tsMin;
+                tTotal = this.page.source.tsMax - this.page.source.tsMin;
+                paused = this.page.source.playback.paused;
+            }
+            this.eProgress.style.setProperty("--progress", (100*(t/tTotal))+"%");
             if (this.ePlayPauseBtn.children[0] instanceof HTMLElement)
-                this.ePlayPauseBtn.children[0].setAttribute("name", this.paused ? "play" : "pause");
+                this.ePlayPauseBtn.children[0].setAttribute("name", paused ? "play" : "pause");
             let split;
-            split = util.splitTimeUnits(this.nowTime);
+            split = util.splitTimeUnits(t);
             split[0] = Math.round(split[0]);
             while (split.length > 3) {
                 if (split.at(-1) > 0) break;
@@ -2864,7 +2879,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 return v;
             });
             this.eTimeDisplay.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-            split = util.splitTimeUnits(this.totalTime);
+            split = util.splitTimeUnits(tTotal);
             split[0] = Math.round(split[0]);
             while (split.length > 3) {
                 if (split.at(-1) > 0) break;
@@ -2935,30 +2950,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
         this.post("change", null);
     }
-
-    get totalTime() {
-        if (!this.hasPage()) return 0;
-        if (!this.page.hasSource()) return 0;
-        const source = this.page.source;
-        return source.tsMax-source.tsMin;
-    }
-    get nowTime() { return this.#t; }
-    set nowTime(v) {
-        v = Math.min(this.totalTime, Math.max(0, util.ensure(v, "num")));
-        if (this.nowTime == v) return;
-        this.#t = v;
-    }
-
-    get paused() { return this.#paused; }
-    set paused(v) {
-        v = !!v;
-        if (this.paused == v) return;
-        this.#paused = v;
-    }
-    get playing() { return !this.paused; }
-    set playing(v) { this.paused = !v; }
-    pause() { return this.paused = true; }
-    play() { return this.playing = true; }
 
     getHovered(data, pos, options) {
         pos = new V(pos);
@@ -3438,7 +3429,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
                 const topic = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.tsMin) : null;
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get() : [];
                 pose.state.update();
             });
             this.odometry.update();
@@ -3974,7 +3965,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
                 const topic = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = (topic instanceof Source.Topic) ? topic.get(this.nowTime+source.tsMin) : [];
+                pose.state.value = (topic instanceof Source.Topic) ? topic.get() : [];
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
@@ -4286,7 +4277,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
         this.eDisplayType.addEventListener("click", e => this.post("type", null));
 
-        if (a.length <= 0 || [3, 4].includes(a.length) || a.length > 5) a = [null];
+        if (a.length <= 0 || [3, 4, 5].includes(a.length) || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof this.constructor) a = [a.path, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
@@ -4301,7 +4292,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             else a = [null, null];
         }
         if (a.length == 2) a = [...a, true, false, false];
-        if (a.length == 4) a = [...a, "KitBot"];
+        if (a.length == 5) a = [...a, "KitBot"];
 
         [this.path, this.color, this.isShown, this.isGhost, this.isSolid, this.type] = a;
     }
@@ -6209,6 +6200,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.addHandler("project-set", data => {
             this.widget = this.hasProject() ? this.project.buildWidget() : null;
         });
+        let t = null;
         this.addHandler("update", data => {
             if (this.hasProject()) {
                 const constructor = {
@@ -6231,6 +6223,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                     if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
                 }
             } else this.source = null;
+            if (this.hasSource()) {
+                let t2 = util.getTime();
+                if (t != null) this.source.playback.update(t2-t);
+                t = t2;
+            } else t = null;
             if (this.hasApp())
                 this.app.eProjectInfoSourceTypes.forEach(type => {
                     let elem = this.app.getEProjectInfoSourceType(type);

@@ -44,7 +44,4 @@ export default class WPILOGSource extends Source {
             client.start([...this.data]);
         });
     }
-
-    get ts() { return this.tsMax; }
-    set ts(v) { return; }
 }

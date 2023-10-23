@@ -13,6 +13,8 @@ export default class Source extends util.Target {
     #tsMin;
     #tsMax;
 
+    #playback;
+
     constructor(root) {
         super();
 
@@ -29,6 +31,8 @@ export default class Source extends util.Target {
 
         this.#ts = 0;
         this.#tsMin = this.#tsMax = 0;
+
+        this.#playback = new Source.Playback(this);
     }
 
     get useNestRoot() { return this.#useNestRoot; }
@@ -49,6 +53,8 @@ export default class Source extends util.Target {
     set tsMin(v) { this.#tsMin = util.ensure(v, "num"); }
     get tsMax() { return this.#tsMax; }
     set tsMax(v) { this.#tsMax = util.ensure(v, "num"); }
+
+    get playback() { return this.#playback; }
 
     create(k, type) {
         if (!Source.Topic.TYPES.includes(type)) return false;
@@ -184,6 +190,39 @@ export default class Source extends util.Target {
         return this;
     }
 }
+Source.Playback = class SourcePlayback extends util.Target {
+    #source;
+
+    #paused;
+
+    constructor(source) {
+        super();
+
+        if (!(source instanceof Source)) throw "Source "+source+" is not a Source";
+        if (source.playback != null) throw "Source already has a playback";
+
+        this.#source = source;
+
+        this.#paused = false;
+    }
+
+    get source() { return this.#source; }
+
+    get paused() { return this.#paused; }
+    set paused(v) { this.#paused = !!v; }
+    get playing() { return !this.paused; }
+    set playing(v) { this.paused = !v; }
+    pause() { return this.paused = true; }
+    play() { return this.playing = true; }
+
+    get finished() { return this.source.ts >= this.source.tsMax; }
+
+    update(delta) {
+        delta = util.ensure(delta, "num");
+        if (this.paused) return;
+        this.source.ts = Math.min(this.source.tsMax, Math.max(this.source.tsMin, this.source.ts+delta));
+    }
+};
 Source.Generic = class SourceGeneric extends util.Target {
     #parent;
     #name;
