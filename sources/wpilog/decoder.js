@@ -55,7 +55,7 @@ export default class WPILOGDecoder extends util.Target {
         return TEXTDECODER.decode(this.data.subarray(12, 12+l));
     }
 
-    #readVariableInteger(x, l) {
+    #readInt(x, l) {
         let v = BigInt(0);
         for (let i = 0; i < Math.min(8,l); i++) {
             let byte = this.data[x+i];
@@ -83,9 +83,9 @@ export default class WPILOGDecoder extends util.Target {
             let tsL = ((this.data[x] >> 4) & 0x7) + 1;
             let headerL = 1 + entryL + sizeL + tsL;
             if (this.data.length < x+headerL) break;
-            let entry = this.#readVariableInteger(x+1, entryL);
-            let size = this.#readVariableInteger(x+1+entryL, sizeL);
-            let ts = this.#readVariableInteger(x+1+entryL+sizeL, tsL);
+            let entry = this.#readInt(x+1, entryL);
+            let size = this.#readInt(x+1+entryL, sizeL);
+            let ts = this.#readInt(x+1+entryL+sizeL, tsL);
             if (this.data.length < x+headerL+size || entry < 0 || size < 0) break;
             this.#records.push(new WPILOGDecoder.Record(
                 entry, ts,
