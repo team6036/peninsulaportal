@@ -1671,6 +1671,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
                 let value = generic.get();
+                if (generic.isArray) value = util.ensure(value, "arr");
                 let display = getDisplay(generic.type, value);
                 if (display != null) {
                     if ("src" in display) this.iconSrc = display.src;
@@ -1691,6 +1692,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         eType.classList.add("type");
                         let items = [];
                         state.update = () => {
+                            let value = util.ensure(generic.get(), "arr");
                             let display = getDisplay(generic.type, value);
                             eType.innerHTML = "<span style='color:"+((display == null || !("color" in display)) ? "var(--v8)" : display.color)+";'>"+generic.arraylessType+"</span>[<span style='color:var(--a);'>"+value.length+"</span>]";
                             while (items.length > value.length) this.eDisplay.removeChild(items.pop().elem);
@@ -1739,6 +1741,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         if (generic.type == "boolean") item.innerHTML = "<ion-icon></ion-icon>";
                         else item.innerHTML = "<div></div><div></div>";
                         state.update = () => {
+                            let value = generic.get();
                             if (generic.type == "boolean") {
                                 item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
                                 item.style.color = "var(--v1)";
@@ -1779,12 +1782,15 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     }
                 }
                 if (state.update) state.update();
+                this.eTabName.style.color = "";
+                this.iconColor = "";
             } else {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.remove("this");
                 this.icon = "document-outline";
-                this.name = "NONE";
-                this.path = [];
+                this.name = (this.path.length > 0) ? this.path.at(-1) : "/";
+                this.eTabName.style.color = "var(--cr)";
+                this.iconColor = "var(--cr)";
             }
         });
     }
@@ -2105,6 +2111,17 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         const quality = this.quality = 3;
         const padding = 40;
 
+        let tsMouseP = 0, mouseDown = false;
+        this.canvas.addEventListener("mousemove", e => {
+            let r = this.canvas.getBoundingClientRect();
+            let x = e.pageX;
+            x -= r.left + padding;
+            x /= r.width - 2*padding;
+            tsMouseP = x;
+        });
+        this.canvas.addEventListener("mousedown", e => (mouseDown = true));
+        this.canvas.addEventListener("mouseup", e => (mouseDown = false));
+
         this.addHandler("update", () => {
             if (this.isClosed) return;
             
@@ -2324,18 +2341,59 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.lineCap = "square";
             ctx.beginPath();
             ctx.strokeRect(...new V(padding*quality).xy, ...new V(ctx.canvas.width, ctx.canvas.height).sub(2*padding*quality).xy);
-            let progress = 0;
-            if (this.hasPage() && this.page.hasSource())
-                progress = (this.page.source.ts - graphRange[0]) / (graphRange[1] - graphRange[0]);
-            if (progress >= 0 && progress <= 1) {
-                ctx.setLineDash([5*quality, 5*quality]);
-                ctx.beginPath();
+            ctx.font = (12*quality)+"px monospace";
+            ctx.textBaseline = "top";
+            ctx.textAlign = "left";
+            let range = [Infinity, Infinity], y = padding*quality + 5*quality;
+            [
+                {
+                    value: (this.hasPage() && this.page.hasSource()) ? this.page.source.ts : 0,
+                    color: "v4",
+                },
+                {
+                    value: util.lerp(...graphRange, tsMouseP),
+                    color: "v4-8",
+                    show: !mouseDown,
+                },
+            ].forEach(data => {
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+data.color);
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+data.color);
+                let progress = (data.value-graphRange[0]) / (graphRange[1]-graphRange[0]);
                 let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, progress);
-                ctx.moveTo(x, padding*quality);
-                ctx.lineTo(x, ctx.canvas.height-padding*quality);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
+                if ((!("show" in data) || data.show) && progress >= 0 && progress <= 1) {
+                    ctx.setLineDash([5*quality, 5*quality]);
+                    ctx.beginPath();
+                    ctx.moveTo(x, padding*quality);
+                    ctx.lineTo(x, ctx.canvas.height-padding*quality);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    let split = util.splitTimeUnits(data.value);
+                    split[0] = Math.round(split[0]);
+                    while (split.length > 3) {
+                        if (split.at(-1) > 0) break;
+                        split.pop();
+                    }
+                    split = split.map((v, i) => {
+                        v = String(v);
+                        if (i >= split.length-1) return v;
+                        let l = String(Object.values(util.UNITVALUES)[i+1]).length;
+                        while (v.length < l) {
+                            if (i > 0) v = "0"+v;
+                            else v += "0";
+                        }
+                        return v;
+                    });
+                    let text = split.slice(1).reverse().join(":")+"."+split[0];
+                    let newRange = [x, x+ctx.measureText(text).width+10*quality];
+                    if (newRange[1] > ctx.canvas.width-padding*quality) newRange = [newRange[0]-(newRange[1]-newRange[0]), newRange[1]-(newRange[1]-newRange[0])];
+                    if (!(newRange[0] > range[1]) && !(newRange[1] < range[0])) y += (12+5)*quality;
+                    range = newRange;
+                    ctx.fillText(text, newRange[0]+5*quality, y);
+                }
+            });
+            if (mouseDown)
+                if (this.hasPage() && this.page.hasSource())
+                    this.page.source.ts = util.lerp(...graphRange, tsMouseP);
         });
 
         if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
@@ -2521,7 +2579,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
                             };
                             if (data.isArray)
-                                for (let i = 0; i < data.get().length; i++)
+                                for (let i = 0; i < util.ensure(data.get(), "arr").length; i++)
                                     addVar([...data.path, i]);
                             else addVar(data.path);
                         },
@@ -6513,6 +6571,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     async loadState(state) {
         state = util.ensure(state, "obj");
         if (!this.hasApp()) return;
+        await this.app.syncWithFiles();
         await this.app.setPage(this.name, { id: state.id });
     }
 
