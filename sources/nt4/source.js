@@ -89,8 +89,8 @@ export default class NTSource extends Source {
     get clientTimeSince() { return this.#hasClient() ? (this.clientTime - this.clientStartTime) : null; }
     get serverTimeSince() { return this.#hasClient() ? (this.serverTime - this.serverStartTime) : null; }
 
-    get ts() { return this.serverTime; }
-    set ts(v) { return; }
+    get ts() { return Math.min(this.tsMax, Math.max(this.tsMin, super.ts)); }
+    set ts(v) { super.ts = Math.min(this.tsMax, Math.max(this.tsMin, util.ensure(v, "num"))); }
     get tsMin() { return this.serverStartTime; }
     set tsMin(v) { return; }
     get tsMax() { return this.serverTime; }

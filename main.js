@@ -1797,6 +1797,7 @@ const MAIN = async () => {
                         {
                             id: "conndisconn",
                             label: "Toggle Connect / Disconnect",
+                            accelerator: "CmdOrCtrl+K",
                             click: () => this.send("conndisconn"),
                         },
                         build.div,
