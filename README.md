@@ -223,6 +223,7 @@ The current application holiday!
     <h1 id="resources" align="center">Resources</h1>
 </div>
 
+[Peninsula Portal Assets](https://github.com/12Jeef/peninsulaportal-assets)
 - [Electron](https://www.electronjs.org/) - Window display and management
 - [Fuse.js](https://www.fusejs.io/) - Fuzzy search
 - [Highlight.js](https://highlightjs.org/) - Syntax coloring for code blocks in `.md`
