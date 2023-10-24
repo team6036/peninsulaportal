@@ -370,11 +370,12 @@ const MAIN = async () => {
                 await this.fileWrite(".version", version);
                 this.log("DB finding host");
                 this.addLoad("find");
-                const host = (await this.get("val-db-host")) || "https://peninsula-db.jfancode.repl.co";
+                const host = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
+                const assetsHost = String(await this.get("assets-host"));
                 const isCompMode = await this.get("val-comp-mode");
                 this.remLoad("find");
                 if (isCompMode) {
-                    this.log(`DB poll - ${host} - SKIP (COMP MODE)`);
+                    this.log(`DB poll - ${host} + ${assetsHost} - SKIP (COMP MODE)`);
                     this.addLoad("comp-mode");
                     return true;
                 }
@@ -383,7 +384,7 @@ const MAIN = async () => {
                 try {
                     await util.timeout(10000, fetch(host));
                 } catch (e) {
-                    this.log(`DB poll - ${host} - fail`);
+                    this.log(`DB poll - ${host} + ${assetsHost} - fail`);
                     this.remLoad("poll");
                     this.addLoad("poll:"+e);
                     return false;
@@ -391,6 +392,7 @@ const MAIN = async () => {
                 this.log(`DB poll - ${host} - success`);
                 this.remLoad("poll");
                 const fetchAndPipe = async (url, pth) => {
+                    this.log(`DB :: f&p(${url})`);
                     let fileName = path.basename(pth);
                     let superPth = path.dirname(pth);
                     let thePth = path.join(superPth, fileName);
@@ -420,7 +422,7 @@ const MAIN = async () => {
                 this.remLoad("config");
                 this.log("DB finding next host");
                 this.addLoad("find-next");
-                const nextHost = (await this.get("val-db-host")) || "https://peninsula-db.jfancode.repl.co";
+                const nextHost = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
                 this.remLoad("find-next");
                 if (nextHost != host) {
                     this.log("DB next host and current host mismatch - retrying");
@@ -458,7 +460,7 @@ const MAIN = async () => {
                                 this.log(`DB templates/${name}.${tag}`);
                                 this.addLoad(`templates/${name}.${tag}`);
                                 try {
-                                    await fetchAndPipe(host+"/templates/"+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
+                                    await fetchAndPipe(assetsHost+"/templates."+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
                                     this.log(`DB templates/${name}.${tag} - success`);
                                 } catch (e) {
                                     this.log(`DB templates/${name}.${tag} - error - ${e}`);
@@ -497,7 +499,7 @@ const MAIN = async () => {
                                 this.log(`DB robots/${name}.${tag}`);
                                 this.addLoad(`robots/${name}.${tag}`);
                                 try {
-                                    await fetchAndPipe(host+"/robots/"+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
+                                    await fetchAndPipe(assetsHost+"/robots."+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
                                     this.log(`DB robots/${name}.${tag} - success`);
                                 } catch (e) {
                                     this.log(`DB robots/${name}.${tag} - error - ${e}`);
@@ -539,7 +541,7 @@ const MAIN = async () => {
                                 this.log(`DB holidays/${pth}`);
                                 this.addLoad(`holidays/${pth}`);
                                 try {
-                                    await fetchAndPipe(host+"/holidays/"+pth, path.join(this.dataPath, "holidays", "icons", pth));
+                                    await fetchAndPipe(assetsHost+"/holidays."+pth, path.join(this.dataPath, "holidays", "icons", pth));
                                     this.log(`DB holidays/${pth} - success`);
                                 } catch (e) {
                                     this.log(`DB holidays/${pth} - error - ${e}`);
@@ -1232,6 +1234,9 @@ const MAIN = async () => {
                     let host = (await kfs._fullconfig()).dbHost;
                     return host || "https://peninsula-db.jfancode.repl.co";
                 },
+                "assets-host": async () => {
+                    return String((await kfs._fullconfig()).assetsHost);
+                },
                 "_fullclientconfig": async () => {
                     await this.affirm();
                     let content = "";
@@ -1265,6 +1270,7 @@ const MAIN = async () => {
             let kfs = {
                 "version": async () => await this.get("version"),
                 "db-host": async () => await this.get("db-host"),
+                "assets-host": async () => await this.get("assets-host"),
                 "repo": async () => await this.get("repo"),
                 "holiday": async () => await this.get("active-holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
@@ -1300,6 +1306,7 @@ const MAIN = async () => {
                     await this.fileWrite(".config", content);
                 },
                 "db-host": async () => await kfs._fullconfig("dbHost", String(v)),
+                "assets-host": async () => await kfs._fullclientconfig("assetsHost", String(v)),
                 "_fullclientconfig": async (k=null, v=null) => {
                     if (k == null) return;
                     let content = "";
@@ -1333,6 +1340,7 @@ const MAIN = async () => {
             k = String(k);
             let kfs = {
                 "db-host": async () => await this.set("db-host", v),
+                "assets-host": async () => await this.set("assets-host", v),
                 "comp-mode": async () => await this.set("comp-mode", v),
             };
             if (k in kfs) return await kfs[k]();

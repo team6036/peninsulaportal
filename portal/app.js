@@ -392,6 +392,9 @@ export default class App extends core.App {
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)
                         dbHostAnchor.href = await window.api.get("val-db-host");
+                    const assetsHostAnchor = this.eInfo.querySelector(":scope > .nav > a#assets-host");
+                    if (assetsHostAnchor instanceof HTMLAnchorElement)
+                        assetsHostAnchor.href = await window.api.get("assets-host");
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
                     if (repoAnchor instanceof HTMLAnchorElement)
                         repoAnchor.href = await window.api.get("val-repo");
