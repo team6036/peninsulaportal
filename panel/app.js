@@ -2150,19 +2150,53 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         const quality = this.quality = 3;
         const padding = 40;
 
-        let tsMouseP = 0, mouseDown = false;
+        let mouseX = 0, mouseY = 0, mouseDown = false;
         this.canvas.addEventListener("mousemove", e => {
+            eGraphTooltip.style.left = e.pageX+"px";
+            eGraphTooltip.style.top = e.pageY+"px";
             let r = this.canvas.getBoundingClientRect();
             let x = e.pageX;
             x -= r.left + padding;
             x /= r.width - 2*padding;
-            tsMouseP = x;
+            mouseX = x;
+            let y = e.pageY;
+            y -= r.top + padding;
+            y /= r.height - 2*padding;
+            mouseY = y;
         });
+        this.canvas.addEventListener("mouseenter", e => {
+            if (!(overlay instanceof HTMLDivElement)) return;
+            overlay.appendChild(eGraphTooltip);
+        });
+        this.canvas.addEventListener("mouseleave", e => eGraphTooltip.remove());
         this.canvas.addEventListener("mousedown", e => (mouseDown = true));
         this.canvas.addEventListener("mouseup", e => (mouseDown = false));
 
+        const overlay = document.getElementById("overlay");
+        let eGraphTooltip = document.createElement("div");
+        eGraphTooltip.id = "graphtooltip";
+        let eName = eGraphTooltip.eName = document.createElement("div");
+        eGraphTooltip.appendChild(eName);
+        eName.classList.add("name");
+        eName.textContent = "Tooltip Name";
+        let eContent = eGraphTooltip.eContent = document.createElement("div");
+        eGraphTooltip.appendChild(eContent);
+        eContent.classList.add("content");
+        eContent.innerHTML = "<ion-icon name='return-down-forward'></ion-icon>";
+        let eValue = eGraphTooltip.eValue = document.createElement("div");
+        eContent.appendChild(eValue);
+        eValue.classList.add("value");
+        eValue.textContent = "0.1";
+
+        let id = null, tooltipCycle = 0;
+        document.body.addEventListener("keydown", e => {
+            if (e.code == "Tab") tooltipCycle++;
+        });
         this.addHandler("update", () => {
             if (this.isClosed) return;
+
+            clearTimeout(id);
+            id = setTimeout(() => eGraphTooltip.remove(), 100);
 
             let paused = true;
             if (this.hasPage() && this.page.hasSource())
@@ -2285,6 +2319,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 ctx.lineTo(ctx.canvas.width-padding*quality, y);
                 ctx.stroke();
             }
+            let mouseXCanv = util.lerp(padding*quality, ctx.canvas.width-padding*quality, mouseX);
+            let mouseYCanv = util.lerp(padding*quality, ctx.canvas.height-padding*quality, mouseY);
+            let foundTooltips = [];
             let nDiscrete = 0;
             graphVars.forEach((o, i) => {
                 let vars = o.vars;
@@ -2348,12 +2385,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         if (ranges.length > 0) {
                             let px = ranges.at(-1).x;
                             let r = ranges.at(-1).r;
-                            if (x-px > quality) ranges.push({ x: x, r: [v, v] });
+                            if (x-px > quality) ranges.push({ x: x, r: [v, v], v: v });
                             else {
                                 r[0] = Math.min(r[0], v);
                                 r[1] = Math.max(r[1], v);
                             }
-                        } else ranges.push({ x: x, r: [v, v] });
+                        } else ranges.push({ x: x, r: [v, v], v: v });
                     }
                     ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color) : v.color : "#fff";
                     ctx.lineWidth = 2*quality;
@@ -2362,7 +2399,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ctx.beginPath();
                     let py = null;
                     ranges.forEach((p, i) => {
-                        let x = p.x, r = p.r;
+                        let x = p.x, r = p.r, v = p.v;
                         let y1 = r[0], y2 = r[1];
                         y1 = (y1-(step*range[0])) / (step*(range[1]-range[0]));
                         y2 = (y2-(step*range[0])) / (step*(range[1]-range[0]));
@@ -2375,11 +2412,27 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         ctx.lineTo(x, y1);
                         ctx.lineTo(x, y2);
                         ctx.lineTo(x, (y1+y2)/2);
-                        py = (y1+y2)/2;
+                        py = (y1+y2)/2
+                        if (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x)) {
+                            if (Math.abs(py-mouseYCanv) < 2*quality) {
+                                foundTooltips.push({
+                                    name: topic.path.join("/"),
+                                    color: ctx.strokeStyle,
+                                    value: v,
+                                });
+                            }
+                        }
                     });
                     ctx.stroke();
                 });
             });
+            if (foundTooltips.length > 0) {
+                tooltipCycle %= foundTooltips.length;
+                eGraphTooltip.classList.add("this");
+                eName.textContent = foundTooltips[tooltipCycle].name;
+                eName.style.color = foundTooltips[tooltipCycle].color;
+                eValue.textContent = foundTooltips[tooltipCycle].value;
+            } else eGraphTooltip.classList.remove("this");
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
             ctx.lineWidth = 2*quality;
             ctx.lineJoin = "miter";
@@ -2396,7 +2449,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     color: "v4",
                 },
                 {
-                    value: util.lerp(...graphRange, tsMouseP),
+                    value: util.lerp(...graphRange, mouseX),
                     color: "v4-8",
                     show: !mouseDown,
                 },
@@ -2438,7 +2491,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             });
             if (mouseDown)
                 if (this.hasPage() && this.page.hasSource())
-                    this.page.source.ts = util.lerp(...graphRange, tsMouseP);
+                    this.page.source.ts = util.lerp(...graphRange, mouseX);
         });
 
         if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
@@ -4021,7 +4074,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         };
 
         let template = null, model = null;
-
+        
         let keys = new Set();
         document.body.addEventListener("keydown", e => keys.add(e.code));
         document.body.addEventListener("keyup", e => keys.delete(e.code));
@@ -4140,9 +4193,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.eContent.classList.remove("showinfo");
             } else if (this.controls instanceof PointerLockControls) {
                 if (this.controls.isLocked) {
-                    let z = (keys.has("KeyW") || keys.has("ArrowUp")) - (keys.has("KeyS") || keys.has("ArrowDown"));
-                    let x = (keys.has("KeyD") || keys.has("ArrowRight")) - (keys.has("KeyA") || keys.has("ArrowLeft"));
-                    let y = (keys.has("Space")) - (keys.has("ShiftRight") || keys.has("ShiftLeft"));
+                    let zP = keys.has("KeyW") || keys.has("ArrowUp");
+                    let zN = keys.has("KeyS") || keys.has("ArrowDown");
+                    let xP = keys.has("KeyD") || keys.has("ArrowRight");
+                    let xN = keys.has("KeyA") || keys.has("ArrowLeft");
+                    let yP = keys.has("Space");
+                    let yN = keys.has("ShiftRight") || keys.has("ShiftLeft");
+                    let z = zP - zN;
+                    let x = xP - xN;
+                    let y = yP - yN;
                     velocity.iadd(new util.V3(x, y, z).mul(0.01));
                     velocity.imul(0.9);
                     velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));

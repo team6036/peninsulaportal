@@ -1799,3 +1799,42 @@
 #overlay > #block.this {
     visibility: inherit;
 }
+#overlay > #graphtooltip {
+    position: absolute;
+    padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2);
+    border-radius: 10px;
+    filter: drop-shadow(0px 5px 5px var(--v0-8));
+    visibility: hidden;
+}
+#overlay > #graphtooltip.this {
+    visibility: inherit;
+}
+#overlay > #graphtooltip > .name {
+    color: var(--v8);
+
+    font-size: 14px;
+    font-weight: 550;
+}
+#overlay > #graphtooltip > .content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    color: var(--v8);
+
+    font-size: 12px;
+}
