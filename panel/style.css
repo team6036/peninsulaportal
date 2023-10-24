@@ -1473,8 +1473,8 @@
     transition: height var(--t), max-height var(--t), padding var(--t);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .options {
-    height: calc(35% - 8px);
-    max-height: calc(35% - 8px);
+    height: calc(max(35% - 8px, 200px));
+    max-height: calc(max(35% - 8px, 200px));
     padding: 10px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section {
