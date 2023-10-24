@@ -27,6 +27,11 @@
     <input class="val" id="db-host" placeholder="Host URL" style="min-width:300px;color:var(--cy);">
 </p>
 <p>
+    <span>Database Assets URL</span>
+    <span class="space"></span>
+    <input class="val" id="assets-host" placeholder="Assets URL" style="min-width:300px;color:var(--cy);">
+</p>
+<p>
     <span>Competition Mode</span>
     <span class="space"></span>
     <label class="switch">
