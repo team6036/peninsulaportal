@@ -2509,6 +2509,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ];
                     this.viewMode = "section";
                     [this.viewParams.start, this.viewParams.stop] = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
+                    this.post("change", null);
                 }
                 scrollX = 0;
             }
@@ -2522,6 +2523,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ];
                     this.viewMode = "section";
                     [this.viewParams.start, this.viewParams.stop] = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
+                    this.post("change", null);
                 }
                 scrollY = 0;
             }
