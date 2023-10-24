@@ -2171,6 +2171,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         this.canvas.addEventListener("mouseleave", e => eGraphTooltip.remove());
         this.canvas.addEventListener("mousedown", e => (mouseDown = true));
         this.canvas.addEventListener("mouseup", e => (mouseDown = false));
+        let scrollX = 0, scrollY = 0;
+        this.canvas.addEventListener("wheel", e => {
+            scrollX += e.deltaX;
+            scrollY += e.deltaY;
+        });
 
         const overlay = document.getElementById("overlay");
         let eGraphTooltip = document.createElement("div");
@@ -2219,8 +2224,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     maxTime,
                 ],
                 section: () => {
-                    let start = util.ensure(minTime+this.viewParams.start, "num", minTime);
-                    let stop = util.ensure(minTime+this.viewParams.stop, "num", maxTime);
+                    let start = util.ensure(this.viewParams.start, "num", minTime);
+                    let stop = util.ensure(this.viewParams.stop, "num", maxTime);
                     start = Math.min(maxTime, Math.max(minTime, start));
                     stop = Math.min(maxTime, Math.max(minTime, stop));
                     stop = Math.max(start, stop);
@@ -2492,6 +2497,34 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (mouseDown)
                 if (this.hasPage() && this.page.hasSource())
                     this.page.source.ts = util.lerp(...graphRange, mouseX);
+            let ignoreY = false;
+            if (Math.abs(scrollX) > 0) {
+                if (Math.abs(scrollX) > 3) {
+                    ignoreY = true;
+                    let q = scrollX * (0.1/50);
+                    let shift = (graphRange[1]-graphRange[0]) * q;
+                    let newGraphRange = [
+                        graphRange[0]+shift,
+                        graphRange[1]+shift,
+                    ];
+                    this.viewMode = "section";
+                    [this.viewParams.start, this.viewParams.stop] = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
+                }
+                scrollX = 0;
+            }
+            if (Math.abs(scrollY) > 0) {
+                if (!ignoreY && Math.abs(scrollY) > 3) {
+                    let q = scrollY * (0.1/50);
+                    let ts = util.lerp(...graphRange, mouseX);
+                    let newGraphRange = [
+                        util.lerp(graphRange[0], ts, q),
+                        util.lerp(graphRange[1], ts, q),
+                    ];
+                    this.viewMode = "section";
+                    [this.viewParams.start, this.viewParams.stop] = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
+                }
+                scrollY = 0;
+            }
         });
 
         if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
