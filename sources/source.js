@@ -1,5 +1,7 @@
 import * as util from "../util.mjs";
 
+import StructHelper from "./struct-helper.js";
+
 
 export default class Source extends util.Target {
     #useNestRoot;
@@ -250,6 +252,9 @@ Source.Generic = class SourceGeneric extends util.Target {
 
     get nFields() { return 0; }
 
+    get isTableish() { return false; }
+    get isHidden() { return this.name.startsWith("."); }
+
     lookup(k) {
         k = util.ensure(k, "arr");
         if (k.length > 0) return null;
@@ -314,6 +319,8 @@ Source.Table = class SourceTable extends Source.Generic {
         return child;
     }
 
+    get isTableish() { return true; }
+
     lookup(k) {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return this;
@@ -340,7 +347,7 @@ Source.Table = class SourceTable extends Source.Generic {
 Source.Topic = class SourceTopic extends Source.Generic {
     #type;
     #valueLog;
-    #arrTopics;
+    #sub;
 
     static TYPES = [
         "boolean", "boolean[]",
@@ -373,10 +380,14 @@ Source.Topic = class SourceTopic extends Source.Generic {
     constructor(parent, name, type) {
         super(parent, name);
 
-        if (!Source.Topic.TYPES.includes(type)) throw "Type "+type+" is not a valid type";
+        type = String(type);
+
+        if (!type.startsWith("struct:") && !Source.Topic.TYPES.includes(type))
+            throw "Type "+type+" is not a valid type";
+        
         this.#type = type;
         this.#valueLog = [];
-        this.#arrTopics = [];
+        this.#sub = {};
     }
 
     get nFields() { return 1; }
@@ -387,6 +398,12 @@ Source.Topic = class SourceTopic extends Source.Generic {
         if (!this.isArray) return this.type;
         return this.type.substring(0, this.type.length-2);
     }
+    get isStruct() { return this.arraylessType.startsWith("struct:"); }
+    get structType() {
+        if (!this.isStruct) return this.arraylessType;
+        return this.arraylessType.slice(7);
+    }
+    get isTableish() { return this.isStruct; }
     get valueLog() { return [...this.#valueLog]; }
     set valueLog(v) {
         v = util.ensure(v, "arr");
@@ -396,13 +413,15 @@ Source.Topic = class SourceTopic extends Source.Generic {
             let ts = util.ensure(v.ts, "num");
             v = Source.Topic.ensureType(this.type, v.v);
             if (this.isArray) {
-                while (this.#arrTopics.length < v.length) this.#arrTopics.push(new Source.Topic(this, this.#arrTopics.length, this.arraylessType));
                 v.forEach((v, i) => {
                     if ((i in typeCheck) && (typeCheck[i] == v)) return;
                     typeCheck[i] = v;
-                    this.#arrTopics[i].update(v, ts);
+                    if (!(i in this.#sub)) this.#sub[i] = new Source.Topic(this, i, this.arraylessType);
+                    this.#sub[i].update(v, ts);
                 });
-            }
+            } else if (this.isStruct) {
+                
+            } else this.#sub = {};
             return { ts: ts, v: v };
         }).sort((a, b) => a.ts-b.ts);
     }
@@ -427,8 +446,10 @@ Source.Topic = class SourceTopic extends Source.Generic {
         let i = this.getIndex(ts);
         this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
         if (this.isArray) {
-            while (this.#arrTopics.length < v.length) this.#arrTopics.push(new Source.Topic(this, this.#arrTopics.length, this.arraylessType));
-            v.forEach((v, i) => this.#arrTopics[i].update(v, ts));
+            v.forEach((v, i) => {
+                if (!(i in this.#sub)) this.#sub[i] = new Source.Topic(this, i, this.arraylessType);
+                this.#sub[i].update(v, ts);
+            });
         }
         this.post("change", { path: this.name });
     }
@@ -449,11 +470,11 @@ Source.Topic = class SourceTopic extends Source.Generic {
     lookup(k) {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return this;
-        if (!this.isArray) return null;
-        let i = parseInt(k[0]);
-        if (!util.is(i, "int")) return null;
-        if (i < 0 || i >= this.#arrTopics.length) return null;
-        return this.#arrTopics[i];
+        let name = k.shift();
+        for (let sname in this.#sub)
+            if (sname == name)
+                return this.#sub[sname].lookup(k);
+        return null;
     }
 
     toSerialized() {

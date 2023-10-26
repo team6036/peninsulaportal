@@ -38,6 +38,14 @@
 
     font-size: 14px;
 }
+.browser .item.hidden > button.display,
+.browseritem.hidden > button.display {
+    --fg: var(--v5);
+    --fgh: var(--v7);
+    --fgd: var(--v3);
+
+    font-style: italic;
+}
 .browser .item > button.display > ion-icon,
 .browseritem > button.display > ion-icon {
     margin-right: 5px;

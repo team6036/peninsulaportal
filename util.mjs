@@ -5,6 +5,7 @@ export const ALPHABETUPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const ALPHABETLOWER = ALPHABETUPPER.toLowerCase();
 export const ALPHABETALL = ALPHABETLOWER+ALPHABETUPPER;
 export const BASE64 = ALPHABETALL+NUMBERS+"-_";
+export const VARIABLE = ALPHABETALL+NUMBERS+"_";
 
 export const MAGIC = "_*[[;ƒ";
 

@@ -11,9 +11,9 @@ export default class WPILOGSource extends Source {
     #data;
 
     constructor(data) {
-        super("flat");
+        super("nest");
 
-        this.postNest = false;
+        this.postFlat = false;
 
         this.#data = null;
 
