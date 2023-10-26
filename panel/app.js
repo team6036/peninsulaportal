@@ -68,8 +68,11 @@ class RLine extends core.Odometry2d.Render {
 
 
 function getDisplay(t, v) {
-    t = String(t);
-    if (!Source.Topic.TYPES.includes(t)) return null;
+    t = (t == null) ? null : String(t);
+    if (t == null || t.length <= 0) return {
+        name: v ? "folder" : "folder-outline",
+        color: "",
+    };
     if (t.endsWith("[]")) {
         t = t.substring(0, t.length-2);
         let display = getDisplay(t, (t == "boolean") ? true : null);
@@ -79,6 +82,14 @@ function getDisplay(t, v) {
             color: display.color,
         };
     }
+    if (t.startsWith("struct:")) return {
+        name: "cube-outline",
+        color: "",
+    };
+    if (!Source.Topic.TYPES.includes(t)) return {
+        name: "document-outline",
+        color: "",
+    };
     if (["double", "float", "int"].includes(t)) return {
         src: "../assets/icons/number.svg",
         color: "var(--cb)",
@@ -91,7 +102,10 @@ function getDisplay(t, v) {
         name: "text",
         color: "var(--cy)",
     };
-    return { src: "../assets/icons/variable.svg" };
+    return {
+        src: "../assets/icons/variable.svg",
+        color: "",
+    };
 }
 
 
@@ -157,6 +171,9 @@ class BrowserItem extends util.Target {
         this.icon = icon;
     }
 
+    get isTableish() { return false; }
+    get isHidden() { return this.name.startsWith("."); }
+
     get elem() { return this.#elem; }
     get eDisplay() { return this.#eDisplay; }
     get eIcon() { return this.#eIcon; }
@@ -177,7 +194,11 @@ class BrowserItem extends util.Target {
     }
 
     get name() { return this.eName.textContent; }
-    set name(v) { this.eName.textContent = v; }
+    set name(v) {
+        this.eName.textContent = v;
+        if (this.isHidden) this.elem.classList.add("hidden");
+        else this.elem.classList.remove("hidden");
+    }
 
     get tag() { return this.eTag.textContent; }
     set tag(v) { this.eTag.textContent = v; }
@@ -194,6 +215,8 @@ class BrowserItem extends util.Target {
     set isClosed(v) { this.isOpen = !v; }
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
+
+    format() {}
 }
 
 class BrowserTable extends BrowserItem {
@@ -207,7 +230,16 @@ class BrowserTable extends BrowserItem {
         this.#children = [];
 
         this.addHandler("open-set", data => {
-            this.icon = this.isOpen ? "folder" : "folder-outline";
+            this.icon = "";
+            this.eIcon.style.color = "";
+            this.eName.style.color = "";
+            let display = getDisplay(this.type, this.value);
+            if (display != null) {
+                if ("src" in display) this.iconSrc = display.src;
+                else this.icon = display.name;
+                if ("color" in display) this.eIcon.style.color = display.color;
+                else this.eIcon.style.color = "";
+            }
         });
 
         this.isOpen = false;
@@ -216,6 +248,11 @@ class BrowserTable extends BrowserItem {
         this.isOpen = true;
         this.isOpen = false;
     }
+
+    get type() { return null; }
+    get value() { return this.isOpen; }
+
+    get isTableish() { return true; }
 
     get children() { return [...this.#children]; }
     set children(v) {
@@ -266,7 +303,7 @@ class BrowserTable extends BrowserItem {
     format() {
         this.children.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((child, i) => {
             child.elem.style.order = i;
-            if (child instanceof BrowserTable) child.format();
+            child.format();
         });
     }
 }
@@ -303,6 +340,12 @@ class BrowserTopic extends BrowserItem {
         if (!this.isArray) return this.type;
         return this.type.substring(0, this.type.length-2);
     }
+    get isStruct() { return this.arraylessType.startsWith("struct:"); }
+    get structType() {
+        if (!this.isStruct) return this.arraylessType;
+        return this.arraylessType.slice(7);
+    }
+    get isTableish() { return this.isStruct; }
     get value() { return (this.isArray && util.is(this.#value, "arr")) ? [...this.#value] : this.#value; }
     set value(v) {
         v = Source.Topic.ensureType(this.type, v);
@@ -320,6 +363,7 @@ class BrowserTopic extends BrowserItem {
             if ("src" in display) this.iconSrc = display.src;
             else this.icon = display.name;
             if ("color" in display) this.eIcon.style.color = display.color;
+            else this.eIcon.style.color = "";
         }
         if (this.isArray) {
             this.value.forEach((value, i) => {
@@ -349,6 +393,13 @@ class BrowserTopic extends BrowserItem {
         Object.keys(this.#sub).sort().forEach((id, i) => {
             let itm = this.#sub[id];
             itm.elem.style.order = i;
+        });
+    }
+
+    format() {
+        Object.values(this.#sub).sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((child, i) => {
+            child.elem.style.order = i;
+            child.format();
         });
     }
 }
@@ -1166,7 +1217,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 this.parent.remTab(this);
                             },
                         });
-                        if (generic instanceof Source.Table) generic.children.forEach(generic => dfs(generic));
+                        if (generic.isTableish) generic.children.forEach(generic => dfs(generic));
                     };
                     dfs(root);
                 }
@@ -1223,16 +1274,17 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 let root = this.page.source.root;
                 const dfs = generic => {
                     let itm = new Panel.AddTab.GenericButton(generic);
-                    if (generic instanceof { tables: Source.Table, topics: Source.Topic, all: Source.Generic }[this.searchPart]) items.push({
-                        item: itm,
-                        trigger: () => {
-                            if (!this.hasParent()) return;
-                            let index = this.parent.tabs.indexOf(this);
-                            this.parent.addTab(new Panel.BrowserTab(generic.path), index);
-                            this.parent.remTab(this);
-                        },
-                    });
-                    if (generic instanceof Source.Table) generic.children.forEach(generic => dfs(generic));
+                    if ({ tables: (generic.isTableish), topics: (generic instanceof Source.Topic), all: (generic instanceof Source.Generic) }[this.searchPart])
+                        items.push({
+                            item: itm,
+                            trigger: () => {
+                                if (!this.hasParent()) return;
+                                let index = this.parent.tabs.indexOf(this);
+                                this.parent.addTab(new Panel.BrowserTab(generic.path), index);
+                                this.parent.remTab(this);
+                            },
+                        });
+                    if (generic.isTableish) generic.children.forEach(generic => dfs(generic));
                 };
                 dfs(root);
             }
@@ -1494,25 +1546,19 @@ Panel.AddTab.GenericButton = class PanelAddTabGenericButton extends Panel.AddTab
         this.addHandler("update", data => {
             if (!this.hasGeneric()) {
                 this.icon = "document-outline";
-                this.name = "NONE";
+                this.name = "?";
                 return;
             }
             this.name = this.generic.textPath;
             if (this.name.length <= 0) this.name = "/";
-            if (this.generic instanceof Source.Table) {
-                this.icon = "folder-outline";
-                this.iconColor = "";
-                this.info = "";
-            } else if (this.generic instanceof Source.Topic) {
-                let display = getDisplay(this.generic.type, this.generic.get());
-                if (display != null) {
-                    if ("src" in display) this.iconSrc = display.src;
-                    else this.icon = display.name;
-                    if ("color" in display) this.iconColor = display.color;
-                    else this.iconColor = "";
-                }
-                this.info = this.generic.type;
+            let display = getDisplay(this.generic.type, (this.generic instanceof Source.Topic) ? this.generic.get() : null);
+            if (display != null) {
+                if ("src" in display) this.iconSrc = display.src;
+                else this.icon = display.name;
+                if ("color" in display) this.iconColor = display.color;
+                else this.iconColor = "";
             }
+            this.info = util.ensure(this.generic.type, "str");
         });
 
         this.generic = generic;
@@ -1579,7 +1625,16 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 state = {};
             }
             this.eTabIcon.style.color = "";
-            if (generic instanceof Source.Table) {
+            this.eTabName.style.color = "";
+            this.iconColor = "";
+            let display = getDisplay(generic.type, (generic instanceof Source.Topic) ? generic.get() : null);
+            if (display != null) {
+                if ("src" in display) this.iconSrc = display.src;
+                else this.icon = display.name;
+                if ("color" in display) this.eTabIcon.style.color = display.color;
+                else this.eTabIcon.style.color = "";
+            }
+            if (generic.isTableish) {
                 this.eBrowser.classList.add("this");
                 this.eDisplay.classList.remove("this");
                 this.icon = "folder-outline";
@@ -1593,7 +1648,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 const dfsGeneric = generic => {
                     path.push(generic.name);
                     newPaths.push([[...path.slice(1)], generic]);
-                    if (generic instanceof Source.Table) generic.children.forEach(generic => dfsGeneric(generic));
+                    if (generic.isTableish) generic.children.forEach(generic => dfsGeneric(generic));
                     path.pop();
                 };
                 dfsGeneric(generic);
@@ -1601,7 +1656,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 const dfsItem = item => {
                     path.push(item.name);
                     oldPaths.push([[...path], item]);
-                    if (item instanceof BrowserTable) item.children.forEach(item => dfsItem(item));
+                    if (item.isTableish) item.children.forEach(item => dfsItem(item));
                     path.pop();
                 };
                 state.items.forEach(item => dfsItem(item));
@@ -1663,7 +1718,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
                     if (i < 0) return;
                     let item = oldPaths[i][1];
-                    if (!(item instanceof BrowserItem)) return;
+                    if (!(item instanceof BrowserTopic)) return;
                     item.value = generic.get();
                 });
                 state.items.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => (itm.elem.style.order = i));
@@ -1672,12 +1727,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 this.eDisplay.classList.add("this");
                 let value = generic.get();
                 if (generic.isArray) value = util.ensure(value, "arr");
-                let display = getDisplay(generic.type, value);
-                if (display != null) {
-                    if ("src" in display) this.iconSrc = display.src;
-                    else this.icon = display.name;
-                    if ("color" in display) this.eTabIcon.style.color = display.color;
-                }
                 this.name = generic.name;
                 if (this.isClosed) return;
                 if (state.topic != generic || state.type != generic.type) {
@@ -1782,8 +1831,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     }
                 }
                 if (state.update) state.update();
-                this.eTabName.style.color = "";
-                this.iconColor = "";
             } else {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.remove("this");
@@ -5425,15 +5472,11 @@ export default class App extends core.App {
                     let btn = this.eDrag.children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (generic.name.length > 0) ? generic.name : "/";
-                    if (generic instanceof Source.Table) {
-                        icon.setAttribute("name", "folder-outline");
-                    } else {
-                        let display = getDisplay(generic.type, generic.get());
-                        if (display != null) {
-                            if ("src" in display) icon.setAttribute("src", display.src);
-                            else icon.setAttribute("name", display.name);
-                            if ("color" in display) icon.style.color = display.color;
-                        }
+                    let display = getDisplay(generic.type, (generic instanceof Source.Topic) ? generic.get() : null);
+                    if (display != null) {
+                        if ("src" in display) icon.setAttribute("src", display.src);
+                        else icon.setAttribute("name", display.name);
+                        if ("color" in display) icon.style.color = display.color;
                     }
                     return;
                 }
@@ -6133,6 +6176,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
 
         if (!this.hasApp()) return;
 
+        window.hotteststruct = () => {
+            this.source.create([".schema", "struct:my_struct"], "raw");
+            this.source.update([".schema", "struct:my_struct"], new TextEncoder().encode("bool value; double arr[4]; enum {a=1, b=2} int8 val; bool value2 : 1; enum{a=1,b=2}int8 value3:2; int16 a:4; uint16 b:5; bool c:1; int16 d:7"));
+        };
+
         this.app.addHandler("perm", async data => {
             this.app.markChange("*all");
             try {
@@ -6280,11 +6328,15 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
 
         this.format();
 
-        let refactor = false;
+        let refactor = false, browserItems = [];
         this.addHandler("refactor-browser-queue", data => { refactor = true; });
         this.addHandler("update", data => {
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
+            browserItems.forEach(data => {
+                let generic = data.generic, item = data.item;
+                item.value = generic.get();
+            });
             if (!refactor) return;
             refactor = false;
             this.post("refactor-browser", null);
@@ -6297,7 +6349,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                     const dfs = generic => {
                         path.push(generic.name);
                         newPaths.push([[...path], generic]);
-                        if (generic instanceof Source.Table)
+                        if (generic.isTableish)
                             generic.children.forEach(generic => dfs(generic));
                         path.pop();
                     };
@@ -6310,7 +6362,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 const dfs = itm => {
                     path.push(itm.name);
                     oldPaths.push([[...path], itm]);
-                    if (itm instanceof BrowserTable)
+                    if (itm.isTableish)
                         itm.children.forEach(itm => dfs(itm));
                     path.pop();
                 };
@@ -6348,15 +6400,18 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 else this.addBrowserItem(itm);
                 oldPaths.push([[...path], itm]);
             });
-            newPaths.forEach(data => {
+            browserItems = newPaths.map(data => {
                 let path = data[0], generic = data[1];
-                if (!(generic instanceof Source.Topic)) return;
+                if (!(generic instanceof Source.Topic)) return null;
                 let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
-                if (i < 0) return;
+                if (i < 0) return null;
                 let item = oldPaths[i][1];
-                if (!(item instanceof BrowserItem)) return;
-                item.value = generic.get();
-            });
+                if (!(item instanceof BrowserTopic)) return null;
+                return {
+                    generic: generic,
+                    item: item,
+                };
+            }).filter(data => !!data);
         });
         this.#eDragBox = document.createElement("div");
         this.elem.appendChild(this.eDragBox);
@@ -6683,7 +6738,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
         this.browserItems.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? +1 : (a.name.toLowerCase() < b.name.toLowerCase()) ? -1 : 0).forEach((itm, i) => {
             itm.elem.style.order = i;
-            if (itm instanceof BrowserTable) itm.format();
+            itm.format();
         });
         return true;
     }

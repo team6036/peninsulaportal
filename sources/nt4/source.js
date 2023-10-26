@@ -11,6 +11,8 @@ export default class NTSource extends Source {
     constructor(address) {
         super("nest");
 
+        this.postFlat = false;
+
         this.#client = null;
 
         this.address = address;

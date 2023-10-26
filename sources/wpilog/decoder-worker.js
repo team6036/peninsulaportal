@@ -13,27 +13,20 @@ class WPILOGDecoderWorker extends WorkerBase {
 
         this.addHandler("cmd-start", data => {
             try {
-                const fast = true;
                 const decoder = new WPILOGDecoder(data);
                 // crude serialized source building - find better way if possible
                 // this is done to increase performance as normal method calls of an unserialized source results in way too much lag
-                const source = fast ? {
-                    postNest: false,
-                    postFlat: true,
-                    nestRoot: {},
-                    flatRoot: {
+                const source = {
+                    postNest: true,
+                    postFlat: false,
+                    nestRoot: {
                         name: "",
                         children: [],
                     },
+                    flatRoot: {},
                     tsMin: 0,
                     tsMax: 0,
-                } : (() => {
-                    let source = new Source();
-                    source.postNest = false;
-                    source.postFlat = true;
-                    source.tsMin = source.tsMax = 0;
-                    return source;
-                })();
+                };
                 let entryId2Name = {};
                 let entryId2Type = {};
                 let entryId2Topic = {};
@@ -48,16 +41,34 @@ class WPILOGDecoderWorker extends WorkerBase {
                         let type = entryId2Type[id] = startData.type;
                         if (["int64"].includes(type)) type = "int";
                         if (["int64[]"].includes(type)) type = "int[]";
-                        if (fast) {
-                            const topic = entryId2Topic[id] = {
-                                name: name,
-                                type: type,
-                                valueLog: [],
-                            };
-                            source.flatRoot.children.push(topic);
-                        } else {
-                            entryId2Topic[id] = source.create([name], type);
+                        let path = String(name).split("/");
+                        while (path.length > 0 && path.at(0).length <= 0) path.shift();
+                        while (path.length > 0 && path.at(-1).length <= 0) path.pop();
+                        const topic = entryId2Topic[id] = {
+                            name: path.pop(),
+                            type: type,
+                            valueLog: [],
+                        };
+                        let children = source.nestRoot.children;
+                        while (path.length > 0) {
+                            let name = path.shift();
+                            let found = null;
+                            children.forEach(child => {
+                                if (found) return;
+                                if (child.name != name) return;
+                                if (!child.children) return;
+                                found = child;
+                            });
+                            if (!found) {
+                                found = {
+                                    name: name,
+                                    children: [],
+                                };
+                                children.push(found);
+                            }
+                            children = found.children;
                         }
+                        children.push(topic);
                     } else {
                         let id = record.entryId;
                         if (!(id in entryId2Name)) return;
@@ -83,11 +94,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                             json: () => record.getStr(),
                         };
                         let v = (type in typefs) ? typefs[type]() : record.getRaw();
-                        if (fast) {
-                            topic.valueLog.push({ ts: ts, v: v });
-                        } else {
-                            source.update([name], v, ts);
-                        }
+                        topic.valueLog.push({ ts: ts, v: v });
                         if (first) {
                             first = false;
                             source.tsMin = source.tsMax = ts;
@@ -97,7 +104,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                         }
                     }
                 });
-                this.send("finish", fast ? source : source.toSerialized());
+                this.send("finish", source);
             } catch (e) { this.send("error", { e: e }); }
         });
     }
