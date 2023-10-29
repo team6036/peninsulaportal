@@ -258,7 +258,7 @@ Source.Field = class SourceField extends util.Target {
             return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
         }
         if (t == "structschema") return toUint8Array(v);
-        if (t.startsWith("struct:")) return toUint8Array(v);
+        if (t.startsWith("struct:")) return util.ensure(v, "obj");
         const map = {
             boolean: "bool",
             double: "float",
