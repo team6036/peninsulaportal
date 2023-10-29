@@ -2,9 +2,8 @@ import * as util from "../../util.mjs";
 
 import { WorkerClient } from "../worker.js";
 
-import { toUint8Array } from "./decoder.js";
-
 import Source from "../source.js";
+import { toUint8Array } from "../source.js";
 
 
 export default class WPILOGSource extends Source {

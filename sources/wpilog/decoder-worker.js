@@ -14,19 +14,25 @@ class WPILOGDecoderWorker extends WorkerBase {
         this.addHandler("cmd-start", data => {
             try {
                 const decoder = new WPILOGDecoder(data);
+                const CRUDE = true;
                 // crude serialized source building - find better way if possible
                 // this is done to increase performance as normal method calls of an unserialized source results in way too much lag
-                const source = {
+                const source = CRUDE ? {
                     postNest: true,
                     postFlat: false,
                     nestRoot: {
                         name: "",
-                        children: [],
+                        type: null,
+                        fields: {},
                     },
                     flatRoot: {},
                     tsMin: 0,
                     tsMax: 0,
-                };
+                } : (() => {
+                    const source = new Source("nest");
+                    source.postNest = true;
+                    source.postFlat = false;
+                })();
                 let entryId2Name = {};
                 let entryId2Type = {};
                 let entryId2Topic = {};
@@ -44,31 +50,37 @@ class WPILOGDecoderWorker extends WorkerBase {
                         let path = String(name).split("/");
                         while (path.length > 0 && path.at(0).length <= 0) path.shift();
                         while (path.length > 0 && path.at(-1).length <= 0) path.pop();
-                        const topic = entryId2Topic[id] = {
-                            name: path.pop(),
-                            type: type,
-                            valueLog: [],
-                        };
-                        let children = source.nestRoot.children;
-                        while (path.length > 0) {
-                            let name = path.shift();
-                            let found = null;
-                            children.forEach(child => {
-                                if (found) return;
-                                if (child.name != name) return;
-                                if (!child.children) return;
-                                found = child;
-                            });
-                            if (!found) {
-                                found = {
-                                    name: name,
-                                    children: [],
-                                };
-                                children.push(found);
+                        if (CRUDE) {
+                            const topic = entryId2Topic[id] = {
+                                name: path.pop(),
+                                type: type,
+                                valueLog: [],
+                                fields: {},
+                            };
+                            let fields = source.nestRoot.fields;
+                            while (path.length > 0) {
+                                let name = path.shift();
+                                let found = null;
+                                for (let fname in fields) {
+                                    if (found) continue;
+                                    if (fname != name) continue;
+                                    found = fields[fname];
+                                }
+                                if (!found) {
+                                    found = {
+                                        name: name,
+                                        type: null,
+                                        fields: {},
+                                    };
+                                    fields[found.name] = found;
+                                }
+                                fields = found.fields;
                             }
-                            children = found.children;
+                            fields[topic.name] = topic;
+                        } else {
+                            source.create(path, type);
+                            entryId2Topic[id] = source.lookup(path);
                         }
-                        children.push(topic);
                     } else {
                         let id = record.entryId;
                         if (!(id in entryId2Name)) return;
@@ -94,17 +106,21 @@ class WPILOGDecoderWorker extends WorkerBase {
                             json: () => record.getStr(),
                         };
                         let v = (type in typefs) ? typefs[type]() : record.getRaw();
-                        topic.valueLog.push({ ts: ts, v: v });
-                        if (first) {
-                            first = false;
-                            source.tsMin = source.tsMax = ts;
+                        if (CRUDE) {
+                            topic.valueLog.push({ ts: ts, v: v });
+                            if (first) {
+                                first = false;
+                                source.tsMin = source.tsMax = ts;
+                            } else {
+                                source.tsMin = Math.min(source.tsMin, ts);
+                                source.tsMax = Math.max(source.tsMax, ts);
+                            }
                         } else {
-                            source.tsMin = Math.min(source.tsMin, ts);
-                            source.tsMax = Math.max(source.tsMax, ts);
+                            topic.update(v, ts);
                         }
                     }
                 });
-                this.send("finish", source);
+                this.send("finish", CRUDE ? source : source.toSerialized());
             } catch (e) { this.send("error", { e: e }); }
         });
     }

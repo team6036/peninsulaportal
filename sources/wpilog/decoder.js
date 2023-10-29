@@ -1,5 +1,7 @@
 import * as util from "../../util.mjs";
 
+import { toUint8Array } from "../source.js";
+
 
 const HEADERSTRING = "WPILOG";
 const HEADERVERSION = 0x0100;
@@ -8,17 +10,6 @@ const CONTROLSTART = 0;
 const CONTROLFINISH = 1;
 const CONTROLMETADATA = 2;
 
-const TEXTDECODER = new TextDecoder("UTF-8");
-const TEXTENCODER = new TextEncoder("UTF-8");
-
-export function toUint8Array(v) {
-    if (v instanceof Uint8Array) return v;
-    if (util.is(v, "str")) return TEXTENCODER.encode(v);
-    try {
-        return Uint8Array.from(v);
-    } catch (e) {}
-    return new Uint8Array();
-}
 
 export default class WPILOGDecoder extends util.Target {
     #data;
@@ -41,7 +32,7 @@ export default class WPILOGDecoder extends util.Target {
     isValid() {
         return (
             this.data.length >= 12 &&
-            TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
+            util.TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
             this.version == HEADERVERSION
         );
     }
@@ -52,7 +43,7 @@ export default class WPILOGDecoder extends util.Target {
     get extraHeader() {
         if (this.data.length < 12) return "";
         let l = this.dataView.getUint32(8, true);
-        return TEXTDECODER.decode(this.data.subarray(12, 12+l));
+        return util.TEXTDECODER.decode(this.data.subarray(12, 12+l));
     }
 
     #readInt(x, l) {
@@ -182,7 +173,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     getInt() { return (this.data.length == 8) ? Number(this.dataView.getBigInt64(0, true)) : null; }
     getFloat() { return (this.data.length == 4) ? this.dataView.getFloat32(0, true) : null; }
     getDouble() { return (this.data.length == 8) ? this.dataView.getFloat64(0, true) : null; }
-    getStr() { return TEXTDECODER.decode(this.data); }
+    getStr() { return util.TEXTDECODER.decode(this.data); }
     getBoolArr() { return [...this.data.map(x => x != 0)]; }
     getIntArr() { return (this.data.length%8 == 0) ? Array.from(new Array(this.data.length/8).keys()).map(i => Number(this.dataView.getBigInt64(i*8, true))) : null; }
     getFloatArr() { return (this.data.length%4 == 0) ? Array.from(new Array(this.data.length/4).keys()).map(i => this.dataView.getFloat32(i*4, true)) : null; }
@@ -203,7 +194,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         let l = this.dataView.getUint32(x, true);
         if (x+4+l > this.data.length) return null;
         return {
-            str: TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
+            str: util.TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
             shift: 4+l,
         };
     }

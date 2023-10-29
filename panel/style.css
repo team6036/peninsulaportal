@@ -6,8 +6,8 @@
     align-items: stretch;
     align-content: center;
 }
-.browser .item,
-.browseritem {
+.browser .field,
+.browserfield {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -15,8 +15,8 @@
     align-items: stretch;
     align-content: center;
 }
-.browser .item > button.display,
-.browseritem > button.display {
+.browser .field > button.display,
+.browserfield > button.display {
     --bg: transparent;
     --fg: var(--v7);
     --bgh: var(--v2);
@@ -38,22 +38,22 @@
 
     font-size: 14px;
 }
-.browser .item.hidden > button.display,
-.browseritem.hidden > button.display {
+.browser .field.hidden > button.display,
+.browserfield.hidden > button.display {
     --fg: var(--v5);
     --fgh: var(--v7);
     --fgd: var(--v3);
 
     font-style: italic;
 }
-.browser .item > button.display > ion-icon,
-.browseritem > button.display > ion-icon {
+.browser .field > button.display > ion-icon,
+.browserfield > button.display > ion-icon {
     margin-right: 5px;
 
     min-width: 14px;
 }
-.browser .item > button.display > .tag,
-.browseritem > button.display > .tag {
+.browser .field > button.display > .tag,
+.browserfield > button.display > .tag {
     margin-left: 10px;
 
     color: var(--v4);
@@ -63,16 +63,16 @@
 
     transition: color var(--t);
 }
-.browser .item > button.display:not(:disabled):hover > .tag,
-.browseritem > button.display:not(:disabled):hover > .tag {
+.browser .field > button.display:not(:disabled):hover > .tag,
+.browserfield > button.display:not(:disabled):hover > .tag {
     color: var(--v6);
 }
-.browser .item > button.display:disabled > .tag,
-.browseritem > button.display:disabled > .tag {
+.browser .field > button.display:disabled > .tag,
+.browserfield > button.display:disabled > .tag {
     color: var(--v2);
 }
-.browser .item > .content,
-.browseritem > .content {
+.browser .field > .content,
+.browserfield > .content {
     position: relative;
 
     margin-left: 20px;
@@ -84,12 +84,12 @@
     align-items: stretch;
     align-content: center;
 }
-.browser .item.this > .content,
-.browseritem.this > .content {
+.browser .field.this > .content,
+.browserfield.this > .content {
     display: flex;
 }
-.browser .item > .content > button.side,
-.browseritem > .content > button.side {
+.browser .field > .content > button.side,
+.browserfield > .content > button.side {
     position: absolute;
     left: 0px;
     top: 0px;
@@ -101,8 +101,8 @@
 
     background-color: transparent;
 }
-.browser .item > .content > button.side::before,
-.browseritem > .content > button.side::before {
+.browser .field > .content > button.side::before,
+.browserfield > .content > button.side::before {
     content: "";
 
     position: absolute;
@@ -116,12 +116,12 @@
 
     transition: background-color var(--t);
 }
-.browser .item > .content > button.side:not(:disabled):hover::before,
-.browseritem > .content > button.side:not(:disabled):hover::before {
+.browser .field > .content > button.side:not(:disabled):hover::before,
+.browserfield > .content > button.side:not(:disabled):hover::before {
     background-color: var(--a);
 }
-.browser .item > .content > button.side:disabled::before,
-.browseritem > .content > button.side:disabled::before {
+.browser .field > .content > button.side:disabled::before,
+.browserfield > .content > button.side:disabled::before {
     background-color: var(--v2-0);
 }
 
@@ -1095,8 +1095,8 @@
     align-content: stretch;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display:not(.array) > .item {
-    flex-basis: 100%;
-
+    height: 100%;
+    max-height: 100%;
     padding: 20px;
 
     display: flex;

@@ -3,6 +3,16 @@ import * as util from "../util.mjs";
 import StructHelper from "./struct-helper.js";
 
 
+export function toUint8Array(v) {
+    if (v instanceof Uint8Array) return v;
+    if (util.is(v, "str")) return util.TEXTENCODER.encode(v);
+    try {
+        return Uint8Array.from(v);
+    } catch (e) {}
+    return new Uint8Array();
+}
+
+
 export default class Source extends util.Target {
     #useNestRoot;
     #postNest;
@@ -15,6 +25,8 @@ export default class Source extends util.Target {
     #tsMin;
     #tsMax;
 
+    #structHelper;
+
     #playback;
 
     constructor(root) {
@@ -25,14 +37,16 @@ export default class Source extends util.Target {
         this.#postNest = true;
         this.#postFlat = true;
 
-        this.#nestRoot = new Source.Table(this, "");
-        this.#flatRoot = new Source.Table(this, "");
+        this.#nestRoot = new Source.Field(this, "", null);
+        this.#flatRoot = new Source.Field(this, "", null);
 
         this.nestRoot.addHandler("change", data => this.post("change", data));
         this.flatRoot.addHandler("change", data => this.post("change", data));
 
         this.#ts = 0;
         this.#tsMin = this.#tsMax = 0;
+
+        this.#structHelper = new StructHelper();
 
         this.#playback = new Source.Playback(this);
     }
@@ -58,34 +72,33 @@ export default class Source extends util.Target {
 
     get playback() { return this.#playback; }
 
+    get structHelper() { return this.#structHelper; }
+
     create(k, type) {
-        if (!Source.Topic.TYPES.includes(type)) return false;
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
         if (this.postFlat) {
-            this.flatRoot.add(new Source.Topic(this.flatRoot, k.join("/"), type));
+            this.flatRoot.add(new Source.Field(this.flatRoot, k.join("/"), type));
         }
         if (this.postNest) {
+            let kk = [...k];
             let o = this.nestRoot, oPrev = this;
-            while (k.length > 0) {
-                let name = k.shift();
+            while (kk.length > 0) {
+                let name = kk.shift();
                 [o, oPrev] = [o.lookup([name]), o];
-                if (k.length > 0) {
-                    if (!(o instanceof Source.Table)) {
-                        oPrev.rem(o);
-                        o = new Source.Table(oPrev, name);
+                if (kk.length > 0) {
+                    if (!(o instanceof Source.Field)) {
+                        o = new Source.Field(oPrev, name, null);
                         oPrev.add(o);
                     }
                     continue;
                 }
-                if (!(o instanceof Source.Topic)) {
-                    oPrev.rem(o);
-                    o = new Source.Topic(oPrev, name, type);
+                if (!(o instanceof Source.Field)) {
+                    o = new Source.Field(oPrev, name, type);
                     oPrev.add(o);
                 }
             }
         }
-        this.cleanup();
         return true;
     }
     delete(k) {
@@ -95,29 +108,18 @@ export default class Source extends util.Target {
             this.flatRoot.rem(this.flatRoot.lookup([k.join("/")]));
         }
         if (this.postNest) {
-            let o = this.nestRoot, oPrev = this;
-            while (k.length > 0) {
-                let name = k.shift();
-                [o, oPrev] = [o.lookup([name]), o];
-                if (k.length > 0) {
-                    if (!(o instanceof Source.Table)) {
+            let o = this.nestRoot.lookup([...k]), first = true;
+            while (o instanceof Source.Field) {
+                let oPrev = o.parent;
+                if (oPrev instanceof Source.Field) {
+                    if (first || (!o.hasType() && o.nFields.length <= 0)) {
+                        first = false;
                         oPrev.rem(o);
-                        o = new Source.Table(oPrev, name);
-                        oPrev.add(o);
                     }
-                    continue;
                 }
-                oPrev.rem(o);
                 o = oPrev;
-                while (1) {
-                    if (!(o instanceof Source.Table)) break;
-                    if (!(o.parent instanceof Source.Table)) break;
-                    if (o.children.length > 0) break;
-                    o.parent.rem(o);
-                }
             }
         }
-        this.cleanup();
         return true;
     }
     update(k, v, ts=null) {
@@ -126,45 +128,31 @@ export default class Source extends util.Target {
         if (k.length <= 0) return false;
         if (this.postFlat) {
             let o = this.flatRoot.lookup([k.join("/")]);
-            if (o instanceof Source.Topic)
+            if (o instanceof Source.Field)
                 o.update(v, ts);
         }
         if (this.postNest) {
-            let o = this.nestRoot; let oPrev = this;
-            while (k.length > 0) {
-                let name = k.shift();
-                [o, oPrev] = [o.lookup([name]), o];
-                if (k.length > 0) {
-                    if (!(o instanceof Source.Table)) {
-                        oPrev.rem(o);
-                        o = new Source.Table(oPrev, name);
-                        oPrev.add(o);
-                    }
-                    continue;
-                }
-                if (!(o instanceof Source.Topic)) throw "Nonexistent topic with path: "+k;
+            let o = this.nestRoot.lookup([...k]);
+            if (o instanceof Source.Field)
                 o.update(v, ts);
+        }
+        if (k.length == 2 && String(k[0]) == ".schema" && (v instanceof Uint8Array)) {
+            let struct = String(k[1]);
+            if (struct.startsWith("struct:")) {
+                struct = struct.slice(7);
+                if (this.structHelper.hasPattern(struct)) this.structHelper.remPattern(struct);
+                let pattern = this.structHelper.addPattern(struct, new StructHelper.Pattern(this.structHelper, util.TEXTDECODER.decode(v)));
+                pattern.build();
+                this.structHelper.build();
+                this.nestRoot.build();
+                this.flatRoot.build();
             }
         }
         return true;
     }
     clear() {
-        if (this.postNest) this.nestRoot.children.forEach(child => this.nestRoot.rem(child));
-        if (this.postFlat) this.flatRoot.children.forEach(child => this.flatRoot.rem(child));
-        this.cleanup();
-    }
-    cleanup() {
-        const dfs = generic => {
-            if (generic.nFields <= 0) {
-                if (generic.hasGenericParent())
-                    generic.parent.rem(generic);
-                return;
-            }
-            if (generic instanceof Source.Table)
-                generic.children.forEach(child => dfs(child));
-        };
-        if (this.postNest) dfs(this.nestRoot);
-        if (this.postFlat) dfs(this.flatRoot);
+        if (this.postNest) this.nestRoot.fields.forEach(field => this.nestRoot.rem(field));
+        if (this.postFlat) this.flatRoot.fields.forEach(field => this.flatRoot.rem(field));
     }
 
     toSerialized() {
@@ -179,12 +167,29 @@ export default class Source extends util.Target {
     }
     fromSerialized(data) {
         data = util.ensure(data, "obj");
+        this.structHelper.clearPatterns();
         this.postNest = data.postNest;
         this.postFlat = data.postFlat;
-        if (this.postNest) this.#nestRoot = Source.Table.fromSerialized(this, data.nestRoot);
-        if (this.postFlat) this.#flatRoot = Source.Table.fromSerialized(this, data.flatRoot);
+        if (this.postNest) this.#nestRoot = Source.Field.fromSerialized(this, data.nestRoot);
+        if (this.postFlat) this.#flatRoot = Source.Field.fromSerialized(this, data.flatRoot);
         this.nestRoot.addHandler("change", data => this.post("change", data));
         this.flatRoot.addHandler("change", data => this.post("change", data));
+        [this.nestRoot].forEach(root => {
+            let schema = root.lookup([".schema"]);
+            if (!(schema instanceof Source.Field)) return;
+            schema.fields.forEach(field => {
+                if (!field.name.startsWith("struct:")) return;
+                if (!field.hasType()) return;
+                if (field.type != "structschema") return;
+                let struct = field.name.slice(7);
+                if (this.structHelper.hasPattern(struct)) this.structHelper.remPattern(struct);
+                let pattern = this.structHelper.addPattern(struct, new StructHelper.Pattern(this.structHelper, util.TEXTDECODER.decode(field.valueLog[0].v)));
+                pattern.build();
+                this.structHelper.build();
+                this.nestRoot.build();
+                this.flatRoot.build();
+            });
+        });
         this.ts = data.ts;
         this.tsMin = data.tsMin;
         this.tsMax = data.tsMax;
@@ -225,129 +230,12 @@ Source.Playback = class SourcePlayback extends util.Target {
         this.source.ts = Math.min(this.source.tsMax, Math.max(this.source.tsMin, this.source.ts+delta));
     }
 };
-Source.Generic = class SourceGeneric extends util.Target {
+Source.Field = class SourceField extends util.Target {
     #parent;
     #name;
-
-    constructor(parent, name) {
-        super();
-
-        if (!(parent instanceof Source.Generic || parent instanceof Source)) throw "Parent is not valid";
-
-        this.#parent = parent;
-        this.#name = String(name);
-    }
-
-    get parent() { return this.#parent; }
-    get name() { return this.#name; }
-    hasGenericParent() { return this.parent instanceof Source.Generic; }
-    hasSourceParent() { return this.parent instanceof Source; }
-    get source() { return this.hasSourceParent() ? this.parent : this.parent.source; }
-
-    get path() {
-        if (this.hasSourceParent()) return [];
-        return [...this.parent.path, this.name];
-    }
-    get textPath() { return this.path.join("/"); }
-
-    get nFields() { return 0; }
-
-    get isTableish() { return false; }
-    get isHidden() { return this.name.startsWith("."); }
-
-    lookup(k) {
-        k = util.ensure(k, "arr");
-        if (k.length > 0) return null;
-        return this;
-    }
-
-    toSerialized() {
-        return {
-            name: this.name,
-        };
-    }
-    static fromSerialized(parent, data) {
-        data = util.ensure(data, "obj");
-        return new Source.Generic(parent, data.name);
-    }
-};
-Source.Table = class SourceTable extends Source.Generic {
-    #children;
-
-    constructor(parent, name) {
-        super(parent, name);
-
-        this.#children = new Set();
-    }
-
-    get nFields() {
-        let n = 0;
-        this.children.forEach(child => (n += child.nFields));
-        return n;
-    }
-
-    get children() { return [...this.#children]; }
-    has(child) {
-        if (!(child instanceof Source.Generic)) return false;
-        if (child.parent != this) return false;
-        return this.#children.has(child);
-    }
-    get(i) {
-        i = util.ensure(i, "int");
-        if (i < 0 || i >= this.children.length) return null;
-        return this.children[i];
-    }
-    add(child) {
-        if (!(child instanceof Source.Generic)) return false;
-        if (child.parent != this) return false;
-        this.#children.add(child);
-        child._onChange = data => {
-            let path = [this.name, ...util.ensure(util.ensure(data, "obj").path, "arr")];
-            this.post("change", { path: path });
-        }
-        child.addHandler("change", child._onChange);
-        this.post("change", null);
-        return child;
-    }
-    rem(child) {
-        if (!(child instanceof Source.Generic)) return false;
-        if (child.parent != this) return false;
-        this.#children.delete(child);
-        child.remHandler("change", child._onChange);
-        delete child._onChange;
-        this.post("change", null);
-        return child;
-    }
-
-    get isTableish() { return true; }
-
-    lookup(k) {
-        k = util.ensure(k, "arr");
-        if (k.length <= 0) return this;
-        let name = k.shift();
-        for (let i = 0; i < this.children.length; i++)
-            if (this.get(i).name == name)
-                return this.get(i).lookup(k);
-        return null;
-    }
-
-    toSerialized() {
-        return {
-            name: this.name,
-            children: this.children.map(child => child.toSerialized()),
-        };
-    }
-    static fromSerialized(parent, data) {
-        data = util.ensure(data, "obj");
-        let table = new Source.Table(parent, data.name);
-        util.ensure(data.children, "arr").forEach(data => table.add(("children" in util.ensure(data, "obj")) ? Source.Table.fromSerialized(table, data) : Source.Topic.fromSerialized(table, data)));
-        return table;
-    }
-};
-Source.Topic = class SourceTopic extends Source.Generic {
     #type;
     #valueLog;
-    #sub;
+    #fields;
 
     static TYPES = [
         "boolean", "boolean[]",
@@ -357,15 +245,17 @@ Source.Topic = class SourceTopic extends Source.Generic {
         "raw",
         "string", "string[]",
         "null",
+        "structschema",
     ];
 
     static ensureType(t, v) {
         t = String(t);
-        if (!Source.Topic.TYPES.includes(t)) return null;
         if (t.endsWith("[]")) {
-            t = t.substring(0, t.length-2);
-            return util.ensure(v, "arr").map(v => Source.Topic.ensureType(t, v));
+            t = t.slice(0, t.length-2);
+            return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
         }
+        if (t == "structschema") return toUint8Array(v);
+        if (t.startsWith("struct:")) return toUint8Array(v);
         const map = {
             boolean: "bool",
             double: "float",
@@ -378,54 +268,86 @@ Source.Topic = class SourceTopic extends Source.Generic {
     }
 
     constructor(parent, name, type) {
-        super(parent, name);
+        super();
 
-        type = String(type);
+        if (!(parent instanceof Source.Field || parent instanceof Source)) throw "Parent "+(util.is(parent, "obj") ? parent.constructor.name : parent)+" is not valid";
 
-        if (!type.startsWith("struct:") && !Source.Topic.TYPES.includes(type))
-            throw "Type "+type+" is not a valid type";
-        
-        this.#type = type;
+        this.#parent = parent;
+
+        this.#name = String(name);
+        this.#type = (type == null) ? null : String(type);
+
         this.#valueLog = [];
-        this.#sub = {};
+
+        this.#fields = {};
     }
 
-    get nFields() { return 1; }
+    get parent() { return this.#parent; }
+    hasFieldParent() { return this.parent instanceof Source.Field; }
+    hasSourceParent() { return this.parent instanceof Source; }
+    get source() { return this.hasSourceParent() ? this.parent : this.parent.source; }
+
+    get path() {
+        if (this.hasSourceParent()) return [];
+        return [...this.parent.path, this.name];
+    }
+    get textPath() { return this.path.join("/"); }
+
+    get name() { return this.#name; }
+    get isHidden() { return this.name.startsWith("."); }
 
     get type() { return this.#type; }
-    get isArray() { return this.type.endsWith("[]"); }
-    get arraylessType() {
-        if (!this.isArray) return this.type;
-        return this.type.substring(0, this.type.length-2);
-    }
-    get isStruct() { return this.arraylessType.startsWith("struct:"); }
+    hasType() { return this.type != null; }
+    get isStruct() { return this.hasType() && this.type.startsWith("struct:"); }
     get structType() {
-        if (!this.isStruct) return this.arraylessType;
-        return this.arraylessType.slice(7);
+        if (!this.hasType()) return null;
+        if (!this.isStruct) return this.type;
+        return this.type.slice(7);
     }
-    get isTableish() { return this.isStruct; }
+    get clippedType() {
+        if (!this.hasType()) return null;
+        if (this.isStruct) return this.structType;
+        return this.type;
+    }
+    get isArray() { return this.hasType() && this.clippedType.endsWith("[]"); }
+    get arrayType() {
+        if (!this.hasType()) return null;
+        if (!this.isArray) return this.clippedType;
+        return this.clippedType.slice(0, this.clippedType.length-2);
+    }
+    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.arrayType); }
+
     get valueLog() { return [...this.#valueLog]; }
     set valueLog(v) {
+        if (!this.hasType()) return;
         v = util.ensure(v, "arr");
+        this.#fields = {};
         let typeCheck = {};
-        this.#valueLog = v.map(v => {
-            v = util.ensure(v, "obj");
-            let ts = util.ensure(v.ts, "num");
-            v = Source.Topic.ensureType(this.type, v.v);
-            if (this.isArray) {
+        this.#valueLog = v.map(log => {
+            log = util.ensure(log, "obj");
+            let ts = util.ensure(log.ts, "num"), v = log.v;
+            v = Source.Field.ensureType(this.type, v);
+            if (this.isStruct) {
+                if (util.is(v, "obj") && v["%"]) {
+                    v = util.ensure(v, "obj");
+                    v["%"] = true;
+                    v.unbuilt = toUint8Array(v.unbuilt);
+                    v.built = (v.built == null) ? null : util.ensure(v.built, "obj");
+                } else v = { "%": true, unbuilt: toUint8Array(v), built: null };
+            } if (this.isArray) {
                 v.forEach((v, i) => {
                     if ((i in typeCheck) && (typeCheck[i] == v)) return;
                     typeCheck[i] = v;
-                    if (!(i in this.#sub)) this.#sub[i] = new Source.Topic(this, i, this.arraylessType);
-                    this.#sub[i].update(v, ts);
+                    if (!(i in this.#fields)) this.add(new Source.Field(this, i, this.arrayType));
+                    this.#fields[i].update(v, ts);
                 });
-            } else if (this.isStruct) {
-                
-            } else this.#sub = {};
+            } else;
             return { ts: ts, v: v };
         }).sort((a, b) => a.ts-b.ts);
+        this.build();
     }
     getIndex(ts=null) {
+        if (!this.hasType()) return -1;
         ts = util.ensure(ts, "num", this.source.ts);
         if (this.#valueLog.length <= 0) return -1;
         if (ts < this.#valueLog.at(0).ts) return -1;
@@ -440,54 +362,130 @@ Source.Topic = class SourceTopic extends Source.Generic {
         }
         return -1;
     }
-    update(v, ts=null) {
-        v = Source.Topic.ensureType(this.type, v);
-        ts = util.ensure(ts, "num", this.source.ts);
-        let i = this.getIndex(ts);
-        this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
-        if (this.isArray) {
-            v.forEach((v, i) => {
-                if (!(i in this.#sub)) this.#sub[i] = new Source.Topic(this, i, this.arraylessType);
-                this.#sub[i].update(v, ts);
-            });
-        }
-        this.post("change", { path: this.name });
-    }
     get(ts=null) {
+        if (!this.hasType()) return null;
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
         if (i < 0 || i >= this.#valueLog.length) return null;
-        return this.#valueLog[i].v;
+        let v = this.#valueLog[i].v;
+        if (this.isStruct && !this.isArray) v = v.built;
+        return v;
     }
     getRange(tsStart=null, tsStop=null) {
+        if (!this.hasType()) return [];
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart);
         let stop = this.getIndex(tsStop);
-        return this.#valueLog.slice(start+1, stop+1).map(log => { return { ts: log.ts, v: log.v }; });
+        return this.#valueLog.slice(start+1, stop+1).map(log => {
+            let ts = log.ts, v = log.v;
+            if (this.isStruct && !this.isArray) v = v.built;
+            return { ts: ts, v: v };
+        });
+    }
+    update(v, ts=null) {
+        if (!this.hasType()) return;
+        v = Source.Field.ensureType(this.type, v);
+        ts = util.ensure(ts, "num", this.source.ts);
+        let i = this.getIndex(ts);
+        if (this.isStruct) {
+            if (util.is(v, "obj") && v["%"]) {
+                v = util.ensure(v, "obj");
+                v["%"] = true;
+                v.unbuilt = toUint8Array(v.unbuilt);
+                v.built = (v.built == null) ? null : util.ensure(v.built, "obj");
+            } else v = { "%": true, unbuilt: toUint8Array(v), built: null };
+        } else if (this.isArray) {
+            v.forEach((v, i) => {
+                if (!(i in this.#fields)) this.add(new Source.Field(this, i, this.arrayType));
+                this.#fields[i].update(v, ts);
+            });
+        } else;
+        this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
+        this.build();
+        this.post("change", { path: [this.name] });
+    }
+    build() {
+        if (this.isStruct) {
+            let pattern = this.source.structHelper.getPattern(this.arrayType);
+            let hasPattern = pattern instanceof StructHelper.Pattern;
+            this.#valueLog.forEach(log => {
+                if (!hasPattern) return;
+                let ts = log.ts, v = log.v;
+                if (util.is(v.built, "obj")) return;
+                if (this.isArray) {
+                    v.built = util.ensure(pattern.splitData(v.unbuilt), "arr");
+                    v.built.forEach((v, i) => {
+                        if (!(i in this.#fields)) this.add(new Source.Field(this, i, this.arrayType));
+                        this.#fields[i].update(v, ts);
+                    });
+                } else {
+                    v.built = util.ensure(pattern.decode(v.unbuilt), "obj");
+                    pattern.fields.forEach(field => {
+                        if (!(field.name in this.#fields)) this.add(new Source.Field(this, field.name, field.isStruct ? ("struct:"+field.type) : field.type));
+                        this.#fields[field.name].update(v.built[field.name], ts);
+                    });
+                }
+            });
+        }
+        this.fields.forEach(field => field.build());
     }
 
+    get nFields() {
+        let n = 1;
+        this.fields.forEach(field => (n += field.nFields));
+        return n;
+    }
+    get fields() { return Object.values(this.#fields); }
     lookup(k) {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return this;
-        let name = k.shift();
-        for (let sname in this.#sub)
-            if (sname == name)
-                return this.#sub[sname].lookup(k);
+        let kname = k.shift();
+        for (let name in this.#fields)
+            if (name == kname)
+                return this.#fields[name].lookup(k);
         return null;
+    }
+    has(field) {
+        if (!(field instanceof Source.Field)) return false;
+        if (field.parent != this) return false;
+        return field.name in this.#fields;
+    }
+    add(field) {
+        if (!(field instanceof Source.Field)) return false;
+        if (field.parent != this) return false;
+        if (field.name in this.#fields) return false;
+        this.#fields[field.name] = field;
+        field._onChange = () => this.post("change", { path: field.path });
+        field.addHandler("change", field._onChange);
+        this.post("change", { path: this.path });
+        return field;
+    }
+    rem(field) {
+        if (!(field instanceof Source.Field)) return false;
+        if (field.parent != this) return false;
+        if (!(field.name in this.#fields)) return false;
+        delete this.#fields[field.name];
+        field.remHandler("change", field._onChange);
+        delete field._onChange;
+        this.post("change", { path: this.path });
+        return field;
     }
 
     toSerialized() {
         return {
             name: this.name,
             type: this.type,
-            valueLog: this.valueLog,
+            valueLog: this.#valueLog,
+            fields: this.#fields,
         };
     }
     static fromSerialized(parent, data) {
         data = util.ensure(data, "obj");
-        let topic = new Source.Topic(parent, data.name, data.type);
-        topic.valueLog = data.valueLog;
-        return topic;
+        let field = new Source.Field(parent, data.name, data.type);
+        field.valueLog = data.valueLog;
+        let fields = util.ensure(data.fields, "obj");
+        for (let name in fields) field.add(Source.Field.fromSerialized(field, fields[name]));
+        return field;
     }
 };
