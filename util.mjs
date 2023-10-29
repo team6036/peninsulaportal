@@ -11,6 +11,9 @@ export const MAGIC = "_*[[;ƒ";
 
 export const VERSION = 1;
 
+export const TEXTENCODER = new TextEncoder();
+export const TEXTDECODER = new TextDecoder();
+
 
 export function is(o, type) {
     let typefs = {
