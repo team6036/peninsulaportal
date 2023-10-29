@@ -5386,8 +5386,8 @@ export default class App extends core.App {
                 let canField = canGetFieldFromData();
                 if (canField) {
                     let field = getFieldFromData();
-                    this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
-                    let btn = this.eDrag.children[0].children[0];
+                    this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                    let btn = this.eDrag.children[0].children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (field.name.length > 0) ? field.name : "/";
                     let display = getDisplay(field.type, field.get());
@@ -5401,8 +5401,8 @@ export default class App extends core.App {
                 }
                 if (canTab) {
                     if (this.dragData instanceof Panel.Tab) {
-                        this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
-                        let btn = this.eDrag.children[0].children[0];
+                        this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                        let btn = this.eDrag.children[0].children[0].children[0];
                         let icon = btn.children[0], name = btn.children[1];
                         name.textContent = this.dragData.name;
                         if (this.dragData.hasIcon) {
