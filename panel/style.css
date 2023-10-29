@@ -557,6 +557,8 @@
 }
 
 #PROJECTPAGE {
+    padding: 0px !important;
+
     flex-direction: row !important;
     justify-content: flex-start !important;
     align-items: stretch !important;
@@ -633,6 +635,7 @@
 #PROJECTPAGE > .side {
     width: 15%;
     max-width: 15%;
+    padding: 10px;
 
     display: flex;
     flex-direction: column;
@@ -641,7 +644,7 @@
     align-items: stretch;
     align-content: center;
 
-    border-radius: 10px;
+    border-right: 2px solid var(--v2);
 }
 #PROJECTPAGE > .side > #meta {
     padding: 5px;
@@ -757,11 +760,6 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-
-    border-radius: 10px;
-}
-#PROJECTPAGE > .content:empty {
-    border: 2px solid var(--v2);
 }
 #PROJECTPAGE > .content > .item {
     --w: 0px;
@@ -780,9 +778,6 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.container:empty {
-    border: 2px solid var(--v2);
-}
 #PROJECTPAGE > .content .item.container.x {
     flex-direction: row;
 }
@@ -790,31 +785,35 @@
     flex-direction: column;
 }
 #PROJECTPAGE > .content .item.container > .divider {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
+    z-index: 1;
+    
+    position: relative;
+    
+    background-color: var(--v2);
 }
 #PROJECTPAGE > .content .item.container.x > .divider {
-    padding: 0px 5px;
-    
-    flex-direction: row;
+    width: 2px;
+    max-width: 2px;
+    overflow: visible;
 
     cursor: ew-resize;
 }
 #PROJECTPAGE > .content .item.container.y > .divider {
-    padding: 5px 0px;
-
-    flex-direction: column;
+    height: 2px;
+    max-height: 2px;
+    overflow: visible;
 
     cursor: ns-resize;
 }
 #PROJECTPAGE > .content .item.container > .divider::before {
     content: "";
 
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
     background-color: var(--v4);
-    border-radius: 2px;
 
     transition: width var(--t), height var(--t), background-color var(--t);
 }
@@ -828,12 +827,18 @@
     width: 2px;
     height: 20px;
 }
+#PROJECTPAGE > .content .item.container.x > .divider:hover::before {
+    width: 5px;
+}
 #PROJECTPAGE > .content .item.container.x > .divider.this::before {
     height: 100%;
 }
 #PROJECTPAGE > .content .item.container.y > .divider::before {
     width: 20px;
     height: 2px;
+}
+#PROJECTPAGE > .content .item.container.y > .divider:hover::before {
+    height: 5px;
 }
 #PROJECTPAGE > .content .item.container.y > .divider.this::before {
     width: 100%;
@@ -855,13 +860,6 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
-
-    border: 2px solid var(--v2);
-    border-radius: 10px;
-    outline: none;
-}
-#PROJECTPAGE > .content .item.panel.active {
-    border: 2px solid var(--v3);
 }
 #PROJECTPAGE > .content .item.panel > button.options {
     --bg: var(--v2);
@@ -939,7 +937,7 @@
     gap: 5px;
 
     background-color: var(--v1-8);
-    color: var(--v7);
+    color: var(--v5);
     border-bottom: 2px solid var(--v2);
 
     font-size: 12px;
@@ -948,6 +946,12 @@
     transition: color var(--t);
 }
 #PROJECTPAGE > .content .item.panel > .top > .item:hover {
+    color: var(--v6);
+}
+#PROJECTPAGE > .content .item.panel.active > .top > .item {
+    color: var(--v7);
+}
+#PROJECTPAGE > .content .item.panel.active > .top > .item:hover {
     color: var(--v8);
 }
 #PROJECTPAGE > .content .item.panel > .top > .item::before {
@@ -964,7 +968,7 @@
     background-color: var(--v1);
     border-bottom: 2px solid var(--v1);
 }
-#PROJECTPAGE > .content .item.panel > .top > .item.this::before {
+#PROJECTPAGE > .content .item.panel.active > .top > .item.this::before {
     content: "";
 }
 #PROJECTPAGE > .content .item.panel > .top > .item > ion-icon {
@@ -1108,6 +1112,7 @@
 
     border-radius: 10px;
 }
+/*
 #PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.array > .type {
     margin-bottom: 10px;
 
@@ -1159,6 +1164,7 @@
 
     border-radius: 10px;
 }
+*/
 #PROJECTPAGE > .content .item.panel > .content > .item.add {
     padding: 10px;
 

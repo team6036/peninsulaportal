@@ -621,8 +621,8 @@ class Container extends Widget {
         this.elem.classList.remove("y");
         this.elem.classList.add(this.axis);
         let r = this.elem.getBoundingClientRect();
-        let wAlloc = r.width - (this.axis == "x") * (12 * Math.max(0, this.children.length-1));
-        let hAlloc = r.height - (this.axis == "y") * (12 * Math.max(0, this.children.length-1));
+        let wAlloc = r.width - (this.axis == "x") * (2 * Math.max(0, this.children.length-1));
+        let hAlloc = r.height - (this.axis == "y") * (2 * Math.max(0, this.children.length-1));
         this.children.forEach((child, i) => {
             child.elem.style.order = i*2;
             child.elem.style.setProperty("--w", ((this.axis == "x") ? (wAlloc * this.weights[i]) : wAlloc)+"px");
@@ -1689,52 +1689,49 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 if (state.type != field.type) {
                     state.type = field.type;
                     this.eDisplay.innerHTML = "";
-                    if (0) {
-                    } else {
-                        let item = document.createElement("div");
-                        this.eDisplay.appendChild(item);
-                        item.classList.add("item");
-                        if (field.type == "boolean") item.innerHTML = "<ion-icon></ion-icon>";
-                        else item.innerHTML = "<div></div><div></div>";
-                        state.update = () => {
-                            let value = field.get();
-                            if (field.type == "boolean") {
-                                item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
-                                item.style.color = "var(--v1)";
-                                if (item.children[0] instanceof HTMLElement) {
-                                    item.children[0].setAttribute("name", value ? "checkmark" : "close");
-                                    let r = item.getBoundingClientRect();
-                                    item.children[0].style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
-                                }
-                            } else {
-                                item.style.backgroundColor = "var(--v2-8)";
-                                item.style.position = "relative";
-                                if (item.children[0] instanceof HTMLDivElement) {
-                                    item.children[0].style.position = "absolute";
-                                    item.children[0].style.top = "10px";
-                                    item.children[0].style.left = "10px";
-                                    item.children[0].style.color = "var(--v4)";
-                                    item.children[0].style.fontSize = "14px";
-                                    item.children[0].style.fontFamily = "monospace";
-                                    item.children[0].textContent = field.type;
-                                }
-                                if (item.children[1] instanceof HTMLDivElement) {
-                                    item.children[1].style.position = "";
-                                    item.children[1].style.top = "";
-                                    item.children[1].style.left = "";
-                                    item.children[1].style.maxWidth = "100%";
-                                    item.children[1].style.maxHeight = "100%";
-                                    item.children[1].style.overflow = "auto";
-                                    let display = getDisplay(field.type, value);
-                                    item.children[1].style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
-                                    item.children[1].style.fontSize = "32px";
-                                    item.children[1].style.fontFamily = "monospace";
-                                    item.children[1].style.wordBreak = "break-all";
-                                    item.children[1].textContent = getRepresentation(value);
-                                }
+                    let item = document.createElement("div");
+                    this.eDisplay.appendChild(item);
+                    item.classList.add("item");
+                    if (field.type == "boolean") item.innerHTML = "<ion-icon></ion-icon>";
+                    else item.innerHTML = "<div></div><div></div>";
+                    state.update = () => {
+                        let value = field.get();
+                        if (field.type == "boolean") {
+                            item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
+                            item.style.color = "var(--v1)";
+                            if (item.children[0] instanceof HTMLElement) {
+                                item.children[0].setAttribute("name", value ? "checkmark" : "close");
+                                let r = item.getBoundingClientRect();
+                                item.children[0].style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                             }
-                        };
-                    }
+                        } else {
+                            item.style.backgroundColor = "var(--v2-8)";
+                            item.style.position = "relative";
+                            if (item.children[0] instanceof HTMLDivElement) {
+                                item.children[0].style.position = "absolute";
+                                item.children[0].style.top = "10px";
+                                item.children[0].style.left = "10px";
+                                item.children[0].style.color = "var(--v4)";
+                                item.children[0].style.fontSize = "14px";
+                                item.children[0].style.fontFamily = "monospace";
+                                item.children[0].textContent = field.type;
+                            }
+                            if (item.children[1] instanceof HTMLDivElement) {
+                                item.children[1].style.position = "";
+                                item.children[1].style.top = "";
+                                item.children[1].style.left = "";
+                                item.children[1].style.maxWidth = "100%";
+                                item.children[1].style.maxHeight = "100%";
+                                item.children[1].style.overflow = "auto";
+                                let display = getDisplay(field.type, value);
+                                item.children[1].style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
+                                item.children[1].style.fontSize = "32px";
+                                item.children[1].style.fontFamily = "monospace";
+                                item.children[1].style.wordBreak = "break-all";
+                                item.children[1].textContent = getRepresentation(value);
+                            }
+                        }
+                    };
                 }
                 if (state.update) state.update();
             } else {
@@ -5367,7 +5364,7 @@ export default class App extends core.App {
                 let canField = canGetFieldFromData();
                 if (canField) {
                     let field = getFieldFromData();
-                    this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
+                    this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
                     let btn = this.eDrag.children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (field.name.length > 0) ? field.name : "/";
@@ -5382,7 +5379,7 @@ export default class App extends core.App {
                 }
                 if (canTab) {
                     if (this.dragData instanceof Panel.Tab) {
-                        this.eDrag.innerHTML = "<div class='browseritem'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
+                        this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><ion-icon></ion-icon><div></div></button></div>";
                         let btn = this.eDrag.children[0].children[0];
                         let icon = btn.children[0], name = btn.children[1];
                         name.textContent = this.dragData.name;
@@ -6641,8 +6638,8 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     formatContent() {
         if (!this.hasWidget()) return false;
         let r = this.eContent.getBoundingClientRect();
-        this.widget.elem.style.setProperty("--w", r.width+"px");
-        this.widget.elem.style.setProperty("--h", r.height+"px");
+        this.widget.elem.style.setProperty("--w", (r.width-0)+"px");
+        this.widget.elem.style.setProperty("--h", (r.height-0)+"px");
         this.widget.format();
         return true;
     }
