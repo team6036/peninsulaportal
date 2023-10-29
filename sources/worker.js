@@ -15,6 +15,7 @@ export class WorkerClient extends util.Target {
 
         this.script = script;
 
+        this.addHandler("cmd-log", data => console.log("WORKER:"+this.script+" :: ", ...util.ensure(data, "arr")));
         this.addHandler("cmd-error", data => {
             this.post("error", data);
             this.stop();
@@ -84,6 +85,8 @@ export class WorkerBase extends util.Target {
         });
 
         this.#progressT = 0;
+
+        self.console.log = (...a) => this.send("log", a);
     }
 
     get self() { return this.#self; }
