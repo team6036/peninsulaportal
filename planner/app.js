@@ -2999,10 +2999,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 v = String(v);
                 if (i >= split.length-1) return v;
                 let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                while (v.length < l) {
-                    if (i > 0) v = "0"+v;
-                    else v += "0";
-                }
+                if (i > 0) v = v.padStart(l, "0");
+                else v = v.padEnd(l, "0");
                 return v;
             });
             this.page.eTimeDisplay.textContent = split.slice(1).reverse().join(":")+"."+split[0];
@@ -3016,10 +3014,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 v = String(v);
                 if (i >= split.length-1) return v;
                 let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                while (v.length < l) {
-                    if (i > 0) v = "0"+v;
-                    else v += "0";
-                }
+                if (i > 0) v = v.padStart(l, "0");
+                else v = v.padEnd(l, "0");
                 return v;
             });
             this.page.eTimeDisplay.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];

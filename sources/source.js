@@ -133,19 +133,25 @@ export default class Source extends util.Target {
         }
         if (this.postNest) {
             let o = this.nestRoot.lookup([...k]);
-            if (o instanceof Source.Field)
+            if (o instanceof Source.Field) {
                 o.update(v, ts);
-        }
-        if (k.length == 2 && String(k[0]) == ".schema" && (v instanceof Uint8Array)) {
-            let struct = String(k[1]);
-            if (struct.startsWith("struct:")) {
-                struct = struct.slice(7);
-                if (this.structHelper.hasPattern(struct)) this.structHelper.remPattern(struct);
-                let pattern = this.structHelper.addPattern(struct, new StructHelper.Pattern(this.structHelper, util.TEXTDECODER.decode(v)));
-                pattern.build();
-                this.structHelper.build();
-                this.nestRoot.build();
-                this.flatRoot.build();
+                if (
+                    k.length == 2 &&
+                    String(k[0]) == ".schema" &&
+                    String(k[1]).startsWith("struct:") &&
+                    o.type == "structschema"
+                ) {
+                    let struct = String(k[1]);
+                    if (struct.startsWith("struct:")) {
+                        struct = struct.slice(7);
+                        if (this.structHelper.hasPattern(struct)) this.structHelper.remPattern(struct);
+                        let pattern = this.structHelper.addPattern(struct, new StructHelper.Pattern(this.structHelper, util.TEXTDECODER.decode(v)));
+                        pattern.build();
+                        this.structHelper.build();
+                        this.nestRoot.build();
+                        this.flatRoot.build();
+                    }
+                }
             }
         }
         return true;
@@ -174,12 +180,10 @@ export default class Source extends util.Target {
         if (this.postFlat) this.#flatRoot = Source.Field.fromSerialized(this, data.flatRoot);
         this.nestRoot.addHandler("change", data => this.post("change", data));
         this.flatRoot.addHandler("change", data => this.post("change", data));
-        [this.nestRoot].forEach(root => {
-            let schema = root.lookup([".schema"]);
-            if (!(schema instanceof Source.Field)) return;
+        let schema = this.nestRoot.lookup([".schema"]);
+        if (schema instanceof Source.Field)
             schema.fields.forEach(field => {
                 if (!field.name.startsWith("struct:")) return;
-                if (!field.hasType()) return;
                 if (field.type != "structschema") return;
                 let struct = field.name.slice(7);
                 if (this.structHelper.hasPattern(struct)) this.structHelper.remPattern(struct);
@@ -189,7 +193,6 @@ export default class Source extends util.Target {
                 this.nestRoot.build();
                 this.flatRoot.build();
             });
-        });
         this.ts = data.ts;
         this.tsMin = data.tsMin;
         this.tsMax = data.tsMax;
@@ -474,11 +477,13 @@ Source.Field = class SourceField extends util.Target {
     }
 
     toSerialized() {
+        let fields = {};
+        this.fields.forEach(field => (fields[field.name] = field.toSerialized()));
         return {
             name: this.name,
             type: this.type,
             valueLog: this.#valueLog,
-            fields: this.#fields,
+            fields: fields,
         };
     }
     static fromSerialized(parent, data) {
