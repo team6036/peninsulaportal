@@ -15,7 +15,7 @@ function Uint82BoolArray(v) {
 }
 function Bool2Uint8Array(v) {
     v = util.ensure(v, "arr").map(v => !!v);
-    let arr = new Uint8Array();
+    let arr = new Uint8Array(Math.ceil(v.length/8));
     v.forEach((v, i) => {
         if (!v) return;
         let byte = Math.floor(i/8);
@@ -235,7 +235,6 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         data = Uint82BoolArray(data);
         let output = {};
         this.fields.forEach(field => {
-            // console.log(field.name+" ["+field.rangeMin+", "+field.rangeMax+")");
             let subdata = data.slice(field.rangeMin, field.rangeMax);
             if (field.isStruct) {
                 output[field.name] = Bool2Uint8Array(subdata);
