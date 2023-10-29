@@ -2434,10 +2434,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         v = String(v);
                         if (i >= split.length-1) return v;
                         let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                        while (v.length < l) {
-                            if (i > 0) v = "0"+v;
-                            else v += "0";
-                        }
+                        if (i > 0) v = v.padStart(l, "0");
+                        else v = v.padEnd(l, "0");
                         return v;
                     });
                     let text = split.slice(1).reverse().join(":")+"."+split[0];
@@ -2647,34 +2645,34 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 _: side => {
                     if (!(data instanceof Source.Field)) return null;
                     if (!data.hasType()) return null;
-                    if (!data.isPrimitive) return null;
                     return {
                         r: r,
                         submit: () => {
                             const colors = "rybgpocm";
-                            const addVar = pth => {
-                                let taken = new Array(colors.length).fill(false);
-                                [...this.lVars, ...this.rVars].forEach(v => {
-                                    colors.split("").forEach((c, i) => {
-                                        if (v.color == "--c"+c) taken[i] = true;
+                            const addVar = field => {
+                                let pth = field.path;
+                                if (field.hasType() && field.isPrimitive) {
+                                    let taken = new Array(colors.length).fill(false);
+                                    [...this.lVars, ...this.rVars].forEach(v => {
+                                        colors.split("").forEach((c, i) => {
+                                            if (v.color == "--c"+c) taken[i] = true;
+                                        });
                                     });
-                                });
-                                let nextColor = null;
-                                taken.forEach((v, i) => {
-                                    if (v) return;
-                                    if (nextColor != null) return;
-                                    nextColor = colors[i];
-                                });
-                                if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
-                                let has = false;
-                                this[side+"Vars"].forEach(v => util.arrEquals(v.path, pth) ? (has = true) : null);
-                                if (has) return;
-                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
+                                    let nextColor = null;
+                                    taken.forEach((v, i) => {
+                                        if (v) return;
+                                        if (nextColor != null) return;
+                                        nextColor = colors[i];
+                                    });
+                                    if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
+                                    let has = false;
+                                    this[side+"Vars"].forEach(v => util.arrEquals(v.path, pth) ? (has = true) : null);
+                                    if (has) return;
+                                    this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
+                                }
+                                field.fields.forEach(field => addVar(field));
                             };
-                            if (data.isArray)
-                                for (let i = 0; i < util.ensure(data.get(), "arr").length; i++)
-                                    addVar([...data.path, i]);
-                            else addVar(data.path);
+                            addVar(data);
                         },
                     };
                 },
@@ -3015,10 +3013,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 v = String(v);
                 if (i >= split.length-1) return v;
                 let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                while (v.length < l) {
-                    if (i > 0) v = "0"+v;
-                    else v += "0";
-                }
+                if (i > 0) v = v.padStart(l, "0");
+                else v = v.padEnd(l, "0");
                 return v;
             });
             this.eTimeDisplay.textContent = split.slice(1).reverse().join(":")+"."+split[0];
@@ -3032,10 +3028,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 v = String(v);
                 if (i >= split.length-1) return v;
                 let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                while (v.length < l) {
-                    if (i > 0) v = "0"+v;
-                    else v += "0";
-                }
+                if (i > 0) v = v.padStart(l, "0");
+                else v = v.padEnd(l, "0");
                 return v;
             });
             this.eTimeDisplay.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];

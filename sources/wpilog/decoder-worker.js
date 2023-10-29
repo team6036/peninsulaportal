@@ -14,9 +14,11 @@ class WPILOGDecoderWorker extends WorkerBase {
         this.addHandler("cmd-start", data => {
             try {
                 const decoder = new WPILOGDecoder(data);
-                const CRUDE = true;
                 // crude serialized source building - find better way if possible
                 // this is done to increase performance as normal method calls of an unserialized source results in way too much lag
+                const CRUDE = false;
+                // UPDATE: might have fixed the lag issue
+                // seems like repeated lookup calls results in lag
                 const source = CRUDE ? {
                     postNest: true,
                     postFlat: false,
@@ -32,6 +34,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                     const source = new Source("nest");
                     source.postNest = true;
                     source.postFlat = false;
+                    return source;
                 })();
                 let entryId2Name = {};
                 let entryId2Type = {};
@@ -79,7 +82,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                             fields[topic.name] = topic;
                         } else {
                             source.create(path, type);
-                            entryId2Topic[id] = source.lookup(path);
+                            entryId2Topic[id] = source.root.lookup(path);
                         }
                     } else {
                         let id = record.entryId;
@@ -108,15 +111,15 @@ class WPILOGDecoderWorker extends WorkerBase {
                         let v = (type in typefs) ? typefs[type]() : record.getRaw();
                         if (CRUDE) {
                             topic.valueLog.push({ ts: ts, v: v });
-                            if (first) {
-                                first = false;
-                                source.tsMin = source.tsMax = ts;
-                            } else {
-                                source.tsMin = Math.min(source.tsMin, ts);
-                                source.tsMax = Math.max(source.tsMax, ts);
-                            }
                         } else {
                             topic.update(v, ts);
+                        }
+                        if (first) {
+                            first = false;
+                            source.tsMin = source.tsMax = ts;
+                        } else {
+                            source.tsMin = Math.min(source.tsMin, ts);
+                            source.tsMax = Math.max(source.tsMax, ts);
                         }
                     }
                 });
