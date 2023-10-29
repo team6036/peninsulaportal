@@ -412,6 +412,7 @@ Source.Field = class SourceField extends util.Target {
             this.#valueLog.forEach(log => {
                 if (!hasPattern) return;
                 let ts = log.ts, v = log.v;
+                if (pattern.length/8 != v.unbuilt.length) return;
                 if (util.is(v.built, "obj")) return;
                 if (this.isArray) {
                     v.built = util.ensure(pattern.splitData(v.unbuilt), "arr");
