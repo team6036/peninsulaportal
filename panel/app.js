@@ -84,11 +84,9 @@ function getDisplay(t, v) {
     }
     if (t.startsWith("struct:")) return {
         name: "cube-outline",
-        color: "var(--v8)",
     };
     if (!Source.Field.TYPES.includes(t)) return {
         name: "document-outline",
-        color: "",
     };
     if (["double", "float", "int"].includes(t)) return {
         src: "../assets/icons/number.svg",
@@ -104,11 +102,9 @@ function getDisplay(t, v) {
     };
     if (t == "structschema") return {
         name: "map-outline",
-        color: "var(--v8)",
     };
     return {
         src: "../assets/icons/variable.svg",
-        color: "var(--v8)",
     };
 }
 
@@ -130,12 +126,16 @@ class BrowserField extends util.Target {
     #type;
     #value;
     #fields;
+    #showValue;
 
     #elem;
     #eDisplay;
+    #eMain;
     #eIcon;
     #eName;
     #eTag;
+    #eValueBox;
+    #eValue;
     #eContent;
     #eSide;
 
@@ -147,22 +147,37 @@ class BrowserField extends util.Target {
 
         this.#fields = {};
 
+        this.#showValue = null;
+
         this.#elem = document.createElement("div");
         this.elem.classList.add("field");
         if (this.isHidden) this.elem.classList.add("hidden");
         this.#eDisplay = document.createElement("button");
         this.elem.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
+        this.#eMain = document.createElement("div");
+        this.eDisplay.appendChild(this.eMain);
+        this.eMain.classList.add("main");
         this.#eIcon = document.createElement("ion-icon");
-        this.eDisplay.appendChild(this.eIcon);
+        this.eMain.appendChild(this.eIcon);
         this.#eName = document.createElement("div");
-        this.eDisplay.appendChild(this.eName);
+        this.eMain.appendChild(this.eName);
         this.eName.classList.add("name");
         this.eName.textContent = this.name;
+        if (this.name.startsWith("struct:") && this.type == "structschema") {
+            this.eName.textContent = this.name.slice(7);
+            this.eName.innerHTML = "<span>struct:</span>"+this.eName.innerHTML;
+        }
         this.#eTag = document.createElement("div");
-        this.eDisplay.appendChild(this.eTag);
+        this.eMain.appendChild(this.eTag);
         this.eTag.classList.add("tag");
         this.eTag.textContent = this.hasType() ? this.type : "";
+        this.#eValueBox = document.createElement("div");
+        this.eDisplay.appendChild(this.eValueBox);
+        this.eValueBox.classList.add("value");
+        this.eValueBox.innerHTML = "<ion-icon name='return-down-forward'></ion-icon>";
+        this.#eValue = document.createElement("div");
+        this.eValueBox.appendChild(this.eValue);
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
@@ -174,7 +189,8 @@ class BrowserField extends util.Target {
         let cancel = 10;
         this.eDisplay.addEventListener("click", e => {
             if (cancel <= 0) return cancel = 10;
-            this.isOpen = !this.isOpen;
+            if (this.fields.length > 0) this.isOpen = !this.isOpen;
+            else this.showValue = !this.showValue;
         });
         this.eDisplay.addEventListener("dblclick", e => {
             this.post("trigger", { path: [this.name] });
@@ -195,6 +211,8 @@ class BrowserField extends util.Target {
         this.eSide.addEventListener("click", e => {
             this.isOpen = !this.isOpen;
         });
+
+        this.showValue = false;
     }
 
     get name() { return this.#name; }
@@ -241,7 +259,7 @@ class BrowserField extends util.Target {
             });
             this.#value.forEach((v, i) => (this.#fields[i].value = v));
         } else this.#value = v;
-        this.updateIcon();
+        this.updateDisplay();
     }
 
     get nFields() {
@@ -294,11 +312,22 @@ class BrowserField extends util.Target {
         return field;
     }
 
+    get showValue() { return this.#showValue; }
+    set showValue(v) {
+        v = !!v;
+        if (this.showValue == v) return;
+        this.#showValue = v;
+        this.updateDisplay();
+    }
+
     get elem() { return this.#elem; }
     get eDisplay() { return this.#eDisplay; }
+    get eMain() { return this.#eMain; }
     get eIcon() { return this.#eIcon; }
     get eName() { return this.#eName; }
     get eTag() { return this.#eTag; }
+    get eValueBox() { return this.#eValueBox; }
+    get eValue() { return this.#eValue; }
     get eContent() { return this.#eContent; }
     get eSide() { return this.#eSide; }
 
@@ -312,7 +341,7 @@ class BrowserField extends util.Target {
         this.eIcon.removeAttribute("name");
         this.eIcon.setAttribute("src", v);
     }
-    updateIcon() {
+    updateDisplay() {
         this.icon = "";
         this.eIcon.style.color = "";
         this.eName.style.color = "";
@@ -323,6 +352,9 @@ class BrowserField extends util.Target {
             if ("color" in display) this.eIcon.style.color = display.color;
             else this.eIcon.style.color = "";
         }
+        this.eValueBox.style.display = (this.showValue && this.isPrimitive && !this.isArray) ? "" : "none";
+        this.eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
+        this.eValue.textContent = getRepresentation(this.value);
     }
 
     get isOpen() { return this.elem.classList.contains("this"); }
@@ -331,7 +363,7 @@ class BrowserField extends util.Target {
         if (this.isOpen == v) return;
         if (v) this.elem.classList.add("this");
         else this.elem.classList.remove("this");
-        this.updateIcon();
+        this.updateDisplay();
     }
     get isClosed() { return !this.isOpen; }
     set isClosed(v) { this.isOpen = !v; }
@@ -348,6 +380,7 @@ class BrowserField extends util.Target {
     }
 
     format() {
+        this.updateDisplay();
         this.fields.sort((a, b) => a.compare(b)).forEach((field, i) => {
             field.elem.style.order = i;
             field.format();
@@ -867,6 +900,7 @@ class Panel extends Widget {
     format() {
         this.tabs.forEach((tab, i) => {
             tab.eTab.style.order = i;
+            tab.format();
         });
         this.eAdd.style.order = this.tabs.length;
     }
@@ -1023,6 +1057,7 @@ Panel.Tab = class PanelTab extends util.Target {
     set name(v) { this.eTabName.textContent = v; }
 
     update() { this.post("update", null); }
+    format() { this.post("format", null); }
 
     getHovered(pos, options) {
         pos = new V(pos);
@@ -1571,6 +1606,9 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         let prevField = null;
         let state = {};
 
+        this.addHandler("format", data => {
+            util.ensure(state.fields, "arr").forEach(field => field.format());
+        });
         this.addHandler("update", data => {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             const field = (source instanceof Source) ? source.root.lookup(this.path) : null;
@@ -1692,44 +1730,28 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     let item = document.createElement("div");
                     this.eDisplay.appendChild(item);
                     item.classList.add("item");
-                    if (field.type == "boolean") item.innerHTML = "<ion-icon></ion-icon>";
-                    else item.innerHTML = "<div></div><div></div>";
+                    let eIcon = null, eType = null, eValue = null;
+                    if (field.type == "boolean") {
+                        item.innerHTML = "<ion-icon></ion-icon>";
+                        eIcon = item.children[0];
+                    } else {
+                        item.innerHTML = "<div class='type'></div><div class='value'></div>";
+                        eType = item.children[0];
+                        eValue = item.children[1];
+                    }
                     state.update = () => {
                         let value = field.get();
                         if (field.type == "boolean") {
                             item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
-                            item.style.color = "var(--v1)";
-                            if (item.children[0] instanceof HTMLElement) {
-                                item.children[0].setAttribute("name", value ? "checkmark" : "close");
-                                let r = item.getBoundingClientRect();
-                                item.children[0].style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
-                            }
+                            eIcon.setAttribute("name", value ? "checkmark" : "close");
+                            let r = item.getBoundingClientRect();
+                            eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                         } else {
-                            item.style.backgroundColor = "var(--v2-8)";
-                            item.style.position = "relative";
-                            if (item.children[0] instanceof HTMLDivElement) {
-                                item.children[0].style.position = "absolute";
-                                item.children[0].style.top = "10px";
-                                item.children[0].style.left = "10px";
-                                item.children[0].style.color = "var(--v4)";
-                                item.children[0].style.fontSize = "14px";
-                                item.children[0].style.fontFamily = "monospace";
-                                item.children[0].textContent = field.type;
-                            }
-                            if (item.children[1] instanceof HTMLDivElement) {
-                                item.children[1].style.position = "";
-                                item.children[1].style.top = "";
-                                item.children[1].style.left = "";
-                                item.children[1].style.maxWidth = "100%";
-                                item.children[1].style.maxHeight = "100%";
-                                item.children[1].style.overflow = "auto";
-                                let display = getDisplay(field.type, value);
-                                item.children[1].style.color = (display == null || !("color" in display)) ? "var(--v8)" : display.color;
-                                item.children[1].style.fontSize = "32px";
-                                item.children[1].style.fontFamily = "monospace";
-                                item.children[1].style.wordBreak = "break-all";
-                                item.children[1].textContent = getRepresentation(value);
-                            }
+                            eType.textContent = field.type;
+                            let display = getDisplay(field.type, value);
+                            eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
+                            eValue.style.fontSize = (["double", "float", "int"].includes(field.clippedType) ? 32 : 16)+"px";
+                            eValue.textContent = getRepresentation(value);
                         }
                     };
                 }
