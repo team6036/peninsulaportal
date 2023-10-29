@@ -24,15 +24,15 @@
     --bgd: transparent;
     --fgd: var(--v4);
 
-    min-width: max-content;
+    max-width: 100%;
     padding: 10px;
 
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    align-items: center;
-    align-content: center;
+    align-items: stretch;
+    align-content: stretch;
 
     border-radius: 10px;
 
@@ -46,30 +46,69 @@
 
     font-style: italic;
 }
-.browser .field > button.display > ion-icon,
-.browserfield > button.display > ion-icon {
+.browser .field > button.display > .main,
+.browserfield > button.display > .main {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+}
+.browser .field > button.display > .main > ion-icon,
+.browserfield > button.display > .main > ion-icon {
     margin-right: 5px;
 
     min-width: 14px;
 }
-.browser .field > button.display > .tag,
-.browserfield > button.display > .tag {
-    margin-left: 10px;
-
-    color: var(--v4);
-
-    font-size: 12px;
-    font-family: monospace;
+.browser .field > button.display > .main > .name > span,
+.browserfield > button.display > .main > .name > span,
+.browser .field > button.display > .main > .tag,
+.browserfield > button.display > .main > .tag {
+    color: var(--v5);
 
     transition: color var(--t);
 }
-.browser .field > button.display:not(:disabled):hover > .tag,
-.browserfield > button.display:not(:disabled):hover > .tag {
-    color: var(--v6);
+.browser .field > button.display:not(:disabled):hover > .main > .name > span,
+.browserfield > button.display:not(:disabled):hover > .main > .name > span,
+.browser .field > button.display:not(:disabled):hover > .main > .tag,
+.browserfield > button.display:not(:disabled):hover > .main > .tag {
+    color: var(--v7);
 }
-.browser .field > button.display:disabled > .tag,
-.browserfield > button.display:disabled > .tag {
-    color: var(--v2);
+.browser .field > button.display:disabled > .main > .name > span,
+.browserfield > button.display:disabled > .main > .name > span,
+.browser .field > button.display:disabled > .main > .tag,
+.browserfield > button.display:disabled > .main > .tag {
+    color: var(--v3);
+}
+.browser .field > button.display > .main > .tag,
+.browserfield > button.display > .main > .tag {
+    margin-left: 10px;
+
+    font-size: 12px;
+    font-family: monospace;
+}
+.browser .field > button.display > .value,
+.browserfield > button.display > .value {
+    padding-left: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+.browser .field > button.display > .value > div,
+.browserfield > button.display > .value > div {
+    width: calc(100% - 14px - 20px);
+    max-width: calc(100% - 14px - 20px);
+    overflow: hidden;
+
+    font-size: 12px;
+    text-align: left;
+    text-overflow: ellipsis;
 }
 .browser .field > .content,
 .browserfield > .content {
@@ -937,7 +976,7 @@
     gap: 5px;
 
     background-color: var(--v1-8);
-    color: var(--v5);
+    color: var(--v4);
     border-bottom: 2px solid var(--v2);
 
     font-size: 12px;
@@ -946,7 +985,7 @@
     transition: color var(--t);
 }
 #PROJECTPAGE > .content .item.panel > .top > .item:hover {
-    color: var(--v6);
+    color: var(--v5);
 }
 #PROJECTPAGE > .content .item.panel.active > .top > .item {
     color: var(--v7);
@@ -1082,13 +1121,17 @@
     height: calc(100% - 26.5px);
     max-height: calc(100% - 26.5px);
     padding: 10px;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
 
     visibility: hidden;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .browser.this,
 #PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.this {
     visibility: inherit;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .browser > .field {
+    max-width: 100%;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display {
     display: flex;
@@ -1098,7 +1141,9 @@
     align-items: stretch;
     align-content: stretch;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display:not(.array) > .item {
+#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item {
+    position: relative;
+
     height: 100%;
     max-height: 100%;
     padding: 20px;
@@ -1110,61 +1155,32 @@
     align-items: center;
     align-content: center;
 
+    background-color: var(--v2-8);
     border-radius: 10px;
 }
-/*
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.array > .type {
-    margin-bottom: 10px;
-
-    color: var(--v8);
-
-    font-size: 14px;
-    font-family: monospace;
+#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item > ion-icon {
+    color: var(--v1);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.array > .type * {
-    font-size: 14px;
-    font-family: monospace;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.array > button.item {
-    --bg: transparent;
-    --bgh: var(--v2);
-    --bgd: transparent;
-
-    padding: 5px;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-
-    border-radius: 10px;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.array > button.item > .index {
-    padding: 10px;
+#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item > .type {
+    position: absolute;
+    top: 10px;
+    left: 10px;
 
     color: var(--v4);
 
     font-size: 14px;
     font-family: monospace;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.array > button.item > .value {
-    flex-basis: 100%;
+#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item > .value {
+    max-width: 100%;
+    max-height: 100%;
+    overflow: auto;
 
-    padding: 10px;
+    color: var(--v8);
 
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 10px;
-
-    border-radius: 10px;
+    font-family: monospace;
+    word-break: break-all;
 }
-*/
 #PROJECTPAGE > .content .item.panel > .content > .item.add {
     padding: 10px;
 
