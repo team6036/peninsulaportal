@@ -15,13 +15,19 @@ contextBridge.exposeInMainWorld("version", {
 });
 
 contextBridge.exposeInMainWorld("api", {
-    onPerm: f => ipcRenderer.on("perm", f),
+    onPerm: f => {
+        ipcRenderer.on("perm", f);
+        return () => ipcRenderer.removeListener("perm", f);
+    },
     sendPerm: perm => ipcRenderer.send("perm", perm),
 
     get: k => ipcRenderer.invoke("get", k),
     set: (k, v) => ipcRenderer.invoke("set", k, v),
     
-    on: f => ipcRenderer.on("send", f),
+    on: f => {
+        ipcRenderer.on("send", f);
+        return () => ipcRenderer.removeListener("send", f);
+    },
     send: (k, args) => ipcRenderer.invoke("on", k, args),
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
@@ -35,6 +41,18 @@ contextBridge.exposeInMainWorld("api", {
     dirList: path => ipcRenderer.invoke("dir-list", path),
     dirMake: path => ipcRenderer.invoke("dir-make", path),
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
+
+    clientMake: (id, location) => ipcRenderer.invoke("client-make", id, location),
+    clientDestory: id => ipcRenderer.invoke("client-destroy", id),
+    clientConn: id => ipcRenderer.invoke("client-conn", id),
+    clientDisconn: id => ipcRenderer.invoke("client-disconn", id),
+    clientHas: id => ipcRenderer.invoke("client-has", id),
+    // clientGet: (id, attr) => ipcRenderer.invoke("client-get", id, attr),
+    clientEmit: (id, name, a) => ipcRenderer.invoke("client-emit", id, name, a),
+    onClientMsg: f => {
+        ipcRenderer.on("client-msg", f);
+        return () => ipcRenderer.removeListener("client-msg", f);
+    },
 
     cacheGet: k => cache[k],
     cacheDel: k => (cache[k] = null),

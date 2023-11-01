@@ -24,6 +24,8 @@
     "electron-fetch": "^1.9.1",
     "ionicons": "^7.1.2",
     "png2icons": "^2.0.1",
+    "socket.io-client": "^4.7.2",
+    "socket.io-stream": "^0.9.1",
     "three": "^0.157.0"
   },
   "devDependencies": {

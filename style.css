@@ -134,6 +134,15 @@ input[type="number"]:not(.override)::-webkit-inner-spin-button {
     margin: 0px;
 }
 
+a {
+    color: inherit;
+
+    transition: color var(--t);
+}
+a:not(:disabled):hover {
+    color: var(--a);
+}
+
 /*
 ::-webkit-scrollbar {
     width: 5px;

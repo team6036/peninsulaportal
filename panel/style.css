@@ -783,6 +783,7 @@
     justify-content: center;
     align-items: center;
     align-content: center;
+    gap: 5px;
 
     border-radius: 10px;
 }
@@ -1311,7 +1312,7 @@
 
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool {
     padding: 10px;
 
     display: flex;
@@ -1320,6 +1321,23 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    color: var(--v2);
+
+    font-size: 12px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > .loading {
+    --size: 5px;
+    --color: var(--v2);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > button.toggle {
     width: 100%;

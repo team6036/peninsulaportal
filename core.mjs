@@ -1182,7 +1182,6 @@ App.Prompt = class AppPrompt extends App.PopupBase {
     get placeholder() { return this.eInput.placeholder; }
     set placeholder(v) { this.eInput.placeholder = v; }
 };
-
 App.ContextMenu = class AppContextMenu extends util.Target {
     #items;
 
@@ -1394,6 +1393,93 @@ App.Page = class AppPage extends util.Target {
 
     update() { this.post("update", null); }
 };
+
+export class Client extends util.Target {
+    #id;
+
+    #location;
+
+    #connected;
+    #socketId;
+
+    #destroyed;
+    #notDestroyedRes;
+
+    constructor(location) {
+        super();
+
+        this.#id = new Array(8).fill(null).map(_ => util.BASE64[Math.floor(util.BASE64.length*Math.random())]).join("");
+
+        this.#location = String(location);
+
+        this.#connected = false;
+        this.#socketId = null;
+
+        this.#destroyed = true;
+        this.#notDestroyedRes = [];
+
+        window.api.onClientMsg((_, id, name, a, meta) => {
+            if (this.id != id) return;
+            name = String(name);
+            a = util.ensure(a, "arr");
+            meta = util.ensure(meta, "obj");
+            if (this.location != meta.location) return;
+            this.#connected = !!meta.connected;
+            this.#socketId = (meta.socketId == null) ? null : String(meta.socketId);
+            this.post("msg", { name: name, a: a });
+            this.post("msg-"+name, a);
+        });
+
+        (async () => {
+            await window.api.clientMake(this.id, this.location);
+            this.#destroyed = false;
+            this.#notDestroyedRes.forEach(res => res());
+            this.#notDestroyedRes = [];
+        })();
+    }
+
+    get id() { return this.#id; }
+
+    get location() { return this.#location; }
+
+    get connected() { return this.#connected; }
+    get disconnected() { return !this.connected; }
+    get socketId() { return this.#socketId; }
+
+    get destroyed() { return this.#destroyed; }
+
+    async whenNotDestroyed() {
+        if (!this.destroyed) return;
+        return new Promise((res, rej) => this.#notDestroyedRes.push(res));
+    }
+
+    async connect() {
+        if (this.destroyed) return false;
+        if (this.connected) return false;
+        await window.api.clientConn(this.id);
+        return true;
+    }
+    async disconnect() {
+        if (this.destroyed) return false;
+        if (this.disconnected) return false;
+        await window.api.clientDisconn(this.id);
+        return true;
+    }
+    async emit(name, ...a) {
+        if (this.destroyed) return false;
+        if (this.disconnected) return false;
+        await window.api.clientEmit(this.id, name, a);
+        return true;
+    }
+    async send(...a) { return await this.emit("message", ...a); }
+
+    async destroy() {
+        if (this.destroyed) return false;
+        await window.api.clientDestroy(this.id);
+        this.#destroyed = true;
+        return true;
+    }
+}
 
 export class Odometry2d extends util.Target {
     #canvas;
