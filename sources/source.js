@@ -253,12 +253,12 @@ Source.Field = class SourceField extends util.Target {
 
     static ensureType(t, v) {
         t = String(t);
+        if (t.startsWith("struct:")) return util.ensure(v, "obj");
         if (t.endsWith("[]")) {
             t = t.slice(0, t.length-2);
             return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
         }
         if (t == "structschema") return toUint8Array(v);
-        if (t.startsWith("struct:")) return util.ensure(v, "obj");
         const map = {
             boolean: "bool",
             double: "float",
@@ -337,7 +337,7 @@ Source.Field = class SourceField extends util.Target {
                     v.unbuilt = toUint8Array(v.unbuilt);
                     v.built = (v.built == null) ? null : util.ensure(v.built, "obj");
                 } else v = { "%": true, unbuilt: toUint8Array(v), built: null };
-            } if (this.isArray) {
+            } else if (this.isArray) {
                 v.forEach((v, i) => {
                     if ((i in typeCheck) && (typeCheck[i] == v)) return;
                     typeCheck[i] = v;
@@ -415,15 +415,16 @@ Source.Field = class SourceField extends util.Target {
             this.#valueLog.forEach(log => {
                 if (!hasPattern) return;
                 let ts = log.ts, v = log.v;
-                if (pattern.length/8 != v.unbuilt.length) return;
                 if (util.is(v.built, "obj")) return;
                 if (this.isArray) {
+                    if (pattern.length == null) return;
                     v.built = util.ensure(pattern.splitData(v.unbuilt), "arr");
                     v.built.forEach((v, i) => {
-                        if (!(i in this.#fields)) this.add(new Source.Field(this, i, this.arrayType));
+                        if (!(i in this.#fields)) this.add(new Source.Field(this, i, "struct:"+this.arrayType));
                         this.#fields[i].update(v, ts);
                     });
                 } else {
+                    if (pattern.length == null) return;
                     v.built = util.ensure(pattern.decode(v.unbuilt), "obj");
                     pattern.fields.forEach(field => {
                         if (!(field.name in this.#fields)) this.add(new Source.Field(this, field.name, field.isStruct ? ("struct:"+field.type) : field.type));
