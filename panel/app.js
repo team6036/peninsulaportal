@@ -182,12 +182,12 @@ class BrowserField extends util.Target {
         this.eName.textContent = this.name;
         if (this.name.startsWith("struct:") && this.type == "structschema") {
             this.eName.textContent = this.name.slice(7);
-            this.eName.innerHTML = "<span>struct:</span>"+this.eName.innerHTML;
+            // this.eName.innerHTML = "<span>struct:</span>"+this.eName.innerHTML;
         }
         this.#eTag = document.createElement("div");
         this.eMain.appendChild(this.eTag);
         this.eTag.classList.add("tag");
-        this.eTag.textContent = this.hasType() ? this.type : "";
+        this.eTag.textContent = util.ensure(this.clippedType, "str");
         this.#eValueBox = document.createElement("div");
         this.eDisplay.appendChild(this.eValueBox);
         this.eValueBox.classList.add("value");
@@ -236,7 +236,6 @@ class BrowserField extends util.Target {
 
     get type() { return this.#type; }
     hasType() { return this.type != null; }
-    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.type); }
     get isStruct() { return this.hasType() && this.type.startsWith("struct:"); }
     get structType() {
         if (!this.hasType()) return null;
@@ -254,6 +253,7 @@ class BrowserField extends util.Target {
         if (!this.isArray) return this.clippedType;
         return this.clippedType.slice(0, this.clippedType.length-2);
     }
+    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.arrayType); }
 
     get value() {
         if (!this.hasType()) return this.isOpen;
@@ -369,7 +369,7 @@ class BrowserField extends util.Target {
             if ("color" in display) this.eIcon.style.color = display.color;
             else this.eIcon.style.color = "";
         }
-        this.eValueBox.style.display = (this.showValue && this.isPrimitive && !this.isArray) ? "" : "none";
+        this.eValueBox.style.display = (this.showValue && this.isJustPrimitive) ? "" : "none";
         this.eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
         this.eValue.textContent = getRepresentation(this.value);
     }
@@ -1587,7 +1587,7 @@ Panel.AddTab.FieldButton = class PanelAddTabFieldButton extends Panel.AddTab.But
                 if ("color" in display) this.iconColor = display.color;
                 else this.iconColor = "";
             }
-            this.info = util.ensure(this.field.type, "str");
+            this.info = util.ensure(this.field.clippedType, "str");
         });
 
         this.field = field;
@@ -2315,7 +2315,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (!v.isShown) return;
                     let field = source.root.lookup(v.path);
                     if (!(field instanceof Source.Field)) return;
-                    if (!field.isPrimitive) return;
+                    if (!field.isJustPrimitive) return;
                     let log = field.getRange(...graphRange);
                     if (!util.is(log, "arr")) return;
                     let start = field.get(graphRange[0]), stop = field.get(graphRange[1]);
@@ -2768,7 +2768,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             const colors = "rybgpocm";
                             const addVar = field => {
                                 let pth = field.path;
-                                if (field.hasType() && field.isPrimitive) {
+                                if (field.hasType() && field.isJustPrimitive) {
                                     let taken = new Array(colors.length).fill(false);
                                     [...this.lVars, ...this.rVars].forEach(v => {
                                         colors.split("").forEach((c, i) => {
@@ -3225,7 +3225,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 p: () => {
                     if (!(data instanceof Source.Field)) return null;
                     if (!data.hasType()) return null;
-                    if (!data.isPrimitive) return null;
+                    if (!data.isJustPrimitive) return null;
                     if (!numbers.includes(data.clippedType)) return null;
                     return {
                         r: r,

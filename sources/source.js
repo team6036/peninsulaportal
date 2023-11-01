@@ -318,6 +318,7 @@ Source.Field = class SourceField extends util.Target {
         return this.clippedType.slice(0, this.clippedType.length-2);
     }
     get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.arrayType); }
+    get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
 
     get valueLog() { return [...this.#valueLog]; }
     set valueLog(v) {
