@@ -58,9 +58,9 @@ export default class StructHelper extends util.Target {
 
     get patterns() { return Object.keys(this.#patterns); }
     set patterns(v) {
-        v = util.ensure(v, "obj");
+        v = util.ensure(v, "arr");
         this.clearPatterns();
-        for (let k in v) this.addPattern(k, v[k]);
+        for (let k in v) this.addPattern(v[k]);
     }
     clearPatterns() {
         let patterns = this.patterns;
@@ -79,12 +79,11 @@ export default class StructHelper extends util.Target {
         if (!this.hasPattern(name)) return null;
         return this.#patterns[name];
     }
-    addPattern(name, pattern) {
-        name = String(name);
+    addPattern(pattern) {
         if (!(pattern instanceof StructHelper.Pattern)) return false;
-        if (this.hasPattern(name) || this.hasPattern(pattern)) return false;
+        if (this.hasPattern(pattern.name) || this.hasPattern(pattern)) return false;
         if (pattern.helper != this) return false;
-        this.#patterns[name] = pattern;
+        this.#patterns[pattern.name] = pattern;
         return pattern;
     }
     remPattern(name) {
@@ -100,16 +99,20 @@ export default class StructHelper extends util.Target {
 StructHelper.Pattern = class StructHelperPattern extends util.Target {
     #helper;
 
+    #name;
+
     #pattern;
 
     #fields;
     #length;
 
-    constructor(helper, pattern) {
+    constructor(helper, name, pattern) {
         super();
 
         if (!(helper instanceof StructHelper)) throw "Helper is not of class StructHelper";
         this.#helper = helper;
+
+        this.#name = String(name);
 
         this.#pattern = "";
 
@@ -120,6 +123,9 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
     }
 
     get helper() { return this.#helper; }
+
+    get name() { return this.#name; }
+
     get pattern() { return this.#pattern; }
     set pattern(v) { this.#pattern = String(v); }
     get fields() { return [...this.#fields]; }
@@ -233,6 +239,16 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         });
         if (bfX != null && bfL != null) bX += bfL - bfX;
         this.#length = failed ? null : bX;
+        this.helper.patterns.forEach(name => {
+            let pattern = this.helper.getPattern(name);
+            let has = false;
+            pattern.fields.forEach(field => {
+                if (has) return;
+                if (field.type != this.name) return;
+                has = true;
+            });
+            if (has) pattern.build();
+        });
     }
 
     decode(data) {

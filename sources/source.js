@@ -144,8 +144,8 @@ export default class Source extends util.Target {
                     let struct = String(k[1]);
                     if (struct.startsWith("struct:")) {
                         struct = struct.slice(7);
-                        if (this.structHelper.hasPattern(struct)) this.structHelper.remPattern(struct);
-                        let pattern = this.structHelper.addPattern(struct, new StructHelper.Pattern(this.structHelper, util.TEXTDECODER.decode(v)));
+                        if (this.structHelper.hasPattern(struct)) return; // this.structHelper.remPattern(struct);
+                        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, struct, util.TEXTDECODER.decode(v)));
                         pattern.build();
                         this.structHelper.build();
                         this.nestRoot.build();
@@ -186,10 +186,9 @@ export default class Source extends util.Target {
                 if (!field.name.startsWith("struct:")) return;
                 if (field.type != "structschema") return;
                 let struct = field.name.slice(7);
-                if (this.structHelper.hasPattern(struct)) this.structHelper.remPattern(struct);
-                let pattern = this.structHelper.addPattern(struct, new StructHelper.Pattern(this.structHelper, util.TEXTDECODER.decode(field.valueLog[0].v)));
+                if (this.structHelper.hasPattern(struct)) return; // this.structHelper.remPattern(struct);
+                let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, struct, util.TEXTDECODER.decode(field.valueLog[0].v)));
                 pattern.build();
-                this.structHelper.build();
                 this.nestRoot.build();
                 this.flatRoot.build();
             });
@@ -414,17 +413,16 @@ Source.Field = class SourceField extends util.Target {
             let hasPattern = pattern instanceof StructHelper.Pattern;
             this.#valueLog.forEach(log => {
                 if (!hasPattern) return;
+                if (pattern.length == null) return;
                 let ts = log.ts, v = log.v;
                 if (util.is(v.built, "obj")) return;
                 if (this.isArray) {
-                    if (pattern.length == null) return;
                     v.built = util.ensure(pattern.splitData(v.unbuilt), "arr");
                     v.built.forEach((v, i) => {
                         if (!(i in this.#fields)) this.add(new Source.Field(this, i, "struct:"+this.arrayType));
                         this.#fields[i].update(v, ts);
                     });
                 } else {
-                    if (pattern.length == null) return;
                     v.built = util.ensure(pattern.decode(v.unbuilt), "obj");
                     pattern.fields.forEach(field => {
                         if (!(field.name in this.#fields)) this.add(new Source.Field(this, field.name, field.isStruct ? ("struct:"+field.type) : field.type));

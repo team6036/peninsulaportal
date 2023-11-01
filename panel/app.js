@@ -1566,6 +1566,10 @@ Panel.AddTab.FieldButton = class PanelAddTabFieldButton extends Panel.AddTab.But
         this.elem.classList.remove("item");
         this.elem.classList.add("browserfield");
         this.btn.classList.add("display");
+        let children = Array.from(this.btn.children);
+        children.forEach(child => this.btn.removeChild(child));
+        this.btn.innerHTML = "<div class='main'></div>";
+        children.forEach(child => this.btn.children[0].appendChild(child));
         this.eInfo.classList.add("tag");
 
         this.addHandler("update", data => {
