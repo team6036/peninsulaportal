@@ -261,7 +261,8 @@ class BrowserField extends util.Target {
     }
     set value(v) {
         v = Source.Field.ensureType(this.type, v);
-        if (this.isArray) {
+        if (this.isStruct) {
+        } else if (this.isArray) {
             this.#value = util.ensure(v, "arr");
             let newKeys = Array.from(this.#value.keys()).map(i => String(i));
             let oldKeys = Object.keys(this.#fields);

@@ -89,7 +89,7 @@ export default class StructHelper extends util.Target {
     }
     remPattern(name) {
         name = String(name);
-        if (!this.hasPattern()) return false;
+        if (!this.hasPattern(name)) return false;
         let pattern = this.getPattern(name);
         delete this.#patterns[name];
         return pattern;
@@ -114,7 +114,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         this.#pattern = "";
 
         this.#fields = [];
-        this.#length = 0;
+        this.#length = null;
 
         this.pattern = pattern;
     }
@@ -202,7 +202,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
             let field = this.addField(new StructHelper.Pattern.Field(this, name, type, length, bfLength));
             field.enums = enums;
         });
-        let bX = 0, bfX = null, bfL = null;
+        let failed = false, bX = 0, bfX = null, bfL = null;
         this.fields.forEach(field => {
             if (field.isBF) {
                 let tL = StructHelper.BITFIELDLENGTHS[field.type];
@@ -221,14 +221,18 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
             } else {
                 if (bfX != null && bfL != null) bX += bfL - bfX;
                 bfX = bfL = null;
-                let l = field.isStruct ? (this.helper.hasPattern(field.type) ? this.helper.getPattern(field.type).length : 0) : StructHelper.BITFIELDLENGTHS[field.type];
+                let l = field.isStruct ? (this.helper.hasPattern(field.type) ? this.helper.getPattern(field.type).length : null) : StructHelper.BITFIELDLENGTHS[field.type];
+                if (l == null) {
+                    failed = true;
+                    l = 0;
+                }
                 l *= field.isArray ? field.length : 1;
                 field.range = [bX, bX+l];
                 bX += l;
             }
         });
         if (bfX != null && bfL != null) bX += bfL - bfX;
-        this.#length = bX;
+        this.#length = failed ? null : bX;
     }
 
     decode(data) {
