@@ -16,6 +16,9 @@ const fetch = require("electron-fetch").default;
 const png2icons = require("png2icons");
 const compareVersions = require("compare-versions");
 
+const sc = require("socket.io-client");
+const ss = require("socket.io-stream");
+
 
 const log = (...a) => {
     let now = new Date();
@@ -193,12 +196,157 @@ const MAIN = async () => {
             return this.processes.filter(process => process.hasTag(tag));
         }
     }
+    class Client extends util.Target {
+        #id;
+        #tags;
+
+        #location;
+
+        #socket;
+
+        constructor(location) {
+            super();
+
+            this.#id = null;
+            this.#tags = new Set();
+
+            this.#location = String(location);
+
+            this.#socket = sc.connect(this.location, {
+                autoConnect: false,
+            });
+            const on = (name, ...a) => {
+                name = String(name);
+                this.post("on", {
+                    name: name, a: a,
+                    meta: {
+                        location: this.location,
+                        connected: this.connected,
+                        socketId: this.socketId,
+                    },
+                });
+            };
+            this.#socket.on("connect", () => on("connect"));
+            this.#socket.on("disconnect", () => on("disconnect"));
+            this.#socket.onAny(on);
+            ss(this.#socket.on("stream", (stream, data) => {
+                data = util.ensure(data, "obj");
+                let name = String(data.name);
+                let a = util.ensure(data.a, "arr");
+                on("stream", name, ...a);
+                // stream.pipe(writestream)
+            }));
+        }
+
+        get id() { return this.#id; }
+        set id(v) {
+            v = (v == null) ? null : String(v);
+            if (this.id == v) return;
+            this.#id = v;
+        }
+        get tags() { return [...this.#tags]; }
+        set tags(v) {
+            v = util.ensure(v, "arr");
+            this.clearTags();
+            v.forEach(v => this.addTag(v));
+        }
+        clearTags() {
+            let tags = this.tags;
+            tags.forEach(tag => this.remTag(tag));
+            return tags;
+        }
+        hasTag(tag) {
+            tag = String(tag);
+            return this.#tags.has(tag);
+        }
+        addTag(tag) {
+            tag = String(tag);
+            this.#tags.add(tag);
+            return true;
+        }
+        remTag(tag) {
+            tag = String(tag);
+            this.#tags.delete(tag);
+            return true;
+        }
+
+        get location() { return this.#location; }
+
+        get connected() { return this.#socket.connected; }
+        get socketId() { return this.#socket.id; }
+
+        connect() { this.#socket.connect(); }
+        disconnect() { this.#socket.disconnect(); }
+
+        emit(name, a) {
+            name = String(name);
+            a = util.ensure(a, "arr");
+            this.#socket.emit(name, ...a);
+        }
+        stream(stream, name, a) {
+            if (!(stream instanceof fs.ReadStream)) return;
+            name = String(name);
+            a = util.ensure(a, "arr");
+            let ssStream = ss.createStream();
+            ss(this.#socket).emit("stream", ssStream, { name: name, a: a });
+            stream.pipe(ssStream);
+        }
+    }
+    class ClientManager extends util.Target {
+        #clients;
+
+        constructor() {
+            super();
+
+            this.#clients = new Set();
+        }
+
+        get clients() { return [...this.#clients]; }
+        set clients(v) {
+            v = util.ensure(v, "arr");
+            this.clearClients();
+            v.forEach(v => this.addClient(v));
+        }
+        clearClients() {
+            let clients = this.clients;
+            clients.forEach(client => this.remClient(client));
+            return clients;
+        }
+        hasClient(client) {
+            if (!(client instanceof Client)) return false;
+            return this.#clients.has(client);
+        }
+        addClient(client) {
+            if (!(client instanceof Client)) return false;
+            if (this.hasClient(client)) return false;
+            this.#clients.add(client);
+            return client;
+        }
+        remClient(client) {
+            if (!(client instanceof Client)) return false;
+            if (!this.hasClient(client)) return false;
+            this.#clients.delete(client);
+            return client;
+        }
+
+        getClientById(id) {
+            for (let i = 0; i < this.clients.length; i++)
+                if (this.clients[i].id == id)
+                    return this.clients[i];
+            return null;
+        }
+        getClientsByTag(tag) {
+            tag = String(tag);
+            return this.clients.filter(client => client.hasTag(tag));
+        }
+    }
     class Portal extends util.Target {
         #started;
 
         #stream;
 
-        #manager;
+        #processManager;
+        #clientManager;
 
         #features;
 
@@ -212,7 +360,8 @@ const MAIN = async () => {
 
             this.#stream = null;
 
-            this.#manager = new ProcessManager();
+            this.#processManager = new ProcessManager();
+            this.#clientManager = new ClientManager();
 
             this.#features = new Set();
 
@@ -258,7 +407,8 @@ const MAIN = async () => {
         get stream() { return this.#stream; }
         hasStream() { return this.stream instanceof fs.WriteStream; }
 
-        get manager() { return this.#manager; }
+        get processManager() { return this.#processManager; }
+        get clientManager() { return this.#clientManager; }
 
         get features() { return [...this.#features]; }
         set features(v) {
@@ -405,7 +555,6 @@ const MAIN = async () => {
                             resp.body.pipe(stream);
                             resp.body.on("end", () => res(true));
                             resp.body.on("error", e => rej(e));
-                            resp.body.on("progress", e => console.log(url, e.loaded/e.total));
                         });
                     });
                     await fs.promises.rename(tmpPth, thePth);
@@ -668,56 +817,77 @@ const MAIN = async () => {
                 return await this.onCallback(e.sender.id, k, args);
             });
 
-            ipc.handle("file-has", async (e, pth) => {
+            const identify = e => {
                 let feat = this.identifyFeature(e.sender.id);
                 if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                return feat;
+            };
+
+            ipc.handle("file-has", async (e, pth) => {
+                let feat = identify(e);
                 return await feat.fileHas(pth);
             });
             ipc.handle("file-read", async (e, pth) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.fileRead(pth);
             });
             ipc.handle("file-read-raw", async (e, pth) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.fileReadRaw(pth);
             });
             ipc.handle("file-write", async (e, pth, content) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.fileWrite(pth, content);
             });
             ipc.handle("file-append", async (e, pth, content) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.fileAppend(pth, content);
             });
             ipc.handle("file-delete", async (e, pth) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.fileDelete(pth);
             });
 
             ipc.handle("dir-has", async (e, pth) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.dirHas(pth);
             });
             ipc.handle("dir-list", async (e, pth) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.dirList(pth);
             });
             ipc.handle("dir-make", async (e, pth) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.dirMake(pth);
             });
             ipc.handle("dir-delete", async (e, pth) => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                let feat = identify(e);
                 return await feat.dirDelete(pth);
+            });
+
+            ipc.handle("client-make", async (e, id, location) => {
+                let feat = identify(e);
+                return await feat.clientMake(id, location);
+            });
+            ipc.handle("client-destroy", async (e, id) => {
+                let feat = identify(e);
+                return await feat.clientDestroy(id, location);
+            });
+            ipc.handle("client-has", async (e, id) => {
+                let feat = identify(e);
+                return await feat.clientHas(id);
+            });
+            ipc.handle("client-conn", async (e, id, location) => {
+                let feat = identify(e);
+                return await feat.clientConn(id, location);
+            });
+            ipc.handle("client-disconn", async (e, id) => {
+                let feat = identify(e);
+                return await feat.clientDisconn(id);
+            });
+            ipc.handle("client-emit", async (e, id, name, a) => {
+                let feat = identify(e);
+                return await feat.clientEmit(id, name, a);
             });
 
             (async () => {
@@ -734,7 +904,7 @@ const MAIN = async () => {
         }
         async stop() {
             this.log("STOP");
-            this.manager.processes.forEach(process => process.terminate());
+            this.processManager.processes.forEach(process => process.terminate());
             await this.post("stop", null);
             let feats = this.features;
             let all = true;
@@ -976,6 +1146,7 @@ const MAIN = async () => {
                 await fs.promises.access(pth);
                 return true;
             } catch (e) {}
+            return false;
         }
         static async fileRead(pth) {
             pth = this.makePath(pth);
@@ -1045,6 +1216,43 @@ const MAIN = async () => {
         async dirList(pth) { return await Portal.dirList([this.dataPath, pth]); }
         async dirMake(pth) { return await Portal.dirMake([this.dataPath, pth]); }
         async dirDelete(pth) { return await Portal.dirDelete([this.dataPath, pth]); }
+
+        async clientMake(id, location) {
+            if (await this.clientHas(id)) return null;
+            let client = this.clientManager.addClient(new Client(location));
+            client.id = id;
+            this.log(`CLIENT:make - ${id} = ${location}`);
+            return client;
+        }
+        async clientDestroy(id) {
+            if (!(await this.clientHas(id))) return null;
+            await this.clientDisconn(id);
+            let client = this.clientManager.remClient((id instanceof Client) ? id : this.clientManager.getClientById(id));
+            this.log(`CLIENT:destroy - ${client.id}`);
+            return client;
+        }
+        async clientHas(id) { return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(id) instanceof Client); }
+        async clientConn(id) {
+            if (!(await this.clientHas(id))) return null;
+            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
+            client.connect();
+            this.log(`CLIENT:conn - ${client.id}`);
+            return client;
+        }
+        async clientDisconn(id) {
+            if (!(await this.clientHas(id))) return null;
+            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
+            client.disconnect();
+            this.log(`CLIENT:disconn - ${client.id}`);
+            return client;
+        }
+        async clientEmit(id, name, a) {
+            if (!(await this.clientHas(id))) return false;
+            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
+            client.emit(name, a);
+            this.log(`CLIENT:emit - ${client.id} > ${name}`);
+            return true;
+        }
 
         identifyFeature(id) {
             let feats = this.features;
@@ -1232,10 +1440,14 @@ const MAIN = async () => {
                 },
                 "db-host": async () => {
                     let host = (await kfs._fullconfig()).dbHost;
-                    return host || "https://peninsula-db.jfancode.repl.co";
+                    return util.ensure(host, "str") || "https://peninsula-db.jfancode.repl.co";
                 },
                 "assets-host": async () => {
                     return String((await kfs._fullconfig()).assetsHost);
+                },
+                "socket-host": async () => {
+                    let host = (await kfs._fullconfig()).socketHost;
+                    return util.ensure(host, "str") || (await kfs["db-host"]());
                 },
                 "_fullclientconfig": async () => {
                     await this.affirm();
@@ -1271,6 +1483,7 @@ const MAIN = async () => {
                 "version": async () => await this.get("version"),
                 "db-host": async () => await this.get("db-host"),
                 "assets-host": async () => await this.get("assets-host"),
+                "socket-host": async () => await this.get("socket-host"),
                 "repo": async () => await this.get("repo"),
                 "holiday": async () => await this.get("active-holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
@@ -1307,6 +1520,7 @@ const MAIN = async () => {
                 },
                 "db-host": async () => await kfs._fullconfig("dbHost", String(v)),
                 "assets-host": async () => await kfs._fullclientconfig("assetsHost", String(v)),
+                "socket-host": async () => await kfs._fullclientconfig("socketHost", String(v)),
                 "_fullclientconfig": async (k=null, v=null) => {
                     if (k == null) return;
                     let content = "";
@@ -1341,6 +1555,7 @@ const MAIN = async () => {
             let kfs = {
                 "db-host": async () => await this.set("db-host", v),
                 "assets-host": async () => await this.set("assets-host", v),
+                "socket-host": async () => await this.set("socket-host", v),
                 "comp-mode": async () => await this.set("comp-mode", v),
             };
             if (k in kfs) return await kfs[k]();
@@ -1424,7 +1639,8 @@ const MAIN = async () => {
     Portal.Feature = class PortalFeature extends util.Target {
         #portal;
 
-        #manager;
+        #processManager;
+        #clientManager;
 
         #name;
 
@@ -1439,7 +1655,8 @@ const MAIN = async () => {
 
             this.#portal = null;
 
-            this.#manager = new ProcessManager();
+            this.#processManager = new ProcessManager();
+            this.#clientManager = new ClientManager();
 
             name = String(name).toUpperCase();
             this.#name = FEATURES.includes(name) ? name : null;
@@ -1453,7 +1670,8 @@ const MAIN = async () => {
             this.log();
         }
 
-        get manager() { return this.#manager; }
+        get processManager() { return this.#processManager; }
+        get clientManager() { return this.#clientManager; }
 
         get portal() { return this.#portal; }
         set portal(v) {
@@ -1954,7 +2172,8 @@ const MAIN = async () => {
             if (!this.perm) return false;
             if (this.canOperate && this.hasWindow()) await this.on("state-set", ["bounds", this.window.getBounds()]);
             this.#started = false;
-            this.manager.processes.forEach(process => process.terminate());
+            this.processManager.processes.forEach(process => process.terminate());
+            await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
             if (this.hasWindow()) this.window.close();
             this.#window = null;
             this.#menu = null;
@@ -2049,6 +2268,43 @@ const MAIN = async () => {
         async dirList(pth) { return Portal.Feature.dirList(this.portal, this.name, pth, this.started); }
         async dirMake(pth) { return Portal.Feature.dirMake(this.portal, this.name, pth, this.started); }
         async dirDelete(pth) { return Portal.Feature.dirDelete(this.portal, this.name, pth, this.started); }
+
+        async clientMake(id, location) {
+            if (!this.hasPortal()) return null;
+            let client = await this.portal.clientMake(this.name+":"+id, location);
+            client = this.clientManager.addClient(client);
+            client.addTag(this.name);
+            client.addHandler("on", data => {
+                data = util.ensure(data, "obj");
+                const name = String(data.name);
+                const a = util.ensure(data.a, "arr");
+                const meta = util.ensure(data.meta, "obj");
+                if (!this.hasWindow()) return;
+                this.window.webContents.send("client-msg", id, name, a, meta);
+            });
+            return client;
+        }
+        async clientDestroy(id) {
+            if (!this.hasPortal()) return null;
+            return await this.portal.clientDestroy((id instanceof Client) ? id : (this.name+":"+id));
+        }
+        async clientHas(id) {
+            if (!this.hasPortal()) return false;
+            if (!(await this.portal.clientHas(id))) return false;
+            return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(id) instanceof Client);
+        }
+        async clientConn(id) {
+            if (!this.hasPortal()) return null;
+            return await this.portal.clientConn((id instanceof Client) ? id : (this.name+":"+id));
+        }
+        async clientDisconn(id) {
+            if (!this.hasPortal()) return null;
+            return await this.portal.clientDisconn((id instanceof Client) ? id : (this.name+":"+id));
+        }
+        async clientEmit(id, name, a) {
+            if (!this.hasPortal()) return false;
+            return await this.portal.clientEmit((id instanceof Client) ? id : (this.name+":"+id), name, a);
+        }
 
         async get(k) {
             if (!this.started) return null;
@@ -2359,9 +2615,9 @@ const MAIN = async () => {
                         await Portal.fileWrite(path.join(root, "stdout.log"), "");
                         await Portal.fileWrite(path.join(root, "stderr.log"), "");
                         return new Promise((res, rej) => {
-                            if (this.manager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
+                            if (this.processManager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
                             this.log("SPAWN");
-                            const process = this.manager.addProcess(new Process(cp.spawn(project.config.scriptPython, [script], { cwd: root })));
+                            const process = this.processManager.addProcess(new Process(cp.spawn(project.config.scriptPython, [script], { cwd: root })));
                             process.id = "script";
                             const finish = async () => {
                                 const appRoot = await this.on("root-get");
@@ -2455,7 +2711,7 @@ const MAIN = async () => {
                     },
                     "exec-term": async () => {
                         this.log("SPAWN term");
-                        const process = this.manager.getProcessById("script");
+                        const process = this.processManager.getProcessById("script");
                         if (!(process instanceof Process)) return false;
                         process.terminate();
                         return true;
@@ -2511,7 +2767,7 @@ const MAIN = async () => {
                     "cmd-open-app-data-dir": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
                         await new Promise((res, rej) => {
-                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
+                            const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
                             process.addHandler("exit", data => res(data.code));
                             process.addHandler("error", data => rej(data.e));
                         });
@@ -2523,7 +2779,7 @@ const MAIN = async () => {
                     "cmd-open-app-log-dir": async () => {
                         if (!this.hasPortal()) throw "No linked portal";
                         await new Promise((res, rej) => {
-                            const process = this.manager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
+                            const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
                             process.addHandler("exit", data => res(data.code));
                             process.addHandler("error", data => rej(data.e));
                         });

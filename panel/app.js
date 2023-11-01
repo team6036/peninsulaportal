@@ -120,6 +120,22 @@ function getRepresentation(o) {
     return String(o);
 }
 
+function getTabDisplay(name) {
+    name = String(name);
+    if (name == "graph") return {
+        name: "analytics",
+        color: "var(--cb)",
+    };
+    if (name.startsWith("odometry")) return {
+        name: "locate",
+        color: "var(--cy)",
+    };
+    if (name == "logger") return {
+        name: "list",
+        color: "var(--cc)",
+    };
+}
+
 
 class BrowserField extends util.Target {
     #name;
@@ -393,7 +409,7 @@ class ToolButton extends util.Target {
     #eIcon;
     #eName;
 
-    constructor(name, icon) {
+    constructor(dname, name) {
         super();
 
         this.#elem = document.createElement("button");
@@ -422,8 +438,15 @@ class ToolButton extends util.Target {
             document.body.addEventListener("mousemove", mousemove);
         });
 
-        this.name = name;
-        this.icon = icon;
+        this.name = dname;
+
+        let display = getTabDisplay(name);
+        if (display != null) {
+            if ("src" in display) this.iconSrc = display.src;
+            else this.icon = display.name;
+            if ("color" in display) this.iconColor = display.color;
+            else this.iconColor = "";
+        }
     }
 
     get elem() { return this.#elem; }
@@ -1151,34 +1174,45 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         this.clearItems();
         let toolItems = [
             {
-                item: new Panel.AddTab.Button("Graph", "analytics", "var(--cb)"),
-                trigger: () => {
-                    if (!this.hasParent()) return;
-                    let index = this.parent.tabs.indexOf(this);
-                    this.parent.addTab(new Panel.GraphTab(), index);
-                    this.parent.remTab(this);
-                },
+                type: Panel.GraphTab,
+                name: "graph",
+                dname: "Graph", 
             },
             {
-                item: new Panel.AddTab.Button("Odometry2d", "locate", "var(--cy)"),
-                trigger: () => {
-                    if (!this.hasParent()) return;
-                    let index = this.parent.tabs.indexOf(this);
-                    this.parent.addTab(new Panel.Odometry2dTab(), index);
-                    this.parent.remTab(this);
-                },
+                type: Panel.Odometry2dTab,
+                name: "odometry2d",
+                dname: "Odometry2d",
             },
             {
-                item: new Panel.AddTab.Button("Odometry3d", "locate", "var(--cy)"),
-                init: item => (item.btn.disabled = false),
-                trigger: () => {
-                    if (!this.hasParent()) return;
-                    let index = this.parent.tabs.indexOf(this);
-                    this.parent.addTab(new Panel.Odometry3dTab(), index);
-                    this.parent.remTab(this);
-                },
+                type: Panel.Odometry3dTab,
+                name: "odometry3d",
+                dname: "Odometry3d",
+            },
+            {
+                type: Panel.LoggerTab,
+                name: "logger",
+                dname: "PlexusLogger",
             },
         ];
+        toolItems = toolItems.map(item => {
+            let display = getTabDisplay(item.name);
+            let itm = new Panel.AddTab.Button(item.dname, "", "");
+            if (display != null) {
+                if ("src" in display) itm.iconSrc = display.src;
+                else itm.icon = display.name;
+                if ("color" in display) itm.iconColor = display.color;
+                else itm.iconColor = "";
+            }
+            return {
+                item: itm,
+                trigger: () => {
+                    if (!this.hasParent()) return;
+                    let index = this.parent.tabs.indexOf(this);
+                    this.parent.addTab(new item.type(), index);
+                    this.parent.remTab(this);
+                },
+            };
+        });
         toolItems = toolItems.map(item => {
             if (item.init) item.init(item.item);
             item.item.addHandler("trigger", item.trigger);
@@ -1814,15 +1848,74 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     }
 };
 Panel.ToolTab = class PanelToolTab extends Panel.Tab {
-    constructor(name, icon, color="") {
+    constructor(dname, name) {
         super();
 
         this.elem.classList.add("tool");
 
-        this.name = name;
-        this.icon = icon;
-        this.iconColor = color;
+        this.name = dname;
+        
+        let display = getTabDisplay(name);
+        if (display != null) {
+            if ("src" in display) this.iconSrc = display.src;
+            else this.icon = display.name;
+            if ("color" in display) this.iconColor = display.color;
+            else this.iconColor = "";
+        }
     }
+};
+Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
+    #client;
+
+    #eStatusBox;
+    #eStatus;
+
+    constructor() {
+        super("PlexusLogger", "logger");
+
+        this.elem.classList.add("logger");
+
+        this.#client = null;
+        (async () => {
+            let host = String(await window.api.get("socket-host"));
+            this.#client = new core.Client(host+"/panel");
+            await this.#client.whenNotDestroyed();
+            this.#client.connect();
+        })();
+
+        this.#eStatusBox = document.createElement("div");
+        this.elem.appendChild(this.eStatusBox);
+        this.eStatusBox.classList.add("status");
+        let eLoading = document.createElement("div");
+        this.eStatusBox.appendChild(eLoading);
+        eLoading.classList.add("loading");
+        let eIcon = document.createElement("ion-icon");
+        this.eStatusBox.appendChild(eIcon);
+        eIcon.setAttribute("name", "cloud");
+        this.#eStatus = document.createElement("a");
+        this.eStatusBox.appendChild(this.eStatus);
+
+        this.addHandler("update", data => {
+            if (this.isClosed) return;
+            this.status = this.#hasClient() ? this.#client.connected ? this.#client.location : ("Connecting - "+this.#client.location) : "Initializing client";
+            if (this.#hasClient() && this.#client.connected) {
+                eIcon.style.display = "";
+                eLoading.style.display = "none";
+                this.eStatus.setAttribute("href", this.#client.location);
+            } else {
+                eIcon.style.display = "none";
+                eLoading.style.display = "";
+                this.eStatus.removeAttribute("href");
+            }
+        });
+    }
+
+    #hasClient() { return this.#client instanceof core.Client; }
+
+    get eStatusBox() { return this.#eStatusBox; }
+    get eStatus() { return this.#eStatus; }
+    get status() { return this.eStatus.textContent; }
+    set status(v) { this.eStatus.textContent = v; }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
@@ -1837,8 +1930,8 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
 
     static DO = true;
 
-    constructor(name, icon, color="") {
-        super(name, icon, color);
+    constructor(dname, name) {
+        super(dname, name);
 
         this.elem.classList.add("canvas");
 
@@ -1938,7 +2031,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #eSkipForwardBtn;
 
     constructor(...a) {
-        super("Graph", "analytics", "var(--cb)");
+        super("Graph", "graph");
 
         this.elem.classList.add("graph");
 
@@ -2893,7 +2986,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     #eTemplateSelect;
 
     constructor(tail="") {
-        super("Odometry"+tail, "locate", "var(--cy)");
+        super("Odometry"+tail, "odometry"+String(tail).toLowerCase());
 
         this.elem.classList.add("odometry");
 
@@ -5408,7 +5501,7 @@ export default class App extends core.App {
                         if (this.dragData.hasIcon) {
                             if (this.dragData.eTabIcon.hasAttribute("src")) icon.setAttribute("src", this.dragData.eTabIcon.getAttribute("src"));
                             else icon.setAttribute("name", this.dragData.eTabIcon.getAttribute("name"));
-                            icon.style = this.dragData.eTabIcon.style;
+                            icon.style.cssText = this.dragData.eTabIcon.style.cssText;
                         } else icon.style.display = "none";
                     }
                 }
@@ -6229,19 +6322,24 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.eContent.classList.add("content");
         new ResizeObserver(() => this.formatContent()).observe(this.eContent);
         
-        this.addToolButton(new ToolButton("Graph", "analytics")).addHandler("drag", () => {
+        this.addToolButton(new ToolButton("Graph", "graph")).addHandler("drag", () => {
             if (!this.hasApp()) return;
             this.app.dragData = new Panel.GraphTab();
             this.app.dragging = true;
         });
-        this.addToolButton(new ToolButton("Odom2d", "locate")).addHandler("drag", () => {
+        this.addToolButton(new ToolButton("Odom2d", "odometry2d")).addHandler("drag", () => {
             if (!this.hasApp()) return;
             this.app.dragData = new Panel.Odometry2dTab();
             this.app.dragging = true;
         });
-        this.addToolButton(new ToolButton("Odom3d", "locate")).addHandler("drag", () => {
+        this.addToolButton(new ToolButton("Odom3d", "odometry3d")).addHandler("drag", () => {
             if (!this.hasApp()) return;
             this.app.dragData = new Panel.Odometry3dTab();
+            this.app.dragging = true;
+        });
+        this.addToolButton(new ToolButton("PLogger", "logger")).addHandler("drag", () => {
+            if (!this.hasApp()) return;
+            this.app.dragData = new Panel.LoggerTab();
             this.app.dragging = true;
         });
 
