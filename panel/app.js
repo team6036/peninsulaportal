@@ -1926,7 +1926,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
 
-    #eToggle;
+    #eOpen;
     #eOptions;
     #eOptionSections;
     #eContent;
@@ -1955,22 +1955,56 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         this.#eSubNav = document.createElement("div");
         this.eNav.appendChild(this.eSubNav);
         this.eSubNav.classList.add("nav");
-        this.#eToggle = document.createElement("button");
-        this.elem.appendChild(this.eToggle);
-        this.eToggle.classList.add("toggle");
-        this.eToggle.classList.add("override");
-        this.eToggle.innerHTML = "<ion-icon name='chevron-up'></ion-icon>";
+        this.#eOpen = document.createElement("div");
+        this.elem.appendChild(this.eOpen);
+        this.eOpen.classList.add("open");
         this.#eOptions = document.createElement("div");
         this.elem.appendChild(this.eOptions);
         this.eOptions.classList.add("options");
         this.#eOptionSections = {};
 
-        this.eToggle.addEventListener("click", e => {
-            this.isOptionsOpen = !this.isOptionsOpen;
+        let cancel = 10;
+        this.eOpen.addEventListener("click", e => {
+            if (cancel <= 0) return cancel = 10;
+            this.optionState = (this.optionState == 0) ? 0.5 : 0;
+        });
+        this.eOpen.addEventListener("mousedown", e => {
+            let offset = e.offsetY;
+            const mouseup = e => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+                if (cancel > 0) return;
+                this.elem.style.removeProperty("--options");
+                this.elem.classList.remove("drag");
+                let r = this.elem.getBoundingClientRect();
+                let y = e.pageY;
+                y -= r.top;
+                y += offset;
+                y /= r.height;
+                this.optionState = (y < 0.25) ? 1 : (y < 0.75) ? 0.5 : 0;
+            };
+            const mousemove = e => {
+                if (cancel > 0) return cancel--;
+                let r = this.elem.getBoundingClientRect();
+                let y = e.pageY;
+                y -= r.top;
+                y += offset;
+                y /= r.height;
+                this.elem.style.setProperty("--options", (y*100)+"%");
+                this.elem.classList.add("drag");
+                this.optionState = (y < 0.1) ? 1 : (y < 0.66) ? 0.5 : 0;
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
         });
 
         this.addHandler("openclose", data => {
-            this.isOptionsOpen = !this.isOptionsOpen;
+            let x = this.optionState;
+            x *= 2;
+            x++;
+            x %= 3;
+            x /= 2;
+            this.optionState = x;
         });
 
         if (this.constructor.DO) {
@@ -1986,7 +2020,8 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
 
         new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
-        this.openOptions();
+        this.optionState = 1;
+        this.closeOptions();
     }
 
     get quality() { return this.#quality; }
@@ -1996,12 +2031,12 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         this.#quality = v;
     }
 
-    get eToggle() { return this.#eToggle; }
     get eContent() { return this.#eContent; }
     get eNav() { return this.#eNav; }
     get eSubNav() { return this.#eSubNav; }
     get canvas() { return this.#canvas; }
     get ctx() { return this.#ctx; }
+    get eOpen() { return this.#eOpen; }
     get eOptions() { return this.#eOptions; }
     get eOptionSections() { return Object.keys(this.#eOptionSections); }
     hasEOptionSection(id) { return id in this.#eOptionSections; }
@@ -2014,17 +2049,27 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         return elem;
     }
 
-    get isOptionsOpen() { return this.elem.classList.contains("open"); }
-    set isOptionsOpen(v) {
-        v = !!v;
-        if (this.isOptionsOpen == v) return;
-        if (v) this.elem.classList.add("open");
-        else this.elem.classList.remove("open");
+    get optionState() {
+        if (this.elem.classList.contains("open")) return 1;
+        if (this.elem.classList.contains("half-open")) return 0.5;
+        return 0;
     }
-    get isOptionsClosed() { return !this.isOptionsOpen; }
-    set isOptionsClosed(v) { this.isOptionsOpen = !v; }
-    openOptions() { return this.isOptionsOpen = true; }
-    closeOptions() { return this.isOptionsClosed = true; }
+    set optionState(v) {
+        v = [0, 0.5, 1].includes(v) ? v : 0;
+        if (this.optionState == v) return;
+        this.elem.classList.remove("open");
+        this.elem.classList.remove("half-open");
+        if (v == 1) {
+            this.elem.classList.add("open");
+            this.eOpen.innerHTML = "<ion-icon name='chevron-down'></ion-icon>";
+        } else if (v == 0.5) {
+            this.elem.classList.add("half-open");
+            this.eOpen.innerHTML = "<ion-icon name='chevron-expand'></ion-icon>";
+        } else {
+            this.eOpen.innerHTML = "<ion-icon name='chevron-up'></ion-icon>";
+        }
+    }
+    closeOptions() { return this.optionState = 0; }
 };
 Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #lVars; #rVars;
@@ -2602,26 +2647,26 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphTab) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOptionsOpen];
+            if (a instanceof Panel.GraphTab) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof Panel.GraphTab.Variable) a = [a, []];
                 else {
                     a = new Panel.GraphTab(...a);
-                    a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOptionsOpen];
+                    a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.optionState];
                 }
             }
             else if (a instanceof Panel.GraphTab.Variable) a = [[a], []];
-            else if (util.is(a, "obj")) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.isOpen];
+            else if (util.is(a, "obj")) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.optionState];
             else a = [[], []];
         }
         if (a.length == 2)
             a = [...a, true];
         if (a.length == 3) {
-            if (util.is(a[2], "str")) a = [...a, {}, true];
+            if (util.is(a[2], "str")) a = [...a, {}, 0.5];
             else a = [a[0], a[1], "all", {}, a[2]];
         }
 
-        [this.lVars, this.rVars, this.viewMode, this.viewParams, this.isOptionsOpen] = a;
+        [this.lVars, this.rVars, this.viewMode, this.viewParams, this.optionState] = a;
     }
 
     static findStep(v, nSteps) {
@@ -2747,7 +2792,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     getHovered(data, pos, options) {
         pos = new V(pos);
         options = util.ensure(options, "obj");
-        if (this.isOptionsClosed) return null;
+        if (this.optionState == 0) return null;
         let r;
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
@@ -2811,7 +2856,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             rVars: this.rVars,
             viewMode: this.viewMode,
             viewParams: this.viewParams,
-            isOpen: this.isOptionsOpen,
+            optionState: this.optionState,
         });
     }
 };
@@ -3209,7 +3254,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     getHovered(data, pos, options) {
         pos = new V(pos);
         options = util.ensure(options, "obj");
-        if (this.isOptionsClosed) return null;
+        if (this.optionState == 0) return null;
         let r;
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
@@ -3620,23 +3665,23 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         if (a.length <= 0 || [6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsOpen];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
-                    a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOptionsClosed];
+                    a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.isOpen];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.optionState];
             else a = [[], null];
         }
         if (a.length == 2) a = [...a, 1000];
         if (a.length == 3) a = [...a, 100];
-        if (a.length == 4) a = [...a, true];
+        if (a.length == 4) a = [...a, 0.5];
         if (a.length == 5) a = [...a.slice(0, 4), true, true, a[4]];
 
-        [this.poses, this.template, this.size, this.robotSize, this.isMeters, this.isDegrees, this.isOptionsOpen] = a;
+        [this.poses, this.template, this.size, this.robotSize, this.isMeters, this.isDegrees, this.optionState] = a;
 
         let templates = {};
         let templateImages = {};
@@ -3772,7 +3817,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             robotSize: this.robotSize,
             isMeters: this.isMeters,
             isDegrees: this.isDegrees,
-            isOpen: this.isOptionsOpen,
+            optionState: this.optionState,
         });
     }
 };
@@ -4143,21 +4188,21 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         if (a.length <= 0 || [4, 5, 6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.isOptionsOpen];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
-                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.isOptionsClosed];
+                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.isOpen];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
             else a = [[], null];
         }
-        if (a.length == 2) a = [...a, true];
+        if (a.length == 2) a = [...a, 0.5];
         if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, a[2]];
 
-        [this.poses, this.template, this.isProjection, this.isOrbit, this.isMeters, this.isDegrees, this.isOptionsOpen] = a;
+        [this.poses, this.template, this.isProjection, this.isOrbit, this.isMeters, this.isDegrees, this.optionState] = a;
 
         let templates = {};
         let templateModels = {};
@@ -4494,7 +4539,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             isOrbit: this.isOrbit,
             isMeters: this.isMeters,
             isDegrees: this.isDegrees,
-            isOpen: this.isOptionsOpen,
+            optionState: this.optionState,
         });
     }
 };
