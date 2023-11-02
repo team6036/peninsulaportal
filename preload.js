@@ -43,7 +43,7 @@ contextBridge.exposeInMainWorld("api", {
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
 
     clientMake: (id, location) => ipcRenderer.invoke("client-make", id, location),
-    clientDestory: id => ipcRenderer.invoke("client-destroy", id),
+    clientDestroy: id => ipcRenderer.invoke("client-destroy", id),
     clientConn: id => ipcRenderer.invoke("client-conn", id),
     clientDisconn: id => ipcRenderer.invoke("client-disconn", id),
     clientHas: id => ipcRenderer.invoke("client-has", id),

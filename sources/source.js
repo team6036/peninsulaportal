@@ -461,24 +461,42 @@ Source.Field = class SourceField extends util.Target {
         return field.name in this.#fields;
     }
     add(field) {
-        if (!(field instanceof Source.Field)) return false;
-        if (field.parent != this) return false;
-        if (field.name in this.#fields) return false;
-        this.#fields[field.name] = field;
-        field._onChange = () => this.post("change", { path: field.path });
-        field.addHandler("change", field._onChange);
+        let r = this.addBulk(field);
+        return (r.length > 0) ? r[0] : false;
+    }
+    addBulk(...fields) {
+        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBulk(...fields[0]);
+        let doneFields = [];
+        fields.forEach(field => {
+            if (!(field instanceof Source.Field)) return;
+            if (field.parent != this) return;
+            if (field.name in this.#fields) return;
+            this.#fields[field.name] = field;
+            field._onChange = () => this.post("change", { path: field.path });
+            field.addHandler("change", field._onChange);
+            doneFields.push(field);
+        });
         this.post("change", { path: this.path });
-        return field;
+        return doneFields;
     }
     rem(field) {
-        if (!(field instanceof Source.Field)) return false;
-        if (field.parent != this) return false;
-        if (!(field.name in this.#fields)) return false;
-        delete this.#fields[field.name];
-        field.remHandler("change", field._onChange);
-        delete field._onChange;
+        let r = this.remBulk(field);
+        return (r.length > 0) ? r[0] : false;
+    }
+    remBulk(...fields) {
+        if (fields.length == 1 && util.is(fields[0], "arr")) return this.remBulk(...fields[0]);
+        let doneFields = [];
+        fields.forEach(field => {
+            if (!(field instanceof Source.Field)) return;
+            if (field.parent != this) return;
+            if (!(field.name in this.#fields)) return;
+            delete this.#fields[field.name];
+            field.remHandler("change", field._onChange);
+            delete field._onChange;
+            doneFields.push(field);
+        });
         this.post("change", { path: this.path });
-        return field;
+        return doneFields;
     }
 
     toSerialized() {
