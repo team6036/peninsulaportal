@@ -20,7 +20,7 @@ import WPILOGSource from "../sources/wpilog/source.js";
 
 
 THREE.Quaternion.fromRotationSequence = (...seq) => {
-    if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq);
+    if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq[0]);
     let q = new THREE.Quaternion();
     seq.forEach(rot => {
         if (!(util.is(rot, "obj"))) return;
@@ -182,6 +182,45 @@ class BrowserField extends util.Target {
     #eContent;
     #eSide;
 
+    static doubleTraverse(fieldArr, bfieldArr, addFunc, remFunc) {
+        let fieldMap = {}, bfieldMap = {};
+        util.ensure(fieldArr, "arr").forEach(field => {
+            if (!(field instanceof Source.Field)) return;
+            fieldMap[field.name] = field;
+        });
+        util.ensure(bfieldArr, "arr").forEach(bfield => {
+            if (!(bfield instanceof BrowserField)) return;
+            bfieldMap[bfield.name] = bfield;
+        });
+        let add = [];
+        for (let name in fieldMap) {
+            let field = fieldMap[name];
+            if (name in bfieldMap) continue;
+            let bfield = bfieldMap[field.name] = new BrowserField(field.name, field.type);
+            add.push(bfield);
+        }
+        if (util.is(addFunc, "func")) addFunc(...add);
+        let rem = [];
+        for (let name in bfieldMap) {
+            let bfield = bfieldMap[name];
+            if (name in fieldMap) continue;
+            rem.push(bfield);
+        }
+        if (util.is(remFunc, "func")) remFunc(...rem);
+        for (let name in fieldMap) {
+            let field = fieldMap[name];
+            let bfield = bfieldMap[name];
+            if (bfield.isOpen)
+                BrowserField.doubleTraverse(
+                    field.fields,
+                    bfield.fields,
+                    (...bf) => bfield.addBulk(...bf),
+                    (...bf) => bfield.remBulk(...bf),
+                );
+            bfield.value = field.get();
+        }
+    };
+
     constructor(name, type) {
         super();
 
@@ -318,34 +357,51 @@ class BrowserField extends util.Target {
         return field.name in this.#fields;
     }
     add(field) {
-        if (!(field instanceof BrowserField)) return false;
-        if (field.name in this.#fields) return false;
-        this.#fields[field.name] = field;
-        field._onTrigger = data => {
-            data = util.ensure(data, "obj");
-            this.post("trigger", { path: [this.name, ...util.ensure(data.path, "arr")] });
-        };
-        field._onDrag = data => {
-            data = util.ensure(data, "obj");
-            this.post("drag", { path: [this.name, ...util.ensure(data.path, "arr")] });
-        };
-        field.addHandler("trigger", field._onTrigger);
-        field.addHandler("drag", field._onDrag);
-        this.eContent.appendChild(field.elem);
+        let r = this.addBulk(field);
+        return (r.length > 0) ? r[0] : false;
+    }
+    addBulk(...fields) {
+        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBulk(...fields[0]);
+        let doneFields = [];
+        fields.forEach(field => {
+            if (!(field instanceof BrowserField)) return;
+            if (field.name in this.#fields) return;
+            this.#fields[field.name] = field;
+            field._onTrigger = data => {
+                data = util.ensure(data, "obj");
+                this.post("trigger", { path: [this.name, ...util.ensure(data.path, "arr")] });
+            };
+            field._onDrag = data => {
+                data = util.ensure(data, "obj");
+                this.post("drag", { path: [this.name, ...util.ensure(data.path, "arr")] });
+            };
+            field.addHandler("trigger", field._onTrigger);
+            field.addHandler("drag", field._onDrag);
+            this.eContent.appendChild(field.elem);
+            doneFields.push(field);
+        });
         this.format();
-        return field;
+        return doneFields;
     }
     rem(field) {
-        if (!(field instanceof BrowserField)) return false;
-        if (!(field.name in this.#fields)) return false;
-        delete this.#fields[field.name];
-        field.remHandler("trigger", field._onTrigger);
-        field.remHandler("drag", field._onDrag);
-        delete field._onTrigger;
-        delete field._onDrag;
-        this.eContent.removeChild(field.elem);
-        this.format();
-        return field;
+        let r = this.remBulk(field);
+        return (r.length > 0) ? r[0] : false;
+    }
+    remBulk(...fields) {
+        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBulk(...fields[0]);
+        let doneFields = [];
+        fields.forEach(field => {
+            if (!(field instanceof BrowserField)) return;
+            if (!(field.name in this.#fields)) return;
+            delete this.#fields[field.name];
+            field.remHandler("trigger", field._onTrigger);
+            field.remHandler("drag", field._onDrag);
+            delete field._onTrigger;
+            delete field._onDrag;
+            this.eContent.removeChild(field.elem);
+            doneFields.push(field);
+        });
+        return doneFields;
     }
 
     get showValue() { return this.#showValue; }
@@ -411,6 +467,7 @@ class BrowserField extends util.Target {
         if (!(other instanceof BrowserField)) return 0;
         let name1 = this.name.toLowerCase();
         let name2 = other.name.toLowerCase();
+        if (util.is(parseInt(name1), "int") && util.is(parseInt(name2), "int")) return name1 - name2;
         if (name1 < name2) return -1;
         if (name1 > name2) return +1;
         return 0;
@@ -1694,65 +1751,41 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     state.fields = [];
                     this.eBrowser.innerHTML = "";
                 }
-                const doubleDFS = (fieldArr, bfieldArr, addFunc, remFunc) => {
-                    let fieldMap = {}, bfieldMap = {};
-                    fieldArr.forEach(field => (fieldMap[field.name] = field));
-                    bfieldArr.forEach(bfield => (bfieldMap[bfield.name] = bfield));
-                    for (let name in fieldMap) {
-                        let field = fieldMap[name];
-                        if (name in bfieldMap) continue;
-                        let bfield = bfieldMap[field.name] = new BrowserField(field.name, field.type);
-                        addFunc(bfield);
-                    }
-                    for (let name in bfieldMap) {
-                        let bfield = bfieldMap[name];
-                        if (name in fieldMap) continue;
-                        remFunc(bfield);
-                    }
-                    for (let name in fieldMap) {
-                        let field = fieldMap[name];
-                        let bfield = bfieldMap[name];
-                        if (bfield.isOpen)
-                            doubleDFS(
-                                field.fields,
-                                bfield.fields,
-                                bf => bfield.add(bf),
-                                bf => bfield.rem(bf),
-                            );
-                        bfield.value = field.get();
-                    }
-                };
-                doubleDFS(
+                BrowserField.doubleTraverse(
                     field.fields,
                     state.fields,
-                    bfield => {
-                        state.fields.push(bfield);
-                        bfield._onTrigger = data => {
-                            data = util.ensure(data, "obj");
-                            this.path = [...this.path, ...util.ensure(data.path, "arr")];
-                        };
-                        bfield._onDrag = data => {
-                            data = util.ensure(data, "obj");
-                            let path = [...this.path, ...util.ensure(data.path, "arr")];
-                            if (!this.hasApp() || !this.hasPage()) return;
-                            this.app.dragData = this.page.hasSource() ? this.page.source.root.lookup(path) : null;
-                            this.app.dragging = true;
-                        };
-                        bfield.addHandler("trigger", bfield._onTrigger);
-                        bfield.addHandler("drag", bfield._onDrag);
-                        this.eBrowser.appendChild(bfield.elem);
+                    (...bfields) => {
+                        bfields.forEach(bfield => {
+                            state.fields.push(bfield);
+                            bfield._onTrigger = data => {
+                                data = util.ensure(data, "obj");
+                                this.path = [...this.path, ...util.ensure(data.path, "arr")];
+                            };
+                            bfield._onDrag = data => {
+                                data = util.ensure(data, "obj");
+                                let path = [...this.path, ...util.ensure(data.path, "arr")];
+                                if (!this.hasApp() || !this.hasPage()) return;
+                                this.app.dragData = this.page.hasSource() ? this.page.source.root.lookup(path) : null;
+                                this.app.dragging = true;
+                            };
+                            bfield.addHandler("trigger", bfield._onTrigger);
+                            bfield.addHandler("drag", bfield._onDrag);
+                            this.eBrowser.appendChild(bfield.elem);
+                        });
                         state.fields.sort((a, b) => a.compare(b)).forEach((field, i) => {
                             field.elem.style.order = i;
                             field.format();
                         });
                     },
-                    bfield => {
-                        state.fields.splice(state.fields.indexOf(bfield), 1);
-                        bfield.remHandler("trigger", bfield._onTrigger);
-                        bfield.remHandler("drag", bfield._onDrag);
-                        delete bfield._onTrigger;
-                        delete bfield._onDrag;
-                        this.eBrowser.removeChild(bfield.elem);
+                    (...bfields) => {
+                        bfields.forEach(bfield => {
+                            state.fields.splice(state.fields.indexOf(bfield), 1);
+                            bfield.remHandler("trigger", bfield._onTrigger);
+                            bfield.remHandler("drag", bfield._onDrag);
+                            delete bfield._onTrigger;
+                            delete bfield._onDrag;
+                            this.eBrowser.removeChild(bfield.elem);
+                        });
                     },
                 );
             } else if (field instanceof Source.Field) {
@@ -1898,7 +1931,10 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.eStatusBox.appendChild(this.eStatus);
 
         this.addHandler("update", data => {
+            if (this.#hasClient()) this.#client.update();
+
             if (this.isClosed) return;
+
             this.status = this.#hasClient() ? this.#client.connected ? this.#client.location : ("Connecting - "+this.#client.location) : "Initializing client";
             if (this.#hasClient() && this.#client.connected) {
                 eIcon.style.display = "";
@@ -2310,10 +2346,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (e.code == "Tab") tooltipCycle++;
         });
         this.addHandler("update", () => {
-            if (this.isClosed) return;
-
             clearTimeout(id);
-            id = setTimeout(() => eGraphTooltip.remove(), 100);
+            id = setTimeout(() => {
+                eGraphTooltip.remove();
+            }, 500);
+
+            if (this.isClosed) return eGraphTooltip.classList.remove("this");
 
             let paused = true;
             if (this.hasPage() && this.page.hasSource())
@@ -3032,6 +3070,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     #eTimeDisplay;
     #eTemplateSelect;
 
+    static PATTERNS = {};
+
     constructor(tail="") {
         super("Odometry"+tail, "odometry"+String(tail).toLowerCase());
 
@@ -3540,6 +3580,14 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #eUnitsDegrees;
     #eUnitsRadians;
 
+    static PATTERNS = {
+        "Pose2d": [
+            ["translation", "x"],
+            ["translation", "y"],
+            ["rotation", "value"],
+        ],
+    };
+
     constructor(...a) {
         super("2d");
 
@@ -3823,6 +3871,18 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
     #eGhostBtn;
     #eDisplayType;
+
+    static PATTERNS = {
+        "Pose2d": [
+            ["translation", "x"],
+            ["translation", "y"],
+            ["translation", "z"],
+            ["rotation", "q", "x"],
+            ["rotation", "q", "y"],
+            ["rotation", "q", "z"],
+            ["rotation", "q", "w"],
+        ],
+    };
 
     constructor(...a) {
         super();
@@ -4745,7 +4805,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         [obj, pobj] = [new THREE.Object3D(), obj];
                         obj.add(pobj);
                         preloadedRobots[robot] = obj;
-                    }, null, err => { delete preloadedRobots[template]; });
+                    }, null, err => { delete preloadedRobots[robot]; });
                 }
                 let obj = this.#objs[0];
                 if (!this.#has || type != this.pose.type || model != (this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type])) {
@@ -6393,39 +6453,11 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         this.addHandler("update", data => {
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
-            const doubleDFS = (fieldArr, bfieldArr, addFunc, remFunc) => {
-                let fieldMap = {}, bfieldMap = {};
-                fieldArr.forEach(field => (fieldMap[field.name] = field));
-                bfieldArr.forEach(bfield => (bfieldMap[bfield.name] = bfield));
-                for (let name in fieldMap) {
-                    let field = fieldMap[name];
-                    if (name in bfieldMap) continue;
-                    let bfield = bfieldMap[field.name] = new BrowserField(field.name, field.type);
-                    addFunc(bfield);
-                }
-                for (let name in bfieldMap) {
-                    let bfield = bfieldMap[name];
-                    if (name in fieldMap) continue;
-                    remFunc(bfield);
-                }
-                for (let name in fieldMap) {
-                    let field = fieldMap[name];
-                    let bfield = bfieldMap[name];
-                    if (bfield.isOpen)
-                        doubleDFS(
-                            field.fields,
-                            bfield.fields,
-                            bf => bfield.add(bf),
-                            bf => bfield.rem(bf),
-                        );
-                    bfield.value = field.get();
-                }
-            };
-            doubleDFS(
+            BrowserField.doubleTraverse(
                 this.hasSource() ? this.source.root.fields : [],
                 this.browserFields,
-                bfield => this.addBrowserField(bfield),
-                bfield => this.remBrowserField(bfield),
+                (...bfields) => this.addBrowserFieldBulk(...bfields),
+                (...bfields) => this.remBrowserFieldBulk(...bfields),
             );
         });
         this.#eDragBox = document.createElement("div");
@@ -6598,30 +6630,48 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         return this.#browserFields.includes(field);
     }
     addBrowserField(field) {
-        if (!(field instanceof BrowserField)) return false;
-        if (this.hasBrowserField(field)) return false;
-        this.#browserFields.push(field);
-        field._onDrag = data => {
-            data = util.ensure(data, "obj");
-            let field = this.hasSource() ? this.source.root.lookup(data.path) : null;
-            if (!(field instanceof Source.Field)) return;
-            if (!this.hasApp()) return;
-            this.app.dragData = field;
-            this.app.dragging = true;
-        };
-        field.addHandler("drag", field._onDrag);
-        this.getESideSection("browser").eContent.appendChild(field.elem);
+        let r = this.addBrowserFieldBulk(field);
+        return (r.length > 0) ? r[0] : false;
+    }
+    addBrowserFieldBulk(...fields) {
+        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBrowserFieldBulk(...fields[0]);
+        let doneFields = [];
+        fields.forEach(field => {
+            if (!(field instanceof BrowserField)) return;
+            if (this.hasBrowserField(field)) return;
+            this.#browserFields.push(field);
+            field._onDrag = data => {
+                data = util.ensure(data, "obj");
+                let field = this.hasSource() ? this.source.root.lookup(data.path) : null;
+                if (!(field instanceof Source.Field)) return;
+                if (!this.hasApp()) return;
+                this.app.dragData = field;
+                this.app.dragging = true;
+            };
+            field.addHandler("drag", field._onDrag);
+            this.getESideSection("browser").eContent.appendChild(field.elem);
+            doneFields.push(field);
+        });
         this.formatSide();
-        return field;
+        return doneFields;
     }
     remBrowserField(field) {
-        if (!(field instanceof BrowserField)) return false;
-        if (!this.hasBrowserField(field)) return false;
-        this.#browserFields.splice(this.#browserFields.indexOf(field), 1);
-        field.remHandler("drag", field._onDrag);
-        delete field._onDrag;
-        this.getESideSection("browser").eContent.removeChild(field.elem);
-        return field;
+        let r = this.remBrowserFieldBulk(field);
+        return (r.length > 0) ? r[0] : false;
+    }
+    remBrowserFieldBulk(...fields) {
+        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBrowserFieldBulk(...fields[0]);
+        let doneFields = [];
+        fields.forEach(field => {
+            if (!(field instanceof BrowserField)) return;
+            if (!this.hasBrowserField(field)) return;
+            this.#browserFields.splice(this.#browserFields.indexOf(field), 1);
+            field.remHandler("drag", field._onDrag);
+            delete field._onDrag;
+            this.getESideSection("browser").eContent.removeChild(field.elem);
+            doneFields.push(field);
+        });
+        return doneFields;
     }
 
     get toolButtons() { return [...this.#toolButtons]; }

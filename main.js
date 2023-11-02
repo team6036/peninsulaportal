@@ -871,15 +871,15 @@ const MAIN = async () => {
             });
             ipc.handle("client-destroy", async (e, id) => {
                 let feat = identify(e);
-                return await feat.clientDestroy(id, location);
+                return await feat.clientDestroy(id);
             });
             ipc.handle("client-has", async (e, id) => {
                 let feat = identify(e);
                 return await feat.clientHas(id);
             });
-            ipc.handle("client-conn", async (e, id, location) => {
+            ipc.handle("client-conn", async (e, id) => {
                 let feat = identify(e);
-                return await feat.clientConn(id, location);
+                return await feat.clientConn(id);
             });
             ipc.handle("client-disconn", async (e, id) => {
                 let feat = identify(e);

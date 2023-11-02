@@ -72,14 +72,12 @@ class Action extends util.Target {
     async click() {
         if (!this.hasElem()) return;
         let disabled;
-        console.log("action-s");
         if (this.#checkDisabled) {
             disabled = this.elem.disabled;
             this.elem.disabled = true;
         }
         await this.action();
         if (this.#checkDisabled) this.elem.disabled = disabled;
-        console.log("action-f");
     }
     async action() { await window.api.send("cmd-"+this.id); }
 }

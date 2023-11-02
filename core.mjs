@@ -1405,6 +1405,8 @@ export class Client extends util.Target {
     #destroyed;
     #notDestroyedRes;
 
+    #timeoutId;;
+
     constructor(location) {
         super();
 
@@ -1417,6 +1419,8 @@ export class Client extends util.Target {
 
         this.#destroyed = true;
         this.#notDestroyedRes = [];
+
+        this.#timeoutId = this.#timeout();
 
         window.api.onClientMsg((_, id, name, a, meta) => {
             if (this.id != id) return;
@@ -1478,6 +1482,16 @@ export class Client extends util.Target {
         await window.api.clientDestroy(this.id);
         this.#destroyed = true;
         return true;
+    }
+
+    #timeout() {
+        return setTimeout(() => {
+            this.destroy();
+        }, 1000);
+    }
+    update() {
+        clearTimeout(this.#timeoutId);
+        this.#timeoutId = this.#timeout();
     }
 }
 
