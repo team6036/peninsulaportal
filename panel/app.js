@@ -19,6 +19,33 @@ import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
 
 
+THREE.Quaternion.fromRotationSequence = (...seq) => {
+    if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq);
+    let q = new THREE.Quaternion();
+    seq.forEach(rot => {
+        if (!(util.is(rot, "obj"))) return;
+        if (!("axis" in rot) || !("angle" in rot)) return;
+        let axis = rot.axis, angle = rot.angle;
+        if (!util.is(axis, "str") || !util.is(angle, "num")) return;
+        axis = axis.toLowerCase();
+        if (!"xyz".includes(axis)) return;
+        let vec = new THREE.Vector3(+(axis=="x"), +(axis=="y"), +(axis=="z"));
+        q.premultiply(new THREE.Quaternion().setFromAxisAngle(vec, (Math.PI/180)*angle));
+    });
+    return q;
+};
+const WPILIBQUATERNIONOFFSET = THREE.Quaternion.fromRotationSequence(
+    {
+        axis: "x",
+        angle: -90,
+    },
+    {
+        axis: "y",
+        angle: 180,
+    },
+);
+
+
 export const VERSION = 3;
 
 class RLine extends core.Odometry2d.Render {
@@ -205,8 +232,8 @@ class BrowserField extends util.Target {
         let cancel = 10;
         this.eDisplay.addEventListener("click", e => {
             if (cancel <= 0) return cancel = 10;
-            if (this.fields.length > 0) this.isOpen = !this.isOpen;
-            else this.showValue = !this.showValue;
+            if (this.isJustPrimitive) this.showValue = !this.showValue;
+            else this.isOpen = !this.isOpen;
         });
         this.eDisplay.addEventListener("dblclick", e => {
             this.post("trigger", { path: [this.name] });
@@ -262,21 +289,7 @@ class BrowserField extends util.Target {
     }
     set value(v) {
         v = Source.Field.ensureType(this.type, v);
-        if (this.isStruct) {
-        } else if (this.isArray) {
-            this.#value = util.ensure(v, "arr");
-            let newKeys = Array.from(this.#value.keys()).map(i => String(i));
-            let oldKeys = Object.keys(this.#fields);
-            oldKeys.forEach(k => {
-                if (newKeys.includes(k)) return;
-                this.rem(this.#fields[k]);
-            });
-            newKeys.forEach(k => {
-                if (oldKeys.includes(k)) return;
-                this.add(new BrowserField(k, this.arrayType));
-            });
-            this.#value.forEach((v, i) => (this.#fields[i].value = v));
-        } else this.#value = v;
+        this.#value = v;
         this.updateDisplay();
     }
 
@@ -288,11 +301,16 @@ class BrowserField extends util.Target {
     get fields() { return Object.values(this.#fields); }
     lookup(k) {
         k = util.ensure(k, "arr");
-        if (k.length <= 0) return this;
-        let kname = k.shift();
-        for (let name in this.#fields)
-            if (name == kname)
-                return this.#fields[name].lookup(k);
+        let o = this;
+        while (k.length > 0) {
+            o = o.singlelookup(k.shift());
+            if (!o) return null;
+        }
+        return o;
+    }
+    singlelookup(k) {
+        k = String(k);
+        if (k in this.#fields) return this.#fields[k];
         return null;
     }
     has(field) {
@@ -337,6 +355,7 @@ class BrowserField extends util.Target {
         this.#showValue = v;
         this.updateDisplay();
     }
+    get canShowValue() { return this.showValue && this.isJustPrimitive; }
 
     get elem() { return this.#elem; }
     get eDisplay() { return this.#eDisplay; }
@@ -370,7 +389,7 @@ class BrowserField extends util.Target {
             if ("color" in display) this.eIcon.style.color = display.color;
             else this.eIcon.style.color = "";
         }
-        this.eValueBox.style.display = (this.showValue && this.isJustPrimitive) ? "" : "none";
+        this.eValueBox.style.display = this.canShowValue ? "" : "none";
         this.eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
         this.eValue.textContent = getRepresentation(this.value);
     }
@@ -1675,59 +1694,38 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     state.fields = [];
                     this.eBrowser.innerHTML = "";
                 }
-                let newPaths = [], path = [];
-                const dfsField = field => {
-                    path.push(field.name);
-                    if (path.length > 1) newPaths.push([path.slice(1), field]);
-                    field.fields.forEach(field => dfsField(field));
-                    path.pop();
-                };
-                dfsField(field);
-                let oldPaths = [];
-                const dfsBField = field => {
-                    path.push(field.name);
-                    oldPaths.push([[...path], field]);
-                    field.fields.forEach(field => dfsBField(field));
-                    path.pop();
-                };
-                state.fields.forEach(field => dfsBField(field));
-                let needRem = [], needAdd = [];
-                oldPaths.forEach(data => {
-                    let path = data[0];
-                    if (newPaths.find(v => util.arrEquals(v[0], path))) return;
-                    needRem.push(path); 
-                });
-                newPaths.forEach(data => {
-                    let path = data[0];
-                    if (oldPaths.find(v => util.arrEquals(v[0], path))) return;
-                    needAdd.push(path);
-                });
-                needRem.sort((a, b) => b.length-a.length);
-                needAdd.sort((a, b) => a.length-b.length);
-                needRem.forEach(path => {
-                    let superPath = path.slice(0, path.length-1);
-                    let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
-                    let bfield = oldPaths[i][1];
-                    let j = oldPaths.findIndex(v => util.arrEquals(v[0], superPath));
-                    if (j >= 0) oldPaths[j][1].rem(bfield);
-                    else {
-                        state.fields.splice(state.fields.indexOf(bfield), 1);
-                        bfield.remHandler("trigger", bfield._onTrigger);
-                        bfield.remHandler("drag", bfield._onDrag);
-                        delete bfield._onTrigger;
-                        delete bfield._onDrag;
-                        this.eBrowser.removeChild(bfield.elem);
+                const doubleDFS = (fieldArr, bfieldArr, addFunc, remFunc) => {
+                    let fieldMap = {}, bfieldMap = {};
+                    fieldArr.forEach(field => (fieldMap[field.name] = field));
+                    bfieldArr.forEach(bfield => (bfieldMap[bfield.name] = bfield));
+                    for (let name in fieldMap) {
+                        let field = fieldMap[name];
+                        if (name in bfieldMap) continue;
+                        let bfield = bfieldMap[field.name] = new BrowserField(field.name, field.type);
+                        addFunc(bfield);
                     }
-                    oldPaths.splice(i, 1);
-                });
-                needAdd.forEach(path => {
-                    let superPath = path.slice(0, path.length-1);
-                    let i = newPaths.findIndex(v => util.arrEquals(v[0], path));
-                    let field = newPaths[i][1];
-                    let bfield = new BrowserField(field.name, field.type);
-                    let j = oldPaths.findIndex(v => util.arrEquals(v[0], superPath));
-                    if (j >= 0) oldPaths[j][1].add(bfield);
-                    else {
+                    for (let name in bfieldMap) {
+                        let bfield = bfieldMap[name];
+                        if (name in fieldMap) continue;
+                        remFunc(bfield);
+                    }
+                    for (let name in fieldMap) {
+                        let field = fieldMap[name];
+                        let bfield = bfieldMap[name];
+                        if (bfield.isOpen)
+                            doubleDFS(
+                                field.fields,
+                                bfield.fields,
+                                bf => bfield.add(bf),
+                                bf => bfield.rem(bf),
+                            );
+                        bfield.value = field.get();
+                    }
+                };
+                doubleDFS(
+                    field.fields,
+                    state.fields,
+                    bfield => {
                         state.fields.push(bfield);
                         bfield._onTrigger = data => {
                             data = util.ensure(data, "obj");
@@ -1743,22 +1741,20 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         bfield.addHandler("trigger", bfield._onTrigger);
                         bfield.addHandler("drag", bfield._onDrag);
                         this.eBrowser.appendChild(bfield.elem);
-                    }
-                    oldPaths.push([[...path], bfield]);
-                });
-                newPaths.forEach(data => {
-                    let path = data[0], field = data[1];
-                    if (!(field instanceof Source.Field)) return;
-                    let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
-                    if (i < 0) return;
-                    let bfield = oldPaths[i][1];
-                    if (!(bfield instanceof BrowserField)) return;
-                    bfield.value = field.get();
-                });
-                state.fields.sort((a, b) => a.compare(b)).forEach((field, i) => {
-                    field.elem.style.order = i;
-                    field.format();
-                });
+                        state.fields.sort((a, b) => a.compare(b)).forEach((field, i) => {
+                            field.elem.style.order = i;
+                            field.format();
+                        });
+                    },
+                    bfield => {
+                        state.fields.splice(state.fields.indexOf(bfield), 1);
+                        bfield.remHandler("trigger", bfield._onTrigger);
+                        bfield.remHandler("drag", bfield._onDrag);
+                        delete bfield._onTrigger;
+                        delete bfield._onDrag;
+                        this.eBrowser.removeChild(bfield.elem);
+                    },
+                );
             } else if (field instanceof Source.Field) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
@@ -1790,7 +1786,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                             eType.textContent = field.type;
                             let display = getDisplay(field.type, value);
                             eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
-                            eValue.style.fontSize = (["double", "float", "int"].includes(field.clippedType) ? 32 : 16)+"px";
+                            eValue.style.fontSize = (["double", "float", "int"].includes(field.arrayType) ? 32 : 16)+"px";
                             eValue.textContent = getRepresentation(value);
                         }
                     };
@@ -3271,8 +3267,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 p: () => {
                     if (!(data instanceof Source.Field)) return null;
                     if (!data.hasType()) return null;
-                    if (!data.isJustPrimitive) return null;
-                    if (!numbers.includes(data.clippedType)) return null;
+                    if (!data.isPrimitive) return null;
+                    if (!numbers.includes(data.arrayType)) return null;
                     return {
                         r: r,
                         submit: () => {
@@ -4745,9 +4741,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         );
                         [obj, pobj] = [new THREE.Object3D(), obj];
                         obj.add(pobj);
-                        obj.rotateX(util.ensure(util.ensure(util.ensure(robots[robot], "obj").rotation, "arr")[0], "num") * (Math.PI/180));
-                        obj.rotateY(util.ensure(util.ensure(util.ensure(robots[robot], "obj").rotation, "arr")[1], "num") * (Math.PI/180));
-                        obj.rotateZ(util.ensure(util.ensure(util.ensure(robots[robot], "obj").rotation, "arr")[2], "num") * (Math.PI/180));
+                        obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[robot], "obj").rotations));
                         [obj, pobj] = [new THREE.Object3D(), obj];
                         obj.add(pobj);
                         preloadedRobots[robot] = obj;
@@ -4815,7 +4809,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                             (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
                             (this.value[2] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
                         );
-                        obj.rotation.setFromQuaternion(new THREE.Quaternion(...this.value.slice(3)), "XYZ");
+                        obj.quaternion.copy(new THREE.Quaternion(...this.value.slice(3)).multiply(WPILIBQUATERNIONOFFSET));
                     }
                     if (this.pose.type.startsWith("§")) {
                         let typefs = {
@@ -6396,86 +6390,43 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
 
         this.format();
 
-        let refactor = false, browserFields = [];
-        this.addHandler("refactor-browser-queue", data => { refactor = true; });
         this.addHandler("update", data => {
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
-            browserFields.forEach(data => {
-                let field = data.field, bfield = data.bfield;
-                bfield.value = field.get();
-            });
-            if (!refactor) return;
-            refactor = false;
-            this.post("refactor-browser", null);
-        });
-        this.addHandler("refactor-browser", data => {
-            let newPaths = [];
-            if (this.hasSource()) {
-                let root = this.source.root, path = [];
-                const dfs = field => {
-                    path.push(field.name);
-                    if (path.length > 1) newPaths.push([path.slice(1), field]);
-                    field.fields.forEach(field => dfs(field));
-                    path.pop();
-                };
-                dfs(root);
-            }
-            let oldPaths = [];
-            this.browserFields.forEach(field => {
-                let path = [];
-                const dfs = field => {
-                    path.push(field.name);
-                    oldPaths.push([[...path], field]);
-                    field.fields.forEach(field => dfs(field));
-                    path.pop();
-                };
-                dfs(field);
-            });
-            let needRem = [], needAdd = [];
-            oldPaths.forEach(data => {
-                let path = data[0];
-                if (newPaths.find(v => util.arrEquals(v[0], path))) return;
-                needRem.push(path); 
-            });
-            newPaths.forEach(data => {
-                let path = data[0];
-                if (oldPaths.find(v => util.arrEquals(v[0], path))) return;
-                needAdd.push(path);
-            });
-            needRem.sort((a, b) => b.length-a.length);
-            needAdd.sort((a, b) => a.length-b.length);
-            needRem.forEach(path => {
-                let superPath = path.slice(0, path.length-1);
-                let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
-                let bfield = oldPaths[i][1];
-                let j = oldPaths.findIndex(v => util.arrEquals(v[0], superPath));
-                if (j >= 0) oldPaths[j][1].rem(bfield);
-                else this.remBrowserField(bfield);
-                oldPaths.splice(i, 1);
-            });
-            needAdd.forEach(path => {
-                let superPath = path.slice(0, path.length-1);
-                let i = newPaths.findIndex(v => util.arrEquals(v[0], path));
-                let field = newPaths[i][1];
-                let bfield = new BrowserField(field.name, field.type);
-                let j = oldPaths.findIndex(v => util.arrEquals(v[0], superPath));
-                if (j >= 0) oldPaths[j][1].add(bfield);
-                else this.addBrowserField(bfield);
-                oldPaths.push([[...path], bfield]);
-            });
-            browserFields = newPaths.map(data => {
-                let path = data[0], field = data[1];
-                if (!(field instanceof Source.Field)) return null;
-                let i = oldPaths.findIndex(v => util.arrEquals(v[0], path));
-                if (i < 0) return null;
-                let bfield = oldPaths[i][1];
-                if (!(bfield instanceof BrowserField)) return null;
-                return {
-                    field: field,
-                    bfield: bfield,
-                };
-            }).filter(data => !!data);
+            const doubleDFS = (fieldArr, bfieldArr, addFunc, remFunc) => {
+                let fieldMap = {}, bfieldMap = {};
+                fieldArr.forEach(field => (fieldMap[field.name] = field));
+                bfieldArr.forEach(bfield => (bfieldMap[bfield.name] = bfield));
+                for (let name in fieldMap) {
+                    let field = fieldMap[name];
+                    if (name in bfieldMap) continue;
+                    let bfield = bfieldMap[field.name] = new BrowserField(field.name, field.type);
+                    addFunc(bfield);
+                }
+                for (let name in bfieldMap) {
+                    let bfield = bfieldMap[name];
+                    if (name in fieldMap) continue;
+                    remFunc(bfield);
+                }
+                for (let name in fieldMap) {
+                    let field = fieldMap[name];
+                    let bfield = bfieldMap[name];
+                    if (bfield.isOpen)
+                        doubleDFS(
+                            field.fields,
+                            bfield.fields,
+                            bf => bfield.add(bf),
+                            bf => bfield.rem(bf),
+                        );
+                    bfield.value = field.get();
+                }
+            };
+            doubleDFS(
+                this.hasSource() ? this.source.root.fields : [],
+                this.browserFields,
+                bfield => this.addBrowserField(bfield),
+                bfield => this.remBrowserField(bfield),
+            );
         });
         this.#eDragBox = document.createElement("div");
         this.elem.appendChild(this.eDragBox);
@@ -6670,7 +6621,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         field.remHandler("drag", field._onDrag);
         delete field._onDrag;
         this.getESideSection("browser").eContent.removeChild(field.elem);
-        this.formatSide();
         return field;
     }
 
@@ -6752,10 +6702,9 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         }
         this.#source = v;
         if (this.hasSource()) {
-            this.source._onChange = data => this.post("refactor-browser-queue", null);
+            this.source._onChange = data => {};
             this.source.addHandler("change", this.source._onChange);
         }
-        this.post("refactor-browser", null);
     }
     hasSource() { return this.source instanceof Source; }
     get sourceInfo() {

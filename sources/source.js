@@ -85,7 +85,7 @@ export default class Source extends util.Target {
             let o = this.nestRoot, oPrev = this;
             while (kk.length > 0) {
                 let name = kk.shift();
-                [o, oPrev] = [o.lookup([name]), o];
+                [o, oPrev] = [o.singlelookup(name), o];
                 if (kk.length > 0) {
                     if (!(o instanceof Source.Field)) {
                         o = new Source.Field(oPrev, name, null);
@@ -105,7 +105,7 @@ export default class Source extends util.Target {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
         if (this.postFlat) {
-            this.flatRoot.rem(this.flatRoot.lookup([k.join("/")]));
+            this.flatRoot.rem(this.flatRoot.singlelookup(k.join("/")));
         }
         if (this.postNest) {
             let o = this.nestRoot.lookup([...k]), first = true;
@@ -127,7 +127,7 @@ export default class Source extends util.Target {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
         if (this.postFlat) {
-            let o = this.flatRoot.lookup([k.join("/")]);
+            let o = this.flatRoot.singlelookup(k.join("/"));
             if (o instanceof Source.Field)
                 o.update(v, ts);
         }
@@ -180,7 +180,7 @@ export default class Source extends util.Target {
         if (this.postFlat) this.#flatRoot = Source.Field.fromSerialized(this, data.flatRoot);
         this.nestRoot.addHandler("change", data => this.post("change", data));
         this.flatRoot.addHandler("change", data => this.post("change", data));
-        let schema = this.nestRoot.lookup([".schema"]);
+        let schema = this.nestRoot.singlelookup(".schema");
         if (schema instanceof Source.Field)
             schema.fields.forEach(field => {
                 if (!field.name.startsWith("struct:")) return;
@@ -443,11 +443,16 @@ Source.Field = class SourceField extends util.Target {
     get fields() { return Object.values(this.#fields); }
     lookup(k) {
         k = util.ensure(k, "arr");
-        if (k.length <= 0) return this;
-        let kname = k.shift();
-        for (let name in this.#fields)
-            if (name == kname)
-                return this.#fields[name].lookup(k);
+        let o = this;
+        while (k.length > 0) {
+            o = o.singlelookup(k.shift());
+            if (!o) return null;
+        }
+        return o;
+    }
+    singlelookup(k) {
+        k = String(k);
+        if (k in this.#fields) return this.#fields[k];
         return null;
     }
     has(field) {

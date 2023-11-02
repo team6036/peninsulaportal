@@ -61,6 +61,10 @@
 
     min-width: 14px;
 }
+.browser .field > button.display > .main > .name,
+.browserfield > button.display > .main > .name {
+    min-width: max-content;
+}
 .browser .field > button.display > .main > .name > span,
 .browserfield > button.display > .main > .name > span,
 .browser .field > button.display > .main > .tag,
