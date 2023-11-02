@@ -1339,55 +1339,87 @@
     --size: 5px;
     --color: var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > button.toggle {
-    width: 100%;
-    max-width: 100%;
-    height: 16px;
-    max-height: 16px;
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas {
+    --options: 100%;
+
     padding: 0px;
+    overflow: hidden;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open {
+    --options: 0%;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas:not(.open).half-open {
+    --options: 50%;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open {
+    position: absolute;
+    top: var(--options);
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 50px;
+    aspect-ratio: 1 / 1;
 
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
     align-content: center;
+
+    background-color: var(--v1);
+    border-radius: 100%;
+
+    transition: top var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.drag > .open {
+    transition: none;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .open {
+    z-index: 2;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open::before {
+    content: "";
+
+    z-index: 0;
+
+    position: absolute;
+    top: 0%;
+    left: 0%;
     
-    background-color: transparent;
+    width: 100%;
+    height: 100%;
+
+    background-color: var(--v2-8);
+    border-radius: 100%;
+
+    transition: background-color var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open:hover::before {
+    background-color: var(--v2);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open > ion-icon {
+    z-index: 1;
+
+    position: absolute;
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
     color: var(--v7);
 
-    transition: color var(--t);
+    transition: top var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > button.toggle > ion-icon {
-    transform: scaleY(100%);
-
-    transition: transform var(--t);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > button.toggle > ion-icon {
-    transform: scaleY(-100%);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > button.toggle:not(:disabled):hover {
-    color: var(--v8);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > button.toggle:disabled {
-    color: var(--v5);
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .open > ion-icon {
+    top: 75%;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content {
-    position: relative;
+    position: absolute;
 
     width: 100%;
     max-width: 100%;
-    height: calc(100% - 16px);
-    max-height: calc(100% - 16px);
-
-    border-radius: 10px;
-    border: 2px solid var(--v2);
-
-    transition: height var(--t), max-height var(--t);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .content {
-    height: calc(65% - 8px);
-    max-height: calc(65% - 8px);
+    height: 100%;
+    max-height: 100%;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > canvas {
     position: absolute;
@@ -1501,11 +1533,16 @@
     font-size: 12px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options {
+    position: absolute;
+    top: var(--options);
+    left: 0%;
+
     width: 100%;
     max-width: 100%;
-    height: 0%;
-    max-height: 0%;
-    padding: 0px 10px;
+    height: max(50%, calc(100% - var(--options)));
+    max-height: max(50%, calc(100% - var(--options)));
+    padding: 10px;
+    padding-top: 10px;
 
     display: flex;
     flex-direction: row;
@@ -1515,17 +1552,33 @@
     align-content: center;
     gap: 10px;
 
-    background-color: var(--v2-8);
-    border-radius: 10px;
+    background-color: var(--v1);
 
-    transition: height var(--t), max-height var(--t), padding var(--t);
+    transition: top var(--t), height var(--t), max-height var(--t), padding var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.drag > .options {
+    transition: padding var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options::before {
+    content: "";
+
+    z-index: 0;
+
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    width: 100%;
+    height: 100%;
+
+    background-color: var(--v2-8);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .options {
-    height: calc(35% - 8px);
-    max-height: calc(35% - 8px);
-    padding: 10px;
+    padding-top: 35px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section {
+    z-index: 1;
+
     flex-basis: 100%;
 
     max-width: calc((100% - 20px) / 3);
