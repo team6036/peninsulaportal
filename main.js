@@ -217,25 +217,24 @@ const MAIN = async () => {
             });
             const on = (name, ...a) => {
                 name = String(name);
-                this.post("on", {
-                    name: name, a: a,
-                    meta: {
-                        location: this.location,
-                        connected: this.connected,
-                        socketId: this.socketId,
-                    },
-                });
+                if (name[0] == "$") return;
+                this.on(name, a);
             };
             this.#socket.on("connect", () => on("connect"));
             this.#socket.on("disconnect", () => on("disconnect"));
             this.#socket.onAny(on);
-            ss(this.#socket.on("stream", (stream, data) => {
+            ss(this.#socket).on("stream", (stream, data) => {
                 data = util.ensure(data, "obj");
                 let name = String(data.name);
+                let sname = String(data.sname);
                 let a = util.ensure(data.a, "arr");
-                on("stream", name, ...a);
-                // stream.pipe(writestream)
-            }));
+                this.post("stream", {
+                    stream: stream,
+                    name: name,
+                    sname: sname,
+                    a: a,
+                });
+            });
         }
 
         get id() { return this.#id; }
@@ -283,13 +282,26 @@ const MAIN = async () => {
             a = util.ensure(a, "arr");
             this.#socket.emit(name, ...a);
         }
-        stream(stream, name, a) {
+        stream(stream, sname, name, a) {
             if (!(stream instanceof fs.ReadStream)) return;
             name = String(name);
+            sname = String(sname);
             a = util.ensure(a, "arr");
             let ssStream = ss.createStream();
-            ss(this.#socket).emit("stream", ssStream, { name: name, a: a });
+            ss(this.#socket).emit("stream", ssStream, { sname: sname, name: name, a: a });
             stream.pipe(ssStream);
+        }
+        on(name, a) {
+            name = String(name);
+            a = util.ensure(a, "arr");
+            this.post("on", {
+                name: name, a: a,
+                meta: {
+                    location: this.location,
+                    connected: this.connected,
+                    socketId: this.socketId,
+                },
+            });
         }
     }
     class ClientManager extends util.Target {
@@ -934,6 +946,8 @@ const MAIN = async () => {
             if (!hasHolidaysDir) await this.dirMake([dataPath, "holidays"]);
             let hasHolidayIconsDir = await this.dirHas([dataPath, "holidays", "icons"]);
             if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
+            let hasCacheDir = await this.dirHas([dataPath, "cache"]);
+            if (!hasCacheDir) await this.dirMake([dataPath, "cache"]);
             let hasConfig = await this.fileHas([dataPath, ".config"]);
             if (!hasConfig) await this.fileWrite([dataPath, ".config"], JSON.stringify({}, null, "\t"));
             let hasClientConfig = await this.fileHas([dataPath, ".clientconfig"]);
@@ -1065,6 +1079,8 @@ const MAIN = async () => {
                         { type: "file", name: "holidays.json" }
                     ],
                 },
+                // ./cache
+                { type: "dir", name: "cache" },
                 // ./<feature>
                 { type: "dir", match: (_, name) => FEATURES.includes(name.toUpperCase()) },
                 // ./panel
@@ -2282,6 +2298,35 @@ const MAIN = async () => {
                 if (!this.hasWindow()) return;
                 this.window.webContents.send("client-msg", id, name, a, meta);
             });
+            client.addHandler("stream", async data => {
+                data = util.ensure(data, "obj");
+                const ssStream = data.stream;
+                const name = String(data.name);
+                const sname = String(data.sname);
+                const a = util.ensure(data.a, "arr");
+                if (!this.hasPortal()) return;
+                await this.portal.affirm();
+                if (!(await this.portal.dirHas(["cache", this.name])))
+                    await this.portal.dirMake(["cache", this.name]);
+                if (!(await this.portal.dirHas(["cache", this.name, name])))
+                    await this.portal.dirMake(["cache", this.name, name]);
+                let pth = path.join(this.portal.dataPath, "cache", this.name, name, sname);
+                const stream = fs.createWriteStream(pth);
+                stream.on("open", () => {
+                    ssStream.pipe(stream);
+                    ssStream.on("end", () => {
+                        client.on("stream", [
+                            {
+                                name: name,
+                                sname: sname,
+                                path: pth,
+                            },
+                            ...a,
+                        ]);
+                    });
+                    ssStream.on("error", e => { throw e; });
+                });
+            });
             return client;
         }
         async clientDestroy(id) {
@@ -2545,6 +2590,18 @@ const MAIN = async () => {
                     "wpilog-read": async pth => {
                         if (!this.hasPortal()) throw "No linked portal";
                         return await Portal.fileReadRaw(pth);
+                    },
+                    "downloaded-logs": async () => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        let hasCacheDir = await this.portal.dirHas(["cache", this.name, "downloaded-log"]);
+                        if (!hasCacheDir) return [];
+                        let dirents = await this.portal.dirList(["cache", this.name, "downloaded-log"]);
+                        return dirents.filter(dirent => dirent.type == "file" && dirent.name.endsWith(".wpilog")).map(dirent => {
+                            return {
+                                name: dirent.name,
+                                path: path.join(this.portal.dataPath, "cache", this.name, "downloaded-log", dirent.name),
+                            };
+                        });
                     },
                 },
                 PLANNER: {

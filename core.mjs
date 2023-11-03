@@ -1400,12 +1400,13 @@ export class Client extends util.Target {
     #location;
 
     #connected;
+    #connectedRes;
+    #disconnectedRes;
     #socketId;
 
     #destroyed;
+    #destroyedRes;
     #notDestroyedRes;
-
-    #timeoutId;;
 
     constructor(location) {
         super();
@@ -1415,12 +1416,13 @@ export class Client extends util.Target {
         this.#location = String(location);
 
         this.#connected = false;
+        this.#connectedRes = [];
+        this.#disconnectedRes = [];
         this.#socketId = null;
 
         this.#destroyed = true;
+        this.#destroyedRes = [];
         this.#notDestroyedRes = [];
-
-        this.#timeoutId = this.#timeout();
 
         window.api.onClientMsg((_, id, name, a, meta) => {
             if (this.id != id) return;
@@ -1428,10 +1430,36 @@ export class Client extends util.Target {
             a = util.ensure(a, "arr");
             meta = util.ensure(meta, "obj");
             if (this.location != meta.location) return;
-            this.#connected = !!meta.connected;
-            this.#socketId = (meta.socketId == null) ? null : String(meta.socketId);
+            let connected = !!meta.connected;
+            if (this.#connected != connected) {
+                console.log(this.id+":meta.connected = "+connected);
+                this.#connected = connected;
+                if (this.connected) {
+                    this.#connectedRes.forEach(res => res());
+                    this.#connectedRes = [];
+                } else {
+                    this.#disconnectedRes.forEach(res => res());
+                    this.#disconnectedRes = [];
+                }
+            }
+            let socketId = (meta.socketId == null) ? null : String(meta.socketId);
+            if (this.#socketId != socketId) {
+                console.log(this.id+":meta.socketId = "+socketId);
+                this.#socketId = socketId;
+            }
+            console.log(this.id+":msg", name, a);
             this.post("msg", { name: name, a: a });
             this.post("msg-"+name, a);
+        });
+        this.addHandler("msg-stream", ([state, ...a]) => {
+            state = util.ensure(state, "obj");
+            const name = String(state.name);
+            const sname = String(state.sname);
+            const path = String(state.path);
+            this.post("stream-"+name, [
+                { sname: sname, path: path },
+                ...a,
+            ]);
         });
 
         (async () => {
@@ -1452,9 +1480,21 @@ export class Client extends util.Target {
 
     get destroyed() { return this.#destroyed; }
 
+    async whenDestroyed() {
+        if (this.destroyed) return;
+        return new Promise((res, rej) => this.#destroyedRes.push(res));
+    }
     async whenNotDestroyed() {
         if (!this.destroyed) return;
         return new Promise((res, rej) => this.#notDestroyedRes.push(res));
+    }
+    async whenConnected() {
+        if (this.connected) return;
+        return new Promise((res, rej) => this.#connectedRes.push(res));
+    }
+    async whenDisconnected() {
+        if (this.disconnected) return;
+        return new Promise((res, rej) => this.#disconnectedRes.push(res));
     }
 
     async connect() {
@@ -1481,17 +1521,9 @@ export class Client extends util.Target {
         if (this.destroyed) return false;
         await window.api.clientDestroy(this.id);
         this.#destroyed = true;
+        this.#destroyedRes.forEach(res => res());
+        this.#destroyedRes = [];
         return true;
-    }
-
-    #timeout() {
-        return setTimeout(() => {
-            this.destroy();
-        }, 1000);
-    }
-    update() {
-        clearTimeout(this.#timeoutId);
-        this.#timeoutId = this.#timeout();
     }
 }
 
