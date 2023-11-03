@@ -1327,6 +1327,11 @@
     align-content: center;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status {
+    position: relative;
+
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1339,9 +1344,120 @@
 
     font-size: 12px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > .loading {
-    --size: 5px;
-    --color: var(--v2);
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status::before {
+    content: "";
+    
+    position: absolute;
+    top: 100%;
+    left: 0%;
+    transform: translateY(-50%);
+
+    width: 100%;
+    height: 2px;
+
+    background-color: var(--a);
+    opacity: 0%;
+    visibility: hidden;
+
+    animation: loading-line 1s linear infinite;
+
+    transition: opacity var(--t), visibility var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger.loading > .status::before {
+    opacity: 100%;
+    visibility: inherit;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs {
+    max-width: 100%;
+    max-height: calc(100% - 25px);
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item {
+    padding: 10px;
+    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2-0);
+    color: var(--v5);
+    border-radius: 5px;
+
+    font-size: 14px;
+
+    transition: background-color var(--t), color var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item:hover {
+    background-color: var(--v2-8);
+    color: var(--v6);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded {
+    background-color: var(--v2-8);
+    color: var(--v7);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded:hover {
+    background-color: var(--v2);
+    color: var(--v8);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated {
+    background-color: var(--cr-8);
+    color: var(--v7);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated:hover {
+    background-color: var(--cr);
+    color: var(--v8);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .name {
+    min-width: max-content;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .space {
+    flex-basis: 100%;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav > button {
+    --bg: transparent;
+    --fg: var(--v5);
+    --bgh: transparent;
+    --fgh: var(--v6);
+    --bgd: transparent;
+    --fgd: var(--v4);
+
+    padding: 0px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded > .nav > button {
+    --bg: transparent;
+    --fg: var(--v7);
+    --bgh: transparent;
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v6);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated > .nav > button {
+    --bg: transparent;
+    --fg: var(--v7);
+    --bgh: transparent;
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v6);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas {
     --options: 100%;

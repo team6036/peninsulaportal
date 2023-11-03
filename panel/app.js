@@ -45,6 +45,15 @@ const WPILIBQUATERNIONOFFSET = THREE.Quaternion.fromRotationSequence(
     },
 );
 
+function compare(s1, s2) {
+    s1 = String(s1).toLowerCase();
+    s2 = String(s2).toLowerCase();
+    if (util.is(parseInt(s1), "int") && util.is(parseInt(s2), "int")) return s1 - s2;
+    if (s1 < s2) return -1;
+    if (s1 > s2) return +1;
+    return 0;
+}
+
 
 export const VERSION = 3;
 
@@ -465,12 +474,7 @@ class BrowserField extends util.Target {
 
     compare(other) {
         if (!(other instanceof BrowserField)) return 0;
-        let name1 = this.name.toLowerCase();
-        let name2 = other.name.toLowerCase();
-        if (util.is(parseInt(name1), "int") && util.is(parseInt(name2), "int")) return name1 - name2;
-        if (name1 < name2) return -1;
-        if (name1 > name2) return +1;
-        return 0;
+        return compare(this.name, other.name);
     }
 
     format() {
@@ -610,6 +614,13 @@ class Container extends Widget {
 
         new ResizeObserver(() => this.format()).observe(this.elem);
 
+        this.addHandler("add", o => {
+            this.children.forEach(child => child.post("add", o));
+        });
+        this.addHandler("rem", o => {
+            this.children.forEach(child => child.post("rem", o));
+        });
+
         this.addHandler("update", data => {
             this.children.forEach(child => child.update());
         });
@@ -692,6 +703,7 @@ class Container extends Widget {
         }
         child._onChange = () => this.post("change", null);
         child.addHandler("change", child._onChange);
+        child.post("add", this);
         this.post("change", null);
         this.format();
         return child;
@@ -725,6 +737,7 @@ class Container extends Widget {
         }
         child.remHandler("change", child._onChange);
         delete child._onChange;
+        child.post("rem", this);
         this.post("change", null);
         this.format();
         return child;
@@ -879,6 +892,13 @@ class Panel extends Widget {
 
         this.tabIndex = 0;
 
+        this.addHandler("add", o => {
+            this.tabs.forEach(tab => tab.post("add", o));
+        });
+        this.addHandler("rem", o => {
+            this.tabs.forEach(tab => tab.post("rem", o));
+        });
+
         this.eOptions.addEventListener("click", e => {
             if (!this.hasApp()) return;
             e.stopPropagation();
@@ -972,6 +992,7 @@ class Panel extends Widget {
         tab.parent = this;
         tab._onChange = () => this.post("change", null);
         tab.addHandler("change", tab._onChange);
+        tab.post("add", this);
         this.post("change", null);
         this.eTop.appendChild(tab.eTab);
         this.eContent.appendChild(tab.elem);
@@ -987,6 +1008,7 @@ class Panel extends Widget {
         tab.parent = null;
         tab.remHandler("change", tab._onChange);
         delete tab._onChange;
+        tab.post("rem", this);
         this.post("change", null);
         this.eTop.removeChild(tab.eTab);
         this.eContent.removeChild(tab.elem);
@@ -1902,8 +1924,11 @@ Panel.ToolTab = class PanelToolTab extends Panel.Tab {
 Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #client;
 
+    #logs;
+
     #eStatusBox;
     #eStatus;
+    #eLogs;
 
     constructor() {
         super("PlexusLogger", "logger");
@@ -1911,49 +1936,242 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.elem.classList.add("logger");
 
         this.#client = null;
+        let host = null;
         (async () => {
-            let host = String(await window.api.get("socket-host"));
-            this.#client = new core.Client(host+"/panel");
-            await this.#client.whenNotDestroyed();
-            this.#client.connect();
+            host = String(await window.api.get("socket-host"));
         })();
+
+        this.#logs = new Set();
 
         this.#eStatusBox = document.createElement("div");
         this.elem.appendChild(this.eStatusBox);
         this.eStatusBox.classList.add("status");
-        let eLoading = document.createElement("div");
-        this.eStatusBox.appendChild(eLoading);
-        eLoading.classList.add("loading");
         let eIcon = document.createElement("ion-icon");
         this.eStatusBox.appendChild(eIcon);
-        eIcon.setAttribute("name", "cloud");
         this.#eStatus = document.createElement("a");
         this.eStatusBox.appendChild(this.eStatus);
+        this.#eLogs = document.createElement("div");
+        this.elem.appendChild(this.eLogs);
+        this.eLogs.classList.add("logs");
+
+        this.addHandler("rem", () => {
+            this.#client.destroy();
+            this.#client = null;
+        });
+
+        this.addHandler("format", data => {
+            this.logs.sort((a, b) => compare(a.name, b.name)).forEach((log, i) => {
+                log.elem.style.order = i;
+            });
+        });
+
+        let serverLogs = new Set();
+        let clientLogs = {};
+        let logObjects = {};
+
+        this.addHandler("log-use", name => {
+            if (!(name in clientLogs)) return;
+            if (!this.hasPage()) return;
+            const page = this.page;
+            if (!page.hasProject()) return;
+            page.project.config.sourceType = "wpilog";
+            page.project.config.source = clientLogs[name];
+            page.update();
+            if (!this.hasApp()) return;
+            this.app.post("cmd-conndisconn", null);
+        });
+
+        const updateClientLogs = async () => {
+            let logs = await window.api.send("downloaded-logs");
+            clientLogs = {};
+            util.ensure(logs, "arr").map(log => {
+                log = util.ensure(log, "obj");
+                let name = String(log.name), path = String(log.path);
+                clientLogs[name] = path;
+            });
+            generateLogs();
+        };
+        const generateLogs = () => {
+            let newLogs = new Set();
+            serverLogs.forEach(log => newLogs.add(log));
+            for (let log in clientLogs) newLogs.add(log);
+            newLogs.forEach(name => {
+                if (name in logObjects) return;
+                logObjects[name] = this.addLog(new Panel.LoggerTab.Log(name));
+            });
+            Object.keys(logObjects).forEach(name => {
+                if (newLogs.has(name)) return;
+                this.remLog(logObjects[name]);
+            });
+        };
+
+        let t = 0;
 
         this.addHandler("update", data => {
-            if (this.#hasClient()) this.#client.update();
-
             if (this.isClosed) return;
+
+            if (util.getTime()-t > 5000) {
+                t = util.getTime();
+                updateClientLogs();
+            }
+
+            this.logs.forEach(log => {
+                log.downloaded = log.name in clientLogs;
+                log.deprecated = !serverLogs.has(log.name);
+            });
 
             this.status = this.#hasClient() ? this.#client.connected ? this.#client.location : ("Connecting - "+this.#client.location) : "Initializing client";
             if (this.#hasClient() && this.#client.connected) {
-                eIcon.style.display = "";
-                eLoading.style.display = "none";
+                eIcon.setAttribute("name", "cloud");
                 this.eStatus.setAttribute("href", this.#client.location);
             } else {
-                eIcon.style.display = "none";
-                eLoading.style.display = "";
+                eIcon.setAttribute("name", "cloud-offline");
                 this.eStatus.removeAttribute("href");
+            }
+
+            if (!this.#hasClient()) {
+                if (host == null) return;
+                (async () => {
+                    this.#client = new core.Client(host+"/panel");
+                    await this.#client.whenNotDestroyed();
+                    this.#client.addHandler("msg-get-logs-resp", async ([logs]) => {
+                        serverLogs.clear();
+                        util.ensure(logs, "arr").map(log => serverLogs.add(String(log)));
+                        generateLogs();
+                    });
+                    this.#client.addHandler("stream-downloaded-log", ([state, ..._]) => {
+                        updateClientLogs();
+                    });
+                    this.#client.connect();
+                    await this.#client.whenConnected();
+                    this.#client.emit("get-logs");
+                })();
             }
         });
     }
 
     #hasClient() { return this.#client instanceof core.Client; }
 
+    get logs() { return [...this.#logs]; }
+    set logs(v) {
+        v = util.ensure(v, "arr");
+        this.clearLogs();
+        v.forEach(v => this.addLog(v));
+    }
+    clearLogs() {
+        let logs = this.logs;
+        logs.forEach(log => this.remLog(log));
+        return logs;
+    }
+    hasLog(log) {
+        if (!(log instanceof Panel.LoggerTab.Log)) return false;
+        return this.#logs.has(log);
+    }
+    addLog(log) {
+        if (!(log instanceof Panel.LoggerTab.Log)) return false;
+        if (this.hasLog(log)) return false;
+        this.#logs.add(log);
+        log._onDownload = () => {
+            if (!this.#hasClient()) return;
+            this.#client.emit("download-log", log.name);
+        };
+        log._onUse = () => {
+            this.post("log-use", log.name);
+        };
+        log.addHandler("download", log._onDownload);
+        log.addHandler("use", log._onUse);
+        this.eLogs.appendChild(log.elem);
+        this.format();
+        return log;
+    }
+    remLog(log) {
+        if (!(log instanceof Panel.LoggerTab.Log)) return false;
+        if (!this.hasLog(log)) return false;
+        this.#logs.delete(log);
+        log.remHandler("download", log._onDownload);
+        log.remHandler("use", log._onUse);
+        delete log._onDownload;
+        delete log._onUse;
+        this.eLogs.removeChild(log.elem);
+        return log;
+    }
+
+    get loading() { return this.elem.classList.contains("loading"); }
+    set loading(v) {
+        if (v) this.elem.classList.add("loading");
+        else this.elem.classList.remove("loading");
+    }
+
     get eStatusBox() { return this.#eStatusBox; }
     get eStatus() { return this.#eStatus; }
     get status() { return this.eStatus.textContent; }
     set status(v) { this.eStatus.textContent = v; }
+
+    get eLogs() { return this.#eLogs; }
+};
+Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
+    #elem;
+    #eName;
+    #eNav;
+    #eDownloadBtn;
+    #eUseBtn;
+
+    constructor(name) {
+        super();
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("item");
+        this.#eName = document.createElement("div");
+        this.elem.appendChild(this.eName);
+        this.eName.classList.add("name");
+        let space = document.createElement("div");
+        this.elem.appendChild(space);
+        space.classList.add("space");
+        this.#eNav = document.createElement("div");
+        this.elem.appendChild(this.eNav);
+        this.eNav.classList.add("nav");
+        this.#eDownloadBtn = document.createElement("button");
+        this.eNav.appendChild(this.eDownloadBtn);
+        this.eDownloadBtn.innerHTML = "<ion-icon name='download-outline'></ion-icon>";
+        this.#eUseBtn = document.createElement("button");
+        this.eNav.appendChild(this.eUseBtn);
+        this.eUseBtn.innerHTML = "<ion-icon name='open-outline'></ion-icon>";
+
+        this.eDownloadBtn.addEventListener("click", e => {
+            if (!this.deprecated) this.post("download");
+        });
+        this.eUseBtn.addEventListener("click", e => {
+            if (this.downloaded) this.post("use");
+        });
+        this.elem.addEventListener("dblclick", e => {
+            if (this.downloaded) this.post("use");
+            else if (!this.deprecated) this.post("download");
+        });
+
+        this.name = name;
+    }
+
+    get name() { return this.eName.textContent; }
+    set name(v) { this.eName.textContent = v; }
+
+    get elem() { return this.#elem; }
+    get eName() { return this.#eName; }
+    get eNav() { return this.#eNav; }
+    get eDownloadBtn() { return this.#eDownloadBtn; }
+    get eUseBtn() { return this.#eUseBtn; }
+
+    get downloaded() { return this.elem.classList.contains("downloaded"); }
+    set downloaded(v) {
+        if (v) this.elem.classList.add("downloaded");
+        else this.elem.classList.remove("downloaded");
+        this.eUseBtn.style.display = v ? "" : "none";
+    }
+    get deprecated() { return this.elem.classList.contains("deprecated"); }
+    set deprecated(v) {
+        if (v) this.elem.classList.add("deprecated");
+        else this.elem.classList.remove("deprecated");
+        this.eDownloadBtn.style.display = v ? "none" : "";
+    }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
@@ -2341,17 +2559,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         eValue.classList.add("value");
         eValue.textContent = "0.1";
 
-        let id = null, tooltipCycle = 0;
+        let tooltipCycle = 0;
         document.body.addEventListener("keydown", e => {
             if (e.code == "Tab") tooltipCycle++;
         });
         this.addHandler("update", () => {
-            clearTimeout(id);
-            id = setTimeout(() => {
-                eGraphTooltip.remove();
-            }, 500);
-
-            if (this.isClosed) return eGraphTooltip.classList.remove("this");
+            if (this.isClosed) return;
 
             let paused = true;
             if (this.hasPage() && this.page.hasSource())
