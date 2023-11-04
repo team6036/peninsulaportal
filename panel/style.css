@@ -253,10 +253,7 @@
     visibility: inherit;
 }
 #titlebar > #projectinfo > .content > input {
-    padding: 5px;
-
     background-color: var(--v1-8);
-    border-radius: 5px;
 }
 #titlebar > #projectinfo > .content > .divider {
     height: 2px;
@@ -478,8 +475,6 @@
 }
 #PROJECTSPAGE > .nav > .search > input {
     flex-basis: 100%;
-
-    padding: 5px;
 
     background-color: transparent;
     color: var(--v1);
@@ -1999,13 +1994,6 @@
     font-size: 12px;
     font-style: italic;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > input,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > input,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > input {
-    padding: 5px;
-
-    border-radius: 5px;
-}
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom {
     --bg: transparent;
     --fg: var(--cr);
@@ -2050,10 +2038,6 @@
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v > input,
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v > input {
     flex-basis: 100%;
-
-    padding: 5px;
-
-    border-radius: 5px;
 }
 #overlay {
     position: absolute;
