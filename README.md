@@ -78,6 +78,9 @@ Displays the robot as shown from `double[3]`, `float[3]`, and `int[3]` in NT. Ch
 ### Odometry 3D Page
 Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Choose field template, or use axis, and change units. Pick colors for different poses, including toggling ghost effect, render type, and solid color display.
 
+### Plexus Logger Page
+Cloud logging system for instant and community viewing of logs! When opening, you should see a list of logs onscreen, or an empty page if no logs are yet on the server. To download `wpilog` files, simply click the download button to the right of each entry. After downloading, to use this log, click the open button on the right, which will automatically open said `wpilog` file into your current project. To redownload, click the download button again. To add logs to the server, simply click the plus icon and select your logs.
+
 ## Getting Started
 
 ### FAQ
@@ -193,20 +196,20 @@ More information can be found on [Electron's documentation](https://www.electron
 The location where any logs are stored for the application, a subset of the app data directory called `./logs`.
 
 ### Database Host URL
-The url of which is fetched to obtain globalized data for the application, such as templates, configurations, images, and models. The structure of the database is as follows:
+The url of which is fetched to obtain globalized data for the application, such as configurations, templates, robots, themes, and holidays. The structure of the database is as follows:
 ```js
 | config.json // contains redirect url + holiday
 | templates.json // for ./templates dir
 | robots.json // for ./robots dir
-+ templates
-| | <name>.png
-| | <name>.glb
-+ robots
-| | <name>.glb
+| themes.json // for ./themes dir
+| holidays.json // for ./holidays dir
 + <feature-name> // different for each feature
 | ...
 ```
-Repolling the database will pull what it needs from this database, though it might take some time to finish polling `.glb`s.
+Repolling the database will pull what it needs from this database, though assets are pulled from a different database.
+
+### Database Assets URL
+The url of which is fetched to obtain globalized assets for the application, such as 3d models, images, etc. The current structure is based on Github Releases and hence, please check the assets repo at the bottom of this page.
 
 ### Competition Mode
 Toggling competition mode on disables polling of database, if constant repolling or rewriting of existing files causes lag.
@@ -218,6 +221,9 @@ The current application theme. Feel free to pick from the list supplied.
 
 ### Holiday
 The current application holiday!
+
+### Data Root Directory
+The directory where each feature's `projects.json` and `projects/*.json`s are stored. This mainly applies for PPanel and PPlanner, and other features do not apply.
 
 <div>
     <h1 id="resources" align="center">Resources</h1>
