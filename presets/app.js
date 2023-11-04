@@ -25,7 +25,7 @@ class Action extends util.Target {
             "cleanup-app-data-dir": () => {
                 this.action = async () => {
                     let confirmed = await new Promise((res, rej) => {
-                        let pop = this.confirm();
+                        let pop = this.app.confirm();
                         pop.eContent.innerText = "Are you sure you want to cleanup application data?\nThis might accidentally delete some files - backup the entire application directory!\n(Or trust that I wrote this code well)";
                         pop.addHandler("result", async data => res(!!util.ensure(data, "obj").v));
                     });
