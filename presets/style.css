@@ -115,10 +115,14 @@ button:not(.override) {
     --fgd: var(--v6);
 }
 #PAGE > .content > article p:not(.override) > input {
+    /*
     padding: 5px;
+    */
 
     background-color: var(--v2-8);
+    /*
     border-radius: 5px;
+    */
 }
 #PAGE > .content > article > #colorsheet {
     display: inline-grid;
@@ -141,7 +145,9 @@ button:not(.override) {
 }
 #PAGE > .content > article label.pick-root > input {
     min-width: 300px;
+    /*
     padding: 5px;
+    */
 
     background-color: var(--v2-8);
     color: var(--cy);

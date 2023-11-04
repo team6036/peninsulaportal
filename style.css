@@ -109,11 +109,11 @@ input {
     border: none;
 }
 input:not(.override) {
-    padding: 10px;
+    padding: 5px;
 
     background-color: var(--v1);
     color: var(--v8);
-    border-radius: 10px;
+    border-radius: 5px;
 
     transition: background-color var(--t), color var(--t);
 }

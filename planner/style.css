@@ -83,10 +83,7 @@
     visibility: inherit;
 }
 #titlebar > #projectinfo > .content > input {
-    padding: 5px;
-
     background-color: var(--v1-8);
-    border-radius: 5px;
 }
 #titlebar > #projectinfo > .content > .divider {
     height: 2px;
@@ -346,8 +343,6 @@
 #PROJECTSPAGE > .nav > .search > input {
     flex-basis: 100%;
 
-    padding: 5px;
-
     background-color: transparent;
     color: var(--v1);
 }
@@ -467,34 +462,40 @@
 }
 
 #PROJECTPAGE {
+    padding: 0px !important;
+
     flex-direction: row !important;
     align-items: stretch !important;
     gap: 0px !important;
 }
 #PROJECTPAGE > .divider {
-    padding: 0px 5px;
+    position: relative;
 
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
+    width: 2px;
+    height: 100%;
+
+    background-color: var(--v2);
 
     cursor: ew-resize;
 }
 #PROJECTPAGE > .divider::before {
     content: "";
 
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
     width: 2px;
     height: 20px;
 
     background-color: var(--v4);
-    border-radius: 2px;
 
-    transition: height var(--t), background-color var(--t);
+    transition: width var(--t), height var(--t), background-color var(--t);
 }
 #PROJECTPAGE > .divider:hover::before {
+    width: 5px;
+
     background-color: var(--v8);
 }
 #PROJECTPAGE > .divider.this::before {
@@ -511,10 +512,6 @@
     justify-content: center;
     align-items: center;
     align-content: center;
-
-    border: 2px solid var(--v2);
-    outline: none;
-    border-radius: 10px;
 
     user-select: none;
 }
@@ -763,7 +760,7 @@
     visibility: inherit;
 }
 #PROJECTPAGE > .display > .choosenav > button {
-    padding: 10px;
+    padding: 5px 10px;
 
     border-radius: 5px;
 }
@@ -797,8 +794,6 @@
     align-content: center;
 
     background-color: var(--v2-8);
-    border-radius: 10px;
-    border: 2px solid var(--v2);
 }
 #PROJECTPAGE > .edit > .nav {
     height: var(--bottom);
@@ -904,9 +899,13 @@
 
     font-size: 14px;
     font-weight: 550;
+
+    user-select: none;
 }
 #PROJECTPAGE > .edit > .content > .panel > .header.sub {
     font-weight: 400;
+
+    user-select: none;
 }
 #PROJECTPAGE > .edit > .content > .panel > .header > span:first-child {
     flex-basis: 100%;
@@ -938,6 +937,14 @@
 #PROJECTPAGE > .edit > .content > .panel > .input > input,
 #PROJECTPAGE > .edit > .content > .panel > .input.d3 > div > input {
     flex-basis: 100%;
+}
+#PROJECTPAGE > .edit > .content > .panel > .input > input[type="text"],
+#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div > input[type="text"] {
+    color: var(--cy);
+}
+#PROJECTPAGE > .edit > .content > .panel > .input > input[type="text"]:disabled,
+#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div > input[type="text"]:disabled {
+    color: var(--cy3);
 }
 #objectspanel > #spawnbox {
     position: relative;
@@ -1251,18 +1258,21 @@
     align-items: stretch;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #optionspanel > #script > div.filedialog > input {
     flex-basis: 100%;
 
-    color: var(--cg);
+    color: var(--cy);
     border-radius: 0px;
+}
+#optionspanel > #script > div.filedialog > input:disabled {
+    color: var(--cy3);
 }
 #optionspanel > #script > div.filedialog > button {
     --bg: var(--v2);
     --bgh: var(--v3);
     --bgd: var(--v2);
 
-    padding: 10px;
+    padding: 5px;
 }

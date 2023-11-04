@@ -2006,12 +2006,15 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
             this.eMaxMinBtn.children[0].setAttribute("name", this.maximized ? "contract" : "expand");
         if (this.maximized) {
             this.eDisplay.style.width = "100%";
+            this.eDisplay.style.maxWidth = "100%";
             this.eEdit.style.display = "none";
             this.eDivider.style.display = "none";
         } else {
-            this.eDisplay.style.width = "calc("+(this.divPos*100)+"% - 6px)";
+            this.eDisplay.style.width = "calc("+(this.divPos*100)+"% - 2px)";
+            this.eDisplay.style.maxWidth = "calc("+(this.divPos*100)+"% - 2px)";
             this.eEdit.style.display = "";
-            this.eEdit.style.width = "calc("+((1-this.divPos)*100)+"% - 6px)";
+            this.eEdit.style.width = "calc("+((1-this.divPos)*100)+"% - 2px)";
+            this.eEdit.style.maxWidth = "calc("+((1-this.divPos)*100)+"% - 2px)";
             this.eDivider.style.display = "";
         }
     }
