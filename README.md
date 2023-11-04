@@ -84,13 +84,21 @@ Cloud logging system for instant and community viewing of logs! When opening, yo
 ## Getting Started
 
 ### FAQ
-> How can I graph topics in the Graph, Odometry 2D, or Odometry 3D?
+> How can I display topics in the Graph, Odometry 2D, or Odometry 3D?
 
 Drag topics from the left or from the Browser to the axis you want for Graph, or into the pose section for Odometry 2D and 3D.
 
-> How can I change the color, or display type of topics being graphed or displayed in Graph, Odometry 2D, or Odometry 3d?
+> How can I change the color, or display type of topics being graphed or displayed?
 
 Click on them to open a more extensive menu of the options available to you. Clicking on the eye can also hide the topic if needed.
+
+> How can I download multiple logs at once?
+
+> How can I delete logs on the server that I don't need anymore?
+
+> How can I delete logs that are still on my computer, but not on the server?
+
+Simply select the logs by clicking on them, or <kbd>shift</kbd>-clicking to select multiple, then right click to open the menu.
 
 ### Development
 
@@ -109,11 +117,11 @@ Click on them to open a more extensive menu of the options available to you. Cli
 ## Getting Started
 
 ### FAQ
-> How can I reset the divider to it's original position?  
+> How can I reset the divider to it's original position?
 
 On the view menu of the app, click "Reset divider."
 
-> How can I delete nodes when creating or editing a path?  
+> How can I delete nodes when creating or editing a path?
 
 When clicking a node, hold down <kbd>shift</kbd> to remove it instead.
 
@@ -209,7 +217,7 @@ The url of which is fetched to obtain globalized data for the application, such 
 Repolling the database will pull what it needs from this database, though assets are pulled from a different database.
 
 ### Database Assets URL
-The url of which is fetched to obtain globalized assets for the application, such as 3d models, images, etc. The current structure is based on Github Releases and hence, please check the assets repo at the bottom of this page.
+The url of which is fetched to obtain globalized assets for the application, such as 3D models, images, etc. The current structure is based on Github Releases and hence, please check the assets repo at the bottom of this page.
 
 ### Competition Mode
 Toggling competition mode on disables polling of database, if constant repolling or rewriting of existing files causes lag.
