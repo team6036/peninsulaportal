@@ -1443,6 +1443,20 @@
     opacity: 100%;
     visibility: inherit;
 }
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item::after {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translateY(-50%);
+
+    width: 2px;
+    height: 100%;
+
+    background-color: var(--a);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.selected::after {
+    content: "";
+}
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item:hover {
     background-color: var(--v2-8);
     color: var(--v6);
