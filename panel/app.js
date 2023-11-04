@@ -472,14 +472,9 @@ class BrowserField extends util.Target {
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
 
-    compare(other) {
-        if (!(other instanceof BrowserField)) return 0;
-        return compare(this.name, other.name);
-    }
-
     format() {
         this.updateDisplay();
-        this.fields.sort((a, b) => a.compare(b)).forEach((field, i) => {
+        this.fields.sort((a, b) => compare(a.name, b.name)).forEach((field, i) => {
             field.elem.style.order = i;
             field.format();
         });
@@ -1794,7 +1789,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                             bfield.addHandler("drag", bfield._onDrag);
                             this.eBrowser.appendChild(bfield.elem);
                         });
-                        state.fields.sort((a, b) => a.compare(b)).forEach((field, i) => {
+                        state.fields.sort((a, b) => compare(a.name, b.name)).forEach((field, i) => {
                             field.elem.style.order = i;
                             field.format();
                         });
@@ -1921,9 +1916,182 @@ Panel.ToolTab = class PanelToolTab extends Panel.Tab {
         }
     }
 };
-Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
+class LoggerContext extends util.Target {
+    #host;
     #client;
 
+    #serverLogs;
+    #clientLogs;
+
+    #loading;
+
+    constructor() {
+        super();
+
+        this.#host = null;
+        this.#client = null;
+
+        this.#serverLogs = new Set();
+        this.#clientLogs = {};
+
+        this.#loading = {};
+
+        setInterval(async () => {
+            if (this.#hasClient()) {
+                if (this.#client.disconnected)
+                    this.#client.connect();
+            } else {
+                this.#host = await window.api.get("socket-host");
+                this.#host = (this.#host == null) ? null : String(this.#host);
+                if (this.#hasHost()) this.#client = new core.Client(this.#host+"/panel");
+            }
+            await this.pollServer();
+        }, 1000);
+        setInterval(async () => {
+            await this.pollClient();
+        }, 100);
+    }
+
+    #hasHost() { return this.#host != null; }
+    #hasClient() { return this.#client instanceof core.Client; }
+
+    get initializing() { return !this.#hasClient(); }
+    get initialized() { return !this.initializing; }
+    get connected() { return this.#hasClient() && this.#client.connected; }
+    get disconnected() { return !this.connected; }
+    get location() { return this.#hasClient() ? this.#client.location : null; }
+    get socketId() { return this.#hasClient() ? this.#client.socketId : null; }
+
+    get serverLogs() { return [...this.#serverLogs]; }
+    hasServerLog(name) {
+        name = String(name);
+        return this.#serverLogs.has(name);
+    }
+    get clientLogs() { return Object.keys(this.#clientLogs); }
+    hasClientLog(name) {
+        name = String(name);
+        return name in this.#clientLogs;
+    }
+    getClientPath(name) {
+        if (!this.hasClientLog(name)) return null;
+        return this.#clientLogs[name];
+    }
+    get logs() {
+        let logs = new Set();
+        this.serverLogs.forEach(name => logs.add(name));
+        this.clientLogs.forEach(name => logs.add(name));
+        return [...logs];
+    }
+    hasLog(name) {
+        name = String(name);
+        return this.hasServerLog(name) || this.hasClientLog(name);
+    }
+
+    get loading() {
+        Object.keys(this.#loading).forEach(name => {
+            if (this.hasLog(name)) return;
+            delete this.#loading[name];
+        });
+        return Object.keys(this.#loading);
+    }
+    incLoading(name) {
+        name = String(name);
+        if (!this.hasLog(name)) return false;
+        this.#loading[name] = util.ensure(this.#loading[name], "int")+1;
+        return true;
+    }
+    decLoading(name) {
+        name = String(name);
+        if (!this.hasLog(name)) return false;
+        this.#loading[name] = util.ensure(this.#loading[name], "int")-1;
+        if (this.#loading[name] <= 0) delete this.#loading[name];
+        return true;
+    }
+    isLoading(name) { return this.loading.includes(name); }
+
+    async logsUpload(paths) {
+        paths = util.ensure(paths, "arr").map(path => String(path));
+        if (this.disconnected) return;
+        await Promise.all(paths.map(async path => {
+            this.incLoading("§uploading");
+            try {
+                await window.api.send("log-cache", [path]);
+                await this.#client.stream(path, "logs", {});
+            } catch (e) {
+                this.decLoading("§uploading");
+                throw e;
+            }
+            this.decLoading("§uploading");
+        }));
+        await this.pollServer();
+    }
+    async logsDownload(names) {
+        names = util.ensure(names, "arr").map(name => String(name));
+        if (this.disconnected) return;
+        await Promise.all(names.map(async name => {
+            this.incLoading(name);
+            try {
+                await this.#client.emit("log-download", name);
+            } catch (e) {
+                this.decLoading(name);
+                throw e;
+            }
+            this.decLoading(name);
+        }));
+        await this.pollServer();
+    }
+    async logsClientDelete(names) {
+        names = util.ensure(names, "arr").map(name => String(name));
+        await Promise.all(names.map(async name => {
+            this.incLoading(name);
+            try {
+                await window.api.send("log-delete", [name]);
+            } catch (e) {
+                this.decLoading(name);
+                throw e;
+            }
+            this.decLoading(name);
+        }));
+        await this.pollClient();
+    }
+    async logsServerDelete(names) {
+        names = util.ensure(names, "arr").map(name => String(name));
+        if (this.disconnected) return;
+        await Promise.all(names.map(async name => {
+            this.incLoading(name);
+            try {
+                await this.#client.emit("log-delete", name);
+            } catch (e) {
+                this.decLoading(name);
+                throw e;
+            }
+            this.decLoading(name);
+        }));
+        await this.pollServer();
+    }
+
+    async pollServer() {
+        let logs = [];
+        if (this.connected) {
+            try {
+                logs = util.ensure(await this.#client.emit("logs-get"), "arr");
+            } catch (e) { logs = []; }
+        }
+        this.#serverLogs.clear();
+        logs.map(log => this.#serverLogs.add(String(log)));
+    }
+    async pollClient() {
+        let logs = util.ensure(await window.api.get("logs"), "arr");
+        this.#clientLogs = {};
+        logs.map(log => {
+            log = util.ensure(log, "obj");
+            let name = String(log.name), path = String(log.path);
+            this.#clientLogs[name] = path;
+        });
+    }
+}
+const LOGGERCONTEXT = new LoggerContext();
+Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #logs;
 
     #eStatusBox;
@@ -1935,12 +2103,6 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         super("PlexusLogger", "logger");
 
         this.elem.classList.add("logger");
-
-        this.#client = null;
-        let host = null;
-        (async () => {
-            host = String(await window.api.get("socket-host"));
-        })();
 
         this.#logs = new Set();
 
@@ -1963,7 +2125,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.eLogs.classList.add("logs");
 
         this.eUploadBtn.addEventListener("click", async e => {
-            if (!this.#hasClient()) return;
+            if (LOGGERCONTEXT.disconnected) return;
             let result = await this.app.fileOpenDialog({
                 title: "Choose a WPILOG log file",
                 buttonLabel: "Upload",
@@ -1978,16 +2140,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             });
             result = util.ensure(result, "obj");
             if (result.canceled) return;
-            let paths = util.ensure(result.filePaths, "arr");
-            await Promise.all(paths.map(async path => {
-                await window.api.send("log-cache", [path]);
-                await this.#client.stream(path, "logs", {});
-            }));
-        });
-
-        this.addHandler("rem", () => {
-            this.#client.destroy();
-            this.#client = null;
+            await LOGGERCONTEXT.logsUpload(result.filePaths);
         });
 
         this.addHandler("format", data => {
@@ -1996,160 +2149,152 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             });
         });
 
-        let serverLogs = new Set();
-        let clientLogs = {};
-        let logObjects = {};
-        let loading = {};
-        const incLoading = name => {
-            loading[name] = util.ensure(loading[name], "int")+1;
-        };
-        const decLoading = name => {
-            loading[name] = util.ensure(loading[name], "int")-1;
-            if (loading[name] <= 0) delete loading[name];
-        };
-
         this.addHandler("log-download", async name => {
             name = String(name);
-            if (!serverLogs.has(name)) return;
-            if (!this.#hasClient()) return;
-            incLoading(name);
+            if (LOGGERCONTEXT.disconnected) return;
+            if (!LOGGERCONTEXT.hasServerLog(name)) return;
             try {
-                await this.#client.emit("log-download", { name: name });
+                await LOGGERCONTEXT.logsDownload([name]);
             } catch (e) {
                 if (this.hasApp())
                     this.app.error("There was an error downloading log: "+name, e);
             }
-            decLoading(name);
         });
         this.addHandler("log-use", name => {
             name = String(name);
-            if (!(name in clientLogs)) return;
+            if (!LOGGERCONTEXT.hasClientLog(name)) return;
             if (!this.hasPage()) return;
             const page = this.page;
             if (!page.hasProject()) return;
             page.project.config.sourceType = "wpilog";
-            page.project.config.source = clientLogs[name];
+            page.project.config.source = LOGGERCONTEXT.getClientPath(name);
             page.update();
             if (!this.hasApp()) return;
             this.app.post("cmd-conndisconn");
         });
-        this.addHandler("log-client-delete", async name => {
-            name = String(name);
-            if (!(name in clientLogs)) return;
-            incLoading(name);
-            await window.api.send("log-delete", [name]);
-            decLoading(name);
+        let selected = new Set(), lastSelected = null, lastAction = null;
+        this.addHandler("log-trigger", data => {
+            data = util.ensure(data, "obj");
+            const name = String(data.name);
+            const shift = !!data.shift;
+            if (!LOGGERCONTEXT.hasLog(name)) return;
+            if (shift && LOGGERCONTEXT.hasLog(lastSelected)) {
+                let logs = LOGGERCONTEXT.logs.sort(compare);
+                let i = logs.indexOf(lastSelected);
+                let j = logs.indexOf(name);
+                for (let k = i;; k += (j>i?+1:j<i?-1:0)) {
+                    if (lastAction == -1) selected.delete(logs[k]);
+                    if (lastAction == +1) selected.add(logs[k]);
+                    if (k == j) break;
+                }
+            } else {
+                lastSelected = name;
+                if (selected.has(name)) {
+                    selected.delete(name);
+                    lastAction = -1;
+                } else {
+                    selected.add(name);
+                    lastAction = +1;
+                }
+            }
         });
-        this.addHandler("log-server-delete", async name => {
-            name = String(name);
-            if (!serverLogs.has(name)) return;
-            incLoading(name);
+        this.addHandler("log-contextmenu", name => {
+            if (selected.size == 1) this.post("log-trigger", { name: [...selected][0] });
+            if (selected.size == 0) this.post("log-trigger", { name: name });
+            let names = [...selected];
+            let anyClientHas = false, anyServerHas = false;
+            names.forEach(name => LOGGERCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
+            names.forEach(name => LOGGERCONTEXT.hasServerLog(name) ? (anyServerHas = true) : null);
+            let itm;
+            let menu = new core.App.ContextMenu();
+            itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
+            itm.disabled = names.length != 1;
+            itm.addHandler("trigger", data => {
+                this.post("log-use", names[0]);
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
+            itm.addHandler("trigger", data => {
+                names.forEach(name => this.post("log-download", name));
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
+            itm = menu.addItem(new core.App.ContextMenu.Item("Delete locally"));
+            itm.disabled = !anyClientHas;
+            itm.addHandler("trigger", data => {
+                this.post("log-client-delete", names);
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item("Delete from server"));
+            itm.disabled = !anyServerHas;
+            itm.addHandler("trigger", data => {
+                this.post("log-server-delete", names);
+            });
+            if (!this.hasApp()) return;
+            this.app.contextMenu = menu;
+        });
+        this.addHandler("log-client-delete", async names => {
+            names = util.ensure(names, "arr").map(name => String(name));
+            names = names.filter(name => LOGGERCONTEXT.hasClientLog(name));
+            await LOGGERCONTEXT.logsClientDelete(names);
+        });
+        this.addHandler("log-server-delete", async names => {
+            names = util.ensure(names, "arr").map(name => String(name));
+            if (LOGGERCONTEXT.disconnected) return;
+            names = names.filter(name => LOGGERCONTEXT.hasServerLog(name));
+            let r = await new Promise((res, rej) => {
+                let pop = this.app.confirm();
+                pop.eContent.innerText = "Are you sure you want to delete these logs from the server?\nThis will remove the logs for everyone";
+                pop.hasInfo = true;
+                pop.info = names.join("\n");
+                pop.addHandler("result", async data => res(!!util.ensure(data, "obj").v));
+            });
+            if (!r) return;
             try {
-                await this.#client.emit("log-delete", { name: name });
+                await LOGGERCONTEXT.logsServerDelete(names);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("There was an error deleting log: "+name, e);
+                    this.app.error("There was an error deleting the logs", e);
             }
-            decLoading(name);
         });
 
-        let updateServerLogsLock = false;
-        const updateServerLogs = async () => {
-            if (updateServerLogsLock) return;
-            updateServerLogsLock = true;
-            let logs = [];
-            if (this.#hasClient()) {
-                try {
-                    logs = util.ensure(await this.#client.emit("logs-get"), "arr");
-                } catch (e) { logs = []; }
-            }
-            serverLogs.clear();
-            logs.map(log => serverLogs.add(String(log)));
-            generateLogs();
-            updateServerLogsLock = false;
-        };
-        let updateClientLogsLock = false;
-        const updateClientLogs = async () => {
-            if (updateClientLogsLock) return;
-            updateClientLogsLock = true;
-            let logs = util.ensure(await window.api.get("logs"), "arr");
-            clientLogs = {};
-            logs.map(log => {
-                log = util.ensure(log, "obj");
-                let name = String(log.name), path = String(log.path);
-                clientLogs[name] = path;
-            });
-            generateLogs();
-            updateClientLogsLock = false;
-        };
-        const generateLogs = () => {
-            let newLogs = new Set();
-            serverLogs.forEach(log => newLogs.add(log));
-            for (let log in clientLogs) newLogs.add(log);
-            newLogs.forEach(name => {
-                if (name in logObjects) return;
-                logObjects[name] = this.addLog(new Panel.LoggerTab.Log(name));
-            });
-            Object.keys(logObjects).forEach(name => {
-                if (newLogs.has(name)) return;
-                this.remLog(logObjects[name]);
-                delete logObjects[name];
-            });
-        };
-
-        let tClient = 0, tClient2 = 0, tServer = 0;
+        let logObjects = {};
 
         this.addHandler("update", data => {
             if (this.isClosed) return;
 
-            this.eUploadBtn.disabled = !this.#hasClient() || this.#client.disconnected;
+            this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
 
-            let t = util.getTime();
-            if (t-tClient > 100) {
-                tClient = t;
-                updateClientLogs();
-            }
-            if (t-tClient2 > 1000) {
-                tClient2 = t;
-                if (this.#hasClient()) {
-                    if (this.#client.disconnected)
-                        this.#client.connect();
-                } else {
-                    if (host != null)
-                        this.#client = new core.Client(host+"/panel");
-                }
-            }
-            if (t-tServer > 1000) {
-                if (this.#hasClient() && this.#client.connected) {
-                    tServer = t;
-                    updateServerLogs();
-                }
-            }
-
-            this.status = this.#hasClient() ? this.#client.connected ? this.#client.location : ("Connecting - "+this.#client.location) : "Initializing client";
-            if (this.#hasClient() && this.#client.connected) {
+            this.status = LOGGERCONTEXT.initializing ? "Initializing client" : LOGGERCONTEXT.disconnected ? ("Connecting - "+LOGGERCONTEXT.location) : LOGGERCONTEXT.location;
+            if (LOGGERCONTEXT.connected) {
                 eIcon.setAttribute("name", "cloud");
-                this.eStatus.setAttribute("href", this.#client.location);
+                this.eStatus.setAttribute("href", LOGGERCONTEXT.location);
             } else {
                 eIcon.setAttribute("name", "cloud-offline");
                 this.eStatus.removeAttribute("href");
             }
             this.loading = false;
 
-            Object.keys(loading).forEach(name => {
-                if (serverLogs.has(name)) return;
-                delete loading[name];
+            let logs = LOGGERCONTEXT.logs;
+            logs.forEach(name => {
+                if (name in logObjects) return;
+                logObjects[name] = this.addLog(new Panel.LoggerTab.Log(name));
+            });
+            Object.keys(logObjects).forEach(name => {
+                if (logs.includes(name)) return;
+                this.remLog(logObjects[name]);
+                delete logObjects[name];
+            });
+            [...selected].forEach(name => {
+                if (LOGGERCONTEXT.hasLog(name)) return;
+                selected.delete(name);
             });
 
             this.logs.forEach(log => {
-                log.downloaded = log.name in clientLogs;
-                log.deprecated = !serverLogs.has(log.name);
-                log.loading = log.name in loading;
+                log.downloaded = LOGGERCONTEXT.hasClientLog(log.name);
+                log.deprecated = !LOGGERCONTEXT.hasServerLog(log.name);
+                log.loading = LOGGERCONTEXT.isLoading(log.name);
+                log.selected = selected.has(log.name);
             });
         });
     }
-
-    #hasClient() { return this.#client instanceof core.Client; }
 
     get logs() { return [...this.#logs]; }
     set logs(v) {
@@ -2176,12 +2321,18 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         log._onUse = () => {
             this.post("log-use", log.name);
         };
-        log._onTrigger = () => {
-            console.log("trigger");
+        log._onTrigger = e => {
+            this.post("log-trigger", { name: log.name, shift: !!(util.ensure(e, "obj").shiftKey) });
+        };
+        log._onContextMenu = e => {
+            this.post("log-contextmenu", log.name);
+            if (!this.hasApp()) return;
+            this.app.placeContextMenu(e.pageX, e.pageY);
         };
         log.addHandler("download", log._onDownload);
         log.addHandler("use", log._onUse);
         log.addHandler("trigger", log._onTrigger);
+        log.addHandler("contextmenu", log._onContextMenu);
         this.eLogs.appendChild(log.elem);
         this.format();
         return log;
@@ -2193,9 +2344,11 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         log.remHandler("download", log._onDownload);
         log.remHandler("use", log._onUse);
         log.remHandler("trigger", log._onTrigger);
+        log.remHandler("contextmenu", log._onContextMenu);
         delete log._onDownload;
         delete log._onUse;
         delete log._onTrigger;
+        delete log._onContextMenu;
         this.eLogs.removeChild(log.elem);
         return log;
     }
@@ -2243,17 +2396,22 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
         this.eUseBtn.innerHTML = "<ion-icon name='open-outline'></ion-icon>";
 
         this.eDownloadBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (!this.deprecated) this.post("download");
         });
         this.eUseBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (this.downloaded) this.post("use");
+        });
+        this.elem.addEventListener("click", e => {
+            this.post("trigger", e);
         });
         this.elem.addEventListener("dblclick", e => {
             if (this.downloaded) this.post("use");
             else if (!this.deprecated) this.post("download");
         });
         this.elem.addEventListener("contextmenu", e => {
-            this.post("trigger");
+            this.post("contextmenu", e);
         });
 
         this.name = name;
@@ -2285,6 +2443,11 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
         if (v) this.elem.classList.add("loading_");
         else this.elem.classList.remove("loading_");
         Array.from(this.eNav.querySelectorAll(":scope > button")).forEach(btn => (btn.disabled = v));
+    }
+    get selected() { return this.elem.classList.contains("selected"); }
+    set selected(v) {
+        if (v) this.elem.classList.add("selected");
+        else this.elem.classList.remove("selected");
     }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
@@ -7125,7 +7288,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         });
         let divideAmong = idsOpen.length;
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
-        this.browserFields.sort((a, b) => a.compare(b)).forEach((field, i) => {
+        this.browserFields.sort((a, b) => compare(a.name, b.name)).forEach((field, i) => {
             field.elem.style.order = i;
             field.format();
         });

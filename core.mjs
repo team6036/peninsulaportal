@@ -1033,6 +1033,7 @@ App.Error = class AppError extends App.Alert {
 App.Confirm = class AppConfirm extends App.PopupBase {
     #eIcon;
     #eContent;
+    #eInfo;
     #eConfirm;
     #eCancel;
 
@@ -1048,6 +1049,8 @@ App.Confirm = class AppConfirm extends App.PopupBase {
         this.#eContent = document.createElement("div");
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
+        this.#eInfo = document.createElement("pre");
+        this.eInfo.classList.add("info");
         this.#eConfirm = document.createElement("button");
         this.inner.appendChild(this.eConfirm);
         this.eConfirm.classList.add("special");
@@ -1077,6 +1080,7 @@ App.Confirm = class AppConfirm extends App.PopupBase {
 
     get eIcon() { return this.#eIcon; }
     get eContent() { return this.#eContent; }
+    get eInfo() { return this.#eInfo; }
     get eCancel() { return this.#eCancel; }
     get eConfirm() { return this.#eConfirm; }
 
@@ -1096,6 +1100,16 @@ App.Confirm = class AppConfirm extends App.PopupBase {
     get content() { return this.eContent.textContent; }
     set content(v) { this.eContent.textContent = v; }
 
+    get hasInfo() { return this.elem.contains(this.eInfo); }
+    set hasInfo(v) {
+        v = !!v;
+        if (this.hasInfo == v) return;
+        if (v) this.inner.insertBefore(this.eInfo, this.eConfirm);
+        else this.inner.removeChild(this.eInfo);
+    }
+    get info() { return this.eInfo.innerHTML; }
+    set info(v) { this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
+
     get confirm() { return this.eConfirm.textContent; }
     set confirm(v) { this.eConfirm.textContent = v; }
     get cancel() { return this.eCancel.textContent; }
@@ -1104,6 +1118,7 @@ App.Confirm = class AppConfirm extends App.PopupBase {
 App.Prompt = class AppPrompt extends App.PopupBase {
     #eIcon;
     #eContent;
+    #eInfo;
     #eInput;
     #eConfirm;
     #eCancel;
@@ -1120,6 +1135,8 @@ App.Prompt = class AppPrompt extends App.PopupBase {
         this.#eContent = document.createElement("div");
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
+        this.#eInfo = document.createElement("pre");
+        this.eInfo.classList.add("info");
         this.#eInput = document.createElement("input");
         this.inner.appendChild(this.eInput);
         this.eInput.autocomplete = "off";
@@ -1154,6 +1171,7 @@ App.Prompt = class AppPrompt extends App.PopupBase {
 
     get eIcon() { return this.#eIcon; }
     get eContent() { return this.#eContent; }
+    get eInfo() { return this.#eInfo; }
     get eInput() { return this.#eInput; }
     get eCancel() { return this.#eCancel; }
     get eConfirm() { return this.#eConfirm; }
@@ -1173,6 +1191,16 @@ App.Prompt = class AppPrompt extends App.PopupBase {
 
     get content() { return this.eContent.textContent; }
     set content(v) { this.eContent.textContent = v; }
+
+    get hasInfo() { return this.elem.contains(this.eInfo); }
+    set hasInfo(v) {
+        v = !!v;
+        if (this.hasInfo == v) return;
+        if (v) this.inner.insertBefore(this.eInfo, this.eInput);
+        else this.inner.removeChild(this.eInfo);
+    }
+    get info() { return this.eInfo.innerHTML; }
+    set info(v) { this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
 
     get confirm() { return this.eConfirm.textContent; }
     set confirm(v) { this.eConfirm.textContent = v; }
@@ -1273,7 +1301,10 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
         this.eDropdown.classList.add("dropdown");
 
         this.elem.addEventListener("mouseenter", e => this.fix());
-        this.elem.addEventListener("click", e => this.post("trigger"));
+        this.elem.addEventListener("click", e => {
+            if (this.disabled) return;
+            this.post("trigger");
+        });
 
         this.icon = icon;
         this.label = label;
@@ -1345,6 +1376,12 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
     set shortcut(v) {
         this.eShortcut.textContent = v;
         this.eShortcut.style.display = (this.eShortcut.textContent.length > 0) ? "" : "none";
+    }
+
+    get disabled() { return this.elem.classList.contains("disabled"); }
+    set disabled(v) {
+        if (v) this.elem.classList.add("disabled");
+        else this.elem.classList.remove("disabled");
     }
 
     fix() {
@@ -1450,7 +1487,6 @@ export class Client extends util.Target {
         window.api.onClientMsg((_, id, name, payload, meta) => {
             if (!confirm(id, meta)) return;
             name = String(name);
-            payload = util.ensure(payload, "obj");
             console.log(this.id+":msg", name, payload);
             this.post("msg", { name: name, payload: payload });
             this.post("msg-"+name, payload);
@@ -1460,7 +1496,6 @@ export class Client extends util.Target {
             name = String(name);
             pth = String(pth);
             fname = String(fname);
-            payload = util.ensure(payload, "obj");
             console.log(this.id+":stream-start", name, pth, fname, payload);
             this.post("stream-start", { name: name, pth: pth, fname: fname, payload: payload });
             this.post("stream-start-"+name, { pth: pth, fname: fname, payload: payload });
@@ -1470,7 +1505,6 @@ export class Client extends util.Target {
             name = String(name);
             pth = String(pth);
             fname = String(fname);
-            payload = util.ensure(payload, "obj");
             console.log(this.id+":stream-stop", name, pth, fname, payload);
             this.post("stream-stop", { name: name, pth: pth, fname: fname, payload: payload });
             this.post("stream-stop-"+name, { pth: pth, fname: fname, payload: payload });

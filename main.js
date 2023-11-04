@@ -218,7 +218,7 @@ const MAIN = async () => {
             const msg = async (data, ack) => {
                 data = util.ensure(data, "obj");
                 const name = String(data.name);
-                const payload = util.ensure(data.payload, "obj");
+                const payload = data.payload;
                 const meta = {
                     location: this.location,
                     connected: this.connected,
@@ -247,7 +247,7 @@ const MAIN = async () => {
                 data = util.ensure(data, "obj");
                 const name = String(data.name);
                 const fname = String(data.fname);
-                const payload = util.ensure(data.payload, "obj");
+                const payload = data.payload;
                 const meta = {
                     location: this.location,
                     connected: this.connected,
@@ -325,7 +325,6 @@ const MAIN = async () => {
         }
         async emit(name, payload) {
             name = String(name);
-            payload = util.ensure(payload, "obj");
             return await new Promise((res, rej) => {
                 this.#socket.emit(
                     "msg",
@@ -344,7 +343,6 @@ const MAIN = async () => {
             const stream = fs.createReadStream(pth);
             name = String(name);
             const fname = path.basename(pth);
-            payload = util.ensure(payload, "obj");
             const ssStream = ss.createStream();
             return await new Promise((res, rej) => {
                 ss(this.#socket).emit(
@@ -2369,7 +2367,7 @@ const MAIN = async () => {
             client.addHandler("msg", async data => {
                 data = util.ensure(data, "obj");
                 const name = String(data.name);
-                const payload = util.ensure(data.payload, "obj");
+                const payload = data.payload;
                 const meta = util.ensure(data.meta, "obj");
                 if (!this.hasWindow()) return { success: false, reason: "No window" };
                 await this.post("client-msg", {
@@ -2390,7 +2388,7 @@ const MAIN = async () => {
                 data = util.ensure(data, "obj");
                 const name = String(data.name);
                 const fname = String(data.fname);
-                const payload = util.ensure(data.payload, "obj");
+                const payload = data.payload;
                 const meta = util.ensure(data.meta, "obj");
                 const ssStream = data.ssStream;
                 if (!this.hasPortal()) return { success: false, reason: "No window" };

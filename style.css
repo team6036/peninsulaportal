@@ -1169,7 +1169,9 @@ article.md ul {
     --bgd: var(--a2);
     --fgd: var(--v6);
 }
-.popup.alert > .inner > .info {
+.popup.alert > .inner > .info,
+.popup.confirm > .inner > .info,
+.popup.prompt > .inner > .info {
     max-height: 250px;
     padding: 10px;
     overflow: auto;
@@ -1221,8 +1223,11 @@ div.contextmenu .item {
     font-size: 12px;
     user-select: none;
 }
-div.contextmenu .item:not(.divider):hover {
+div.contextmenu .item:not(.divider):not(.disabled):hover {
     background-color: var(--v3);
+}
+div.contextmenu .item:not(.divider).disabled {
+    color: var(--v6);
 }
 div.contextmenu .item:not(.divider) > ion-icon.icon {
     min-width: 12px;
@@ -1249,7 +1254,7 @@ div.contextmenu .item:not(.divider) > div.dropdown {
 
     visibility: hidden;
 }
-div.contextmenu .item:not(.divider):hover > div.dropdown {
+div.contextmenu .item:not(.divider):not(.disabled):hover > div.dropdown {
     visibility: inherit;
 }
 div.contextmenu .item.divider {
