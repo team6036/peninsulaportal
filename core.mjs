@@ -77,9 +77,9 @@ export class App extends util.Target {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
                 (async () => {
-                    await this.post("start-begin", null);
+                    await this.post("start-begin");
                     await this.setup();
-                    await this.post("start-complete", null);
+                    await this.post("start-complete");
                     let page = await window.api.send("state-get", ["page"]);
                     let pageState = await window.api.send("state-get", ["page-state"]);
                     if (this.hasPage(page)) {
@@ -103,7 +103,7 @@ export class App extends util.Target {
     get setupConfig() { return this.#setupConfig; }
     get setupDone() { return this.#setupDone; }
 
-    start() { this.post("start", null); }
+    start() { this.post("start"); }
 
     async getAbout() {
         let os = util.ensure(await window.version.os(), "obj");
@@ -550,7 +550,7 @@ export class App extends util.Target {
         this.addHandler("cmd-theme", () => themeUpdate());
         await themeUpdate();
 
-        await this.post("setup", null);
+        await this.post("setup");
 
         setTimeout(() => {
             if (this.hasELoading()) {
@@ -682,7 +682,7 @@ export class App extends util.Target {
     }
 
     async getPerm() {
-        let perms = await this.post("perm", null);
+        let perms = await this.post("perm");
         let all = this.popups.length <= 0;
         perms.forEach(v => { all &&= v; });
         return all;
@@ -768,8 +768,8 @@ export class App extends util.Target {
             const mouseup = e => {
                 this.post("drag-submit", e);
                 this.dragState.post("submit", e);
-                this.post("drag-stop", null);
-                this.dragState.post("stop", null);
+                this.post("drag-stop");
+                this.dragState.post("stop");
             };
             const mousemove = e => {
                 this.eDrag.style.left = e.pageX+"px";
@@ -785,13 +785,13 @@ export class App extends util.Target {
             });
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
-            this.post("drag-start", null);
+            this.post("drag-start");
         } else {
             if (!this.dragState._already) {
-                this.post("drag-cancel", null);
-                this.dragState.post("cancel", null);
-                this.post("drag-stop", null);
-                this.dragState.post("stop", null);
+                this.post("drag-cancel");
+                this.dragState.post("cancel");
+                this.post("drag-stop");
+                this.dragState.post("stop");
             }
             this.#dragState = null;
             this.dragData = null;
@@ -803,8 +803,8 @@ export class App extends util.Target {
         if (this.dragState._already) return false;
         this.post("drag-submit", e);
         this.dragState.post("submit", e);
-        this.post("drag-stop", null);
-        this.dragState.post("stop", null);
+        this.post("drag-stop");
+        this.dragState.post("stop");
         return true;
     }
     get dragState() { return this.#dragState; }
@@ -917,7 +917,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
     get inner() { return this.#inner; }
 
     close() {
-        this.post("close", null);
+        this.post("close");
     }
 };
 App.Popup = class AppPopup extends App.PopupBase {
@@ -1273,7 +1273,7 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
         this.eDropdown.classList.add("dropdown");
 
         this.elem.addEventListener("mouseenter", e => this.fix());
-        this.elem.addEventListener("click", e => this.post("trigger", null));
+        this.elem.addEventListener("click", e => this.post("trigger"));
 
         this.icon = icon;
         this.label = label;
@@ -1424,12 +1424,10 @@ export class Client extends util.Target {
         this.#destroyedRes = [];
         this.#notDestroyedRes = [];
 
-        window.api.onClientMsg((_, id, name, a, meta) => {
-            if (this.id != id) return;
-            name = String(name);
-            a = util.ensure(a, "arr");
+        const confirm = (id, meta) => {
+            if (this.id != id) return false;
             meta = util.ensure(meta, "obj");
-            if (this.location != meta.location) return;
+            if (this.location != meta.location) return false;
             let connected = !!meta.connected;
             if (this.#connected != connected) {
                 console.log(this.id+":meta.connected = "+connected);
@@ -1447,19 +1445,35 @@ export class Client extends util.Target {
                 console.log(this.id+":meta.socketId = "+socketId);
                 this.#socketId = socketId;
             }
-            console.log(this.id+":msg", name, a);
-            this.post("msg", { name: name, a: a });
-            this.post("msg-"+name, a);
+            return true;
+        };
+        window.api.onClientMsg((_, id, name, payload, meta) => {
+            if (!confirm(id, meta)) return;
+            name = String(name);
+            payload = util.ensure(payload, "obj");
+            console.log(this.id+":msg", name, payload);
+            this.post("msg", { name: name, payload: payload });
+            this.post("msg-"+name, payload);
         });
-        this.addHandler("msg-stream", ([state, ...a]) => {
-            state = util.ensure(state, "obj");
-            const name = String(state.name);
-            const sname = String(state.sname);
-            const path = String(state.path);
-            this.post("stream-"+name, [
-                { sname: sname, path: path },
-                ...a,
-            ]);
+        window.api.onClientStreamStart((_, id, name, pth, fname, payload, meta) => {
+            if (!confirm(id, meta)) return;
+            name = String(name);
+            pth = String(pth);
+            fname = String(fname);
+            payload = util.ensure(payload, "obj");
+            console.log(this.id+":stream-start", name, pth, fname, payload);
+            this.post("stream-start", { name: name, pth: pth, fname: fname, payload: payload });
+            this.post("stream-start-"+name, { pth: pth, fname: fname, payload: payload });
+        });
+        window.api.onClientStreamStop((_, id, name, pth, fname, payload, meta) => {
+            if (!confirm(id, meta)) return;
+            name = String(name);
+            pth = String(pth);
+            fname = String(fname);
+            payload = util.ensure(payload, "obj");
+            console.log(this.id+":stream-stop", name, pth, fname, payload);
+            this.post("stream-stop", { name: name, pth: pth, fname: fname, payload: payload });
+            this.post("stream-stop-"+name, { pth: pth, fname: fname, payload: payload });
         });
 
         (async () => {
@@ -1509,13 +1523,22 @@ export class Client extends util.Target {
         await window.api.clientDisconn(this.id);
         return true;
     }
-    async emit(name, ...a) {
-        if (this.destroyed) return false;
-        if (this.disconnected) return false;
-        await window.api.clientEmit(this.id, name, a);
-        return true;
+    async emit(name, payload) {
+        if (this.destroyed) return null;
+        if (this.disconnected) return null;
+        // console.log(this.id+":emit<", name, payload);
+        let r = await window.api.clientEmit(this.id, name, payload);
+        // console.log(this.id+":emit>", name, payload);
+        return r;
     }
-    async send(...a) { return await this.emit("message", ...a); }
+    async stream(pth, name, payload) {
+        if (this.destroyed) return null;
+        if (this.disconnected) return null;
+        // console.log(this.id+":stream<", pth, name, payload);
+        let r = await window.api.clientStream(this.id, pth, name, payload);
+        // console.log(this.id+":stream>", pth, name, payload);
+        return r;
+    }
 
     async destroy() {
         if (this.destroyed) return false;
@@ -1906,7 +1929,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     render() {
         if (!this.hasOdometry()) return;
         this.odometry.ctx.globalAlpha = this.alpha;
-        this.post("render", null);
+        this.post("render");
     }
 };
 Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {

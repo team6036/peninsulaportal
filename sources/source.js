@@ -195,7 +195,7 @@ export default class Source extends util.Target {
         this.ts = data.ts;
         this.tsMin = data.tsMin;
         this.tsMax = data.tsMax;
-        this.post("change", null);
+        this.post("change");
         return this;
     }
 }

@@ -504,7 +504,7 @@ class ToolButton extends util.Target {
         let cancel = 10;
         this.elem.addEventListener("click", e => {
             if (cancel <= 0) return cancel = 10;
-            this.post("trigger", null);
+            this.post("trigger");
         });
         this.elem.addEventListener("mousedown", e => {
             const mouseup = () => {
@@ -514,7 +514,7 @@ class ToolButton extends util.Target {
             const mousemove = () => {
                 if (cancel > 0) return cancel--;
                 mouseup();
-                this.post("drag", null);
+                this.post("drag");
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -668,7 +668,7 @@ class Container extends Widget {
         wSum = 0;
         v.forEach(w => (wSum += w));
         this.#weights = (this.children.length > 0) ? v.map(w => w/wSum) : [];
-        this.post("change", null);
+        this.post("change");
         this.format();
     }
     clearChildren() {
@@ -701,10 +701,10 @@ class Container extends Widget {
             this.#weights = this.#weights.map(w => w/wSum);
             this.#children.splice(at, 0, child);
         }
-        child._onChange = () => this.post("change", null);
+        child._onChange = () => this.post("change");
         child.addHandler("change", child._onChange);
         child.post("add", this);
-        this.post("change", null);
+        this.post("change");
         this.format();
         return child;
     }
@@ -738,7 +738,7 @@ class Container extends Widget {
         child.remHandler("change", child._onChange);
         delete child._onChange;
         child.post("rem", this);
-        this.post("change", null);
+        this.post("change");
         this.format();
         return child;
     }
@@ -749,7 +749,7 @@ class Container extends Widget {
         if (!["x", "y"].includes(v)) return;
         if (this.axis == v) return;
         this.#axis = v;
-        this.post("change", null);
+        this.post("change");
         this.format();
     }
 
@@ -949,7 +949,7 @@ class Panel extends Widget {
 
         if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
 
-        new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
+        new MutationObserver(() => this.post("change")).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
     }
 
     get tabs() { return [...this.#tabs]; }
@@ -966,7 +966,7 @@ class Panel extends Widget {
         this.#tabs.forEach((tab, i) => (i == this.tabIndex) ? tab.open() : tab.close());
         if (this.tabs[this.tabIndex] instanceof Panel.Tab)
             this.tabs[this.tabIndex].eTab.scrollIntoView({ behavior: "smooth" });
-        this.post("change", null);
+        this.post("change");
         this.format();
     }
     clearTabs() {
@@ -990,10 +990,10 @@ class Panel extends Widget {
         if (at == null) at = this.#tabs.length;
         this.#tabs.splice(at, 0, tab);
         tab.parent = this;
-        tab._onChange = () => this.post("change", null);
+        tab._onChange = () => this.post("change");
         tab.addHandler("change", tab._onChange);
         tab.post("add", this);
-        this.post("change", null);
+        this.post("change");
         this.eTop.appendChild(tab.eTab);
         this.eContent.appendChild(tab.elem);
         this.tabIndex = this.#tabs.indexOf(tab);
@@ -1009,7 +1009,7 @@ class Panel extends Widget {
         tab.remHandler("change", tab._onChange);
         delete tab._onChange;
         tab.post("rem", this);
-        this.post("change", null);
+        this.post("change");
         this.eTop.removeChild(tab.eTab);
         this.eContent.removeChild(tab.elem);
         tab.close();
@@ -1115,7 +1115,7 @@ Panel.Tab = class PanelTab extends util.Target {
             this.parent.remTab(this);
         });
 
-        new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
+        new MutationObserver(() => this.post("change")).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
     }
 
     get parent() { return this.#parent; }
@@ -1180,7 +1180,7 @@ Panel.Tab = class PanelTab extends util.Target {
     set name(v) { this.eTabName.textContent = v; }
 
     update() { this.post("update", null); }
-    format() { this.post("format", null); }
+    format() { this.post("format"); }
 
     getHovered(pos, options) {
         pos = new V(pos);
@@ -1240,7 +1240,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.searchPart = null;
         });
         this.eSearchInput.addEventListener("input", e => {
-            this.post("change", null);
+            this.post("change");
             this.refresh();
         });
         this.eSearchClear.addEventListener("click", e => {
@@ -1429,7 +1429,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         if (this.searchPart == v) return;
         this.#searchPart = v;
         this.query = "";
-        this.post("change", null);
+        this.post("change");
         this.refresh();
     }
     hasSearchPart() { return this.searchPart != null; }
@@ -1506,7 +1506,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     get query() { return this.eSearchInput.value; }
     set query(v) {
         this.eSearchInput.value = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     toJSON() {
@@ -1615,7 +1615,7 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         this.btn.appendChild(this.eChevron);
         this.eChevron.setAttribute("name", "chevron-forward");
 
-        this.btn.addEventListener("click", e => this.post("trigger", null));
+        this.btn.addEventListener("click", e => this.post("trigger"));
 
         this.name = name;
         this.icon = icon;
@@ -1891,7 +1891,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             btn.textContent = (i > 0) ? path[i-1] : "/";
             btn.addEventListener("click", e => { this.path = pth; });
         }
-        this.post("change", null);
+        this.post("change");
     }
 
     get ePath() { return this.#ePath; }
@@ -1928,6 +1928,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
     #eStatusBox;
     #eStatus;
+    #eUploadBtn;
     #eLogs;
 
     constructor() {
@@ -1950,9 +1951,39 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.eStatusBox.appendChild(eIcon);
         this.#eStatus = document.createElement("a");
         this.eStatusBox.appendChild(this.eStatus);
+        let space = document.createElement("div");
+        this.eStatusBox.appendChild(space);
+        space.classList.add("space");
+        this.#eUploadBtn = document.createElement("button");
+        this.eStatusBox.appendChild(this.eUploadBtn);
+        this.eUploadBtn.classList.add("icon");
+        this.eUploadBtn.innerHTML = "<ion-icon name='add'></ion-icon>";
         this.#eLogs = document.createElement("div");
         this.elem.appendChild(this.eLogs);
         this.eLogs.classList.add("logs");
+
+        this.eUploadBtn.addEventListener("click", async e => {
+            if (!this.#hasClient()) return;
+            let result = await this.app.fileOpenDialog({
+                title: "Choose a WPILOG log file",
+                buttonLabel: "Upload",
+                filters: [{
+                    name: "WPILOG",
+                    extensions: ["wpilog"],
+                }],
+                properties: [
+                    "openFile",
+                    "multiSelections",
+                ],
+            });
+            result = util.ensure(result, "obj");
+            if (result.canceled) return;
+            let paths = util.ensure(result.filePaths, "arr");
+            await Promise.all(paths.map(async path => {
+                await window.api.send("log-cache", [path]);
+                await this.#client.stream(path, "logs", {});
+            }));
+        });
 
         this.addHandler("rem", () => {
             this.#client.destroy();
@@ -1968,8 +1999,30 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         let serverLogs = new Set();
         let clientLogs = {};
         let logObjects = {};
+        let loading = {};
+        const incLoading = name => {
+            loading[name] = util.ensure(loading[name], "int")+1;
+        };
+        const decLoading = name => {
+            loading[name] = util.ensure(loading[name], "int")-1;
+            if (loading[name] <= 0) delete loading[name];
+        };
 
+        this.addHandler("log-download", async name => {
+            name = String(name);
+            if (!serverLogs.has(name)) return;
+            if (!this.#hasClient()) return;
+            incLoading(name);
+            try {
+                await this.#client.emit("log-download", { name: name });
+            } catch (e) {
+                if (this.hasApp())
+                    this.app.error("There was an error downloading log: "+name, e);
+            }
+            decLoading(name);
+        });
         this.addHandler("log-use", name => {
+            name = String(name);
             if (!(name in clientLogs)) return;
             if (!this.hasPage()) return;
             const page = this.page;
@@ -1978,18 +2031,56 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             page.project.config.source = clientLogs[name];
             page.update();
             if (!this.hasApp()) return;
-            this.app.post("cmd-conndisconn", null);
+            this.app.post("cmd-conndisconn");
+        });
+        this.addHandler("log-client-delete", async name => {
+            name = String(name);
+            if (!(name in clientLogs)) return;
+            incLoading(name);
+            await window.api.send("log-delete", [name]);
+            decLoading(name);
+        });
+        this.addHandler("log-server-delete", async name => {
+            name = String(name);
+            if (!serverLogs.has(name)) return;
+            incLoading(name);
+            try {
+                await this.#client.emit("log-delete", { name: name });
+            } catch (e) {
+                if (this.hasApp())
+                    this.app.error("There was an error deleting log: "+name, e);
+            }
+            decLoading(name);
         });
 
+        let updateServerLogsLock = false;
+        const updateServerLogs = async () => {
+            if (updateServerLogsLock) return;
+            updateServerLogsLock = true;
+            let logs = [];
+            if (this.#hasClient()) {
+                try {
+                    logs = util.ensure(await this.#client.emit("logs-get"), "arr");
+                } catch (e) { logs = []; }
+            }
+            serverLogs.clear();
+            logs.map(log => serverLogs.add(String(log)));
+            generateLogs();
+            updateServerLogsLock = false;
+        };
+        let updateClientLogsLock = false;
         const updateClientLogs = async () => {
-            let logs = await window.api.send("downloaded-logs");
+            if (updateClientLogsLock) return;
+            updateClientLogsLock = true;
+            let logs = util.ensure(await window.api.get("logs"), "arr");
             clientLogs = {};
-            util.ensure(logs, "arr").map(log => {
+            logs.map(log => {
                 log = util.ensure(log, "obj");
                 let name = String(log.name), path = String(log.path);
                 clientLogs[name] = path;
             });
             generateLogs();
+            updateClientLogsLock = false;
         };
         const generateLogs = () => {
             let newLogs = new Set();
@@ -2002,23 +2093,38 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             Object.keys(logObjects).forEach(name => {
                 if (newLogs.has(name)) return;
                 this.remLog(logObjects[name]);
+                delete logObjects[name];
             });
         };
 
-        let t = 0;
+        let tClient = 0, tClient2 = 0, tServer = 0;
 
         this.addHandler("update", data => {
             if (this.isClosed) return;
 
-            if (util.getTime()-t > 5000) {
-                t = util.getTime();
+            this.eUploadBtn.disabled = !this.#hasClient() || this.#client.disconnected;
+
+            let t = util.getTime();
+            if (t-tClient > 100) {
+                tClient = t;
                 updateClientLogs();
             }
-
-            this.logs.forEach(log => {
-                log.downloaded = log.name in clientLogs;
-                log.deprecated = !serverLogs.has(log.name);
-            });
+            if (t-tClient2 > 1000) {
+                tClient2 = t;
+                if (this.#hasClient()) {
+                    if (this.#client.disconnected)
+                        this.#client.connect();
+                } else {
+                    if (host != null)
+                        this.#client = new core.Client(host+"/panel");
+                }
+            }
+            if (t-tServer > 1000) {
+                if (this.#hasClient() && this.#client.connected) {
+                    tServer = t;
+                    updateServerLogs();
+                }
+            }
 
             this.status = this.#hasClient() ? this.#client.connected ? this.#client.location : ("Connecting - "+this.#client.location) : "Initializing client";
             if (this.#hasClient() && this.#client.connected) {
@@ -2028,25 +2134,18 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 eIcon.setAttribute("name", "cloud-offline");
                 this.eStatus.removeAttribute("href");
             }
+            this.loading = false;
 
-            if (!this.#hasClient()) {
-                if (host == null) return;
-                (async () => {
-                    this.#client = new core.Client(host+"/panel");
-                    await this.#client.whenNotDestroyed();
-                    this.#client.addHandler("msg-get-logs-resp", async ([logs]) => {
-                        serverLogs.clear();
-                        util.ensure(logs, "arr").map(log => serverLogs.add(String(log)));
-                        generateLogs();
-                    });
-                    this.#client.addHandler("stream-downloaded-log", ([state, ..._]) => {
-                        updateClientLogs();
-                    });
-                    this.#client.connect();
-                    await this.#client.whenConnected();
-                    this.#client.emit("get-logs");
-                })();
-            }
+            Object.keys(loading).forEach(name => {
+                if (serverLogs.has(name)) return;
+                delete loading[name];
+            });
+
+            this.logs.forEach(log => {
+                log.downloaded = log.name in clientLogs;
+                log.deprecated = !serverLogs.has(log.name);
+                log.loading = log.name in loading;
+            });
         });
     }
 
@@ -2072,14 +2171,17 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         if (this.hasLog(log)) return false;
         this.#logs.add(log);
         log._onDownload = () => {
-            if (!this.#hasClient()) return;
-            this.#client.emit("download-log", log.name);
+            this.post("log-download", log.name);
         };
         log._onUse = () => {
             this.post("log-use", log.name);
         };
+        log._onTrigger = () => {
+            console.log("trigger");
+        };
         log.addHandler("download", log._onDownload);
         log.addHandler("use", log._onUse);
+        log.addHandler("trigger", log._onTrigger);
         this.eLogs.appendChild(log.elem);
         this.format();
         return log;
@@ -2090,22 +2192,25 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.#logs.delete(log);
         log.remHandler("download", log._onDownload);
         log.remHandler("use", log._onUse);
+        log.remHandler("trigger", log._onTrigger);
         delete log._onDownload;
         delete log._onUse;
+        delete log._onTrigger;
         this.eLogs.removeChild(log.elem);
         return log;
     }
 
-    get loading() { return this.elem.classList.contains("loading"); }
+    get loading() { return this.elem.classList.contains("loading_"); }
     set loading(v) {
-        if (v) this.elem.classList.add("loading");
-        else this.elem.classList.remove("loading");
+        if (v) this.elem.classList.add("loading_");
+        else this.elem.classList.remove("loading_");
     }
 
     get eStatusBox() { return this.#eStatusBox; }
     get eStatus() { return this.#eStatus; }
     get status() { return this.eStatus.textContent; }
     set status(v) { this.eStatus.textContent = v; }
+    get eUploadBtn() { return this.#eUploadBtn; }
 
     get eLogs() { return this.#eLogs; }
 };
@@ -2147,6 +2252,9 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
             if (this.downloaded) this.post("use");
             else if (!this.deprecated) this.post("download");
         });
+        this.elem.addEventListener("contextmenu", e => {
+            this.post("trigger");
+        });
 
         this.name = name;
     }
@@ -2171,6 +2279,12 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
         if (v) this.elem.classList.add("deprecated");
         else this.elem.classList.remove("deprecated");
         this.eDownloadBtn.style.display = v ? "none" : "";
+    }
+    get loading() { return this.elem.classList.contains("loading_"); }
+    set loading(v) {
+        if (v) this.elem.classList.add("loading_");
+        else this.elem.classList.remove("loading_");
+        Array.from(this.eNav.querySelectorAll(":scope > button")).forEach(btn => (btn.disabled = v));
     }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
@@ -2268,7 +2382,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
             }).observe(this.eContent);
         }
 
-        new MutationObserver(() => this.post("change", null)).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
+        new MutationObserver(() => this.post("change")).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
         this.optionState = 1;
         this.closeOptions();
@@ -2394,11 +2508,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.placeholder = "...";
                                 input.min = 0;
                                 this.viewParams.time = 5000;
-                                this.post("change", null);
+                                this.post("change");
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.viewParams.time = v;
-                                    this.post("change", null);
+                                    this.post("change");
                                 });
                                 this.addHandler("update", data => {
                                     if (document.activeElement == input) return;
@@ -2418,11 +2532,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.placeholder = "...";
                                 input.min = 0;
                                 this.viewParams.time = 5000;
-                                this.post("change", null);
+                                this.post("change");
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.viewParams.time = v;
-                                    this.post("change", null);
+                                    this.post("change");
                                 });
                                 this.addHandler("update", data => {
                                     if (document.activeElement == input) return;
@@ -2455,16 +2569,16 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.min = 0;
                                 this.viewParams.start = 0;
                                 this.viewParams.stop = 5000;
-                                this.post("change", null);
+                                this.post("change");
                                 startInput.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(startInput.value), "num"));
                                     this.viewParams.start = v;
-                                    this.post("change", null);
+                                    this.post("change");
                                 });
                                 stopInput.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(stopInput.value), "num"));
                                     this.viewParams.stop = v;
-                                    this.post("change", null);
+                                    this.post("change");
                                 });
                                 this.addHandler("update", data => {
                                     if (document.activeElement != startInput) startInput.value = this.viewParams.start;
@@ -2871,7 +2985,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ];
                     this.viewMode = "section";
                     [this.viewParams.start, this.viewParams.stop] = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
-                    this.post("change", null);
+                    this.post("change");
                 }
                 scrollX = 0;
             }
@@ -2885,7 +2999,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ];
                     this.viewMode = "section";
                     [this.viewParams.start, this.viewParams.stop] = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
-                    this.post("change", null);
+                    this.post("change");
                 }
                 scrollY = 0;
             }
@@ -2956,12 +3070,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (this.hasLVar(lVar)) return false;
         this.#lVars.add(lVar);
         lVar._onRemove = () => this.remLVar(lVar);
-        lVar._onChange = () => this.post("change", null);
+        lVar._onChange = () => this.post("change");
         lVar.addHandler("remove", lVar._onRemove);
         lVar.addHandler("change", lVar._onChange);
         if (this.hasEOptionSection("l"))
             this.getEOptionSection("l").appendChild(lVar.elem);
-        this.post("change", null);
+        this.post("change");
         return lVar;
     }
     remLVar(lVar) {
@@ -2974,7 +3088,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         delete lVar._onChange;
         if (this.hasEOptionSection("l"))
             this.getEOptionSection("l").removeChild(lVar.elem);
-        this.post("change", null);
+        this.post("change");
         return lVar;
     }
     get rVars() { return [...this.#rVars]; }
@@ -2997,12 +3111,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (this.hasRVar(rVar)) return false;
         this.#rVars.add(rVar);
         rVar._onRemove = () => this.remRVar(rVar);
-        rVar._onChange = () => this.post("change", null);
+        rVar._onChange = () => this.post("change");
         rVar.addHandler("remove", rVar._onRemove);
         rVar.addHandler("change", rVar._onChange);
         if (this.hasEOptionSection("r"))
             this.getEOptionSection("r").appendChild(rVar.elem);
-        this.post("change", null);
+        this.post("change");
         return rVar;
     }
     remRVar(rVar) {
@@ -3013,7 +3127,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         delete rVar._onRemove;
         if (this.hasEOptionSection("r"))
             this.getEOptionSection("r").removeChild(rVar.elem);
-        this.post("change", null);
+        this.post("change");
         return rVar;
     }
 
@@ -3023,13 +3137,13 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (this.viewMode == v) return;
         if (!["right", "left", "section", "all"].includes(v)) return;
         this.#viewMode = v;
-        this.post("change", null);
+        this.post("change");
     }
     get viewParams() { return this.#viewParams; }
     set viewParams(v) {
         v = util.ensure(v, "obj");
         for (let k in v) this.#viewParams[k] = v[k];
-        this.post("change", null);
+        this.post("change");
     }
 
     get ePlayPauseBtn() { return this.#ePlayPauseBtn; }
@@ -3178,11 +3292,11 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             e.stopPropagation();
         });
         this.eShow.addEventListener("change", e => {
-            this.post("change", null);
+            this.post("change");
         });
         this.eRemoveBtn.addEventListener("click", e => {
             e.stopPropagation();
-            this.post("remove", null);
+            this.post("remove");
         });
         this.eDisplay.addEventListener("click", e => {
             this.isOpen = !this.isOpen;
@@ -3213,7 +3327,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         if (util.arrEquals(v, this.path)) return;
         this.#path = v;
         this.eDisplayName.textContent = this.path.join("/");
-        this.post("change", null);
+        this.post("change");
     }
     get color() { return this.#color; }
     set color(v) {
@@ -3226,7 +3340,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             if (btn.color == this.color) btn.classList.add("this");
             else btn.classList.remove("this");
         });
-        this.post("change", null);
+        this.post("change");
     }
     hasColor() { return this.color != null; }
 
@@ -3244,7 +3358,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     get isShown() { return this.eShow.checked; }
     set isShown(v) {
         this.eShow.checked = v;
-        this.post("change", null);
+        this.post("change");
     }
     get isHidden() { return !this.isShown; }
     set isHidden(v) { this.isShown = !v; }
@@ -3468,12 +3582,12 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (this.hasPose(pose)) return false;
         this.#poses.add(pose);
         pose._onRemove = () => this.remPose(pose);
-        pose._onChange = () => this.post("change", null);
+        pose._onChange = () => this.post("change");
         pose.addHandler("remove", pose._onRemove);
         pose.addHandler("change", pose._onChange);
         if (this.hasEOptionSection("p"))
             this.getEOptionSection("p").appendChild(pose.elem);
-        this.post("change", null);
+        this.post("change");
         pose.state.tab = this;
         return pose;
     }
@@ -3488,7 +3602,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         delete pose._onChange;
         if (this.hasEOptionSection("p"))
             this.getEOptionSection("p").removeChild(pose.elem);
-        this.post("change", null);
+        this.post("change");
         return pose;
     }
 
@@ -3497,7 +3611,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         this.#template = (v == null) ? null : String(v);
         if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
             this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
-        this.post("change", null);
+        this.post("change");
     }
 
     getHovered(data, pos, options) {
@@ -3640,11 +3754,11 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             e.stopPropagation();
         });
         this.eShow.addEventListener("change", e => {
-            this.post("change", null);
+            this.post("change");
         });
         this.eRemoveBtn.addEventListener("click", e => {
             e.stopPropagation();
-            this.post("remove", null);
+            this.post("remove");
         });
         this.eDisplay.addEventListener("click", e => {
             this.isOpen = !this.isOpen;
@@ -3675,7 +3789,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         if (util.arrEquals(v, this.path)) return;
         this.#path = v;
         this.eDisplayName.textContent = this.path.join("/");
-        this.post("change", null);
+        this.post("change");
     }
     get color() { return this.#color; }
     set color(v) {
@@ -3688,7 +3802,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             if (btn.color == this.color) btn.classList.add("this");
             else btn.classList.remove("this");
         });
-        this.post("change", null);
+        this.post("change");
     }
     hasColor() { return this.color != null; }
 
@@ -3708,7 +3822,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     get isShown() { return this.eShow.checked; }
     set isShown(v) {
         this.eShow.checked = v;
-        this.post("change", null);
+        this.post("change");
     }
     get isHidden() { return !this.isShown; }
     set isHidden(v) { this.isShown = !v; }
@@ -3836,7 +3950,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.w = v*(this.isMeters ? 100 : 1);
-                this.post("change", null);
+                this.post("change");
             }
         });
         this.#eSizeHInput = document.createElement("input");
@@ -3850,7 +3964,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.h = v*(this.isMeters ? 100 : 1);
-                this.post("change", null);
+                this.post("change");
             }
         });
         info = document.createElement("div");
@@ -3874,7 +3988,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.robotW = v*(this.isMeters ? 100 : 1);
-                this.post("change", null);
+                this.post("change");
             }
         });
         this.#eRobotSizeHInput = document.createElement("input");
@@ -3888,7 +4002,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.robotH = v*(this.isMeters ? 100 : 1);
-                this.post("change", null);
+                this.post("change");
             }
         });
         let eNav;
@@ -4043,7 +4157,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isMeters == v) return;
         this.#isMeters = v;
-        this.post("change", null);
+        this.post("change");
     }
     get isCentimeters() { return !this.isMeters; }
     set isCentimeters(v) { this.isMeters = !v; }
@@ -4052,7 +4166,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isDegrees == v) return;
         this.#isDegrees = v;
-        this.post("change", null);
+        this.post("change");
     }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
@@ -4113,7 +4227,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.eContent.appendChild(this.eDisplayType);
         this.eDisplayType.classList.add("display");
         this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eDisplayType.addEventListener("click", e => this.post("type", null));
+        this.eDisplayType.addEventListener("click", e => this.post("type"));
 
         if (a.length <= 0 || a.length > 5) a = [null];
         if (a.length == 1) {
@@ -4144,14 +4258,14 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.#isGhost = v;
         if (this.isGhost) this.eGhostBtn.classList.add("this");
         else this.eGhostBtn.classList.remove("this");
-        this.post("change", null);
+        this.post("change");
     }
     get type() { return this.#type; }
     set type(v) {
         if (!Object.values(core.Odometry2d.Robot.Types)) return;
         if (Object.keys(core.Odometry2d.Robot.Types).includes(v)) v = core.Odometry2d.Robot.Types[v];
         this.#type = v;
-        this.post("change", null);
+        this.post("change");
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
             this.eDisplayType.children[0].textContent = String(core.Odometry2d.Robot.lookupTypeName(this.type)).split(" ").map(v => util.capitalize(v)).join(" ");
     }
@@ -4424,7 +4538,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.camera.position.x = v / (this.isMeters ? 1 : 100);
-                this.post("change", null);
+                this.post("change");
             }
         });
         this.#eCameraPosYInput = document.createElement("input");
@@ -4437,7 +4551,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.camera.position.y = v / (this.isMeters ? 1 : 100);
-                this.post("change", null);
+                this.post("change");
             }
         });
         this.#eCameraPosZInput = document.createElement("input");
@@ -4450,7 +4564,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             if (v.length > 0) {
                 v = Math.max(0, util.ensure(parseFloat(v), "num"));
                 this.camera.position.z = v / (this.isMeters ? 1 : 100);
-                this.post("change", null);
+                this.post("change");
             }
         });
 
@@ -4732,7 +4846,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.#isProjection == v) return;
         this.#isProjection = v;
-        this.post("change", null);
+        this.post("change");
         this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
         this.camera.position.set(...(this.isProjection ? [0, 7.5, 7.5] : [10, 10, 10]));
         if (this.controls instanceof OrbitControls) {
@@ -4758,7 +4872,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.#isOrbit == v) return;
         this.#isOrbit = v;
-        this.post("change", null);
+        this.post("change");
         if (this.controls instanceof OrbitControls) {
             this.controls.dispose();
         } else if (this.controls instanceof PointerLockControls) {
@@ -4774,7 +4888,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isMeters == v) return;
         this.#isMeters = v;
-        this.post("change", null);
+        this.post("change");
     }
     get isCentimeters() { return !this.isMeters; }
     set isCentimeters(v) { this.isMeters = !v; }
@@ -4783,7 +4897,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isDegrees == v) return;
         this.#isDegrees = v;
-        this.post("change", null);
+        this.post("change");
     }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
@@ -4844,7 +4958,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.eContent.appendChild(this.eDisplayType);
         this.eDisplayType.classList.add("display");
         this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eDisplayType.addEventListener("click", e => this.post("type", null));
+        this.eDisplayType.addEventListener("click", e => this.post("type"));
 
         if (a.length <= 0 || [3, 4, 5].includes(a.length) || a.length > 6) a = [null];
         if (a.length == 1) {
@@ -4873,7 +4987,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.#isGhost = v;
         if (this.isGhost) this.eGhostBtn.classList.add("this");
         else this.eGhostBtn.classList.remove("this");
-        this.post("change", null);
+        this.post("change");
     }
     get isSolid() { return this.#isSolid; }
     set isSolid(v) {
@@ -4882,7 +4996,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.#isSolid = v;
         if (this.isSolid) this.eSolidBtn.classList.add("this");
         else this.eSolidBtn.classList.remove("this");
-        this.post("change", null);
+        this.post("change");
     }
     get type() { return this.#type; }
     set type(v) {
@@ -4898,7 +5012,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             }[type];
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
             this.eDisplayType.children[0].textContent = type;
-        this.post("change", null);
+        this.post("change");
     }
 
     get eGhostBtn() { return this.#eGhostBtn; }
@@ -5249,7 +5363,7 @@ class Project extends util.Target {
         v = String(v);
         if (this.widgetData == v) return;
         this.#widgetData = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     buildWidget() {
@@ -5272,7 +5386,7 @@ class Project extends util.Target {
         }
         this.#config = v;
         if (this.config instanceof Project.Config) {
-            this.#cache["config_change"] = () => this.post("change", null);
+            this.#cache["config_change"] = () => this.post("change");
             this.config.addHandler("change", this.#cache["config_change"]);
         }
     }
@@ -5287,10 +5401,10 @@ class Project extends util.Target {
         }
         this.#meta = v;
         if (this.meta instanceof Project.Meta) {
-            this.#cache["meta_change"] = () => this.post("change", null);
+            this.#cache["meta_change"] = () => this.post("change");
             this.meta.addHandler("change", this.#cache["meta_change"]);
         }
-        this.post("change", null);
+        this.post("change");
     }
 
     toJSON() {
@@ -5351,14 +5465,14 @@ Project.Config = class ProjectConfig extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.getSource(type) == v) return v;
         this.#sources[type] = v;
-        this.post("change", null);
+        this.post("change");
         return v;
     }
     remSource(type) {
         type = String(type);
         let v = this.getSource(type);
         delete this.#sources[type];
-        this.post("change", null);
+        this.post("change");
         return v;
     }
     get source() { return this.getSource(this.sourceType); }
@@ -5372,7 +5486,7 @@ Project.Config = class ProjectConfig extends util.Target {
         v = String(v).toLowerCase();
         if (this.sourceType == v) return;
         this.#sourceType = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     toJSON() {
@@ -5419,7 +5533,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = (v == null) ? "New Project" : String(v);
         if (this.name == v) return;
         this.#name = v;
-        this.post("change", null);
+        this.post("change");
     }
     get modified() { return this.#modified; }
     set modified(v) {
@@ -5432,7 +5546,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = util.ensure(v, "num");
         if (this.created == v) return;
         this.#created = v;
-        this.post("change", null);
+        this.post("change");
     }
     get thumb() { return this.#thumb; }
     set thumb(v) {
@@ -5525,37 +5639,37 @@ export default class App extends core.App {
                     itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
                     itm.shortcut = "⌘N";
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-newproject", null);
+                        this.post("cmd-newproject");
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("New Tab", "add"));
                     itm.shortcut = "⇧⌘N";
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-newtab", null);
+                        this.post("cmd-newtab");
                     });
                     menu.addItem(new core.App.ContextMenu.Divider());
                     itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
                     itm.shortcut = "⌘S";
                     itm.addHandler("trigger", async data => {
-                        this.post("cmd-save", null);
+                        this.post("cmd-save");
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
                     itm.shortcut = "⇧⌘S";
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-savecopy", null);
+                        this.post("cmd-savecopy");
                     });
                     menu.addItem(new core.App.ContextMenu.Divider());
                     itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-delete", null);
+                        this.post("cmd-delete");
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
                     itm.shortcut = "⇧⌘W";
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-closetab", null);
+                        this.post("cmd-closetab");
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-close", null);
+                        this.post("cmd-close");
                     });
                     this.contextMenu = menu;
                     let r = this.eFileBtn.getBoundingClientRect();
@@ -5569,7 +5683,7 @@ export default class App extends core.App {
                     let menu = new core.App.ContextMenu();
                     itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Connect / Disconnect"));
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-conndisconn", null);
+                        this.post("cmd-conndisconn");
                     });
                     this.contextMenu = menu;
                     let r = this.eEditBtn.getBoundingClientRect();
@@ -5584,12 +5698,12 @@ export default class App extends core.App {
                     itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Options Opened / Closed"));
                     itm.shortcut = "⌃F";
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-openclose", null);
+                        this.post("cmd-openclose");
                     });
                     itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Title Collapsed"));
                     itm.shortcut = "⇧⌘F";
                     itm.addHandler("trigger", data => {
-                        this.post("cmd-expandcollapse", null);
+                        this.post("cmd-expandcollapse");
                     });
                     this.contextMenu = menu;
                     let r = this.eViewBtn.getBoundingClientRect();
@@ -5637,7 +5751,7 @@ export default class App extends core.App {
             if (this.hasESaveBtn())
                 this.eSaveBtn.addEventListener("click", async e => {
                     e.stopPropagation();
-                    this.post("cmd-save", null);
+                    this.post("cmd-save");
                 });
             let saving = false;
             this.addHandler("sync-files-with", data => {
@@ -5926,7 +6040,7 @@ export default class App extends core.App {
                 if (!page.hasActivePanel()) return;
                 const active = page.activeWidget;
                 if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
-                active.tabs[active.tabIndex].post("openclose", null);
+                active.tabs[active.tabIndex].post("openclose");
             });
             this.addHandler("cmd-expandcollapse", data => {
                 if (!this.hasPage("PROJECT")) return;
@@ -5951,7 +6065,7 @@ export default class App extends core.App {
                 let project = new Project(source);
                 project.meta.name += " copy";
                 await this.setPage("PROJECT", { project: project });
-                await this.post("cmd-save", null);
+                await this.post("cmd-save");
             });
             this.addHandler("cmd-delete", id => {
                 if (!this.hasPage("PROJECT")) return;
@@ -5965,7 +6079,7 @@ export default class App extends core.App {
                     let v = !!util.ensure(data, "obj").v;
                     if (v) {
                         this.remProject(id);
-                        await this.post("cmd-save", null);
+                        await this.post("cmd-save");
                         this.page = "PROJECTS";
                     }
                 });
@@ -6003,7 +6117,7 @@ export default class App extends core.App {
     }
     async syncWithFiles() {
         try {
-            await this.post("sync-with-files", null);
+            await this.post("sync-with-files");
         } catch (e) {}
         let projectIdsContent = await window.api.send("projects-get");
         let projectIds = JSON.parse(projectIdsContent);
@@ -6017,22 +6131,22 @@ export default class App extends core.App {
         this.projects = projects;
         this.clearChanges();
         try {
-            await this.post("synced-with-files", null);
+            await this.post("synced-with-files");
         } catch (e) {}
     }
     async syncFilesWith() {
         try {
-            await this.post("sync-files-with", null);
+            await this.post("sync-files-with");
         } catch (e) {}
         let changes = new Set(this.changes);
         this.clearChanges();
         if (changes.has("*all")) {
             let projectIds = this.projects;
-            let projectIdsContent = JSON.stringify(projectIds, null);
+            let projectIdsContent = JSON.stringify(projectIds);
             await window.api.send("projects-set", [projectIdsContent]);
             await Promise.all(projectIds.map(async id => {
                 let project = this.getProject(id);
-                let projectContent = JSON.stringify(project, null);
+                let projectContent = JSON.stringify(project);
                 await window.api.send("project-set", [id, projectContent]);
             }));
             await Promise.all(util.ensure(await window.api.send("projects-list"), "arr").map(async dirent => {
@@ -6044,14 +6158,14 @@ export default class App extends core.App {
         } else {
             let projectIds = this.projects;
             if (changes.has("*")) {
-                let projectIdsContent = JSON.stringify(projectIds, null);
+                let projectIdsContent = JSON.stringify(projectIds);
                 await window.api.send("projects-set", [projectIdsContent]);
             }
             await Promise.all(projectIds.map(async id => {
                 if (!changes.has("proj:"+id)) return;
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
-                let projectContent = JSON.stringify(project, null);
+                let projectContent = JSON.stringify(project);
                 await window.api.send("project-set", [id, projectContent]);
             }));
             await Promise.all([...changes].map(async change => {
@@ -6062,7 +6176,7 @@ export default class App extends core.App {
             }));
         }
         try {
-            await this.post("synced-files-with", null);
+            await this.post("synced-files-with");
         } catch (e) {}
     }
     get projects() { return Object.keys(this.#projects); }
@@ -6526,7 +6640,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         setInterval(async () => {
             if (lock) return;
             lock = true;
-            await this.app.post("cmd-save", null);
+            await this.app.post("cmd-save");
             lock = false;
         }, 10000);
 
@@ -6535,7 +6649,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 if (this.choosing) return;
                 if (!this.hasProject()) return;
                 this.project.meta.name = this.app.eProjectInfoNameInput.value;
-                this.post("refresh-options", null);
             });
         if (this.app.hasEProjectInfoSourceInput())
             this.app.eProjectInfoSourceInput.addEventListener("change", e => {
@@ -7074,7 +7187,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         if (!this.hasApp()) return;
         this.app.markChange("*all");
-        await this.app.post("cmd-save", null);
+        await this.app.post("cmd-save");
         this.project = null;
     }
 };

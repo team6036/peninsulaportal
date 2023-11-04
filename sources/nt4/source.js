@@ -66,13 +66,13 @@ export default class NTSource extends Source {
             () => {
                 if (client != this.#client) return;
                 this.#client.startTime = this.#client.clientTime;
-                this.post("connected", null);
+                this.post("connected");
                 this.post("connect-state", this.connected);
                 client.subscribe(["/"], true, true, 0.001);
             },
             () => {
                 if (client != this.#client) return;
-                this.post("disconnected", null);
+                this.post("disconnected");
                 this.post("connect-state", this.connected);
             },
         );

@@ -215,25 +215,63 @@ const MAIN = async () => {
             this.#socket = sc.connect(this.location, {
                 autoConnect: false,
             });
-            const on = (name, ...a) => {
-                name = String(name);
-                if (name[0] == "$") return;
-                this.on(name, a);
-            };
-            this.#socket.on("connect", () => on("connect"));
-            this.#socket.on("disconnect", () => on("disconnect"));
-            this.#socket.onAny(on);
-            ss(this.#socket).on("stream", (stream, data) => {
+            const msg = async (data, ack) => {
                 data = util.ensure(data, "obj");
-                let name = String(data.name);
-                let sname = String(data.sname);
-                let a = util.ensure(data.a, "arr");
-                this.post("stream", {
-                    stream: stream,
+                const name = String(data.name);
+                const payload = util.ensure(data.payload, "obj");
+                const meta = {
+                    location: this.location,
+                    connected: this.connected,
+                    socketId: this.socketId,
+                };
+                let results = [];
+                results.push(...(await this.post("msg", {
                     name: name,
-                    sname: sname,
-                    a: a,
-                });
+                    payload: payload,
+                    meta: meta,
+                })));
+                results.push(...(await this.post("msg-"+name, {
+                    payload: payload,
+                    meta: meta,
+                })));
+                ack = util.ensure(ack, "func");
+                let r = util.ensure(results[0], "obj");
+                r.success = ("success" in r) ? (!!r.success) : true;
+                r.ts = util.getTime();
+                ack(r);
+            };
+            this.#socket.on("connect", () => msg({ name: "connect", ts: util.getTime() }));
+            this.#socket.on("disconnect", () => msg({ name: "disconnect", ts: util.getTime() }));
+            this.#socket.on("msg", (data, ack) => msg(data, ack));
+            ss(this.#socket).on("stream", async (ssStream, data, ack) => {
+                data = util.ensure(data, "obj");
+                const name = String(data.name);
+                const fname = String(data.fname);
+                const payload = util.ensure(data.payload, "obj");
+                const meta = {
+                    location: this.location,
+                    connected: this.connected,
+                    socketId: this.socketId,
+                };
+                let results = [];
+                results.push(...(await this.post("stream", {
+                    name: name,
+                    fname: fname,
+                    payload: payload,
+                    meta: meta,
+                    ssStream: ssStream,
+                })));
+                results.push(...(await this.post("stream-"+name, {
+                    fname: fname,
+                    payload: payload,
+                    meta: meta,
+                    ssStream: ssStream,
+                })));
+                ack = util.ensure(ack, "func");
+                let r = util.ensure(results[0], "obj");
+                r.success = ("success" in r) ? (!!r.success) : true;
+                r.ts = util.getTime();
+                ack(r);
             });
         }
 
@@ -277,30 +315,49 @@ const MAIN = async () => {
         connect() { this.#socket.connect(); }
         disconnect() { this.#socket.disconnect(); }
 
-        emit(name, a) {
-            name = String(name);
-            a = util.ensure(a, "arr");
-            this.#socket.emit(name, ...a);
+        #parseResponse(res, rej, response) {
+            response = util.ensure(response, "obj");
+            const serverTs = util.ensure(response.ts, "num");
+            const clientTs = util.getTime();
+            // console.log(`INC:latency ${clientTs-serverTs}ms\n\tclient: ${clientTs}\n\tserver: ${serverTs}`);
+            if (!response.success) return rej(response.reason);
+            return res(response.payload);
         }
-        stream(stream, sname, name, a) {
-            if (!(stream instanceof fs.ReadStream)) return;
+        async emit(name, payload) {
             name = String(name);
-            sname = String(sname);
-            a = util.ensure(a, "arr");
-            let ssStream = ss.createStream();
-            ss(this.#socket).emit("stream", ssStream, { sname: sname, name: name, a: a });
-            stream.pipe(ssStream);
+            payload = util.ensure(payload, "obj");
+            return await new Promise((res, rej) => {
+                this.#socket.emit(
+                    "msg",
+                    {
+                        name: name,
+                        ts: util.getTime(),
+                        payload: payload,
+                    },
+                    response => this.#parseResponse(res, rej, response),
+                );
+            });
         }
-        on(name, a) {
+        async stream(pth, name, payload) {
+            pth = Portal.makePath(pth);
+            if (!Portal.fileHas(pth)) return null;
+            const stream = fs.createReadStream(pth);
             name = String(name);
-            a = util.ensure(a, "arr");
-            this.post("on", {
-                name: name, a: a,
-                meta: {
-                    location: this.location,
-                    connected: this.connected,
-                    socketId: this.socketId,
-                },
+            const fname = path.basename(pth);
+            payload = util.ensure(payload, "obj");
+            const ssStream = ss.createStream();
+            return await new Promise((res, rej) => {
+                ss(this.#socket).emit(
+                    "stream",
+                    ssStream,
+                    {
+                        name: name,
+                        fname: fname,
+                        payload: payload,
+                    },
+                    response => this.#parseResponse(res, rej, response),
+                );
+                stream.pipe(ssStream);
             });
         }
     }
@@ -897,14 +954,18 @@ const MAIN = async () => {
                 let feat = identify(e);
                 return await feat.clientDisconn(id);
             });
-            ipc.handle("client-emit", async (e, id, name, a) => {
+            ipc.handle("client-emit", async (e, id, name, payload) => {
                 let feat = identify(e);
-                return await feat.clientEmit(id, name, a);
+                return await feat.clientEmit(id, name, payload);
+            });
+            ipc.handle("client-stream", async (e, id, pth, name, payload) => {
+                let feat = identify(e);
+                return await feat.clientStream(id, pth, name, payload);
             });
 
             (async () => {
                 await this.affirm();
-                await this.post("start", null);
+                await this.post("start");
 
                 this.addFeature(new Portal.Feature("PORTAL"));
                 setTimeout(async () => {
@@ -917,7 +978,7 @@ const MAIN = async () => {
         async stop() {
             this.log("STOP");
             this.processManager.processes.forEach(process => process.terminate());
-            await this.post("stop", null);
+            await this.post("stop");
             let feats = this.features;
             let all = true;
             for (let i = 0; i < feats.length; i++)
@@ -1236,38 +1297,47 @@ const MAIN = async () => {
         async clientMake(id, location) {
             if (await this.clientHas(id)) return null;
             let client = this.clientManager.addClient(new Client(location));
-            client.id = id;
             this.log(`CLIENT:make - ${id} = ${location}`);
+            client.id = id;
             return client;
         }
         async clientDestroy(id) {
             if (!(await this.clientHas(id))) return null;
             await this.clientDisconn(id);
+            this.log(`CLIENT:destroy - ${id}`);
             let client = this.clientManager.remClient((id instanceof Client) ? id : this.clientManager.getClientById(id));
-            this.log(`CLIENT:destroy - ${client.id}`);
             return client;
         }
         async clientHas(id) { return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(id) instanceof Client); }
+        async clientGet(id) {
+            if (!(await this.clientHas(id))) return null;
+            return (id instanceof Client) ? id : this.clientManager.getClientById(id);
+        }
         async clientConn(id) {
             if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            client.connect();
             this.log(`CLIENT:conn - ${client.id}`);
+            client.connect();
             return client;
         }
         async clientDisconn(id) {
             if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            client.disconnect();
             this.log(`CLIENT:disconn - ${client.id}`);
+            client.disconnect();
             return client;
         }
-        async clientEmit(id, name, a) {
-            if (!(await this.clientHas(id))) return false;
+        async clientEmit(id, name, payload) {
+            if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            client.emit(name, a);
             this.log(`CLIENT:emit - ${client.id} > ${name}`);
-            return true;
+            return await client.emit(name, payload);
+        }
+        async clientStream(id, pth, name, payload) {
+            if (!(await this.clientHas(id))) return null;
+            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
+            this.log(`CLIENT:emit - ${client.id} > ${name}`);
+            return await client.stream(pth, name, payload);
         }
 
         identifyFeature(id) {
@@ -1666,6 +1736,8 @@ const MAIN = async () => {
 
         #started;
 
+        #state;
+
         constructor(name) {
             super();
 
@@ -1682,6 +1754,8 @@ const MAIN = async () => {
             this.#perm = false;
 
             this.#started = false;
+
+            this.#state = {};
 
             this.log();
         }
@@ -1737,6 +1811,8 @@ const MAIN = async () => {
             return perm;
         }
 
+        get state() { return this.#state; }
+
         get started() { return this.#started; }
         start() {
             if (this.started) return false;
@@ -1776,7 +1852,7 @@ const MAIN = async () => {
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
                 this.window.show();
-                this.post("show", null);
+                this.post("show");
             });
 
             this.window.on("unresponsive", () => {});
@@ -2290,42 +2366,85 @@ const MAIN = async () => {
             let client = await this.portal.clientMake(this.name+":"+id, location);
             client = this.clientManager.addClient(client);
             client.addTag(this.name);
-            client.addHandler("on", data => {
+            client.addHandler("msg", async data => {
                 data = util.ensure(data, "obj");
                 const name = String(data.name);
-                const a = util.ensure(data.a, "arr");
+                const payload = util.ensure(data.payload, "obj");
                 const meta = util.ensure(data.meta, "obj");
-                if (!this.hasWindow()) return;
-                this.window.webContents.send("client-msg", id, name, a, meta);
+                if (!this.hasWindow()) return { success: false, reason: "No window" };
+                await this.post("client-msg", {
+                    id: id,
+                    name: name,
+                    payload: payload,
+                    meta: meta,
+                });
+                await this.post("client-msg-"+name, {
+                    id: id,
+                    payload: payload,
+                    meta: meta,
+                });
+                this.window.webContents.send("client-msg", id, name, payload, meta);
+                return { success: true };
             });
             client.addHandler("stream", async data => {
                 data = util.ensure(data, "obj");
-                const ssStream = data.stream;
                 const name = String(data.name);
-                const sname = String(data.sname);
-                const a = util.ensure(data.a, "arr");
-                if (!this.hasPortal()) return;
+                const fname = String(data.fname);
+                const payload = util.ensure(data.payload, "obj");
+                const meta = util.ensure(data.meta, "obj");
+                const ssStream = data.ssStream;
+                if (!this.hasPortal()) return { success: false, reason: "No window" };
                 await this.portal.affirm();
                 if (!(await this.portal.dirHas(["cache", this.name])))
                     await this.portal.dirMake(["cache", this.name]);
                 if (!(await this.portal.dirHas(["cache", this.name, name])))
                     await this.portal.dirMake(["cache", this.name, name]);
-                let pth = path.join(this.portal.dataPath, "cache", this.name, name, sname);
+                const pth = Portal.makePath(this.portal.dataPath, "cache", this.name, name, fname);
                 const stream = fs.createWriteStream(pth);
-                stream.on("open", () => {
-                    ssStream.pipe(stream);
-                    ssStream.on("end", () => {
-                        client.on("stream", [
-                            {
+                try {
+                    await new Promise((res, rej) => {
+                        stream.on("open", async () => {
+                            await this.post("client-stream-start", {
+                                id: id,
                                 name: name,
-                                sname: sname,
-                                path: pth,
-                            },
-                            ...a,
-                        ]);
+                                pth: pth,
+                                fname: fname,
+                                payload: payload,
+                                meta: meta,
+                            });
+                            await this.post("client-stream-start-"+name, {
+                                id: id,
+                                pth: pth,
+                                fname: fname,
+                                payload: payload,
+                                meta: meta,
+                            });
+                            this.window.webContents.send("client-stream-start", id, name, pth, fname, payload, meta);
+                            ssStream.pipe(stream);
+                            ssStream.on("end", async () => {
+                                await this.post("client-stream-stop", {
+                                    id: id,
+                                    name: name,
+                                    pth: pth,
+                                    fname: fname,
+                                    payload: payload,
+                                    meta: meta,
+                                });
+                                await this.post("client-stream-stop-"+name, {
+                                    id: id,
+                                    pth: pth,
+                                    fname: fname,
+                                    payload: payload,
+                                    meta: meta,
+                                });
+                                this.window.webContents.send("client-stream-stop", id, name, pth, fname, payload, meta);
+                                res();
+                            });
+                            ssStream.on("error", e => rej(e));
+                        });
                     });
-                    ssStream.on("error", e => { throw e; });
-                });
+                } catch (e) { return { success: false, reason: String(e) }; }
+                return { success: true };
             });
             return client;
         }
@@ -2335,8 +2454,13 @@ const MAIN = async () => {
         }
         async clientHas(id) {
             if (!this.hasPortal()) return false;
-            if (!(await this.portal.clientHas(id))) return false;
-            return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(id) instanceof Client);
+            if (!(await this.portal.clientHas((id instanceof Client) ? id : (this.name+":"+id)))) return false;
+            return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(this.name+":"+id) instanceof Client);
+        }
+        async clientGet(id) {
+            if (!this.hasPortal()) return null;
+            if (!(await this.clientHas(id))) return null;
+            return (id instanceof Client) ? id : this.portal.clientGet(this.name+":"+id);
         }
         async clientConn(id) {
             if (!this.hasPortal()) return null;
@@ -2346,9 +2470,13 @@ const MAIN = async () => {
             if (!this.hasPortal()) return null;
             return await this.portal.clientDisconn((id instanceof Client) ? id : (this.name+":"+id));
         }
-        async clientEmit(id, name, a) {
-            if (!this.hasPortal()) return false;
-            return await this.portal.clientEmit((id instanceof Client) ? id : (this.name+":"+id), name, a);
+        async clientEmit(id, name, payload) {
+            if (!this.hasPortal()) return null;
+            return await this.portal.clientEmit((id instanceof Client) ? id : (this.name+":"+id), name, payload);
+        }
+        async clientStream(id, pth, name, payload) {
+            if (!this.hasPortal()) return null;
+            return await this.portal.clientStream((id instanceof Client) ? id : (this.name+":"+id), pth, name, payload);
         }
 
         async get(k) {
@@ -2360,7 +2488,7 @@ const MAIN = async () => {
                     return await this.portal.get(k);
                 } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
             }
-            this.log(`GET - ${k}`);
+            let doLog = true;
             let kfs = {
                 "name": async () => {
                     return this.name;
@@ -2378,13 +2506,34 @@ const MAIN = async () => {
                     return this.window.isClosable();
                 },
             };
-            if (k in kfs) return await kfs[k]();
-            let namefs = {
-            };
-            if (this.name in namefs)
-                if (k in namefs[this.name])
-                    return await namefs[this.name][k](...args);
-            return null;
+            let r = null;
+            if (k in kfs) r = await kfs[k]();
+            else {
+                let namefs = {
+                    PANEL: {
+                        "logs": async () => {
+                            doLog = false;
+                            if (!this.hasPortal()) throw "No linked portal";
+                            let hasCacheDir = await this.portal.dirHas(["cache", this.name]);
+                            if (!hasCacheDir) return [];
+                            let hasCacheLogsDir = await this.portal.dirHas(["cache", this.name, "logs"]);
+                            if (!hasCacheLogsDir) return [];
+                            let dirents = await this.portal.dirList(["cache", this.name, "logs"]);
+                            return dirents.filter(dirent => dirent.type == "file" && dirent.name.endsWith(".wpilog")).map(dirent => {
+                                return {
+                                    name: dirent.name,
+                                    path: path.join(this.portal.dataPath, "cache", this.name, "logs", dirent.name),
+                                };
+                            });
+                        },
+                    },
+                };
+                if (this.name in namefs)
+                    if (k in namefs[this.name])
+                        r = await namefs[this.name][k]();
+            }
+            if (doLog) this.log(`GET - ${k}`);
+            return r;
         }
         async set(k, v) {
             if (!this.started) return false;
@@ -2395,7 +2544,7 @@ const MAIN = async () => {
                     return await this.portal.set(k, v);
                 } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             }
-            this.log(`SET - ${k} = ${simplify(JSON.stringify(v))}`);
+            let doLog = true;
             let kfs = {
                 "fullscreenable": async () => {
                     if (!this.hasWindow()) return false;
@@ -2415,13 +2564,17 @@ const MAIN = async () => {
                     return true;
                 },
             };
-            if (k in kfs) return await kfs[k]();
-            let namefs = {
-            };
-            if (this.name in namefs)
-                if (k in namefs[this.name])
-                    return await namefs[this.name][k](...args);
-            return false;
+            let r = false;
+            if (k in kfs) r = await kfs[k]();
+            else {
+                let namefs = {
+                };
+                if (this.name in namefs)
+                    if (k in namefs[this.name])
+                        r = await namefs[this.name][k]();
+            }
+            if (doLog) this.log(`SET - ${k} = ${simplify(JSON.stringify(v))}`);
+            return r;
         }
         async on(k, args) {
             if (!this.started) return null;
@@ -2433,7 +2586,7 @@ const MAIN = async () => {
                     return await this.portal.on(k, args);
                 } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             }
-            this.log(`ON - ${k}(${args.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            let doLog = true;
             let kfs = {
                 "close": async () => await this.stop(),
                 "menu-ables": async menuAbles => {
@@ -2591,17 +2744,38 @@ const MAIN = async () => {
                         if (!this.hasPortal()) throw "No linked portal";
                         return await Portal.fileReadRaw(pth);
                     },
-                    "downloaded-logs": async () => {
+                    "log-delete": async name => {
                         if (!this.hasPortal()) throw "No linked portal";
-                        let hasCacheDir = await this.portal.dirHas(["cache", this.name, "downloaded-log"]);
-                        if (!hasCacheDir) return [];
-                        let dirents = await this.portal.dirList(["cache", this.name, "downloaded-log"]);
-                        return dirents.filter(dirent => dirent.type == "file" && dirent.name.endsWith(".wpilog")).map(dirent => {
-                            return {
-                                name: dirent.name,
-                                path: path.join(this.portal.dataPath, "cache", this.name, "downloaded-log", dirent.name),
-                            };
+                        let logs = await this.get("logs");
+                        let has = false;
+                        logs.forEach(log => {
+                            if (has) return;
+                            if (log.name != name) return;
+                            has = true;
                         });
+                        if (!has) return false;
+                        await this.portal.fileDelete(["cache", this.name, "logs", name]);
+                        return true;
+                    },
+                    "log-cache": async pth => {
+                        if (!this.hasPortal()) throw "No linked portal";
+                        pth = String(pth);
+                        if (!(await Portal.fileHas(pth))) return false;
+                        await this.portal.affirm();
+                        if (!(await this.portal.dirHas(["cache", this.name])))
+                            await this.portal.dirMake(["cache", this.name]);
+                        if (!(await this.portal.dirHas(["cache", this.name, "logs"])))
+                            await this.portal.dirMake(["cache", this.name, "logs"]);
+                        const name = path.basename(pth);
+                        await fs.promises.cp(
+                            pth,
+                            path.join(this.portal.dataPath, "cache", this.name, "logs", name),
+                            {
+                                force: true,
+                                recursive: true,
+                            },
+                        );
+                        return true;
                     },
                 },
                 PLANNER: {
@@ -2905,10 +3079,12 @@ const MAIN = async () => {
                     },
                 },
             };
+            let r = null;
             if (this.name in namefs)
                 if (k in namefs[this.name])
-                    return await namefs[this.name][k](...args);
-            return null;
+                    r = await namefs[this.name][k](...args);
+            if (doLog) this.log(`ON - ${k}(${args.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            return r;
         }
         async send(k, args) {
             if (!this.started) return false;

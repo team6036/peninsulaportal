@@ -116,9 +116,9 @@ export class Project extends util.Target {
         } while (this.hasItem(id));
         this.#items[id] = itm;
         itm.id = id;
-        this.#cache["item_"+itm.id+"_change"] = () => this.post("change", null);
+        this.#cache["item_"+itm.id+"_change"] = () => this.post("change");
         itm.addHandler("change", this.#cache["item_"+itm.id+"_change"]);
-        this.post("change", null);
+        this.post("change");
         return itm;
     }
     addItemId(id, itm) {
@@ -129,10 +129,10 @@ export class Project extends util.Target {
         this.#items[id] = itm;
         itm.id = id;
         this.#cache["item_"+itm.id+"_change"] = () => {
-            this.post("change", null);
+            this.post("change");
         };
         itm.addHandler("change", this.#cache["item_"+itm.id+"_change"]);
-        this.post("change", null);
+        this.post("change");
         return itm;
     }
     remItem(v) {
@@ -146,7 +146,7 @@ export class Project extends util.Target {
                 let pth = this.getPath(id);
                 pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
             });
-            this.post("change", null); 
+            this.post("change"); 
             return itm;
         }
         if (v instanceof Project.Item) return this.remItem(v.id);
@@ -183,9 +183,9 @@ export class Project extends util.Target {
         this.#paths[id] = pth;
         pth.id = id;
         pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
-        this.#cache["path_"+pth.id+"_change"] = () => () => this.post("change", null);
+        this.#cache["path_"+pth.id+"_change"] = () => () => this.post("change");
         pth.addHandler("change", this.#cache["path_"+pth.id+"_change"]);
-        this.post("change", null);
+        this.post("change");
         return pth;
     }
     addPathId(id, pth) {
@@ -196,9 +196,9 @@ export class Project extends util.Target {
         this.#paths[id] = pth;
         pth.id = id;
         pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
-        this.#cache["path_"+pth.id+"_change"] = () => () => this.post("change", null);
+        this.#cache["path_"+pth.id+"_change"] = () => () => this.post("change");
         pth.addHandler("change", this.#cache["path_"+pth.id+"_change"]);
-        this.post("change", null);
+        this.post("change");
         return pth;
     }
     remPath(v) {
@@ -208,7 +208,7 @@ export class Project extends util.Target {
             delete this.#cache["path_"+pth.id+"_change"];
             pth.id = null;
             delete this.#paths[v];
-            this.post("change", null);
+            this.post("change");
             return pth;
         }
         if (v instanceof Project.Path) return this.remPath(v.id);
@@ -234,7 +234,7 @@ export class Project extends util.Target {
         v = Math.max(0, util.ensure(v, "num"));
         if (this.robotMass == v) return;
         this.#robotMass = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     get config() { return this.#config; }
@@ -247,7 +247,7 @@ export class Project extends util.Target {
         }
         this.#config = v;
         if (this.config instanceof Project.Config) {
-            this.#cache["config_change"] = () => this.post("change", null);
+            this.#cache["config_change"] = () => this.post("change");
             this.config.addHandler("change", this.#cache["config_change"]);
         }
     }
@@ -262,10 +262,10 @@ export class Project extends util.Target {
         }
         this.#meta = v;
         if (this.meta instanceof Project.Meta) {
-            this.#cache["meta_change"] = () => this.post("change", null);
+            this.#cache["meta_change"] = () => this.post("change");
             this.meta.addHandler("change", this.#cache["meta_change"]);
         }
-        this.post("change", null);
+        this.post("change");
     }
     
     toJSON() {
@@ -322,21 +322,21 @@ Project.Config = class ProjectConfig extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.script == v) return;
         this.#script = v;
-        this.post("change", null);
+        this.post("change");
     }
     get scriptPython() { return this.#scriptPython; }
     set scriptPython(v) {
         v = (v == null) ? "python3" : String(v);
         if (this.scriptPython == v) return;
         this.#scriptPython = v;
-        this.post("change", null);
+        this.post("change");
     }
     get scriptUseDefault() { return this.#scriptUseDefault; }
     set scriptUseDefault(v) {
         v = !!v;
         if (this.scriptUseDefault == v) return;
         this.#scriptUseDefault = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     get momentOfInertia() { return this.#momentOfInertia; }
@@ -344,7 +344,7 @@ Project.Config = class ProjectConfig extends util.Target {
         v = Math.max(0, util.ensure(v, "num"));
         if (this.momentOfInertia == v) return;
         this.#momentOfInertia = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     get efficiency() { return this.#efficiency; }
@@ -352,7 +352,7 @@ Project.Config = class ProjectConfig extends util.Target {
         v = Math.min(1, Math.max(0, util.ensure(v, "num")));
         if (this.efficiency == v) return;
         this.#efficiency = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     get is12MotorMode() { return this.#is12MotorMode; }
@@ -360,7 +360,7 @@ Project.Config = class ProjectConfig extends util.Target {
         v = !!v;
         if (this.is12MotorMode == v) return;
         this.#is12MotorMode = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     toJSON() {
@@ -416,28 +416,28 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = (v == null) ? "New Project" : String(v);
         if (this.name == v) return;
         this.#name = v;
-        this.post("change", null);
+        this.post("change");
     }
     get modified() { return this.#modified; }
     set modified(v) {
         v = util.ensure(v, "num");
         if (this.modified == v) return;
         this.#modified = v;
-        // this.post("change", null);
+        // this.post("change");
     }
     get created() { return this.#created; }
     set created(v) {
         v = util.ensure(v, "num");
         if (this.created == v) return;
         this.#created = v;
-        this.post("change", null);
+        this.post("change");
     }
     get thumb() { return this.#thumb; }
     set thumb(v) {
         v = (v == null) ? null : String(v);
         if (this.thumb == v) return;
         this.#thumb = v;
-        // this.post("change", null);
+        // this.post("change");
     }
 
     get backgroundImage() { return this.#backgroundImage; }
@@ -445,7 +445,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.backgroundImage == v) return;
         this.#backgroundImage = v;
-        this.post("change", null);
+        this.post("change");
     }
     get backgroundX() { return this.backgroundPos.x; }
     set backgroundX(v) { this.backgroundPos.x = v; }
@@ -456,7 +456,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = Math.max(0, util.ensure(v, "num"));
         if (this.backgroundScale == v) return;
         this.#backgroundScale = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     toJSON() {
@@ -566,14 +566,14 @@ Project.Node = class ProjectNode extends Project.Item {
         while (v < 0) v += fullTurn;
         if (this.heading == v) return;
         this.#heading = v;
-        this.post("change", null);
+        this.post("change");
     }
     get useHeading() { return this.#useHeading; }
     set useHeading(v) {
         v = !!v;
         if (this.useHeading == v) return;
         this.#useHeading = v;
-        this.post("change", null);
+        this.post("change");
     }
     get velocity() { return this.#velocity; }
     set velocity(v) { this.#velocity.set(v); }
@@ -586,14 +586,14 @@ Project.Node = class ProjectNode extends Project.Item {
         v = util.ensure(v, "num");
         if (this.velocityRot == v) return;
         this.#velocityRot = v;
-        this.post("change", null);
+        this.post("change");
     }
     get useVelocity() { return this.#useVelocity; }
     set useVelocity(v) {
         v = !!v;
         if (this.useVelocity == v) return;
         this.#useVelocity = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     toJSON() {
@@ -635,7 +635,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
         v = Math.max(0, util.ensure(v, "num"));
         if (this.radius == v) return;
         this.#radius = v;
-        this.post("change", null);
+        this.post("change");
     }
 
     getBBox() {
@@ -709,7 +709,7 @@ Project.Path = class ProjectPath extends util.Target {
     addNode(node) {
         if (util.is(node, "str")) {
             this.#nodes.push(node);
-            this.post("change", null);
+            this.post("change");
             return node;
         }
         if (node instanceof Project.Node) return this.addNode(node.id);
@@ -719,7 +719,7 @@ Project.Path = class ProjectPath extends util.Target {
         if (!this.hasNode(node)) return false;
         if (util.is(node, "str")) {
             this.#nodes.splice(this.#nodes.lastIndexOf(node), 1);
-            this.post("change", null);
+            this.post("change");
             return node;
         }
         if (node instanceof Project.Node) return this.remNode(node.id);

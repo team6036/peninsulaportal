@@ -47,11 +47,19 @@ contextBridge.exposeInMainWorld("api", {
     clientConn: id => ipcRenderer.invoke("client-conn", id),
     clientDisconn: id => ipcRenderer.invoke("client-disconn", id),
     clientHas: id => ipcRenderer.invoke("client-has", id),
-    // clientGet: (id, attr) => ipcRenderer.invoke("client-get", id, attr),
-    clientEmit: (id, name, a) => ipcRenderer.invoke("client-emit", id, name, a),
+    clientEmit: (id, name, payload) => ipcRenderer.invoke("client-emit", id, name, payload),
+    clientStream: (id, pth, name, payload) => ipcRenderer.invoke("client-stream", id, pth, name, payload),
     onClientMsg: f => {
         ipcRenderer.on("client-msg", f);
         return () => ipcRenderer.removeListener("client-msg", f);
+    },
+    onClientStreamStart: f => {
+        ipcRenderer.on("client-stream-start", f);
+        return () => ipcRenderer.removeListener("client-stream-start", f);
+    },
+    onClientStreamStop: f => {
+        ipcRenderer.on("client-stream-stop", f);
+        return () => ipcRenderer.removeListener("client-stream-stop", f);
     },
 
     cacheGet: k => cache[k],

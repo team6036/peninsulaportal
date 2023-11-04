@@ -550,7 +550,7 @@ export class Target {
         if (!(e in this.#handlers)) return false;
         return this.#handlers[e].has(f);
     }
-    async post(e, data) {
+    async post(e, data=null) {
         if (!(e in this.#handlers)) return [];
         let fs = [...this.#handlers[e]];
         fs = fs.map(f => (async () => {
