@@ -1005,8 +1005,8 @@ const MAIN = async () => {
             if (!hasHolidaysDir) await this.dirMake([dataPath, "holidays"]);
             let hasHolidayIconsDir = await this.dirHas([dataPath, "holidays", "icons"]);
             if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
-            let hasCacheDir = await this.dirHas([dataPath, "cache"]);
-            if (!hasCacheDir) await this.dirMake([dataPath, "cache"]);
+            // let hasCacheDir = await this.dirHas([dataPath, "cache"]);
+            // if (!hasCacheDir) await this.dirMake([dataPath, "cache"]);
             let hasConfig = await this.fileHas([dataPath, ".config"]);
             if (!hasConfig) await this.fileWrite([dataPath, ".config"], JSON.stringify({}, null, "\t"));
             let hasClientConfig = await this.fileHas([dataPath, ".clientconfig"]);
@@ -1139,13 +1139,21 @@ const MAIN = async () => {
                     ],
                 },
                 // ./cache
-                { type: "dir", name: "cache" },
+                // { type: "dir", name: "cache" },
                 // ./<feature>
                 { type: "dir", match: (_, name) => FEATURES.includes(name.toUpperCase()) },
                 // ./panel
                 {
                     type: "dir", name: "panel",
                     children: [
+                        // ./panel/logs
+                        {
+                            type: "dir", name: "logs",
+                            children: [
+                                // ./panel/logs/*.wpilog
+                                { type: "file", match: (_, name) => name.endsWith(".wpilog") },
+                            ],
+                        },
                         // ./panel/projects
                         {
                             type: "dir", name: "projects",
@@ -1277,7 +1285,7 @@ const MAIN = async () => {
         static async dirDelete(pth) {
             pth = this.makePath(pth);
             this.log(`fs:dir-delete ${pth}`);
-            return await fs.promises.rmdir(pth);
+            return await fs.promises.rm(pth, { force: true, recursive: true });
         }
 
         async fileHas(pth) { return await Portal.fileHas([this.dataPath, pth]); }
@@ -2064,6 +2072,7 @@ const MAIN = async () => {
                     checkForShow();
                 },
                 PANEL: () => {
+                    this.addHandler("client-stream-logs", async () => ["logs"]);
                     template[1].submenu.splice(
                         2, 0,
                         {
@@ -2392,12 +2401,25 @@ const MAIN = async () => {
                 const meta = util.ensure(data.meta, "obj");
                 const ssStream = data.ssStream;
                 if (!this.hasPortal()) return { success: false, reason: "No window" };
-                await this.portal.affirm();
-                if (!(await this.portal.dirHas(["cache", this.name])))
-                    await this.portal.dirMake(["cache", this.name]);
-                if (!(await this.portal.dirHas(["cache", this.name, name])))
-                    await this.portal.dirMake(["cache", this.name, name]);
-                const pth = Portal.makePath(this.portal.dataPath, "cache", this.name, name, fname);
+                await this.affirm();
+                let results = [];
+                results.push(...(await this.post("client-stream", {
+                    id: id,
+                    name: name,
+                    fname: fname,
+                    payload: payload,
+                    meta: meta,
+                })));
+                results.push(...(await this.post("client-stream-"+name, {
+                    id: id,
+                    fname: fname,
+                    payload: payload,
+                    meta: meta,
+                })));
+                let pth = (results.length > 0) ? results[0] : [];
+                if (!(await this.dirHas(pth)))
+                    await this.dirMake(pth);
+                pth = Portal.makePath(this.dataPath, pth, fname);
                 const stream = fs.createWriteStream(pth);
                 try {
                     await new Promise((res, rej) => {
@@ -2512,15 +2534,13 @@ const MAIN = async () => {
                         "logs": async () => {
                             doLog = false;
                             if (!this.hasPortal()) throw "No linked portal";
-                            let hasCacheDir = await this.portal.dirHas(["cache", this.name]);
-                            if (!hasCacheDir) return [];
-                            let hasCacheLogsDir = await this.portal.dirHas(["cache", this.name, "logs"]);
-                            if (!hasCacheLogsDir) return [];
-                            let dirents = await this.portal.dirList(["cache", this.name, "logs"]);
+                            let hasLogsDir = await this.dirHas("logs");
+                            if (!hasLogsDir) return [];
+                            let dirents = await this.dirList("logs");
                             return dirents.filter(dirent => dirent.type == "file" && dirent.name.endsWith(".wpilog")).map(dirent => {
                                 return {
                                     name: dirent.name,
-                                    path: path.join(this.portal.dataPath, "cache", this.name, "logs", dirent.name),
+                                    path: path.join(this.dataPath, "logs", dirent.name),
                                 };
                             });
                         },
