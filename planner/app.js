@@ -653,9 +653,6 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
 
     get eTemplates() { return this.#eTemplates; }
 };
-App.ProjectsPage.Button = class AppProjectsPageButton extends App.ProjectsPage.Button {
-    static PROJECTCLASS = subcore.Project;
-};
 App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #odometry;
 
@@ -686,8 +683,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #eEditContent;
     #eEditNav;
     #eDivider;
-
-    static PROJECTCLASS = subcore.Project;
 
     constructor(app) {
         super(app);
