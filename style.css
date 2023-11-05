@@ -65,7 +65,8 @@ button:not(.override) {
     justify-content: center;
     align-items: center;
     align-content: center;
-
+}
+button:not(.override):not(.shiny) {
     background: radial-gradient(
         circle,
         var(--bgh) 0%,
@@ -77,8 +78,8 @@ button:not(.override) {
 
     transition: --btn-c-size-v var(--t), background var(--t), color var(--t);
 }
-button:not(.override):not(:disabled):hover,
-button:not(.override):not(:disabled).hover {
+button:not(.override):not(.shiny):not(:disabled):hover,
+button:not(.override):not(.shiny):not(.disabled).hover {
     --btn-c-size-v: var(--btn-c-size);
     
     color: var(--fgh);
@@ -95,6 +96,44 @@ button:not(.override).disabled {
         transparent 500%
     ), var(--bgd);
     color: var(--fgd);
+}
+button:not(.override).shiny {
+    position: relative;
+
+    overflow: hidden;
+
+    background-color: var(--bg);
+    color: var(--fg);
+
+    transition: background-color var(--t), color var(--t);
+}
+button:not(.override).shiny:not(:disabled):hover,
+button:not(.override).shiny:not(.disabled).hover {
+    background-color: var(--bgh);
+    color: var(--fgh);
+}
+button:not(.override).shiny:disabled,
+button:not(.override).shiny.disabled {
+    background-color: var(--bgd);
+    color: var(--fgd);
+}
+button:not(.override).shiny::after {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: -25%;
+    transform: translate(-50%, -50%) rotate(10deg);
+
+    width: min(50px, 25%);
+    height: 200%;
+
+    background-color: var(--v8-2);
+
+    transition: left calc(2*var(--t));
+}
+button:not(.override).shiny:hover::after {
+    left: 125%;
 }
 button:not(.override).icon {
     padding: 5px;
