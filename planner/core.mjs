@@ -1,13 +1,13 @@
 import * as util from "../util.mjs";
 import { V } from "../util.mjs";
 
+import * as core from "../core.mjs";
+
 
 export const VERSION = 2;
 
 
-export class Project extends util.Target {
-    #id;
-
+export class Project extends core.Project {
     #cache;
 
     #items;
@@ -15,13 +15,9 @@ export class Project extends util.Target {
     #size;
     #robotSize;
     #robotMass;
-    #config;
-    #meta;
 
     constructor(...a) {
         super();
-
-        this.#id = null;
 
         this.#cache = {};
 
@@ -30,8 +26,6 @@ export class Project extends util.Target {
         this.#size = new V();
         this.#robotSize = new V();
         this.#robotMass = 0;
-        this.#config = new Project.Config();
-        this.#meta = new Project.Meta();
 
         if (a.length <= 0 || a.length > 7) a = [null];
         if (a.length == 1) {
@@ -65,7 +59,7 @@ export class Project extends util.Target {
             }
             else if (a instanceof Project.Config) a = [{}, {}, [1000, 1000], [100, 100], 0, a, null];
             else if (a instanceof Project.Meta) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
-            else if (util.is(a, "str")) a = [{}, {}, [1000, 1000], [100, 100], 0, null, { name: a }];
+            else if (util.is(a, "str")) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
             else if (util.is(a, "obj")) a = [a.items, a.paths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
             else a = [{}, {}, [1000, 1000], [100, 100], 0, null, null];
         }
@@ -82,9 +76,6 @@ export class Project extends util.Target {
 
         [this.items, this.paths, this.size, this.robotSize, this.robotMass, this.config, this.meta] = a;
     }
-
-    get id() { return this.#id; }
-    set id(v) { this.#id = (v == null) ? null : String(v); }
 
     get items() { return Object.keys(this.#items); }
     set items(v) {
@@ -236,37 +227,6 @@ export class Project extends util.Target {
         this.#robotMass = v;
         this.post("change");
     }
-
-    get config() { return this.#config; }
-    set config(v) {
-        v = new Project.Config(v);
-        if (this.config == v) return;
-        if (this.config instanceof Project.Config) {
-            this.config.remHandler("change", this.#cache["config_change"]);
-            delete this.#cache["config_change"];
-        }
-        this.#config = v;
-        if (this.config instanceof Project.Config) {
-            this.#cache["config_change"] = () => this.post("change");
-            this.config.addHandler("change", this.#cache["config_change"]);
-        }
-    }
-
-    get meta() { return this.#meta; }
-    set meta(v) {
-        v = new Project.Meta(v);
-        if (this.meta == v) return;
-        if (this.meta instanceof Project.Meta) {
-            this.meta.remHandler("change", this.#cache["meta_change"]);
-            delete this.#cache["meta_change"];
-        }
-        this.#meta = v;
-        if (this.meta instanceof Project.Meta) {
-            this.#cache["meta_change"] = () => this.post("change");
-            this.meta.addHandler("change", this.#cache["meta_change"]);
-        }
-        this.post("change");
-    }
     
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -278,11 +238,8 @@ export class Project extends util.Target {
             config: this.config, meta: this.meta,
         });
     }
-
-    coreName() { return this.meta.name; }
-    coreTime() { return this.meta.modified; }
 }
-Project.Config = class ProjectConfig extends util.Target {
+Project.Config = class ProjectConfig extends Project.Config {
     #script;
     #scriptPython;
     #scriptUseDefault;
@@ -375,23 +332,13 @@ Project.Config = class ProjectConfig extends util.Target {
             is12MotorMode: this.is12MotorMode,
         });
     }
-}
-Project.Meta = class ProjectMeta extends util.Target {
-    #name;
-    #modified;
-    #created;
-    #thumb;
-
+};
+Project.Meta = class ProjectMeta extends Project.Meta {
     #backgroundImage;
     #backgroundScale;
 
     constructor(...a) {
         super();
-
-        this.#name = "New Project";
-        this.#modified = 0;
-        this.#created = 0;
-        this.#thumb = null;
 
         this.#backgroundImage = null;
         this.#backgroundScale = 1;
@@ -414,35 +361,6 @@ Project.Meta = class ProjectMeta extends util.Target {
         [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundScale] = a;
     }
 
-    get name() { return this.#name; }
-    set name(v) {
-        v = (v == null) ? "New Project" : String(v);
-        if (this.name == v) return;
-        this.#name = v;
-        this.post("change");
-    }
-    get modified() { return this.#modified; }
-    set modified(v) {
-        v = util.ensure(v, "num");
-        if (this.modified == v) return;
-        this.#modified = v;
-        // this.post("change");
-    }
-    get created() { return this.#created; }
-    set created(v) {
-        v = util.ensure(v, "num");
-        if (this.created == v) return;
-        this.#created = v;
-        this.post("change");
-    }
-    get thumb() { return this.#thumb; }
-    set thumb(v) {
-        v = (v == null) ? null : String(v);
-        if (this.thumb == v) return;
-        this.#thumb = v;
-        // this.post("change");
-    }
-
     get backgroundImage() { return this.#backgroundImage; }
     set backgroundImage(v) {
         v = (v == null) ? null : String(v);
@@ -450,10 +368,6 @@ Project.Meta = class ProjectMeta extends util.Target {
         this.#backgroundImage = v;
         this.post("change");
     }
-    get backgroundX() { return this.backgroundPos.x; }
-    set backgroundX(v) { this.backgroundPos.x = v; }
-    get backgroundY() { return this.backgroundPos.y; }
-    set backgroundY(v) { this.backgroundPos.y = v; }
     get backgroundScale() { return this.#backgroundScale; }
     set backgroundScale(v) {
         v = Math.max(0, util.ensure(v, "num"));

@@ -677,9 +677,28 @@ export class App extends util.Target {
                 else style[header] = style[header+"-f"];
             }
         }
+        let animKeyframes = {};
+        for (let i = 0; i <= 100; i++) {
+            let p = i/100;
+            let x1 = (p < 0) ? 0 : (p > 0.66) ? 1 : util.ease.quadIO((p-0)/(0.66-0));
+            let x2 = (p < 0.33) ? 0 : (p > 1) ? 1 : util.ease.quadIO((p-0.33)/(1-0.33));
+            animKeyframes[i] = {
+                left: (100*x2)+"%",
+                width: (100*(x1-x2))+"%",
+            };
+        }
         let styleStr = "";
+        styleStr += ":root{";
         for (let k in style) styleStr += "--"+k+":"+style[k]+";";
-        this.eDynamicStyle.innerHTML = ":root{"+styleStr+"}";
+        styleStr += "}";
+        styleStr += "@keyframes loading-line{";
+        for (let p in animKeyframes) {
+            styleStr += p + "%{";
+            for (let k in animKeyframes[p]) styleStr += k+":"+animKeyframes[p][k]+";";
+            styleStr += "}";
+        }
+        styleStr += "}";
+        this.eDynamicStyle.innerHTML = styleStr;
     }
 
     async getPerm() {
@@ -1432,6 +1451,152 @@ App.Page = class AppPage extends util.Target {
 
     update() { this.post("update", null); }
 };
+export class Project extends util.Target {
+    #id;
+
+    #configChange;
+    #metaChange;
+
+    #config;
+    #meta;
+
+    constructor(...a) {
+        super();
+
+        this.#id = null;
+
+        this.#configChange = () => this.post("change");
+        this.#metaChange = () => this.post("change");
+
+        this.#config = new this.constructor.Config();
+        this.#meta = new this.constructor.Meta();
+
+        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project) a = [a.config, a.meta];
+            else if (util.is(a, "arr")) {
+                a = new Project(...a);
+                a = [a.config, a.meta];
+            }
+            else if (a instanceof this.constructor.Config) a = [a, null];
+            else if (a instanceof this.constructor.Meta) a = [null, a];
+            else if (util.is(a, "str")) a = [null, a];
+            else if (util.is(a, "obj")) a = [a.config, a.meta];
+            else a = [null, null];
+        }
+
+        [this.config, this.meta] = a;
+    }
+
+    get id() { return this.#id; }
+    set id(v) { this.#id = (v == null) ? null : String(v); }
+
+    get config() { return this.#config; }
+    set config(v) {
+        v = new this.constructor.Config(v);
+        if (this.config == v) return;
+        if (this.config instanceof this.constructor.Config)
+            this.config.remHandler("change", this.#configChange);
+        this.#config = v;
+        if (this.config instanceof this.constructor.Config)
+            this.config.addHandler("change", this.#configChange);
+        this.post("change");
+    }
+
+    get meta() { return this.#meta; }
+    set meta(v) {
+        v = new this.constructor.Meta(v);
+        if (this.meta == v) return;
+        if (this.meta instanceof this.constructor.Meta)
+            this.meta.remHandler("change", this.#metaChange);
+        this.#meta = v;
+        if (this.meta instanceof this.constructor.Meta)
+            this.meta.addHandler("change", this.#metaChange);
+        this.post("change");
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            config: this.config, meta: this.meta,
+        });
+    }
+}
+Project.Config = class ProjectConfig extends util.Target {
+    constructor() {
+        super();
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {});
+    }
+};
+Project.Meta = class ProjectMeta extends util.Target {
+    #name;
+    #modified;
+    #created;
+    #thumb;
+
+    constructor(...a) {
+        super();
+
+        this.#name = "New Project";
+        this.#modified = 0;
+        this.#created = 0;
+        this.#thumb = null;
+
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb];
+            else if (util.is(a, "arr")) {
+                a = new Project.Meta(...a);
+                a = [a.name, a.modified, a.created, a.thumb];
+            }
+            else if (util.is(a, "str")) a = [a, null];
+            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
+            else a = ["New Project", null];
+        }
+        if (a.length == 2) a = [a[0], 0, 0, a[1]];
+        
+        [this.name, this.modified, this.created, this.thumb] = a;
+    }
+
+    get name() { return this.#name; }
+    set name(v) {
+        v = (v == null) ? "New Project" : String(v);
+        if (this.name == v) return;
+        this.#name = v;
+        this.post("change");
+    }
+    get modified() { return this.#modified; }
+    set modified(v) {
+        v = util.ensure(v, "num");
+        if (this.modified == v) return;
+        this.#modified = v;
+    }
+    get created() { return this.#created; }
+    set created(v) {
+        v = util.ensure(v, "num");
+        if (this.created == v) return;
+        this.#created = v;
+        this.post("change");
+    }
+    get thumb() { return this.#thumb; }
+    set thumb(v) {
+        v = (v == null) ? null : String(v);
+        if (this.thumb == v) return;
+        this.#thumb = v;
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            name: this.name,
+            modified: this.modified, created: this.created,
+            thumb: this.thumb,
+        });
+    }
+};
 export class AppFeature extends App {
     #changes;
     
@@ -1455,7 +1620,7 @@ export class AppFeature extends App {
     #eProjectInfoDeleteBtn;
     #eSaveBtn;
 
-    static PROJECTCLASS = null;
+    static PROJECTCLASS = Project;
     static REVIVER = util.REVIVER;
 
     constructor() {
@@ -1641,10 +1806,11 @@ export class AppFeature extends App {
                 let anyBlock = false;
                 results.forEach(result => result ? null : (anyBlock = true));
                 if (anyBlock) return;
-                if (!(source instanceof this.constructor.PROJECTCLASS)) source = page.project;
-                if (!(source instanceof this.constructor.PROJECTCLASS)) return;
+                if (!((source instanceof Project) && (source instanceof this.constructor.PROJECTCLASS))) source = page.project;
+                if (!((source instanceof Project) && (source instanceof this.constructor.PROJECTCLASS))) return;
                 let project = new this.constructor.PROJECTCLASS(source);
-                if (util.is(project.coreCopied, "func")) project.coreCopied();
+                if (!(project instanceof Project)) return;
+                project.meta.name += " copy";
                 await this.setPage("PROJECT", { project: project });
                 await this.post("cmd-save");
             });
@@ -1794,7 +1960,7 @@ export class AppFeature extends App {
     }
     addProject(id, proj) {
         id = String(id);
-        if (!(proj instanceof this.constructor.PROJECTCLASS)) return false;
+        if (!((proj instanceof Project) && (proj instanceof this.constructor.PROJECTCLASS))) return false;
         if (this.hasProject(proj.id)) return false;
         if (this.hasProject(id)) return false;
         this.#projects[id] = proj;
@@ -2058,8 +2224,6 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     #eNav;
     #eEdit;
 
-    static PROJECTCLASS = null;
-
     constructor(project) {
         super();
 
@@ -2115,8 +2279,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
         this.addHandler("update", data => {
             if (!this.hasProject()) return;
-            this.name = util.is(this.project.coreName, "func") ? this.project.coreName() : null;
-            this.time = util.is(this.project.coreTime, "func") ? this.project.coreTime() : 0;
+            this.name = this.project.meta.name;
+            this.time = this.project.meta.modified;
             this.eImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
         });
     }
@@ -2133,12 +2297,11 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
     get project() { return this.#project; }
     set project(v) {
-        v = (v instanceof this.constructor.PROJECTCLASS) ? v : null;
         if (this.project == v) return;
         this.#project = v;
         this.post("set", { v: v });
     }
-    hasProject() { return this.project instanceof this.constructor.PROJECTCLASS; }
+    hasProject() { return (this.#project instanceof Project) && (this.project instanceof (this.hasApp() ? this.app.constructor.PROJECTCLASS : null)); }
 
     get name() { return this.eName.textContent; }
     set name(v) { this.eName.textContent = v; }
@@ -2164,8 +2327,6 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 };
 AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     #projectId;
-
-    static PROJECTCLASS = null;
 
     constructor(app) {
         super("PROJECT", app);
@@ -2212,9 +2373,9 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
     get project() { return this.app.getProject(this.projectId); }
     set project(v) {
-        v = (v instanceof this.constructor.PROJECTCLASS) ? v : null;
+        v = ((v instanceof Project) && (v instanceof this.app.constructor.PROJECTCLASS)) ? v : null;
         if (this.project == v) return;
-        if (v instanceof this.constructor.PROJECTCLASS) {
+        if ((v instanceof Project) && (v instanceof this.app.constructor.PROJECTCLASS)) {
             if (!this.app.hasProject(v.id)) {
                 let id;
                 do {
@@ -2225,7 +2386,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             this.projectId = v.id;
         } else this.projectId = null;
     }
-    hasProject() { return this.project instanceof this.constructor.PROJECTCLASS; }
+    hasProject() { return (this.project instanceof Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
 
     get state() {
         return {
@@ -2240,7 +2401,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
     async determineSame(data) {
         if (this.app.hasProject(data.id)) return this.projectId == data.id;
-        else if (data.project instanceof this.constructor.PROJECTCLASS) return this.project == data.project;
+        else if ((data.project instanceof Project) && (data.project instanceof this.app.constructor.PROJECTCLASS)) return this.project == data.project;
         return false;
     }
 };

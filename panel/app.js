@@ -2461,7 +2461,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #eNav;
     #eSubNav;
 
-    static DO = true;
+    static CREATECTX = true;
 
     constructor(dname, name) {
         super(dname, name);
@@ -2475,7 +2475,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         this.eContent.classList.add("content");
         this.#canvas = document.createElement("canvas");
         this.eContent.appendChild(this.canvas);
-        if (this.constructor.DO) this.#ctx = this.canvas.getContext("2d");
+        if (this.constructor.CREATECTX) this.#ctx = this.canvas.getContext("2d");
         this.#eNav = document.createElement("div");
         this.eContent.appendChild(this.eNav);
         this.eNav.classList.add("nav");
@@ -2534,7 +2534,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
             this.optionState = x;
         });
 
-        if (this.constructor.DO) {
+        if (this.constructor.CREATECTX) {
             new ResizeObserver(() => {
                 let r = this.eContent.getBoundingClientRect();
                 this.canvas.width = r.width * this.quality;
@@ -4556,7 +4556,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #eCameraPosYInput;
     #eCameraPosZInput;
 
-    static DO = false;
+    static CREATECTX = false;
 
     constructor(...a) {
         super("3d");
@@ -5479,25 +5479,13 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
     }
 };
 
-class Project extends util.Target {
-    #id;
-
-    #cache;
-
+class Project extends core.Project {
     #widgetData;
-    #config;
-    #meta;
 
     constructor(...a) {
         super();
 
-        this.#id = null;
-
-        this.#cache = {};
-
         this.#widgetData = "";
-        this.#config = new Project.Config();
-        this.#meta = new Project.Meta();
 
         if (a.length <= 0 || [2].includes(a.length) || a.length > 3) a = [null];
         if (a.length == 1) {
@@ -5509,17 +5497,13 @@ class Project extends util.Target {
             }
             else if (a instanceof Project.Config) a = ["", a, null];
             else if (a instanceof Project.Meta) a = ["", null, a];
-            else if (util.is(a, "str")) a = ["", null, { name: a }];
-            // REMOVE WHEN FIXED
-            else if (util.is(a, "obj")) a = [a.rootData || a.widgetData, a.config, a.meta];
+            else if (util.is(a, "str")) a = ["", null, a];
+            else if (util.is(a, "obj")) a = [a.widgetData, a.config, a.meta];
             else a = ["", null, null];
         }
 
         [this.widgetData, this.config, this.meta] = a;
     }
-
-    get id() { return this.#id; }
-    set id(v) { this.#id = (v == null) ? null : String(v); }
 
     get widgetData() { return this.#widgetData; }
     set widgetData(v) {
@@ -5539,37 +5523,6 @@ class Project extends util.Target {
         return this.buildWidget();
     }
 
-    get config() { return this.#config; }
-    set config(v) {
-        v = new Project.Config(v);
-        if (this.config == v) return;
-        if (this.config instanceof Project.Config) {
-            this.config.remHandler("change", this.#cache["config_change"]);
-            delete this.#cache["config_change"];
-        }
-        this.#config = v;
-        if (this.config instanceof Project.Config) {
-            this.#cache["config_change"] = () => this.post("change");
-            this.config.addHandler("change", this.#cache["config_change"]);
-        }
-    }
-
-    get meta() { return this.#meta; }
-    set meta(v) {
-        v = new Project.Meta(v);
-        if (this.meta == v) return;
-        if (this.meta instanceof Project.Meta) {
-            this.meta.remHandler("change", this.#cache["meta_change"]);
-            delete this.#cache["meta_change"];
-        }
-        this.#meta = v;
-        if (this.meta instanceof Project.Meta) {
-            this.#cache["meta_change"] = () => this.post("change");
-            this.meta.addHandler("change", this.#cache["meta_change"]);
-        }
-        this.post("change");
-    }
-
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
@@ -5577,12 +5530,8 @@ class Project extends util.Target {
             config: this.config, meta: this.meta,
         });
     }
-
-    coreCopied() { this.meta.name += " copy"; }
-    coreName() { return this.meta.name; }
-    coreTime() { return this.meta.modified; }
 }
-Project.Config = class ProjectConfig extends util.Target {
+Project.Config = class ProjectConfig extends Project.Config {
     #sources;
     #sourceType;
 
@@ -5661,73 +5610,6 @@ Project.Config = class ProjectConfig extends util.Target {
             VERSION: VERSION,
             sources: this.#sources,
             sourceType: this.sourceType,
-        });
-    }
-};
-Project.Meta = class ProjectMeta extends util.Target {
-    #name;
-    #modified;
-    #created;
-    #thumb;
-
-    constructor(...a) {
-        super();
-
-        this.#name = "New Project";
-        this.#modified = 0;
-        this.#created = 0;
-        this.#thumb = null;
-
-        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb];
-            else if (util.is(a, "arr")) {
-                a = new Project.Meta(...a);
-                a = [a.name, a.modified, a.created, a.thumb];
-            }
-            else if (util.is(a, "str")) a = [a, null];
-            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
-            else a = ["New Project", null];
-        }
-        if (a.length == 2) a = [a[0], 0, 0, a[1]];
-        
-        [this.name, this.modified, this.created, this.thumb] = a;
-    }
-
-    get name() { return this.#name; }
-    set name(v) {
-        v = (v == null) ? "New Project" : String(v);
-        if (this.name == v) return;
-        this.#name = v;
-        this.post("change");
-    }
-    get modified() { return this.#modified; }
-    set modified(v) {
-        v = util.ensure(v, "num");
-        if (this.modified == v) return;
-        this.#modified = v;
-    }
-    get created() { return this.#created; }
-    set created(v) {
-        v = util.ensure(v, "num");
-        if (this.created == v) return;
-        this.#created = v;
-        this.post("change");
-    }
-    get thumb() { return this.#thumb; }
-    set thumb(v) {
-        v = (v == null) ? null : String(v);
-        if (this.thumb == v) return;
-        this.#thumb = v;
-    }
-
-    toJSON() {
-        return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
-            name: this.name,
-            modified: this.modified, created: this.created,
-            thumb: this.thumb,
         });
     }
 };
@@ -6167,9 +6049,6 @@ export default class App extends core.AppFeature {
 App.TitlePage = class AppTitlePage extends App.TitlePage {
     static DESCRIPTION = "The tool for debugging network tables";
 };
-App.ProjectsPage.Button = class AppProjectsPageButton extends App.ProjectsPage.Button {
-    static PROJECTCLASS = Project;
-};
 App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #browserFields;
     #toolButtons;
@@ -6182,8 +6061,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #eSideSections;
     #eContent;
     #eDragBox;
-
-    static PROJECTCLASS = Project;
     
     constructor(app) {
         super(app);
