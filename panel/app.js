@@ -5577,6 +5577,10 @@ class Project extends util.Target {
             config: this.config, meta: this.meta,
         });
     }
+
+    coreCopied() { this.meta.name += " copy"; }
+    coreName() { return this.meta.name; }
+    coreTime() { return this.meta.modified; }
 }
 Project.Config = class ProjectConfig extends util.Target {
     #sources;
@@ -5733,205 +5737,123 @@ REVIVER.addRuleAndAllSub(Container);
 REVIVER.addRuleAndAllSub(Panel);
 REVIVER.addRuleAndAllSub(Project);
 
-export default class App extends core.App {
-    #changes;
-    
-    #projects;
-
+export default class App extends core.AppFeature {
     #eBlock;
 
-    #eTitleBtn;
-    #eProjectsBtn;
-    #eCreateBtn;
-    #eFileBtn;
-    #eEditBtn;
-    #eViewBtn;
-    #eProjectInfo;
-    #eProjectInfoBtn;
-    #eProjectInfoNameInput;
     #eProjectInfoSourceTypes;
     #eProjectInfoSourceInput;
     #eProjectInfoConnectionBtn;
-    #eProjectInfoSaveBtn;
-    #eProjectInfoCopyBtn;
-    #eProjectInfoDeleteBtn;
-    #eSaveBtn;
+
+    static PROJECTCLASS = Project;
+    static REVIVER = REVIVER;
 
     constructor() {
         super();
 
-        this.#changes = new Set();
-
-        this.#projects = {};
-
         this.#eProjectInfoSourceTypes = {};
 
-        this.addHandler("setup", async data => {
-            try {
-                await this.syncWithFiles();
-            } catch (e) {
-                this.error("There was an error loading your projects!", e);
-            }
-        });
-        this.addHandler("start-begin", data => {
-            this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
-        });
-        this.addHandler("start-complete", data => {
-            this.#eTitleBtn = document.getElementById("titlebtn");
-            if (this.hasETitleBtn())
-                this.eTitleBtn.addEventListener("click", e => {
-                    this.page = "TITLE";
-                });
-            this.#eProjectsBtn = document.querySelector("#titlebar > button.nav#projectsbtn");
-            if (this.hasEProjectsBtn())
-                this.eProjectsBtn.addEventListener("click", e => {
-                    this.page = "PROJECTS";
-                });
-            this.#eCreateBtn = document.querySelector("#titlebar > button.nav#createbtn");
-            if (this.hasECreateBtn())
-                this.eCreateBtn.addEventListener("click", e => {
-                    this.page = "PROJECT";
-                });
+        this.addHandler("start-complete-pre", data => {
+            this.eProjectInfoBtnIcon.setAttribute("name", "grid");
             
-            this.#eFileBtn = document.querySelector("#titlebar > button.nav#filebtn");
-            if (this.hasEFileBtn())
-                this.eFileBtn.addEventListener("click", e => {
-                    e.stopPropagation();
-                    let itm;
-                    let menu = new core.App.ContextMenu();
-                    itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
-                    itm.shortcut = "⌘N";
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-newproject");
-                    });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("New Tab", "add"));
-                    itm.shortcut = "⇧⌘N";
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-newtab");
-                    });
-                    menu.addItem(new core.App.ContextMenu.Divider());
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
-                    itm.shortcut = "⌘S";
-                    itm.addHandler("trigger", async data => {
-                        this.post("cmd-save");
-                    });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
-                    itm.shortcut = "⇧⌘S";
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-savecopy");
-                    });
-                    menu.addItem(new core.App.ContextMenu.Divider());
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-delete");
-                    });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
-                    itm.shortcut = "⇧⌘W";
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-closetab");
-                    });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-close");
-                    });
-                    this.contextMenu = menu;
-                    let r = this.eFileBtn.getBoundingClientRect();
-                    this.placeContextMenu(r.left, r.bottom);
+            this.addHandler("file", () => {
+                let itm;
+                let menu = new core.App.ContextMenu();
+                itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
+                itm.shortcut = "⌘N";
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-newproject");
                 });
-            this.#eEditBtn = document.querySelector("#titlebar > button.nav#editbtn");
-            if (this.hasEEditBtn())
-                this.eEditBtn.addEventListener("click", e => {
-                    e.stopPropagation();
-                    let itm;
-                    let menu = new core.App.ContextMenu();
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Connect / Disconnect"));
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-conndisconn");
-                    });
-                    this.contextMenu = menu;
-                    let r = this.eEditBtn.getBoundingClientRect();
-                    this.placeContextMenu(r.left, r.bottom);
+                itm = menu.addItem(new core.App.ContextMenu.Item("New Tab", "add"));
+                itm.shortcut = "⇧⌘N";
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-newtab");
                 });
-            this.#eViewBtn = document.querySelector("#titlebar > button.nav#viewbtn");
-            if (this.hasEViewBtn())
-                this.eViewBtn.addEventListener("click", e => {
-                    e.stopPropagation();
-                    let itm;
-                    let menu = new core.App.ContextMenu();
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Options Opened / Closed"));
-                    itm.shortcut = "⌃F";
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-openclose");
-                    });
-                    itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Title Collapsed"));
-                    itm.shortcut = "⇧⌘F";
-                    itm.addHandler("trigger", data => {
-                        this.post("cmd-expandcollapse");
-                    });
-                    this.contextMenu = menu;
-                    let r = this.eViewBtn.getBoundingClientRect();
-                    this.placeContextMenu(r.left, r.bottom);
-                });
-            this.#eProjectInfo = document.querySelector("#titlebar > #projectinfo");
-            if (this.hasEProjectInfo()) {
-                this.#eProjectInfoBtn = this.eProjectInfo.querySelector(":scope > button.display");
-                if (this.hasEProjectInfoBtn())
-                    this.eProjectInfoBtn.addEventListener("click", e => {
-                        e.stopPropagation();
-                        if (this.eProjectInfo.classList.contains("this")) this.eProjectInfo.classList.remove("this");
-                        else {
-                            this.eProjectInfo.classList.add("this");
-                            const click = e => {
-                                if (this.eProjectInfo.contains(e.target)) return;
-                                document.body.removeEventListener("click", click, { capture: true });
-                                this.eProjectInfo.classList.remove("this");
-                            };
-                            document.body.addEventListener("click", click, { capture: true });
-                        }
-                    });
-                this.#eProjectInfoNameInput = this.eProjectInfo.querySelector(":scope > .content > input#infoname");
-                const eNavSource = this.eProjectInfo.querySelector(":scope > .content > .nav.source");
-                if (eNavSource instanceof HTMLDivElement)
-                    Array.from(eNavSource.querySelectorAll(":scope > button")).forEach(elem => {
-                        this.#eProjectInfoSourceTypes[elem.id] = elem;
-                        elem.addEventListener("click", e => this.post("cmd-source-type", elem.id));
-                    });
-                this.#eProjectInfoSourceInput = this.eProjectInfo.querySelector(":scope > .content > input#infosource");
-                this.#eProjectInfoConnectionBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infoconnection");
-                if (this.hasEProjectInfoConnectionBtn())
-                    this.eProjectInfoConnectionBtn.addEventListener("click", e => this.post("cmd-conndisconn"));
-                this.#eProjectInfoSaveBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infosave");
-                this.#eProjectInfoCopyBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infocopy");
-                this.#eProjectInfoDeleteBtn = this.eProjectInfo.querySelector(":scope > .content > .nav > button#infodelete");
-                if (this.hasEProjectInfoSaveBtn())
-                    this.eProjectInfoSaveBtn.addEventListener("click", e => this.post("cmd-save"));
-                if (this.hasEProjectInfoCopyBtn())
-                    this.eProjectInfoCopyBtn.addEventListener("click", e => this.post("cmd-savecopy"));
-                if (this.hasEProjectInfoDeleteBtn())
-                    this.eProjectInfoDeleteBtn.addEventListener("click", e => this.post("cmd-delete"));
-            }
-            this.#eSaveBtn = document.querySelector("#save");
-            if (this.hasESaveBtn())
-                this.eSaveBtn.addEventListener("click", async e => {
-                    e.stopPropagation();
+                menu.addItem(new core.App.ContextMenu.Divider());
+                itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
+                itm.shortcut = "⌘S";
+                itm.addHandler("trigger", async data => {
                     this.post("cmd-save");
                 });
-            let saving = false;
-            this.addHandler("sync-files-with", data => {
-                saving = true;
+                itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
+                itm.shortcut = "⇧⌘S";
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-savecopy");
+                });
+                menu.addItem(new core.App.ContextMenu.Divider());
+                itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-delete");
+                });
+                itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
+                itm.shortcut = "⇧⌘W";
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-closetab");
+                });
+                itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-close");
+                });
+                this.contextMenu = menu;
+                let r = this.eFileBtn.getBoundingClientRect();
+                this.placeContextMenu(r.left, r.bottom);
             });
-            this.addHandler("synced-files-with", data => {
-                saving = false;
+            this.addHandler("edit", () => {
+                let itm;
+                let menu = new core.App.ContextMenu();
+                itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Connect / Disconnect"));
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-conndisconn");
+                });
+                this.contextMenu = menu;
+                let r = this.eEditBtn.getBoundingClientRect();
+                this.placeContextMenu(r.left, r.bottom);
             });
-            this.addHandler("update", data => {
-                if (this.hasESaveBtn()) this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
+            this.addHandler("view", () => {
+                let itm;
+                let menu = new core.App.ContextMenu();
+                itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Options Opened / Closed"));
+                itm.shortcut = "⌃F";
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-openclose");
+                });
+                itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Title Collapsed"));
+                itm.shortcut = "⇧⌘F";
+                itm.addHandler("trigger", data => {
+                    this.post("cmd-expandcollapse");
+                });
+                this.contextMenu = menu;
+                let r = this.eViewBtn.getBoundingClientRect();
+                this.placeContextMenu(r.left, r.bottom);
             });
 
-            this.clearChanges();
+            let eNav;
 
-            this.addHandler("cmd-newproject", async () => {
-                this.page = "PROJECT";
+            eNav = document.createElement("div");
+            this.eProjectInfoContent.appendChild(eNav);
+            eNav.classList.add("nav");
+            eNav.classList.add("source");
+            ["nt", "wpilog"].forEach(name => {
+                let btn = document.createElement("button");
+                eNav.appendChild(this.#eProjectInfoSourceTypes[name] = btn);
+                btn.textContent = {
+                    "nt": "NetworkTables",
+                    "wpilog": "WPILOG",
+                }[name];
+                btn.addEventListener("click", e => this.post("cmd-source-type", name));
             });
+
+            this.#eProjectInfoSourceInput = document.createElement("input");
+            this.eProjectInfoContent.appendChild(this.eProjectInfoSourceInput);
+            this.eProjectInfoSourceInput.type = "text";
+            this.eProjectInfoSourceInput.autocomplete = "off";
+            this.eProjectInfoSourceInput.spellcheck = false;
+
+            eNav = document.createElement("div");
+            this.eProjectInfoContent.appendChild(eNav);
+            eNav.classList.add("nav");
+            this.#eProjectInfoConnectionBtn = document.createElement("button");
+            eNav.appendChild(this.eProjectInfoConnectionBtn);
+            this.eProjectInfoConnectionBtn.addEventListener("click", e => this.post("cmd-conndisconn"));
 
             this.#eBlock = document.getElementById("block");
 
@@ -6212,216 +6134,15 @@ export default class App extends core.App {
                 const active = page.activeWidget;
                 active.isTitleCollapsed = !active.isTitleCollapsed;
             });
-            this.addHandler("cmd-save", async () => {
-                try {
-                    await this.syncFilesWith();
-                } catch (e) {
-                    this.error("There was an error saving your projects!", e);
-                }
-            });
-            this.addHandler("cmd-savecopy", async source => {
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (page.choosing) return;
-                if (!(source instanceof Project)) source = page.project;
-                if (!(source instanceof Project)) return;
-                let project = new Project(source);
-                project.meta.name += " copy";
-                await this.setPage("PROJECT", { project: project });
-                await this.post("cmd-save");
-            });
-            this.addHandler("cmd-delete", id => {
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (page.choosing) return;
-                if (!this.hasProject(String(id))) id = page.projectId;
-                if (!this.hasProject(String(id))) return;
-                let pop = this.confirm();
-                pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
-                pop.addHandler("result", async data => {
-                    let v = !!util.ensure(data, "obj").v;
-                    if (v) {
-                        this.remProject(id);
-                        await this.post("cmd-save");
-                        this.page = "PROJECTS";
-                    }
-                });
-            });
-            this.addHandler("cmd-close", () => {
-                if (this.page != "PROJECT") return;
-                this.page = "PROJECTS";
-            });
-            
-            this.addPage(new App.TitlePage(this));
-            this.addPage(new App.ProjectsPage(this));
-            this.addPage(new App.ProjectPage(this));
-
-            this.page = "TITLE";
         });
     }
 
-    get changes() { return [...this.#changes]; }
-    markChange(change) {
-        change = String(change);
-        if (this.hasChange(change)) return true;
-        this.#changes.add(change);
-        this.post("change", { change: change });
-        return true;
-    }
-    hasChange(change) {
-        change = String(change);
-        return this.#changes.has(change);
-    }
-    clearChanges() {
-        let changes = this.changes;
-        this.#changes.clear();
-        this.post("change-clear", { changes: changes });
-        return changes;
-    }
-    async syncWithFiles() {
-        try {
-            await this.post("sync-with-files");
-        } catch (e) {}
-        let projectIdsContent = await window.api.send("projects-get");
-        let projectIds = JSON.parse(projectIdsContent);
-        projectIds = util.ensure(projectIds, "arr").map(id => String(id));
-        let projects = {};
-        await Promise.all(projectIds.map(async id => {
-            let projectContent = await window.api.send("project-get", [id]);
-            let project = JSON.parse(projectContent, REVIVER.f);
-            projects[id] = project;
-        }));
-        this.projects = projects;
-        this.clearChanges();
-        try {
-            await this.post("synced-with-files");
-        } catch (e) {}
-    }
-    async syncFilesWith() {
-        try {
-            await this.post("sync-files-with");
-        } catch (e) {}
-        let changes = new Set(this.changes);
-        this.clearChanges();
-        if (changes.has("*all")) {
-            let projectIds = this.projects;
-            let projectIdsContent = JSON.stringify(projectIds);
-            await window.api.send("projects-set", [projectIdsContent]);
-            await Promise.all(projectIds.map(async id => {
-                let project = this.getProject(id);
-                let projectContent = JSON.stringify(project);
-                await window.api.send("project-set", [id, projectContent]);
-            }));
-            await Promise.all(util.ensure(await window.api.send("projects-list"), "arr").map(async dirent => {
-                if (dirent.type != "file") return;
-                let id = dirent.name.split(".")[0];
-                if (this.hasProject(id)) return;
-                await window.api.send("project-del", [id]);
-            }));
-        } else {
-            let projectIds = this.projects;
-            if (changes.has("*")) {
-                let projectIdsContent = JSON.stringify(projectIds);
-                await window.api.send("projects-set", [projectIdsContent]);
-            }
-            await Promise.all(projectIds.map(async id => {
-                if (!changes.has("proj:"+id)) return;
-                let project = this.getProject(id);
-                project.meta.modified = util.getTime();
-                let projectContent = JSON.stringify(project);
-                await window.api.send("project-set", [id, projectContent]);
-            }));
-            await Promise.all([...changes].map(async change => {
-                if (!change.startsWith("proj:")) return;
-                let id = change.substring(5);
-                if (this.hasProject(id)) return;
-                await window.api.send("project-del", [id]);
-            }));
-        }
-        try {
-            await this.post("synced-files-with");
-        } catch (e) {}
-    }
-    get projects() { return Object.keys(this.#projects); }
-    set projects(v) {
-        v = util.ensure(v, "obj");
-        this.clearProjects();
-        for (let id in v) this.addProject(id, v[id]);
-    }
-    clearProjects() {
-        let projs = this.projects;
-        projs.forEach(id => this.remProject(id));
-        return projs;
-    }
-    hasProject(id) {
-        id = String(id);
-        return id in this.#projects;
-    }
-    getProject(id) {
-        id = String(id);
-        if (!this.hasProject(id)) return null;
-        return this.#projects[id];
-    }
-    addProject(id, proj) {
-        id = String(id);
-        if (!(proj instanceof Project)) return false;
-        if (this.hasProject(proj.id)) return false;
-        if (this.hasProject(id)) return false;
-        this.#projects[id] = proj;
-        proj.id = id;
-        proj._onChange = () => this.markChange("proj:"+proj.id);
-        proj.addHandler("change", proj._onChange);
-        this.markChange("*");
-        this.markChange("proj:"+id);
-        return proj;
-    }
-    remProject(id) {
-        id = String(id);
-        if (!this.hasProject(id)) return false;
-        let proj = this.getProject(id);
-        delete this.#projects[id];
-        proj.remHandler("change", proj._onChange);
-        delete proj._onChange;
-        proj.id = null;
-        this.markChange("*");
-        this.markChange("proj:"+id);
-        return proj;
-    }
-
-    get eTitleBtn() { return this.#eTitleBtn; }
-    hasETitleBtn() { return this.eTitleBtn instanceof HTMLButtonElement; }
-    get eProjectsBtn() { return this.#eProjectsBtn; }
-    hasEProjectsBtn() { return this.eProjectsBtn instanceof HTMLButtonElement; }
-    get eCreateBtn() { return this.#eCreateBtn; }
-    hasECreateBtn() { return this.eCreateBtn instanceof HTMLButtonElement; }
-    get eFileBtn() { return this.#eFileBtn; }
-    hasEFileBtn() { return this.eFileBtn instanceof HTMLButtonElement; }
-    get eEditBtn() { return this.#eEditBtn; }
-    hasEEditBtn() { return this.eEditBtn instanceof HTMLButtonElement; }
-    get eViewBtn() { return this.#eViewBtn; }
-    hasEViewBtn() { return this.eViewBtn instanceof HTMLButtonElement; }
-    get eProjectInfo() { return this.#eProjectInfo; }
-    hasEProjectInfo() { return this.eProjectInfo instanceof HTMLDivElement; }
-    get eProjectInfoBtn() { return this.#eProjectInfoBtn; }
-    hasEProjectInfoBtn() { return this.eProjectInfoBtn instanceof HTMLButtonElement; }
-    get eProjectInfoNameInput() { return this.#eProjectInfoNameInput; }
-    hasEProjectInfoNameInput() { return this.eProjectInfoNameInput instanceof HTMLInputElement; }
     get eProjectInfoSourceTypes() { return Object.keys(this.#eProjectInfoSourceTypes); }
     hasEProjectInfoSourceType(type) { return type in this.#eProjectInfoSourceTypes; }
     getEProjectInfoSourceType(type) { return this.#eProjectInfoSourceTypes[type]; }
     get eProjectInfoSourceInput() { return this.#eProjectInfoSourceInput; }
-    hasEProjectInfoSourceInput() { return this.eProjectInfoSourceInput instanceof HTMLInputElement; }
-    get eProjectInfoSaveBtn() { return this.#eProjectInfoSaveBtn; }
-    hasEProjectInfoSaveBtn() { return this.eProjectInfoSaveBtn instanceof HTMLButtonElement; }
-    get eProjectInfoCopyBtn() { return this.#eProjectInfoCopyBtn; }
-    hasEProjectInfoCopyBtn() { return this.eProjectInfoCopyBtn instanceof HTMLButtonElement; }
-    get eProjectInfoDeleteBtn() { return this.#eProjectInfoDeleteBtn; }
-    hasEProjectInfoDeleteBtn() { return this.eProjectInfoDeleteBtn instanceof HTMLButtonElement; }
     get eProjectInfoConnectionBtn() { return this.#eProjectInfoConnectionBtn; }
-    hasEProjectInfoConnectionBtn() { return this.eProjectInfoConnectionBtn instanceof HTMLButtonElement; }
-    get eSaveBtn() { return this.#eSaveBtn; }
-    hasESaveBtn() { return this.eSaveBtn instanceof HTMLButtonElement; }
-
+    
     get eBlock() { return this.#eBlock; }
     hasEBlock() { return this.eBlock instanceof HTMLDivElement; }
     get isBlockShown() { return this.hasEBlock() ? this.eBlock.classList.contains("this") : null; }
@@ -6443,329 +6164,13 @@ export default class App extends core.App {
         this.eBlock.style.height = Math.max(0, r.h)+"px";
     }
 }
-App.TitlePage = class AppTitlePage extends core.App.Page {
-    #eTitle;
-    #eSubtitle;
-    #eNav;
-    #eCreateBtn;
-    #eProjectsBtn;
-
-    constructor(app) {
-        super("TITLE", app);
-
-        this.#eTitle = document.createElement("div");
-        this.elem.appendChild(this.eTitle);
-        this.eTitle.classList.add("title");
-        this.eTitle.innerHTML = "<span>Peninsula</span><span>Panel</span>";
-        this.#eSubtitle = document.createElement("div");
-        this.elem.appendChild(this.eSubtitle);
-        this.eSubtitle.classList.add("subtitle");
-        this.eSubtitle.textContent = "The tool for debugging network tables";
-        this.#eNav = document.createElement("div");
-        this.elem.appendChild(this.eNav);
-        this.eNav.classList.add("nav");
-
-        this.#eCreateBtn = document.createElement("button");
-        this.eNav.appendChild(this.eCreateBtn);
-        this.eCreateBtn.classList.add("special");
-        this.eCreateBtn.innerHTML = "Create<ion-icon name='add'></ion-icon>";
-        this.eCreateBtn.addEventListener("click", e => {
-            if (!this.hasApp()) return;
-            this.app.page = "PROJECT";
-        });
-        this.#eProjectsBtn = document.createElement("button");
-        this.eNav.appendChild(this.eProjectsBtn);
-        this.eProjectsBtn.innerHTML = "Projects<ion-icon name='chevron-forward'></ion-icon>";
-        this.eProjectsBtn.addEventListener("click", e => {
-            if (!this.hasApp()) return;
-            this.app.page = "PROJECTS";
-        });
-    }
-
-    get eTitle() { return this.#eTitle; }
-    get eSubtitle() { return this.#eSubtitle; }
-    get eNav() { return this.#eNav; }
-    get eCreateBtn() { return this.#eCreateBtn; }
-    get eProjectsBtn() { return this.#eProjectsBtn; }
-
-    async enter(data) {
-        if (this.hasApp()) this.app.title = "";
-    }
+App.TitlePage = class AppTitlePage extends App.TitlePage {
+    static DESCRIPTION = "The tool for debugging network tables";
 };
-App.ProjectsPage = class AppProjectsPage extends core.App.Page {
-    #buttons;
-
-    #eTitle;
-    #eNav;
-    #eSubNav;
-    #eCreateBtn;
-    #eSearchBox;
-    #eSearchInput;
-    #eSearchBtn;
-    #eContent;
-    #eLoading;
-    #eEmpty;
-
-    constructor(app) {
-        super("PROJECTS", app);
-
-        this.#buttons = new Set();
-
-        this.addHandler("update", data => this.buttons.forEach(btn => btn.update()));
-
-        this.#eTitle = document.createElement("div");
-        this.elem.appendChild(this.eTitle);
-        this.eTitle.classList.add("title");
-        this.eTitle.textContent = "Projects";
-        this.#eNav = document.createElement("div");
-        this.elem.append(this.eNav);
-        this.eNav.classList.add("nav");
-        this.#eSubNav = document.createElement("div");
-        this.eNav.append(this.eSubNav);
-        this.eSubNav.classList.add("nav");
-        this.#eCreateBtn = document.createElement("button");
-        this.eSubNav.appendChild(this.eCreateBtn);
-        this.eCreateBtn.innerHTML = "Create<ion-icon name='add'></ion-icon>";
-        this.eCreateBtn.addEventListener("click", e => {
-            if (!this.hasApp()) return;
-            this.app.page = "PROJECT";
-        });
-        this.#eSearchBox = document.createElement("div");
-        this.eNav.appendChild(this.eSearchBox);
-        this.eSearchBox.classList.add("search");
-        this.#eSearchInput = document.createElement("input");
-        this.eSearchBox.appendChild(this.eSearchInput);
-        this.eSearchInput.type = "text";
-        this.eSearchInput.placeholder = "Search...";
-        this.eSearchInput.autocomplete = "off";
-        this.eSearchInput.spellcheck = false;
-        this.eSearchInput.addEventListener("input", e => {
-            this.refresh();
-        });
-        this.#eSearchBtn = document.createElement("button");
-        this.eSearchBox.appendChild(this.eSearchBtn);
-        this.eSearchBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
-        this.eSearchBtn.addEventListener("click", e => {
-            if (this.eSearchInput instanceof HTMLInputElement)
-                this.eSearchInput.value = "";
-            this.refresh();
-        });
-        this.#eContent = document.createElement("div");
-        this.elem.appendChild(this.eContent);
-        this.eContent.classList.add("content");
-        this.#eLoading = document.createElement("div");
-        this.eContent.appendChild(this.eLoading);
-        this.#eEmpty = document.createElement("div");
-        this.eContent.appendChild(this.eEmpty);
-        this.eEmpty.classList.add("empty");
-        this.eEmpty.textContent = "No projects here yet!";
-        if (this.hasApp()) {
-            this.app.addHandler("synced-files-with", () => this.refresh());
-            this.app.addHandler("synced-with-files", () => this.refresh());
-        }
-
-        this.addHandler("update", data => this.buttons.forEach(btn => btn.update()));
-    }
-
-    async refresh() {
-        this.clearButtons();
-        this.eLoading.style.display = "block";
-        this.eEmpty.style.display = "none";
-        this.eLoading.style.display = "none";
-        let projects = (this.hasApp() ? this.app.projects : []).map(id => this.app.getProject(id));
-        if (projects.length > 0) {
-            projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
-            projects.forEach(project => this.addButton(new App.ProjectsPage.Button(project)));
-        } else this.eEmpty.style.display = "block";
-    }
-
-    get buttons() { return [...this.#buttons]; }
-    set buttons(v) {
-        v = util.ensure(v, "arr");
-        this.clearButtons();
-        v.forEach(v => this.addButton(v));
-    }
-    clearButtons() {
-        let btns = this.buttons;
-        btns.forEach(btn => this.remButton(btn));
-        return btns;
-    }
-    hasButton(btn) {
-        if (!(btn instanceof App.ProjectsPage.Button)) return false;
-        return this.#buttons.has(btn);
-    }
-    addButton(btn) {
-        if (!(btn instanceof App.ProjectsPage.Button)) return false;
-        if (this.hasButton(btn)) return false;
-        this.#buttons.add(btn);
-        btn.page = this;
-        this.eContent.appendChild(btn.elem);
-        return btn;
-    }
-    remButton(btn) {
-        if (!(btn instanceof App.ProjectsPage.Button)) return false;
-        if (!this.hasButton(btn)) return false;
-        this.#buttons.delete(btn);
-        btn.page = null;
-        this.eContent.removeChild(btn.elem);
-        return btn;
-    }
-
-    get eTitle() { return this.#eTitle; }
-    get eNav() { return this.#eNav; }
-    get eSubNav() { return this.#eSubNav; }
-    get eCreateBtn() { return this.#eCreateBtn; }
-    get eSearchBox() { return this.#eSearchBox; }
-    get eSearchInput() { return this.#eSearchInput; }
-    get eSearchBtn() { return this.#eSearchBtn; }
-    get eContent() { return this.#eContent; }
-    get eLoading() { return this.#eLoading; }
-    get eEmpty() { return this.#eEmpty; }
-
-    get state() {
-        return {
-            query: this.eSearchInput.value,
-        };
-    }
-    async loadState(state) {
-        state = util.ensure(state, "obj");
-        this.eSearchInput.value = state.query || "";
-        await this.refresh();
-    }
-
-    async enter(data) {
-        if (this.hasApp()) this.app.title = "Projects";
-        if (this.hasApp() && this.app.hasEProjectsBtn())
-            this.app.eProjectsBtn.classList.add("this");
-        await this.refresh();
-    }
-    async leave(data) {
-        if (this.hasApp() && this.app.hasEProjectsBtn())
-            this.app.eProjectsBtn.classList.remove("this");
-    }
+App.ProjectsPage.Button = class AppProjectsPageButton extends App.ProjectsPage.Button {
+    static PROJECTCLASS = Project;
 };
-App.ProjectsPage.Button = class AppProjectsPageButton extends util.Target {
-    #page;
-
-    #project;
-
-    #time;
-
-    #elem;
-    #eImage;
-    #eInfo;
-    #eName;
-    #eTime;
-    #eNav;
-    #eEdit;
-
-    constructor(project) {
-        super();
-
-        this.#page = null;
-
-        this.#project = null;
-
-        this.#elem = document.createElement("div");
-        this.elem.classList.add("item");
-        this.#eImage = document.createElement("div");
-        this.elem.appendChild(this.eImage);
-        this.eImage.classList.add("image");
-        this.#eInfo = document.createElement("div");
-        this.elem.appendChild(this.eInfo);
-        this.eInfo.classList.add("info");
-        this.#eName = document.createElement("div");
-        this.eInfo.appendChild(this.eName);
-        this.eName.classList.add("name");
-        this.#eTime = document.createElement("div");
-        this.eInfo.appendChild(this.eTime);
-        this.eTime.classList.add("time");
-        this.#eNav = document.createElement("div");
-        this.elem.appendChild(this.eNav);
-        this.eNav.classList.add("nav");
-        this.#eEdit = document.createElement("button");
-        this.eNav.appendChild(this.eEdit);
-        this.eEdit.innerHTML = "Edit <ion-icon name='arrow-forward'></ion-icon>";
-
-        this.elem.addEventListener("contextmenu", e => {
-            let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
-            itm.addHandler("trigger", data => {
-                this.eEdit.click();
-            });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
-            itm.addHandler("trigger", data => {
-                this.app.post("cmd-delete", this.project.id);
-            });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Duplicate"));
-            itm.addHandler("trigger", data => {
-                this.app.post("cmd-savecopy", this.project);
-            });
-            if (!this.hasApp()) return;
-            this.app.contextMenu = menu;
-            this.app.placeContextMenu(e.pageX, e.pageY);
-        });
-        this.eEdit.addEventListener("click", e => {
-            if (!this.hasApp()) return;
-            this.app.setPage("PROJECT", { id: this.project.id });
-        });
-
-        this.project = project;
-
-        this.addHandler("update", data => {
-            if (!this.hasProject()) return;
-            this.name = this.project.meta.name;
-            this.time = this.project.meta.modified;
-            this.eImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
-        });
-    }
-
-    get page() { return this.#page; }
-    set page(v) {
-        v = (v instanceof App.ProjectsPage) ? v : null;
-        if (this.page == v) return;
-        this.#page = v;
-    }
-    hasPage() { return this.page instanceof App.ProjectsPage; }
-    get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
-
-    get project() { return this.#project; }
-    set project(v) {
-        v = (v instanceof Project) ? v : null;
-        if (this.project == v) return;
-        this.#project = v;
-        this.post("set", { v: v });
-    }
-    hasProject() { return this.project instanceof Project; }
-
-    get name() { return this.eName.textContent; }
-    set name(v) { this.eName.textContent = v; }
-
-    get time() { return this.#time; }
-    set time(v) {
-        v = util.ensure(v, "num");
-        if (this.time == v) return;
-        this.#time = v;
-        let date = new Date(this.time);
-        this.eTime.textContent = "Modified "+[date.getMonth()+1, date.getDate(), date.getFullYear()].join("-");
-    }
-
-    get elem() { return this.#elem; }
-    get eImage() { return this.#eImage; }
-    get eInfo() { return this.#eInfo; }
-    get eName() { return this.#eName; }
-    get eTime() { return this.#eTime; }
-    get eNav() { return this.#eNav; }
-    get eEdit() { return this.#eEdit; }
-
-    update() { this.post("update", null); }
-};
-App.ProjectPage = class AppProjectPage extends core.App.Page {
-    #projectId;
-
+App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #browserFields;
     #toolButtons;
     #widget;
@@ -6777,46 +6182,25 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     #eSideSections;
     #eContent;
     #eDragBox;
+
+    static PROJECTCLASS = Project;
     
     constructor(app) {
-        super("PROJECT", app);
-
-        if (!this.hasApp()) return;
+        super(app);
 
         window.hotteststruct = () => {
             this.source.create([".schema", "struct:my_struct"], "raw");
             this.source.update([".schema", "struct:my_struct"], util.TEXTENCODER.encode("bool value; double arr[4]; enum {a=1, b=2} int8 val; bool value2 : 1; enum{a=1,b=2}int8 value3:2; int16 a:4; uint16 b:5; bool c:1; int16 d:7"));
         };
 
-        this.app.addHandler("perm", async data => {
-            this.app.markChange("*all");
-            try {
-                await this.app.syncFilesWith();
-            } catch (e) {
-                this.error("There was an error saving your projects!", e);
-                return false;
-            }
-            return true;
+        this.app.eProjectInfoNameInput.addEventListener("change", e => {
+            if (this.choosing) return;
+            if (!this.hasProject()) return;
+            this.project.meta.name = this.app.eProjectInfoNameInput.value;
         });
-
-        let lock = false;
-        setInterval(async () => {
-            if (lock) return;
-            lock = true;
-            await this.app.post("cmd-save");
-            lock = false;
-        }, 10000);
-
-        if (this.app.hasEProjectInfoNameInput())
-            this.app.eProjectInfoNameInput.addEventListener("change", e => {
-                if (this.choosing) return;
-                if (!this.hasProject()) return;
-                this.project.meta.name = this.app.eProjectInfoNameInput.value;
-            });
-        if (this.app.hasEProjectInfoSourceInput())
-            this.app.eProjectInfoSourceInput.addEventListener("change", e => {
-                this.project.config.source = this.app.eProjectInfoSourceInput.value;
-            });
+        this.app.eProjectInfoSourceInput.addEventListener("change", e => {
+            this.project.config.source = this.app.eProjectInfoSourceInput.value;
+        });
         this.app.addHandler("cmd-source-type", type => {
             if (!this.hasProject()) return;
             type = String(type);
@@ -6849,7 +6233,7 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                         this.source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        if (this.hasApp()) this.app.error("There was an error loading the WPILOG!", e);
+                        this.app.error("There was an error loading the WPILOG!", e);
                     }
                     this.app.progress = null;
                     delete this.source.importing;
@@ -6857,8 +6241,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 return;
             }
         });
-
-        this.#projectId = null;
 
         this.#browserFields = [];
         this.#toolButtons = new Set();
@@ -6917,22 +6299,18 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         new ResizeObserver(() => this.formatContent()).observe(this.eContent);
         
         this.addToolButton(new ToolButton("Graph", "graph")).addHandler("drag", () => {
-            if (!this.hasApp()) return;
             this.app.dragData = new Panel.GraphTab();
             this.app.dragging = true;
         });
         this.addToolButton(new ToolButton("Odom2d", "odometry2d")).addHandler("drag", () => {
-            if (!this.hasApp()) return;
             this.app.dragData = new Panel.Odometry2dTab();
             this.app.dragging = true;
         });
         this.addToolButton(new ToolButton("Odom3d", "odometry3d")).addHandler("drag", () => {
-            if (!this.hasApp()) return;
             this.app.dragData = new Panel.Odometry3dTab();
             this.app.dragging = true;
         });
         this.addToolButton(new ToolButton("PLogger", "logger")).addHandler("drag", () => {
-            if (!this.hasApp()) return;
             this.app.dragData = new Panel.LoggerTab();
             this.app.dragging = true;
         });
@@ -7005,103 +6383,71 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                     if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
                 }
             } else this.source = null;
+
             if (this.hasSource()) {
                 let t2 = util.getTime();
                 if (t != null) this.source.playback.update(t2-t);
                 t = t2;
             } else t = null;
-            if (this.hasApp())
-                this.app.eProjectInfoSourceTypes.forEach(type => {
-                    let elem = this.app.getEProjectInfoSourceType(type);
-                    if (this.hasProject() && this.project.config.sourceType == type) elem.classList.add("special");
-                    else elem.classList.remove("special");
-                });
+
+            this.app.eProjectInfoSourceTypes.forEach(type => {
+                let elem = this.app.getEProjectInfoSourceType(type);
+                if (this.hasProject() && this.project.config.sourceType == type) elem.classList.add("special");
+                else elem.classList.remove("special");
+            });
+
             if (this.hasWidget()) {
                 this.widget.collapse();
                 if (this.hasWidget()) this.widget.update();
             } else this.widget = new Panel();
             if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;
+            
             this.eSideMeta.textContent = this.sourceInfo;
-            if (!this.hasApp()) return;
-            if (this.app.hasEProjectInfoBtn())
-                if (this.app.eProjectInfoBtn.querySelector(":scope > .value") instanceof HTMLDivElement)
-                    this.app.eProjectInfoBtn.querySelector(":scope > .value").textContent = this.hasProject() ? this.project.meta.name : "";
-            if (this.app.hasEProjectInfoNameInput())
-                if (document.activeElement != this.app.eProjectInfoNameInput)
-                    this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
-            if (this.app.hasEProjectInfoSourceInput()) {
-                if (document.activeElement != this.app.eProjectInfoSourceInput)
-                    this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
-                if (this.source instanceof NTSource)
-                    this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
-                else if (this.source instanceof WPILOGSource)
-                    this.app.eProjectInfoSourceInput.placeholder = "Path...";
-                else this.app.eProjectInfoNameInput.placeholder = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
-            }
-            if (this.app.hasEProjectInfoConnectionBtn()) {
-                if (this.source instanceof NTSource) {
-                    this.app.eProjectInfoConnectionBtn.disabled = false;
-                    let on = !this.source.connecting && !this.source.connected;
-                    if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
-                    else this.app.eProjectInfoConnectionBtn.classList.remove("on");
-                    if (!on) this.app.eProjectInfoConnectionBtn.classList.add("off");
-                    else this.app.eProjectInfoConnectionBtn.classList.remove("off");
-                    this.app.eProjectInfoConnectionBtn.classList.remove("special");
-                    this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
-                } else if (this.source instanceof WPILOGSource) {
-                    this.app.eProjectInfoConnectionBtn.disabled = this.source.importing;
-                    this.app.eProjectInfoConnectionBtn.classList.remove("on");
-                    this.app.eProjectInfoConnectionBtn.classList.remove("off");
-                    this.app.eProjectInfoConnectionBtn.classList.add("special");
-                    this.app.eProjectInfoConnectionBtn.textContent = "Import";
-                } else {
-                    this.app.eProjectInfoConnectionBtn.disabled = true;
-                    this.app.eProjectInfoConnectionBtn.classList.remove("on");
-                    this.app.eProjectInfoConnectionBtn.classList.remove("off");
-                    this.app.eProjectInfoConnectionBtn.classList.remove("special");
-                    this.app.eProjectInfoConnectionBtn.textContent = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
-                }
+
+            this.app.eProjectInfoBtnName.textContent = this.hasProject() ? this.project.meta.name : "";
+
+            if (document.activeElement != this.app.eProjectInfoNameInput)
+                this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
+            
+            if (document.activeElement != this.app.eProjectInfoSourceInput)
+                this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
+
+            if (this.source instanceof NTSource) {
+                this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
+                this.app.eProjectInfoConnectionBtn.disabled = false;
+                let on = !this.source.connecting && !this.source.connected;
+                if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
+                else this.app.eProjectInfoConnectionBtn.classList.remove("on");
+                if (!on) this.app.eProjectInfoConnectionBtn.classList.add("off");
+                else this.app.eProjectInfoConnectionBtn.classList.remove("off");
+                this.app.eProjectInfoConnectionBtn.classList.remove("special");
+                this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
+            } else if (this.source instanceof WPILOGSource) {
+                this.app.eProjectInfoSourceInput.placeholder = "Path...";
+                this.app.eProjectInfoConnectionBtn.disabled = this.source.importing;
+                this.app.eProjectInfoConnectionBtn.classList.remove("on");
+                this.app.eProjectInfoConnectionBtn.classList.remove("off");
+                this.app.eProjectInfoConnectionBtn.classList.add("special");
+                this.app.eProjectInfoConnectionBtn.textContent = "Import";
+            } else {
+                this.app.eProjectInfoNameInput.placeholder = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+                this.app.eProjectInfoConnectionBtn.disabled = true;
+                this.app.eProjectInfoConnectionBtn.classList.remove("on");
+                this.app.eProjectInfoConnectionBtn.classList.remove("off");
+                this.app.eProjectInfoConnectionBtn.classList.remove("special");
+                this.app.eProjectInfoConnectionBtn.textContent = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
             }
         });
-    }
 
-    async refresh() {
-        if (!this.hasApp()) return;
-        try {
-            await this.app.syncWithFiles();
-        } catch (e) {
-            this.error("There was an error loading your projects!", e);
-        }
-        this.getESideSection("browser").open();
-        this.app.dragging = false;
+        this.addHandler("refresh", () => {
+            this.eSideSections.forEach(name => {
+                let section = this.getESideSection(name);
+                if (["browser"].includes(name)) section.open();
+                else section.close();
+            });
+        });
     }
-
-    get projectId() { return this.#projectId; }
-    set projectId(v) {
-        v = String(v);
-        v = (this.hasApp() && this.app.hasProject(v)) ? v : null;
-        if (this.projectId == v) return;
-        this.#projectId = v;
-        this.post("project-set", { v: this.projectId });
-    }
-    get project() { return this.hasApp() ? this.app.getProject(this.projectId) : null; }
-    set project(v) {
-        v = (v instanceof Project) ? v : null;
-        if (this.project == v) return;
-        if (!this.hasApp()) return;
-        if (v instanceof Project) {
-            if (!this.app.hasProject(v.id)) {
-                let id;
-                do {
-                    id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(64*Math.random())]).join("");
-                } while (this.app.hasProject(id));
-                this.app.addProject(id, v);
-            }
-            this.projectId = v.id;
-        } else this.projectId = null;
-    }
-    hasProject() { return this.project instanceof Project; }
 
     get browserFields() { return [...this.#browserFields]; }
     set browserFields(v) {
@@ -7133,7 +6479,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
                 data = util.ensure(data, "obj");
                 let field = this.hasSource() ? this.source.root.lookup(data.path) : null;
                 if (!(field instanceof Source.Field)) return;
-                if (!this.hasApp()) return;
                 this.app.dragData = field;
                 this.app.dragging = true;
             };
@@ -7310,7 +6655,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
     }
     async loadState(state) {
         state = util.ensure(state, "obj");
-        if (!this.hasApp()) return;
         await this.app.syncWithFiles();
         await this.app.setPage(this.name, { id: state.id });
     }
@@ -7326,7 +6670,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         projectOnly.forEach(id => (ables[id] = true));
         await window.api.send("menu-ables", [ables]);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
-        if (!this.hasApp()) return;
         await this.refresh();
         if (this.app.hasProject(data.id)) {
             this.project = this.app.getProject(data.id);
@@ -7348,7 +6691,6 @@ App.ProjectPage = class AppProjectPage extends core.App.Page {
         projectOnly.forEach(id => (ables[id] = false));
         await window.api.send("menu-ables", [ables]);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
-        if (!this.hasApp()) return;
         this.app.markChange("*all");
         await this.app.post("cmd-save");
         this.project = null;

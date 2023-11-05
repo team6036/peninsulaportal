@@ -278,6 +278,9 @@ export class Project extends util.Target {
             config: this.config, meta: this.meta,
         });
     }
+
+    coreName() { return this.meta.name; }
+    coreTime() { return this.meta.modified; }
 }
 Project.Config = class ProjectConfig extends util.Target {
     #script;
