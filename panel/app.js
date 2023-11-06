@@ -1989,20 +1989,20 @@ class LoggerContext extends util.Target {
 
     get loading() {
         Object.keys(this.#loading).forEach(name => {
-            if (this.hasLog(name)) return;
+            if (this.hasLog(name) || name[0] == "§") return;
             delete this.#loading[name];
         });
         return Object.keys(this.#loading);
     }
     incLoading(name) {
         name = String(name);
-        if (!this.hasLog(name)) return false;
+        if (!this.hasLog(name) && name[0] != "§") return false;
         this.#loading[name] = util.ensure(this.#loading[name], "int")+1;
         return true;
     }
     decLoading(name) {
         name = String(name);
-        if (!this.hasLog(name)) return false;
+        if (!this.hasLog(name) && name[0] != "§") return false;
         this.#loading[name] = util.ensure(this.#loading[name], "int")-1;
         if (this.#loading[name] <= 0) delete this.#loading[name];
         return true;
@@ -2013,14 +2013,20 @@ class LoggerContext extends util.Target {
         paths = util.ensure(paths, "arr").map(path => String(path));
         if (this.disconnected) return;
         await Promise.all(paths.map(async path => {
+            console.log(path+" start");
             this.incLoading("§uploading");
             try {
+                console.log(path+" 1");
                 await window.api.send("log-cache", [path]);
+                console.log(path+" 2");
                 await this.#client.stream(path, "logs", {});
+                console.log(path+" 3");
             } catch (e) {
+                console.log(path+" ERROR");
                 this.decLoading("§uploading");
                 throw e;
             }
+            console.log(path+" stop");
             this.decLoading("§uploading");
         }));
         await this.pollServer();
@@ -2272,7 +2278,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 eIcon.setAttribute("name", "cloud-offline");
                 this.eStatus.removeAttribute("href");
             }
-            this.loading = false;
+            this.loading = LOGGERCONTEXT.isLoading("§uploading");
 
             let logs = LOGGERCONTEXT.logs;
             logs.forEach(name => {
