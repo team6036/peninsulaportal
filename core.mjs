@@ -82,6 +82,11 @@ export class App extends util.Target {
                     await this.post("start-complete");
                     let page = await window.api.send("state-get", ["page"]);
                     let pageState = await window.api.send("state-get", ["page-state"]);
+                    let pageLazyStates = util.ensure(await window.api.send("state-get", ["page-lazy-states"]), "obj");
+                    for (let name in pageLazyStates) {
+                        if (!this.hasPage(name)) continue;
+                        await this.getPage(name).loadLazyState(util.ensure(pageLazyStates[name], "obj"));
+                    }
                     if (this.hasPage(page)) {
                         await this.getPage(page).loadState(util.ensure(pageState, "obj"));
                         if (this.page != page) this.page = page;
@@ -365,6 +370,9 @@ export class App extends util.Target {
             if (this.hasPage(this.page)) {
                 await window.api.send("state-set", ["page", this.page]);
                 await window.api.send("state-set", ["page-state", this.getPage(this.page).state]);
+                let pageLazyStates = {};
+                this.pages.forEach(name => (pageLazyStates[name] = this.getPage(name).lazyState));
+                await window.api.send("state-set", ["page-lazy-states", pageLazyStates]);
             }
             return true;
         });
@@ -1444,6 +1452,8 @@ App.Page = class AppPage extends util.Target {
 
     get state() { return {}; }
     async loadState(state) {}
+    get lazyState() { return {}; }
+    async loadLazyState(state) {}
 
     async enter(data) {}
     async leave(data) {}
@@ -1620,6 +1630,7 @@ export class AppFeature extends App {
     #eProjectInfoDeleteBtn;
     #eSaveBtn;
 
+    static ICON = "help-circle";
     static PROJECTCLASS = Project;
     static REVIVER = util.REVIVER;
 
@@ -1701,6 +1712,7 @@ export class AppFeature extends App {
 
             this.#eProjectInfoBtnIcon = document.createElement("ion-icon");
             this.eProjectInfoBtn.insertBefore(this.eProjectInfoBtnIcon, Array.from(this.eProjectInfoBtn.children).at(-1));
+            this.eProjectInfoBtnIcon.setAttribute("name", this.constructor.ICON);
 
             this.#eProjectInfoBtnName = document.createElement("div");
             this.eProjectInfoBtn.insertBefore(this.eProjectInfoBtnName, Array.from(this.eProjectInfoBtn.children).at(-1));
@@ -1814,21 +1826,26 @@ export class AppFeature extends App {
                 await this.setPage("PROJECT", { project: project });
                 await this.post("cmd-save");
             });
-            this.addHandler("cmd-delete", async id => {
+            this.addHandler("cmd-delete", async ids => {
+                ids = util.ensure(ids, "arr").map(id => String(id));
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 let results = await this.post("cmd-delete-block");
                 let anyBlock = false;
                 results.forEach(result => result ? null : (anyBlock = true));
                 if (anyBlock) return;
-                if (!this.hasProject(String(id))) id = page.projectId;
-                if (!this.hasProject(String(id))) return;
+                ids = ids.filter(id => this.hasProject(id));
+                if (ids.length <= 0) ids.push(page.projectId);
+                ids = ids.filter(id => this.hasProject(id));
+                if (ids.length <= 0) return;
                 let pop = this.confirm();
-                pop.eContent.innerText = "Are you sure you want to delete this project?\nThis action is not reversible!";
+                pop.eContent.innerText = "Are you sure you want to delete these projects?\nThis action is not reversible!";
+                pop.hasInfo = true;
+                pop.info = ids.map(id => this.getProject(id).meta.name).join("\n");
                 pop.addHandler("result", async data => {
                     let v = !!util.ensure(data, "obj").v;
                     if (v) {
-                        this.remProject(id);
+                        ids.forEach(id => this.remProject(id));
                         await this.post("cmd-save");
                         this.page = "PROJECTS";
                     }
@@ -2063,6 +2080,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     #eNav;
     #eSubNav;
     #eCreateBtn;
+    #eInfo;
+    #eInfoDisplayBtn;
     #eSearchBox;
     #eSearchInput;
     #eSearchBtn;
@@ -2093,6 +2112,16 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eCreateBtn.addEventListener("click", e => {
             this.app.page = "PROJECT";
         });
+        this.#eInfo = document.createElement("div");
+        this.eNav.appendChild(this.eInfo);
+        this.eInfo.classList.add("info");
+        this.#eInfoDisplayBtn = document.createElement("button");
+        this.eInfo.appendChild(this.eInfoDisplayBtn);
+        this.eInfoDisplayBtn.innerHTML = "<ion-icon></ion-icon>";
+        this.eInfoDisplayBtn.addEventListener("click", e => {
+            if (this.displayMode == "list") return this.displayMode = "grid";
+            if (this.displayMode == "grid") return this.displayMode = "list";
+        });
         this.#eSearchBox = document.createElement("div");
         this.eNav.appendChild(this.eSearchBox);
         this.eSearchBox.classList.add("search");
@@ -2116,6 +2145,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
+        this.eContent.classList.add("list");
         this.#eLoading = document.createElement("div");
         this.eContent.appendChild(this.eLoading);
         this.#eEmpty = document.createElement("div");
@@ -2127,7 +2157,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
 
         this.addHandler("update", data => {
             this.buttons.sort((a, b) => b.time-a.time).forEach((btn, i) => {
-                btn.elem.style.order = i;
+                btn.elemList.style.order = i;
+                btn.elemGrid.style.order = i;
                 btn.update();
             });
         });
@@ -2144,6 +2175,22 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
             projects.forEach(project => this.addButton(new this.constructor.Button(project)));
         } else this.eEmpty.style.display = "block";
+    }
+
+    get displayMode() {
+        if (this.eContent.classList.contains("list")) return "list";
+        if (this.eContent.classList.contains("grid")) return "grid";
+        return "list";
+    }
+    set displayMode(v) {
+        v = String(v);
+        if (!["list", "grid"].includes(v)) v = "list";
+        this.eContent.classList.remove("list");
+        this.eContent.classList.remove("grid");
+        if (v == "list") this.eContent.classList.add("list");
+        if (v == "grid") this.eContent.classList.add("grid");
+        if (this.eInfoDisplayBtn.children[0] instanceof HTMLElement)
+            this.eInfoDisplayBtn.children[0].setAttribute("name", (v == "list") ? "grid" : (v == "grid") ? "list" : null);
     }
 
     get buttons() { return [...this.#buttons]; }
@@ -2166,7 +2213,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
         btn.page = this;
-        this.eContent.appendChild(btn.elem);
+        this.eContent.appendChild(btn.elemList);
+        this.eContent.appendChild(btn.elemGrid);
         return btn;
     }
     remButton(btn) {
@@ -2174,7 +2222,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (!this.hasButton(btn)) return false;
         this.#buttons.delete(btn);
         btn.page = null;
-        this.eContent.removeChild(btn.elem);
+        this.eContent.removeChild(btn.elemList);
+        this.eContent.removeChild(btn.elemGrid);
         return btn;
     }
 
@@ -2182,6 +2231,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     get eNav() { return this.#eNav; }
     get eSubNav() { return this.#eSubNav; }
     get eCreateBtn() { return this.#eCreateBtn; }
+    get eInfo() { return this.#eInfo; }
+    get eInfoDisplayBtn() { return this.#eInfoDisplayBtn; }
     get eSearchBox() { return this.#eSearchBox; }
     get eSearchInput() { return this.#eSearchInput; }
     get eSearchBtn() { return this.#eSearchBtn; }
@@ -2198,6 +2249,15 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         state = util.ensure(state, "obj");
         this.eSearchInput.value = state.query || "";
         await this.refresh();
+    }
+    get lazyState() {
+        return {
+            displayMode: this.displayMode,
+        };
+    }
+    async loadLazyState(state) {
+        state = util.ensure(state, "obj");
+        this.displayMode = state.displayMode;
     }
 
     async enter(data) {
@@ -2216,13 +2276,16 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
     #time;
 
-    #elem;
-    #eImage;
-    #eInfo;
-    #eName;
-    #eTime;
-    #eNav;
-    #eEdit;
+    #elemList;
+    #eListIcon;
+    #eListName;
+    #eListTime;
+    #eListOptions;
+    #elemGrid;
+    #eGridIcon;
+    #eGridName;
+    #eGridOptions;
+    #eGridImage;
 
     constructor(project) {
         super();
@@ -2231,57 +2294,88 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
         this.#project = null;
 
-        this.#elem = document.createElement("div");
-        this.elem.classList.add("item");
-        this.#eImage = document.createElement("div");
-        this.elem.appendChild(this.eImage);
-        this.eImage.classList.add("image");
-        this.#eInfo = document.createElement("div");
-        this.elem.appendChild(this.eInfo);
-        this.eInfo.classList.add("info");
-        this.#eName = document.createElement("div");
-        this.eInfo.appendChild(this.eName);
-        this.eName.classList.add("name");
-        this.#eTime = document.createElement("div");
-        this.eInfo.appendChild(this.eTime);
-        this.eTime.classList.add("time");
-        this.#eNav = document.createElement("div");
-        this.elem.appendChild(this.eNav);
-        this.eNav.classList.add("nav");
-        this.#eEdit = document.createElement("button");
-        this.eNav.appendChild(this.eEdit);
-        this.eEdit.innerHTML = "Edit <ion-icon name='arrow-forward'></ion-icon>";
+        let eNav;
 
-        this.elem.addEventListener("contextmenu", e => {
+        this.#elemList = document.createElement("div");
+        this.elemList.classList.add("item");
+        this.elemList.classList.add("list");
+        this.#eListIcon = document.createElement("ion-icon");
+        this.elemList.appendChild(this.eListIcon);
+        this.#eListName = document.createElement("div");
+        this.elemList.appendChild(this.eListName);
+        this.eListName.classList.add("name");
+        this.#eListTime = document.createElement("div");
+        this.elemList.appendChild(this.eListTime);
+        this.eListTime.classList.add("time");
+        eNav = document.createElement("div");
+        this.elemList.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eListOptions = document.createElement("button");
+        eNav.appendChild(this.eListOptions);
+        this.eListOptions.classList.add("icon");
+        this.eListOptions.innerHTML = "<ion-icon name='ellipsis-vertical'></ion-icon>";
+        this.#elemGrid = document.createElement("div");
+        this.elemGrid.classList.add("item");
+        this.elemGrid.classList.add("grid");
+        let eTop = document.createElement("div");
+        this.elemGrid.appendChild(eTop);
+        eTop.classList.add("top");
+        this.#eGridIcon = document.createElement("ion-icon");
+        eTop.appendChild(this.eGridIcon);
+        this.#eGridName = document.createElement("div");
+        eTop.appendChild(this.eGridName);
+        this.eGridName.classList.add("name");
+        eNav = document.createElement("div");
+        eTop.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eGridOptions = document.createElement("button");
+        eNav.appendChild(this.eGridOptions);
+        this.eGridOptions.classList.add("icon");
+        this.eGridOptions.innerHTML = "<ion-icon name='ellipsis-vertical'></ion-icon>";
+        this.#eGridImage = document.createElement("div");
+        this.elemGrid.appendChild(this.eGridImage);
+        this.eGridImage.classList.add("image");
+
+        const contextMenu = e => {
+            e.preventDefault();
+            e.stopPropagation();
             let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
+            let menu = new App.ContextMenu();
+            itm = menu.addItem(new App.ContextMenu.Item("Open"));
             itm.addHandler("trigger", data => {
                 this.eEdit.click();
             });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
+            menu.addItem(new App.ContextMenu.Divider());
+            itm = menu.addItem(new App.ContextMenu.Item("Delete"));
             itm.addHandler("trigger", data => {
-                this.app.post("cmd-delete", this.project.id);
+                this.app.post("cmd-delete", [this.project.id]);
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Duplicate"));
+            itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
             itm.addHandler("trigger", data => {
                 this.app.post("cmd-savecopy", this.project);
             });
             this.app.contextMenu = menu;
             this.app.placeContextMenu(e.pageX, e.pageY);
-        });
-        this.eEdit.addEventListener("click", e => {
+        };
+        this.elemList.addEventListener("contextmenu", contextMenu);
+        this.elemGrid.addEventListener("contextmenu", contextMenu);
+        this.eListOptions.addEventListener("click", contextMenu);
+        this.eGridOptions.addEventListener("click", contextMenu);
+        const dblClick = () => {
             this.app.setPage("PROJECT", { id: this.project.id });
-        });
+        };
+        this.elemList.addEventListener("dblclick", dblClick);
+        this.elemGrid.addEventListener("dblclick", dblClick);
 
         this.project = project;
 
         this.addHandler("update", data => {
+            this.eListIcon.setAttribute("name", this.hasApp() ? this.app.constructor.ICON : "help-circle");
+            this.eGridIcon.setAttribute("name", this.hasApp() ? this.app.constructor.ICON : "help-circle");
             if (!this.hasProject()) return;
             this.name = this.project.meta.name;
             this.time = this.project.meta.modified;
-            this.eImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
+            this.eGridImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
         });
     }
 
@@ -2303,8 +2397,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     }
     hasProject() { return (this.#project instanceof Project) && (this.project instanceof (this.hasApp() ? this.app.constructor.PROJECTCLASS : null)); }
 
-    get name() { return this.eName.textContent; }
-    set name(v) { this.eName.textContent = v; }
+    get name() { return this.eListName.textContent; }
+    set name(v) { this.eListName.textContent = this.eGridName.textContent = v; }
 
     get time() { return this.#time; }
     set time(v) {
@@ -2312,16 +2406,27 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         if (this.time == v) return;
         this.#time = v;
         let date = new Date(this.time);
-        this.eTime.textContent = "Modified "+[date.getMonth()+1, date.getDate(), date.getFullYear()].join("-");
+        let mon = date.getMonth()+1;
+        let d = date.getDate();
+        let yr = date.getFullYear();
+        let hr = date.getHours();
+        let am = hr < 12;
+        if (!am) hr -= 12;
+        if (hr == 0) hr = 12;
+        let min = date.getMinutes();
+        this.eListTime.textContent = `${mon}-${d}-${yr} ${hr}:${String(min).padStart(2, "0")}${am?"AM":"PM"}`;
     }
 
-    get elem() { return this.#elem; }
-    get eImage() { return this.#eImage; }
-    get eInfo() { return this.#eInfo; }
-    get eName() { return this.#eName; }
-    get eTime() { return this.#eTime; }
-    get eNav() { return this.#eNav; }
-    get eEdit() { return this.#eEdit; }
+    get elemList() { return this.#elemList; }
+    get eListIcon() { return this.#eListIcon; }
+    get eListName() { return this.#eListName; }
+    get eListTime() { return this.#eListTime; }
+    get eListOptions() { return this.#eListOptions; }
+    get elemGrid() { return this.#elemGrid; }
+    get eGridIcon() { return this.#eGridIcon; }
+    get eGridName() { return this.#eGridName; }
+    get eGridOptions() { return this.#eGridOptions; }
+    get eGridImage() { return this.#eGridImage; }
 
     update() { this.post("update", null); }
 };

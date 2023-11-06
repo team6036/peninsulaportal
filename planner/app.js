@@ -390,6 +390,7 @@ class RSelectable extends core.Odometry2d.Render {
 }
 
 export default class App extends core.AppFeature {
+    static ICON = "analytics";
     static PROJECTCLASS = subcore.Project;
     static REVIVER = subcore.REVIVER;
 
@@ -397,8 +398,6 @@ export default class App extends core.AppFeature {
         super();
 
         this.addHandler("start-complete-pre", data => {
-            this.eProjectInfoBtnIcon.setAttribute("name", "analytics");
-
             this.addHandler("file", () => {
                 let itm;
                 let menu = new core.App.ContextMenu();
