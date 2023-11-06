@@ -1005,8 +1005,6 @@ const MAIN = async () => {
             if (!hasHolidaysDir) await this.dirMake([dataPath, "holidays"]);
             let hasHolidayIconsDir = await this.dirHas([dataPath, "holidays", "icons"]);
             if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
-            // let hasCacheDir = await this.dirHas([dataPath, "cache"]);
-            // if (!hasCacheDir) await this.dirMake([dataPath, "cache"]);
             let hasConfig = await this.fileHas([dataPath, ".config"]);
             if (!hasConfig) await this.fileWrite([dataPath, ".config"], JSON.stringify({}, null, "\t"));
             let hasClientConfig = await this.fileHas([dataPath, ".clientconfig"]);
@@ -1138,8 +1136,6 @@ const MAIN = async () => {
                         { type: "file", name: "holidays.json" }
                     ],
                 },
-                // ./cache
-                // { type: "dir", name: "cache" },
                 // ./<feature>
                 { type: "dir", match: (_, name) => FEATURES.includes(name.toUpperCase()) },
                 // ./panel
@@ -2772,7 +2768,8 @@ const MAIN = async () => {
                             has = true;
                         });
                         if (!has) return false;
-                        await this.portal.fileDelete(["cache", this.name, "logs", name]);
+                        if (await this.fileHas(["logs", name]))
+                            await this.fileDelete(["logs", name]);
                         return true;
                     },
                     "log-cache": async pth => {
@@ -2780,14 +2777,12 @@ const MAIN = async () => {
                         pth = String(pth);
                         if (!(await Portal.fileHas(pth))) return false;
                         await this.portal.affirm();
-                        if (!(await this.portal.dirHas(["cache", this.name])))
-                            await this.portal.dirMake(["cache", this.name]);
-                        if (!(await this.portal.dirHas(["cache", this.name, "logs"])))
-                            await this.portal.dirMake(["cache", this.name, "logs"]);
+                        if (!(await this.dirHas(["logs"])))
+                            await this.portal.dirMake(["logs"]);
                         const name = path.basename(pth);
                         await fs.promises.cp(
                             pth,
-                            path.join(this.portal.dataPath, "cache", this.name, "logs", name),
+                            path.join(this.dataPath, "logs", name),
                             {
                                 force: true,
                                 recursive: true,
