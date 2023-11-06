@@ -1607,8 +1607,8 @@ const MAIN = async () => {
                     await this.fileWrite(".config", content);
                 },
                 "db-host": async () => await kfs._fullconfig("dbHost", String(v)),
-                "assets-host": async () => await kfs._fullclientconfig("assetsHost", String(v)),
-                "socket-host": async () => await kfs._fullclientconfig("socketHost", String(v)),
+                "assets-host": async () => await kfs._fullconfig("assetsHost", String(v)),
+                "socket-host": async () => await kfs._fullconfig("socketHost", String(v)),
                 "_fullclientconfig": async (k=null, v=null) => {
                     if (k == null) return;
                     let content = "";

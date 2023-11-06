@@ -153,6 +153,7 @@ export default class App extends core.App {
                         "version": "str",
                         "db-host": "str",
                         "assets-host": "str",
+                        "socket-host": "str",
                         "comp-mode": "bool",
                         "holiday": "str",
                     }[elem.id];
