@@ -2154,11 +2154,67 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eEmpty.textContent = "No projects here yet!";
         this.app.addHandler("synced-files-with", () => this.refresh());
         this.app.addHandler("synced-with-files", () => this.refresh());
+        
+        let selected = new Set(), lastSelected = null, lastAction = null;
+        this.addHandler("trigger", data => {
+            data = util.ensure(data, "obj");
+            let id = (data.id == null) ? null : String(data.id);
+            let shift = !!data.shift;
+            if (!this.app.hasProject(id)) return;
+            if (shift && this.app.hasProject(lastSelected)) {
+                let ids = this.app.projects.map(id => this.app.getProject(id)).sort((a, b) => b.meta.modified-a.meta.modified).map(project => project.id);
+                let i = ids.indexOf(lastSelected);
+                let j = ids.indexOf(id);
+                for (let k = i;; k += (j>i?+1:j<i?-1:0)) {
+                    if (lastAction == -1) selected.delete(ids[k]);
+                    if (lastAction == +1) selected.add(ids[k]);
+                    if (k == j) break;
+                }
+            } else {
+                lastSelected = id;
+                if (selected.has(id)) {
+                    selected.delete(id);
+                    lastAction = -1;
+                } else {
+                    selected.add(id);
+                    lastAction = +1;
+                }
+            }
+        });
+        this.addHandler("contextmenu", id => {
+            if (selected.size == 1) this.post("trigger", { id: [...selected][0] });
+            if (selected.size == 0) this.post("trigger", { id: id });
+            let ids = [...selected];
+            let itm;
+            let menu = new App.ContextMenu();
+            itm = menu.addItem(new App.ContextMenu.Item("Open"));
+            itm.disabled = ids.length != 1;
+            itm.addHandler("trigger", data => {
+                this.app.setPage("PROJECT", { id: ids[0] });
+            });
+            menu.addItem(new App.ContextMenu.Divider());
+            itm = menu.addItem(new App.ContextMenu.Item("Delete"));
+            itm.addHandler("trigger", data => {
+                this.app.post("cmd-delete", ids);
+            });
+            itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
+            itm.addHandler("trigger", async data => {
+                for (let i = 0; i < ids.length; i++)
+                    await this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
+            });
+            this.app.contextMenu = menu;
+        });
 
         this.addHandler("update", data => {
+            let projects = new Set(this.app.projects);
+            [...selected].forEach(name => {
+                if (projects.has(name)) return;
+                selected.delete(name);
+            });
             this.buttons.sort((a, b) => b.time-a.time).forEach((btn, i) => {
                 btn.elemList.style.order = i;
                 btn.elemGrid.style.order = i;
+                btn.selected = selected.has(btn.hasProject() ? btn.project.id : null);
                 btn.update();
             });
         });
@@ -2213,6 +2269,10 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
         btn.page = this;
+        btn._onTrigger = e => this.post("trigger", { id: btn.hasProject() ? btn.project.id : null, shift: !!(util.ensure(e, "obj").shiftKey) });
+        btn._onContextMenu = e => this.post("contextmenu", btn.hasProject() ? btn.project.id : null);
+        btn.addHandler("trigger", btn._onTrigger);
+        btn.addHandler("contextmenu", btn._onContextMenu);
         this.eContent.appendChild(btn.elemList);
         this.eContent.appendChild(btn.elemGrid);
         return btn;
@@ -2222,6 +2282,10 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (!this.hasButton(btn)) return false;
         this.#buttons.delete(btn);
         btn.page = null;
+        btn.remHandler("trigger", btn._onTrigger);
+        btn.remHandler("contextmenu", btn._onContextMenu);
+        delete btn._onTrigger;
+        delete btn._onContextMenu;
         this.eContent.removeChild(btn.elemList);
         this.eContent.removeChild(btn.elemGrid);
         return btn;
@@ -2339,28 +2403,18 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         const contextMenu = e => {
             e.preventDefault();
             e.stopPropagation();
-            let itm;
-            let menu = new App.ContextMenu();
-            itm = menu.addItem(new App.ContextMenu.Item("Open"));
-            itm.addHandler("trigger", data => {
-                this.eEdit.click();
-            });
-            menu.addItem(new App.ContextMenu.Divider());
-            itm = menu.addItem(new App.ContextMenu.Item("Delete"));
-            itm.addHandler("trigger", data => {
-                this.app.post("cmd-delete", [this.project.id]);
-            });
-            itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
-            itm.addHandler("trigger", data => {
-                this.app.post("cmd-savecopy", this.project);
-            });
-            this.app.contextMenu = menu;
+            this.post("contextmenu");
             this.app.placeContextMenu(e.pageX, e.pageY);
         };
         this.elemList.addEventListener("contextmenu", contextMenu);
         this.elemGrid.addEventListener("contextmenu", contextMenu);
         this.eListOptions.addEventListener("click", contextMenu);
         this.eGridOptions.addEventListener("click", contextMenu);
+        const click = e => {
+            this.post("trigger", e);
+        };
+        this.elemList.addEventListener("click", click);
+        this.elemGrid.addEventListener("click", click);
         const dblClick = () => {
             this.app.setPage("PROJECT", { id: this.project.id });
         };
@@ -2415,6 +2469,14 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         if (hr == 0) hr = 12;
         let min = date.getMinutes();
         this.eListTime.textContent = `${mon}-${d}-${yr} ${hr}:${String(min).padStart(2, "0")}${am?"AM":"PM"}`;
+    }
+
+    get selected() { return this.elemList.classList.contains("selected"); }
+    set selected(v) {
+        if (v) this.elemList.classList.add("selected");
+        else this.elemList.classList.remove("selected");
+        if (v) this.elemGrid.classList.add("selected");
+        else this.elemGrid.classList.remove("selected");
     }
 
     get elemList() { return this.#elemList; }
