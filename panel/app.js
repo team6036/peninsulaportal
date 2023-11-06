@@ -2255,6 +2255,8 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             }
         });
 
+        this.elem.addEventListener("click", e => selected.clear());
+
         let logObjects = {};
 
         this.addHandler("update", data => {
@@ -2404,6 +2406,7 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
             if (this.downloaded) this.post("use");
         });
         this.elem.addEventListener("click", e => {
+            e.stopPropagation();
             this.post("trigger", e);
         });
         this.elem.addEventListener("dblclick", e => {
@@ -5626,6 +5629,7 @@ export default class App extends core.AppFeature {
     #eProjectInfoSourceInput;
     #eProjectInfoConnectionBtn;
 
+    static ICON = "grid";
     static PROJECTCLASS = Project;
     static REVIVER = REVIVER;
 
@@ -5635,8 +5639,6 @@ export default class App extends core.AppFeature {
         this.#eProjectInfoSourceTypes = {};
 
         this.addHandler("start-complete-pre", data => {
-            this.eProjectInfoBtnIcon.setAttribute("name", "grid");
-            
             this.addHandler("file", () => {
                 let itm;
                 let menu = new core.App.ContextMenu();

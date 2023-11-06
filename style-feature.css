@@ -296,6 +296,30 @@
 
     border-radius: 10px;
 }
+#PROJECTSPAGE > .nav > .info {
+    min-width: max-content;
+    padding: 0px 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .nav > .info > button {
+    --bg: transparent;
+    --fg: var(--v4);
+    --bgh: transparent;
+    --fgh: var(--v6);
+    --bgd: transparent;
+    --fgd: var(--v2);
+
+    padding: 0px;
+
+    font-size: 20px;
+}
 #PROJECTSPAGE > .nav > .search {
     flex-basis: 25%;
 
@@ -336,7 +360,6 @@
     border-radius: 100%;
 }
 #PROJECTSPAGE > .content {
-    padding: 2px;
     margin-top: 20px;
 
     flex-basis: 100%;
@@ -345,13 +368,24 @@
     max-width: 100%;
     max-height: 100%;
     overflow: auto;
-
+}
+#PROJECTSPAGE > .content.list {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+
+    border-top: 2px solid var(--v2);
+}
+#PROJECTSPAGE > .content.grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: flex-start;
     gap: 10px;
 }
 #PROJECTSPAGE > .content > .empty {
@@ -360,74 +394,156 @@
     text-align: center;
     font-style: italic;
 }
-#PROJECTSPAGE > .content > .item {
-    padding: 10px;
+#PROJECTSPAGE > .content > .item.list {
+    padding: 15px;
+
+    display: none;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2-0);
+    border-bottom: 2px solid var(--v2);
+
+    transition: background-color var(--t);
+}
+#PROJECTSPAGE > .content > .item.list:hover {
+    background-color: var(--v2-8);
+}
+#PROJECTSPAGE > .content.list > .item.list {
+    display: flex;
+}
+#PROJECTSPAGE > .content > .item.list > ion-icon {
+    min-width: max-content;
+
+    color: var(--v7);
+
+    transition: color var(--t);
+}
+#PROJECTSPAGE > .content > .item.list:hover > ion-icon {
+    color: var(--v8);
+}
+#PROJECTSPAGE > .content > .item.list > .name {
+    flex-basis: 66%;
+
+    color: var(--v7);
+
+    transition: color var(--t);
+}
+#PROJECTSPAGE > .content > .item.list:hover > .name {
+    color: var(--v8);
+}
+#PROJECTSPAGE > .content > .item.list > .time {
+    flex-basis: 33%;
+
+    color: var(--v3);
+
+    transition: color var(--t);
+}
+#PROJECTSPAGE > .content > .item.list:hover > .time {
+    color: var(--v4);
+}
+#PROJECTSPAGE > .content > .item.list > .nav {
+    min-width: max-content;
 
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .content > .item.list > .nav > button {
+    --bg: transparent;
+    --fg: var(--v5);
+    --bgh: var(--v2);
+    --fgh: var(--v6);
+    --bgd: transparent;
+    --fgd: var(--v3);
+}
+#PROJECTSPAGE > .content > .item.grid {
+    width: 250px;
+    max-width: 250px;
+    padding: 10px;
+
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
     align-items: stretch;
     align-content: center;
 
+    background-color: var(--v2-0);
+    border: 2px solid var(--v3);
+    border-radius: 10px;
+
+    transition: background-color var(--t);
+}
+#PROJECTSPAGE > .content > .item.grid:hover {
     background-color: var(--v2-8);
-    border-radius: 10px;
-    outline: 2px solid var(--a-0);
-
-    transition: outline var(--t);
 }
-#PROJECTSPAGE > .content > .item:hover {
-    outline: 2px solid var(--a);
+#PROJECTSPAGE > .content.grid > .item.grid {
+    display: flex;
 }
-#PROJECTSPAGE > .content > .item > .image {
-    height: 100px;
-    aspect-ratio: 1 / 1;
+#PROJECTSPAGE > .content > .item.grid > .top {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .content > .item.grid > .top > ion-icon {
+    min-width: max-content;
+    
+    color: var(--v7);
 
-    background-color: var(--v1-8);
-    border-radius: 10px;
+    transition: color var(--t);
+}
+#PROJECTSPAGE > .content > .item.grid:hover > .top > ion-icon {
+    color: var(--v8);
+}
+#PROJECTSPAGE > .content > .item.grid > .top > .name {
+    flex-basis: 100%;
 
+    color: var(--v7);
+
+    transition: color var(--t);
+}
+#PROJECTSPAGE > .content > .item.grid:hover > .top > .name {
+    color: var(--v8);
+}
+#PROJECTSPAGE > .content > .item.grid > .top > .nav {
+    min-width: max-content;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTSPAGE > .content > .item.grid > .top > .nav > button {
+    --bg: transparent;
+    --fg: var(--v5);
+    --bgh: var(--v2);
+    --fgh: var(--v6);
+    --bgd: transparent;
+    --fgd: var(--v3);
+}
+#PROJECTSPAGE > .content > .item.grid > .image {
+    aspect-ratio: 3 / 2;
+    margin: 10px 0px;
+
+    background-color: var(--v2-8);
     background-image: none;
     background-repeat: no-repeat;
     background-size: contain;
     background-position: center;
-}
-#PROJECTSPAGE > .content > .item > .info {
-    flex-basis: 100%;
-
-    padding-left: 20px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: flex-start;
-    align-content: center;
-    gap: 10px;
-}
-#PROJECTSPAGE > .content > .item > .info > .name {
-    color: var(--v8);
-}
-#PROJECTSPAGE > .content > .item > .info > .time {
-    color: var(--v4);
-}
-#PROJECTSPAGE > .content > .item > .nav {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: stretch;
-    align-content: center;
-
-    border-radius: 10px;
-}
-#PROJECTSPAGE > .content > .item > .nav > button {
-    --bg: var(--v2);
-    --bgh: var(--v3);
-    --bgd: var(--v2);
-
-    padding: 10px 20px;
-
-    gap: 10px;
-
-    border-radius: 10px;
 }
