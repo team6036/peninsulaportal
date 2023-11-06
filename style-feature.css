@@ -395,6 +395,8 @@
     font-style: italic;
 }
 #PROJECTSPAGE > .content > .item.list {
+    position: relative;
+
     padding: 15px;
 
     display: none;
@@ -412,6 +414,20 @@
 }
 #PROJECTSPAGE > .content > .item.list:hover {
     background-color: var(--v2-8);
+}
+#PROJECTSPAGE > .content > .item.list::before {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translateY(-50%);
+
+    width: 2px;
+    height: 100%;
+
+    background-color: var(--a);
+}
+#PROJECTSPAGE > .content > .item.list.selected::before {
+    content: "";
 }
 #PROJECTSPAGE > .content.list > .item.list {
     display: flex;
@@ -466,6 +482,8 @@
     --fgd: var(--v3);
 }
 #PROJECTSPAGE > .content > .item.grid {
+    position: relative;
+
     width: 250px;
     max-width: 250px;
     padding: 10px;
@@ -488,6 +506,9 @@
 }
 #PROJECTSPAGE > .content.grid > .item.grid {
     display: flex;
+}
+#PROJECTSPAGE > .content > .item.grid.selected {
+    border: 2px solid var(--a);
 }
 #PROJECTSPAGE > .content > .item.grid > .top {
     display: flex;
