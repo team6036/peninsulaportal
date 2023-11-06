@@ -35,7 +35,7 @@ const log = (...a) => {
     while (min.length < 2) min = "0"+min;
     while (s.length < 2) s = "0"+s;
     while (ms.length < 3) ms += "0";
-    return console.log(`[${yr}-${mon}-${d}/${hr}:${min}:${s}.${ms}]`, ...a);
+    return console.log(`${yr}-${mon}-${d} ${hr}:${min}:${s}.${ms}`, ...a);
 };
 
 const OS = {
@@ -2780,9 +2780,11 @@ const MAIN = async () => {
                         if (!(await this.dirHas(["logs"])))
                             await this.portal.dirMake(["logs"]);
                         const name = path.basename(pth);
+                        let pthDest = path.join(this.dataPath, "logs", name);
+                        if (path.resolve(pth) == path.resolve(pthDest)) return true;
                         await fs.promises.cp(
                             pth,
-                            path.join(this.dataPath, "logs", name),
+                            pthDest,
                             {
                                 force: true,
                                 recursive: true,

@@ -1,4 +1,6 @@
 #titlebar {
+    padding-right: 0px;
+    
     gap: 0px;
 }
 #titlebar > .logo {

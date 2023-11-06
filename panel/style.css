@@ -956,6 +956,7 @@
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs {
     width: 100%;
     max-width: 100%;
+    height: calc(100% - 33.33px);
     max-height: calc(100% - 33.33px);
     overflow: auto;
 

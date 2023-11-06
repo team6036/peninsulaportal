@@ -2013,20 +2013,14 @@ class LoggerContext extends util.Target {
         paths = util.ensure(paths, "arr").map(path => String(path));
         if (this.disconnected) return;
         await Promise.all(paths.map(async path => {
-            console.log(path+" start");
             this.incLoading("§uploading");
             try {
-                console.log(path+" 1");
                 await window.api.send("log-cache", [path]);
-                console.log(path+" 2");
                 await this.#client.stream(path, "logs", {});
-                console.log(path+" 3");
             } catch (e) {
-                console.log(path+" ERROR");
                 this.decLoading("§uploading");
                 throw e;
             }
-            console.log(path+" stop");
             this.decLoading("§uploading");
         }));
         await this.pollServer();
@@ -2213,12 +2207,23 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             names.forEach(name => LOGGERCONTEXT.hasServerLog(name) ? (anyServerHas = true) : null);
             let itm;
             let menu = new core.App.ContextMenu();
+            itm = menu.addItem(new core.App.ContextMenu.Item("Upload"));
+            itm.addHandler("trigger", data => {
+                this.eUploadBtn.click();
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item("Upload Selected"));
+            itm.disabled = names.length <= 0 || !anyClientHas;
+            itm.addHandler("trigger", data => {
+                LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
             itm.disabled = names.length != 1;
             itm.addHandler("trigger", data => {
                 this.post("log-use", names[0]);
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
+            itm.disabled = names.length <= 0;
             itm.addHandler("trigger", data => {
                 names.forEach(name => this.post("log-download", name));
             });
@@ -2261,7 +2266,53 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             }
         });
 
-        this.elem.addEventListener("click", e => selected.clear());
+        this.eLogs.addEventListener("click", e => {
+            selected.clear();
+            lastSelected = null;
+            lastAction = null;
+        });
+        this.eLogs.addEventListener("contextmenu", e => {
+            let names = [...selected];
+            let anyClientHas = false, anyServerHas = false;
+            names.forEach(name => LOGGERCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
+            names.forEach(name => LOGGERCONTEXT.hasServerLog(name) ? (anyServerHas = true) : null);
+            let itm;
+            let menu = new core.App.ContextMenu();
+            itm = menu.addItem(new core.App.ContextMenu.Item("Upload"));
+            itm.addHandler("trigger", data => {
+                this.eUploadBtn.click();
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item("Upload Selected"));
+            itm.disabled = names.length <= 0 || !anyClientHas;
+            itm.addHandler("trigger", data => {
+                LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
+            itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
+            itm.disabled = names.length != 1;
+            itm.addHandler("trigger", data => {
+                this.post("log-use", names[0]);
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
+            itm.disabled = names.length <= 0;
+            itm.addHandler("trigger", data => {
+                names.forEach(name => this.post("log-download", name));
+            });
+            menu.addItem(new core.App.ContextMenu.Divider());
+            itm = menu.addItem(new core.App.ContextMenu.Item("Delete Locally"));
+            itm.disabled = !anyClientHas;
+            itm.addHandler("trigger", data => {
+                this.post("log-client-delete", names);
+            });
+            itm = menu.addItem(new core.App.ContextMenu.Item("Delete from Server"));
+            itm.disabled = !anyServerHas;
+            itm.addHandler("trigger", data => {
+                this.post("log-server-delete", names);
+            });
+            if (!this.hasApp()) return;
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
 
         let logObjects = {};
 
@@ -2420,6 +2471,8 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
             else if (!this.deprecated) this.post("download");
         });
         this.elem.addEventListener("contextmenu", e => {
+            e.preventDefault();
+            e.stopPropagation();
             this.post("contextmenu", e);
         });
 
