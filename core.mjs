@@ -2154,6 +2154,41 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eEmpty.textContent = "No projects here yet!";
         this.app.addHandler("synced-files-with", () => this.refresh());
         this.app.addHandler("synced-with-files", () => this.refresh());
+
+        this.eContent.addEventListener("click", e => {
+            selected.clear();
+            lastSelected = null;
+            lastAction = null;
+        });
+        this.eContent.addEventListener("contextmenu", e => {
+            let ids = [...selected];
+            let itm;
+            let menu = new App.ContextMenu();
+            itm = menu.addItem(new App.ContextMenu.Item("Create"));
+            itm.addHandler("trigger", data => {
+                this.app.post("cmd-newproject");
+            });
+            menu.addItem(new App.ContextMenu.Divider());
+            itm = menu.addItem(new App.ContextMenu.Item("Open"));
+            itm.disabled = ids.length != 1;
+            itm.addHandler("trigger", data => {
+                this.app.setPage("PROJECT", { id: ids[0] });
+            });
+            menu.addItem(new App.ContextMenu.Divider());
+            itm = menu.addItem(new App.ContextMenu.Item("Delete"));
+            itm.disabled = ids.length <= 0;
+            itm.addHandler("trigger", data => {
+                this.app.post("cmd-delete", ids);
+            });
+            itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
+            itm.disabled = ids.length <= 0;
+            itm.addHandler("trigger", async data => {
+                for (let i = 0; i < ids.length; i++)
+                    await this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
+            });
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
         
         let selected = new Set(), lastSelected = null, lastAction = null;
         this.addHandler("trigger", data => {
@@ -2194,10 +2229,12 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             });
             menu.addItem(new App.ContextMenu.Divider());
             itm = menu.addItem(new App.ContextMenu.Item("Delete"));
+            itm.disabled = ids.length <= 0;
             itm.addHandler("trigger", data => {
                 this.app.post("cmd-delete", ids);
             });
             itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
+            itm.disabled = ids.length <= 0;
             itm.addHandler("trigger", async data => {
                 for (let i = 0; i < ids.length; i++)
                     await this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
@@ -2411,6 +2448,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         this.eListOptions.addEventListener("click", contextMenu);
         this.eGridOptions.addEventListener("click", contextMenu);
         const click = e => {
+            e.stopPropagation();
             this.post("trigger", e);
         };
         this.elemList.addEventListener("click", click);
