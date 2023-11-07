@@ -1342,7 +1342,7 @@ const MAIN = async () => {
         async clientStream(id, pth, name, payload) {
             if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            this.log(`CLIENT:emit - ${client.id} > ${name}`);
+            this.log(`CLIENT:stream - ${client.id} > ${name}`);
             return await client.stream(pth, name, payload);
         }
 
