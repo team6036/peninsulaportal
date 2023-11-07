@@ -335,7 +335,7 @@ class RSelectable extends core.Odometry2d.Render {
         v = (v instanceof subcore.Project.Item) ? v : null;
         if (this.item == v) return;
         this.#item = v;
-        this.post("set", { v: v });
+        this.post("set", v);
     }
     hasItem() { return this.item instanceof subcore.Project.Item; }
     get renderObject() { return this.#renderObject; }
@@ -1488,9 +1488,9 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     set page(v) {
         v = (v instanceof App.ProjectPage) ? v : null;
         if (this.page == v) return;
-        this.post("pre-page-set", { page: this.page });
+        this.post("pre-page-set", this.page);
         this.#page = v;
-        this.post("post-page-set", { page: this.page });
+        this.post("post-page-set", this.page);
     }
     hasPage() { return this.page instanceof App.ProjectPage; }
     get app() { return this.hasPage() ? this.page.app : null; }
@@ -2778,7 +2778,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
         v = (v instanceof subcore.Project.Path) ? v : null;
         if (this.path == v) return;
         this.#path = v;
-        this.post("set", { v: v });
+        this.post("set", v);
     }
     hasPath() { return this.path instanceof subcore.Project.Path; }
     get showIndices() { return this.#showIndices; }

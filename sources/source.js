@@ -406,7 +406,7 @@ Source.Field = class SourceField extends util.Target {
         } else;
         this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
         this.build();
-        this.post("change", { path: [this.name] });
+        this.post("change", [this.name]);
     }
     build() {
         if (this.isStruct) {
@@ -472,11 +472,11 @@ Source.Field = class SourceField extends util.Target {
             if (field.parent != this) return;
             if (field.name in this.#fields) return;
             this.#fields[field.name] = field;
-            field._onChange = () => this.post("change", { path: field.path });
+            field._onChange = () => this.post("change", field.path);
             field.addHandler("change", field._onChange);
             doneFields.push(field);
         });
-        this.post("change", { path: this.path });
+        this.post("change", this.path);
         return doneFields;
     }
     rem(field) {
@@ -495,7 +495,7 @@ Source.Field = class SourceField extends util.Target {
             delete field._onChange;
             doneFields.push(field);
         });
-        this.post("change", { path: this.path });
+        this.post("change", this.path);
         return doneFields;
     }
 

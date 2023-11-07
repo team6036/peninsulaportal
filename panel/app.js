@@ -284,7 +284,7 @@ class BrowserField extends util.Target {
             else this.isOpen = !this.isOpen;
         });
         this.eDisplay.addEventListener("dblclick", e => {
-            this.post("trigger", { path: [this.name] });
+            this.post("trigger", [this.name]);
         });
         this.eDisplay.addEventListener("mousedown", e => {
             const mouseup = () => {
@@ -294,7 +294,7 @@ class BrowserField extends util.Target {
             const mousemove = () => {
                 if (cancel > 0) return cancel--;
                 mouseup();
-                this.post("drag", { path: [this.name] });
+                this.post("drag", [this.name]);
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -376,13 +376,11 @@ class BrowserField extends util.Target {
             if (!(field instanceof BrowserField)) return;
             if (field.name in this.#fields) return;
             this.#fields[field.name] = field;
-            field._onTrigger = data => {
-                data = util.ensure(data, "obj");
-                this.post("trigger", { path: [this.name, ...util.ensure(data.path, "arr")] });
+            field._onTrigger = path => {
+                this.post("trigger", [this.name, ...util.ensure(path, "arr")]);
             };
-            field._onDrag = data => {
-                data = util.ensure(data, "obj");
-                this.post("drag", { path: [this.name, ...util.ensure(data.path, "arr")] });
+            field._onDrag = path => {
+                this.post("drag", [this.name, ...util.ensure(path, "arr")]);
             };
             field.addHandler("trigger", field._onTrigger);
             field.addHandler("drag", field._onDrag);
@@ -1774,13 +1772,11 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     (...bfields) => {
                         bfields.forEach(bfield => {
                             state.fields.push(bfield);
-                            bfield._onTrigger = data => {
-                                data = util.ensure(data, "obj");
-                                this.path = [...this.path, ...util.ensure(data.path, "arr")];
+                            bfield._onTrigger = path => {
+                                this.path = [...this.path, ...util.ensure(path, "arr")];
                             };
-                            bfield._onDrag = data => {
-                                data = util.ensure(data, "obj");
-                                let path = [...this.path, ...util.ensure(data.path, "arr")];
+                            bfield._onDrag = path => {
+                                path = [...this.path, ...util.ensure(path, "arr")];
                                 if (!this.hasApp() || !this.hasPage()) return;
                                 this.app.dragData = this.page.hasSource() ? this.page.source.root.lookup(path) : null;
                                 this.app.dragging = true;
@@ -2255,7 +2251,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 pop.eContent.innerText = "Are you sure you want to delete these logs from the server?\nThis will remove the logs for everyone";
                 pop.hasInfo = true;
                 pop.info = names.join("\n");
-                pop.addHandler("result", async data => res(!!util.ensure(data, "obj").v));
+                pop.addHandler("result", async result => res(!!result));
             });
             if (!r) return;
             try {
@@ -6413,9 +6409,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!(field instanceof BrowserField)) return;
             if (this.hasBrowserField(field)) return;
             this.#browserFields.push(field);
-            field._onDrag = data => {
-                data = util.ensure(data, "obj");
-                let field = this.hasSource() ? this.source.root.lookup(data.path) : null;
+            field._onDrag = path => {
+                path = util.ensure(path, "arr");
+                let field = this.hasSource() ? this.source.root.lookup(path) : null;
                 if (!(field instanceof Source.Field)) return;
                 this.app.dragData = field;
                 this.app.dragging = true;

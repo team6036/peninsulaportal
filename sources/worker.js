@@ -16,8 +16,8 @@ export class WorkerClient extends util.Target {
         this.script = script;
 
         this.addHandler("cmd-log", data => console.log("WORKER:"+this.script+" :: ", ...util.ensure(data, "arr")));
-        this.addHandler("cmd-error", data => {
-            this.post("error", data);
+        this.addHandler("cmd-error", e => {
+            this.post("error", e);
             this.stop();
         });
     }
@@ -36,7 +36,7 @@ export class WorkerClient extends util.Target {
         const worker = this.#worker = new Worker(this.script, { type: "module" });
         worker.addEventListener("error", e => {
             if (this.#worker != worker) return;
-            this.post("error", { e: e });
+            this.post("error", e);
             this.stop();
         });
         worker.addEventListener("message", e => {
@@ -98,6 +98,6 @@ export class WorkerBase extends util.Target {
     progress(progress) {
         if (util.getTime()-this.#progressT < 1000/60) return false;
         this.#progressT = util.getTime();
-        return this.send("progress", { progress: Math.min(1, Math.max(0, util.ensure(progress, "num"))) });
+        return this.send("progress", Math.min(1, Math.max(0, util.ensure(progress, "num"))));
     }
 }

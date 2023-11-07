@@ -79,14 +79,14 @@ const MAIN = async () => {
             this.#parent = null;
 
             this.#process = (process instanceof cp.ChildProcess) ? process : cp.exec(process);
-            this.process.stdout.on("data", data => this.post("data", { data: data }));
+            this.process.stdout.on("data", data => this.post("data", data));
             this.process.stderr.on("data", data => {
-                this.post("error", { e: data.toString() });
+                this.post("error", String(data));
                 this.terminate();
             });
-            this.process.on("exit", code => this.post("exit", { code: code }));
+            this.process.on("exit", code => this.post("exit", code));
             this.process.on("error", e => {
-                this.post("error", { e: e });
+                this.post("error", String(e));
                 this.terminate();
             });
 
@@ -142,7 +142,7 @@ const MAIN = async () => {
         terminate() {
             if (this.process.exitCode != null) return false;
             this.process.kill("SIGKILL");
-            this.post("exit", { code: null });
+            this.post("exit", null);
             return true;
         }
     }
@@ -513,7 +513,7 @@ const MAIN = async () => {
             };
             if (feat.hasWindow())
                 feat.window.on("focus", feat._onFocus);
-            this.post("feature-start", { feat: feat });
+            this.post("feature-start", feat);
             return feat;
         }
         async remFeature(feat) {
@@ -529,7 +529,7 @@ const MAIN = async () => {
             feat.log("REM - already stopped");
             this.#features.delete(feat);
             feat.portal = null;
-            this.post("feature-stop", { feat: feat });
+            this.post("feature-stop", feat);
             return feat;
         }
 
@@ -552,14 +552,14 @@ const MAIN = async () => {
             load = String(load);
             if (this.hasLoad(load)) return false;
             this.#loads.add(load);
-            this.post("load-change", { loads: this.loads });
+            this.post("load-change", this.loads);
             return true;
         }
         remLoad(load) {
             load = String(load);
             if (!this.hasLoad(load)) return false;
             this.#loads.delete(load);
-            this.post("load-change", { loads: this.loads });
+            this.post("load-change", this.loads);
             return true;
         }
         get isLoading() { return this.#isLoading; }
@@ -1160,6 +1160,8 @@ const MAIN = async () => {
                         },
                         // ./panel/projects.json
                         { type: "file", name: "projects.json" },
+                        // ./panel/projects.meta.json
+                        { type: "file", name: "projects.meta.json" },
                     ],
                 },
                 // ./planner
@@ -1176,6 +1178,8 @@ const MAIN = async () => {
                         },
                         // ./planner/projects.json
                         { type: "file", name: "projects.json" },
+                        // ./panel/projects.meta.json
+                        { type: "file", name: "projects.meta.json" },
                         // ./planner/templates.json
                         { type: "file", name: "templates.json" },
                         // ./planner/solver
@@ -1772,12 +1776,12 @@ const MAIN = async () => {
             (async () => {
                 if (this.hasPortal()) {
                     await this.portal.remFeature(this);
-                    this.post("portal-unhook", { portal: this.portal });
+                    this.post("portal-unhook", this.portal);
                 }
                 this.#portal = v;
                 if (this.hasPortal()) {
                     this.portal.addFeature(this);
-                    this.post("portal-hook", { portal: this.portal });
+                    this.post("portal-hook", this.portal);
                 }
             })();
         }
@@ -2698,6 +2702,8 @@ const MAIN = async () => {
                     if (!hasDir) await Portal.dirMake(root);
                     let hasProjectsContent = await Portal.fileHas([root, "projects.json"]);
                     if (!hasProjectsContent) await Portal.fileWrite([root, "projects.json"], "");
+                    let hasProjectsMetaContent = await Portal.fileHas([root, "projects.meta.json"]);
+                    if (!hasProjectsMetaContent) await Portal.fileWrite([root, "projects.meta.json"], "");
                     let hasProjectsDir = await Portal.dirHas([root, "projects"]);
                     if (!hasProjectsDir) await Portal.dirMake([root, "projects"]);
                 },
@@ -2748,6 +2754,20 @@ const MAIN = async () => {
                         await Portal.fileDelete([root, "projects", id+".json"]);
                     } catch (e) { return false; }
                     return true;
+                },
+                "projects-meta-get": async () => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    let content = null;
+                    try {
+                        content = await Portal.fileRead([root, "projects", id+".meta.json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "projects-meta-set": async content => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    await Portal.fileWrite([root, "projects", id+".meta.json"], content);
                 },
             };
             if (k in kfs)
@@ -2918,7 +2938,7 @@ const MAIN = async () => {
                                 if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, "paths", project.meta.name, pth.name, "stderr.log"));
                             };
                             process.addHandler("data", async data => {
-                                Portal.fileAppend(path.join(root, "stdout.log"), util.ensure(data, "obj").data);
+                                Portal.fileAppend(path.join(root, "stdout.log"), data);
                             });
                             let already = false;
                             const resolve = async data => {
@@ -3014,8 +3034,8 @@ const MAIN = async () => {
                         if (!this.hasPortal()) throw "No linked portal";
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
-                            process.addHandler("exit", data => res(data.code));
-                            process.addHandler("error", data => rej(data.e));
+                            process.addHandler("exit", code => res(code));
+                            process.addHandler("error", e => rej(e));
                         });
                     },
                     "cmd-cleanup-app-data-dir": async () => {
@@ -3026,8 +3046,8 @@ const MAIN = async () => {
                         if (!this.hasPortal()) throw "No linked portal";
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
-                            process.addHandler("exit", data => res(data.code));
-                            process.addHandler("error", data => rej(data.e));
+                            process.addHandler("exit", code => res(code));
+                            process.addHandler("error", e => rej(e));
                         });
                     },
                     "cmd-clear-app-log-dir": async () => {
