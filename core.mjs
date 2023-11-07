@@ -1064,10 +1064,18 @@ App.Confirm = class AppConfirm extends App.PopupBase {
     #eConfirm;
     #eCancel;
 
+    #hasResult;
+    #result;
+    #resultRes;
+
     constructor(content, icon="help-circle", confirm="OK", cancel="Cancel") {
         super();
 
         this.elem.classList.add("confirm");
+
+        this.#hasResult = false;
+        this.#result = null;
+        this.#resultRes = [];
 
         this.#eIcon = document.createElement("div");
         this.inner.appendChild(this.eIcon);
@@ -1086,15 +1094,18 @@ App.Confirm = class AppConfirm extends App.PopupBase {
 
         this.eConfirm.addEventListener("click", e => {
             (async () => {
-                await this.post("result", { v: true });
+                await this.post("result", true);
                 this.close();
             })();
         });
         this.eCancel.addEventListener("click", e => {
             (async () => {
-                await this.post("result", { v: false });
+                await this.post("result", false);
                 this.close();
             })();
+        });
+        this.addHandler("result", result => {
+
         });
 
         this.content = content;
@@ -1104,6 +1115,10 @@ App.Confirm = class AppConfirm extends App.PopupBase {
 
         this.iconColor = "var(--v5)";
     }
+
+    get hasResult() { return this.#hasResult; }
+    get result() { return this.#result; }
+    async whenResults() { return await new Promise((res, rej) => this.#resultRes.push(res)); }
 
     get eIcon() { return this.#eIcon; }
     get eContent() { return this.#eContent; }
@@ -1176,13 +1191,13 @@ App.Prompt = class AppPrompt extends App.PopupBase {
 
         this.eConfirm.addEventListener("click", e => {
             (async () => {
-                await this.post("result", { v: this.eInput.value });
+                await this.post("result", this.eInput.value);
                 this.close();
             })();
         });
         this.eCancel.addEventListener("click", e => {
             (async () => {
-                await this.post("result", { v: null });
+                await this.post("result", null);
                 this.close();
             })();
         });
@@ -1805,11 +1820,7 @@ export class AppFeature extends App {
                 this.page = "PROJECT";
             });
             this.addHandler("cmd-save", async () => {
-                try {
-                    await this.syncFilesWith();
-                } catch (e) {
-                    this.error("There was an error saving your projects!", e);
-                }
+                await this.syncFilesWithClean();
             });
             this.addHandler("cmd-savecopy", async source => {
                 if (!this.hasPage("PROJECT")) return;
@@ -1842,9 +1853,9 @@ export class AppFeature extends App {
                 pop.eContent.innerText = "Are you sure you want to delete these projects?\nThis action is not reversible!";
                 pop.hasInfo = true;
                 pop.info = ids.map(id => this.getProject(id).meta.name).join("\n");
-                pop.addHandler("result", async data => {
-                    let v = !!util.ensure(data, "obj").v;
-                    if (v) {
+                pop.addHandler("result", async result => {
+                    result = !!result;
+                    if (result) {
                         ids.forEach(id => this.remProject(id));
                         await this.post("cmd-save");
                         this.page = "PROJECTS";
@@ -1856,11 +1867,7 @@ export class AppFeature extends App {
                 this.page = "PROJECTS";
             });
 
-            try {
-                await this.syncWithFiles();
-            } catch (e) {
-                this.error("There was an error loading your projects!", e);
-            }
+            await this.syncWithFilesClean();
         });
         this.addHandler("start-complete", async data => {
             await this.post("start-complete-pre");
@@ -1878,7 +1885,7 @@ export class AppFeature extends App {
         change = String(change);
         if (this.hasChange(change)) return true;
         this.#changes.add(change);
-        this.post("change", { change: change });
+        this.post("change", change);
         return true;
     }
     hasChange(change) {
@@ -1888,7 +1895,7 @@ export class AppFeature extends App {
     clearChanges() {
         let changes = this.changes;
         this.#changes.clear();
-        this.post("change-clear", { changes: changes });
+        this.post("change-clear", changes);
         return changes;
     }
     async syncWithFiles() {
@@ -1909,6 +1916,15 @@ export class AppFeature extends App {
         try {
             await this.post("synced-with-files");
         } catch (e) {}
+    }
+    async syncWithFilesClean() {
+        try {
+            await this.syncWithFiles();
+        } catch (e) {
+            this.error("There was an error loading your projects!", e);
+            return false;
+        }
+        return true;
     }
     async syncFilesWith() {
         try {
@@ -1954,6 +1970,15 @@ export class AppFeature extends App {
         try {
             await this.post("synced-files-with");
         } catch (e) {}
+    }
+    async syncFilesWithClean() {
+        try {
+            await this.syncFilesWith();
+        } catch (e) {
+            this.error("There was an error saving your projects!", e);
+            return false;
+        }
+        return true;
     }
     get projects() { return Object.keys(this.#projects); }
     set projects(v) {
@@ -2173,6 +2198,10 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             itm.disabled = ids.length != 1;
             itm.addHandler("trigger", data => {
                 this.app.setPage("PROJECT", { id: ids[0] });
+            });
+            itm = menu.addItem(new App.ContextMenu.Item("Rename"));
+            itm.disabled = ids.length != 1;
+            itm.addHandler("trigger", data => {
             });
             menu.addItem(new App.ContextMenu.Divider());
             itm = menu.addItem(new App.ContextMenu.Item("Delete"));
@@ -2485,7 +2514,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     set project(v) {
         if (this.project == v) return;
         this.#project = v;
-        this.post("set", { v: v });
+        this.post("set", v);
     }
     hasProject() { return (this.#project instanceof Project) && (this.project instanceof (this.hasApp() ? this.app.constructor.PROJECTCLASS : null)); }
 
@@ -2538,13 +2567,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
         this.app.addHandler("perm", async data => {
             this.app.markChange("*all");
-            try {
-                await this.app.syncFilesWith();
-            } catch (e) {
-                this.error("There was an error saving your projects!", e);
-                return false;
-            }
-            return true;
+            return await this.app.syncFilesWithClean();
         });
 
         let lock = false;
@@ -2559,11 +2582,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
 
     async refresh() {
-        try {
-            await this.app.syncWithFiles();
-        } catch (e) {
-            this.error("There was an error loading your projects!", e);
-        }
+        await this.app.syncWithFilesClean();
         this.app.dragging = false;
         await this.post("refresh");
     }
@@ -2574,7 +2593,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         v = this.app.hasProject(v) ? v : null;
         if (this.projectId == v) return;
         this.#projectId = v;
-        this.post("project-set", { v: this.projectId });
+        this.post("project-set", this.projectId);
     }
     get project() { return this.app.getProject(this.projectId); }
     set project(v) {
@@ -2600,7 +2619,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
     async loadState(state) {
         state = util.ensure(state, "obj");
-        await this.app.syncWithFiles();
+        await this.app.syncWithFilesClean();
         await this.app.setPage(this.name, { id: state.id });
     }
 

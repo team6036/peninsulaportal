@@ -124,7 +124,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                     }
                 });
                 this.send("finish", CRUDE ? source : source.toSerialized());
-            } catch (e) { this.send("error", { e: e }); }
+            } catch (e) { this.send("error", e); }
         });
     }
 }

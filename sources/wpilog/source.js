@@ -35,7 +35,7 @@ export default class WPILOGSource extends Source {
         return await new Promise((res, rej) => {
             client.addHandler("error", data => rej(util.ensure(data, "obj").e));
             client.addHandler("stop", data => rej("WORKER TERMINATED"));
-            client.addHandler("cmd-progress", progress => this.post("progress", util.ensure(progress, "obj").progress));
+            client.addHandler("cmd-progress", progress => this.post("progress", progress));
             client.addHandler("cmd-finish", data => {
                 this.fromSerialized(data);
                 res(true);
