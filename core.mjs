@@ -951,6 +951,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
             this.#result = result;
             this.#resultRes.forEach(res => res(this.result));
             this.#resultRes = [];
+            this.close();
         });
     }
 
@@ -1103,17 +1104,11 @@ App.Confirm = class AppConfirm extends App.PopupBase {
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
 
-        this.eConfirm.addEventListener("click", e => {
-            (async () => {
-                await this.post("result", true);
-                this.close();
-            })();
+        this.eConfirm.addEventListener("click", async e => {
+            await this.post("result", true);
         });
-        this.eCancel.addEventListener("click", e => {
-            (async () => {
-                await this.post("result", false);
-                this.close();
-            })();
+        this.eCancel.addEventListener("click", async e => {
+            await this.post("result", false);
         });
 
         this.content = content;
@@ -1193,17 +1188,11 @@ App.Prompt = class AppPrompt extends App.PopupBase {
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
 
-        this.eConfirm.addEventListener("click", e => {
-            (async () => {
-                await this.post("result", this.eInput.value);
-                this.close();
-            })();
+        this.eConfirm.addEventListener("click", async e => {
+            await this.post("result", this.eInput.value);
         });
-        this.eCancel.addEventListener("click", e => {
-            (async () => {
-                await this.post("result", null);
-                this.close();
-            })();
+        this.eCancel.addEventListener("click", async e => {
+            await this.post("result", null);
         });
 
         this.content = content;
