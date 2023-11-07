@@ -370,7 +370,7 @@ class RSelectable extends core.Odometry2d.Render {
             let partfs = {
                 velocity: () => {
                     this.item.velocity = pos.sub(this.item.pos);
-                    this.item.post("change");
+                    // this.item.post("change");
                 },
                 heading: () => {
                     this.item.heading = (Math.PI/180) * this.item.pos.towards(pos);
@@ -886,7 +886,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         if (!this.hasProject() || !this.project.hasItem(id)) return;
                         let itm = this.project.getItem(id);
                         itm.pos.iadd(rel);
-                        itm.post("change");
+                        // itm.post("change");
                     });
                     oldPos.set(newPos);
                     this.post("refresh-selectitem");
@@ -992,7 +992,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let itm = this.project.getItem(id);
                 itm.x = Math.min(this.project.w, Math.max(0, itm.x));
                 itm.y = Math.min(this.project.h, Math.max(0, itm.y));
-                itm.post("change");
+                // itm.post("change");
             });
             if (this.selected.length > 1) {
                 if (!(selectItem instanceof RSelect))
@@ -1750,7 +1750,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                     let rel = newCenter - oldCenter;
                     itms.forEach(itm => {
                         itm["xy"[i]] += rel;
-                        itm.post("change");
+                        // itm.post("change");
                     });
                     this.page.post("refresh-selectitem");
                 }
@@ -1870,7 +1870,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                     itms.forEach(itm => {
                         if (!(itm instanceof subcore.Project.Node)) return;
                         itm["velocity"+"XY"[i]] = v*100;
-                        itm.post("change");
+                        // itm.post("change");
                     });
                     this.page.post("refresh-selectitem");
                 }
@@ -2837,7 +2837,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                     v = Math.max(util.ensure(parseFloat(v), "num"));
                     if (this.page.hasProject()) {
                         this.page.project["wh"[i]] = v*100;
-                        this.page.project.post("change");
+                        // this.page.project.post("change");
                         this.page.post("refresh-selectitem");
                     }
                 }
@@ -2859,7 +2859,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                     v = Math.max(0, util.ensure(parseFloat(v), "num"));
                     if (this.page.hasProject()) {
                         this.page.project["robot"+"WH"[i]] = v*100;
-                        this.page.project.post("change");
+                        // this.page.project.post("change");
                         this.page.post("refresh-selectitem");
                     }
                 }

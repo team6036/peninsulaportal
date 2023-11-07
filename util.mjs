@@ -561,10 +561,12 @@ export class Target {
     }
 }
 
-export class Color {
+export class Color extends Target {
     #r; #g; #b; #a;
 
     constructor(...a) {
+        super();
+
         if (a.length <= 0 || a.length == 2 || a.length > 4) a = [0];
         if (a.length == 1) {
             a = a[0];
@@ -623,13 +625,33 @@ export class Color {
     }
 
     get r() { return this.#r; }
-    set r(v) { this.#r = Math.min(255, Math.max(0, ensure(v, "num"))); }
+    set r(v) {
+        v = Math.min(255, Math.max(0, ensure(v, "num")));
+        if (this.r == v) return;
+        this.#r = v;
+        this.post("change", "r");
+    }
     get g() { return this.#g; }
-    set g(v) { this.#g = Math.min(255, Math.max(0, ensure(v, "num"))); }
+    set g(v) {
+        v = Math.min(255, Math.max(0, ensure(v, "num")));
+        if (this.g == v) return;
+        this.#g = v;
+        this.post("change", "g");
+    }
     get b() { return this.#b; }
-    set b(v) { this.#b = Math.min(255, Math.max(0, ensure(v, "num"))); }
+    set b(v) {
+        v = Math.min(255, Math.max(0, ensure(v, "num")));
+        if (this.b == v) return;
+        this.#b = v;
+        this.post("change", "b");
+    }
     get a() { return this.#a; }
-    set a(v) { this.#a = Math.min(1, Math.max(0, ensure(v, "num"))); }
+    set a(v) {
+        v = Math.min(1, Math.max(0, ensure(v, "num")));
+        if (this.a == v) return;
+        this.#a = v;
+        this.post("change", "a");
+    }
     get rgb() { return [this.r, this.g, this.b]; }
     set rgb(v) { [this.r, this.g, this.b] = new Color(v).rgb; }
     get rgba() { return [this.r, this.g, this.b, this.a]; }
@@ -728,11 +750,13 @@ export class Color {
     }
 }
 
-export class Range {
+export class Range extends Target {
     #l; #r;
     #lInclude; #rInclude;
 
     constructor(...a) {
+        super();
+
         if (a.length <= 0 || [3].includes(a.length) || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
@@ -750,14 +774,34 @@ export class Range {
     }
 
     get l() { return this.#l; }
-    set l(v) { this.#l = ensure(v, "any_num"); }
+    set l(v) {
+        v = ensure(v, "any_num");
+        if (this.l == v) return;
+        this.#l = v;
+        this.post("change", "l");
+    }
     get r() { return this.#r; }
-    set r(v) { this.#r = ensure(v, "any_num"); }
+    set r(v) {
+        v = ensure(v, "any_num");
+        if (this.r == v) return;
+        this.#r = v;
+        this.post("change", "r");
+    }
 
     get lInclude() { return this.#lInclude; }
-    set lInclude(v) { this.#lInclude = !!v; }
+    set lInclude(v) {
+        v = !!v;
+        if (this.lInclude == v) return;
+        this.#lInclude = v;
+        this.post("change", "lInclude");
+    }
     get rInclude() { return this.#rInclude; }
-    set rInclude(v) { this.#rInclude = !!v; }
+    set rInclude(v) {
+        v = !!v;
+        if (this.rInclude == v) return;
+        this.#rInclude = v;
+        this.post("change", "rInclude");
+    }
 
     normalize() {
         if (this.l > this.r) [this.l, this.r] = [this.r, this.l];
@@ -790,10 +834,12 @@ export class Range {
     }
 }
 
-export class V {
+export class V extends Target {
     #x; #y;
 
     constructor(...a) {
+        super();
+
         if (a.length <= 0 || a.length > 2) a = [0];
         if (a.length == 1) {
             a = a[0];
@@ -808,9 +854,19 @@ export class V {
     }
 
     get x() { return this.#x; }
-    set x(v) { this.#x = ensure(v, "num"); }
+    set x(v) {
+        v = ensure(v, "num");
+        if (this.x == v) return;
+        this.#x = v;
+        this.post("change", "x");
+    }
     get y() { return this.#y; }
-    set y(v) { this.#y = ensure(v, "num"); }
+    set y(v) {
+        v = ensure(v, "num");
+        if (this.y == v) return;
+        this.#y = v;
+        this.post("change", "y");
+    }
     get xy() { return [this.x, this.y]; }
     set xy(v) { [this.x, this.y] = new V(v).xy; }
 
@@ -902,10 +958,12 @@ export class V {
     }
 }
 
-export class V3 {
+export class V3 extends Target {
     #x; #y; #z;
 
     constructor(...a) {
+        super();
+
         if (a.length <= 0 || a.length > 3) a = [0];
         if (a.length == 1) {
             a = a[0];
@@ -921,11 +979,26 @@ export class V3 {
     }
 
     get x() { return this.#x; }
-    set x(v) { this.#x = ensure(v, "num"); }
+    set x(v) {
+        v = ensure(v, "num");
+        if (this.x == v) return;
+        this.#x = v;
+        this.post("change", "x");
+    }
     get y() { return this.#y; }
-    set y(v) { this.#y = ensure(v, "num"); }
+    set y(v) {
+        v = ensure(v, "num");
+        if (this.y == v) return;
+        this.#y = v;
+        this.post("change", "y");
+    }
     get z() { return this.#z; }
-    set z(v) { this.#z = ensure(v, "num"); }
+    set z(v) {
+        v = ensure(v, "num");
+        if (this.z == v) return;
+        this.#z = v;
+        this.post("change", "z");
+    }
     get xyz() { return [this.x, this.y, this.z]; }
     set xyz(v) { [this.x, this.y, this.z] = new V3(v).xyz; }
 
@@ -1027,7 +1100,7 @@ export class V3 {
     }
 }
 
-export class Shape {
+export class Shape extends Target {
     get p() { return new V(); }
     set p(v) { return; }
 
@@ -1070,6 +1143,8 @@ export class Line extends Shape {
 
         this.#p1 = new V();
         this.#p2 = new V();
+        this.p1.addHandler("change", c => this.post("p1."+c));
+        this.p2.addHandler("change", c => this.post("p2."+c));
 
         [this.x1, this.y1, this.x2, this.y2] = a;
     }
@@ -1171,6 +1246,7 @@ export class Circle extends Shape {
         }
 
         this.#p = new V();
+        this.p.addHandler("change", c => this.post("p."+c));
         this.#r = 0;
 
         [this.x, this.y, this.r] = a;
@@ -1189,7 +1265,12 @@ export class Circle extends Shape {
     get y() { return this.p.y; }
     set y(v) { this.p.y = v; }
     get r() { return this.#r; }
-    set r(v) { this.#r = Math.max(0, ensure(v, "num")); }
+    set r(v) {
+        v = Math.max(0, ensure(v, "num"));
+        if (this.r == v) return;
+        this.#r = v;
+        this.post("change", "r");
+    }
 
     getBounding() { return new Rect(this.p.sub(this.r), this.r*2); }
 
@@ -1305,6 +1386,8 @@ export class Rect extends Shape {
 
         this.#xy = new V();
         this.#wh = new V();
+        this.xy.addHandler("change", c => this.post("xy."+c));
+        this.wh.addHandler("change", c => this.post("wh."+c));
 
         [this.x, this.y, this.w, this.h] = a;
     }
@@ -1499,6 +1582,7 @@ export class Polygon extends Shape {
         a = a.map(v => new V(v));
         
         this.#p = new V();
+        this.p.addHandler("change", c => this.post("p."+c));
         this.#d = 0;
         this.#points = [];
         this.#pointsmx = new V();
@@ -1521,12 +1605,18 @@ export class Polygon extends Shape {
     get y() { return this.p.y; }
     set y(v) { this.p.y = v; }
     get d() { return this.#d; }
-    set d(v) { this.#d = ((ensure(v, "num")%360)+360)%360; }
+    set d(v) {
+        v = ((ensure(v, "num")%360)+360)%360;
+        if (this.d == v) return;
+        this.#d = v;
+        this.post("change", "d");
+    }
     get points() { return [...this.#points]; }
     set points(v) {
         v = ensure(v, "arr");
         v = v.map((v, i) => {
             v = new V(v);
+            v.addHandler("change", c => this.post("points["+i+"]."+c));
             if (i == 0) {
                 this.#pointsmx.set(v);
                 this.#pointsmn.set(v);
@@ -1539,6 +1629,7 @@ export class Polygon extends Shape {
             return v;
         });
         this.#points = v;
+        this.post("change", "points");
     }
     get finalPoints() { return this.points.map(v => v.rotateOrigin(this.d).add(this.p)); }
 
@@ -1618,10 +1709,12 @@ export class Polygon extends Shape {
 Shape.Polygon = Polygon;
 
 
-export class Reviver {
+export class Reviver extends Target {
     #rules;
 
     constructor(reviver=null) {
+        super();
+        
         this.#rules = {};
 
         if (reviver instanceof Reviver)
