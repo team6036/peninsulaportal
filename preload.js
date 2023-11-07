@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("api", {
         return () => ipcRenderer.removeListener("perm", f);
     },
     sendPerm: perm => ipcRenderer.send("perm", perm),
+    sendReady: () => ipcRenderer.send("ready"),
 
     get: k => ipcRenderer.invoke("get", k),
     set: (k, v) => ipcRenderer.invoke("set", k, v),

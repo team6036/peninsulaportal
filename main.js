@@ -1668,15 +1668,13 @@ const MAIN = async () => {
                 "spawn": async name => {
                     name = String(name);
                     let feats = this.features;
-                    let hasFeat = null;
+                    let hasFeat = false;
                     feats.forEach(feat => {
+                        if (hasFeat) return;
                         if (feat.name != name) return;
-                        hasFeat = feat;
+                        hasFeat = true;
                     });
-                    if (hasFeat instanceof Portal.Feature) {
-                        if (hasFeat.hasWindow()) hasFeat.window.show();
-                        return false;
-                    }
+                    if (hasFeat) return false;
                     if (!FEATURES.includes(name)) return false;
                     let feat = new Portal.Feature(name);
                     this.addFeature(feat);
@@ -1741,6 +1739,8 @@ const MAIN = async () => {
         #perm;
 
         #started;
+        #ready;
+        #readyRes;
 
         #state;
 
@@ -1760,6 +1760,9 @@ const MAIN = async () => {
             this.#perm = false;
 
             this.#started = false;
+
+            this.#ready = 0;
+            this.#readyRes = [];
 
             this.#state = {};
 
@@ -1819,12 +1822,19 @@ const MAIN = async () => {
 
         get state() { return this.#state; }
 
+        get ready() { return this.#ready == 2; }
+        async whenReady() {
+            if (this.ready) return;
+            await new Promise((res, rej) => this.#readyRes.push(res));
+        }
+
         get started() { return this.#started; }
         start() {
             if (this.started) return false;
             if (!this.hasName()) return false;
             this.log("START");
             this.#started = true;
+            this.#ready = 0;
 
             let namefs;
 
@@ -1857,8 +1867,18 @@ const MAIN = async () => {
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
-                this.window.show();
-                this.post("show");
+                this.#ready++;
+                if (this.ready) {
+                    this.#readyRes.forEach(res => res());
+                    this.#readyRes = [];
+                }
+            });
+            ipc.once("ready", () => {
+                this.#ready++;
+                if (this.ready) {
+                    this.#readyRes.forEach(res => res());
+                    this.#readyRes = [];
+                }
             });
 
             this.window.on("unresponsive", () => {});
@@ -2048,12 +2068,13 @@ const MAIN = async () => {
 
             namefs = {
                 PORTAL: () => {
-                    const checkForShow = () => {
+                    const checkForShow = async () => {
                         if (!this.hasPortal()) return;
                         if (!this.hasWindow()) return;
                         let feats = this.portal.features;
                         let nFeats = 0;
                         feats.forEach(feat => (["PORTAL"].includes(feat.name) ? null : nFeats++));
+                        await this.whenReady();
                         (nFeats > 0) ? this.window.hide() : this.window.show();
                     };
                     const hook = () => {
@@ -2217,6 +2238,8 @@ const MAIN = async () => {
             this.window.setMenu(this.menu);
             
             (async () => {
+                await this.whenReady();
+                if (!this.hasWindow()) return;
                 let fsVersion = String(await this.get("fs-version"));
                 let version = String(await this.get("base-version"));
                 if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
@@ -2252,6 +2275,7 @@ const MAIN = async () => {
                 if (!this.canOperate) return;
                 let bounds = util.ensure(await this.on("state-get", ["bounds"]), "obj");
                 if (!this.hasWindow()) return;
+                this.window.show();
                 if (("width" in bounds) && (bounds.width < 50)) return;
                 if (("height" in bounds) && (bounds.height < 50)) return;
                 this.window.setContentBounds(bounds);
