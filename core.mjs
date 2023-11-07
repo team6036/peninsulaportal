@@ -585,6 +585,8 @@ export class App extends util.Target {
 
         this.#setupDone = true;
 
+        window.api.sendReady();
+
         return true;
     }
     get base() { return [...this.#base]; }
