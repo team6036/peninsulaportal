@@ -1484,8 +1484,8 @@ export class Project extends util.Target {
 
         this.#id = null;
 
-        this.#configChange = () => this.post("change");
-        this.#metaChange = () => this.post("change");
+        this.#configChange = c => this.post("change", "config."+c);
+        this.#metaChange = c => this.post("change", "meta."+c);
 
         this.#config = new this.constructor.Config();
         this.#meta = new this.constructor.Meta();
@@ -1520,7 +1520,7 @@ export class Project extends util.Target {
         this.#config = v;
         if (this.config instanceof this.constructor.Config)
             this.config.addHandler("change", this.#configChange);
-        this.post("change");
+        this.post("change", "config");
     }
 
     get meta() { return this.#meta; }
@@ -1532,7 +1532,7 @@ export class Project extends util.Target {
         this.#meta = v;
         if (this.meta instanceof this.constructor.Meta)
             this.meta.addHandler("change", this.#metaChange);
-        this.post("change");
+        this.post("change", "meta");
     }
 
     toJSON() {
@@ -1586,7 +1586,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = (v == null) ? "New Project" : String(v);
         if (this.name == v) return;
         this.#name = v;
-        this.post("change");
+        this.post("change", "name");
     }
     get modified() { return this.#modified; }
     set modified(v) {
@@ -1599,7 +1599,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = util.ensure(v, "num");
         if (this.created == v) return;
         this.#created = v;
-        this.post("change");
+        this.post("change", "name");
     }
     get thumb() { return this.#thumb; }
     set thumb(v) {
@@ -1998,7 +1998,10 @@ export class AppFeature extends App {
         if (this.hasProject(id)) return false;
         this.#projects[id] = proj;
         proj.id = id;
-        proj._onChange = () => this.markChange("proj:"+proj.id);
+        proj._onChange = c => {
+            // console.log("PROJ:"+proj.id+" - "+c);
+            this.markChange("proj:"+proj.id);
+        };
         proj.addHandler("change", proj._onChange);
         this.markChange("*");
         this.markChange("proj:"+id);
