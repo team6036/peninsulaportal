@@ -364,11 +364,8 @@ export default class App extends core.App {
                 if (!isDevMode && [].includes(name)) {
                     let pop = this.confirm();
                     pop.eContent.innerText = "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs";
-                    pop.addHandler("result", async result => {
-                        if (!result) return;
-                        window.api.send("spawn", [name]);
-                    });
-                    return;
+                    let result = await pop.whenResult();
+                    if (!result) return;
                 }
                 window.api.send("spawn", [name]);
             });

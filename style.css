@@ -1121,7 +1121,7 @@ article.md ul {
     white-space: pre-wrap;
 }
 .popup.prompt > .inner > input {
-    width: 300px;
+    width: 100%;
 }
 
 div.contextmenu {
