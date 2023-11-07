@@ -390,9 +390,8 @@ export class App extends util.Target {
             let pop = this.alert();
             pop.iconColor = "var(--cr)";
             pop.content = `This version of the application (${args[0]}) is deprecated. Please install the latest version of this application`;
-            pop.addHandler("close", data => {
-                window.api.send("close");
-            });
+            await pop.whenResult();
+            window.api.send("close");
         });
         this.addHandler("cmd-win-fullscreen", async args => {
             args = util.ensure(args, "arr");
@@ -930,22 +929,42 @@ App.PopupBase = class AppPopupBase extends util.Target {
     #elem;
     #inner;
 
+    #hasResult;
+    #result;
+    #resultRes;
+
     constructor() {
         super();
+
+        this.#hasResult = false;
+        this.#result = null;
+        this.#resultRes = [];
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("popup");
         this.#inner = document.createElement("div");
         this.elem.appendChild(this.inner);
         this.inner.classList.add("inner");
+
+        this.addHandler("result", result => {
+            this.#hasResult = true;
+            this.#result = result;
+            this.#resultRes.forEach(res => res(this.result));
+            this.#resultRes = [];
+        });
+    }
+
+    get hasResult() { return this.#hasResult; }
+    get result() { return this.#result; }
+    async whenResult() {
+        if (this.hasResult) return this.result;
+        return await new Promise((res, rej) => this.#resultRes.push(res));
     }
 
     get elem() { return this.#elem; }
     get inner() { return this.#inner; }
 
-    close() {
-        this.post("close");
-    }
+    close() { this.post("close"); }
 };
 App.Popup = class AppPopup extends App.PopupBase {
     #eClose;
@@ -1002,7 +1021,7 @@ App.Alert = class AppAlert extends App.PopupBase {
         this.inner.appendChild(this.eButton);
         this.eButton.classList.add("special");
 
-        this.eButton.addEventListener("click", e => this.close());
+        this.eButton.addEventListener("click", e => this.post("result", null));
 
         this.content = content;
         this.icon = icon;
@@ -1064,18 +1083,10 @@ App.Confirm = class AppConfirm extends App.PopupBase {
     #eConfirm;
     #eCancel;
 
-    #hasResult;
-    #result;
-    #resultRes;
-
     constructor(content, icon="help-circle", confirm="OK", cancel="Cancel") {
         super();
 
         this.elem.classList.add("confirm");
-
-        this.#hasResult = false;
-        this.#result = null;
-        this.#resultRes = [];
 
         this.#eIcon = document.createElement("div");
         this.inner.appendChild(this.eIcon);
@@ -1104,9 +1115,6 @@ App.Confirm = class AppConfirm extends App.PopupBase {
                 this.close();
             })();
         });
-        this.addHandler("result", result => {
-
-        });
 
         this.content = content;
         this.icon = icon;
@@ -1115,10 +1123,6 @@ App.Confirm = class AppConfirm extends App.PopupBase {
 
         this.iconColor = "var(--v5)";
     }
-
-    get hasResult() { return this.#hasResult; }
-    get result() { return this.#result; }
-    async whenResults() { return await new Promise((res, rej) => this.#resultRes.push(res)); }
 
     get eIcon() { return this.#eIcon; }
     get eContent() { return this.#eContent; }
@@ -1165,7 +1169,7 @@ App.Prompt = class AppPrompt extends App.PopupBase {
     #eConfirm;
     #eCancel;
 
-    constructor(content, icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
+    constructor(content, value="", icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
         super();
 
         this.elem.classList.add("prompt");
@@ -1203,6 +1207,7 @@ App.Prompt = class AppPrompt extends App.PopupBase {
         });
 
         this.content = content;
+        this.eInput.value = value;
         this.icon = icon;
         this.confirm = confirm;
         this.cancel = cancel;
@@ -1853,14 +1858,11 @@ export class AppFeature extends App {
                 pop.eContent.innerText = "Are you sure you want to delete these projects?\nThis action is not reversible!";
                 pop.hasInfo = true;
                 pop.info = ids.map(id => this.getProject(id).meta.name).join("\n");
-                pop.addHandler("result", async result => {
-                    result = !!result;
-                    if (result) {
-                        ids.forEach(id => this.remProject(id));
-                        await this.post("cmd-save");
-                        this.page = "PROJECTS";
-                    }
-                });
+                let result = await pop.whenResult();
+                if (!result) return;
+                ids.forEach(id => this.remProject(id));
+                await this.post("cmd-save");
+                this.page = "PROJECTS";
             });
             this.addHandler("cmd-close", () => {
                 if (this.page != "PROJECT") return;
@@ -2185,7 +2187,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             lastSelected = null;
             lastAction = null;
         });
-        this.eContent.addEventListener("contextmenu", e => {
+        const contextMenu = () => {
             let ids = [...selected];
             let itm;
             let menu = new App.ContextMenu();
@@ -2201,7 +2203,14 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             });
             itm = menu.addItem(new App.ContextMenu.Item("Rename"));
             itm.disabled = ids.length != 1;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", async data => {
+                let project = this.app.getProject(ids[0]);
+                if (!(project instanceof this.app.constructor.PROJECTCLASS)) return;
+                let pop = this.app.prompt("Rename", project.meta.name);
+                let result = await pop.whenResult();
+                if (result == null) return;
+                project.meta.name = result;
+                await this.app.syncWithFilesClean();
             });
             menu.addItem(new App.ContextMenu.Divider());
             itm = menu.addItem(new App.ContextMenu.Item("Delete"));
@@ -2216,6 +2225,9 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                     await this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
             });
             this.app.contextMenu = menu;
+        };
+        this.eContent.addEventListener("contextmenu", e => {
+            contextMenu();
             this.app.placeContextMenu(e.pageX, e.pageY);
         });
         
@@ -2248,27 +2260,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.addHandler("contextmenu", id => {
             if (selected.size == 1) this.post("trigger", { id: [...selected][0] });
             if (selected.size == 0) this.post("trigger", { id: id });
-            let ids = [...selected];
-            let itm;
-            let menu = new App.ContextMenu();
-            itm = menu.addItem(new App.ContextMenu.Item("Open"));
-            itm.disabled = ids.length != 1;
-            itm.addHandler("trigger", data => {
-                this.app.setPage("PROJECT", { id: ids[0] });
-            });
-            menu.addItem(new App.ContextMenu.Divider());
-            itm = menu.addItem(new App.ContextMenu.Item("Delete"));
-            itm.disabled = ids.length <= 0;
-            itm.addHandler("trigger", data => {
-                this.app.post("cmd-delete", ids);
-            });
-            itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
-            itm.disabled = ids.length <= 0;
-            itm.addHandler("trigger", async data => {
-                for (let i = 0; i < ids.length; i++)
-                    await this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
-            });
-            this.app.contextMenu = menu;
+            contextMenu();
         });
 
         this.addHandler("update", data => {

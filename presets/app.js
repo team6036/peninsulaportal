@@ -24,12 +24,10 @@ class Action extends util.Target {
         let idfs = {
             "cleanup-app-data-dir": () => {
                 this.action = async () => {
-                    let confirmed = await new Promise((res, rej) => {
-                        let pop = this.app.confirm();
-                        pop.eContent.innerText = "Are you sure you want to cleanup application data?\nThis might accidentally delete some files - backup the entire application directory!\n(Or trust that I wrote this code well)";
-                        pop.addHandler("result", async result => res(!!result));
-                    });
-                    if (!confirmed) return;
+                    let pop = this.app.confirm();
+                    pop.eContent.innerText = "Are you sure you want to cleanup application data?\nThis might accidentally delete some files - backup the entire application directory!\n(Or trust that I wrote this code well)";
+                    let result = await pop.whenResult();
+                    if (!result) return;
                     await action();
                 };
             },
