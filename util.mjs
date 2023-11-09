@@ -717,7 +717,7 @@ export class Color extends Target {
     }
     get hsv() { return this.hsva.slice(0, 3); }
     set hsv(hsv) {
-        hsv = ensure(v, "arr");
+        hsv = ensure(hsv, "arr");
         if (hsv.length != 3) hsv = [0, 0, 0];
         let hsva = this.hsva;
         [hsva[0], hsva[1], hsva[2]] = hsv;
