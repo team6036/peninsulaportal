@@ -3660,6 +3660,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         let templates = {};
         (async () => {
             templates = util.ensure(await window.api.get("templates"), "obj");
+            if (this.template != "§null") return;
             this.template = await window.api.get("active-template");
         })();
 
@@ -3864,6 +3865,19 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         this.post("change", "template");
     }
 
+    getValue(field) {
+        if (!(field instanceof Source.Field)) return null;
+        if (field.isStruct && (field.structType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+            return paths.map(path => {
+                let subfield = field.lookup(path);
+                if (!(subfield instanceof Source.Field)) return null;
+                return subfield.get();
+            });
+        }
+        return field.get();
+    }
+
     getHovered(data, pos, options) {
         pos = new V(pos);
         options = util.ensure(options, "obj");
@@ -3884,8 +3898,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 p: () => {
                     if (!(data instanceof Source.Field)) return null;
                     if (!data.hasType()) return null;
-                    if (!data.isPrimitive) return null;
-                    if (!numbers.includes(data.arrayType)) return null;
+                    // if (!data.isPrimitive) return null;
+                    // if (!numbers.includes(data.arrayType)) return null;
                     return {
                         r: r,
                         submit: () => {
@@ -4294,7 +4308,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 }
             }
             else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.optionState];
-            else a = [[], null];
+            else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 1000];
         if (a.length == 3) a = [...a, 100];
@@ -4347,7 +4361,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
                 const field = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = (field instanceof Source.Field) ? field.get() : null;
+                pose.state.value = this.getValue(field);
                 pose.state.update();
             });
             this.odometry.update();
@@ -4447,18 +4461,6 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
     #eGhostBtn;
     #eDisplayType;
-
-    static PATTERNS = {
-        "Pose2d": [
-            ["translation", "x"],
-            ["translation", "y"],
-            ["translation", "z"],
-            ["rotation", "q", "x"],
-            ["rotation", "q", "y"],
-            ["rotation", "q", "z"],
-            ["rotation", "q", "w"],
-        ],
-    };
 
     constructor(...a) {
         super();
@@ -4644,6 +4646,23 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     static CREATECTX = false;
 
+    static PATTERNS = {
+        "Pose2d": [
+            ["translation", "x"],
+            ["translation", "y"],
+            ["rotation", "value"],
+        ],
+        "Pose3d": [
+            ["translation", "x"],
+            ["translation", "y"],
+            ["translation", "z"],
+            ["rotation", "q", "x"],
+            ["rotation", "q", "y"],
+            ["rotation", "q", "z"],
+            ["rotation", "q", "w"],
+        ],
+    };
+
     constructor(...a) {
         super("3d");
 
@@ -4671,7 +4690,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         const radius = 0.05;
         const length = 5;
-        this.#axisScene = new THREE.Object3D();
+        this.#axisScene = new THREE.Group();
         const xAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
@@ -4829,7 +4848,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 }
             }
             else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
-            else a = [[], null];
+            else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 0.5];
         if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, a[2]];
@@ -4851,7 +4870,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             page.source.updateTopic("k", [0, 0, 0, 0, 0, 0, 0]);
         };
 
-        let template = null, model = null;
+        let template = "§null", model = null;
         
         let keys = new Set();
         document.body.addEventListener("keydown", e => keys.add(e.code));
@@ -4893,44 +4912,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
                 const field = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = (field instanceof Source.Field) ? field.get() : null;
+                pose.state.value = this.getValue(field);
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
                 pose.state.update();
             });
-
-            if ((this.template in templateModels) && !(this.template in preloadedFields)) {
-                const template = this.template;
-                preloadedFields[template] = null;
-                loader.load(templateModels[template], gltf => {
-                    gltf.scene.traverse(obj => {
-                        if (!obj.isMesh) return;
-                        if (obj.material instanceof THREE.MeshStandardMaterial) {
-                            obj.material.metalness = 0;
-                            obj.material.roughness = 1;
-                        }
-                    });
-                    let obj, pobj;
-                    obj = gltf.scene;
-                    let bbox = new THREE.Box3().setFromObject(obj);
-                    obj.position.set(
-                        obj.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
-                        obj.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
-                        obj.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
-                    );
-                    [obj, pobj] = [new THREE.Object3D(), obj];
-                    obj.add(pobj);
-                    preloadedFields[template] = obj;
-                }, null, err => { delete preloadedFields[template]; });
-            }
-
-            if (template != this.template || model != preloadedFields[this.template]) {
-                template = this.template;
-                model = preloadedFields[this.template];
-                this.field = model;
-            }
-
+            
             let colorR = new util.Color(getComputedStyle(document.body).getPropertyValue("--cr"));
             let colorG = new util.Color(getComputedStyle(document.body).getPropertyValue("--cg"));
             let colorB = new util.Color(getComputedStyle(document.body).getPropertyValue("--cb"));
@@ -4964,6 +4952,37 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 planes.splice(planes.indexOf(plane), 1);
                 this.axisScene.remove(plane);
             });
+
+            if ((this.template in templateModels) && !(this.template in preloadedFields)) {
+                const template = this.template;
+                preloadedFields[template] = null;
+                loader.load(templateModels[template], gltf => {
+                    gltf.scene.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        if (obj.material instanceof THREE.MeshStandardMaterial) {
+                            obj.material.metalness = 0;
+                            obj.material.roughness = 1;
+                        }
+                    });
+                    let obj, pobj;
+                    obj = gltf.scene;
+                    let bbox = new THREE.Box3().setFromObject(obj);
+                    obj.position.set(
+                        obj.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
+                        obj.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
+                        obj.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
+                    );
+                    [obj, pobj] = [new THREE.Object3D(), obj];
+                    obj.add(pobj);
+                    preloadedFields[template] = obj;
+                }, null, err => { delete preloadedFields[template]; });
+            }
+
+            if (template != this.template || model != preloadedFields[this.template]) {
+                template = this.template;
+                model = preloadedFields[this.template];
+                this.field = model;
+            }
 
             if (this.controls instanceof OrbitControls) {
                 this.controls.target.set(0, 0, 0);
