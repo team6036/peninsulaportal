@@ -1054,17 +1054,15 @@ article.md ul {
 
     color: var(--v8);
 }
-.popup.alert > .inner,
-.popup.confirm > .inner,
-.popup.prompt > .inner {
+.popup.core > .inner {
     max-width: 250px;
 }
 .popup.alert > .inner:has(> .info) {
     max-width: 500px;
 }
-.popup.alert > .inner > .icon,
-.popup.confirm > .inner > .icon,
-.popup.prompt > .inner > .icon {
+.popup.core > .inner > .icon {
+    position: relative;
+
     padding: 10px;
 
     display: flex;
@@ -1073,20 +1071,28 @@ article.md ul {
     justify-content: center;
     align-items: center;
     align-content: center;
+}
+.popup.core > .inner > .icon > ion-icon:first-child {
+    color: var(--v5);
 
-    text-align: center;
     font-size: 50px;
 }
-.popup.alert > .inner > .content,
-.popup.confirm > .inner > .content,
-.popup.prompt > .inner > .content {
+.popup.core > .inner > .icon > ion-icon:last-child {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translate(15px, 15px);
+
+    color: var(--v8);
+
+    font-size: 25px;
+}
+.popup.core > .inner > .content {
     color: var(--v8);
     
     text-align: center;
 }
-.popup.alert > .inner > button,
-.popup.confirm > .inner > button,
-.popup.prompt > .inner > button {
+.popup.core > .inner > button {
     --bg: var(--v3);
     --bgh: var(--v4);
     --bgd: var(--v3);
@@ -1095,9 +1101,7 @@ article.md ul {
 
     border-radius: 10px;
 }
-.popup.alert > .inner > button.special,
-.popup.confirm > .inner > button.special,
-.popup.prompt > .inner > button.special {
+.popup.core > .inner > button.special {
     --bg: var(--a);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -1105,9 +1109,7 @@ article.md ul {
     --bgd: var(--a2);
     --fgd: var(--v6);
 }
-.popup.alert > .inner > .info,
-.popup.confirm > .inner > .info,
-.popup.prompt > .inner > .info {
+.popup.core > .inner > .info {
     max-height: 250px;
     padding: 10px;
     overflow: auto;

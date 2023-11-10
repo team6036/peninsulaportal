@@ -382,6 +382,7 @@ export class App extends util.Target {
             let pop = this.alert();
             pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
+            pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.content = "Peninsula "+util.capitalize(name);
             pop.info = (await this.getAboutLines()).join("\n");
             pop.hasInfo = true;
@@ -1000,58 +1001,66 @@ App.Popup = class AppPopup extends App.PopupBase {
     get title() { return this.eTitle.textContent; }
     set title(v) { this.eTitle.textContent = v; }
 };
-App.Alert = class AppAlert extends App.PopupBase {
+App.CorePopup = class AppCorePopup extends App.PopupBase {
+    #eIconBox;
     #eIcon;
+    #eSubIcon;
     #eContent;
     #eInfo;
-    #eButton;
 
-    constructor(content, icon="alert-circle", button="OK", info=null) {
+    constructor(content, icon="") {
         super();
 
-        this.elem.classList.add("alert");
+        this.elem.classList.add("core");
 
-        this.#eIcon = document.createElement("div");
-        this.inner.appendChild(this.eIcon);
-        this.eIcon.classList.add("icon");
-        this.eIcon.innerHTML = "<ion-icon></ion-icon>";
+        this.#eIconBox = document.createElement("div");
+        this.inner.appendChild(this.eIconBox);
+        this.eIconBox.classList.add("icon");
+        this.#eIcon = document.createElement("ion-icon");
+        this.eIconBox.appendChild(this.eIcon);
+        this.#eSubIcon = document.createElement("ion-icon");
+        this.eIconBox.appendChild(this.eSubIcon);
         this.#eContent = document.createElement("div");
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
         this.#eInfo = document.createElement("pre");
         this.eInfo.classList.add("info");
-        this.#eButton = document.createElement("button");
-        this.inner.appendChild(this.eButton);
-        this.eButton.classList.add("special");
-
-        this.eButton.addEventListener("click", e => this.post("result", null));
 
         this.content = content;
         this.icon = icon;
-        this.button = button;
-        this.hasInfo = (info != null);
-        this.info = info;
-
-        this.iconColor = "var(--v5)";
     }
 
+    get eIconBox() { return this.#eIconBox; }
     get eIcon() { return this.#eIcon; }
+    get eSubIcon() { return this.#eSubIcon; }
     get eContent() { return this.#eContent; }
     get eInfo() { return this.#eInfo; }
-    get eButton() { return this.#eButton; }
 
-    get icon() { return this.eIcon.children[0].getAttribute("name"); }
+    get icon() { return this.eIcon.getAttribute("name"); }
     set icon(v) {
-        this.eIcon.children[0].removeAttribute("src");
-        this.eIcon.children[0].setAttribute("name", v);
+        this.eIcon.removeAttribute("src");
+        this.eIcon.setAttribute("name", v);
     }
-    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
+    get iconSrc() { return this.eIcon.getAttribute("src"); }
     set iconSrc(v) {
-        this.eIcon.children[0].removeAttribute("name");
-        this.eIcon.children[0].setAttribute("src", v);
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
     }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
+
+    get subIcon() { return this.eSubIcon.getAttribute("name"); }
+    set subIcon(v) {
+        this.eSubIcon.removeAttribute("src");
+        this.eSubIcon.setAttribute("name", v);
+    }
+    get subIconSrc() { return this.eSubIcon.getAttribute("src"); }
+    set subIconSrc(v) {
+        this.eSubIcon.removeAttribute("name");
+        this.eSubIcon.setAttribute("src", v);
+    }
+    get subIconColor() { return this.eSubIcon.style.color; }
+    set subIconColor(v) { this.eSubIcon.style.color = v; }
     
     get content() { return this.eContent.textContent; }
     set content(v) { this.eContent.textContent = v; }
@@ -1065,6 +1074,25 @@ App.Alert = class AppAlert extends App.PopupBase {
     }
     get info() { return this.eInfo.innerHTML; }
     set info(v) { this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
+}
+App.Alert = class AppAlert extends App.CorePopup {
+    #eButton;
+
+    constructor(content, icon="alert-circle", button="OK") {
+        super(content, icon);
+
+        this.elem.classList.add("alert");
+
+        this.#eButton = document.createElement("button");
+        this.inner.appendChild(this.eButton);
+        this.eButton.classList.add("special");
+
+        this.eButton.addEventListener("click", e => this.post("result", null));
+
+        this.button = button;
+    }
+
+    get eButton() { return this.#eButton; }
 
     get button() { return this.eButton.textContent; }
     set button(v) { this.eButton.textContent = v; }
@@ -1079,27 +1107,15 @@ App.Error = class AppError extends App.Alert {
         this.info = info;
     }
 };
-App.Confirm = class AppConfirm extends App.PopupBase {
-    #eIcon;
-    #eContent;
-    #eInfo;
+App.Confirm = class AppConfirm extends App.CorePopup {
     #eConfirm;
     #eCancel;
 
     constructor(content, icon="help-circle", confirm="OK", cancel="Cancel") {
-        super();
+        super(content, icon);
 
         this.elem.classList.add("confirm");
 
-        this.#eIcon = document.createElement("div");
-        this.inner.appendChild(this.eIcon);
-        this.eIcon.classList.add("icon");
-        this.eIcon.innerHTML = "<ion-icon></ion-icon>";
-        this.#eContent = document.createElement("div");
-        this.inner.appendChild(this.eContent);
-        this.eContent.classList.add("content");
-        this.#eInfo = document.createElement("pre");
-        this.eInfo.classList.add("info");
         this.#eConfirm = document.createElement("button");
         this.inner.appendChild(this.eConfirm);
         this.eConfirm.classList.add("special");
@@ -1113,73 +1129,28 @@ App.Confirm = class AppConfirm extends App.PopupBase {
             await this.post("result", false);
         });
 
-        this.content = content;
-        this.icon = icon;
         this.confirm = confirm;
         this.cancel = cancel;
-
-        this.iconColor = "var(--v5)";
     }
 
-    get eIcon() { return this.#eIcon; }
-    get eContent() { return this.#eContent; }
-    get eInfo() { return this.#eInfo; }
     get eCancel() { return this.#eCancel; }
     get eConfirm() { return this.#eConfirm; }
-
-    get icon() { return this.eIcon.children[0].getAttribute("name"); }
-    set icon(v) {
-        this.eIcon.children[0].removeAttribute("src");
-        this.eIcon.children[0].setAttribute("name", v);
-    }
-    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.children[0].removeAttribute("name");
-        this.eIcon.children[0].setAttribute("src", v);
-    }
-    get iconColor() { return this.eIcon.style.color; }
-    set iconColor(v) { this.eIcon.style.color = v; }
-
-    get content() { return this.eContent.textContent; }
-    set content(v) { this.eContent.textContent = v; }
-
-    get hasInfo() { return this.elem.contains(this.eInfo); }
-    set hasInfo(v) {
-        v = !!v;
-        if (this.hasInfo == v) return;
-        if (v) this.inner.insertBefore(this.eInfo, this.eConfirm);
-        else this.inner.removeChild(this.eInfo);
-    }
-    get info() { return this.eInfo.innerHTML; }
-    set info(v) { this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
 
     get confirm() { return this.eConfirm.textContent; }
     set confirm(v) { this.eConfirm.textContent = v; }
     get cancel() { return this.eCancel.textContent; }
     set cancel(v) { this.eCancel.textContent = v; }
 };
-App.Prompt = class AppPrompt extends App.PopupBase {
-    #eIcon;
-    #eContent;
-    #eInfo;
+App.Prompt = class AppPrompt extends App.CorePopup {
     #eInput;
     #eConfirm;
     #eCancel;
 
     constructor(content, value="", icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
-        super();
+        super(content, icon);
 
         this.elem.classList.add("prompt");
 
-        this.#eIcon = document.createElement("div");
-        this.inner.appendChild(this.eIcon);
-        this.eIcon.classList.add("icon");
-        this.eIcon.innerHTML = "<ion-icon></ion-icon>";
-        this.#eContent = document.createElement("div");
-        this.inner.appendChild(this.eContent);
-        this.eContent.classList.add("content");
-        this.#eInfo = document.createElement("pre");
-        this.eInfo.classList.add("info");
         this.#eInput = document.createElement("input");
         this.inner.appendChild(this.eInput);
         this.eInput.autocomplete = "off";
@@ -1197,48 +1168,15 @@ App.Prompt = class AppPrompt extends App.PopupBase {
             await this.post("result", null);
         });
 
-        this.content = content;
         this.eInput.value = value;
-        this.icon = icon;
         this.confirm = confirm;
         this.cancel = cancel;
         this.placeholder = placeholder;
-
-        this.iconColor = "var(--v5)";
     }
 
-    get eIcon() { return this.#eIcon; }
-    get eContent() { return this.#eContent; }
-    get eInfo() { return this.#eInfo; }
     get eInput() { return this.#eInput; }
     get eCancel() { return this.#eCancel; }
     get eConfirm() { return this.#eConfirm; }
-
-    get icon() { return this.eIcon.children[0].getAttribute("name"); }
-    set icon(v) {
-        this.eIcon.children[0].removeAttribute("src");
-        this.eIcon.children[0].setAttribute("name", v);
-    }
-    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.children[0].removeAttribute("name");
-        this.eIcon.children[0].setAttribute("src", v);
-    }
-    get iconColor() { return this.eIcon.style.color; }
-    set iconColor(v) { this.eIcon.style.color = v; }
-
-    get content() { return this.eContent.textContent; }
-    set content(v) { this.eContent.textContent = v; }
-
-    get hasInfo() { return this.elem.contains(this.eInfo); }
-    set hasInfo(v) {
-        v = !!v;
-        if (this.hasInfo == v) return;
-        if (v) this.inner.insertBefore(this.eInfo, this.eInput);
-        else this.inner.removeChild(this.eInfo);
-    }
-    get info() { return this.eInfo.innerHTML; }
-    set info(v) { this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
 
     get confirm() { return this.eConfirm.textContent; }
     set confirm(v) { this.eConfirm.textContent = v; }
