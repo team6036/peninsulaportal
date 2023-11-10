@@ -5464,7 +5464,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         obj.rotation.set(0, -this.value[2] * (this.tab.isDegrees ? (Math.PI/180) : 1), 0, "XYZ");
                     } else {
                         obj.position.set(
-                            (this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
+                            -(this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
                             (this.value[2] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
                             (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
                         );
