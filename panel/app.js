@@ -30,7 +30,7 @@ THREE.Quaternion.fromRotationSequence = (...seq) => {
         axis = axis.toLowerCase();
         if (!"xyz".includes(axis)) return;
         let vec = new THREE.Vector3(+(axis=="x"), +(axis=="y"), +(axis=="z"));
-        q.premultiply(new THREE.Quaternion().setFromAxisAngle(vec, (Math.PI/180)*angle));
+        q.multiply(new THREE.Quaternion().setFromAxisAngle(vec, (Math.PI/180)*angle));
     });
     return q;
 };
@@ -40,7 +40,7 @@ const WPILIBQUATERNIONOFFSET = THREE.Quaternion.fromRotationSequence(
         angle: -90,
     },
     {
-        axis: "y",
+        axis: "z",
         angle: 180,
     },
 );
@@ -4909,7 +4909,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
-                pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
+                pose.state.offsetX = +((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
                 const field = (source instanceof Source) ? source.root.lookup(pose.path) : null;
                 pose.state.value = this.getValue(field);
@@ -4918,15 +4918,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.camera = this.camera;
                 pose.state.update();
             });
-            
+
             let colorR = new util.Color(getComputedStyle(document.body).getPropertyValue("--cr"));
             let colorG = new util.Color(getComputedStyle(document.body).getPropertyValue("--cg"));
             let colorB = new util.Color(getComputedStyle(document.body).getPropertyValue("--cb"));
             let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v4"));
             this.scene.fog.color.set(colorV.toHex(false));
             this.axisScene.xAxis.material.color.set(colorR.toHex(false));
-            this.axisScene.yAxis.material.color.set(colorG.toHex(false));
-            this.axisScene.zAxis.material.color.set(colorB.toHex(false));
+            this.axisScene.yAxis.material.color.set(colorB.toHex(false));
+            this.axisScene.zAxis.material.color.set(colorG.toHex(false));
             let planes = this.axisScene.planes;
             let size = 10;
             let i = 0;
@@ -4990,21 +4990,21 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.eContent.classList.remove("showinfo");
             } else if (this.controls instanceof PointerLockControls) {
                 if (this.controls.isLocked) {
-                    let zP = keys.has("KeyW") || keys.has("ArrowUp");
-                    let zN = keys.has("KeyS") || keys.has("ArrowDown");
                     let xP = keys.has("KeyD") || keys.has("ArrowRight");
                     let xN = keys.has("KeyA") || keys.has("ArrowLeft");
-                    let yP = keys.has("Space");
-                    let yN = keys.has("ShiftRight") || keys.has("ShiftLeft");
-                    let z = zP - zN;
+                    let yP = keys.has("KeyW") || keys.has("ArrowUp");
+                    let yN = keys.has("KeyS") || keys.has("ArrowDown");
+                    let zP = keys.has("Space");
+                    let zN = keys.has("ShiftRight") || keys.has("ShiftLeft");
                     let x = xP - xN;
                     let y = yP - yN;
+                    let z = zP - zN;
                     velocity.iadd(new util.V3(x, y, z).mul(0.01));
                     velocity.imul(0.9);
                     velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));
-                    this.controls.moveForward(velocity.z);
                     this.controls.moveRight(velocity.x);
-                    this.camera.position.y += velocity.y;
+                    this.controls.moveForward(velocity.y);
+                    this.camera.position.y += velocity.z;
                     this.eContent.classList.add("showinfo");
                 } else {
                     velocity.imul(0);
@@ -5386,9 +5386,9 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                                 obj.material.roughness = 1;
                             }
                         });
-                        let obj, pobj;
+                        let obj, pobj, bbox;
                         obj = gltf.scene;
-                        let bbox = new THREE.Box3().setFromObject(obj);
+                        bbox = new THREE.Box3().setFromObject(obj);
                         obj.position.set(
                             obj.position.x + (0-(bbox.max.x+bbox.min.x)/2),
                             obj.position.y + (0-(bbox.max.y+bbox.min.y)/2),
@@ -5397,6 +5397,10 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         [obj, pobj] = [new THREE.Object3D(), obj];
                         obj.add(pobj);
                         obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[robot], "obj").rotations));
+                        [obj, pobj] = [new THREE.Object3D(), obj];
+                        obj.add(pobj);
+                        bbox = new THREE.Box3().setFromObject(obj);
+                        obj.position.setZ((bbox.max.z-bbox.min.z)/2);
                         [obj, pobj] = [new THREE.Object3D(), obj];
                         obj.add(pobj);
                         preloadedRobots[robot] = obj;
@@ -5461,10 +5465,10 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     } else {
                         obj.position.set(
                             (this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
-                            (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
-                            (this.value[2] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
+                            (this.value[2] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
+                            (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
                         );
-                        obj.quaternion.copy(new THREE.Quaternion(...this.value.slice(3)).multiply(WPILIBQUATERNIONOFFSET));
+                        obj.quaternion.copy(new THREE.Quaternion(...this.value.slice(3)).premultiply(WPILIBQUATERNIONOFFSET));
                     }
                     if (this.pose.type.startsWith("§")) {
                         let typefs = {
