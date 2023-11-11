@@ -2179,11 +2179,12 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
 
         let ready = false;
         this.eWebView.addEventListener("dom-ready", () => (ready = true));
+        this.addHandler("rem", () => (ready = false));
 
         let src = null;
 
         this.addHandler("update", data => {
-            if (!ready) return;
+            if (!ready || !document.body.contains(this.eWebView)) return;
             if (document.activeElement != this.eSrcInput)
                 this.eSrcInput.value = this.eWebView.getURL();
             if (this.eLoadBtn.children[0] instanceof HTMLElement)
