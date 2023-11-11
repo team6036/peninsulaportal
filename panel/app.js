@@ -166,6 +166,10 @@ function getTabDisplay(name) {
         name: "locate",
         color: "var(--cy)",
     };
+    if (name == "webview") return {
+        name: "globe-outline",
+        color: "var(--cc)",
+    };
     if (name == "logger") return {
         name: "list",
         color: "var(--cc)",
@@ -1301,6 +1305,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 dname: "Odometry3d",
             },
             {
+                type: Panel.WebViewTab,
+                name: "webview",
+                dname: "WebView",
+            },
+            {
                 type: Panel.LoggerTab,
                 name: "logger",
                 dname: "PlexusLogger",
@@ -2105,6 +2114,110 @@ class LoggerContext extends util.Target {
         });
     }
 }
+Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
+    #src;
+
+    #eNav;
+    #eBackBtn;
+    #eForwardBtn;
+    #eLoadBtn;
+    #eSrcInput;
+    #eWebView;
+
+    constructor(...a) {
+        super("WebView", "webview");
+
+        this.elem.classList.add("webview");
+
+        this.#src = "";
+
+        this.#eNav = document.createElement("div");
+        this.elem.appendChild(this.eNav);
+        this.eNav.classList.add("nav");
+        this.#eBackBtn = document.createElement("button");
+        this.eNav.appendChild(this.eBackBtn);
+        this.eBackBtn.innerHTML = "<ion-icon name='arrow-back'></ion-icon>";
+        this.#eForwardBtn = document.createElement("button");
+        this.eNav.appendChild(this.eForwardBtn);
+        this.eForwardBtn.innerHTML = "<ion-icon name='arrow-forward'></ion-icon>";
+        this.#eLoadBtn = document.createElement("button");
+        this.eNav.appendChild(this.eLoadBtn);
+        this.eLoadBtn.innerHTML = "<ion-icon></ion-icon>";
+        this.#eSrcInput = document.createElement("input");
+        this.eNav.appendChild(this.eSrcInput);
+        this.eSrcInput.type = "text";
+        this.eSrcInput.placeholder = "URL";
+        this.#eWebView = document.createElement("webview");
+        this.elem.appendChild(this.eWebView);
+        this.eWebView.setAttribute("src", "https://www.example.com");
+
+        if (a.length > 1 || a.length <= 0) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.WebViewTab) a = [a.src];
+            else if (util.is(a, "arr")) a = [new Panel.WebViewTab(...a).src];
+            else if (util.is(a, "obj")) a = [a.src];
+            else a = [""];
+        }
+
+        [this.src] = a;
+
+        this.eBackBtn.addEventListener("click", e => {
+            if (!ready) return;
+            this.eWebView.goBack();
+        });
+        this.eForwardBtn.addEventListener("click", e => {
+            if (!ready) return;
+            this.eWebView.goForward();
+        });
+        this.eLoadBtn.addEventListener("click", e => {
+            if (!ready) return;
+            if (this.eWebView.isLoading()) this.eWebView.stop();
+            else this.eWebView.reload();
+        });
+        this.eSrcInput.addEventListener("change", e => (this.src = this.eSrcInput.value));
+
+        let ready = false;
+        this.eWebView.addEventListener("dom-ready", () => (ready = true));
+
+        let src = null;
+
+        this.addHandler("update", data => {
+            if (!ready) return;
+            if (document.activeElement != this.eSrcInput)
+                this.eSrcInput.value = this.eWebView.getURL();
+            if (this.eLoadBtn.children[0] instanceof HTMLElement)
+                this.eLoadBtn.children[0].setAttribute("name", this.eWebView.isLoading() ? "close" : "refresh");
+            this.eBackBtn.disabled = !this.eWebView.canGoBack();
+            this.eForwardBtn.disabled = !this.eWebView.canGoForward();
+            if (this.eWebView.isLoading()) return;
+            if (src == this.src) return;
+            src = this.src;
+            this.eWebView.loadURL(this.src);
+        });
+    }
+
+    get src() { return this.#src; }
+    set src(v) {
+        v = String(v);
+        if (this.src == v) return;
+        this.#src = v;
+        this.post("change", "src");
+    }
+
+    get eNav() { return this.#eNav; }
+    get eBackBtn() { return this.#eBackBtn; }
+    get eForwardBtn() { return this.#eForwardBtn; }
+    get eLoadBtn() { return this.#eLoadBtn; }
+    get eSrcInput() { return this.#eSrcInput; }
+    get eWebView() { return this.#eWebView; }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            src: this.src,
+        });
+    }
+};
 const LOGGERCONTEXT = new LoggerContext();
 Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #logs;
@@ -6293,6 +6406,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         this.addToolButton(new ToolButton("Odom3d", "odometry3d")).addHandler("drag", () => {
             this.app.dragData = new Panel.Odometry3dTab();
+            this.app.dragging = true;
+        });
+        this.addToolButton(new ToolButton("WebView", "webview")).addHandler("drag", () => {
+            this.app.dragData = new Panel.WebViewTab();
             this.app.dragging = true;
         });
         this.addToolButton(new ToolButton("PLogger", "logger")).addHandler("drag", () => {
