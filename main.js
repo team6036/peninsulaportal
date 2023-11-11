@@ -1,64 +1,63 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
-const os = require("os");
+(async () => {
 
-const path = require("path");
-const fs = require("fs");
+    const log = (...a) => {
+        let now = new Date();
+        let yr = now.getFullYear();
+        let mon = String(now.getMonth()+1);
+        let d = String(now.getDate());
+        let hr = String(now.getHours());
+        let min = String(now.getMinutes());
+        let s = String(now.getSeconds());
+        let ms = String(now.getMilliseconds());
+        while (mon.length < 2) mon = "0"+mon;
+        while (d.length < 2) d = "0"+d;
+        while (hr.length < 2) hr = "0"+hr;
+        while (min.length < 2) min = "0"+min;
+        while (s.length < 2) s = "0"+s;
+        while (ms.length < 3) ms += "0";
+        return console.log(`${yr}-${mon}-${d} ${hr}:${min}:${s}.${ms}`, ...a);
+    };
 
-const cp = require("child_process");
-
-const electron = require("electron");
-const app = electron.app;
-const ipc = electron.ipcMain;
-
-const fetch = require("electron-fetch").default;
-const png2icons = require("png2icons");
-const compareVersions = require("compare-versions");
-
-const sc = require("socket.io-client");
-const ss = require("socket.io-stream");
-
-
-const log = (...a) => {
-    let now = new Date();
-    let yr = now.getFullYear();
-    let mon = String(now.getMonth()+1);
-    let d = String(now.getDate());
-    let hr = String(now.getHours());
-    let min = String(now.getMinutes());
-    let s = String(now.getSeconds());
-    let ms = String(now.getMilliseconds());
-    while (mon.length < 2) mon = "0"+mon;
-    while (d.length < 2) d = "0"+d;
-    while (hr.length < 2) hr = "0"+hr;
-    while (min.length < 2) min = "0"+min;
-    while (s.length < 2) s = "0"+s;
-    while (ms.length < 3) ms += "0";
-    return console.log(`${yr}-${mon}-${d} ${hr}:${min}:${s}.${ms}`, ...a);
-};
-
-const OS = {
-    arch: os.arch(),
-    platform: os.platform(),
-    cpus: os.cpus(),
-    user: os.userInfo(),
-};
-
-function simplify(s) {
-    s = String(s);
-    if (s.length > 20) s = s.substring(0, 20)+"...";
-    return s;
-}
-
-
-const MAIN = async () => {
     log("< IMPORTING ASYNCHRONOUSLY >");
 
     const util = await import("./util.mjs");
     const V = util.V;
 
     log("< IMPORTED ASYNCHRONOUSLY >");
+
+    const os = require("os");
+
+    const path = require("path");
+    const fs = require("fs");
+
+    const cp = require("child_process");
+
+    const electron = require("electron");
+    const app = electron.app;
+    const ipc = electron.ipcMain;
+
+    const fetch = require("electron-fetch").default;
+    const png2icons = require("png2icons");
+    const compareVersions = require("compare-versions");
+
+    const sc = require("socket.io-client");
+    const ss = require("socket.io-stream");
+
+    const OS = {
+        arch: os.arch(),
+        platform: os.platform(),
+        cpus: os.cpus(),
+        user: os.userInfo(),
+    };
+
+    function simplify(s) {
+        s = String(s);
+        if (s.length > 20) s = s.substring(0, 20)+"...";
+        return s;
+    }
 
     const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
 
@@ -3186,58 +3185,54 @@ const MAIN = async () => {
 
     log("< BUILT PORTAL >");
 
-    return Portal;
-};
+    const portal = new Portal();
 
-let portal = null;
+    let initialized = false, initializedRes = [];
+    async function whenInitialized() {
+        if (initialized) return;
+        return await new Promise((res, rej) => initializedRes.push(res));
+    }
 
-let ready = false, readyResolves = [];
-async function untilReady() {
-    return await new Promise((res, rej) => {
-        if (ready) return res();
-        readyResolves.push(res);
+    app.on("activate", async () => {
+        log("> activate");
+        await whenInitialized();
+        portal.start();
     });
-}
-(async () => {
-    portal = new (await MAIN())();
-    await portal.init();
-    ready = true;
-    readyResolves.forEach(res => res());
-    setInterval(() => portal.update(), 10);
-})();
 
-app.on("ready", async () => {
-    await untilReady();
+    let allow = false;
+    app.on("before-quit", async e => {
+        if (allow) return;
+        e.preventDefault();
+        await whenInitialized();
+        log("> before-quit");
+        let quit = true;
+        try {
+            quit = await portal.stop();
+        } catch (e) {}
+        if (!quit) return;
+        allow = true;
+        app.quit();
+    });
+    app.on("window-all-closed", async () => {
+        log("> all-closed");
+        await whenInitialized();
+        app.quit();
+    });
+    app.on("quit", async () => {
+        log("> quit");
+        await whenInitialized();
+    });
+
+    await app.whenReady();
+
     log("> ready");
-    portal.start();
-});
 
-app.on("activate", async () => {
-    await untilReady();
-    log("> activate");
+    await portal.init();
     portal.start();
-});
+    initialized = true;
+    initializedRes.forEach(res => res());
+    initializedRes = [];
 
-let allow = false;
-app.on("before-quit", async e => {
-    if (allow) return;
-    e.preventDefault();
-    await untilReady();
-    log("> before-quit");
-    let quit = true;
-    try {
-        quit = await portal.stop();
-    } catch (e) {}
-    if (!quit) return;
-    allow = true;
-    app.quit();
-});
-app.on("window-all-closed", async () => {
-    await untilReady();
-    log("> all-closed");
-    app.quit();
-});
-app.on("quit", async () => {
-    await untilReady();
-    log("> quit");
-});
+    setInterval(() => portal.update(), 10);
+
+})();
