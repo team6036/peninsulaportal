@@ -591,7 +591,7 @@ article.md ul {
     position: absolute;
     left: calc(50% + (50% * var(--x)));
     top: calc(50% + (50% * var(--y)));
-    transform-origin: calc(50% - (50% * var(--x))) calc(50% - (50% * var(--y)));
+    transform-origin: calc(50% + (50% * var(--x))) calc(50% - (50% * var(--y)));
     transform:
     translate(
         calc(var(--ay) * (var(--space) * var(--x))),

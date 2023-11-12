@@ -852,6 +852,7 @@ export class App extends util.Target {
     }
     addPage(page) {
         if (!(page instanceof App.Page)) return false;
+        if (page.app != this) return false;
         if (this.hasPage(page.name)) return false;
         this.#pages[page.name] = page;
         this.eMount.appendChild(page.elem);
@@ -1387,7 +1388,7 @@ App.Page = class AppPage extends util.Target {
 
         this.#name = String(name);
 
-        if (!(app instanceof App)) throw "App "+app+" is not of class App";
+        if (!(app instanceof App)) throw "App is not of class App";
         this.#app = app;
 
         this.#elem = document.createElement("div");
@@ -2219,7 +2220,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         let projects = this.app.projects.map(id => this.app.getProject(id));
         if (projects.length > 0) {
             projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
-            projects.forEach(project => this.addButton(new this.constructor.Button(project)));
+            projects.forEach(project => this.addButton(new this.constructor.Button(this, project)));
         } else this.eEmpty.style.display = "block";
     }
 
@@ -2252,13 +2253,13 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     }
     hasButton(btn) {
         if (!(btn instanceof this.constructor.Button)) return false;
-        return this.#buttons.has(btn);
+        return this.#buttons.has(btn) && btn.page == this;
     }
     addButton(btn) {
         if (!(btn instanceof this.constructor.Button)) return false;
+        if (btn.page != this) return false;
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
-        btn.page = this;
         btn._onTrigger = e => this.post("trigger", { id: btn.hasProject() ? btn.project.id : null, shift: !!(util.ensure(e, "obj").shiftKey) });
         btn._onContextMenu = e => this.post("contextmenu", btn.hasProject() ? btn.project.id : null);
         btn.addHandler("trigger", btn._onTrigger);
@@ -2269,9 +2270,9 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     }
     remButton(btn) {
         if (!(btn instanceof this.constructor.Button)) return false;
+        if (btn.page != this) return false;
         if (!this.hasButton(btn)) return false;
         this.#buttons.delete(btn);
-        btn.page = null;
         btn.remHandler("trigger", btn._onTrigger);
         btn.remHandler("contextmenu", btn._onContextMenu);
         delete btn._onTrigger;
@@ -2341,10 +2342,11 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     #eGridOptions;
     #eGridImage;
 
-    constructor(project) {
+    constructor(page, project) {
         super();
 
-        this.#page = null;
+        if (!(page instanceof AppFeature.ProjectsPage)) throw "Page is not of class ProjectsPage";
+        this.#page = page;
 
         this.#project = null;
 
@@ -2415,8 +2417,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         this.project = project;
 
         this.addHandler("update", data => {
-            this.eListIcon.setAttribute("name", this.hasApp() ? this.app.constructor.ICON : "help-circle");
-            this.eGridIcon.setAttribute("name", this.hasApp() ? this.app.constructor.ICON : "help-circle");
+            this.eListIcon.setAttribute("name", this.app.constructor.ICON);
+            this.eGridIcon.setAttribute("name", this.app.constructor.ICON);
             if (!this.hasProject()) return;
             this.name = this.project.meta.name;
             this.time = this.project.meta.modified;
@@ -2425,14 +2427,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     }
 
     get page() { return this.#page; }
-    set page(v) {
-        v = (v instanceof AppFeature.ProjectsPage) ? v : null;
-        if (this.page == v) return;
-        this.#page = v;
-    }
-    hasPage() { return this.page instanceof AppFeature.ProjectsPage; }
-    get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
+    get app() { return this.page.app; }
 
     get project() { return this.#project; }
     set project(v) {
@@ -2440,7 +2435,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         this.#project = v;
         this.post("set", v);
     }
-    hasProject() { return (this.#project instanceof Project) && (this.project instanceof (this.hasApp() ? this.app.constructor.PROJECTCLASS : null)); }
+    hasProject() { return (this.#project instanceof Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
 
     get name() { return this.eListName.textContent; }
     set name(v) { this.eListName.textContent = this.eGridName.textContent = v; }
@@ -2911,10 +2906,9 @@ export class Odometry2d extends util.Target {
     }
     addRender(render) {
         if (!(render instanceof Odometry2d.Render)) return false;
-        if (render.odometry != null) return false;
+        if (render.odometry != this) return false;
         if (this.hasRender(render)) return false;
         this.#renders.add(render);
-        render.odometry = this;
         return render;
     }
     remRender(render) {
@@ -2922,7 +2916,6 @@ export class Odometry2d extends util.Target {
         if (render.odometry != this) return false;
         if (!this.hasRender(render)) return false;
         this.#renders.delete(render);
-        render.odometry = null;
         return render;
     }
 
@@ -3040,10 +3033,14 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
 
     #canHover;
 
-    constructor(pos) {
-        super();
+    constructor(odometry, pos) {
+        super(odometry);
 
-        this.#odometry = null;
+        if (!(odometry instanceof Odometry2d)) {
+            console.log(this.constructor);
+            throw "Odometry is not of class Odometry2d";
+        }
+        this.#odometry = odometry;
 
         this.#pos = new V();
         this.#z = this.#z2 = 0;
@@ -3057,12 +3054,6 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     }
 
     get odometry() { return this.#odometry; }
-    set odometry(v) {
-        v = (v instanceof Odometry2d) ? v : null;
-        if (this.odometry == v) return;
-        this.#odometry = v;
-    }
-    hasOdometry() { return this.odometry instanceof Odometry2d; }
 
     get pos() { return this.#pos; }
     set pos(v) { this.#pos.set(v); }
@@ -3084,7 +3075,6 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     get hovered() { return null; }
 
     render() {
-        if (!this.hasOdometry()) return;
         this.odometry.ctx.globalAlpha = this.alpha;
         this.post("render");
     }
@@ -3115,8 +3105,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         return null;
     }
 
-    constructor(pos, size, heading, velocity) {
-        super(pos);
+    constructor(odometry, pos, size, heading, velocity) {
+        super(odometry, pos);
 
         this.#type = null;
 
@@ -3222,7 +3212,6 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     get hovered() {
         if (!this.canHover) return null;
-        if (!this.hasOdometry()) return null;
         let m = this.odometry.pageToWorld(this.odometry.mouse);
         if (this.showVelocity && this.pos.add(this.velocity).dist(m) < this.odometry.pageLenToWorld(5)) return "velocity";
         if (this.pos.add(V.dir(this.heading, this.w/2)).dist(m) < this.odometry.pageLenToWorld(5)) return "heading";
@@ -3269,8 +3258,8 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
 
     #selected;
 
-    constructor(pos, radius) {
-        super(pos);
+    constructor(odometry, pos, radius) {
+        super(odometry, pos);
 
         this.#radius = 0;
         this.#dir = 0;
@@ -3301,7 +3290,6 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
 
     get hovered() {
         if (!this.canHover) return null;
-        if (!this.hasOdometry()) return null;
         let m = this.odometry.pageToWorld(this.odometry.mouse);
         if (this.pos.add(V.dir(this.dir, this.radius)).dist(m) < this.odometry.pageLenToWorld(5)) return "radius";
         if (this.pos.dist(m) < this.radius) return "main";

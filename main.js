@@ -60,6 +60,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
     }
 
     const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
+    // const APPDATA = path.join(app.getPath("appData"), "PeninsulaPortal");
 
     class Process extends util.Target {
         #id;
@@ -110,16 +111,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return tags;
         }
         hasTag(tag) {
-            tag = String(tag);
             return this.#tags.has(tag);
         }
         addTag(tag) {
-            tag = String(tag);
             this.#tags.add(tag);
             return true;
         }
         remTag(tag) {
-            tag = String(tag);
             this.#tags.delete(tag);
             return true;
         }
@@ -292,16 +290,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return tags;
         }
         hasTag(tag) {
-            tag = String(tag);
             return this.#tags.has(tag);
         }
         addTag(tag) {
-            tag = String(tag);
             this.#tags.add(tag);
             return true;
         }
         remTag(tag) {
-            tag = String(tag);
             this.#tags.delete(tag);
             return true;
         }
@@ -406,6 +401,550 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return this.clients.filter(client => client.hasTag(tag));
         }
     }
+    /*
+    class FeatureManager extends util.Target {
+        #stream;
+
+        #loads;
+        #isLoading;
+
+        #processManager;
+        #clientManager;
+
+        #features;
+
+        constructor() {
+            super();
+
+            this.#stream = null;
+
+            this.#loads = new Set();
+            this.#isLoading = false;
+
+            this.#processManager = new ProcessManager();
+            this.#clientManager = new ClientManager();
+
+            this.#features = new Set();
+        }
+
+        async init() {
+            await this.affirm();
+            const stdoutWrite = process.stdout.write;
+            const stderrWrite = process.stderr.write;
+            process.stdout.write = (...a) => {
+                stdoutWrite.apply(process.stdout, a);
+                this.stream.write.apply(this.stream, a);
+            };
+            process.stderr.write = (...a) => {
+                stderrWrite.apply(process.stderr, a);
+                this.stream.write.apply(this.stream, a);
+            };
+            this.log();
+            app.dock.setMenu(electron.Menu.buildFromTemplate([
+                {
+                    label: "New Feature",
+                    submenu: [
+                        {
+                            label: "Peninsula Panel",
+                            accelerator: "CmdOrCtrl+1",
+                            click: () => this.on("spawn", ["PANEL"]),
+                        },
+                        {
+                            label: "Peninsula Planner",
+                            accelerator: "CmdOrCtrl+2",
+                            click: () => this.on("spawn", ["PLANNER"]),
+                        },
+                    ],
+                },
+            ]));
+            return true;
+        }
+
+        get stream() { return this.#stream; }
+        hasStream() { return this.stream instanceof fs.WriteStream; }
+
+        get processManager() { return this.#processManager; }
+        get clientManager() { return this.#clientManager; }
+
+        get features() { return [...this.#features]; }
+        set features(v) {
+            v = util.ensure(v, "arr");
+            (async () => {
+                await this.clearFeatures();
+                v.forEach(v => this.addFeature(v));
+            })();
+        }
+        async clearFeatures() {
+            let feats = this.features;
+            for (let i = 0; i < feats.length; i++)
+                await this.remFeature(feats[i]);
+            return feats;
+        }
+        hasFeature(feat) {
+            if (!(feat instanceof Portal.Feature)) return false;
+            return this.#features.has(feat) && feat.parent == this;
+        }
+        addFeature(feat) {
+            if (!(feat instanceof Portal.Feature)) return false;
+            if (feat.parent != this) return false;
+            if (this.hasFeature(feat)) return false;
+            this.#features.add(feat);
+            feat.start();
+            feat._onFocus = () => {
+                if (feat.hasMenu()) {
+                    if (OS.platform == "darwin")
+                        electron.Menu.setApplicationMenu(feat.menu);
+                    return;
+                }
+                if (feat.hasWindow())
+                    feat.window.removeListener("focus", feat._onFocus);
+                delete feat._onFocus;
+            };
+            if (feat.hasWindow())
+                feat.window.on("focus", feat._onFocus);
+            this.post("feature-start", feat);
+            return feat;
+        }
+        async remFeature(feat) {
+            if (!(feat instanceof Portal.Feature)) return false;
+            if (feat.parent != this) return false;
+            if (!this.hasFeature(feat)) return false;
+            feat.log("REM");
+            if (feat.started) {
+                feat.log("REM - not stopped");
+                let r = await feat.stop();
+                feat.log(`REM - stop: ${!!r}`);
+                return r;
+            }
+            feat.log("REM - already stopped");
+            this.#features.delete(feat);
+            this.post("feature-stop", feat);
+            return feat;
+        }
+
+        get loads() { return [...this.#loads]; }
+        set loads(v) {
+            v = util.ensure(v, "arr");
+            this.clearLoads();
+            v.forEach(v => this.addLoad(v));
+        }
+        clearLoads() {
+            let loads = this.loads;
+            loads.forEach(load => this.remLoad(load));
+            return loads;
+        }
+        hasLoad(load) {
+            load = String(load);
+            return this.#loads.has(load);
+        }
+        addLoad(load) {
+            load = String(load);
+            if (this.hasLoad(load)) return false;
+            this.#loads.add(load);
+            this.post("load-change", this.loads);
+            return true;
+        }
+        remLoad(load) {
+            load = String(load);
+            if (!this.hasLoad(load)) return false;
+            this.#loads.delete(load);
+            this.post("load-change", this.loads);
+            return true;
+        }
+        get isLoading() { return this.#isLoading; }
+        async tryLoad(version) {
+            if (this.isLoading) return false;
+            version = String(version);
+            this.#isLoading = true;
+            let r = await (async () => {
+                await this.affirm();
+                this.clearLoads();
+                let fsVersion = "";
+                try {
+                    fsVersion = await this.fileRead(".version");
+                } catch (e) {}
+                this.log(`DB fs-version check (${fsVersion} ?<= ${version})`);
+                this.addLoad("fs-version");
+                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
+                    this.log(`DB fs-version mismatch (${fsVersion} !<= ${version})`);
+                    this.remLoad("fs-version");
+                    this.addLoad("fs-version:"+fsVersion+" > "+version);
+                    return false;
+                }
+                this.log(`DB fs-version match (${fsVersion} <= ${version})`);
+                this.remLoad("fs-version");
+                await this.fileWrite(".version", version);
+                this.log("DB finding host");
+                this.addLoad("find");
+                const host = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
+                const assetsHost = String(await this.get("assets-host"));
+                const isCompMode = await this.get("val-comp-mode");
+                this.remLoad("find");
+                if (isCompMode) {
+                    this.log(`DB poll - ${host} + ${assetsHost} - SKIP (COMP MODE)`);
+                    this.addLoad("comp-mode");
+                    return true;
+                }
+                this.log(`DB poll - ${host}`);
+                this.addLoad("poll");
+                try {
+                    await util.timeout(10000, fetch(host));
+                } catch (e) {
+                    this.log(`DB poll - ${host} + ${assetsHost} - fail`);
+                    this.remLoad("poll");
+                    this.addLoad("poll:"+e);
+                    return false;
+                }
+                this.log(`DB poll - ${host} - success`);
+                this.remLoad("poll");
+                const fetchAndPipe = async (url, pth) => {
+                    this.log(`DB :: f&p(${url})`);
+                    let fileName = path.basename(pth);
+                    let superPth = path.dirname(pth);
+                    let thePth = path.join(superPth, fileName);
+                    let tmpPth = path.join(superPth, fileName+"-tmp");
+                    let resp = await util.timeout(30000, fetch(url));
+                    if (resp.status != 200) throw resp.status;
+                    await new Promise((res, rej) => {
+                        const stream = fs.createWriteStream(tmpPth);
+                        stream.on("open", () => {
+                            resp.body.pipe(stream);
+                            resp.body.on("end", () => res(true));
+                            resp.body.on("error", e => rej(e));
+                        });
+                    });
+                    await fs.promises.rename(tmpPth, thePth);
+                };
+                this.log("DB config");
+                this.addLoad("config");
+                try {
+                    await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
+                    this.log("DB config - success");
+                } catch (e) {
+                    this.log(`DB config - error - ${e}`);
+                    this.addLoad("config:"+e);
+                }
+                this.remLoad("config");
+                this.log("DB finding next host");
+                this.addLoad("find-next");
+                const nextHost = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
+                this.remLoad("find-next");
+                if (nextHost != host) {
+                    this.log("DB next host and current host mismatch - retrying");
+                    this.#isLoading = false;
+                    return await this.tryLoad(version);
+                }
+                this.log("DB next host and current host match - continuing");
+                await Promise.all([
+                    (async () => {
+                        this.log("DB templates.json");
+                        this.addLoad("templates.json");
+                        try {
+                            await fetchAndPipe(host+"/templates.json", path.join(this.dataPath, "templates", "templates.json"));
+                            this.log("DB templates.json - success");
+                        } catch (e) {
+                            this.log(`DB templates.json - error - ${e}`);
+                            this.addLoad("templates.json:"+e);
+                        }
+                        this.remLoad("templates.json");
+                        this.log("DB checking templates.json");
+                        let content = await this.fileRead(["templates", "templates.json"]);
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                            this.log("DB checking templates.json - success");
+                        } catch (e) {
+                            log(`DB checking templates.json - error - ${e}`);
+                        }
+                        data = util.ensure(data, "obj");
+                        let templates = util.ensure(data.templates, "obj");
+                        await Promise.all(Object.keys(templates).map(async name => {
+                            name = String(name);
+                            await Promise.all(["images", "models"].map(async section => {
+                                let tag = { "images": "png", "models": "glb" }[section];
+                                this.log(`DB templates/${name}.${tag}`);
+                                this.addLoad(`templates/${name}.${tag}`);
+                                try {
+                                    await fetchAndPipe(assetsHost+"/templates."+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
+                                    this.log(`DB templates/${name}.${tag} - success`);
+                                } catch (e) {
+                                    this.log(`DB templates/${name}.${tag} - error - ${e}`);
+                                    this.addLoad(`templates/${name}.${tag}:`+e);
+                                }
+                                this.remLoad(`templates/${name}.${tag}`);
+                            }));
+                        }));
+                    })(),
+                    (async () => {
+                        this.log("DB robots.json");
+                        this.addLoad("robots.json");
+                        try {
+                            await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
+                            this.log("DB robots.json - success");
+                        } catch (e) {
+                            this.log(`DB robots.json - error - ${e}`);
+                            this.addLoad("robots.json:"+e);
+                        }
+                        this.remLoad("robots.json");
+                        this.log("DB checking robots.json");
+                        let content = await this.fileRead(["robots", "robots.json"]);
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                            this.log("DB checking robots.json - success");
+                        } catch (e) {
+                            log(`DB checking robots.json - error - ${e}`);
+                        }
+                        data = util.ensure(data, "obj");
+                        let robots = util.ensure(data.robots, "obj");
+                        await Promise.all(Object.keys(robots).map(async name => {
+                            name = String(name);
+                            await Promise.all(["models"].map(async section => {
+                                let tag = { "models": "glb" }[section];
+                                this.log(`DB robots/${name}.${tag}`);
+                                this.addLoad(`robots/${name}.${tag}`);
+                                try {
+                                    await fetchAndPipe(assetsHost+"/robots."+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
+                                    this.log(`DB robots/${name}.${tag} - success`);
+                                } catch (e) {
+                                    this.log(`DB robots/${name}.${tag} - error - ${e}`);
+                                    this.addLoad(`robots/${name}.${tag}:`+e);
+                                }
+                                this.remLoad(`robots/${name}.${tag}`);
+                            }));
+                        }));
+                    })(),
+                    (async () => {
+                        this.log("DB holidays.json");
+                        this.addLoad("holidays.json");
+                        try {
+                            await fetchAndPipe(host+"/holidays.json", path.join(this.dataPath, "holidays", "holidays.json"));
+                            this.log("DB holidays.json - success");
+                        } catch (e) {
+                            this.log(`DB holidays.json - error - ${e}`);
+                            this.addLoad("holidays.json:"+e);
+                        }
+                        this.remLoad("holidays.json");
+                        this.log("DB checking holidays.json");
+                        let content = await this.fileRead(["holidays", "holidays.json"]);
+                        let data = null;
+                        try {
+                            data = JSON.parse(content);
+                            this.log("DB checking holidays.json - success");
+                        } catch (e) {
+                            log(`DB checking holidays.json - error - ${e}`);
+                        }
+                        data = util.ensure(data, "obj");
+                        let holidays = util.ensure(data.holidays, "obj");
+                        await Promise.all(Object.keys(holidays).map(async name => {
+                            name = String(name);
+                            await Promise.all([
+                                "svg", "png", // "ico", "icns",
+                                "hat1", "hat2",
+                            ].map(async tag => {
+                                let pth = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
+                                this.log(`DB holidays/${pth}`);
+                                this.addLoad(`holidays/${pth}`);
+                                try {
+                                    await fetchAndPipe(assetsHost+"/holidays."+pth, path.join(this.dataPath, "holidays", "icons", pth));
+                                    this.log(`DB holidays/${pth} - success`);
+                                } catch (e) {
+                                    this.log(`DB holidays/${pth} - error - ${e}`);
+                                    this.addLoad(`holidays/${pth}:`+e);
+                                }
+                                this.remLoad(`holidays/${pth}`);
+                            }));
+                        }));
+                        await Promise.all(Object.keys(holidays).map(async name => {
+                            name = String(name);
+                            let input = await fs.promises.readFile(path.join(this.dataPath, "holidays", "icons", name+".png"));
+                            await Promise.all([
+                                "ico", "icns",
+                            ].map(async tag => {
+                                let pth = name+"."+tag;
+                                this.log(`DB holidays/${pth} conversion`);
+                                this.addLoad(`holidays/${pth}-conv`);
+                                try {
+                                    let output = {
+                                        ico: () => png2icons.createICO(input, png2icons.BILINEAR, 0, true, true),
+                                        icns: () => png2icons.createICNS(input, png2icons.BILINEAR, 0),
+                                    }[tag]();
+                                    await fs.promises.writeFile(path.join(this.dataPath, "holidays", "icons", pth), output);
+                                    this.log(`DB holidays/${pth} conversion - success`);
+                                } catch (e) {
+                                    this.log(`DB holidays/${pth} conversion - error - ${e}`);
+                                    this.addLoad(`holidays/${pth}-conv:`+e);
+                                }
+                                this.remLoad(`holidays/${pth}-conv`);
+                            }));
+                        }));
+                    })(),
+                    (async () => {
+                        this.log("DB themes.json");
+                        this.addLoad("themes.json");
+                        try {
+                            await fetchAndPipe(host+"/themes.json", path.join(this.dataPath, "themes.json"));
+                            this.log("DB themes.json - success");
+                        } catch (e) {
+                            this.log(`DB themes.json - error - ${e}`);
+                            this.addLoad("themes.json:"+e);
+                        }
+                        this.remLoad("themes.json");
+                        await this.send("theme");
+                    })(),
+                    ...FEATURES.map(async name => {
+                        const subhost = host+"/"+name.toLowerCase();
+                        const log = (...a) => this.log(`DB [${name}]`, ...a);
+                        log("search");
+                        this.addLoad(name+":search");
+                        try {
+                            let resp = await util.timeout(10000, fetch(subhost+"/confirm.txt"));
+                            if (resp.status != 200) throw resp.status;
+                        } catch (e) {
+                            log(`search - not found - ${e}`);
+                            this.remLoad(name+":search");
+                            return;
+                        }
+                        log("search - found");
+                        this.remLoad(name+":search");
+                        let namefs = {
+                            PLANNER: async () => {
+                                await Portal.Feature.affirm(this, name);
+                                await Promise.all([
+                                    async () => {
+                                        log("solver");
+                                        this.addLoad(name+":solver");
+                                        try {
+                                            if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                                await fs.promises.cp(
+                                                    path.join(__dirname, name.toLowerCase(), "solver"),
+                                                    path.join(Portal.Feature.getDataPath(this, name), "solver"),
+                                                    {
+                                                        force: true,
+                                                        recursive: true,
+                                                    },
+                                                );
+                                            log("solver - success");
+                                        } catch (e) {
+                                            log(`solver - error - ${e}`);
+                                            this.addLoad(name+":solver:"+e);
+                                        }
+                                        this.remLoad(name+":solver");
+                                    },
+                                    async () => {
+                                        log("templates.json");
+                                        this.addLoad(name+":templates.json");
+                                        try {
+                                            await fetchAndPipe(subhost+"/templates.json", path.join(Portal.Feature.getDataPath(this, name), "templates.json"));
+                                            log("templates.json - success");
+                                        } catch (e) {
+                                            log(`templates.json - error - ${e}`);
+                                            this.addLoad(name+":templates.json:"+e);
+                                        }
+                                        this.remLoad(name+":templates.json");
+                                    },
+                                ].map(f => f()));
+                            },
+                        };
+                        if (name in namefs) await namefs[name]();
+                    }),
+                ]);
+                return true;
+            })();
+            this.#isLoading = false;
+            return r;
+        }
+    }
+    class Feature extends util.Target {
+        #parent;
+
+        #started;
+
+        #processManager;
+        #clientManager;
+
+        #features;
+
+        constructor(parent) {
+            super();
+
+            if (!(parent instanceof Feature) && !(parent instanceof FeatureManager)) throw "Parent "+parent+" is not of class Feature or FeatureManager";
+            this.#parent = parent;
+
+            this.#started = false;
+
+            this.#processManager = new ProcessManager();
+            this.#clientManager = new ClientManager();
+
+            this.#features = new Set();
+        }
+
+        get parent() { return this.#parent; }
+
+        async init() {
+        }
+
+        get processManager() { return this.#processManager; }
+        get clientManager() { return this.#clientManager; }
+
+        get features() { return [...this.#features]; }
+        set features(v) {
+            v = util.ensure(v, "arr");
+            (async () => {
+                await this.clearFeatures();
+                v.forEach(v => this.addFeature(v));
+            })();
+        }
+        async clearFeatures() {
+            let feats = this.features;
+            for (let i = 0; i < feats.length; i++)
+                await this.remFeature(feats[i]);
+            return feats;
+        }
+        hasFeature(feat) {
+            if (!(feat instanceof Portal.Feature)) return false;
+            return this.#features.has(feat) && feat.parent == this;
+        }
+        addFeature(feat) {
+            if (!(feat instanceof Portal.Feature)) return false;
+            if (feat.parent != this) return false;
+            if (this.hasFeature(feat)) return false;
+            this.#features.add(feat);
+            feat.start();
+            feat._onFocus = () => {
+                if (feat.hasMenu()) {
+                    if (OS.platform == "darwin")
+                        electron.Menu.setApplicationMenu(feat.menu);
+                    return;
+                }
+                if (feat.hasWindow())
+                    feat.window.removeListener("focus", feat._onFocus);
+                delete feat._onFocus;
+            };
+            if (feat.hasWindow())
+                feat.window.on("focus", feat._onFocus);
+            this.post("feature-start", feat);
+            return feat;
+        }
+        async remFeature(feat) {
+            if (!(feat instanceof Portal.Feature)) return false;
+            if (feat.parent != this) return false;
+            if (!this.hasFeature(feat)) return false;
+            feat.log("REM");
+            if (feat.started) {
+                feat.log("REM - not stopped");
+                let r = await feat.stop();
+                feat.log(`REM - stop: ${!!r}`);
+                return r;
+            }
+            feat.log("REM - already stopped");
+            this.#features.delete(feat);
+            feat.portal = null;
+            this.post("feature-stop", feat);
+            return feat;
+        }
+    }
+    */
     class Portal extends util.Target {
         #started;
 
@@ -496,9 +1035,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         addFeature(feat) {
             if (!(feat instanceof Portal.Feature)) return false;
+            if (feat.portal != this) return false;
             if (this.hasFeature(feat)) return false;
             this.#features.add(feat);
-            feat.portal = this;
             feat.start();
             feat._onFocus = () => {
                 if (feat.hasMenu()) {
@@ -517,17 +1056,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         async remFeature(feat) {
             if (!(feat instanceof Portal.Feature)) return false;
+            if (feat.portal != this) return false;
             if (!this.hasFeature(feat)) return false;
             feat.log("REM");
             if (feat.started) {
                 feat.log("REM - not stopped");
                 let r = await feat.stop();
                 feat.log(`REM - stop: ${!!r}`);
-                return r;
+                return await this.remFeature(feat);
             }
             feat.log("REM - already stopped");
             this.#features.delete(feat);
-            feat.portal = null;
             this.post("feature-stop", feat);
             return feat;
         }
@@ -964,7 +1503,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 await this.affirm();
                 await this.post("start");
 
-                this.addFeature(new Portal.Feature("PORTAL"));
+                this.addFeature(new Portal.Feature(this, "PORTAL"));
                 setTimeout(async () => {
                     await this.tryLoad(await this.get("base-version"));
                 }, 1000);
@@ -1675,7 +2214,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     });
                     if (hasFeat) return false;
                     if (!FEATURES.includes(name)) return false;
-                    let feat = new Portal.Feature(name);
+                    let feat = new Portal.Feature(this, name);
                     this.addFeature(feat);
                     return true;
                 },
@@ -1743,10 +2282,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
         #state;
 
-        constructor(name) {
+        constructor(portal, name) {
             super();
 
-            this.#portal = null;
+            if (!(portal instanceof Portal)) throw "Portal is not of class Portal";
+            this.#portal = portal;
 
             this.#processManager = new ProcessManager();
             this.#clientManager = new ClientManager();
@@ -1772,6 +2312,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
         get clientManager() { return this.#clientManager; }
 
         get portal() { return this.#portal; }
+        /*
         set portal(v) {
             v = (v instanceof Portal) ? v : null;
             if (this.portal == v) return;
@@ -1788,6 +2329,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             })();
         }
         hasPortal() { return this.portal instanceof Portal; }
+        */
         
         get name() { return this.#name; }
         hasName() { return util.is(this.name, "str"); }
@@ -1854,7 +2396,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 },
             };
             const onHolidayState = async holiday => {
-                if (!this.hasPortal()) return;
                 let tag = "png";
                 let icon = (holiday == null) ? path.join(__dirname, "assets", "app", "icon."+tag) : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
                 if (!this.hasWindow()) return;
@@ -1889,17 +2430,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     electron.shell.openExternal(url);
                 }
             });
-            if (this.hasPortal()) {
-                let any = false;
-                this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => (any ||= feat.hasWindow() && feat.window.webContents.isDevToolsOpened()));
-                if (this.hasWindow() && any) this.window.webContents.openDevTools();
-            }
+            let any = false;
+            this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => (any ||= feat.hasWindow() && feat.window.webContents.isDevToolsOpened()));
+            if (this.hasWindow() && any) this.window.webContents.openDevTools();
             this.window.webContents.on("devtools-opened", () => {
-                if (!this.hasPortal()) return;
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.openDevTools());
             });
             this.window.webContents.on("devtools-closed", () => {
-                if (!this.hasPortal()) return;
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
             });
 
@@ -1982,7 +2519,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         click: () => {
                             const portal = this.portal, name = this.name;
                             portal.remFeature(this);
-                            portal.addFeature(new Portal.Feature(name));
+                            portal.addFeature(new Portal.Feature(portal, name));
                         },
                     },
                 ],
@@ -2068,7 +2605,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
             namefs = {
                 PORTAL: () => {
                     const checkForShow = async () => {
-                        if (!this.hasPortal()) return;
                         if (!this.hasWindow()) return;
                         let feats = this.portal.features;
                         let nFeats = 0;
@@ -2077,12 +2613,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         (nFeats > 0) ? this.window.hide() : this.window.show();
                     };
                     const hook = () => {
-                        if (!this.hasPortal()) return;
                         this.portal.addHandler("feature-start", checkForShow);
                         this.portal.addHandler("feature-stop", checkForShow);
                     };
                     const unhook = () => {
-                        if (!this.hasPortal()) return;
                         this.portal.remHandler("feature-start", checkForShow);
                         this.portal.remHandler("feature-stop", checkForShow);
                     };
@@ -2299,7 +2833,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (this.hasWindow()) this.window.close();
             this.#window = null;
             this.#menu = null;
-            this.portal = null;
+            await this.portal.remFeature(this);
             return this;
         }
         
@@ -2392,7 +2926,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         async dirDelete(pth) { return Portal.Feature.dirDelete(this.portal, this.name, pth, this.started); }
 
         async clientMake(id, location) {
-            if (!this.hasPortal()) return null;
             let client = await this.portal.clientMake(this.name+":"+id, location);
             client = this.clientManager.addClient(client);
             client.addTag(this.name);
@@ -2423,7 +2956,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 const payload = data.payload;
                 const meta = util.ensure(data.meta, "obj");
                 const ssStream = data.ssStream;
-                if (!this.hasPortal()) return { success: false, reason: "No window" };
                 await this.affirm();
                 let results = [];
                 results.push(...(await this.post("client-stream", {
@@ -2492,33 +3024,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return client;
         }
         async clientDestroy(id) {
-            if (!this.hasPortal()) return null;
             return await this.portal.clientDestroy((id instanceof Client) ? id : (this.name+":"+id));
         }
         async clientHas(id) {
-            if (!this.hasPortal()) return false;
             if (!(await this.portal.clientHas((id instanceof Client) ? id : (this.name+":"+id)))) return false;
             return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(this.name+":"+id) instanceof Client);
         }
         async clientGet(id) {
-            if (!this.hasPortal()) return null;
             if (!(await this.clientHas(id))) return null;
             return (id instanceof Client) ? id : this.portal.clientGet(this.name+":"+id);
         }
         async clientConn(id) {
-            if (!this.hasPortal()) return null;
             return await this.portal.clientConn((id instanceof Client) ? id : (this.name+":"+id));
         }
         async clientDisconn(id) {
-            if (!this.hasPortal()) return null;
             return await this.portal.clientDisconn((id instanceof Client) ? id : (this.name+":"+id));
         }
         async clientEmit(id, name, payload) {
-            if (!this.hasPortal()) return null;
             return await this.portal.clientEmit((id instanceof Client) ? id : (this.name+":"+id), name, payload);
         }
         async clientStream(id, pth, name, payload) {
-            if (!this.hasPortal()) return null;
             return await this.portal.clientStream((id instanceof Client) ? id : (this.name+":"+id), pth, name, payload);
         }
 
@@ -2526,11 +3051,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (!this.started) return null;
             if (!this.hasName()) return null;
             k = String(k);
-            if (this.hasPortal()) {
-                try {
-                    return await this.portal.get(k);
-                } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
-            }
+            try {
+                return await this.portal.get(k);
+            } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
             let doLog = true;
             let kfs = {
                 "name": async () => {
@@ -2556,7 +3079,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     PANEL: {
                         "logs": async () => {
                             doLog = false;
-                            if (!this.hasPortal()) throw "No linked portal";
                             let hasLogsDir = await this.dirHas("logs");
                             if (!hasLogsDir) return [];
                             let dirents = await this.dirList("logs");
@@ -2580,11 +3102,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (!this.started) return false;
             if (!this.hasName()) return false;
             k = String(k);
-            if (this.hasPortal()) {
-                try {
-                    return await this.portal.set(k, v);
-                } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
-            }
+            try {
+                return await this.portal.set(k, v);
+            } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             let doLog = true;
             let kfs = {
                 "fullscreenable": async () => {
@@ -2622,11 +3142,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (!this.hasName()) return null;
             k = String(k);
             args = util.ensure(args, "arr");
-            if (this.hasPortal()) {
-                try {
-                    return await this.portal.on(k, args);
-                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
-            }
+            try {
+                return await this.portal.on(k, args);
+            } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             let doLog = true;
             let kfs = {
                 "close": async () => await this.stop(),
@@ -2798,11 +3316,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
             let namefs = {
                 PANEL: {
                     "wpilog-read": async pth => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         return await Portal.fileReadRaw(pth);
                     },
                     "log-delete": async name => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         let logs = await this.get("logs");
                         let has = false;
                         logs.forEach(log => {
@@ -2816,7 +3332,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         return true;
                     },
                     "log-cache": async pth => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         pth = String(pth);
                         if (!(await Portal.fileHas(pth))) return false;
                         await this.portal.affirm();
@@ -3054,7 +3569,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 },
                 PRESETS: {
                     "cmd-open-app-data-dir": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
                             process.addHandler("exit", code => res(code));
@@ -3062,11 +3576,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         });
                     },
                     "cmd-cleanup-app-data-dir": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         await this.portal.cleanup();
                     },
                     "cmd-open-app-log-dir": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
                             process.addHandler("exit", code => res(code));
@@ -3074,7 +3586,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         });
                     },
                     "cmd-clear-app-log-dir": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         let dirents = await this.portal.dirList("logs");
                         let n = 0, nTotal = dirents.length;
                         await Promise.all(dirents.map(async dirent => {
@@ -3085,7 +3596,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         this.cacheSet("clear-app-log-dir-progress", 1);
                     },
                     "cmd-poll-db-host": async () => {
-                        if (!this.hasPortal()) throw "No linked portal";
                         (async () => {
                             await this.portal.tryLoad(await this.get("base-version"));
                         })();
