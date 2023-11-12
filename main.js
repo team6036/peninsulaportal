@@ -1517,8 +1517,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
             await this.post("stop");
             let feats = this.features;
             let all = true;
-            for (let i = 0; i < feats.length; i++)
-                all &&= await this.remFeature(feats[i]);
+            for (let i = 0; i < feats.length; i++) {
+                let r = await this.remFeature(feats[i]);
+                all &&= r;
+            }
             return all;
         }
 
