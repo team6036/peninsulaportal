@@ -1817,6 +1817,7 @@ export class AppFeature extends App {
         change = String(change);
         if (this.hasChange(change)) return true;
         this.#changes.add(change);
+        // console.log("change += "+change);
         this.post("change", change);
         return true;
     }
@@ -1831,6 +1832,7 @@ export class AppFeature extends App {
         return changes;
     }
     async syncWithFiles() {
+        // console.log("loading");
         try {
             await this.post("sync-with-files");
         } catch (e) {}
@@ -1863,11 +1865,15 @@ export class AppFeature extends App {
             await this.post("sync-files-with");
         } catch (e) {}
         let changes = new Set(this.changes);
+        // console.log("saving w: "+[...changes].join(", "));
         this.clearChanges();
-        if (changes.has("*all")) {
+        if (changes.has("*") || changes.has("projects")) {
             let projectIds = this.projects;
             let projectIdsContent = JSON.stringify(projectIds);
             await window.api.send("projects-set", [projectIdsContent]);
+        }
+        if (changes.has("*")) {
+            let projectIds = this.projects;
             await Promise.all(projectIds.map(async id => {
                 let project = this.getProject(id);
                 let projectContent = JSON.stringify(project);
@@ -1881,20 +1887,16 @@ export class AppFeature extends App {
             }));
         } else {
             let projectIds = this.projects;
-            if (changes.has("*")) {
-                let projectIdsContent = JSON.stringify(projectIds);
-                await window.api.send("projects-set", [projectIdsContent]);
-            }
             await Promise.all(projectIds.map(async id => {
-                if (!changes.has("proj:"+id)) return;
+                if (!changes.has(":"+id)) return;
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
                 let projectContent = JSON.stringify(project);
                 await window.api.send("project-set", [id, projectContent]);
             }));
             await Promise.all([...changes].map(async change => {
-                if (!change.startsWith("proj:")) return;
-                let id = change.substring(5);
+                if (!change.startsWith(":")) return;
+                let id = change.substring(1);
                 if (this.hasProject(id)) return;
                 await window.api.send("project-del", [id]);
             }));
@@ -1940,12 +1942,12 @@ export class AppFeature extends App {
         this.#projects[id] = proj;
         proj.id = id;
         proj._onChange = c => {
-            // console.log("PROJ:"+proj.id+" - "+c);
-            this.markChange("proj:"+proj.id);
+            // console.log("pchange = "+proj.id+"."+c);
+            this.markChange(":"+proj.id);
         };
         proj.addHandler("change", proj._onChange);
-        this.markChange("*");
-        this.markChange("proj:"+id);
+        this.markChange("projects");
+        this.markChange(":"+id);
         return proj;
     }
     remProject(id) {
@@ -1956,8 +1958,8 @@ export class AppFeature extends App {
         proj.remHandler("change", proj._onChange);
         delete proj._onChange;
         proj.id = null;
-        this.markChange("*");
-        this.markChange("proj:"+id);
+        this.markChange("projects");
+        this.markChange(":"+id);
         return proj;
     }
 
@@ -2143,7 +2145,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 let result = await pop.whenResult();
                 if (result == null) return;
                 project.meta.name = result;
-                await this.app.syncWithFilesClean();
+                await this.app.syncFilesWithClean();
             });
             menu.addItem(new App.ContextMenu.Divider());
             itm = menu.addItem(new App.ContextMenu.Item("Delete"));
@@ -2485,7 +2487,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         super("PROJECT", app);
 
         this.app.addHandler("perm", async data => {
-            this.app.markChange("*all");
+            this.app.markChange("*");
             return await this.app.syncFilesWithClean();
         });
 
@@ -3036,10 +3038,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     constructor(odometry, pos) {
         super(odometry);
 
-        if (!(odometry instanceof Odometry2d)) {
-            console.log(this.constructor);
-            throw "Odometry is not of class Odometry2d";
-        }
+        if (!(odometry instanceof Odometry2d)) throw "Odometry is not of class Odometry2d";
         this.#odometry = odometry;
 
         this.#pos = new V();
