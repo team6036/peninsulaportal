@@ -51,27 +51,28 @@ export default class NTSource extends Source {
             v,
             "Peninsula",
             topic => {
-                if (client != this.#client) return;
+                if (client != this.#client) return client.disconnect();
                 this.announceTopic(topic.name, topic.type);
             },
             topic => {
-                if (client != this.#client) return;
+                if (client != this.#client) return client.disconnect();
                 this.unannounceTopic(topic.name);
             },
             (topic, ts, v) => {
-                if (client != this.#client) return;
+                if (client != this.#client) return client.disconnect();
                 ts /= 1000;
                 this.updateTopic(topic.name, v, ts);
             },
             () => {
-                if (client != this.#client) return;
+                if (client != this.#client) return client.disconnect();
                 this.#client.startTime = this.#client.clientTime;
                 this.post("connected");
                 this.post("connect-state", this.connected);
+                this.clear();
                 client.subscribe(["/"], true, true, 0.001);
             },
             () => {
-                if (client != this.#client) return;
+                if (client != this.#client) return client.disconnect();
                 this.post("disconnected");
                 this.post("connect-state", this.connected);
             },
