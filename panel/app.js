@@ -2129,7 +2129,6 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
     #ts;
     #tsNow;
     #tsOverride;
-    #tsFollow;
 
     #eHeader;
     #eOptions;
@@ -2164,39 +2163,47 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.elem.appendChild(this.eBody);
         this.eBody.classList.add("body");
 
-        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
+        if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.TableTab) a = [a.vars, a.tsNow, a.tsOverride, a.tsFollow];
+            if (a instanceof Panel.TableTab) a = [a.vars, a.tsNow, a.tsOverride];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof Panel.TableTab.Variable) a = [a, 0];
                 else {
                     a = new Panel.TableTab(...a);
-                    a = [a.vars, a.tsNow, a.tsOverride, a.tsFollow];
+                    a = [a.vars, a.tsNow, a.tsOverride];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.vars, a.tsNow, a.tsOverride, a.tsFollow];
+            else if (util.is(a, "obj")) a = [a.vars, a.tsNow, a.tsOverride];
             else a = [[], 0];
         }
         if (a.length == 2)
-            a = [...a, false, true];
+            a = [...a, false];
 
-        [this.vars, this.tsNow, this.tsOverride, this.tsFollow] = a;
+        [this.vars, this.tsNow, this.tsOverride] = a;
 
         this.elem.addEventListener("scroll", e => this.format());
         this.eTSInput.addEventListener("change", e => {
             let v = this.eTSInput.value;
-            if (v.length > 0) {
-                this.tsNow = parseFloat(this.eTSInput.value);
-                this.tsOverride = true;
-            } else this.tsOverride = false;
+            if (v.length <= 0) return;
+            v = parseFloat(v);
+            if (!this.tsOverride) {
+                if (this.hasPage() && this.page.hasSource())
+                    this.page.source.ts = v;
+            }
+            else this.tsNow = v;
         });
         this.eFollowBtn.addEventListener("click", e => {
-            this.tsFollow = !this.tsFollow;
+            this.tsOverride = !this.tsOverride;
         });
         this.eBody.addEventListener("scroll", e => this.format());
 
-        let rows = [];
+        let rows = [
+            {
+                elem: this.eOptions,
+                x: 0,
+            },
+        ];
         this.addHandler("format", () => {
             let er = this.elem.getBoundingClientRect();
             let br = this.eBody.getBoundingClientRect();
@@ -2209,7 +2216,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.vars.forEach(v => v.format());
         });
         this.addHandler("update", data => {
-            if (this.tsFollow) this.eFollowBtn.classList.add("this");
+            if (!this.tsOverride) this.eFollowBtn.classList.add("this");
             else this.eFollowBtn.classList.remove("this");
             let columns = ["150px", ...new Array(this.vars.length).fill("250px")];
             this.eHeader.style.gridTemplateColumns = this.eBody.style.gridTemplateColumns = columns.join(" ");
@@ -2232,37 +2239,32 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.#ts = ts = [...ts].sort((a, b) => a-b);
             this.eBody.style.gridTemplateRows = "repeat("+ts.length+", auto)";
             this.vars.forEach(v => v.update());
-            while (rows.length < ts.length) {
+            while (rows.length-1 < ts.length) {
                 let row = {};
                 row.elem = document.createElement("div");
                 this.eBody.appendChild(row.elem);
                 row.elem.classList.add("item");
                 rows.push(row);
                 row.x = 0;
+                this.format();
             }
-            while (rows.length > ts.length) {
-                let row = rows.shift();
+            while (rows.length-1 > ts.length) {
+                let row = rows.pop();
                 this.eBody.removeChild(row.elem);
+                this.format();
             }
             for (let i = 0; i < ts.length; i++) {
-                let row = rows[i];
+                let row = rows[i+1];
                 row.elem.style.gridRow = (i+1) + "/" + (i+2);
                 row.elem.textContent = ts[i];
                 if (
                     this.tsNow >= ts[i] &&
                     this.tsNow < ((i+1 >= ts.length) ? Infinity : ts[i+1])
-                ) row.elem.classList.add("this");
-                else row.elem.classList.remove("this");
-                if (!this.tsFollow) continue;
-                if (ts.length == 1) {
-                    row.elem.scrollIntoView();
-                    continue;
-                }
-                if (!row.elem.classList.contains("this")) {
-                    if (i > 0) continue;
-                    if (this.tsNow >= ts[i]) continue;
-                }
-                row.elem.scrollIntoView();
+                ) {
+                    if (!row.elem.classList.contains("this"))
+                        row.elem.scrollIntoView();
+                    row.elem.classList.add("this");
+                } else row.elem.classList.remove("this");
             }
         });
     }
@@ -2343,13 +2345,6 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.#tsOverride = v;
         this.post("change", "tsOverride");
     }
-    get tsFollow() { return this.#tsFollow; }
-    set tsFollow(v) {
-        v = !!v;
-        if (this.tsFollow == v) return;
-        this.#tsFollow = v;
-        this.post("change", "tsFollow");
-    }
 
     get eHeader() { return this.#eHeader; }
     get eOptions() { return this.#eOptions; }
@@ -2386,7 +2381,6 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             vars: this.vars,
             tsNow: this.tsNow,
             tsOverride: this.tsOverride,
-            tsFollow: this.tsFollow,
         });
     }
 };
@@ -2454,6 +2448,9 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 section.classList.add("section");
                 let content = document.createElement("div");
                 section.appendChild(content);
+                let line = document.createElement("div");
+                section.appendChild(line);
+                line.classList.add("line");
                 sections.push(section);
             }
             while (sections.length > valueLog.length) {
@@ -2464,6 +2461,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 let section = sections[i];
                 let j1 = this.tab.lookupTS(valueLog[i].ts);
                 let j2 = (i+1 >= valueLog.length) ? this.tab.ts.length : this.tab.lookupTS(valueLog[i+1].ts);
+                let j3 = this.tab.lookupTS(this.tab.tsNow);
                 if (
                     this.tab.tsNow >= valueLog[i].ts &&
                     this.tab.tsNow < ((i+1 >= valueLog.length) ? Infinity : valueLog[i+1].ts)
@@ -2471,8 +2469,12 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 else section.classList.remove("this");
                 section.style.gridColumn = (this.x+1) + "/" + (this.x+2);
                 section.style.gridRow = (j1+1) + "/" + (j2+1);
-                if (!(section.children[0] instanceof HTMLDivElement)) continue;
-                section.children[0].textContent = valueLog[i].v;
+                if (section.children[0] instanceof HTMLDivElement)
+                    section.children[0].textContent = valueLog[i].v;
+                if (section.children[1] instanceof HTMLDivElement) {
+                    section.children[1].style.top = (30*Math.min(j2-j1, Math.max(0, j3-j1)))+"px";
+                    section.children[1].textContent = valueLog[i].v;
+                }
             }
             this.#eSections = sections;
         });
@@ -4429,13 +4431,10 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             r = elem.getBoundingClientRect();
             if (pos.x < r.left || pos.x > r.right) continue;
             if (pos.y < r.top || pos.y > r.bottom) continue;
-            const numbers = ["double", "float", "int"];
             let idfs = {
                 p: () => {
                     if (!(data instanceof Source.Field)) return null;
                     if (!data.hasType()) return null;
-                    // if (!data.isPrimitive) return null;
-                    // if (!numbers.includes(data.arrayType)) return null;
                     return {
                         r: r,
                         submit: () => {
