@@ -947,15 +947,20 @@
     padding: 0px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .options {
+    z-index: 1;
+
     grid-row: 1 / 2;
     grid-column: 1 / 2;
-    
+
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+
+    background-color: var(--v1);
+    border-right: 2px solid var(--v2);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .options > input {
     flex-basis: 100%;
@@ -980,9 +985,12 @@
     background-color: var(--v2);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .item {
+    z-index: 2;
+
     grid-column: 1 / 2;
 
-    min-height: 30px;
+    height: 30px;
+    max-height: 30px;
     padding: 5px;
 
     background-color: var(--v1);
@@ -997,6 +1005,10 @@
     background-color: var(--v1-8);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section {
+    position: relative;
+
+    overflow: hidden;
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -1009,19 +1021,40 @@
     border-right: 2px solid var(--v2);
     border-bottom: 2px solid var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section:hover,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section.this {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section:hover {
     background-color: var(--v1-8);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section.this:hover {
     background-color: var(--v1-6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section > div {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section > div:not(.line) {
+    z-index: 1;
+
     min-height: 30px;
     padding: 5px;
 
     font-size: 12px;
     font-family: monospace;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section > div.line {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+
+    width: 100%;
+    height: 30px;
+    max-height: 30px;
+    padding: 5px;
+
+    background-color: var(--v2-8);
+    color: var(--v6);
+    visibility: hidden;
+
+    font-size: 12px;
+    font-family: monospace;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section.this > div.line {
+    visibility: inherit;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.webview > .nav {
     width: 100%;
