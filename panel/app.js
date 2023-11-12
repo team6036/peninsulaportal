@@ -61,8 +61,8 @@ class RLine extends core.Odometry2d.Render {
     #a; #b;
     #color;
 
-    constructor(a, b, color) {
-        super();
+    constructor(odometry, a, b, color) {
+        super(odometry);
 
         this.#a = new V();
         this.#b = new V();
@@ -160,6 +160,10 @@ function getTabDisplay(name) {
     name = String(name);
     if (name == "graph") return {
         name: "analytics",
+        color: "var(--cb)",
+    };
+    if (name == "table") return {
+        src: "../assets/icons/table.svg",
         color: "var(--cb)",
     };
     if (name.startsWith("odometry")) return {
@@ -547,6 +551,181 @@ class ToolButton extends util.Target {
 
     get name() { return this.eName.textContent; }
     set name(v) { this.eName.textContent = v; }
+}
+
+class LoggerContext extends util.Target {
+    #host;
+    #client;
+
+    #serverLogs;
+    #clientLogs;
+
+    #loading;
+
+    constructor() {
+        super();
+
+        this.#host = null;
+        this.#client = null;
+
+        this.#serverLogs = new Set();
+        this.#clientLogs = {};
+
+        this.#loading = {};
+
+        setInterval(async () => {
+            if (this.#hasClient()) {
+                if (this.#client.disconnected)
+                    this.#client.connect();
+            } else {
+                this.#host = await window.api.get("socket-host");
+                this.#host = (this.#host == null) ? null : String(this.#host);
+                if (this.#hasHost()) this.#client = new core.Client(this.#host+"/panel");
+            }
+            await this.pollServer();
+        }, 1000);
+        setInterval(async () => {
+            await this.pollClient();
+        }, 100);
+    }
+
+    #hasHost() { return this.#host != null; }
+    #hasClient() { return this.#client instanceof core.Client; }
+
+    get initializing() { return !this.#hasClient(); }
+    get initialized() { return !this.initializing; }
+    get connected() { return this.#hasClient() && this.#client.connected; }
+    get disconnected() { return !this.connected; }
+    get location() { return this.#hasClient() ? this.#client.location : null; }
+    get socketId() { return this.#hasClient() ? this.#client.socketId : null; }
+
+    get serverLogs() { return [...this.#serverLogs]; }
+    hasServerLog(name) {
+        name = String(name);
+        return this.#serverLogs.has(name);
+    }
+    get clientLogs() { return Object.keys(this.#clientLogs); }
+    hasClientLog(name) {
+        name = String(name);
+        return name in this.#clientLogs;
+    }
+    getClientPath(name) {
+        if (!this.hasClientLog(name)) return null;
+        return this.#clientLogs[name];
+    }
+    get logs() {
+        let logs = new Set();
+        this.serverLogs.forEach(name => logs.add(name));
+        this.clientLogs.forEach(name => logs.add(name));
+        return [...logs];
+    }
+    hasLog(name) {
+        name = String(name);
+        return this.hasServerLog(name) || this.hasClientLog(name);
+    }
+
+    get loading() {
+        Object.keys(this.#loading).forEach(name => {
+            if (this.hasLog(name) || name[0] == "§") return;
+            delete this.#loading[name];
+        });
+        return Object.keys(this.#loading);
+    }
+    incLoading(name) {
+        name = String(name);
+        if (!this.hasLog(name) && name[0] != "§") return false;
+        this.#loading[name] = util.ensure(this.#loading[name], "int")+1;
+        return true;
+    }
+    decLoading(name) {
+        name = String(name);
+        if (!this.hasLog(name) && name[0] != "§") return false;
+        this.#loading[name] = util.ensure(this.#loading[name], "int")-1;
+        if (this.#loading[name] <= 0) delete this.#loading[name];
+        return true;
+    }
+    isLoading(name) { return this.loading.includes(name); }
+
+    async logsUpload(paths) {
+        paths = util.ensure(paths, "arr").map(path => String(path));
+        if (this.disconnected) return;
+        await Promise.all(paths.map(async path => {
+            this.incLoading("§uploading");
+            try {
+                await window.api.send("log-cache", [path]);
+                await this.#client.stream(path, "logs", {});
+            } catch (e) {
+                this.decLoading("§uploading");
+                throw e;
+            }
+            this.decLoading("§uploading");
+        }));
+        await this.pollServer();
+    }
+    async logsDownload(names) {
+        names = util.ensure(names, "arr").map(name => String(name));
+        if (this.disconnected) return;
+        await Promise.all(names.map(async name => {
+            this.incLoading(name);
+            try {
+                await this.#client.emit("log-download", name);
+            } catch (e) {
+                this.decLoading(name);
+                throw e;
+            }
+            this.decLoading(name);
+        }));
+        await this.pollServer();
+    }
+    async logsClientDelete(names) {
+        names = util.ensure(names, "arr").map(name => String(name));
+        await Promise.all(names.map(async name => {
+            this.incLoading(name);
+            try {
+                await window.api.send("log-delete", [name]);
+            } catch (e) {
+                this.decLoading(name);
+                throw e;
+            }
+            this.decLoading(name);
+        }));
+        await this.pollClient();
+    }
+    async logsServerDelete(names) {
+        names = util.ensure(names, "arr").map(name => String(name));
+        if (this.disconnected) return;
+        await Promise.all(names.map(async name => {
+            this.incLoading(name);
+            try {
+                await this.#client.emit("log-delete", name);
+            } catch (e) {
+                this.decLoading(name);
+                throw e;
+            }
+            this.decLoading(name);
+        }));
+        await this.pollServer();
+    }
+
+    async pollServer() {
+        let logs = [];
+        if (this.connected) {
+            try {
+                logs = util.ensure(await this.#client.emit("logs-get"), "arr");
+            } catch (e) { logs = []; }
+        }
+        this.#serverLogs.clear();
+        logs.map(log => this.#serverLogs.add(String(log)));
+    }
+    async pollClient() {
+        let logs = util.ensure(await window.api.get("logs"), "arr");
+        this.#clientLogs = {};
+        logs.map(log => {
+            log = util.ensure(log, "obj");
+            let name = String(log.name), path = String(log.path);
+            this.#clientLogs[name] = path;
+        });
+    }
 }
 
 class Widget extends util.Target {
@@ -1295,6 +1474,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 dname: "Graph", 
             },
             {
+                type: Panel.TableTab,
+                name: "table",
+                dname: "Table", 
+            },
+            {
                 type: Panel.Odometry2dTab,
                 name: "odometry2d",
                 dname: "Odometry2d",
@@ -1940,180 +2124,417 @@ Panel.ToolTab = class PanelToolTab extends Panel.Tab {
         }
     }
 };
-class LoggerContext extends util.Target {
-    #host;
-    #client;
+Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
+    #vars;
+    #ts;
+    #tsNow;
+    #tsOverride;
+    #tsFollow;
 
-    #serverLogs;
-    #clientLogs;
+    #eHeader;
+    #eOptions;
+    #eTSInput;
+    #eFollowBtn;
+    #eBody;
 
-    #loading;
+    constructor(...a) {
+        super("Table", "table");
 
-    constructor() {
+        this.elem.classList.add("table");
+
+        this.#vars = new Set();
+        this.#ts = [];
+        this.#tsNow = 0;
+
+        this.#eHeader = document.createElement("div");
+        this.elem.appendChild(this.eHeader);
+        this.eHeader.classList.add("header");
+        this.#eOptions = document.createElement("div");
+        this.eHeader.appendChild(this.eOptions);
+        this.eOptions.classList.add("options");
+        this.#eTSInput = document.createElement("input");
+        this.eOptions.appendChild(this.eTSInput);
+        this.eTSInput.type = "number";
+        this.eTSInput.placeholder = "Timestamp...";
+        this.eTSInput.step = 0.01;
+        this.#eFollowBtn = document.createElement("button");
+        this.eOptions.appendChild(this.eFollowBtn);
+        this.eFollowBtn.innerHTML = "<ion-icon src='../assets/icons/jump.svg'></ion-icon>";
+        this.#eBody = document.createElement("div");
+        this.elem.appendChild(this.eBody);
+        this.eBody.classList.add("body");
+
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.TableTab) a = [a.vars, a.tsNow, a.tsOverride, a.tsFollow];
+            else if (util.is(a, "arr")) {
+                if (a[0] instanceof Panel.TableTab.Variable) a = [a, 0];
+                else {
+                    a = new Panel.TableTab(...a);
+                    a = [a.vars, a.tsNow, a.tsOverride, a.tsFollow];
+                }
+            }
+            else if (util.is(a, "obj")) a = [a.vars, a.tsNow, a.tsOverride, a.tsFollow];
+            else a = [[], 0];
+        }
+        if (a.length == 2)
+            a = [...a, false, true];
+
+        [this.vars, this.tsNow, this.tsOverride, this.tsFollow] = a;
+
+        this.elem.addEventListener("scroll", e => this.format());
+        this.eTSInput.addEventListener("change", e => {
+            let v = this.eTSInput.value;
+            if (v.length > 0) {
+                this.tsNow = parseFloat(this.eTSInput.value);
+                this.tsOverride = true;
+            } else this.tsOverride = false;
+        });
+        this.eFollowBtn.addEventListener("click", e => {
+            this.tsFollow = !this.tsFollow;
+        });
+        this.eBody.addEventListener("scroll", e => this.format());
+
+        let rows = [];
+        this.addHandler("format", () => {
+            let er = this.elem.getBoundingClientRect();
+            let br = this.eBody.getBoundingClientRect();
+            rows.forEach(row => {
+                let rr = row.elem.getBoundingClientRect();
+                let shift = er.left-rr.left;
+                row.x = Math.min(br.width-rr.width, Math.max(0, row.x+shift));
+                row.elem.style.transform = "translateX("+row.x+"px)";
+            });
+            this.vars.forEach(v => v.format());
+        });
+        this.addHandler("update", data => {
+            if (this.tsFollow) this.eFollowBtn.classList.add("this");
+            else this.eFollowBtn.classList.remove("this");
+            let columns = ["150px", ...new Array(this.vars.length).fill("250px")];
+            this.eHeader.style.gridTemplateColumns = this.eBody.style.gridTemplateColumns = columns.join(" ");
+            const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
+            if (!this.tsOverride) this.tsNow = (source instanceof Source) ? source.ts : 0;
+            if (document.activeElement != this.eTSInput)
+                this.eTSInput.value = this.tsNow;
+            let ts = new Set();
+            this.vars.forEach((v, i) => {
+                let field = v.field = (source instanceof Source) ? source.root.lookup(v.path) : null;
+                v.x = i+1;
+                if (!v.hasField()) return;
+                let valueLog = field.valueLog;
+                valueLog = valueLog.filter((log, i) => {
+                    if (i <= 0) return true;
+                    return log.v != valueLog[i-1].v;
+                });
+                valueLog.forEach(log => ts.add(log.ts));
+            });
+            this.#ts = ts = [...ts].sort((a, b) => a-b);
+            this.eBody.style.gridTemplateRows = "repeat("+ts.length+", auto)";
+            this.vars.forEach(v => v.update());
+            while (rows.length < ts.length) {
+                let row = {};
+                row.elem = document.createElement("div");
+                this.eBody.appendChild(row.elem);
+                row.elem.classList.add("item");
+                rows.push(row);
+                row.x = 0;
+            }
+            while (rows.length > ts.length) {
+                let row = rows.shift();
+                this.eBody.removeChild(row.elem);
+            }
+            for (let i = 0; i < ts.length; i++) {
+                let row = rows[i];
+                row.elem.style.gridRow = (i+1) + "/" + (i+2);
+                row.elem.textContent = ts[i];
+                if (
+                    this.tsNow >= ts[i] &&
+                    this.tsNow < ((i+1 >= ts.length) ? Infinity : ts[i+1])
+                ) row.elem.classList.add("this");
+                else row.elem.classList.remove("this");
+                if (!this.tsFollow) continue;
+                if (ts.length == 1) {
+                    row.elem.scrollIntoView();
+                    continue;
+                }
+                if (!row.elem.classList.contains("this")) {
+                    if (i > 0) continue;
+                    if (this.tsNow >= ts[i]) continue;
+                }
+                row.elem.scrollIntoView();
+            }
+        });
+    }
+
+    get vars() { return [...this.#vars]; }
+    set vars(v) {
+        v = util.ensure(v, "arr");
+        this.clearVars();
+        v.forEach(v => this.addVar(v));
+    }
+    clearVars() {
+        let vars = this.vars;
+        vars.forEach(v => this.remVar(v));
+        return vars;
+    }
+    hasVar(v) {
+        if (!(v instanceof Panel.TableTab.Variable)) return false;
+        return this.#vars.has(v) && v.tab == this;
+    }
+    addVar(v) {
+        if (!(v instanceof Panel.TableTab.Variable)) return false;
+        if (v.tab != null) return false;
+        if (this.hasVar(v)) return false;
+        this.#vars.add(v);
+        v.tab = this;
+        this.eHeader.appendChild(v.eHeader);
+        v._onRemove = () => this.remVar(v);
+        v._onChange = c => this.post("change", "vars["+this.vars.indexOf(v)+"]."+c);
+        v.addHandler("remove", v._onRemove);
+        v.addHandler("change", v._onChange);
+        this.post("change", "vars["+this.vars.indexOf(v)+"]");
+        return v;
+    }
+    remVar(v) {
+        if (!(v instanceof Panel.TableTab.Variable)) return false;
+        if (v.tab != this) return false;
+        if (!this.hasVar(v)) return false;
+        let i = this.vars.indexOf(v);
+        this.#vars.delete(v);
+        v.tab = null;
+        this.eHeader.removeChild(v.eHeader);
+        v.eSections.forEach(elem => this.eBody.removeChild(elem));
+        v.remHandler("remove", v._onRemove);
+        v.remHandler("change", v._onChange);
+        delete v._onRemove;
+        delete v._onChange;
+        this.post("change", "vars["+i+"]");
+        return v;
+    }
+
+    get ts() { return [...this.#ts]; }
+    lookupTS(ts) {
+        ts = util.ensure(ts, "num");
+        if (this.#ts.length <= 0) return -1;
+        if (ts < this.#ts.at(0)) return -1;
+        if (ts >= this.#ts.at(-1)) return this.#ts.length-1;
+        let l = 0, r = this.#ts.length-2;
+        while (l <= r) {
+            let m = Math.floor((l+r)/2);
+            let range = [this.#ts[m], this.#ts[m+1]];
+            if (ts < range[0]) r = m-1;
+            else if (ts >= range[1]) l = m+1;
+            else return m;
+        }
+        return -1;
+    }
+    get tsNow() { return this.#tsNow; }
+    set tsNow(v) {
+        v = util.ensure(v, "num");
+        if (this.tsNow == v) return;
+        this.#tsNow = v;
+        if (this.tsOverride) this.post("change", "tsNow");
+    }
+    get tsOverride() { return this.#tsOverride; }
+    set tsOverride(v) {
+        v = !!v;
+        if (this.tsOverride == v) return;
+        this.#tsOverride = v;
+        this.post("change", "tsOverride");
+    }
+    get tsFollow() { return this.#tsFollow; }
+    set tsFollow(v) {
+        v = !!v;
+        if (this.tsFollow == v) return;
+        this.#tsFollow = v;
+        this.post("change", "tsFollow");
+    }
+
+    get eHeader() { return this.#eHeader; }
+    get eOptions() { return this.#eOptions; }
+    get eTSInput() { return this.#eTSInput; }
+    get eFollowBtn() { return this.#eFollowBtn; }
+    get eBody() { return this.#eBody; }
+
+    getHovered(data, pos, options) {
+        pos = new V(pos);
+        options = util.ensure(options, "obj");
+        let r;
+        r = this.elem.getBoundingClientRect();
+        if (pos.x < r.left || pos.x > r.right) return null;
+        if (pos.y < r.top || pos.y > r.bottom) return null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(data.path) : null;
+        if (!(data instanceof Source.Field)) return null;
+        if (!data.hasType()) return null;
+        return {
+            r: r,
+            submit: () => {
+                const addVar = field => {
+                    let pth = field.path;
+                    if (field.hasType() && field.isJustPrimitive)
+                        this.addVar(new Panel.TableTab.Variable(pth));
+                    field.fields.forEach(field => addVar(field));
+                };
+                addVar(data);
+            },
+        };
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            vars: this.vars,
+            tsNow: this.tsNow,
+            tsOverride: this.tsOverride,
+            tsFollow: this.tsFollow,
+        });
+    }
+};
+Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
+    #tab;
+
+    #path;
+
+    #field;
+
+    #x;
+
+    #eHeader;
+    #eSections;
+
+    constructor(...a) {
         super();
 
-        this.#host = null;
-        this.#client = null;
+        this.#tab = null;
 
-        this.#serverLogs = new Set();
-        this.#clientLogs = {};
+        this.#path = [];
 
-        this.#loading = {};
+        this.#field = null;
 
-        setInterval(async () => {
-            if (this.#hasClient()) {
-                if (this.#client.disconnected)
-                    this.#client.connect();
-            } else {
-                this.#host = await window.api.get("socket-host");
-                this.#host = (this.#host == null) ? null : String(this.#host);
-                if (this.#hasHost()) this.#client = new core.Client(this.#host+"/panel");
+        this.#x = 0;
+
+        this.#eHeader = document.createElement("div");
+        this.eHeader.classList.add("item");
+
+        if (a.length <= 0 || a.length > 1) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.TableTab.Variable) a = [a.path];
+            else if (util.is(a, "arr")) {
+                if (util.is(a[0], "str")) a = [a];
+                else a = [new Panel.GraphTab.Variable(...a).path];
             }
-            await this.pollServer();
-        }, 1000);
-        setInterval(async () => {
-            await this.pollClient();
-        }, 100);
-    }
-
-    #hasHost() { return this.#host != null; }
-    #hasClient() { return this.#client instanceof core.Client; }
-
-    get initializing() { return !this.#hasClient(); }
-    get initialized() { return !this.initializing; }
-    get connected() { return this.#hasClient() && this.#client.connected; }
-    get disconnected() { return !this.connected; }
-    get location() { return this.#hasClient() ? this.#client.location : null; }
-    get socketId() { return this.#hasClient() ? this.#client.socketId : null; }
-
-    get serverLogs() { return [...this.#serverLogs]; }
-    hasServerLog(name) {
-        name = String(name);
-        return this.#serverLogs.has(name);
-    }
-    get clientLogs() { return Object.keys(this.#clientLogs); }
-    hasClientLog(name) {
-        name = String(name);
-        return name in this.#clientLogs;
-    }
-    getClientPath(name) {
-        if (!this.hasClientLog(name)) return null;
-        return this.#clientLogs[name];
-    }
-    get logs() {
-        let logs = new Set();
-        this.serverLogs.forEach(name => logs.add(name));
-        this.clientLogs.forEach(name => logs.add(name));
-        return [...logs];
-    }
-    hasLog(name) {
-        name = String(name);
-        return this.hasServerLog(name) || this.hasClientLog(name);
-    }
-
-    get loading() {
-        Object.keys(this.#loading).forEach(name => {
-            if (this.hasLog(name) || name[0] == "§") return;
-            delete this.#loading[name];
-        });
-        return Object.keys(this.#loading);
-    }
-    incLoading(name) {
-        name = String(name);
-        if (!this.hasLog(name) && name[0] != "§") return false;
-        this.#loading[name] = util.ensure(this.#loading[name], "int")+1;
-        return true;
-    }
-    decLoading(name) {
-        name = String(name);
-        if (!this.hasLog(name) && name[0] != "§") return false;
-        this.#loading[name] = util.ensure(this.#loading[name], "int")-1;
-        if (this.#loading[name] <= 0) delete this.#loading[name];
-        return true;
-    }
-    isLoading(name) { return this.loading.includes(name); }
-
-    async logsUpload(paths) {
-        paths = util.ensure(paths, "arr").map(path => String(path));
-        if (this.disconnected) return;
-        await Promise.all(paths.map(async path => {
-            this.incLoading("§uploading");
-            try {
-                await window.api.send("log-cache", [path]);
-                await this.#client.stream(path, "logs", {});
-            } catch (e) {
-                this.decLoading("§uploading");
-                throw e;
-            }
-            this.decLoading("§uploading");
-        }));
-        await this.pollServer();
-    }
-    async logsDownload(names) {
-        names = util.ensure(names, "arr").map(name => String(name));
-        if (this.disconnected) return;
-        await Promise.all(names.map(async name => {
-            this.incLoading(name);
-            try {
-                await this.#client.emit("log-download", name);
-            } catch (e) {
-                this.decLoading(name);
-                throw e;
-            }
-            this.decLoading(name);
-        }));
-        await this.pollServer();
-    }
-    async logsClientDelete(names) {
-        names = util.ensure(names, "arr").map(name => String(name));
-        await Promise.all(names.map(async name => {
-            this.incLoading(name);
-            try {
-                await window.api.send("log-delete", [name]);
-            } catch (e) {
-                this.decLoading(name);
-                throw e;
-            }
-            this.decLoading(name);
-        }));
-        await this.pollClient();
-    }
-    async logsServerDelete(names) {
-        names = util.ensure(names, "arr").map(name => String(name));
-        if (this.disconnected) return;
-        await Promise.all(names.map(async name => {
-            this.incLoading(name);
-            try {
-                await this.#client.emit("log-delete", name);
-            } catch (e) {
-                this.decLoading(name);
-                throw e;
-            }
-            this.decLoading(name);
-        }));
-        await this.pollServer();
-    }
-
-    async pollServer() {
-        let logs = [];
-        if (this.connected) {
-            try {
-                logs = util.ensure(await this.#client.emit("logs-get"), "arr");
-            } catch (e) { logs = []; }
+            else if (util.is(a, "obj")) a = [a.path];
+            else a = [[]];
         }
-        this.#serverLogs.clear();
-        logs.map(log => this.#serverLogs.add(String(log)));
-    }
-    async pollClient() {
-        let logs = util.ensure(await window.api.get("logs"), "arr");
-        this.#clientLogs = {};
-        logs.map(log => {
-            log = util.ensure(log, "obj");
-            let name = String(log.name), path = String(log.path);
-            this.#clientLogs[name] = path;
+
+        [this.path] = a;
+
+        let sections = [];
+        this.addHandler("format", () => {
+            let r = this.tab.eBody.getBoundingClientRect();
+            sections.forEach(section => {
+                if (!(section.children[0] instanceof HTMLDivElement)) return;
+                let sr = section.getBoundingClientRect();
+                let scr = section.children[0].getBoundingClientRect();
+                let shift = Math.min(sr.height-scr.height-2, Math.max(0, r.top-sr.top));
+                section.children[0].style.marginTop = shift+"px";
+            });
+        });
+        this.addHandler("update", data => {
+            if (!this.hasTab()) return;
+            let valueLog = (this.hasField() && this.field.hasType() && this.field.isJustPrimitive) ? this.field.valueLog : [];
+            valueLog = valueLog.filter((log, i) => {
+                if (i <= 0) return true;
+                return log.v != valueLog[i-1].v;
+            });
+            while (sections.length < valueLog.length) {
+                let section = document.createElement("div");
+                this.tab.eBody.appendChild(section);
+                section.classList.add("section");
+                let content = document.createElement("div");
+                section.appendChild(content);
+                sections.push(section);
+            }
+            while (sections.length > valueLog.length) {
+                let section = sections.shift();
+                this.tab.eBody.removeChild(section);
+            }
+            for (let i = 0; i < valueLog.length; i++) {
+                let section = sections[i];
+                let j1 = this.tab.lookupTS(valueLog[i].ts);
+                let j2 = (i+1 >= valueLog.length) ? this.tab.ts.length : this.tab.lookupTS(valueLog[i+1].ts);
+                if (
+                    this.tab.tsNow >= valueLog[i].ts &&
+                    this.tab.tsNow < ((i+1 >= valueLog.length) ? Infinity : valueLog[i+1].ts)
+                ) section.classList.add("this");
+                else section.classList.remove("this");
+                section.style.gridColumn = (this.x+1) + "/" + (this.x+2);
+                section.style.gridRow = (j1+1) + "/" + (j2+1);
+                if (!(section.children[0] instanceof HTMLDivElement)) continue;
+                section.children[0].textContent = valueLog[i].v;
+            }
+            this.#eSections = sections;
         });
     }
-}
+
+    get tab() { return this.#tab; }
+    set tab(v) {
+        v = (v instanceof Panel.TableTab) ? v : null;
+        if (this.tab == v) return;
+        this.#tab = v;
+    }
+    hasTab() { return this.tab instanceof Panel.TableTab; }
+
+    get path() { return [...this.#path]; }
+    set path(v) {
+        v = util.ensure(v, "arr");
+        if (util.arrEquals(v, this.path)) return;
+        this.#path = v;
+        this.eHeader.innerHTML = "";
+        let name = document.createElement("div");
+        this.eHeader.appendChild(name);
+        name.textContent = (this.path.length > 0) ? this.path.at(-1) : "/";
+        let tooltip = document.createElement("div");
+        this.eHeader.appendChild(tooltip);
+        tooltip.classList.add("tooltip");
+        tooltip.classList.add("hov");
+        tooltip.classList.add("swx");
+        tooltip.textContent = "/"+this.path.join("/");
+        let removeBtn = document.createElement("button");
+        this.eHeader.appendChild(removeBtn);
+        removeBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
+        removeBtn.addEventListener("click", e => this.post("remove"));
+        this.post("change", "path");
+    }
+
+    get field() { return this.#field; }
+    set field(v) {
+        v = (v instanceof Source.Field) ? v : null;
+        if (this.field == v) return;
+        this.#field = v;
+    }
+    hasField() { return this.field instanceof Source.Field; }
+
+    get eHeader() { return this.#eHeader; }
+    get eSections() { return [...this.#eSections]; }
+    get x() { return this.#x; }
+    set x(v) {
+        v = util.ensure(v, "int");
+        if (this.x == v) return;
+        this.#x = v;
+        this.eHeader.style.gridColumn = (this.x+1) + "/" + (this.x+2);
+    }
+
+    format() { this.post("format"); }
+    update() { this.post("update", null); }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            path: this.path,
+        });
+    }
+};
 Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
     #src;
 
@@ -3983,11 +4404,12 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!(field instanceof Source.Field)) return null;
         if (field.isStruct && (field.structType in this.constructor.PATTERNS)) {
             let paths = util.ensure(this.constructor.PATTERNS[field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
-            return paths.map(path => {
+            let value = paths.map(path => {
                 let subfield = field.lookup(path);
                 if (!(subfield instanceof Source.Field)) return null;
                 return subfield.get();
             });
+            return value.filter(v => util.is(v, "num"));
         }
         return field.get();
     }
@@ -4671,7 +5093,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             const renders = this.#renders;
             if (this.value.length % 2 == 0) {
                 let l = Math.max(0, (this.value.length/2) - 1);
-                while (renders.length < l) renders.push(this.tab.odometry.addRender(new RLine()));
+                while (renders.length < l) renders.push(this.tab.odometry.addRender(new RLine(this.tab.odometry)));
                 while (renders.length > l) this.tab.odometry.remRender(renders.pop());
                 renders.forEach((render, i) => {
                     render.a = [this.value[i*2 + 0], this.value[i*2 + 1]];
@@ -4723,7 +5145,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         if (this.value.length % 2 == 0) {
             this.#renders = [];
         } else if (this.value.length == 3) {
-            this.#renders = [this.tab.odometry.addRender(new core.Odometry2d.Robot())];
+            this.#renders = [this.tab.odometry.addRender(new core.Odometry2d.Robot(this.tab.odometry))];
             this.#renders[0].showVelocity = false;
         }
     }
@@ -4953,11 +5375,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         if (a.length <= 0 || [4, 5, 6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
+            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
-                    a = new Panel.Odometry2dTab(...a);
+                    a = new Panel.Odometry3dTab(...a);
                     a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
                 }
             }
@@ -6401,6 +6823,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragData = new Panel.GraphTab();
             this.app.dragging = true;
         });
+        this.addToolButton(new ToolButton("Table", "table")).addHandler("drag", () => {
+            this.app.dragData = new Panel.TableTab();
+            this.app.dragging = true;
+        });
         this.addToolButton(new ToolButton("Odom2d", "odometry2d")).addHandler("drag", () => {
             this.app.dragData = new Panel.Odometry2dTab();
             this.app.dragging = true;
@@ -6655,7 +7081,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (this.hasWidget()) {
             this.widget.parent = this;
             this.widget._onChange = c => {
-                // console.log("WIDGET: - "+c);
                 if (this.hasProject())
                     this.project.widgetData = JSON.stringify(this.widget);
             };
