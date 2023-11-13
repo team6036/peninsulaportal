@@ -561,6 +561,104 @@ export class Target {
     }
 }
 
+/*
+export class Console extends Target {
+    #parent;
+
+    #name;
+    #showName;
+    #nameDeco;
+    #nameTail;
+    #enabled;
+
+    constructor(parent, name) {
+        super();
+        
+        if (!is(parent, "obj")) throw "Parent is not an object";
+        this.#parent = parent;
+
+        this.#name = null;
+        this.#showName = true;
+        this.#nameDeco = null;
+        this.#nameTail = null;
+        this.#enabled = true;
+
+        this.name = name;
+        this.nameDeco = "brackets";
+        this.nameTail = "";
+    }
+
+    get parent() { return this.#parent; }
+
+    get name() { return this.#name; }
+    set name(v) {
+        v = String(v);
+        if (this.name == v) return;
+        this.#name = v;
+        this.post("change", "name");
+    }
+    get showName() { return this.#showName; }
+    set showName(v) {
+        v = !!v;
+        if (this.showName == v) return;
+        this.#showName = v;
+        this.post("change", "showName");
+    }
+    get hideName() { return !this.showName; }
+    set hideName(v) { this.showName = !v; }
+    get nameDeco() { return this.#nameDeco; }
+    set nameDeco(v) {
+        v = (v == null) ? null : String(v);
+        if (this.nameDeco == v) return;
+        this.#nameDeco = v;
+        this.post("change", "nameDeco");
+    }
+    get nameTail() { return this.#nameTail; }
+    set nameTail(v) {
+        v = String(v);
+        if (this.nameTail == v) return;
+        this.#nameTail = v;
+        this.post("change", "nameTail");
+    }
+    get enabled() { return this.#enabled; }
+    set enabled(v) {
+        v = !!v;
+        if (this.enabled == v) return;
+        this.#enabled = v;
+        this.post("change", "enabled");
+    }
+    get disabled() { return !this.enabled; }
+    set disabled(v) { this.enabled = !v; }
+
+    get fullName() {
+        let deco = ":";
+        if (this.nameDeco == "brackets") deco = "[:]";
+        else if (this.nameDeco == "braces") deco = "{:}";
+        else if (this.nameDeco == "parenthesis") deco = "(:)";
+        else if (this.nameDeco == "bars") deco = "|:|";
+        let name = deco.split(":")[0] + this.name + deco.split(":")[1];
+        if (this.nameTail.length > 0) name += " "+this.nameTail;
+        return name;
+    }
+
+    log(...a) {
+        if (this.disabled) return;
+        if (this.showName) return this.parent.log(this.fullName, ...a);
+        return this.parent.log(...a);
+    }
+    warn(...a) {
+        if (this.disabled) return;
+        if (this.showName) return this.parent.warn(this.fullName, ...a);
+        return this.parent.warn(...a);
+    }
+    error(...a) {
+        if (this.disabled) return;
+        if (this.showName) return this.parent.error(this.fullName, ...a);
+        return this.parent.error(...a);
+    }
+}
+*/
+
 export class Color extends Target {
     #r; #g; #b; #a;
 
