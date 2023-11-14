@@ -401,550 +401,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return this.clients.filter(client => client.hasTag(tag));
         }
     }
-    /*
-    class FeatureManager extends util.Target {
-        #stream;
-
-        #loads;
-        #isLoading;
-
-        #processManager;
-        #clientManager;
-
-        #features;
-
-        constructor() {
-            super();
-
-            this.#stream = null;
-
-            this.#loads = new Set();
-            this.#isLoading = false;
-
-            this.#processManager = new ProcessManager();
-            this.#clientManager = new ClientManager();
-
-            this.#features = new Set();
-        }
-
-        async init() {
-            await this.affirm();
-            const stdoutWrite = process.stdout.write;
-            const stderrWrite = process.stderr.write;
-            process.stdout.write = (...a) => {
-                stdoutWrite.apply(process.stdout, a);
-                this.stream.write.apply(this.stream, a);
-            };
-            process.stderr.write = (...a) => {
-                stderrWrite.apply(process.stderr, a);
-                this.stream.write.apply(this.stream, a);
-            };
-            this.log();
-            app.dock.setMenu(electron.Menu.buildFromTemplate([
-                {
-                    label: "New Feature",
-                    submenu: [
-                        {
-                            label: "Peninsula Panel",
-                            accelerator: "CmdOrCtrl+1",
-                            click: () => this.on("spawn", ["PANEL"]),
-                        },
-                        {
-                            label: "Peninsula Planner",
-                            accelerator: "CmdOrCtrl+2",
-                            click: () => this.on("spawn", ["PLANNER"]),
-                        },
-                    ],
-                },
-            ]));
-            return true;
-        }
-
-        get stream() { return this.#stream; }
-        hasStream() { return this.stream instanceof fs.WriteStream; }
-
-        get processManager() { return this.#processManager; }
-        get clientManager() { return this.#clientManager; }
-
-        get features() { return [...this.#features]; }
-        set features(v) {
-            v = util.ensure(v, "arr");
-            (async () => {
-                await this.clearFeatures();
-                v.forEach(v => this.addFeature(v));
-            })();
-        }
-        async clearFeatures() {
-            let feats = this.features;
-            for (let i = 0; i < feats.length; i++)
-                await this.remFeature(feats[i]);
-            return feats;
-        }
-        hasFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            return this.#features.has(feat) && feat.parent == this;
-        }
-        addFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            if (feat.parent != this) return false;
-            if (this.hasFeature(feat)) return false;
-            this.#features.add(feat);
-            feat.start();
-            feat._onFocus = () => {
-                if (feat.hasMenu()) {
-                    if (OS.platform == "darwin")
-                        electron.Menu.setApplicationMenu(feat.menu);
-                    return;
-                }
-                if (feat.hasWindow())
-                    feat.window.removeListener("focus", feat._onFocus);
-                delete feat._onFocus;
-            };
-            if (feat.hasWindow())
-                feat.window.on("focus", feat._onFocus);
-            this.post("feature-start", feat);
-            return feat;
-        }
-        async remFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            if (feat.parent != this) return false;
-            if (!this.hasFeature(feat)) return false;
-            feat.log("REM");
-            if (feat.started) {
-                feat.log("REM - not stopped");
-                let r = await feat.stop();
-                feat.log(`REM - stop: ${!!r}`);
-                return r;
-            }
-            feat.log("REM - already stopped");
-            this.#features.delete(feat);
-            this.post("feature-stop", feat);
-            return feat;
-        }
-
-        get loads() { return [...this.#loads]; }
-        set loads(v) {
-            v = util.ensure(v, "arr");
-            this.clearLoads();
-            v.forEach(v => this.addLoad(v));
-        }
-        clearLoads() {
-            let loads = this.loads;
-            loads.forEach(load => this.remLoad(load));
-            return loads;
-        }
-        hasLoad(load) {
-            load = String(load);
-            return this.#loads.has(load);
-        }
-        addLoad(load) {
-            load = String(load);
-            if (this.hasLoad(load)) return false;
-            this.#loads.add(load);
-            this.post("load-change", this.loads);
-            return true;
-        }
-        remLoad(load) {
-            load = String(load);
-            if (!this.hasLoad(load)) return false;
-            this.#loads.delete(load);
-            this.post("load-change", this.loads);
-            return true;
-        }
-        get isLoading() { return this.#isLoading; }
-        async tryLoad(version) {
-            if (this.isLoading) return false;
-            version = String(version);
-            this.#isLoading = true;
-            let r = await (async () => {
-                await this.affirm();
-                this.clearLoads();
-                let fsVersion = "";
-                try {
-                    fsVersion = await this.fileRead(".version");
-                } catch (e) {}
-                this.log(`DB fs-version check (${fsVersion} ?<= ${version})`);
-                this.addLoad("fs-version");
-                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
-                    this.log(`DB fs-version mismatch (${fsVersion} !<= ${version})`);
-                    this.remLoad("fs-version");
-                    this.addLoad("fs-version:"+fsVersion+" > "+version);
-                    return false;
-                }
-                this.log(`DB fs-version match (${fsVersion} <= ${version})`);
-                this.remLoad("fs-version");
-                await this.fileWrite(".version", version);
-                this.log("DB finding host");
-                this.addLoad("find");
-                const host = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
-                const assetsHost = String(await this.get("assets-host"));
-                const isCompMode = await this.get("val-comp-mode");
-                this.remLoad("find");
-                if (isCompMode) {
-                    this.log(`DB poll - ${host} + ${assetsHost} - SKIP (COMP MODE)`);
-                    this.addLoad("comp-mode");
-                    return true;
-                }
-                this.log(`DB poll - ${host}`);
-                this.addLoad("poll");
-                try {
-                    await util.timeout(10000, fetch(host));
-                } catch (e) {
-                    this.log(`DB poll - ${host} + ${assetsHost} - fail`);
-                    this.remLoad("poll");
-                    this.addLoad("poll:"+e);
-                    return false;
-                }
-                this.log(`DB poll - ${host} - success`);
-                this.remLoad("poll");
-                const fetchAndPipe = async (url, pth) => {
-                    this.log(`DB :: f&p(${url})`);
-                    let fileName = path.basename(pth);
-                    let superPth = path.dirname(pth);
-                    let thePth = path.join(superPth, fileName);
-                    let tmpPth = path.join(superPth, fileName+"-tmp");
-                    let resp = await util.timeout(30000, fetch(url));
-                    if (resp.status != 200) throw resp.status;
-                    await new Promise((res, rej) => {
-                        const stream = fs.createWriteStream(tmpPth);
-                        stream.on("open", () => {
-                            resp.body.pipe(stream);
-                            resp.body.on("end", () => res(true));
-                            resp.body.on("error", e => rej(e));
-                        });
-                    });
-                    await fs.promises.rename(tmpPth, thePth);
-                };
-                this.log("DB config");
-                this.addLoad("config");
-                try {
-                    await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
-                    this.log("DB config - success");
-                } catch (e) {
-                    this.log(`DB config - error - ${e}`);
-                    this.addLoad("config:"+e);
-                }
-                this.remLoad("config");
-                this.log("DB finding next host");
-                this.addLoad("find-next");
-                const nextHost = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
-                this.remLoad("find-next");
-                if (nextHost != host) {
-                    this.log("DB next host and current host mismatch - retrying");
-                    this.#isLoading = false;
-                    return await this.tryLoad(version);
-                }
-                this.log("DB next host and current host match - continuing");
-                await Promise.all([
-                    (async () => {
-                        this.log("DB templates.json");
-                        this.addLoad("templates.json");
-                        try {
-                            await fetchAndPipe(host+"/templates.json", path.join(this.dataPath, "templates", "templates.json"));
-                            this.log("DB templates.json - success");
-                        } catch (e) {
-                            this.log(`DB templates.json - error - ${e}`);
-                            this.addLoad("templates.json:"+e);
-                        }
-                        this.remLoad("templates.json");
-                        this.log("DB checking templates.json");
-                        let content = await this.fileRead(["templates", "templates.json"]);
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                            this.log("DB checking templates.json - success");
-                        } catch (e) {
-                            log(`DB checking templates.json - error - ${e}`);
-                        }
-                        data = util.ensure(data, "obj");
-                        let templates = util.ensure(data.templates, "obj");
-                        await Promise.all(Object.keys(templates).map(async name => {
-                            name = String(name);
-                            await Promise.all(["images", "models"].map(async section => {
-                                let tag = { "images": "png", "models": "glb" }[section];
-                                this.log(`DB templates/${name}.${tag}`);
-                                this.addLoad(`templates/${name}.${tag}`);
-                                try {
-                                    await fetchAndPipe(assetsHost+"/templates."+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
-                                    this.log(`DB templates/${name}.${tag} - success`);
-                                } catch (e) {
-                                    this.log(`DB templates/${name}.${tag} - error - ${e}`);
-                                    this.addLoad(`templates/${name}.${tag}:`+e);
-                                }
-                                this.remLoad(`templates/${name}.${tag}`);
-                            }));
-                        }));
-                    })(),
-                    (async () => {
-                        this.log("DB robots.json");
-                        this.addLoad("robots.json");
-                        try {
-                            await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
-                            this.log("DB robots.json - success");
-                        } catch (e) {
-                            this.log(`DB robots.json - error - ${e}`);
-                            this.addLoad("robots.json:"+e);
-                        }
-                        this.remLoad("robots.json");
-                        this.log("DB checking robots.json");
-                        let content = await this.fileRead(["robots", "robots.json"]);
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                            this.log("DB checking robots.json - success");
-                        } catch (e) {
-                            log(`DB checking robots.json - error - ${e}`);
-                        }
-                        data = util.ensure(data, "obj");
-                        let robots = util.ensure(data.robots, "obj");
-                        await Promise.all(Object.keys(robots).map(async name => {
-                            name = String(name);
-                            await Promise.all(["models"].map(async section => {
-                                let tag = { "models": "glb" }[section];
-                                this.log(`DB robots/${name}.${tag}`);
-                                this.addLoad(`robots/${name}.${tag}`);
-                                try {
-                                    await fetchAndPipe(assetsHost+"/robots."+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
-                                    this.log(`DB robots/${name}.${tag} - success`);
-                                } catch (e) {
-                                    this.log(`DB robots/${name}.${tag} - error - ${e}`);
-                                    this.addLoad(`robots/${name}.${tag}:`+e);
-                                }
-                                this.remLoad(`robots/${name}.${tag}`);
-                            }));
-                        }));
-                    })(),
-                    (async () => {
-                        this.log("DB holidays.json");
-                        this.addLoad("holidays.json");
-                        try {
-                            await fetchAndPipe(host+"/holidays.json", path.join(this.dataPath, "holidays", "holidays.json"));
-                            this.log("DB holidays.json - success");
-                        } catch (e) {
-                            this.log(`DB holidays.json - error - ${e}`);
-                            this.addLoad("holidays.json:"+e);
-                        }
-                        this.remLoad("holidays.json");
-                        this.log("DB checking holidays.json");
-                        let content = await this.fileRead(["holidays", "holidays.json"]);
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                            this.log("DB checking holidays.json - success");
-                        } catch (e) {
-                            log(`DB checking holidays.json - error - ${e}`);
-                        }
-                        data = util.ensure(data, "obj");
-                        let holidays = util.ensure(data.holidays, "obj");
-                        await Promise.all(Object.keys(holidays).map(async name => {
-                            name = String(name);
-                            await Promise.all([
-                                "svg", "png", // "ico", "icns",
-                                "hat1", "hat2",
-                            ].map(async tag => {
-                                let pth = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
-                                this.log(`DB holidays/${pth}`);
-                                this.addLoad(`holidays/${pth}`);
-                                try {
-                                    await fetchAndPipe(assetsHost+"/holidays."+pth, path.join(this.dataPath, "holidays", "icons", pth));
-                                    this.log(`DB holidays/${pth} - success`);
-                                } catch (e) {
-                                    this.log(`DB holidays/${pth} - error - ${e}`);
-                                    this.addLoad(`holidays/${pth}:`+e);
-                                }
-                                this.remLoad(`holidays/${pth}`);
-                            }));
-                        }));
-                        await Promise.all(Object.keys(holidays).map(async name => {
-                            name = String(name);
-                            let input = await fs.promises.readFile(path.join(this.dataPath, "holidays", "icons", name+".png"));
-                            await Promise.all([
-                                "ico", "icns",
-                            ].map(async tag => {
-                                let pth = name+"."+tag;
-                                this.log(`DB holidays/${pth} conversion`);
-                                this.addLoad(`holidays/${pth}-conv`);
-                                try {
-                                    let output = {
-                                        ico: () => png2icons.createICO(input, png2icons.BILINEAR, 0, true, true),
-                                        icns: () => png2icons.createICNS(input, png2icons.BILINEAR, 0),
-                                    }[tag]();
-                                    await fs.promises.writeFile(path.join(this.dataPath, "holidays", "icons", pth), output);
-                                    this.log(`DB holidays/${pth} conversion - success`);
-                                } catch (e) {
-                                    this.log(`DB holidays/${pth} conversion - error - ${e}`);
-                                    this.addLoad(`holidays/${pth}-conv:`+e);
-                                }
-                                this.remLoad(`holidays/${pth}-conv`);
-                            }));
-                        }));
-                    })(),
-                    (async () => {
-                        this.log("DB themes.json");
-                        this.addLoad("themes.json");
-                        try {
-                            await fetchAndPipe(host+"/themes.json", path.join(this.dataPath, "themes.json"));
-                            this.log("DB themes.json - success");
-                        } catch (e) {
-                            this.log(`DB themes.json - error - ${e}`);
-                            this.addLoad("themes.json:"+e);
-                        }
-                        this.remLoad("themes.json");
-                        await this.send("theme");
-                    })(),
-                    ...FEATURES.map(async name => {
-                        const subhost = host+"/"+name.toLowerCase();
-                        const log = (...a) => this.log(`DB [${name}]`, ...a);
-                        log("search");
-                        this.addLoad(name+":search");
-                        try {
-                            let resp = await util.timeout(10000, fetch(subhost+"/confirm.txt"));
-                            if (resp.status != 200) throw resp.status;
-                        } catch (e) {
-                            log(`search - not found - ${e}`);
-                            this.remLoad(name+":search");
-                            return;
-                        }
-                        log("search - found");
-                        this.remLoad(name+":search");
-                        let namefs = {
-                            PLANNER: async () => {
-                                await Portal.Feature.affirm(this, name);
-                                await Promise.all([
-                                    async () => {
-                                        log("solver");
-                                        this.addLoad(name+":solver");
-                                        try {
-                                            if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
-                                                await fs.promises.cp(
-                                                    path.join(__dirname, name.toLowerCase(), "solver"),
-                                                    path.join(Portal.Feature.getDataPath(this, name), "solver"),
-                                                    {
-                                                        force: true,
-                                                        recursive: true,
-                                                    },
-                                                );
-                                            log("solver - success");
-                                        } catch (e) {
-                                            log(`solver - error - ${e}`);
-                                            this.addLoad(name+":solver:"+e);
-                                        }
-                                        this.remLoad(name+":solver");
-                                    },
-                                    async () => {
-                                        log("templates.json");
-                                        this.addLoad(name+":templates.json");
-                                        try {
-                                            await fetchAndPipe(subhost+"/templates.json", path.join(Portal.Feature.getDataPath(this, name), "templates.json"));
-                                            log("templates.json - success");
-                                        } catch (e) {
-                                            log(`templates.json - error - ${e}`);
-                                            this.addLoad(name+":templates.json:"+e);
-                                        }
-                                        this.remLoad(name+":templates.json");
-                                    },
-                                ].map(f => f()));
-                            },
-                        };
-                        if (name in namefs) await namefs[name]();
-                    }),
-                ]);
-                return true;
-            })();
-            this.#isLoading = false;
-            return r;
-        }
-    }
-    class Feature extends util.Target {
-        #parent;
-
-        #started;
-
-        #processManager;
-        #clientManager;
-
-        #features;
-
-        constructor(parent) {
-            super();
-
-            if (!(parent instanceof Feature) && !(parent instanceof FeatureManager)) throw "Parent "+parent+" is not of class Feature or FeatureManager";
-            this.#parent = parent;
-
-            this.#started = false;
-
-            this.#processManager = new ProcessManager();
-            this.#clientManager = new ClientManager();
-
-            this.#features = new Set();
-        }
-
-        get parent() { return this.#parent; }
-
-        async init() {
-        }
-
-        get processManager() { return this.#processManager; }
-        get clientManager() { return this.#clientManager; }
-
-        get features() { return [...this.#features]; }
-        set features(v) {
-            v = util.ensure(v, "arr");
-            (async () => {
-                await this.clearFeatures();
-                v.forEach(v => this.addFeature(v));
-            })();
-        }
-        async clearFeatures() {
-            let feats = this.features;
-            for (let i = 0; i < feats.length; i++)
-                await this.remFeature(feats[i]);
-            return feats;
-        }
-        hasFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            return this.#features.has(feat) && feat.parent == this;
-        }
-        addFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            if (feat.parent != this) return false;
-            if (this.hasFeature(feat)) return false;
-            this.#features.add(feat);
-            feat.start();
-            feat._onFocus = () => {
-                if (feat.hasMenu()) {
-                    if (OS.platform == "darwin")
-                        electron.Menu.setApplicationMenu(feat.menu);
-                    return;
-                }
-                if (feat.hasWindow())
-                    feat.window.removeListener("focus", feat._onFocus);
-                delete feat._onFocus;
-            };
-            if (feat.hasWindow())
-                feat.window.on("focus", feat._onFocus);
-            this.post("feature-start", feat);
-            return feat;
-        }
-        async remFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            if (feat.parent != this) return false;
-            if (!this.hasFeature(feat)) return false;
-            feat.log("REM");
-            if (feat.started) {
-                feat.log("REM - not stopped");
-                let r = await feat.stop();
-                feat.log(`REM - stop: ${!!r}`);
-                return r;
-            }
-            feat.log("REM - already stopped");
-            this.#features.delete(feat);
-            feat.portal = null;
-            this.post("feature-stop", feat);
-            return feat;
-        }
-    }
-    */
     class Portal extends util.Target {
         #started;
 
@@ -978,6 +434,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
         async init() {
             await this.affirm();
+            let version = await this.get("base-version");
+            if (!(await this.canFS(version))) {
+                let fsVersion = await this.get("fs-version");
+                return "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")";
+            }
             const stdoutWrite = process.stdout.write;
             const stderrWrite = process.stderr.write;
             process.stdout.write = (...a) => {
@@ -1101,50 +562,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return true;
         }
         get isLoading() { return this.#isLoading; }
-        async tryLoad(version) {
+        async tryLoad() {
             if (this.isLoading) return false;
-            version = String(version);
+            let version = await this.get("base-version");
             this.#isLoading = true;
             let r = await (async () => {
                 await this.affirm();
                 this.clearLoads();
-                let fsVersion = "";
-                try {
-                    fsVersion = await this.fileRead(".version");
-                } catch (e) {}
-                this.log(`DB fs-version check (${fsVersion} ?<= ${version})`);
+                let fsVersion = await this.get("fs-version");
+                this.log(`DB fs-version check (${version} ?>= ${fsVersion})`);
                 this.addLoad("fs-version");
-                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
-                    this.log(`DB fs-version mismatch (${fsVersion} !<= ${version})`);
+                if (!(await this.canFS(version))) {
+                    this.log(`DB fs-version mismatch (${version} !>= ${fsVersion})`);
                     this.remLoad("fs-version");
-                    this.addLoad("fs-version:"+fsVersion+" > "+version);
+                    this.addLoad("fs-version:"+version+" < "+fsVersion);
                     return false;
                 }
-                this.log(`DB fs-version match (${fsVersion} <= ${version})`);
+                this.log(`DB fs-version match (${version} >= ${fsVersion})`);
                 this.remLoad("fs-version");
-                await this.fileWrite(".version", version);
+                await this.set("fs-version", version);
                 this.log("DB finding host");
                 this.addLoad("find");
                 const host = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
                 const assetsHost = String(await this.get("assets-host"));
                 const isCompMode = await this.get("val-comp-mode");
                 this.remLoad("find");
+                this.log("DB poll");
+                this.log(`DB ^ host: ${host}`);
+                this.log(`DB ^ assetsHost: ${assetsHost}`);
                 if (isCompMode) {
-                    this.log(`DB poll - ${host} + ${assetsHost} - SKIP (COMP MODE)`);
+                    this.log(`DB poll - SKIP (COMP MODE)`);
                     this.addLoad("comp-mode");
                     return true;
                 }
-                this.log(`DB poll - ${host}`);
+                this.log(`DB polling`);
                 this.addLoad("poll");
                 try {
                     await util.timeout(10000, fetch(host));
                 } catch (e) {
-                    this.log(`DB poll - ${host} + ${assetsHost} - fail`);
+                    this.log(`DB polling - fail`);
                     this.remLoad("poll");
                     this.addLoad("poll:"+e);
                     return false;
                 }
-                this.log(`DB poll - ${host} - success`);
+                this.log(`DB polling - success`);
                 this.remLoad("poll");
                 const fetchAndPipe = async (url, pth) => {
                     this.log(`DB :: f&p(${url})`);
@@ -1505,8 +966,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
                 this.addFeature(new Portal.Feature(this, "PORTAL"));
                 setTimeout(async () => {
-                    await this.tryLoad(await this.get("base-version"));
-                }, 1000);
+                    await this.tryLoad();
+                }, 0*1000);
             })();
 
             return true;
@@ -1580,86 +1041,83 @@ Object.defineProperty(exports, "__esModule", { value: true });
         static async cleanup(dataPath, version) {
             version = String(version);
             log(". cleanup");
-            let fsVersion = "";
-            try {
-                fsVersion = await this.fileRead([dataPath, ".version"]);
-            } catch (e) {}
-            log(`. cleanup - fs-version check (${fsVersion} ?<= ${version})`);
-            if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
-                log(`. cleanup - fs-version mismatch (${fsVersion} !<= ${version})`);
+            let fsVersion = await this.getFSVersion(dataPath);
+            log(`. cleanup - fs-version check (${version} ?>= ${fsVersion})`);
+            if (!(await this.canFS(dataPath, version))) {
+                log(`. cleanup - fs-version mismatch (${version} !>= ${fsVersion})`);
                 return false;
             }
-            log(`. cleanup - fs-version match (${fsVersion} <= ${version})`);
-            await this.fileWrite([dataPath, ".version"], version);
+            log(`. cleanup - fs-version match (${version} >= ${fsVersion})`);
+            await this.setFSVersion(dataPath, version);
             const l = (...a) => log(". deleting "+Portal.makePath(...a));
             const format = [
-                // ./logs
+                //~/logs
                 {
                     type: "dir", name: "logs",
                     children: [
-                        // ./logs/*.log
+                        //~/logs/*.log
                         { type: "file", match: (_, name) => name.endsWith(".log") },
                     ],
                 },
-                // ./templates
+                //~/templates
                 {
                     type: "dir", name: "templates",
                     children: [
-                        // ./templates/images
+                        //~/templates/images
                         {
                             type: "dir", name: "images",
                             children: [
-                                // ./templates/images/*.png
-                                // ./templates/images/*.png-tmp
+                                //~/templates/images/*.png
+                                //~/templates/images/*.png-tmp
                                 { type: "file", match: (_, name) => (name.endsWith(".png") || name.endsWith(".png-tmp")) },
                             ],
                         },
-                        // ./templates/models
+                        //~/templates/models
                         {
                             type: "dir", name: "models",
                             children: [
-                                // ./templates/models/*.glb
-                                // ./templates/models/*.glb-tmp
+                                //~/templates/models/*.glb
+                                //~/templates/models/*.glb-tmp
                                 { type: "file", match: (_, name) => (name.endsWith(".glb") || name.endsWith(".glb-tmp")) }
                             ],
                         },
-                        // ./templates/templates.json
+                        //~/templates/templates.json
                         { type: "file", name: "templates.json" }
                     ],
                 },
-                // ./robots
+                //~/robots
                 {
                     type: "dir", name: "robots",
                     children: [
-                        // ./robots/models
+                        //~/robots/models
                         {
                             type: "dir", name: "models",
                             children: [
-                                // ./robots/models/*.glb
-                                // ./robots/models/*.glb-tmp
+                                //~/robots/models/*.glb
+                                //~/robots/models/*.glb-tmp
                                 { type: "file", match: (_, name) => (name.endsWith(".glb") || name.endsWith(".glb-tmp")) }
                             ],
                         },
-                        // ./robots/robots.json
+                        //~/robots/robots.json
                         { type: "file", name: "robots.json" }
                     ],
                 },
-                // ./holidays
+                //~/holidays
                 {
                     type: "dir", name: "holidays",
                     children: [
-                        // ./holidays/icons
+                        //~/holidays/icons
                         {
                             type: "dir", name: "icons",
                             children: [
-                                // ./holidays/icons/*.svg
-                                // ./holidays/icons/*.png
-                                // ./holidays/icons/*.ico
-                                // ./holidays/icons/*.icns
-                                // ./holidays/icons/*.svg-tmp
-                                // ./holidays/icons/*.png-tmp
-                                // ./holidays/icons/*.ico-tmp
-                                // ./holidays/icons/*.icns-tmp
+                                //~/holidays/icons/*.svg
+                                //~/holidays/icons/*.png
+                                //~/holidays/icons/*.ico
+                                //~/holidays/icons/*.icns
+                                //~/holidays/icons/*.svg-tmp
+                                //~/holidays/icons/*.png-tmp
+                                //~/holidays/icons/*.ico-tmp
+                                //~/holidays/icons/*.icns-tmp
                                 { type: "file", match: (_, name) => (
                                     name.endsWith(".svg") ||
                                     name.endsWith(".png") ||
@@ -1672,61 +1130,61 @@ Object.defineProperty(exports, "__esModule", { value: true });
                                 ) }
                             ],
                         },
-                        // ./holidays/holidays.json
+                        //~/holidays/holidays.json
                         { type: "file", name: "holidays.json" }
                     ],
                 },
-                // ./<feature>
+                //~/<feature>
                 { type: "dir", match: (_, name) => FEATURES.includes(name.toUpperCase()) },
-                // ./panel
+                //~/panel
                 {
                     type: "dir", name: "panel",
                     children: [
-                        // ./panel/logs
+                        //~/panel/logs
                         {
                             type: "dir", name: "logs",
                             children: [
-                                // ./panel/logs/*.wpilog
+                                //~/panel/logs/*.wpilog
                                 { type: "file", match: (_, name) => name.endsWith(".wpilog") },
                             ],
                         },
-                        // ./panel/projects
+                        //~/panel/projects
                         {
                             type: "dir", name: "projects",
                             children: [
-                                // ./panel/projects/*.json
+                                //~/panel/projects/*.json
                                 { type: "file", match: (_, name) => name.endsWith(".json") },
                             ],
                         },
-                        // ./panel/projects.json
+                        //~/panel/projects.json
                         { type: "file", name: "projects.json" },
-                        // ./panel/projects.meta.json
+                        //~/panel/projects.meta.json
                         { type: "file", name: "projects.meta.json" },
                     ],
                 },
-                // ./planner
+                //~/planner
                 {
                     type: "dir", name: "planner",
                     children: [
-                        // ./planner/projects
+                        //~/planner/projects
                         {
                             type: "dir", name: "projects",
                             children: [
-                                // ./planner/projects/*.json
+                                //~/planner/projects/*.json
                                 { type: "file", match: (_, name) => name.endsWith(".json") },
                             ],
                         },
-                        // ./planner/projects.json
+                        //~/planner/projects.json
                         { type: "file", name: "projects.json" },
-                        // ./panel/projects.meta.json
+                        //~/panel/projects.meta.json
                         { type: "file", name: "projects.meta.json" },
-                        // ./planner/templates.json
+                        //~/planner/templates.json
                         { type: "file", name: "templates.json" },
-                        // ./planner/solver
+                        //~/planner/solver
                         { type: "dir", name: "solver" },
                     ],
                 },
-                // ./themes.json
+                //~/themes.json
                 { type: "file", name: "themes.json" }
             ];
             const cleanup = async (pth, patterns) => {
@@ -1828,6 +1286,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return await fs.promises.rm(pth, { force: true, recursive: true });
         }
 
+        static async getFSVersion(pth) {
+            try {
+                return await this.fileRead([pth, ".version"]);
+            } catch (e) {}
+            return "";
+        }
+        static async setFSVersion(pth, version) {
+            try {
+                await this.fileWrite([pth, ".version"], String(version));
+            } catch (e) {}
+        }
+        static async canFS(pth, version) {
+            let fsVersion = await this.getFSVersion(pth);
+            version = String(version);
+            if (!compareVersions.validateStrict(fsVersion)) return true;
+            if (!compareVersions.validateStrict(version)) return false;
+            return compareVersions.compare(version, fsVersion, ">=");
+        }
+
         async fileHas(pth) { return await Portal.fileHas([this.dataPath, pth]); }
         async fileRead(pth) { return await Portal.fileRead([this.dataPath, pth]); }
         async fileReadRaw(pth) { return await Portal.fileReadRaw([this.dataPath, pth]); }
@@ -1839,6 +1316,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
         async dirList(pth) { return await Portal.dirList([this.dataPath, pth]); }
         async dirMake(pth) { return await Portal.dirMake([this.dataPath, pth]); }
         async dirDelete(pth) { return await Portal.dirDelete([this.dataPath, pth]); }
+
+        async getFSVersion() { return await Portal.getFSVersion(this.dataPath); }
+        async setFSVersion(verison) { return await Portal.setFSVersion(this.dataPath, verison); }
+        async canFS(version) { return await Portal.canFS(this.dataPath, version); }
 
         async clientMake(id, location) {
             if (await this.clientHas(id)) return null;
@@ -2019,7 +1500,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 "production": async () => {
                     return app.isPackaged;
                 },
-                "fs-version": async () => await this.fileRead(".version"),
+                "fs-version": async () => await this.getFSVersion(),
                 "_fullpackage": async () => {
                     let content = "";
                     try {
@@ -2135,6 +1616,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
         async set(k, v) {
             k = String(k);
             let kfs = {
+                "fs-version": async () => await this.setFSVersion(v),
                 "_fullconfig": async (k=null, v=null) => {
                     if (k == null) return;
                     let content = "";
@@ -2314,24 +1796,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         get clientManager() { return this.#clientManager; }
 
         get portal() { return this.#portal; }
-        /*
-        set portal(v) {
-            v = (v instanceof Portal) ? v : null;
-            if (this.portal == v) return;
-            (async () => {
-                if (this.hasPortal()) {
-                    await this.portal.remFeature(this);
-                    this.post("portal-unhook", this.portal);
-                }
-                this.#portal = v;
-                if (this.hasPortal()) {
-                    this.portal.addFeature(this);
-                    this.post("portal-hook", this.portal);
-                }
-            })();
-        }
-        hasPortal() { return this.portal instanceof Portal; }
-        */
         
         get name() { return this.#name; }
         hasName() { return util.is(this.name, "str"); }
@@ -2775,15 +2239,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
             (async () => {
                 await this.whenReady();
                 if (!this.hasWindow()) return;
-                let fsVersion = String(await this.get("fs-version"));
-                let version = String(await this.get("base-version"));
-                if (compareVersions.validateStrict(fsVersion) && compareVersions.compare(fsVersion, version, ">")) {
-                    setTimeout(() => {
-                        this.send("deprecated", [version]);
-                    }, 500);
-                } else {
-                    await this.portal.fileWrite(".version", version);
-                }
                 let prevIsDevMode = null;
                 const checkDevConfig = async () => {
                     let isDevMode = !!(await this.get("devmode"));
@@ -3599,7 +3054,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     },
                     "cmd-poll-db-host": async () => {
                         (async () => {
-                            await this.portal.tryLoad(await this.get("base-version"));
+                            await this.portal.tryLoad();
                         })();
                     },
                     "feature": async (name, cmd, k, ...a) => {
@@ -3711,18 +3166,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
         portal.start();
     });
 
-    let allow = false;
+    let allowQuit = false;
     app.on("before-quit", async e => {
-        if (allow) return;
+        if (allowQuit) return;
         e.preventDefault();
         await whenInitialized();
         log("> before-quit");
-        let quit = true;
+        let stopped = true;
         try {
-            quit = await portal.stop();
+            stopped = await portal.stop();
         } catch (e) {}
-        if (!quit) return;
-        allow = true;
+        if (!stopped) return;
+        allowQuit = true;
         app.quit();
     });
     app.on("window-all-closed", async () => {
@@ -3739,7 +3194,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
     log("> ready");
 
-    await portal.init();
+    let allowStart = await portal.init();
+    if (allowStart != true) {
+        electron.dialog.showErrorBox("Startup Error", allowStart);
+        allowQuit = true;
+        app.quit();
+        return;
+    }
+
     portal.start();
     initialized = true;
     initializedRes.forEach(res => res());
