@@ -21,15 +21,47 @@ export default class WPILOGEncoder extends util.Target {
 
         this.#extraHeader = String(extraHeader);
 
-        this.#records = [];
+        this.#records = new Set();
     }
     
     get extraHeader() { return this.#extraHeader; }
 
     get records() { return [...this.#records]; }
+    set records(v) {
+        v = util.ensure(v, "arr");
+        this.clearRecords();
+        v.forEach(v => this.addRecord(v));
+    }
+    clearRecords() {
+        let records = this.records;
+        records.forEach(record => this.remRecord(record));
+        return records;
+    }
+    hasRecord(record) {
+        if (!(record instanceof WPILOGEncoder.Record)) return false;
+        return this.#records.has(record);
+    }
+    addRecord(record) {
+        if (!(record instanceof WPILOGEncoder.Record)) return false;
+        if (this.hasRecord(record)) return false;
+        this.#records.add(record);
+        return record;
+    }
+    remRecord(record) {
+        if (!(record instanceof WPILOGEncoder.Record)) return false;
+        if (!this.hasRecord(record)) return false;
+        this.#records.delete(record);
+        return record;
+    }
 
     build(callback) {
-        let records = this.records.map(record => record.build());
+        let records = this.records.sort((a, b) => a.ts-b.ts);
+        records = records.map((record, i) => {
+            let data = record.build();
+            if (util.is(callback, "func"))
+                callback(util.lerp(0, 0.5, (i+1)/record.length));
+            return data;
+        });
         let l = 0;
         records.forEach(record => (l += record.length));
         let header = util.TEXTENCODER.encode(HEADERSTRING);
@@ -47,7 +79,7 @@ export default class WPILOGEncoder extends util.Target {
             data.set(record, x);
             x += record.length;
             if (util.is(callback, "func"))
-                callback(x / data.length);
+                callback(util.lerp(0.5, 1, x/data.length));
         });
         return data;
     }
@@ -86,6 +118,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
     static makeControlStart(ts, startData) {
         ts = util.ensure(ts, "num");
         startData = util.ensure(startData, "obj");
+        let entry = util.ensure(metadataData.entry, "num");
         let name = util.TEXTENCODER.encode(String(startData.name));
         let type = util.TEXTENCODER.encode(String(startData.type));
         let metadata = util.TEXTENCODER.encode(String(startData.metadata));
@@ -93,7 +126,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         let data = new Uint8Array(1+4+4+name.length+4+type.length+4+metadata.length);
         let dataView = new DataView(data.buffer);
         data[0] = CONTROLSTART;
-        dataView.setUint32(1, startData.entry, true);
+        dataView.setUint32(1, entry, true);
         dataView.setUint32(1+4, name.length, true);
         data.set(name, 1+4+4);
         dataView.setUint32(1+4+4+name.length, type.length, true);
@@ -153,7 +186,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         dataView.setFloat64(0, util.ensure(v, "num"), true);
         return this.makeRaw(entry, ts, data);
     }
-    static makeString(entry, ts, v) {
+    static makeStr(entry, ts, v) {
         return this.makeRaw(entry, ts, util.TEXTENCODER.encode(String(v)));
     }
     static makeBoolArr(entry, ts, v) {

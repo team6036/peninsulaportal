@@ -13,6 +13,7 @@ class WPILOGDecoderWorker extends WorkerBase {
 
         this.addHandler("cmd-start", data => {
             try {
+                this.progress(0);
                 const decoder = new WPILOGDecoder(data);
                 // crude serialized source building - find better way if possible
                 // this is done to increase performance as normal method calls of an unserialized source results in way too much lag
@@ -100,13 +101,13 @@ class WPILOGDecoderWorker extends WorkerBase {
                             float: () => record.getFloat(),
                             double: () => record.getDouble(),
                             string: () => record.getStr(),
+                            json: () => typefs["string"](),
                             "boolean[]": () => record.getBoolArr(),
                             "int[]": () => record.getIntArr(),
                             "int64[]": () => typefs["int[]"](),
                             "float[]": () => record.getFloatArr(),
                             "double[]": () => record.getDoubleArr(),
                             "string[]": () => record.getStrArr(),
-                            json: () => record.getStr(),
                         };
                         let v = (type in typefs) ? typefs[type]() : record.getRaw();
                         if (CRUDE) {
@@ -123,6 +124,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                         }
                     }
                 });
+                this.progress(1);
                 this.send("finish", CRUDE ? source : source.toSerialized());
             } catch (e) { this.send("error", e); }
         });
