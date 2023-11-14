@@ -387,13 +387,6 @@ export class App extends util.Target {
             pop.info = (await this.getAboutLines()).join("\n");
             pop.hasInfo = true;
         });
-        this.addHandler("cmd-deprecated", async args => {
-            let pop = this.alert();
-            pop.iconColor = "var(--cr)";
-            pop.content = `This version of the application (${args[0]}) is deprecated. Please install the latest version of this application`;
-            await pop.whenResult();
-            window.api.send("close");
-        });
         this.addHandler("cmd-win-fullscreen", async args => {
             args = util.ensure(args, "arr");
             this.fullscreen = args[0];
