@@ -38,7 +38,7 @@ export default class WPILOGSource extends Source {
             client.addHandler("cmd-progress", progress => this.post("progress", progress));
             client.addHandler("cmd-finish", data => {
                 this.fromSerialized(data);
-                res(true);
+                res(this);
             });
             client.start([...this.data]);
         });
