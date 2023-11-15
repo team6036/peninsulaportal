@@ -159,10 +159,10 @@ export default class App extends core.App {
         this.#featureButtons = new Set();
         this.#upperFeatureButtons = new Set();
 
-        this.addHandler("start-begin", data => {
+        this.addHandler("pre-setup", () => {
             this.eLoadingTo = document.querySelector("#PAGE > .main > .title");
         });
-        this.addHandler("start-complete", data => {
+        this.addHandler("post-setup", () => {
             this.#eBackground = document.querySelector("#PAGE > .background");
             this.#eCanvas = document.querySelector("#PAGE > .background > div > #canvas");
             if (this.hasECanvas()) {
@@ -373,8 +373,6 @@ export default class App extends core.App {
             let btn;
 
             btn = this.addFeatureButton(new FeatureButton("Panel", "grid"));
-            // btn.tooltip = "Experimental!";
-            // btn.tooltipColor = "var(--cr)";
             btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
 
             btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));

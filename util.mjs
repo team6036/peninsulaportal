@@ -550,114 +550,23 @@ export class Target {
         if (!(e in this.#handlers)) return false;
         return this.#handlers[e].has(f);
     }
-    async post(e, data=null) {
+    async post(e, ...a) {
         if (!(e in this.#handlers)) return [];
         let fs = [...this.#handlers[e]];
         fs = fs.map(f => (async () => {
-            if (f.constructor.name == "AsyncFunction") return await f(data);
-            else if (f.constructor.name == "Function") return f(data);
+            if (f.constructor.name == "AsyncFunction") return await f(...a);
+            else if (f.constructor.name == "Function") return f(...a);
         }));
         return await Promise.all(fs.map(f => f()));
     }
-}
-
-/*
-export class Console extends Target {
-    #parent;
-
-    #name;
-    #showName;
-    #nameDeco;
-    #nameTail;
-    #enabled;
-
-    constructor(parent, name) {
-        super();
-        
-        if (!is(parent, "obj")) throw "Parent is not an object";
-        this.#parent = parent;
-
-        this.#name = null;
-        this.#showName = true;
-        this.#nameDeco = null;
-        this.#nameTail = null;
-        this.#enabled = true;
-
-        this.name = name;
-        this.nameDeco = "brackets";
-        this.nameTail = "";
-    }
-
-    get parent() { return this.#parent; }
-
-    get name() { return this.#name; }
-    set name(v) {
-        v = String(v);
-        if (this.name == v) return;
-        this.#name = v;
-        this.post("change", "name");
-    }
-    get showName() { return this.#showName; }
-    set showName(v) {
-        v = !!v;
-        if (this.showName == v) return;
-        this.#showName = v;
-        this.post("change", "showName");
-    }
-    get hideName() { return !this.showName; }
-    set hideName(v) { this.showName = !v; }
-    get nameDeco() { return this.#nameDeco; }
-    set nameDeco(v) {
-        v = (v == null) ? null : String(v);
-        if (this.nameDeco == v) return;
-        this.#nameDeco = v;
-        this.post("change", "nameDeco");
-    }
-    get nameTail() { return this.#nameTail; }
-    set nameTail(v) {
-        v = String(v);
-        if (this.nameTail == v) return;
-        this.#nameTail = v;
-        this.post("change", "nameTail");
-    }
-    get enabled() { return this.#enabled; }
-    set enabled(v) {
-        v = !!v;
-        if (this.enabled == v) return;
-        this.#enabled = v;
-        this.post("change", "enabled");
-    }
-    get disabled() { return !this.enabled; }
-    set disabled(v) { this.enabled = !v; }
-
-    get fullName() {
-        let deco = ":";
-        if (this.nameDeco == "brackets") deco = "[:]";
-        else if (this.nameDeco == "braces") deco = "{:}";
-        else if (this.nameDeco == "parenthesis") deco = "(:)";
-        else if (this.nameDeco == "bars") deco = "|:|";
-        let name = deco.split(":")[0] + this.name + deco.split(":")[1];
-        if (this.nameTail.length > 0) name += " "+this.nameTail;
-        return name;
-    }
-
-    log(...a) {
-        if (this.disabled) return;
-        if (this.showName) return this.parent.log(this.fullName, ...a);
-        return this.parent.log(...a);
-    }
-    warn(...a) {
-        if (this.disabled) return;
-        if (this.showName) return this.parent.warn(this.fullName, ...a);
-        return this.parent.warn(...a);
-    }
-    error(...a) {
-        if (this.disabled) return;
-        if (this.showName) return this.parent.error(this.fullName, ...a);
-        return this.parent.error(...a);
+    async change(attr, f, t) {
+        attr = String(attr);
+        let r = [];
+        r.push(...(await this.post("change", attr, f, t)));
+        r.push(...(await this.post("change-"+attr, f, t)));
+        return r;
     }
 }
-*/
 
 export class Color extends Target {
     #r; #g; #b; #a;
@@ -726,29 +635,25 @@ export class Color extends Target {
     set r(v) {
         v = Math.min(255, Math.max(0, ensure(v, "num")));
         if (this.r == v) return;
-        this.#r = v;
-        this.post("change", "r");
+        this.change("r", this.r, this.#r=v);
     }
     get g() { return this.#g; }
     set g(v) {
         v = Math.min(255, Math.max(0, ensure(v, "num")));
         if (this.g == v) return;
-        this.#g = v;
-        this.post("change", "g");
+        this.change("g", this.g, this.#g=v);
     }
     get b() { return this.#b; }
     set b(v) {
         v = Math.min(255, Math.max(0, ensure(v, "num")));
         if (this.b == v) return;
-        this.#b = v;
-        this.post("change", "b");
+        this.change("b", this.b, this.#b=v);
     }
     get a() { return this.#a; }
     set a(v) {
         v = Math.min(1, Math.max(0, ensure(v, "num")));
         if (this.a == v) return;
-        this.#a = v;
-        this.post("change", "a");
+        this.change("a", this.a, this.#a=v);
     }
     get rgb() { return [this.r, this.g, this.b]; }
     set rgb(v) { [this.r, this.g, this.b] = new Color(v).rgb; }
@@ -875,30 +780,26 @@ export class Range extends Target {
     set l(v) {
         v = ensure(v, "any_num");
         if (this.l == v) return;
-        this.#l = v;
-        this.post("change", "l");
+        this.change("l", this.l, this.#l=v);
     }
     get r() { return this.#r; }
     set r(v) {
         v = ensure(v, "any_num");
         if (this.r == v) return;
-        this.#r = v;
-        this.post("change", "r");
+        this.change("r", this.r, this.#r=v);
     }
 
     get lInclude() { return this.#lInclude; }
     set lInclude(v) {
         v = !!v;
         if (this.lInclude == v) return;
-        this.#lInclude = v;
-        this.post("change", "lInclude");
+        this.change("lInclude", this.lInclude, this.#lInclude=v);
     }
     get rInclude() { return this.#rInclude; }
     set rInclude(v) {
         v = !!v;
         if (this.rInclude == v) return;
-        this.#rInclude = v;
-        this.post("change", "rInclude");
+        this.change("rInclude", this.rInclude, this.#rInclude=v);
     }
 
     normalize() {
@@ -955,15 +856,13 @@ export class V extends Target {
     set x(v) {
         v = ensure(v, "num");
         if (this.x == v) return;
-        this.#x = v;
-        this.post("change", "x");
+        this.change("x", this.x, this.#x=v);
     }
     get y() { return this.#y; }
     set y(v) {
         v = ensure(v, "num");
         if (this.y == v) return;
-        this.#y = v;
-        this.post("change", "y");
+        this.change("y", this.y, this.#y=v);
     }
     get xy() { return [this.x, this.y]; }
     set xy(v) { [this.x, this.y] = new V(v).xy; }
@@ -1080,22 +979,19 @@ export class V3 extends Target {
     set x(v) {
         v = ensure(v, "num");
         if (this.x == v) return;
-        this.#x = v;
-        this.post("change", "x");
+        this.change("x", this.x, this.#x=v);
     }
     get y() { return this.#y; }
     set y(v) {
         v = ensure(v, "num");
         if (this.y == v) return;
-        this.#y = v;
-        this.post("change", "y");
+        this.change("y", this.y, this.#y=v);
     }
     get z() { return this.#z; }
     set z(v) {
         v = ensure(v, "num");
         if (this.z == v) return;
-        this.#z = v;
-        this.post("change", "z");
+        this.change("z", this.z, this.#z=v);
     }
     get xyz() { return [this.x, this.y, this.z]; }
     set xyz(v) { [this.x, this.y, this.z] = new V3(v).xyz; }
@@ -1241,8 +1137,8 @@ export class Line extends Shape {
 
         this.#p1 = new V();
         this.#p2 = new V();
-        this.p1.addHandler("change", c => this.post("p1."+c));
-        this.p2.addHandler("change", c => this.post("p2."+c));
+        this.p1.addHandler("change", (c, f, t) => this.change("p1."+c, f, t));
+        this.p2.addHandler("change", (c, f, t) => this.change("p2."+c, f, t));
 
         [this.x1, this.y1, this.x2, this.y2] = a;
     }
@@ -1344,7 +1240,7 @@ export class Circle extends Shape {
         }
 
         this.#p = new V();
-        this.p.addHandler("change", c => this.post("p."+c));
+        this.p.addHandler("change", (c, f, t) => this.change("p."+c, f, t));
         this.#r = 0;
 
         [this.x, this.y, this.r] = a;
@@ -1366,8 +1262,7 @@ export class Circle extends Shape {
     set r(v) {
         v = Math.max(0, ensure(v, "num"));
         if (this.r == v) return;
-        this.#r = v;
-        this.post("change", "r");
+        this.change("r", this.r, this.#r=v);
     }
 
     getBounding() { return new Rect(this.p.sub(this.r), this.r*2); }
@@ -1484,8 +1379,8 @@ export class Rect extends Shape {
 
         this.#xy = new V();
         this.#wh = new V();
-        this.xy.addHandler("change", c => this.post("xy."+c));
-        this.wh.addHandler("change", c => this.post("wh."+c));
+        this.xy.addHandler("change", (c, f, t) => this.change("xy."+c, f, t));
+        this.wh.addHandler("change", (c, f, t) => this.change("wh."+c, f, t));
 
         [this.x, this.y, this.w, this.h] = a;
     }
@@ -1680,7 +1575,7 @@ export class Polygon extends Shape {
         a = a.map(v => new V(v));
         
         this.#p = new V();
-        this.p.addHandler("change", c => this.post("p."+c));
+        this.p.addHandler("change", (c, f, t) => this.change("p."+c, f, t));
         this.#d = 0;
         this.#points = [];
         this.#pointsmx = new V();
@@ -1706,15 +1601,13 @@ export class Polygon extends Shape {
     set d(v) {
         v = ((ensure(v, "num")%360)+360)%360;
         if (this.d == v) return;
-        this.#d = v;
-        this.post("change", "d");
+        this.change("d", this.d, this.#d=v);
     }
-    get points() { return [...this.#points]; }
+    get points() { return this.#points.map(v => new V(v)); }
     set points(v) {
         v = ensure(v, "arr");
         v = v.map((v, i) => {
             v = new V(v);
-            v.addHandler("change", c => this.post("points["+i+"]."+c));
             if (i == 0) {
                 this.#pointsmx.set(v);
                 this.#pointsmn.set(v);
@@ -1726,8 +1619,7 @@ export class Polygon extends Shape {
             }
             return v;
         });
-        this.#points = v;
-        this.post("change", "points");
+        this.change("points", this.points, [...(this.#points=v)]);
     }
     get finalPoints() { return this.points.map(v => v.rotateOrigin(this.d).add(this.p)); }
 

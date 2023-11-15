@@ -77,9 +77,9 @@ export class App extends util.Target {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
                 (async () => {
-                    await this.post("start-begin");
+                    await this.post("pre-setup");
                     await this.setup();
-                    await this.post("start-complete");
+                    await this.post("post-setup");
                     let page = await window.api.send("state-get", ["page"]);
                     let pageState = await window.api.send("state-get", ["page-state"]);
                     let pageLazyStates = util.ensure(await window.api.send("state-get", ["page-lazy-states"]), "obj");
@@ -184,9 +184,8 @@ export class App extends util.Target {
                         const onHolidayState = async holiday => {
                             elem.src = (holiday == null) ? (location + path) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
                         };
-                        this.addHandler("cmd-win-holiday", async args => {
-                            args = util.ensure(args, "arr");
-                            await onHolidayState(args[0]);
+                        this.addHandler("cmd-win-holiday", async holiday => {
+                            await onHolidayState(holiday);
                         });
                         await onHolidayState(await window.api.get("active-holiday"));
                     } else elem.src = location + path;
@@ -363,8 +362,8 @@ export class App extends util.Target {
         window.api.on((_, cmd, args) => {
             cmd = String(cmd);
             args = util.ensure(args, "arr");
-            this.post("cmd", { cmd: cmd, args: args });
-            this.post("cmd-"+cmd, args);
+            this.post("cmd", cmd, ...args);
+            this.post("cmd-"+cmd, ...args);
         });
         this.addHandler("perm", async data => {
             if (this.hasPage(this.page)) {
@@ -376,7 +375,7 @@ export class App extends util.Target {
             }
             return true;
         });
-        this.addHandler("cmd-about", async args => {
+        this.addHandler("cmd-about", async () => {
             let name = String(await window.api.get("name"));
             let holiday = await window.api.get("active-holiday");
             let pop = this.alert();
@@ -387,17 +386,14 @@ export class App extends util.Target {
             pop.info = (await this.getAboutLines()).join("\n");
             pop.hasInfo = true;
         });
-        this.addHandler("cmd-win-fullscreen", async args => {
-            args = util.ensure(args, "arr");
-            this.fullscreen = args[0];
+        this.addHandler("cmd-win-fullscreen", async v => {
+            this.fullscreen = v;
         });
-        this.addHandler("cmd-win-devmode", async args => {
-            args = util.ensure(args, "arr");
-            this.devMode = args[0];
+        this.addHandler("cmd-win-devmode", async v => {
+            this.devMode = v;
         });
-        this.addHandler("cmd-win-holiday", async args => {
-            args = util.ensure(args, "arr");
-            this.holiday = args[0];
+        this.addHandler("cmd-win-holiday", async v => {
+            this.holiday = v;
         });
 
         this.#eTitle = document.querySelector("head > title");
@@ -512,9 +508,8 @@ export class App extends util.Target {
                     if (eSpecialFront instanceof HTMLImageElement)
                         eSpecialFront.src = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").hat1;
                 };
-                this.addHandler("cmd-win-holiday", async args => {
-                    args = util.ensure(args, "arr");
-                    await onHolidayState(args[0]);
+                this.addHandler("cmd-win-holiday", async holiday => {
+                    await onHolidayState(holiday);
                 });
                 await onHolidayState(await window.api.get("active-holiday"));
             });
@@ -1418,8 +1413,8 @@ export class Project extends util.Target {
 
         this.#id = null;
 
-        this.#configChange = c => this.post("change", "config."+c);
-        this.#metaChange = c => this.post("change", "meta."+c);
+        this.#configChange = (c, f, t) => this.change("config."+c, f, t);
+        this.#metaChange = (c, f, t) => this.change("meta."+c, f, t);
 
         this.#config = new this.constructor.Config();
         this.#meta = new this.constructor.Meta();
@@ -1451,10 +1446,9 @@ export class Project extends util.Target {
         if (this.config == v) return;
         if (this.config instanceof this.constructor.Config)
             this.config.remHandler("change", this.#configChange);
-        this.#config = v;
+        this.change("config", this.config, this.#config=v);
         if (this.config instanceof this.constructor.Config)
             this.config.addHandler("change", this.#configChange);
-        this.post("change", "config");
     }
 
     get meta() { return this.#meta; }
@@ -1463,10 +1457,9 @@ export class Project extends util.Target {
         if (this.meta == v) return;
         if (this.meta instanceof this.constructor.Meta)
             this.meta.remHandler("change", this.#metaChange);
-        this.#meta = v;
+        this.change("meta", this.meta, this.#meta=v);
         if (this.meta instanceof this.constructor.Meta)
             this.meta.addHandler("change", this.#metaChange);
-        this.post("change", "meta");
     }
 
     toJSON() {
@@ -1519,8 +1512,7 @@ Project.Meta = class ProjectMeta extends util.Target {
     set name(v) {
         v = (v == null) ? "New Project" : String(v);
         if (this.name == v) return;
-        this.#name = v;
-        this.post("change", "name");
+        this.change("name", this.name, this.#name=v);
     }
     get modified() { return this.#modified; }
     set modified(v) {
@@ -1532,8 +1524,7 @@ Project.Meta = class ProjectMeta extends util.Target {
     set created(v) {
         v = util.ensure(v, "num");
         if (this.created == v) return;
-        this.#created = v;
-        this.post("change", "name");
+        this.change("created", this.created, this.#created=v);
     }
     get thumb() { return this.#thumb; }
     set thumb(v) {
@@ -1584,7 +1575,7 @@ export class AppFeature extends App {
 
         this.#projects = {};
 
-        this.addHandler("setup", async data => {
+        this.addHandler("setup", async () => {
             this.#eFeatureStyle = document.createElement("link");
             document.head.appendChild(this.eFeatureStyle);
             this.eFeatureStyle.rel = "stylesheet";
@@ -1607,7 +1598,7 @@ export class AppFeature extends App {
             this.eFileBtn.textContent = "File";
             this.eFileBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                this.post("file");
+                this.post("file", e);
             });
 
             this.#eEditBtn = document.createElement("button");
@@ -1617,7 +1608,7 @@ export class AppFeature extends App {
             this.eEditBtn.textContent = "Edit";
             this.eEditBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                this.post("edit");
+                this.post("edit", e);
             });
 
             this.#eViewBtn = document.createElement("button");
@@ -1627,7 +1618,7 @@ export class AppFeature extends App {
             this.eViewBtn.textContent = "View";
             this.eViewBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                this.post("view");
+                this.post("view", e);
             });
 
             this.#eProjectInfo = document.createElement("div");
@@ -1732,10 +1723,10 @@ export class AppFeature extends App {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
 
             let saving = false;
-            this.addHandler("sync-files-with", data => {
+            this.addHandler("sync-files-with", () => {
                 saving = true;
             });
-            this.addHandler("synced-files-with", data => {
+            this.addHandler("synced-files-with", () => {
                 saving = false;
             });
             this.addHandler("update", data => {
@@ -1794,8 +1785,8 @@ export class AppFeature extends App {
 
             await this.syncWithFilesClean();
         });
-        this.addHandler("start-complete", async data => {
-            await this.post("start-complete-pre");
+        this.addHandler("post-setup", async () => {
+            await this.post("pre-post-setup");
 
             this.addPage(new this.constructor.TitlePage(this));
             this.addPage(new this.constructor.ProjectsPage(this));
@@ -1810,8 +1801,7 @@ export class AppFeature extends App {
         change = String(change);
         if (this.hasChange(change)) return true;
         this.#changes.add(change);
-        // console.log("change += "+change);
-        this.post("change", change);
+        this.change("markChange", null, change);
         return true;
     }
     hasChange(change) {
@@ -1821,14 +1811,11 @@ export class AppFeature extends App {
     clearChanges() {
         let changes = this.changes;
         this.#changes.clear();
-        this.post("change-clear", changes);
+        this.change("clearChanges", changes, []);
         return changes;
     }
     async syncWithFiles() {
-        // console.log("loading");
-        try {
-            await this.post("sync-with-files");
-        } catch (e) {}
+        await this.post("sync-with-files");
         let projectIdsContent = await window.api.send("projects-get");
         let projectIds = JSON.parse(projectIdsContent);
         projectIds = util.ensure(projectIds, "arr").map(id => String(id));
@@ -1840,9 +1827,7 @@ export class AppFeature extends App {
         }));
         this.projects = projects;
         this.clearChanges();
-        try {
-            await this.post("synced-with-files");
-        } catch (e) {}
+        await this.post("synced-with-files");
     }
     async syncWithFilesClean() {
         try {
@@ -1854,11 +1839,8 @@ export class AppFeature extends App {
         return true;
     }
     async syncFilesWith() {
-        try {
-            await this.post("sync-files-with");
-        } catch (e) {}
+        await this.post("sync-files-with");
         let changes = new Set(this.changes);
-        // console.log("saving w: "+[...changes].join(", "));
         this.clearChanges();
         if (changes.has("*") || changes.has("projects")) {
             let projectIds = this.projects;
@@ -1894,9 +1876,7 @@ export class AppFeature extends App {
                 await window.api.send("project-del", [id]);
             }));
         }
-        try {
-            await this.post("synced-files-with");
-        } catch (e) {}
+        await this.post("synced-files-with");
     }
     async syncFilesWithClean() {
         try {
@@ -1935,7 +1915,6 @@ export class AppFeature extends App {
         this.#projects[id] = proj;
         proj.id = id;
         proj._onChange = c => {
-            // console.log("pchange = "+proj.id+"."+c);
             this.markChange(":"+proj.id);
         };
         proj.addHandler("change", proj._onChange);
@@ -2160,10 +2139,9 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         });
         
         let selected = new Set(), lastSelected = null, lastAction = null;
-        this.addHandler("trigger", data => {
-            data = util.ensure(data, "obj");
-            let id = (data.id == null) ? null : String(data.id);
-            let shift = !!data.shift;
+        this.addHandler("trigger", (id, shift) => {
+            id = (id == null) ? null : String(id);
+            shift = !!shift;
             if (!this.app.hasProject(id)) return;
             if (shift && this.app.hasProject(lastSelected)) {
                 let ids = this.app.projects.map(id => this.app.getProject(id)).sort((a, b) => b.meta.modified-a.meta.modified).map(project => project.id);
@@ -2186,8 +2164,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             }
         });
         this.addHandler("contextmenu", id => {
-            if (selected.size == 1) this.post("trigger", { id: [...selected][0] });
-            if (selected.size == 0) this.post("trigger", { id: id });
+            if (selected.size == 1) this.post("trigger", [...selected][0]);
+            if (selected.size == 0) this.post("trigger", id);
             contextMenu();
         });
 
@@ -2255,7 +2233,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (btn.page != this) return false;
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
-        btn._onTrigger = e => this.post("trigger", { id: btn.hasProject() ? btn.project.id : null, shift: !!(util.ensure(e, "obj").shiftKey) });
+        btn._onTrigger = e => this.post("trigger", (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey));
         btn._onContextMenu = e => this.post("contextmenu", btn.hasProject() ? btn.project.id : null);
         btn.addHandler("trigger", btn._onTrigger);
         btn.addHandler("contextmenu", btn._onContextMenu);
@@ -2427,8 +2405,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     get project() { return this.#project; }
     set project(v) {
         if (this.project == v) return;
-        this.#project = v;
-        this.post("set", v);
+        this.change("project", this.project, this.#project=v);
     }
     hasProject() { return (this.#project instanceof Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
 
@@ -2506,8 +2483,9 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         v = String(v);
         v = this.app.hasProject(v) ? v : null;
         if (this.projectId == v) return;
+        let project = this.project;
         this.#projectId = v;
-        this.post("project-set", this.projectId);
+        this.change("project", project, this.project);
     }
     get project() { return this.app.getProject(this.projectId); }
     set project(v) {
@@ -2601,7 +2579,7 @@ export class Client extends util.Target {
             if (!confirm(id, meta)) return;
             name = String(name);
             console.log(this.id+":msg", name, payload);
-            this.post("msg", { name: name, payload: payload });
+            this.post("msg", name, payload);
             this.post("msg-"+name, payload);
         });
         window.api.onClientStreamStart((_, id, name, pth, fname, payload, meta) => {
@@ -2610,8 +2588,8 @@ export class Client extends util.Target {
             pth = String(pth);
             fname = String(fname);
             console.log(this.id+":stream-start", name, pth, fname, payload);
-            this.post("stream-start", { name: name, pth: pth, fname: fname, payload: payload });
-            this.post("stream-start-"+name, { pth: pth, fname: fname, payload: payload });
+            this.post("stream-start", name, pth, fname, payload);
+            this.post("stream-start-"+name, pth, fname, payload);
         });
         window.api.onClientStreamStop((_, id, name, pth, fname, payload, meta) => {
             if (!confirm(id, meta)) return;
@@ -2619,8 +2597,8 @@ export class Client extends util.Target {
             pth = String(pth);
             fname = String(fname);
             console.log(this.id+":stream-stop", name, pth, fname, payload);
-            this.post("stream-stop", { name: name, pth: pth, fname: fname, payload: payload });
-            this.post("stream-stop-"+name, { pth: pth, fname: fname, payload: payload });
+            this.post("stream-stop", name, pth, fname, payload);
+            this.post("stream-stop-"+name, pth, fname, payload);
         });
 
         (async () => {
@@ -2673,17 +2651,13 @@ export class Client extends util.Target {
     async emit(name, payload) {
         if (this.destroyed) return null;
         if (this.disconnected) return null;
-        // console.log(this.id+":emit<", name, payload);
         let r = await window.api.clientEmit(this.id, name, payload);
-        // console.log(this.id+":emit>", name, payload);
         return r;
     }
     async stream(pth, name, payload) {
         if (this.destroyed) return null;
         if (this.disconnected) return null;
-        // console.log(this.id+":stream<", pth, name, payload);
         let r = await window.api.clientStream(this.id, pth, name, payload);
-        // console.log(this.id+":stream>", pth, name, payload);
         return r;
     }
 
