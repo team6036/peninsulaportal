@@ -1855,6 +1855,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
+                this.window.show();
                 this.#ready++;
                 if (this.ready) {
                     this.#readyRes.forEach(res => res());

@@ -78,7 +78,7 @@ class RLine extends core.Odometry2d.Render {
 
         let a = new V(), b = new V();
 
-        this.addHandler("render", data => {
+        this.addHandler("render", () => {
             if (this.hasItemA()) a.set(this.itemA.pos);
             if (this.hasItemB()) b.set(this.itemB.pos);
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
@@ -122,7 +122,7 @@ class RVisual extends core.Odometry2d.Render {
         this.#dt = 0;
         this.#nodes = [];
 
-        this.addHandler("render", data => {
+        this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             const colors = {
                 g: new util.Color(getComputedStyle(document.body).getPropertyValue("--cg")),
@@ -193,7 +193,7 @@ class RVisualItem extends core.Odometry2d.Robot {
         this.#visual = null;
         this.#interp = 0;
 
-        this.addHandler("render", data => {
+        this.addHandler("render", () => {
             if (!this.hasVisual()) return;
             let p = this.interp;
             let nodes = this.visual.nodes;
@@ -241,7 +241,7 @@ class RSelect extends core.Odometry2d.Render {
         this.#a = new V();
         this.#b = new V();
 
-        this.addHandler("render", data => {
+        this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
             ctx.lineWidth = 2*quality;
@@ -308,7 +308,7 @@ class RSelectable extends core.Odometry2d.Render {
             if (this.hasRenderObject()) this.renderObject.addHandler("render", check);
         });
 
-        this.addHandler("render", data => {
+        this.addHandler("render", () => {
             check();
             if (!this.hasItem()) return;
             if (!this.hasRenderObject()) return;
@@ -401,41 +401,41 @@ export default class App extends core.AppFeature {
                 let menu = new core.App.ContextMenu();
                 itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
                 itm.shortcut = "⌘N";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-newproject");
                 });
                 menu.addItem(new core.App.ContextMenu.Divider());
                 itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-addnode");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Add Obstacle", "add"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-addobstacle");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Add Path", "add"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-addpath");
                 });
                 menu.addItem(new core.App.ContextMenu.Divider());
                 itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
                 itm.shortcut = "⌘S";
-                itm.addHandler("trigger", async data => {
+                itm.addHandler("trigger", async e => {
                     this.post("cmd-save");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
                 itm.shortcut = "⇧⌘S";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-savecopy");
                 });
                 menu.addItem(new core.App.ContextMenu.Divider());
                 itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-delete");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
                 itm.shortcut = "⇧⌘W";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-close");
                 });
                 this.contextMenu = menu;
@@ -447,25 +447,25 @@ export default class App extends core.AppFeature {
                 let menu = new core.App.ContextMenu();
                 itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
                 itm.shortcut = "⌘X";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     if (!this.hasPage("PROJECT")) return;
                     this.getPage("PROJECT").cut();
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Copy"));
                 itm.shortcut = "⌘C";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     if (!this.hasPage("PROJECT")) return;
                     this.getPage("PROJECT").copy();
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Paste"));
                 itm.shortcut = "⌘V";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     if (!this.hasPage("PROJECT")) return;
                     this.getPage("PROJECT").paste();
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Select All"));
                 itm.shortcut = "⌘A";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     if (!this.hasPage("PROJECT")) return;
                     this.getPage("PROJECT").selected = this.getPage("PROJECT").project.items;
                 });
@@ -478,11 +478,11 @@ export default class App extends core.AppFeature {
                 let menu = new core.App.ContextMenu();
                 itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Maximized"));
                 itm.shortcut = "⌃F";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-maxmin");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Reset Divider"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-resetdivider");
                 });
                 this.contextMenu = menu;
@@ -549,8 +549,8 @@ export default class App extends core.AppFeature {
                     const panel = page.getPanel("objects");
                     panel.eSpawnBox.classList.remove("delete");
                 };
-                this.dragState.addHandler("submit", data => stop(false));
-                this.dragState.addHandler("cancel", data => stop(true));
+                this.dragState.addHandler("submit", () => stop(false));
+                this.dragState.addHandler("cancel", () => stop(true));
                 if (!page.hasPanel("objects")) return;
                 const panel = page.getPanel("objects");
                 panel.eSpawnBox.classList.add("delete");
@@ -594,13 +594,13 @@ export default class App extends core.AppFeature {
                         }
                     }
                 });
-                chooseState.addHandler("done", data => {
+                chooseState.addHandler("done", () => {
                     if (!(chooseState.path instanceof subcore.Project.Path)) return;
                     let path = chooseState.path;
                     if (!page.hasProject()) return;
                     page.project.addPath(path);
                 });
-                chooseState.addHandler("cancel", data => {
+                chooseState.addHandler("cancel", () => {
                 });
             });
             this.addHandler("cmd-maxmin", () => {
@@ -762,51 +762,51 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             let itm;
             let menu = new core.App.ContextMenu();
             itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.app.post("cmd-addnode");
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Add Obstacle", "add"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.app.post("cmd-addobstacle");
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Add Path", "add"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.app.post("cmd-addpath");
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
             itm.shortcut = "⌘X";
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.cut();
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Copy"));
             itm.shortcut = "⌘C";
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.copy();
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Paste"));
             itm.shortcut = "⌘V";
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.paste();
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Select All"));
             itm.shortcut = "⌘A";
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 if (!this.hasProject()) return;
                 this.selected = this.project.items;
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Edit"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.panel = "objects";
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
             itm.shortcut = "⌫";
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 if (!this.hasProject()) return;
                 this.selected.forEach(id => this.project.remItem(id));
@@ -984,7 +984,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         let selectItem = null;
-        this.addHandler("refresh-selectitem", data => {
+        this.addHandler("refresh-selectitem", () => {
             this.selected.forEach(id => {
                 if (!this.hasProject() || !this.project.hasItem(id)) return;
                 let itm = this.project.getItem(id);
@@ -1018,7 +1018,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 selectItem = null;
             }
         });
-        this.addHandler("refresh-options", data => {
+        this.addHandler("refresh-options", () => {
             let names = new Set();
             this.app.projects.forEach(id => {
                 let project = this.app.getProject(id);
@@ -1917,13 +1917,13 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.page.selected = this.page.selected;
         });
 
-        this.addHandler("change-project", data => {
+        this.addHandler("change-project", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
             this.position.inputs.forEach(inp => (inp.disabled = !has));
             this.remove.disabled = !has;
         });
-        this.addHandler("refresh", data => {
+        this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             let forAny = Array.from(this.elem.querySelectorAll(":scope .forany"));
             let forNode = Array.from(this.elem.querySelectorAll(":scope .fornode"));
@@ -2120,13 +2120,13 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     }
                 }
             });
-            chooseState.addHandler("done", data => {
+            chooseState.addHandler("done", () => {
                 if (!(chooseState.path instanceof subcore.Project.Path)) return;
                 let path = chooseState.path;
                 if (!this.page.hasProject()) return;
                 this.page.project.addPath(path);
             });
-            chooseState.addHandler("cancel", data => {
+            chooseState.addHandler("cancel", () => {
             });
         });
 
@@ -2192,13 +2192,13 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             }
         });
 
-        this.addHandler("change-project", data => {
+        this.addHandler("change-project", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
             this.eAddBtn.disabled = !has;
             this.checkVisuals();
         });
-        this.addHandler("refresh", data => {
+        this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.eActivateBtn.disabled = !this.generating && (!has || this.page.selectedPaths.length <= 0);
             this.eActivateBtn.textContent = this.generating ? "Terminate" : "Generate";
@@ -2333,12 +2333,12 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         if (btn.panel != this) return false;
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
-        btn._onTrigger = () => {
+        btn._onTrigger = e => {
             this.page.clearSelectedPaths();
             this.page.addSelectedPath(btn.path);
         };
         btn._onEdit = () => {
-            btn._onTrigger();
+            btn._onTrigger(null);
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             let pths = this.page.selectedPaths;
@@ -2378,15 +2378,15 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     }
                 }
             });
-            chooseState.addHandler("done", data => {
+            chooseState.addHandler("done", () => {
             });
-            chooseState.addHandler("cancel", data => {
+            chooseState.addHandler("cancel", () => {
                 if (!(chooseState.path instanceof subcore.Project.Path)) return;
                 chooseState.path.nodes = nodes;
             });
         };
         btn._onRemove = () => {
-            btn._onTrigger();
+            btn._onTrigger(null);
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             this.page.selectedPaths.forEach(id => this.page.project.remPath(id));
@@ -2527,7 +2527,6 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
         this.#item = new RVisualItem(this.page.odometry, this.visual);
 
         this.#t = 0;
-        this.#tPrev = 0;
         this.#paused = true;
     }
 
@@ -2626,7 +2625,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
 
         this.elem.addEventListener("click", e => {
             e.stopPropagation();
-            this.post("trigger");
+            this.post("trigger", e);
         });
         this.eEdit.addEventListener("click", e => {
             e.stopPropagation();
@@ -2643,23 +2642,23 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
             this.post("change");
         });
 
-        this.addHandler("change-path", data => {
+        this.addHandler("change-path", () => {
             this.eName.value = this.hasPath() ? this.path.name : "";
         });
 
         let show = false;
-        this.addHandler("add", data => {
+        this.addHandler("add", () => {
             show = true;
-            this.post("udpate");
+            this.update(0);
         });
-        this.addHandler("rem", data => {
+        this.addHandler("rem", () => {
             show = false;
-            this.post("udpate");
+            this.update(0);
         });
         let prevPath = "";
         let prevShowIndicies = null, prevShowLines = null;
         let pthItems = {};
-        this.addHandler("udpate", data => {
+        this.addHandler("update", delta => {
             if (!this.page.hasProject()) return;
             let nodes = (show && this.hasPath()) ? this.path.nodes : [];
             let path = nodes.join("");
@@ -2725,7 +2724,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     get eEdit() { return this.#eEdit; }
     get eRemove() { return this.#eRemove; }
 
-    update(delta) { this.post("udpate", delta); }
+    update(delta) { this.post("update", delta); }
 };
 App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.ProjectPage.Panel {
     #size;
@@ -2920,7 +2919,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.page.post("refresh-options");
         });
 
-        this.addHandler("change-project", data => {
+        this.addHandler("change-project", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
             this.size.inputs.forEach(inp => (inp.disabled = !has));
@@ -2932,7 +2931,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.scriptPython.inputs.forEach(inp => (inp.disabled = !has));
             this.scriptUseDefault.disabled = !has;
         });
-        this.addHandler("refresh", data => {
+        this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.size.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["wh"[i]]/100 : ""));
             this.robotSize.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["robot"+"WH"[i]]/100 : ""));

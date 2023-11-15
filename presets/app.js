@@ -247,7 +247,7 @@ export default class App extends core.App {
                         let menu = new core.App.ContextMenu();
                         for (let id in themes) {
                             itm = menu.addItem(new core.App.ContextMenu.Item(util.ensure(themes[id], "obj").name, (theme == id) ? "checkmark" : ""));
-                            itm.addHandler("trigger", data => {
+                            itm.addHandler("trigger", e => {
                                 window.api.set("theme", [id]);
                             });
                         }
