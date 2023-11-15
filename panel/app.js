@@ -292,7 +292,7 @@ class BrowserField extends util.Target {
             else this.isOpen = !this.isOpen;
         });
         this.eDisplay.addEventListener("dblclick", e => {
-            this.post("trigger", [this.name]);
+            this.post("trigger", e, [this.name]);
         });
         this.eDisplay.addEventListener("mousedown", e => {
             const mouseup = () => {
@@ -384,8 +384,8 @@ class BrowserField extends util.Target {
             if (!(field instanceof BrowserField)) return;
             if (field.name in this.#fields) return;
             this.#fields[field.name] = field;
-            field._onTrigger = path => {
-                this.post("trigger", [this.name, ...util.ensure(path, "arr")]);
+            field._onTrigger = (e, path) => {
+                this.post("trigger", e, [this.name, ...util.ensure(path, "arr")]);
             };
             field._onDrag = path => {
                 this.post("drag", [this.name, ...util.ensure(path, "arr")]);
@@ -505,7 +505,7 @@ class ToolButton extends util.Target {
         let cancel = 10;
         this.elem.addEventListener("click", e => {
             if (cancel <= 0) return cancel = 10;
-            this.post("trigger");
+            this.post("trigger", e);
         });
         this.elem.addEventListener("mousedown", e => {
             const mouseup = () => {
@@ -1091,12 +1091,12 @@ class Panel extends Widget {
             let menu = new core.App.ContextMenu();
             itm = menu.addItem(new core.App.ContextMenu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-expand" : "chevron-collapse"));
             itm.shortcut = "⇧⌃F";
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.isTitleCollapsed = !this.isTitleCollapsed;
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Close Panel", "close"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 if (this.hasPageParent()) return this.parent.widget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
             });
@@ -1817,7 +1817,7 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         this.btn.appendChild(this.eChevron);
         this.eChevron.setAttribute("name", "chevron-forward");
 
-        this.btn.addEventListener("click", e => this.post("trigger"));
+        this.btn.addEventListener("click", e => this.post("trigger", e));
 
         this.name = name;
         this.icon = icon;
@@ -1946,7 +1946,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         let prevField = null;
         let state = {};
 
-        this.addHandler("format", data => {
+        this.addHandler("format", () => {
             util.ensure(state.fields, "arr").forEach(field => field.format());
         });
         this.addHandler("update", delta => {
@@ -1981,7 +1981,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     (...bfields) => {
                         bfields.forEach(bfield => {
                             state.fields.push(bfield);
-                            bfield._onTrigger = path => {
+                            bfield._onTrigger = (e, path) => {
                                 this.path = [...this.path, ...util.ensure(path, "arr")];
                             };
                             bfield._onDrag = path => {
@@ -2689,7 +2689,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             await LOGGERCONTEXT.logsUpload(result.filePaths);
         });
 
-        this.addHandler("format", data => {
+        this.addHandler("format", () => {
             this.logs.sort((a, b) => compare(a.name, b.name)).forEach((log, i) => {
                 log.elem.style.order = i;
             });
@@ -2719,7 +2719,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             this.app.post("cmd-conndisconn");
         });
         let selected = new Set(), lastSelected = null, lastAction = null;
-        this.addHandler("log-trigger", (name, shift) => {
+        this.addHandler("log-trigger", (e, name, shift) => {
             data = util.ensure(data, "obj");
             name = String(name);
             shift = !!shift;
@@ -2744,9 +2744,9 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 }
             }
         });
-        this.addHandler("log-contextmenu", name => {
-            if (selected.size == 1) this.post("log-trigger", [...selected][0]);
-            if (selected.size == 0) this.post("log-trigger", name);
+        this.addHandler("log-contextmenu", (e, name) => {
+            if (selected.size == 1) this.post("log-trigger", e, [...selected][0]);
+            if (selected.size == 0) this.post("log-trigger", e, name);
             let names = [...selected];
             let anyClientHas = false, anyServerHas = false;
             names.forEach(name => LOGGERCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
@@ -2754,38 +2754,40 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             let itm;
             let menu = new core.App.ContextMenu();
             itm = menu.addItem(new core.App.ContextMenu.Item("Upload"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.eUploadBtn.click();
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Upload Selected"));
             itm.disabled = names.length <= 0 || !anyClientHas;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
             itm.disabled = names.length != 1;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.post("log-use", names[0]);
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
             itm.disabled = names.length <= 0;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 names.forEach(name => this.post("log-download", name));
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Delete locally"));
             itm.disabled = !anyClientHas;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.post("log-client-delete", names);
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Delete from server"));
             itm.disabled = !anyServerHas;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.post("log-server-delete", names);
             });
             if (!this.hasApp()) return;
             this.app.contextMenu = menu;
+            e = util.ensure(e, "obj");
+            this.app.placeContextMenu(e.pageX, e.pageY);
         });
         this.addHandler("log-client-delete", async names => {
             names = util.ensure(names, "arr").map(name => String(name));
@@ -2823,34 +2825,34 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             let itm;
             let menu = new core.App.ContextMenu();
             itm = menu.addItem(new core.App.ContextMenu.Item("Upload"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.eUploadBtn.click();
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Upload Selected"));
             itm.disabled = names.length <= 0 || !anyClientHas;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
             itm.disabled = names.length != 1;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.post("log-use", names[0]);
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
             itm.disabled = names.length <= 0;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 names.forEach(name => this.post("log-download", name));
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Delete Locally"));
             itm.disabled = !anyClientHas;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.post("log-client-delete", names);
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Delete from Server"));
             itm.disabled = !anyServerHas;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.post("log-server-delete", names);
             });
             if (!this.hasApp()) return;
@@ -2925,12 +2927,10 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             this.post("log-use", log.name);
         };
         log._onTrigger = e => {
-            this.post("log-trigger", log.name, !!(util.ensure(e, "obj").shiftKey));
+            this.post("log-trigger", e, log.name, !!(util.ensure(e, "obj").shiftKey));
         };
         log._onContextMenu = e => {
-            this.post("log-contextmenu", log.name);
-            if (!this.hasApp()) return;
-            this.app.placeContextMenu(e.pageX, e.pageY);
+            this.post("log-contextmenu", e, log.name);
         };
         log.addHandler("download", log._onDownload);
         log.addHandler("use", log._onUse);
@@ -3131,7 +3131,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
             document.body.addEventListener("mousemove", mousemove);
         });
 
-        this.addHandler("openclose", data => {
+        this.addHandler("openclose", () => {
             let x = this.optionState;
             x *= 2;
             x++;
@@ -4261,13 +4261,13 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         let itm;
                         let menu = new core.App.ContextMenu();
                         itm = menu.addItem(new core.App.ContextMenu.Item("No Template", (this.template == null) ? "checkmark" : ""));
-                        itm.addHandler("trigger", data => {
+                        itm.addHandler("trigger", e => {
                             this.template = null;
                         });
                         menu.addItem(new core.App.ContextMenu.Divider());
                         for (let name in templates) {
                             itm = menu.addItem(new core.App.ContextMenu.Item(name, (this.template == name) ? "checkmark" : ""));
-                            itm.addHandler("trigger", data => {
+                            itm.addHandler("trigger", e => {
                                 this.template = name;
                             });
                         }
@@ -4897,7 +4897,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 Object.keys(core.Odometry2d.Robot.Types).forEach(k => {
                     let name = String(k).split(" ").map(v => util.capitalize(v)).join(" ");
                     itm = menu.addItem(new core.App.ContextMenu.Item(name, (current == k) ? "checkmark" : ""));
-                    itm.addHandler("trigger", data => {
+                    itm.addHandler("trigger", e => {
                         r.type = k;
                     });
                 });
@@ -5574,14 +5574,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 for (let k in customTypes) {
                     let data = customTypes[k];
                     itm = menu.addItem(new core.App.ContextMenu.Item(data.name, (current == k) ? "checkmark" : ""));
-                    itm.addHandler("trigger", data => {
+                    itm.addHandler("trigger", e => {
                         r.type = k;
                     });
                 }
                 menu.addItem(new core.App.ContextMenu.Divider());
                 Object.keys(robots).forEach(k => {
                     itm = menu.addItem(new core.App.ContextMenu.Item(k, (current == k) ? "checkmark" : ""));
-                    itm.addHandler("trigger", data => {
+                    itm.addHandler("trigger", e => {
                         r.type = k;
                     });
                 });
@@ -6247,43 +6247,43 @@ export default class App extends core.AppFeature {
 
         this.#eProjectInfoSourceTypes = {};
 
-        this.addHandler("pre-post-setup", data => {
+        this.addHandler("pre-post-setup", () => {
             this.addHandler("file", () => {
                 let itm;
                 let menu = new core.App.ContextMenu();
                 itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
                 itm.shortcut = "⌘N";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-newproject");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("New Tab", "add"));
                 itm.shortcut = "⇧⌘N";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-newtab");
                 });
                 menu.addItem(new core.App.ContextMenu.Divider());
                 itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
                 itm.shortcut = "⌘S";
-                itm.addHandler("trigger", async data => {
+                itm.addHandler("trigger", async e => {
                     this.post("cmd-save");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
                 itm.shortcut = "⇧⌘S";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-savecopy");
                 });
                 menu.addItem(new core.App.ContextMenu.Divider());
                 itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-delete");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
                 itm.shortcut = "⇧⌘W";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-closetab");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-close");
                 });
                 this.contextMenu = menu;
@@ -6294,7 +6294,7 @@ export default class App extends core.AppFeature {
                 let itm;
                 let menu = new core.App.ContextMenu();
                 itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Connect / Disconnect"));
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-conndisconn");
                 });
                 this.contextMenu = menu;
@@ -6306,12 +6306,12 @@ export default class App extends core.AppFeature {
                 let menu = new core.App.ContextMenu();
                 itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Options Opened / Closed"));
                 itm.shortcut = "⌃F";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-openclose");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Title Collapsed"));
                 itm.shortcut = "⇧⌘F";
-                itm.addHandler("trigger", data => {
+                itm.addHandler("trigger", e => {
                     this.post("cmd-expandcollapse");
                 });
                 this.contextMenu = menu;
@@ -6598,21 +6598,21 @@ export default class App extends core.AppFeature {
                 }
                 page.widget.collapse();
             });
-            this.addHandler("cmd-newtab", data => {
+            this.addHandler("cmd-newtab", () => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
                 const active = page.activeWidget;
                 active.addTab(new Panel.AddTab());
             });
-            this.addHandler("cmd-closetab", data => {
+            this.addHandler("cmd-closetab", () => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
                 const active = page.activeWidget;
                 active.remTab(active.tabs[active.tabIndex]);
             });
-            this.addHandler("cmd-openclose", data => {
+            this.addHandler("cmd-openclose", () => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
@@ -6620,7 +6620,7 @@ export default class App extends core.AppFeature {
                 if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
                 active.tabs[active.tabIndex].post("openclose");
             });
-            this.addHandler("cmd-expandcollapse", data => {
+            this.addHandler("cmd-expandcollapse", () => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
@@ -6697,7 +6697,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.update(0);
             this.app.post("cmd-conndisconn");
         });
-        this.app.addHandler("cmd-conndisconn", data => {
+        this.app.addHandler("cmd-conndisconn", () => {
             if (!this.hasProject() || !this.hasSource()) return;
             if (this.source instanceof NTSource) {
                 this.source.address = (this.source.address == null) ? this.project.config.source : null;
@@ -6853,7 +6853,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.source = null;
 
-        this.addHandler("change-project", data => {
+        this.addHandler("change-project", () => {
             this.widget = this.hasProject() ? this.project.buildWidget() : null;
         });
         this.addHandler("update", delta => {
@@ -7078,7 +7078,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         }
         this.#source = v;
         if (this.hasSource()) {
-            this.source._onChange = data => {};
+            this.source._onChange = () => {};
             this.source.addHandler("change", this.source._onChange);
         }
     }

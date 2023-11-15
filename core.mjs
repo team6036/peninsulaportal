@@ -72,7 +72,7 @@ export class App extends util.Target {
             window.api.sendPerm(true);
         });
 
-        this.addHandler("start", data => {
+        this.addHandler("start", () => {
             let id = setInterval(() => {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
@@ -369,7 +369,7 @@ export class App extends util.Target {
             this.post("cmd", cmd, ...args);
             this.post("cmd-"+cmd, ...args);
         });
-        this.addHandler("perm", async data => {
+        this.addHandler("perm", async () => {
             if (this.hasPage(this.page)) {
                 await window.api.send("state-set", ["page", this.page]);
                 await window.api.send("state-set", ["page-state", this.getPage(this.page).state]);
@@ -799,7 +799,7 @@ export class App extends util.Target {
                 this.post("drag-move", e);
                 this.dragState.post("move", e);
             };
-            this.dragState.addHandler("stop", data => {
+            this.dragState.addHandler("stop", () => {
                 this.dragState._already = true;
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -1272,7 +1272,7 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
         this.elem.addEventListener("mouseenter", e => this.fix());
         this.elem.addEventListener("click", e => {
             if (this.disabled) return;
-            this.post("trigger");
+            this.post("trigger", e);
         });
 
         this.icon = icon;
@@ -2103,18 +2103,18 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             let itm;
             let menu = new App.ContextMenu();
             itm = menu.addItem(new App.ContextMenu.Item("Create"));
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.app.post("cmd-newproject");
             });
             menu.addItem(new App.ContextMenu.Divider());
             itm = menu.addItem(new App.ContextMenu.Item("Open"));
             itm.disabled = ids.length != 1;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.app.setPage("PROJECT", { id: ids[0] });
             });
             itm = menu.addItem(new App.ContextMenu.Item("Rename"));
             itm.disabled = ids.length != 1;
-            itm.addHandler("trigger", async data => {
+            itm.addHandler("trigger", async e => {
                 let project = this.app.getProject(ids[0]);
                 if (!(project instanceof this.app.constructor.PROJECTCLASS)) return;
                 let pop = this.app.prompt("Rename", project.meta.name);
@@ -2126,24 +2126,23 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             menu.addItem(new App.ContextMenu.Divider());
             itm = menu.addItem(new App.ContextMenu.Item("Delete"));
             itm.disabled = ids.length <= 0;
-            itm.addHandler("trigger", data => {
+            itm.addHandler("trigger", e => {
                 this.app.post("cmd-delete", ids);
             });
             itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
             itm.disabled = ids.length <= 0;
-            itm.addHandler("trigger", async data => {
+            itm.addHandler("trigger", async e => {
                 for (let i = 0; i < ids.length; i++)
                     await this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
             });
             this.app.contextMenu = menu;
-        };
-        this.eContent.addEventListener("contextmenu", e => {
-            contextMenu();
+            e = util.ensure(e, "obj");
             this.app.placeContextMenu(e.pageX, e.pageY);
-        });
+        };
+        this.eContent.addEventListener("contextmenu", contextMenu);
         
         let selected = new Set(), lastSelected = null, lastAction = null;
-        this.addHandler("trigger", (id, shift) => {
+        this.addHandler("trigger", (_, id, shift) => {
             id = (id == null) ? null : String(id);
             shift = !!shift;
             if (!this.app.hasProject(id)) return;
@@ -2167,10 +2166,10 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 }
             }
         });
-        this.addHandler("contextmenu", id => {
-            if (selected.size == 1) this.post("trigger", [...selected][0]);
-            if (selected.size == 0) this.post("trigger", id);
-            contextMenu();
+        this.addHandler("contextmenu", (e, id) => {
+            if (selected.size == 1) this.post("trigger", e, [...selected][0]);
+            if (selected.size == 0) this.post("trigger", e, id);
+            contextMenu(e);
         });
 
         this.addHandler("update", delta => {
@@ -2237,8 +2236,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (btn.page != this) return false;
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
-        btn._onTrigger = e => this.post("trigger", (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey));
-        btn._onContextMenu = e => this.post("contextmenu", btn.hasProject() ? btn.project.id : null);
+        btn._onTrigger = e => this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey));
+        btn._onContextMenu = e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null);
         btn.addHandler("trigger", btn._onTrigger);
         btn.addHandler("contextmenu", btn._onContextMenu);
         this.eContent.appendChild(btn.elemList);
@@ -2372,8 +2371,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         const contextMenu = e => {
             e.preventDefault();
             e.stopPropagation();
-            this.post("contextmenu");
-            this.app.placeContextMenu(e.pageX, e.pageY);
+            this.post("contextmenu", e);
         };
         this.elemList.addEventListener("contextmenu", contextMenu);
         this.elemGrid.addEventListener("contextmenu", contextMenu);
@@ -2460,7 +2458,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     constructor(app) {
         super("PROJECT", app);
 
-        this.app.addHandler("perm", async data => {
+        this.app.addHandler("perm", async () => {
             this.app.markChange("*");
             return await this.app.syncFilesWithClean();
         });
