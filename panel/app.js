@@ -6218,7 +6218,7 @@ export default class App extends core.AppFeature {
                     this.post("cmd-newproject");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("New Tab", "add"));
-                itm.shortcut = "⇧⌘N";
+                itm.shortcut = "⌘T";
                 itm.addHandler("trigger", e => {
                     this.post("cmd-newtab");
                 });
@@ -6239,7 +6239,7 @@ export default class App extends core.AppFeature {
                     this.post("cmd-delete");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
-                itm.shortcut = "⇧⌘W";
+                itm.shortcut = "⌘W";
                 itm.addHandler("trigger", e => {
                     this.post("cmd-closetab");
                 });
@@ -6255,6 +6255,7 @@ export default class App extends core.AppFeature {
                 let itm;
                 let menu = new core.App.ContextMenu();
                 itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Connect / Disconnect"));
+                itm.shortcut = "⌘K";
                 itm.addHandler("trigger", e => {
                     this.post("cmd-conndisconn");
                 });

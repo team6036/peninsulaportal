@@ -434,7 +434,7 @@ export default class App extends core.AppFeature {
                     this.post("cmd-delete");
                 });
                 itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
-                itm.shortcut = "⇧⌘W";
+                itm.shortcut = "⌘W";
                 itm.addHandler("trigger", e => {
                     this.post("cmd-close");
                 });
