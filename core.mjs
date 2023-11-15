@@ -2098,7 +2098,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             lastSelected = null;
             lastAction = null;
         });
-        const contextMenu = () => {
+        const contextMenu = e => {
             let ids = [...selected];
             let itm;
             let menu = new App.ContextMenu();
