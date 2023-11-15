@@ -1954,7 +1954,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     { role: "quit" },
                 ],
                 close: [
-                    { role: "close" },
+                    {
+                        role: "close", 
+                        accelerator: "CmdOrCtrl+Shift+W"
+                    },
                 ],
                 undoredo: [
                     { role: "undo" },
@@ -2106,7 +2109,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         {
                             id: "newtab",
                             label: "New Tab",
-                            accelerator: "CmdOrCtrl+Shift+N",
+                            accelerator: "CmdOrCtrl+T",
                             click: () => this.send("newtab"),
                         },
                         build.div,
@@ -2131,7 +2134,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         {
                             id: "closetab",
                             label: "Close Tab",
-                            accelerator: "CmdOrCtrl+Shift+W",
+                            accelerator: "CmdOrCtrl+W",
                             click: () => this.send("closetab"),
                         },
                         {
@@ -2212,7 +2215,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         {
                             id: "close",
                             label: "Close Project",
-                            accelerator: "CmdOrCtrl+Shift+W",
+                            accelerator: "CmdOrCtrl+W",
                             click: () => this.send("close"),
                         },
                     );
