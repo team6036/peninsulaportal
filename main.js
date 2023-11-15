@@ -1796,12 +1796,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
             let perm = await new Promise((res, rej) => {
                 if (!this.hasWindow()) return;
                 this.window.webContents.send("perm");
-                ipc.once("perm", (e, given) => {
+                let id = setTimeout(() => {
+                    clear();
+                    res(true);
+                }, 500);
+                const clear = () => {
+                    clearTimeout(id);
+                    ipc.removeListener("permack", permack);
+                    ipc.removeListener("perm", perm);
+                };
+                const permack = e => {
                     if (!this.hasWindow()) return;
                     if (e.sender.id != this.window.webContents.id) return;
+                    clear();
+                };
+                const perm = (e, given) => {
+                    if (!this.hasWindow()) return;
+                    if (e.sender.id != this.window.webContents.id) return;
+                    clear();
                     res(!!given);
-                });
-                setTimeout(() => res(true), 5000);
+                };
+                ipc.once("permack", permack);
+                ipc.once("perm", perm);
             });
             let namefs = {
             };
@@ -1855,20 +1871,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
-                this.window.show();
                 this.#ready++;
                 if (this.ready) {
                     this.#readyRes.forEach(res => res());
                     this.#readyRes = [];
                 }
             });
-            ipc.once("ready", () => {
+            let id = setTimeout(() => {
+                electron.dialog.showErrorBox("Startup Error", "The application refused to start properly");
+                clear();
+                this.portal.remFeature(this);
+            }, 1000);
+            const clear = () => {
+                clearInterval(id);
+                ipc.removeListener("ready", ready);
+            };
+            const ready = e => {
+                if (!this.hasWindow()) return;
+                if (e.sender.id != this.window.webContents.id) return;
+                clear();
                 this.#ready++;
                 if (this.ready) {
                     this.#readyRes.forEach(res => res());
                     this.#readyRes = [];
                 }
-            });
+            };
+            ipc.once("ready", ready);
 
             this.window.on("unresponsive", () => {});
             this.window.webContents.on("did-fail-load", () => { if (this.hasWindow()) this.window.close(); });

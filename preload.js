@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld("api", {
         ipcRenderer.on("perm", f);
         return () => ipcRenderer.removeListener("perm", f);
     },
+    sendPermAck: () => ipcRenderer.send("permack", perm),
     sendPerm: perm => ipcRenderer.send("perm", perm),
     sendReady: () => ipcRenderer.send("ready"),
 
