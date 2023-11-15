@@ -1055,12 +1055,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         let timer = 0;
-        this.addHandler("update", data => {
-            this.odometry.update();
+        this.addHandler("update", delta => {
+            this.odometry.update(delta);
             this.odometry.size = this.hasProject() ? this.project.size : 0;
             this.odometry.imageSrc = this.hasProject() ? this.project.meta.backgroundImage : null;
             this.odometry.imageScale = this.hasProject() ? this.project.meta.backgroundScale : 0;
-            this.panels.forEach(name => this.getPanel(name).update());
+            this.panels.forEach(name => this.getPanel(name).update(delta));
             let itmsUsed = new Set();
             this.odometry.renders.forEach(render => {
                 if (render instanceof core.Odometry2d.Robot)
@@ -1084,8 +1084,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!(hovered instanceof core.Odometry2d.Render)) this.odometry.canvas.style.cursor = "crosshair";
             else if (!(hovered.source instanceof RSelectable)) this.odometry.canvas.style.cursor = "crosshair";
             else this.odometry.canvas.style.cursor = hovered.source.hover(hoveredPart);
-            if (util.getTime()-timer < 1000) return;
-            timer = util.getTime();
+            if (timer > 0) return timer -= delta;
+            timer = 1000;
             if (!this.hasProject()) return;
             const canvas = document.createElement("canvas");
             canvas.width = this.odometry.w;
@@ -1551,7 +1551,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
 
     refresh() { this.post("refresh"); }
 
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
 };
 App.ProjectPage.Panel.Item = class AppProjectPagePanelItem extends util.Target {
     #elem;
@@ -2172,11 +2172,11 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
 
         this.generating = false;
         
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             let pthsUsed = new Set();
             this.buttons.forEach(btn => {
                 btn.showLines = btn.hasPath() ? !this.hasVisual(btn.path.id) : true;
-                btn.update();
+                btn.update(delta);
                 if (!this.page.hasProject() || !this.page.project.hasPath(btn.path))
                     btn.path = null;
                 if (btn.hasPath()) {
@@ -2246,13 +2246,13 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         };
         this.page.eProgress.addEventListener("mousedown", this.page.eProgress._onMouseDown);
         
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             let visuals = [];
             this.visuals.forEach(id => {
                 let visual = this.getVisual(id);
                 visual.show = this.page.isPathSelected(id);
                 if (visual.show) visuals.push(id);
-                visual.update();
+                visual.update(delta);
                 if (!this.page.hasProject() || !this.page.project.hasPath(id))
                     this.remVisual(id);
             });
@@ -2511,7 +2511,6 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
     #item;
 
     #t;
-    #tPrev;
     #paused;
 
     constructor(panel) {
@@ -2584,10 +2583,8 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
     pause() { return this.paused = true; }
     play() { return this.playing = true; }
 
-    update() {
-        let deltaTime = util.getTime() - this.#tPrev;
-        if (this.show && this.playing) this.nowTime += deltaTime;
-        this.#tPrev += deltaTime;
+    update(delta) {
+        if (this.show && this.playing) this.nowTime += delta;
     }
 };
 App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends util.Target {
@@ -2728,7 +2725,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     get eEdit() { return this.#eEdit; }
     get eRemove() { return this.#eRemove; }
 
-    update() { this.post("udpate", null); }
+    update(delta) { this.post("udpate", delta); }
 };
 App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.ProjectPage.Panel {
     #size;

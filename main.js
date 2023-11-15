@@ -1717,9 +1717,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return true;
         }
 
-        update() {
-            this.post("update", null);
-            this.features.forEach(feat => feat.update());
+        update(delta) {
+            this.post("update", delta);
+            this.features.forEach(feat => feat.update(delta));
         }
 
         static log(...a) {
@@ -3062,7 +3062,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             this.window.webContents.send("cache-clear");
         }
 
-        update() { this.post("update", null); }
+        update(delta) { this.post("update", delta); }
 
         static log(name, ...a) {
             return log(`[${name}]`, ...a);
@@ -3127,6 +3127,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
     initializedRes.forEach(res => res());
     initializedRes = [];
 
-    setInterval(() => portal.update(), 10);
+    let t0 = null;
+    setInterval(() => {
+        let t1 = util.getTime();
+        if (t0 == null) return t1 = t0;
+        portal.update(t1-t0);
+        t1 = t0;
+    }, 10);
 
 })();

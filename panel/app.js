@@ -769,7 +769,7 @@ class Widget extends util.Target {
     format() {}
     collapse() {}
 
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
 }
 
 class Container extends Widget {
@@ -797,8 +797,8 @@ class Container extends Widget {
             this.children.forEach(child => child.post("rem", o));
         });
 
-        this.addHandler("update", data => {
-            this.children.forEach(child => child.update());
+        this.addHandler("update", delta => {
+            this.children.forEach(child => child.update(delta));
         });
 
         if (a.length <= 0 || a.length > 3) a = [null];
@@ -1108,8 +1108,8 @@ class Panel extends Widget {
             this.addTab(new Panel.AddTab());
         });
 
-        this.addHandler("update", data => {
-            this.tabs.forEach(tab => tab.update());
+        this.addHandler("update", delta => {
+            this.tabs.forEach(tab => tab.update(delta));
         });
 
         if (a.length <= 0 || a.length > 3) a = [null];
@@ -1372,7 +1372,7 @@ Panel.Tab = class PanelTab extends util.Target {
     get name() { return this.eTabName.textContent; }
     set name(v) { this.eTabName.textContent = v; }
 
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
     format() { this.post("format"); }
 
     getHovered(pos, options) {
@@ -1440,8 +1440,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.searchPart = null;
         });
 
-        this.addHandler("update", data => {
-            this.items.forEach(itm => itm.update());
+        this.addHandler("update", delta => {
+            this.items.forEach(itm => itm.update(delta));
         });
 
         if (a.length <= 0 || a.length > 1) a = [null];
@@ -1770,7 +1770,7 @@ Panel.AddTab.Item = class PanelAddTabItem extends util.Target {
 
     get elem() { return this.#elem; }
 
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
 };
 Panel.AddTab.Header = class PanelAddTabHeader extends Panel.AddTab.Item {
     constructor(value) {
@@ -1873,7 +1873,7 @@ Panel.AddTab.FieldButton = class PanelAddTabFieldButton extends Panel.AddTab.But
         children.forEach(child => this.btn.children[0].appendChild(child));
         this.eInfo.classList.add("tag");
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (!this.hasField()) {
                 this.icon = "document-outline";
                 this.name = "?";
@@ -1949,7 +1949,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         this.addHandler("format", data => {
             util.ensure(state.fields, "arr").forEach(field => field.format());
         });
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             const field = (source instanceof Source) ? source.root.lookup(this.path) : null;
             if (prevField != field) {
@@ -2212,7 +2212,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             });
             this.vars.forEach(v => v.format());
         });
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (!this.tsOverride) this.eFollowBtn.classList.add("this");
             else this.eFollowBtn.classList.remove("this");
             let columns = ["150px", ...new Array(this.vars.length).fill("250px")];
@@ -2235,7 +2235,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             });
             this.#ts = ts = [...ts].sort((a, b) => a-b);
             this.eBody.style.gridTemplateRows = "repeat("+ts.length+", auto)";
-            this.vars.forEach(v => v.update());
+            this.vars.forEach(v => v.update(delta));
             while (rows.length-1 < ts.length) {
                 let row = {};
                 row.elem = document.createElement("div");
@@ -2431,7 +2431,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 section.children[0].style.marginTop = shift+"px";
             });
         });
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             let valueLog = (this.hasField() && this.field.hasType() && this.field.isJustPrimitive) ? this.field.valueLog : [];
             valueLog = valueLog.filter((log, i) => {
@@ -2524,7 +2524,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
     }
 
     format() { this.post("format"); }
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -2601,7 +2601,7 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
 
         let src = null;
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (!ready || !document.body.contains(this.eWebView)) return;
             if (document.activeElement != this.eSrcInput)
                 this.eSrcInput.value = this.eWebView.getURL();
@@ -2714,7 +2714,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             if (!page.hasProject()) return;
             page.project.config.sourceType = "wpilog";
             page.project.config.source = LOGGERCONTEXT.getClientPath(name);
-            page.update();
+            page.update(0);
             if (!this.hasApp()) return;
             this.app.post("cmd-conndisconn");
         });
@@ -2860,7 +2860,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
         let logObjects = {};
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (this.isClosed) return;
 
             this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
@@ -3147,7 +3147,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
                 this.canvas.height = r.height * this.quality;
                 this.canvas.style.width = r.width+"px";
                 this.canvas.style.height = r.height+"px";
-                this.update();
+                this.update(0);
             }).observe(this.eContent);
         }
 
@@ -3238,14 +3238,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             let idfs = {
                 l: () => {
                     elem.classList.add("list");
-                    this.addHandler("update", data => {
+                    this.addHandler("update", delta => {
                         if (this.lVars.length > 0) elem.classList.remove("empty");
                         else elem.classList.add("empty");
                     });
                 },
                 r: () => {
                     elem.classList.add("list");
-                    this.addHandler("update", data => {
+                    this.addHandler("update", delta => {
                         if (this.rVars.length > 0) elem.classList.remove("empty");
                         else elem.classList.add("empty");
                     });
@@ -3285,7 +3285,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
-                                this.addHandler("update", data => {
+                                this.addHandler("update", delta => {
                                     if (document.activeElement == input) return;
                                     input.value = this.viewParams.time;
                                 });
@@ -3307,7 +3307,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
-                                this.addHandler("update", data => {
+                                this.addHandler("update", delta => {
                                     if (document.activeElement == input) return;
                                     input.value = this.viewParams.time;
                                 });
@@ -3346,7 +3346,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     let v = Math.max(0, util.ensure(parseFloat(stopInput.value), "num"));
                                     this.change("viewParams.stop", this.viewParams.stop, this.viewParams.stop=v);
                                 });
-                                this.addHandler("update", data => {
+                                this.addHandler("update", delta => {
                                     if (document.activeElement != startInput) startInput.value = this.viewParams.start;
                                     if (document.activeElement != stopInput) stopInput.value = this.viewParams.stop;
                                 });
@@ -3354,7 +3354,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         };
                         if (mode in modefs) modefs[mode]();
                     });
-                    this.addHandler("update", data => {
+                    this.addHandler("update", delta => {
                         for (let mode in eNavButtons) {
                             if (mode == this.viewMode) eNavButtons[mode].classList.add("this");
                             else eNavButtons[mode].classList.remove("this");
@@ -3443,7 +3443,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         document.body.addEventListener("keydown", e => {
             if (e.code == "Tab") tooltipCycle++;
         });
-        this.addHandler("update", () => {
+        this.addHandler("update", delta => {
             if (this.isClosed) return;
 
             let paused = true;
@@ -4241,7 +4241,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             let idfs = {
                 p: () => {
                     elem.classList.add("list");
-                    this.addHandler("update", data => {
+                    this.addHandler("update", delta => {
                         if (this.poses.length > 0) elem.classList.remove("empty");
                         else elem.classList.add("empty");
                     });
@@ -4287,7 +4287,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (id in idfs) idfs[id]();
         });
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             let t = 0, tTotal = 0, paused = true;
             if (this.hasPage() && this.page.hasSource()) {
                 t = this.page.source.ts - this.page.source.tsMin;
@@ -4669,7 +4669,7 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
 
     destroy() { return; }
     create() { return; }
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
 };
 Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #odometry;
@@ -4850,7 +4850,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             page.source.updateTopic("k", [2, 2, 0]);
         };
 
-        this.addHandler("update", () => {
+        this.addHandler("update", delta => {
             if (this.isClosed) return;
 
             if (this.template in templates) eField.classList.add("has");
@@ -4880,9 +4880,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 const field = (source instanceof Source) ? source.root.lookup(pose.path) : null;
                 pose.state.value = this.getValue(field);
-                pose.state.update();
+                pose.state.update(delta);
             });
-            this.odometry.update();
+            this.odometry.update(delta);
         });
     }
 
@@ -5066,7 +5066,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             templates = util.ensure(await window.api.get("templates"), "obj");
         })();
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             const renders = this.#renders;
@@ -5389,7 +5389,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         document.body.addEventListener("keyup", e => keys.delete(e.code));
         let velocity = new util.V3();
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (this.isClosed) return;
 
             if (this.template in templates) eField.classList.add("has");
@@ -5428,7 +5428,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
-                pose.state.update();
+                pose.state.update(delta);
             });
 
             let colorR = new util.Color(getComputedStyle(document.body).getPropertyValue("--cr"));
@@ -5874,7 +5874,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         let type = null, model = null;
         let isGhost = null, isSolid = null;
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             if (!this.hasThree()) return;
@@ -6694,7 +6694,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             type = String(type);
             if (!["nt", "wpilog"].includes(type)) return;
             this.project.config.sourceType = type;
-            this.update();
+            this.update(0);
             this.app.post("cmd-conndisconn");
         });
         this.app.addHandler("cmd-conndisconn", data => {
@@ -6813,7 +6813,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.format();
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
             BrowserField.doubleTraverse(
@@ -6847,7 +6847,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!this.hasProject()) return;
             this.project.config.sourceType = "wpilog";
             this.project.config.source = file.path;
-            this.update();
+            this.update(0);
             this.app.post("cmd-conndisconn");
         }, { capture: true });
 
@@ -6856,8 +6856,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("change-project", data => {
             this.widget = this.hasProject() ? this.project.buildWidget() : null;
         });
-        let t = null;
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (this.hasProject()) {
                 const constructor = {
                     nt: NTSource,
@@ -6880,11 +6879,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 }
             } else this.source = null;
 
-            if (this.hasSource()) {
-                let t2 = util.getTime();
-                if (t != null) this.source.playback.update(t2-t);
-                t = t2;
-            } else t = null;
+            if (this.hasSource())
+                this.source.playback.update(delta);
 
             this.app.eProjectInfoSourceTypes.forEach(type => {
                 let elem = this.app.getEProjectInfoSourceType(type);
@@ -6894,7 +6890,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
             if (this.hasWidget()) {
                 this.widget.collapse();
-                if (this.hasWidget()) this.widget.update();
+                if (this.hasWidget()) this.widget.update(delta);
             } else this.widget = new Panel();
             if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;

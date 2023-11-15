@@ -91,54 +91,6 @@ class UpperFeatureButton extends util.Target {
     }
 }
 
-class Star extends util.Target {
-    #pos;
-    #size;
-    #streakSize;
-    #speed;
-    #color;
-    #alpha;
-
-    constructor(pos, size, color="--v8") {
-        super();
-
-        this.#pos = new util.V3();
-        this.#size = 0;
-        this.#streakSize = 0;
-        this.#speed = 0;
-        this.#color = null;
-        this.#alpha = 1;
-
-        this.pos = pos;
-        this.size = size;
-        this.color = color;
-    }
-
-    get pos() { return this.#pos; }
-    set pos(v) { this.#pos.set(v); }
-    get x() { return this.pos.x; }
-    set x(v) { this.pos.x = v; }
-    get y() { return this.pos.y; }
-    set y(v) { this.pos.y = v; }
-    get z() { return this.pos.z; }
-    set z(v) { this.pos.z = v; }
-
-    get size() { return this.#size; }
-    set size(v) { this.#size = Math.max(0, util.ensure(v, "num")); }
-    get streakSize() { return this.#streakSize; }
-    set streakSize(v) { this.#streakSize = Math.max(0, util.ensure(v, "num")); }
-    get speed() { return this.#speed; }
-    set speed(v) { this.#speed = util.ensure(v, "num"); }
-
-    get color() { return this.#color; }
-    set color(v) { this.#color = v; }
-
-    get alpha() { return this.#alpha; }
-    set alpha(v) { this.#alpha = Math.min(1, Math.max(0, util.ensure(v, "num"))); }
-
-    update() { this.pos.z += this.speed; }
-}
-
 export default class App extends core.App {
     #featureButtons;
     #upperFeatureButtons;
@@ -202,7 +154,7 @@ export default class App extends core.App {
 
                 let first = true;
 
-                this.addHandler("update", data => {
+                this.addHandler("update", delta => {
                     controls.target.set(0, 0, 0);
                     controls.update();
 
@@ -286,7 +238,7 @@ export default class App extends core.App {
                     let text = await resp.text();
                     this.eContent.appendChild(await this.createMarkdown(text));
                 })();
-                this.addHandler("update", data => {
+                this.addHandler("update", delta => {
                     let scroll = this.eContent.scrollTop / window.innerHeight;
                     if (this.hasEMain()) {
                         let p = (scroll<0) ? 0 : (scroll>1) ? 1 : scroll;
@@ -394,7 +346,7 @@ export default class App extends core.App {
 
             let prevLoads = [];
             let lock = false;
-            this.addHandler("update", async data => {
+            this.addHandler("update", async delta => {
                 if (lock) return;
                 lock = true;
                 let loads = util.ensure(await window.api.get("loads"), "arr");

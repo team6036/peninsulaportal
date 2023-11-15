@@ -294,7 +294,7 @@ export default class App extends core.App {
 
             let prevLoads = [];
             let lock = false;
-            this.addHandler("update", async data => {
+            this.addHandler("update", async delta => {
                 if (lock) return;
                 lock = true;
                 let loads = util.ensure(await window.api.get("loads"), "arr");
