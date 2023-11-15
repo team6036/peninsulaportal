@@ -2720,7 +2720,6 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         });
         let selected = new Set(), lastSelected = null, lastAction = null;
         this.addHandler("log-trigger", (e, name, shift) => {
-            data = util.ensure(data, "obj");
             name = String(name);
             shift = !!shift;
             if (!LOGGERCONTEXT.hasLog(name)) return;
@@ -2744,9 +2743,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 }
             }
         });
-        this.addHandler("log-contextmenu", (e, name) => {
-            if (selected.size == 1) this.post("log-trigger", e, [...selected][0]);
-            if (selected.size == 0) this.post("log-trigger", e, name);
+        const contextMenu = e => {
             let names = [...selected];
             let anyClientHas = false, anyServerHas = false;
             names.forEach(name => LOGGERCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
@@ -2788,6 +2785,11 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             this.app.contextMenu = menu;
             e = util.ensure(e, "obj");
             this.app.placeContextMenu(e.pageX, e.pageY);
+        };
+        this.addHandler("log-contextmenu", (e, name) => {
+            if (selected.size == 1) this.post("log-trigger", e, [...selected][0]);
+            if (selected.size == 0) this.post("log-trigger", e, name);
+            contextMenu(e);
         });
         this.addHandler("log-client-delete", async names => {
             names = util.ensure(names, "arr").map(name => String(name));
@@ -2817,48 +2819,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             lastSelected = null;
             lastAction = null;
         });
-        this.eLogs.addEventListener("contextmenu", e => {
-            let names = [...selected];
-            let anyClientHas = false, anyServerHas = false;
-            names.forEach(name => LOGGERCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
-            names.forEach(name => LOGGERCONTEXT.hasServerLog(name) ? (anyServerHas = true) : null);
-            let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("Upload"));
-            itm.addHandler("trigger", e => {
-                this.eUploadBtn.click();
-            });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Upload Selected"));
-            itm.disabled = names.length <= 0 || !anyClientHas;
-            itm.addHandler("trigger", e => {
-                LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
-            });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
-            itm.disabled = names.length != 1;
-            itm.addHandler("trigger", e => {
-                this.post("log-use", names[0]);
-            });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
-            itm.disabled = names.length <= 0;
-            itm.addHandler("trigger", e => {
-                names.forEach(name => this.post("log-download", name));
-            });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Delete Locally"));
-            itm.disabled = !anyClientHas;
-            itm.addHandler("trigger", e => {
-                this.post("log-client-delete", names);
-            });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Delete from Server"));
-            itm.disabled = !anyServerHas;
-            itm.addHandler("trigger", e => {
-                this.post("log-server-delete", names);
-            });
-            if (!this.hasApp()) return;
-            this.app.contextMenu = menu;
-            this.app.placeContextMenu(e.pageX, e.pageY);
-        });
+        this.eLogs.addEventListener("contextmenu", contextMenu);
 
         let logObjects = {};
 
