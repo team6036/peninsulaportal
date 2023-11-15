@@ -91,17 +91,21 @@ export class App extends util.Target {
                         await this.getPage(page).loadState(util.ensure(pageState, "obj"));
                         if (this.page != page) this.page = page;
                     }
+                    let t0 = null;
                     const update = () => {
-                        this.post("update", null);
                         window.requestAnimationFrame(update);
+                        let t1 = util.getTime();
+                        if (t0 == null) return t0 = t1;
+                        this.post("update", t1-t0);
+                        t0 = t1;
                     };
                     update();
                 })();
             }, 10);
         });
 
-        this.addHandler("update", data => {
-            this.pages.forEach(name => this.getPage(name).update());
+        this.addHandler("update", delta => {
+            this.pages.forEach(name => this.getPage(name).update(delta));
         });
     }
 
@@ -1397,7 +1401,7 @@ App.Page = class AppPage extends util.Target {
     async leave(data) {}
     async determineSame(data) { return false; }
 
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
 };
 export class Project extends util.Target {
     #id;
@@ -1729,7 +1733,7 @@ export class AppFeature extends App {
             this.addHandler("synced-files-with", () => {
                 saving = false;
             });
-            this.addHandler("update", data => {
+            this.addHandler("update", delta => {
                 this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
             });
 
@@ -2028,7 +2032,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
 
         this.#buttons = new Set();
 
-        this.addHandler("update", data => this.buttons.forEach(btn => btn.update()));
+        this.addHandler("update", delta => this.buttons.forEach(btn => btn.update(delta)));
 
         this.#eTitle = document.createElement("div");
         this.elem.appendChild(this.eTitle);
@@ -2169,7 +2173,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             contextMenu();
         });
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             let projects = new Set(this.app.projects);
             [...selected].forEach(name => {
                 if (projects.has(name)) return;
@@ -2179,7 +2183,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 btn.elemList.style.order = i;
                 btn.elemGrid.style.order = i;
                 btn.selected = selected.has(btn.hasProject() ? btn.project.id : null);
-                btn.update();
+                btn.update(delta);
             });
         });
     }
@@ -2389,7 +2393,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
         this.project = project;
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             this.eListIcon.setAttribute("name", this.app.constructor.ICON);
             this.eGridIcon.setAttribute("name", this.app.constructor.ICON);
             if (!this.hasProject()) return;
@@ -2448,7 +2452,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     get eGridOptions() { return this.#eGridOptions; }
     get eGridImage() { return this.#eGridImage; }
 
-    update() { this.post("update", null); }
+    update(delta) { this.post("update", delta); }
 };
 AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     #projectId;
@@ -2723,7 +2727,7 @@ export class Odometry2d extends util.Target {
 
         this.size = 1000;
 
-        this.addHandler("update", data => {
+        this.addHandler("update", delta => {
             if (!this.doRender) return;
             if (!this.hasCanvas()) return;
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
@@ -2850,7 +2854,7 @@ export class Odometry2d extends util.Target {
             this.canvas.addEventListener("mousemove", this.canvas._onMouseMove);
         }
         this.#ctx = this.hasCanvas() ? this.canvas.getContext("2d") : null;
-        this.update();
+        this.update(0);
     }
     hasCanvas() { return this.canvas instanceof HTMLCanvasElement; }
     get ctx() { return this.#ctx; }
@@ -2991,7 +2995,7 @@ export class Odometry2d extends util.Target {
     pageToWorld(...p) { return this.canvasToWorld(this.pageToCanvas(...p)); }
     pageLenToWorld(l) { return this.canvasLenToWorld(this.pageLenToCanvas(l)); }
 
-    update() { this.post("update"); }
+    update(delta) { this.post("update", delta); }
 }
 Odometry2d.Render = class Odometry2dRender extends util.Target {
     #odometry;
