@@ -222,15 +222,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     socketId: this.socketId,
                 };
                 let results = [];
-                results.push(...(await this.post("msg", {
-                    name: name,
-                    payload: payload,
-                    meta: meta,
-                })));
-                results.push(...(await this.post("msg-"+name, {
-                    payload: payload,
-                    meta: meta,
-                })));
+                results.push(...(await this.post("msg", name, payload, meta)));
+                results.push(...(await this.post("msg-"+name, payload, meta)));
                 ack = util.ensure(ack, "func");
                 let r = util.ensure(results[0], "obj");
                 r.success = ("success" in r) ? (!!r.success) : true;
@@ -251,19 +244,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     socketId: this.socketId,
                 };
                 let results = [];
-                results.push(...(await this.post("stream", {
-                    name: name,
-                    fname: fname,
-                    payload: payload,
-                    meta: meta,
-                    ssStream: ssStream,
-                })));
-                results.push(...(await this.post("stream-"+name, {
-                    fname: fname,
-                    payload: payload,
-                    meta: meta,
-                    ssStream: ssStream,
-                })));
+                results.push(...(await this.post("stream", name, fname, payload, meta, ssStream)));
+                results.push(...(await this.post("stream-"+name, fname, payload, meta, ssStream)));
                 ack = util.ensure(ack, "func");
                 let r = util.ensure(results[0], "obj");
                 r.success = ("success" in r) ? (!!r.success) : true;
@@ -512,7 +494,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             };
             if (feat.hasWindow())
                 feat.window.on("focus", feat._onFocus);
-            this.post("feature-start", feat);
+            this.change("addFeature", null, feat);
             return feat;
         }
         async remFeature(feat) {
@@ -528,7 +510,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             }
             feat.log("REM - already stopped");
             this.#features.delete(feat);
-            this.post("feature-stop", feat);
+            this.change("remFeature", feat, null);
             return feat;
         }
 
@@ -551,14 +533,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
             load = String(load);
             if (this.hasLoad(load)) return false;
             this.#loads.add(load);
-            this.post("load-change", this.loads);
+            this.change("addLoad", null, load);
             return true;
         }
         remLoad(load) {
             load = String(load);
             if (!this.hasLoad(load)) return false;
             this.#loads.delete(load);
-            this.post("load-change", this.loads);
+            this.change("remLoad", load, null);
             return true;
         }
         get isLoading() { return this.#isLoading; }
@@ -2078,18 +2060,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         await this.whenReady();
                         (nFeats > 0) ? this.window.hide() : this.window.show();
                     };
-                    const hook = () => {
-                        this.portal.addHandler("feature-start", checkForShow);
-                        this.portal.addHandler("feature-stop", checkForShow);
-                    };
-                    const unhook = () => {
-                        this.portal.remHandler("feature-start", checkForShow);
-                        this.portal.remHandler("feature-stop", checkForShow);
-                    };
-                    this.addHandler("portal-hook", data => hook());
-                    this.addHandler("portal-unhook", data => unhook());
-                    hook();
                     checkForShow();
+                    this.portal.addHandler("change-addFeature", () => checkForShow());
+                    this.portal.addHandler("change-remFeature", () => checkForShow());
                 },
                 PANEL: () => {
                     this.addHandler("client-stream-logs", async () => ["logs"]);
@@ -2386,48 +2359,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
             let client = await this.portal.clientMake(this.name+":"+id, location);
             client = this.clientManager.addClient(client);
             client.addTag(this.name);
-            client.addHandler("msg", async data => {
-                data = util.ensure(data, "obj");
-                const name = String(data.name);
-                const payload = data.payload;
-                const meta = util.ensure(data.meta, "obj");
+            client.addHandler("msg", async (name, payload, meta) => {
+                name = String(name);
+                meta = util.ensure(meta, "obj");
                 if (!this.hasWindow()) return { success: false, reason: "No window" };
-                await this.post("client-msg", {
-                    id: id,
-                    name: name,
-                    payload: payload,
-                    meta: meta,
-                });
-                await this.post("client-msg-"+name, {
-                    id: id,
-                    payload: payload,
-                    meta: meta,
-                });
+                await this.post("client-msg", id, name, payload, meta);
+                await this.post("client-msg-"+name, id, payload, meta);
                 this.window.webContents.send("client-msg", id, name, payload, meta);
                 return { success: true };
             });
-            client.addHandler("stream", async data => {
-                data = util.ensure(data, "obj");
-                const name = String(data.name);
-                const fname = String(data.fname);
-                const payload = data.payload;
-                const meta = util.ensure(data.meta, "obj");
-                const ssStream = data.ssStream;
+            client.addHandler("stream", async (name, fname, payload, meta, ssStream) => {
+                name = String(name);
+                fname = String(fname);
+                meta = util.ensure(meta, "obj");
                 await this.affirm();
                 let results = [];
-                results.push(...(await this.post("client-stream", {
-                    id: id,
-                    name: name,
-                    fname: fname,
-                    payload: payload,
-                    meta: meta,
-                })));
-                results.push(...(await this.post("client-stream-"+name, {
-                    id: id,
-                    fname: fname,
-                    payload: payload,
-                    meta: meta,
-                })));
+                results.push(...(await this.post("client-stream", id, name, fname, payload, meta)));
+                results.push(...(await this.post("client-stream-"+name, id, fname, payload, meta)));
                 let pth = (results.length > 0) ? results[0] : [];
                 if (!(await this.dirHas(pth)))
                     await this.dirMake(pth);
@@ -2436,39 +2384,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 try {
                     await new Promise((res, rej) => {
                         stream.on("open", async () => {
-                            await this.post("client-stream-start", {
-                                id: id,
-                                name: name,
-                                pth: pth,
-                                fname: fname,
-                                payload: payload,
-                                meta: meta,
-                            });
-                            await this.post("client-stream-start-"+name, {
-                                id: id,
-                                pth: pth,
-                                fname: fname,
-                                payload: payload,
-                                meta: meta,
-                            });
+                            await this.post("client-stream-start", id, name, pth, fname, payload, meta);
+                            await this.post("clietn-stream-start-"+name, id, pth, fname, payload, meta);
                             this.window.webContents.send("client-stream-start", id, name, pth, fname, payload, meta);
                             ssStream.pipe(stream);
                             ssStream.on("end", async () => {
-                                await this.post("client-stream-stop", {
-                                    id: id,
-                                    name: name,
-                                    pth: pth,
-                                    fname: fname,
-                                    payload: payload,
-                                    meta: meta,
-                                });
-                                await this.post("client-stream-stop-"+name, {
-                                    id: id,
-                                    pth: pth,
-                                    fname: fname,
-                                    payload: payload,
-                                    meta: meta,
-                                });
+                                await this.post("client-stream-stop", id, name, pth, fname, payload, meta);
+                                await this.post("client-stream-stop-"+name, id, pth, fname, payload, meta);
                                 this.window.webContents.send("client-stream-stop", id, name, pth, fname, payload, meta);
                                 res();
                             });
@@ -2937,10 +2859,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
                             });
                             let already = false;
                             const resolve = async data => {
-                                data = util.ensure(data, "obj");
                                 if (already) return;
                                 already = true;
-                                this.log("SPAWN exit", data.code);
+                                this.log("SPAWN exit", data);
                                 await finish();
                                 if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                     const notif = new electron.Notification({
@@ -2949,13 +2870,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
                                     });
                                     notif.show();
                                 }
-                                return res(data.code);
+                                return res(data);
                             };
                             const reject = async data => {
-                                data = util.ensure(data, "obj");
                                 if (already) return;
                                 already = true;
-                                this.log("SPAWN err", data.e);
+                                this.log("SPAWN err", data);
                                 await finish();
                                 if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                     const notif = new electron.Notification({
@@ -2964,7 +2884,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                                     });
                                     notif.show();
                                 }
-                                return rej(data.e);
+                                return rej(data);
                             };
                             process.addHandler("exit", data => resolve(data));
                             process.addHandler("error", data => reject(data));

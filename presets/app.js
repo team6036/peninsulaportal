@@ -88,10 +88,10 @@ export default class App extends core.App {
     constructor() {
         super();
 
-        this.addHandler("start-begin", data => {
+        this.addHandler("pre-setup", () => {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
-        this.addHandler("start-complete", async data => {
+        this.addHandler("post-setup", async () => {
             (async () => {
                 let resp = await fetch("./display.md");
                 let text = await resp.text();
