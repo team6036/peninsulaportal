@@ -40,8 +40,6 @@ export class App extends util.Target {
     constructor() {
         super();
 
-        throw "";
-
         this.#setupConfig = {};
         this.#setupDone = false;
 
