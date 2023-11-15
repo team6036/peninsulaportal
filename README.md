@@ -70,7 +70,10 @@ Your home page, where you can pick what page to add, including any of the pages 
 Views any table or topic, similar to your operating system's file explorer.
 
 ### Graph Page
-Graphs numerical and discrete topics in NT. Choose window view, in `ms`, of the graph to see. Pick colors for different variables.
+Graphs numerical and discrete fields. Choose window view, in `ms`, of the graph to see. Pick colors for different variables.
+
+### Table Page
+Displays any value from source. Search timestamp or follow the current playback. Drag topics in to see them.
 
 ### Odometry 2D Page
 Displays the robot as shown from `double[3]`, `float[3]`, and `int[3]` in NT. Choose field template, set your own, and change units. Pick colors for different poses, including toggling ghost effect and render type.
@@ -81,12 +84,15 @@ Displays the robot as shown from `double[7]`, `float[7]`, and `int[7]` in NT. Ch
 ### Plexus Logger Page
 Cloud logging system for instant and community viewing of logs! When opening, you should see a list of logs onscreen, or an empty page if no logs are yet on the server. To download `wpilog` files, simply click the download button to the right of each entry. After downloading, to use this log, click the open button on the right, which will automatically open said `wpilog` file into your current project. To redownload, click the download button again. To add logs to the server, simply click the plus icon and select your logs.
 
+### WebView Page
+Displays a website. Works like any browser.
+
 ## Getting Started
 
 ### FAQ
-> How can I display topics in the Graph, Odometry 2D, or Odometry 3D?
+> How can I display topics in the Graph, Table, Odometry 2D, or Odometry 3D?
 
-Drag topics from the left or from the Browser to the axis you want for Graph, or into the pose section for Odometry 2D and 3D.
+Drag topics from the left or from the Browser to the axis you want for Graph, or into the pose section for Odometry 2D and 3D. For Tables, drag it just into the page and it will append those values to the end of the table.
 
 > How can I change the color, or display type of topics being graphed or displayed?
 
