@@ -652,7 +652,7 @@ class LoggerContext extends util.Target {
         await Promise.all(paths.map(async path => {
             this.incLoading("§uploading");
             try {
-                await window.api.send("log-cache", [path]);
+                await window.api.send("log-cache", path);
                 await this.#client.stream(path, "logs", {});
             } catch (e) {
                 this.decLoading("§uploading");
@@ -682,7 +682,7 @@ class LoggerContext extends util.Target {
         await Promise.all(names.map(async name => {
             this.incLoading(name);
             try {
-                await window.api.send("log-delete", [name]);
+                await window.api.send("log-delete", name);
             } catch (e) {
                 this.decLoading(name);
                 throw e;
@@ -6676,7 +6676,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         let i2 = source.lastIndexOf("\\");
                         let i = Math.max(i1, i2);
                         this.source.file = source.substring(i+1);
-                        this.source.data = await window.api.send("wpilog-read", [source]);
+                        this.source.data = await window.api.send("wpilog-read", source);
                         const progress = v => (this.app.progress = v);
                         this.source.addHandler("progress", progress);
                         await this.source.build();
@@ -7122,7 +7122,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         ];
         let ables = {};
         projectOnly.forEach(id => (ables[id] = true));
-        await window.api.send("menu-ables", [ables]);
+        await window.api.send("menu-ables", ables);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
         await this.refresh();
         if (this.app.hasProject(data.id)) {
@@ -7143,7 +7143,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         ];
         let ables = {};
         projectOnly.forEach(id => (ables[id] = false));
-        await window.api.send("menu-ables", [ables]);
+        await window.api.send("menu-ables", ables);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         this.app.markChange("*all");
         await this.app.post("cmd-save");

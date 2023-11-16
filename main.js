@@ -861,8 +861,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
             ipc.handle("get", async (e, k) => await this.getCallback(e.sender.id, k));
             ipc.handle("set", async (e, k, v) => await this.setCallback(e.sender.id, k, v));
 
-            ipc.handle("on", async (e, k, args) => {
-                return await this.onCallback(e.sender.id, k, args);
+            ipc.handle("on", async (e, k, ...a) => {
+                return await this.onCallback(e.sender.id, k, ...a);
             });
 
             const identify = e => {
@@ -1665,9 +1665,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
             return await feat.set(k, v);
         }
-        async on(k, args) {
+        async on(k, ...a) {
             k = String(k);
-            args = util.ensure(args, "arr");
             let kfs = {
                 "spawn": async name => {
                     name = String(name);
@@ -1689,19 +1688,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     notif.show();
                 },
             };
-            if (k in kfs) return await kfs[k](...args);
+            if (k in kfs) return await kfs[k](...a);
             throw "§O No possible \"on\" for key: "+k;
         }
-        async onCallback(id, k, args) {
+        async onCallback(id, k, ...a) {
             try {
-                return await this.on(k, args);
+                return await this.on(k, ...a);
             } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             let feat = this.identifyFeature(id);
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
-            return await feat.on(k, args);
+            return await feat.on(k, ...a);
         }
-        async send(k, args) {
-            await Promise.all(this.features.map(async feat => await feat.send(k, args)));
+        async send(k, ...a) {
+            await Promise.all(this.features.map(async feat => await feat.send(k, ...a)));
             return true;
         }
         cacheSet(k, v) {
@@ -1917,8 +1916,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
             });
 
-            this.window.on("enter-full-screen", () => this.send("win-fullscreen", [true]));
-            this.window.on("leave-full-screen", () => this.send("win-fullscreen", [false]));
+            this.window.on("enter-full-screen", () => this.send("win-fullscreen", true));
+            this.window.on("leave-full-screen", () => this.send("win-fullscreen", false));
 
             this.perm = false;
             this.window.on("close", e => {
@@ -2250,7 +2249,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     this.on("menu-ables", [{ toggleDevTools: isDevMode }]);
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
-                        this.send("win-devmode", [isDevMode]);
+                        this.send("win-devmode", isDevMode);
                     }
                 };
                 let prevHoliday = null;
@@ -2260,7 +2259,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     await onHolidayState(holiday);
                     if (prevHoliday != holiday) {
                         prevHoliday = holiday;
-                        this.send("win-holiday", [holiday]);
+                        this.send("win-holiday", holiday);
                     }
                 };
                 fs.watchFile(path.join(__dirname, ".config"), () => checkDevConfig());
@@ -2548,13 +2547,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (doLog) this.log(`SET - ${k} = ${simplify(JSON.stringify(v))}`);
             return r;
         }
-        async on(k, args) {
+        async on(k, ...a) {
             if (!this.started) return null;
             if (!this.hasName()) return null;
             k = String(k);
-            args = util.ensure(args, "arr");
             try {
-                return await this.portal.on(k, args);
+                return await this.portal.on(k, ...a);
             } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             let doLog = true;
             let kfs = {
@@ -2723,7 +2721,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 },
             };
             if (k in kfs)
-                return await kfs[k](...args);
+                return await kfs[k](...a);
             let namefs = {
                 PANEL: {
                     "wpilog-read": async pth => {
@@ -3059,18 +3057,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
             let r = null;
             if (this.name in namefs)
                 if (k in namefs[this.name])
-                    r = await namefs[this.name][k](...args);
-            if (doLog) this.log(`ON - ${k}(${args.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+                    r = await namefs[this.name][k](...a);
+            if (doLog) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
             return r;
         }
-        async send(k, args) {
+        async send(k, ...a) {
             if (!this.started) return false;
             if (!this.hasName()) return false;
             k = String(k);
-            args = util.ensure(args, "arr");
-            this.log(`SEND - ${k}(${args.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            this.log(`SEND - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
             if (!this.hasWindow()) return false;
-            this.window.webContents.send("send", k, args);
+            this.window.webContents.send("send", k, ...a);
             return true;
         }
         cacheSet(k, v) {
