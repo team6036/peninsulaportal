@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld("api", {
         ipcRenderer.on("send", f);
         return () => ipcRenderer.removeListener("send", f);
     },
-    send: (k, args) => ipcRenderer.invoke("on", k, args),
+    send: (k, ...a) => ipcRenderer.invoke("on", k, ...a),
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
     fileRead: path => ipcRenderer.invoke("file-read", path),

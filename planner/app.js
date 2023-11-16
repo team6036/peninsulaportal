@@ -1364,7 +1364,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         ];
         let ables = {};
         projectOnly.forEach(id => (ables[id] = true));
-        await window.api.send("menu-ables", [ables]);
+        await window.api.send("menu-ables", ables);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
         await this.refresh();
         this.eDisplay.focus();
@@ -1430,7 +1430,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         ];
         let ables = {};
         projectOnly.forEach(id => (ables[id] = false));
-        await window.api.send("menu-ables", [ables]);
+        await window.api.send("menu-ables", ables);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         this.app.markChange("*all");
         await this.app.post("cmd-save");
@@ -2155,7 +2155,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 this.app.markChange("*all");
                 await this.app.post("cmd-save");
                 try {
-                    await window.api.send("exec", [project.id, path.id]);
+                    await window.api.send("exec", project.id, path.id);
                     await this.checkVisuals();
                     this.visuals.forEach(id => {
                         let visual = this.getVisual(id);
@@ -2471,7 +2471,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         if (!this.page.hasProject()) return;
         try {
             let projectId = this.page.projectId;
-            let datas = await window.api.send("exec-get", [projectId]);
+            let datas = await window.api.send("exec-get", projectId);
             if (!util.is(datas, "obj")) return;
             if (this.page.projectId != projectId) return;
             for (let id in datas) {

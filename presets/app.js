@@ -120,8 +120,8 @@ export default class App extends core.App {
                     if (!(btn instanceof HTMLButtonElement)) return;
                     input.addEventListener("change", async e => {
                         input.disabled = btn.disabled = true;
-                        await window.api.send("feature", [name, "set", "root", input.value]);
-                        input.value = await window.api.send("feature", [name, "get", "root"]);
+                        await window.api.send("feature", name, "set", "root", input.value);
+                        input.value = await window.api.send("feature", name, "get", "root");
                         input.disabled = btn.disabled = false;
                     });
                     btn.addEventListener("click", async e => {
@@ -136,11 +136,11 @@ export default class App extends core.App {
                         });
                         result = util.ensure(result, "obj");
                         let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
-                        await window.api.send("feature", [name, "set", "root", path]);
-                        input.value = await window.api.send("feature", [name, "get", "root"]);
+                        await window.api.send("feature", name, "set", "root", path);
+                        input.value = await window.api.send("feature", name, "get", "root");
                         input.disabled = btn.disabled = false;
                     });
-                    input.value = await window.api.send("feature", [name, "get", "root"]);
+                    input.value = await window.api.send("feature", name, "get", "root");
                 });
                 Array.from(document.querySelectorAll("#PAGE > .content > article button.cmd")).forEach(async elem => {
                     const action = new Action(this, elem);

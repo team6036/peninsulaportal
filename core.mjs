@@ -80,9 +80,9 @@ export class App extends util.Target {
                     await this.post("pre-setup");
                     await this.setup();
                     await this.post("post-setup");
-                    let page = await window.api.send("state-get", ["page"]);
-                    let pageState = await window.api.send("state-get", ["page-state"]);
-                    let pageLazyStates = util.ensure(await window.api.send("state-get", ["page-lazy-states"]), "obj");
+                    let page = await window.api.send("state-get", "page");
+                    let pageState = await window.api.send("state-get", "page-state");
+                    let pageLazyStates = util.ensure(await window.api.send("state-get", "page-lazy-states"), "obj");
                     for (let name in pageLazyStates) {
                         if (!this.hasPage(name)) continue;
                         await this.getPage(name).loadLazyState(util.ensure(pageLazyStates[name], "obj"));
@@ -363,19 +363,18 @@ export class App extends util.Target {
                 window.api.sendPerm(perm);
             })();
         });
-        window.api.on((_, cmd, args) => {
+        window.api.on((_, cmd, ...a) => {
             cmd = String(cmd);
-            args = util.ensure(args, "arr");
-            this.post("cmd", cmd, ...args);
-            this.post("cmd-"+cmd, ...args);
+            this.post("cmd", cmd, ...a);
+            this.post("cmd-"+cmd, ...a);
         });
         this.addHandler("perm", async () => {
             if (this.hasPage(this.page)) {
-                await window.api.send("state-set", ["page", this.page]);
-                await window.api.send("state-set", ["page-state", this.getPage(this.page).state]);
+                await window.api.send("state-set", "page", this.page);
+                await window.api.send("state-set", "page-state", this.getPage(this.page).state);
                 let pageLazyStates = {};
                 this.pages.forEach(name => (pageLazyStates[name] = this.getPage(name).lazyState));
-                await window.api.send("state-set", ["page-lazy-states", pageLazyStates]);
+                await window.api.send("state-set", "page-lazy-states", pageLazyStates);
             }
             return true;
         });
@@ -918,8 +917,8 @@ export class App extends util.Target {
         this.eTitleBar.style.setProperty("--progress", (v*100)+"%");
     }
 
-    async fileOpenDialog(options) { return await window.api.send("file-open-dialog", [options]); }
-    async fileSaveDialog(options) { return await window.api.send("file-save-dialog", [options]); }
+    async fileOpenDialog(options) { return await window.api.send("file-open-dialog", options); }
+    async fileSaveDialog(options) { return await window.api.send("file-save-dialog", options); }
 }
 App.PopupBase = class AppPopupBase extends util.Target {
     #elem;
@@ -1825,7 +1824,7 @@ export class AppFeature extends App {
         projectIds = util.ensure(projectIds, "arr").map(id => String(id));
         let projects = {};
         await Promise.all(projectIds.map(async id => {
-            let projectContent = await window.api.send("project-get", [id]);
+            let projectContent = await window.api.send("project-get", id);
             let project = JSON.parse(projectContent, this.constructor.REVIVER.f);
             projects[id] = project;
         }));
@@ -1849,20 +1848,20 @@ export class AppFeature extends App {
         if (changes.has("*") || changes.has("projects")) {
             let projectIds = this.projects;
             let projectIdsContent = JSON.stringify(projectIds);
-            await window.api.send("projects-set", [projectIdsContent]);
+            await window.api.send("projects-set", projectIdsContent);
         }
         if (changes.has("*")) {
             let projectIds = this.projects;
             await Promise.all(projectIds.map(async id => {
                 let project = this.getProject(id);
                 let projectContent = JSON.stringify(project);
-                await window.api.send("project-set", [id, projectContent]);
+                await window.api.send("project-set", id, projectContent);
             }));
             await Promise.all(util.ensure(await window.api.send("projects-list"), "arr").map(async dirent => {
                 if (dirent.type != "file") return;
                 let id = dirent.name.split(".")[0];
                 if (this.hasProject(id)) return;
-                await window.api.send("project-del", [id]);
+                await window.api.send("project-del", id);
             }));
         } else {
             let projectIds = this.projects;
@@ -1871,13 +1870,13 @@ export class AppFeature extends App {
                 let project = this.getProject(id);
                 project.meta.modified = util.getTime();
                 let projectContent = JSON.stringify(project);
-                await window.api.send("project-set", [id, projectContent]);
+                await window.api.send("project-set", id, projectContent);
             }));
             await Promise.all([...changes].map(async change => {
                 if (!change.startsWith(":")) return;
                 let id = change.substring(1);
                 if (this.hasProject(id)) return;
-                await window.api.send("project-del", [id]);
+                await window.api.send("project-del", id);
             }));
         }
         await this.post("synced-files-with");
