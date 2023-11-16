@@ -2639,6 +2639,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
                     return v;
                 },
+                "capture": async rect => {
+                    if (!this.hasWindow()) return;
+                    const img = await ((rect == null) ? this.window.webContents.capturePage() : this.window.webContents.capturePage(rect));
+                    return img.toDataURL();
+                },
                 "file-open-dialog": async options => {
                     return await electron.dialog.showOpenDialog(this.window, options);
                 },

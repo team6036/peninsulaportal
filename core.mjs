@@ -933,6 +933,7 @@ export class App extends util.Target {
         this.eTitleBar.style.setProperty("--progress", (v*100)+"%");
     }
 
+    async capture(rect) { return await window.api.send("capture", rect); }
     async fileOpenDialog(options) { return await window.api.send("file-open-dialog", options); }
     async fileSaveDialog(options) { return await window.api.send("file-save-dialog", options); }
 }

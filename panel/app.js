@@ -6775,7 +6775,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.format();
 
-        this.addHandler("update", delta => {
+        let timer = 0;
+        this.addHandler("update", async delta => {
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
             BrowserField.doubleTraverse(
@@ -6784,6 +6785,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 (...bfields) => this.addBrowserFieldBulk(...bfields),
                 (...bfields) => this.remBrowserFieldBulk(...bfields),
             );
+            if (timer > 0) return timer -= delta;
+            timer = 1000;
+            if (!this.hasProject()) return;
+            let r = this.eContent.getBoundingClientRect();
+            this.project.meta.thumb = await this.app.capture({
+                x: Math.round(r.left), y: Math.round(r.top),
+                width: Math.round(r.width), height: Math.round(r.height),
+            });
         });
         this.#eDragBox = document.createElement("div");
         this.elem.appendChild(this.eDragBox);
