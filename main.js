@@ -439,12 +439,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         {
                             label: "Peninsula Panel",
                             accelerator: "CmdOrCtrl+1",
-                            click: () => this.on("spawn", ["PANEL"]),
+                            click: () => this.on("spawn", "PANEL"),
                         },
                         {
                             label: "Peninsula Planner",
                             accelerator: "CmdOrCtrl+2",
-                            click: () => this.on("spawn", ["PLANNER"]),
+                            click: () => this.on("spawn", "PLANNER"),
                         },
                     ],
                 },
@@ -1933,63 +1933,69 @@ Object.defineProperty(exports, "__esModule", { value: true });
             const build = {
                 about: [
                     {
+                        id: "about",
                         label: "About Peninsula "+util.capitalize(this.name),
                         click: () => this.send("about"),
                     },
                 ],
                 settings: [
                     {
+                        id: "settings",
                         label: "Settings",
                         accelerator: "CmdOrCtrl+,",
-                        click: () => this.on("spawn", ["PRESETS"]),
+                        click: () => this.on("spawn", "PRESETS"),
                     },
                 ],
                 hide: [
-                    { role: "hide" },
-                    { role: "hideOthers" },
-                    { role: "unhide" },
+                    { id: "hide", role: "hide" },
+                    { id: "hideOthers", role: "hideOthers" },
+                    { id: "unhide", role: "unhide" },
                 ],
                 quit: [
-                    { role: "quit" },
+                    { id: "quit", role: "quit" },
                 ],
                 close: [
                     { role: "close" },
                 ],
                 undoredo: [
-                    { role: "undo" },
-                    { role: "redo" },
+                    { id: "undo", role: "undo" },
+                    { id: "redo", role: "redo" },
                 ],
                 cutcopypaste: [
-                    { role: "cut" },
-                    { role: "copy" },
-                    { role: "paste" },
+                    { id: "cut", role: "cut" },
+                    { id: "copy", role: "copy" },
+                    { id: "paste", role: "paste" },
                 ],
                 fullscreen: [
-                    { role: "togglefullscreen" },
+                    { id: "toggleFullscreen", role: "togglefullscreen" },
                 ],
                 window: [
-                    { role: "minimize" },
-                    { role: "zoom" },
+                    { id: "minimize", role: "minimize" },
+                    { id: "zoom", role: "zoom" },
                 ],
                 front: [
-                    { role: "front" },
+                    { id: "front", role: "front" },
                 ],
                 help: [
                     {
+                        id: "ionicons",
                         label: "Ionicons",
                         click: () => electron.shell.openExternal("https://ionic.io/ionicons"),
                     },
                     {
+                        id: "repo",
                         label: "Github Repository",
                         click: async () => await electron.shell.openExternal(await this.get("repo")),
                     },
                     {
+                        id: "db",
                         label: "Open Database",
                         click: async () => await electron.shell.openExternal(await this.get("db-host")),
                     },
                 ],
                 reload: [
                     {
+                        id: "reload",
                         label: "Reload Feature",
                         accelerator: "CmdOrCtrl+R",
                         click: () => {
@@ -2001,17 +2007,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 ],
                 spawn: [
                     {
+                        id: "spawn",
                         label: "New Feature",
                         submenu: [
                             {
+                                id: "spawnPanel",
                                 label: "Peninsula Panel",
                                 accelerator: "CmdOrCtrl+1",
-                                click: () => this.on("spawn", ["PANEL"]),
+                                click: () => this.on("spawn", "PANEL"),
                             },
                             {
+                                id: "spawnPlanner",
                                 label: "Peninsula Planner",
                                 accelerator: "CmdOrCtrl+2",
-                                click: () => this.on("spawn", ["PLANNER"]),
+                                click: () => this.on("spawn", "PLANNER"),
                             },
                         ],
                     },
@@ -2020,6 +2029,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             };
             let template = [
                 {
+                    id: "main",
                     label: util.capitalize(this.name),
                     submenu: [
                         ...build.about,
@@ -2032,16 +2042,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     ],
                 },
                 {
+                    id: "file",
                     label: "File",
                     submenu: [
                         ...build.reload,
-                        build.div,
                         ...build.spawn,
                         build.div,
                         ...build.close,
                     ],
                 },
                 {
+                    id: "edit",
                     label: "Edit",
                     submenu: [
                         ...build.undoredo,
@@ -2050,20 +2061,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     ],
                 },
                 {
+                    id: "view",
                     label: "View",
                     submenu: [
                         ...build.fullscreen,
                     ],
                 },
                 {
+                    id: "window",
                     label: "Window",
                     submenu: [
                         ...build.window,
                         ...(
                             (OS.platform == "darwin") ?
                             [
-                                { type: "separator" },
-                                { role: "front" },
+                                build.div,
+                                ...build.front,
                             ] :
                             []
                         ),
@@ -2071,6 +2084,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     ],
                 },
                 {
+                    id: "help",
                     role: "help",
                     submenu: [
                         ...build.help,
@@ -2096,7 +2110,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     this.addHandler("client-stream-logs", async () => ["logs"]);
                     build.close[0].accelerator = "CmdOrCtrl+Shift+W";
                     template[1].submenu.splice(
-                        2, 0,
+                        3, 0,
                         {
                             id: "newproject",
                             label: "New Project",
@@ -2135,7 +2149,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                             click: () => this.send("closetab"),
                         },
                         {
-                            id: "close",
+                            id: "closeproject",
                             label: "Close Project",
                             click: () => this.send("close"),
                         },
@@ -2168,7 +2182,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 PLANNER: () => {
                     build.close[0].accelerator = "CmdOrCtrl+Shift+W";
                     template[1].submenu.splice(
-                        2, 0,
+                        3, 0,
                         {
                             id: "newproject",
                             label: "New Project",
@@ -2211,7 +2225,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                             click: () => this.send("delete"),
                         },
                         {
-                            id: "close",
+                            id: "closeproject",
                             label: "Close Project",
                             accelerator: "CmdOrCtrl+W",
                             click: () => this.send("close"),
@@ -2245,7 +2259,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 let prevIsDevMode = null;
                 const checkDevConfig = async () => {
                     let isDevMode = !!(await this.get("devmode"));
-                    this.on("menu-ables", [{ toggleDevTools: isDevMode }]);
+                    this.on("menu-ables", { toggleDevTools: isDevMode });
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
                         this.send("win-devmode", isDevMode);
@@ -2266,7 +2280,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 await checkDevConfig();
                 await checkHoliday();
                 if (!this.canOperate) return;
-                let bounds = util.ensure(await this.on("state-get", ["bounds"]), "obj");
+                let bounds = util.ensure(await this.on("state-get", "bounds"), "obj");
                 if (!this.hasWindow()) return;
                 this.window.show();
                 if (("width" in bounds) && (bounds.width < 50)) return;
@@ -2286,7 +2300,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             }
             this.log(`STOP - perm: ${this.perm}`);
             if (!this.perm) return false;
-            if (this.canOperate && this.hasWindow()) await this.on("state-set", ["bounds", this.window.getBounds()]);
+            if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
             this.#started = false;
             this.processManager.processes.forEach(process => process.terminate());
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
@@ -2556,13 +2570,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
             let doLog = true;
             let kfs = {
                 "close": async () => await this.stop(),
-                "menu-ables": async menuAbles => {
-                    menuAbles = util.ensure(menuAbles, "obj");
-                    for (let id in menuAbles) {
-                        let able = !!menuAbles[id];
-                        let menu = this.menu.getMenuItemById(id);
-                        if (!(menu instanceof electron.MenuItem)) continue;
-                        menu.enabled = able;
+                "menu-ables": async items => {
+                    items = util.ensure(items, "obj");
+                    for (let id in items) {
+                        let v = !!items[id];
+                        let item = this.menu.getMenuItemById(id);
+                        if (!(item instanceof electron.MenuItem)) continue;
+                        item.enabled = v;
+                    }
+                    return true;
+                },
+                "menu-visibles": async items => {
+                    items = util.ensure(items, "obj");
+                    for (let id in items) {
+                        let v = !!items[id];
+                        let item = this.menu.getMenuItemById(id);
+                        if (!(item instanceof electron.MenuItem)) continue;
+                        item.visible = v;
                     }
                     return true;
                 },
