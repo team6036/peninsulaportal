@@ -250,7 +250,8 @@
 }
 
 #PROJECTSPAGE {
-    padding: 0px 160px !important;
+    width: min(100%, max(750px, calc(100% - 320px))) !important;
+    max-width: min(100%, max(750px, calc(100% - 320px))) !important;
 
     justify-content: flex-start !important;
 
