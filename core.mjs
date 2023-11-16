@@ -663,6 +663,9 @@ export class App extends util.Target {
     async updateDynamicStyle() {
         let accent = (this.holiday == null) ? this.accent : util.ensure(util.ensure(await window.api.get("holidays"), "obj")[this.holiday], "obj").accent;
         let style = {};
+        let v0 = this.getBase(0), v8 = this.getBase(8);
+        let v0Avg = (v0.r+v0.g+v0.b)/3, v8Avg = (v8.r+v8.g+v8.b)/3;
+        let dark = v8Avg > v0Avg;
         for (let i = 0; i <= 9; i++) {
             let normal = (i < 9);
             for (let j = 0; j < 16; j++) {
@@ -674,7 +677,7 @@ export class App extends util.Target {
             if (normal) style["v"+i] = style["v"+i+"-f"];
             else style["v"] = style["v-f"];
         }
-        let black = this.getBase(1), white = this.getBase(8);
+        let black = this.getBase(dark ? 1 : 8), white = this.getBase(dark ? 8 : 1);
         let colors = {};
         this.colors.forEach(name => (colors[name] = this.getColor(name)));
         colors._ = new util.Color(this.hasColor(accent) ? this.getColor(accent) : this.getBase(4));

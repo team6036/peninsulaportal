@@ -7127,11 +7127,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             "newtab",
             "openclose", "expandcollapse",
             "savecopy",
-            "delete", "closetab", "close",
+            "delete", "closetab", "closeproject",
         ];
-        let ables = {};
-        projectOnly.forEach(id => (ables[id] = true));
-        await window.api.send("menu-ables", ables);
+        let items = {};
+        projectOnly.forEach(id => (items[id] = true));
+        await window.api.send("menu-ables", items);
+        await window.api.send("menu-visibles", items);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
         await this.refresh();
         if (this.app.hasProject(data.id)) {
@@ -7148,11 +7149,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             "newtab",
             "openclose", "expandcollapse",
             "savecopy",
-            "delete", "closetab", "close",
+            "delete", "closetab", "closeproject",
         ];
-        let ables = {};
-        projectOnly.forEach(id => (ables[id] = false));
-        await window.api.send("menu-ables", ables);
+        let items = {};
+        projectOnly.forEach(id => (items[id] = false));
+        await window.api.send("menu-ables", items);
+        await window.api.send("menu-visibles", items);
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
         this.app.markChange("*all");
         await this.app.post("cmd-save");
