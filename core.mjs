@@ -672,10 +672,10 @@ export class App extends util.Target {
                 let alpha = j/15;
                 let hex = "0123456789abcdef"[j];
                 if (normal) style["v"+i+"-"+hex] = "rgba("+[...this.getBase(i).rgb, alpha].join(",")+")";
-                else style["v-"+hex] = style["v4-"+hex];
+                else style["v-"+hex] = "var(--v4-"+hex+")";
             }
-            if (normal) style["v"+i] = style["v"+i+"-f"];
-            else style["v"] = style["v-f"];
+            if (normal) style["v"+i] = "var(--v"+i+"-f)";
+            else style["v"] = "var(--v-f)";
         }
         let black = this.getBase(dark ? 1 : 8), white = this.getBase(dark ? 8 : 1);
         let colors = {};
@@ -691,10 +691,10 @@ export class App extends util.Target {
                     let alpha = j/15;
                     let hex = "0123456789abcdef"[j];
                     if (normal) style[header+i+"-"+hex] = "rgba("+[...newColor.rgb, alpha].join(",")+")";
-                    else style[header+"-"+hex] = style[header+"4-"+hex];
+                    else style[header+"-"+hex] = "var(--"+header+"4-"+hex+")";
                 }
-                if (normal) style[header+i] = style[header+i+"-f"];
-                else style[header] = style[header+"-f"];
+                if (normal) style[header+i] = "var(--"+header+i+"-f)";
+                else style[header] = "var(--"+header+"-f)";
             }
         }
         let animKeyframes = {};
