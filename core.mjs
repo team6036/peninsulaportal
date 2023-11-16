@@ -2951,11 +2951,9 @@ export class Odometry2d extends util.Target {
     worldToCanvas(...p) {
         p = new V(...p);
         if (!this.hasCanvas()) return p;
-        p.idiv(this.size);
-        p.y = 1-p.y;
-        p.isub(0.5);
-        p.imul(this.size.mul(this.scale*this.quality));
-        p.iadd(new V(this.canvas.width, this.canvas.height).div(2));
+        const scale = this.scale;
+        p.x = (p.x - this.w/2) * (scale*this.quality) + this.canvas.width/2;
+        p.y = (this.h/2 - p.y) * (scale*this.quality) + this.canvas.height/2;
         return p;
     }
     worldLenToCanvas(l) {
@@ -2966,11 +2964,9 @@ export class Odometry2d extends util.Target {
     canvasToWorld(...p) {
         p = new V(...p);
         if (!this.hasCanvas()) return p;
-        p.isub(new V(this.canvas.width, this.canvas.height).div(2));
-        p.idiv(this.size.mul(this.scale*this.quality));
-        p.iadd(0.5);
-        p.y = 1-p.y;
-        p.imul(this.size);
+        const scale = this.scale;
+        p.x = (p.x - this.canvas.width/2) / (scale*this.quality) + this.w/2;
+        p.y = this.h/2 - (p.y - this.canvas.height/2) / (scale*this.quality);
         return p;
     }
     canvasLenToWorld(l) {

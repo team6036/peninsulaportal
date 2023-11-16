@@ -146,21 +146,27 @@ class RVisual extends core.Odometry2d.Render {
                 }
                 return colors[ks[0]];
             };
-            for (let i = 0; i+1 < this.nodes.length; i++) {
-                let j = i+1;
-                let ni = this.nodes[i], nj = this.nodes[j];
-                let pi = this.odometry.worldToCanvas(ni.pos), pj = this.odometry.worldToCanvas(nj.pos);
-                let vi = ni.velocity.dist(), vj = nj.velocity.dist();
-                let ci = getColor(vi), cj = getColor(vj);
-                let grad = ctx.createLinearGradient(...pi.xy, ...pj.xy);
-                grad.addColorStop(0, ci.toRGBA());
-                grad.addColorStop(1, cj.toRGBA());
+            let nj, pj, vj, cj;
+            for (let i = 0; i < this.#nodes.length; i++) {
+                let ni = this.#nodes[i];
+                if (i > 0 && nj.pos.dist(ni.pos) < 1) continue;
+                let pi = this.odometry.worldToCanvas(ni.pos);
+                let vi = ni.velocity.dist();
+                let ci = getColor(vi);
+                if (i <= 0) {
+                    [nj, pj, vj, cj] = [ni, pi, vi, ci];
+                    continue;
+                }
+                let grad = ctx.createLinearGradient(...pj.xy, ...pi.xy);
+                grad.addColorStop(0, cj.toRGBA());
+                grad.addColorStop(1, ci.toRGBA());
                 ctx.strokeStyle = grad;
                 ctx.lineWidth = 2*quality;
                 ctx.beginPath();
-                ctx.moveTo(...pi.xy);
-                ctx.lineTo(...pj.xy);
+                ctx.moveTo(...pj.xy);
+                ctx.lineTo(...pi.xy);
                 ctx.stroke();
+                [nj, pj, vj, cj] = [ni, pi, vi, ci];
             }
         });
 
