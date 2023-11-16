@@ -1953,10 +1953,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     { role: "quit" },
                 ],
                 close: [
-                    {
-                        role: "close", 
-                        accelerator: "CmdOrCtrl+Shift+W"
-                    },
+                    { role: "close" },
                 ],
                 undoredo: [
                     { role: "undo" },
@@ -2097,6 +2094,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 },
                 PANEL: () => {
                     this.addHandler("client-stream-logs", async () => ["logs"]);
+                    build.close[0].accelerator = "CmdOrCtrl+Shift+W";
                     template[1].submenu.splice(
                         2, 0,
                         {
@@ -2168,6 +2166,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     );
                 },
                 PLANNER: () => {
+                    build.close[0].accelerator = "CmdOrCtrl+Shift+W";
                     template[1].submenu.splice(
                         2, 0,
                         {
