@@ -455,6 +455,22 @@ export class App extends util.Target {
         ionicons2.noModule = true;
         ionicons2.src = root+"/node_modules/ionicons/dist/ionicons/ionicons.js";
 
+        const fuse = document.createElement("script");
+        document.head.appendChild(fuse);
+        fuse.src = root+"/assets/modules/fuse.min.js";
+
+        const showdown = document.createElement("script");
+        document.head.appendChild(showdown);
+        showdown.src = root+"/assets/modules/showdown.min.js";
+
+        const highlight1 = document.createElement("script");
+        document.head.appendChild(highlight1);
+        highlight1.src = root+"/assets/modules/highlight.min.js";
+        const highlight2 = document.createElement("link");
+        document.head.appendChild(highlight2);
+        highlight2.rel = "stylesheet";
+        highlight2.href = root+"/assets/modules/highlight.min.css";
+
         const updatePage = () => {
             Array.from(document.querySelectorAll(".loading")).forEach(elem => {
                 if (elem.children.length > 0) return;
