@@ -6618,7 +6618,6 @@ export default class App extends core.AppFeature {
             });
             this.addHandler("cmd-resetdivider", () => {
                 if (this.page != "PROJECT") return;
-                if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasProject()) return;
