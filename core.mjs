@@ -550,9 +550,13 @@ export class App extends util.Target {
         document.documentElement.style.setProperty("--DARWIN", ((about.os.platform == "darwin") ? 1 : 0));
         document.documentElement.style.setProperty("--LINUX", ((about.os.platform == "linux") ? 1 : 0));
 
+        let themeUpdating = false;
         const themeUpdate = async () => {
+            if (themeUpdating) return;
+            themeUpdating = true;
             let data = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj");
             this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
+            if (!(await window.api.get("dark-wanted"))) this.base = this.base.reverse();
             this.colors = data.colors || {
                 r: [255, 0, 0],
                 o: [255, 128, 0],
@@ -564,8 +568,10 @@ export class App extends util.Target {
                 m: [255, 0, 255],
             };
             this.accent = data.accent || "b";
+            themeUpdating = false;
         };
         this.addHandler("cmd-theme", () => themeUpdate());
+        this.addHandler("cmd-native-theme", () => themeUpdate());
         await themeUpdate();
 
         await this.post("setup");

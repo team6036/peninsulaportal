@@ -260,6 +260,38 @@ export default class App extends core.App {
                             eThemeBtn.children[0].textContent = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj").name;
                     }, 250);
                 }
+                const eNativeThemeBtn = document.getElementById("native-theme");
+                if (eNativeThemeBtn instanceof HTMLButtonElement) {
+                    const nativeThemes = {
+                        system: { name: "Use System" },
+                        dark: { name: "Dark" },
+                        light: { name: "Light" },
+                    };
+                    eNativeThemeBtn.addEventListener("click", async e => {
+                        e.stopPropagation();
+                        const nativeTheme = await window.api.get("native-theme");
+                        let itm;
+                        let menu = new core.App.ContextMenu();
+                        for (let id in nativeThemes) {
+                            itm = menu.addItem(new core.App.ContextMenu.Item(util.ensure(nativeThemes[id], "obj").name, (nativeTheme == id) ? "checkmark" : ""));
+                            itm.addHandler("trigger", e => {
+                                window.api.set("native-theme", [id]);
+                            });
+                        }
+                        this.contextMenu = menu;
+                        let r = eNativeThemeBtn.getBoundingClientRect();
+                        this.placeContextMenu(r.left, r.bottom);
+                    });
+                    setInterval(async () => {
+                        const nativeThemes = {
+                            system: { name: "Use System" },
+                            dark: { name: "Dark" },
+                            light: { name: "Light" },
+                        };
+                        if (eNativeThemeBtn.children[0] instanceof HTMLDivElement)
+                            eNativeThemeBtn.children[0].textContent = util.ensure(nativeThemes[await window.api.get("native-theme")], "obj").name;
+                    }, 250);
+                }
             })();
 
             this.#eInfo = document.querySelector("#PAGE > .content > .info");

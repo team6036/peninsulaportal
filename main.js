@@ -449,6 +449,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     ],
                 },
             ]));
+            electron.nativeTheme.on("updated", () => this.send("native-theme"));
+            electron.nativeTheme.themeSource = await this.get("native-theme");
             return true;
         }
 
@@ -1563,6 +1565,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 "theme": async () => {
                     return util.ensure((await kfs._fullclientconfig()).theme, "str", await kfs["active-theme"]());
                 },
+                "native-theme": async () => {
+                    return util.ensure((await kfs._fullclientconfig()).nativeTheme, "str", "system");
+                },
+                "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
             };
             if (k in kfs) return await kfs[k]();
             if (k.startsWith("val-")) {
@@ -1583,6 +1589,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 "holiday": async () => await this.get("active-holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
                 "theme": async () => await this.get("theme"),
+                "native-theme": async () => await this.get("native-theme"),
             };
             if (k in kfs) return await kfs[k]();
             throw "§GV No possible \"getValue\" for key: "+k;
@@ -1636,6 +1643,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 "theme": async () => {
                     await kfs._fullclientconfig("theme", String(v));
                     await this.send("theme");
+                },
+                "native-theme": async () => {
+                    await kfs._fullclientconfig("nativeTheme", String(v)),
+                    electron.nativeTheme.themeSource = await this.get("native-theme");
                 },
             };
             if (k in kfs) return await kfs[k]();
