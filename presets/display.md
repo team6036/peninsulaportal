@@ -54,6 +54,12 @@
 </p>
 
 <p>
+    <span>Native Theme</span>
+    <span class="space"></span>
+    <button id="native-theme"><div></div><ion-icon name="chevron-forward"></ion-icon></button>
+</p>
+
+<p>
     <span>Holiday</span>
     <span class="space"></span>
     <input class="val" id="holiday" placeholder="No holiday" style="background-color:transparent;color:var(--a);text-align:right;">
