@@ -2187,6 +2187,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
                             accelerator: "Ctrl+Shift+F",
                             click: () => this.send("expandcollapse"),
                         },
+                        {
+                            id: "resetdivider",
+                            label: "Reset Divider",
+                            click: () => this.send("resetdivider"),
+                        },
                         build.div,
                     );
                 },

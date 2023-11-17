@@ -6056,28 +6056,36 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
 
 class Project extends core.Project {
     #widgetData;
+    #sidePos;
 
     constructor(...a) {
         super();
 
         this.#widgetData = "";
+        this.#sidePos = 0.15;
 
-        if (a.length <= 0 || [2].includes(a.length) || a.length > 3) a = [null];
+        if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project) a = [a.widgetData, a.config, a.meta];
+            if (a instanceof Project) a = [a.widgetData, a.sidePos, a.config, a.meta];
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
-                a = [a.widgetData, a.config, a.meta];
+                a = [a.widgetData, a.sidePos, a.config, a.meta];
             }
             else if (a instanceof Project.Config) a = ["", a, null];
             else if (a instanceof Project.Meta) a = ["", null, a];
             else if (util.is(a, "str")) a = ["", null, a];
-            else if (util.is(a, "obj")) a = [a.widgetData, a.config, a.meta];
+            else if (util.is(a, "obj")) a = [a.widgetData, a.sidePos, a.config, a.meta];
             else a = ["", null, null];
         }
+        if (a.length == 2) {
+            if (a[0] instanceof Project.Config && a[1] instanceof Project.Meta) a = ["", ...a];
+            else a = ["", null, null];
+        }
+        if (a.length == 3) a = [a[0], 0.15, ...a.slice(1)];
 
-        [this.widgetData, this.config, this.meta] = a;
+
+        [this.widgetData, this.sidePos, this.config, this.meta] = a;
     }
 
     get widgetData() { return this.#widgetData; }
@@ -6085,6 +6093,13 @@ class Project extends core.Project {
         v = String(v);
         if (this.widgetData == v) return;
         this.change("widgetData", this.widgetData, this.#widgetData=v);
+    }
+
+    get sidePos() { return this.#sidePos; }
+    set sidePos(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num", 0.15)));
+        if (this.sidePos == v) return;
+        this.change("sidePos", this.sidePos, this.#sidePos=v);
     }
 
     buildWidget() {
@@ -6101,6 +6116,7 @@ class Project extends core.Project {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
             widgetData: this.widgetData,
+            sidePos: this.sidePos,
             config: this.config, meta: this.meta,
         });
     }
@@ -6276,6 +6292,10 @@ export default class App extends core.AppFeature {
                 itm.addHandler("trigger", e => {
                     this.post("cmd-expandcollapse");
                 });
+                itm = menu.addItem(new core.App.ContextMenu.Item("Reset Divider"));
+                itm.addHandler("trigger", e => {
+                    this.post("cmd-resetdivider");
+                });
                 this.contextMenu = menu;
                 let r = this.eViewBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
@@ -6445,6 +6465,7 @@ export default class App extends core.AppFeature {
                 return null;
             };
             this.addHandler("drag-start", () => {
+                if (this.page != "PROJECT") return;
                 if (!isValid(this.dragData)) return;
                 let canWidget = canGetWidgetFromData();
                 let canTab = canGetTabFromData();
@@ -6479,6 +6500,7 @@ export default class App extends core.AppFeature {
                 }
             });
             this.addHandler("drag-move", e => {
+                if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!isValid(this.dragData)) return;
@@ -6515,6 +6537,7 @@ export default class App extends core.AppFeature {
                 }
             });
             this.addHandler("drag-submit", e => {
+                if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!isValid(this.dragData)) return;
@@ -6561,6 +6584,7 @@ export default class App extends core.AppFeature {
                 page.widget.collapse();
             });
             this.addHandler("cmd-newtab", () => {
+                if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
@@ -6568,6 +6592,7 @@ export default class App extends core.AppFeature {
                 active.addTab(new Panel.AddTab());
             });
             this.addHandler("cmd-closetab", () => {
+                if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
@@ -6575,6 +6600,7 @@ export default class App extends core.AppFeature {
                 active.remTab(active.tabs[active.tabIndex]);
             });
             this.addHandler("cmd-openclose", () => {
+                if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
@@ -6583,11 +6609,20 @@ export default class App extends core.AppFeature {
                 active.tabs[active.tabIndex].post("openclose");
             });
             this.addHandler("cmd-expandcollapse", () => {
+                if (this.page != "PROJECT") return;
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
                 const active = page.activeWidget;
                 active.isTitleCollapsed = !active.isTitleCollapsed;
+            });
+            this.addHandler("cmd-resetdivider", () => {
+                if (this.page != "PROJECT") return;
+                if (this.page != "PROJECT") return;
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
+                if (!page.hasProject()) return;
+                page.project.sidePos = null;
             });
         });
     }
@@ -6634,6 +6669,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #eSideSections;
     #eContent;
     #eDragBox;
+    #eDivider;
     
     constructor(app) {
         super(app);
@@ -6785,6 +6821,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 (...bfields) => this.addBrowserFieldBulk(...bfields),
                 (...bfields) => this.remBrowserFieldBulk(...bfields),
             );
+            this.elem.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
             if (timer > 0) return timer -= delta;
             timer = 1000;
             if (!this.hasProject()) return;
@@ -6821,6 +6858,26 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.update(0);
             this.app.post("cmd-conndisconn");
         }, { capture: true });
+
+        this.#eDivider = document.createElement("div");
+        this.elem.appendChild(this.eDivider);
+        this.eDivider.classList.add("divider");
+        this.eDivider.addEventListener("mousedown", e => {
+            const mouseup = () => {
+                this.eDivider.classList.remove("this");
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+            };
+            const mousemove = e => {
+                let r = this.elem.getBoundingClientRect();
+                let p = (e.pageX-r.left) / r.width;
+                if (!this.hasProject()) return;
+                this.project.sidePos = p;
+            };
+            this.eDivider.classList.add("this");
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        });
 
         this.source = null;
 
@@ -7078,6 +7135,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     getESideSection(id) { return this.#eSideSections[id]; }
     get eContent() { return this.#eContent; }
     get eDragBox() { return this.#eDragBox; }
+    get eDivider() { return this.#eDivider; }
 
     format() {
         this.formatSide();
@@ -7125,7 +7183,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     async enter(data) {
         let projectOnly = [
             "newtab",
-            "openclose", "expandcollapse",
+            "openclose", "expandcollapse", "resetdivider",
             "savecopy",
             "delete", "closetab", "closeproject",
         ];
@@ -7147,7 +7205,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     async leave(data) {
         let projectOnly = [
             "newtab",
-            "openclose", "expandcollapse",
+            "openclose", "expandcollapse", "resetdivider",
             "savecopy",
             "delete", "closetab", "closeproject",
         ];
