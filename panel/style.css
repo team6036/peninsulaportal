@@ -169,6 +169,8 @@
 }
 
 #PROJECTPAGE {
+    --side: 15%;
+
     padding: 0px !important;
 
     flex-direction: row !important;
@@ -242,9 +244,51 @@
     width: min(2vw, 2vh);
     height: min(10vw, 10vh);
 }
+#PROJECTPAGE > .divider {
+    z-index: 1;
+
+    order: 0;
+    
+    position: relative;
+
+    width: 2px;
+    max-width: 2px;
+    overflow: visible;
+    
+    background-color: var(--v2);
+
+    cursor: ew-resize;
+}
+#PROJECTPAGE > .divider::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 2px;
+    height: 20px;
+
+    background-color: var(--v4);
+
+    transition: width var(--t), height var(--t), background-color var(--t);
+}
+#PROJECTPAGE > .divider:hover::before {
+    width: 5px;
+
+    background-color: var(--v8);
+}
+#PROJECTPAGE > .divider.this::before {
+    height: 100%;
+
+    background-color: var(--a);
+}
 #PROJECTPAGE > .side {
-    width: 15%;
-    max-width: 15%;
+    order: -1;
+
+    width: var(--side);
+    max-width: var(--side);
     padding: 10px;
 
     display: flex;
@@ -253,8 +297,6 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-
-    border-right: 2px solid var(--v2);
 }
 #PROJECTPAGE > .side > #meta {
     padding: 5px;
@@ -266,6 +308,7 @@
 }
 #PROJECTPAGE > .side > .section {
     --h: 100px;
+
     width: 100%;
     max-width: 100%;
     height: 22px;
@@ -362,8 +405,10 @@
     font-size: 20px;
 }
 #PROJECTPAGE > .content {
-    width: 85%;
-    max-width: 85%;
+    order: 1;
+
+    width: calc(100% - var(--side));
+    max-width: calc(100% - var(--side));
     
     display: flex;
     flex-direction: column;
