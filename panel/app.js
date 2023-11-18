@@ -174,7 +174,7 @@ function getTabDisplay(name) {
         name: "globe-outline",
         color: "var(--cc)",
     };
-    if (name == "logger") return {
+    if (name == "logworks") return {
         name: "list",
         color: "var(--cc)",
     };
@@ -555,7 +555,7 @@ class ToolButton extends util.Target {
     set name(v) { this.eName.textContent = v; }
 }
 
-class LoggerContext extends util.Target {
+class PlexusContext extends util.Target {
     #host;
     #client;
 
@@ -1496,9 +1496,9 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 dname: "WebView",
             },
             {
-                type: Panel.LoggerTab,
-                name: "logger",
-                dname: "Logger",
+                type: Panel.LogWorksTab,
+                name: "logworks",
+                dname: "LogWorks",
             },
         ];
         toolItems = toolItems.map(item => {
@@ -2695,8 +2695,8 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
         });
     }
 };
-const LOGGERCONTEXT = new LoggerContext();
-Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
+const PLEXUSCONTEXT = new PlexusContext();
+Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
     #logs;
 
     #eStatusBox;
@@ -2705,9 +2705,9 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #eLogs;
 
     constructor() {
-        super("Logger", "logger");
+        super("LogWorks", "logworks");
 
-        this.elem.classList.add("logger");
+        this.elem.classList.add("logworks");
 
         this.#logs = new Set();
 
@@ -2730,7 +2730,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.eLogs.classList.add("logs");
 
         this.eUploadBtn.addEventListener("click", async e => {
-            if (LOGGERCONTEXT.disconnected) return;
+            if (PLEXUSCONTEXT.disconnected) return;
             let result = await this.app.fileOpenDialog({
                 title: "Choose a WPILOG log file",
                 buttonLabel: "Upload",
@@ -2745,7 +2745,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             });
             result = util.ensure(result, "obj");
             if (result.canceled) return;
-            await LOGGERCONTEXT.logsUpload(result.filePaths);
+            await PLEXUSCONTEXT.logsUpload(result.filePaths);
         });
 
         this.addHandler("format", () => {
@@ -2756,10 +2756,10 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
         this.addHandler("log-download", async name => {
             name = String(name);
-            if (LOGGERCONTEXT.disconnected) return;
-            if (!LOGGERCONTEXT.hasServerLog(name)) return;
+            if (PLEXUSCONTEXT.disconnected) return;
+            if (!PLEXUSCONTEXT.hasServerLog(name)) return;
             try {
-                await LOGGERCONTEXT.logsDownload([name]);
+                await PLEXUSCONTEXT.logsDownload([name]);
             } catch (e) {
                 if (this.hasApp())
                     this.app.error("There was an error downloading log: "+name, e);
@@ -2767,12 +2767,12 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         });
         this.addHandler("log-trigger2", (e, name) => {
             name = String(name);
-            if (!LOGGERCONTEXT.hasClientLog(name)) return;
+            if (!PLEXUSCONTEXT.hasClientLog(name)) return;
             if (!this.hasPage()) return;
             const page = this.page;
             if (!page.hasProject()) return;
             page.project.config.sourceType = "wpilog";
-            page.project.config.source = LOGGERCONTEXT.getClientPath(name);
+            page.project.config.source = PLEXUSCONTEXT.getClientPath(name);
             page.update(0);
             if (!this.hasApp()) return;
             this.app.post("cmd-conndisconn");
@@ -2781,9 +2781,9 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.addHandler("log-trigger", (e, name, shift) => {
             name = String(name);
             shift = !!shift;
-            if (!LOGGERCONTEXT.hasLog(name)) return;
-            if (shift && LOGGERCONTEXT.hasLog(lastSelected)) {
-                let logs = LOGGERCONTEXT.logs.sort(compare);
+            if (!PLEXUSCONTEXT.hasLog(name)) return;
+            if (shift && PLEXUSCONTEXT.hasLog(lastSelected)) {
+                let logs = PLEXUSCONTEXT.logs.sort(compare);
                 let i = logs.indexOf(lastSelected);
                 let j = logs.indexOf(name);
                 for (let k = i;; k += (j>i?+1:j<i?-1:0)) {
@@ -2805,8 +2805,8 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         const contextMenu = e => {
             let names = [...selected];
             let anyClientHas = false, anyServerHas = false;
-            names.forEach(name => LOGGERCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
-            names.forEach(name => LOGGERCONTEXT.hasServerLog(name) ? (anyServerHas = true) : null);
+            names.forEach(name => PLEXUSCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
+            names.forEach(name => PLEXUSCONTEXT.hasServerLog(name) ? (anyServerHas = true) : null);
             let itm;
             let menu = new core.App.ContextMenu();
             itm = menu.addItem(new core.App.ContextMenu.Item("Upload"));
@@ -2816,7 +2816,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             itm = menu.addItem(new core.App.ContextMenu.Item("Upload Selected"));
             itm.disabled = names.length <= 0 || !anyClientHas;
             itm.addHandler("trigger", e => {
-                LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
+                PLEXUSCONTEXT.logsUpload(names.filter(name => PLEXUSCONTEXT.hasClientLog(name)).map(name => PLEXUSCONTEXT.getClientPath(name)));
             });
             menu.addItem(new core.App.ContextMenu.Divider());
             itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
@@ -2852,13 +2852,13 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         });
         this.addHandler("log-client-delete", async names => {
             names = util.ensure(names, "arr").map(name => String(name));
-            names = names.filter(name => LOGGERCONTEXT.hasClientLog(name));
-            await LOGGERCONTEXT.logsClientDelete(names);
+            names = names.filter(name => PLEXUSCONTEXT.hasClientLog(name));
+            await PLEXUSCONTEXT.logsClientDelete(names);
         });
         this.addHandler("log-server-delete", async names => {
             names = util.ensure(names, "arr").map(name => String(name));
-            if (LOGGERCONTEXT.disconnected) return;
-            names = names.filter(name => LOGGERCONTEXT.hasServerLog(name));
+            if (PLEXUSCONTEXT.disconnected) return;
+            names = names.filter(name => PLEXUSCONTEXT.hasServerLog(name));
             let pop = this.app.confirm();
             pop.eContent.innerText = "Are you sure you want to delete these logs from the server?\nThis will remove the logs for everyone";
             pop.hasInfo = true;
@@ -2866,7 +2866,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             let result = await pop.whenResult();
             if (!result) return;
             try {
-                await LOGGERCONTEXT.logsServerDelete(names);
+                await PLEXUSCONTEXT.logsServerDelete(names);
             } catch (e) {
                 if (this.hasApp())
                     this.app.error("There was an error deleting the logs", e);
@@ -2885,22 +2885,22 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
-            this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
+            this.eUploadBtn.disabled = PLEXUSCONTEXT.disconnected;
 
-            this.status = LOGGERCONTEXT.initializing ? "Initializing client" : LOGGERCONTEXT.disconnected ? ("Connecting - "+LOGGERCONTEXT.location) : LOGGERCONTEXT.location;
-            if (LOGGERCONTEXT.connected) {
+            this.status = PLEXUSCONTEXT.initializing ? "Initializing client" : PLEXUSCONTEXT.disconnected ? ("Connecting - "+PLEXUSCONTEXT.location) : PLEXUSCONTEXT.location;
+            if (PLEXUSCONTEXT.connected) {
                 eIcon.setAttribute("name", "cloud");
-                this.eStatus.setAttribute("href", LOGGERCONTEXT.location);
+                this.eStatus.setAttribute("href", PLEXUSCONTEXT.location);
             } else {
                 eIcon.setAttribute("name", "cloud-offline");
                 this.eStatus.removeAttribute("href");
             }
-            this.loading = LOGGERCONTEXT.isLoading("§uploading");
+            this.loading = PLEXUSCONTEXT.isLoading("§uploading");
 
-            let logs = LOGGERCONTEXT.logs;
+            let logs = PLEXUSCONTEXT.logs;
             logs.forEach(name => {
                 if (name in logObjects) return;
-                logObjects[name] = this.addLog(new Panel.LoggerTab.Log(name));
+                logObjects[name] = this.addLog(new Panel.LogWorksTab.Log(name));
             });
             Object.keys(logObjects).forEach(name => {
                 if (logs.includes(name)) return;
@@ -2908,14 +2908,14 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 delete logObjects[name];
             });
             [...selected].forEach(name => {
-                if (LOGGERCONTEXT.hasLog(name)) return;
+                if (PLEXUSCONTEXT.hasLog(name)) return;
                 selected.delete(name);
             });
 
             this.logs.forEach(log => {
-                log.downloaded = LOGGERCONTEXT.hasClientLog(log.name);
-                log.deprecated = !LOGGERCONTEXT.hasServerLog(log.name);
-                log.loading = LOGGERCONTEXT.isLoading(log.name);
+                log.downloaded = PLEXUSCONTEXT.hasClientLog(log.name);
+                log.deprecated = !PLEXUSCONTEXT.hasServerLog(log.name);
+                log.loading = PLEXUSCONTEXT.isLoading(log.name);
                 log.selected = selected.has(log.name);
             });
         });
@@ -2933,11 +2933,11 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         return logs;
     }
     hasLog(log) {
-        if (!(log instanceof Panel.LoggerTab.Log)) return false;
+        if (!(log instanceof Panel.LogWorksTab.Log)) return false;
         return this.#logs.has(log);
     }
     addLog(log) {
-        if (!(log instanceof Panel.LoggerTab.Log)) return false;
+        if (!(log instanceof Panel.LogWorksTab.Log)) return false;
         if (this.hasLog(log)) return false;
         this.#logs.add(log);
         log._onDownload = () => {
@@ -2961,7 +2961,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         return log;
     }
     remLog(log) {
-        if (!(log instanceof Panel.LoggerTab.Log)) return false;
+        if (!(log instanceof Panel.LogWorksTab.Log)) return false;
         if (!this.hasLog(log)) return false;
         this.#logs.delete(log);
         log.remHandler("download", log._onDownload);
@@ -2990,7 +2990,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
     get eLogs() { return this.#eLogs; }
 };
-Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
+Panel.LogWorksTab.Log = class PanelLogWorksTabLog extends util.Target {
     #elem;
     #eName;
     #eNav;
@@ -6875,8 +6875,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragData = new Panel.WebViewTab();
             this.app.dragging = true;
         });
-        this.addToolButton(new ToolButton("Logger", "logger")).addHandler("drag", () => {
-            this.app.dragData = new Panel.LoggerTab();
+        this.addToolButton(new ToolButton("LogWorks", "logworks")).addHandler("drag", () => {
+            this.app.dragData = new Panel.LogWorksTab();
             this.app.dragging = true;
         });
 
