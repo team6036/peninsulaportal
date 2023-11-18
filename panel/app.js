@@ -515,7 +515,7 @@ class ToolButton extends util.Target {
             const mousemove = () => {
                 if (cancel > 0) return cancel--;
                 mouseup();
-                this.post("drag");
+                this.post("drag", e);
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -2138,7 +2138,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
 
         this.elem.classList.add("table");
 
-        this.#vars = new Set();
+        this.#vars = [];
         this.#ts = [];
         this.#tsNow = 0;
 
@@ -2207,7 +2207,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             rows.forEach(row => {
                 let rr = row.elem.getBoundingClientRect();
                 let shift = er.left-rr.left;
-                row.x = Math.min(br.width-rr.width, Math.max(0, row.x+shift));
+                row.x = Math.max(0, Math.min(br.width-rr.width, row.x+shift));
                 row.elem.style.transform = "translateX("+row.x+"px)";
             });
             this.vars.forEach(v => v.format());
@@ -2279,35 +2279,45 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
     }
     hasVar(v) {
         if (!(v instanceof Panel.TableTab.Variable)) return false;
-        return this.#vars.has(v) && v.tab == this;
+        return this.#vars.includes(v) && v.tab == this;
     }
-    addVar(v) {
+    insertVar(v, at) {
         if (!(v instanceof Panel.TableTab.Variable)) return false;
         if (v.tab != null) return false;
         if (this.hasVar(v)) return false;
-        this.#vars.add(v);
+        at = Math.min(this.vars.length, Math.max(0, util.ensure(at, "int")));
+        this.#vars.splice(at, 0, v);
         v.tab = this;
         this.eHeader.appendChild(v.eHeader);
         v._onRemove = () => this.remVar(v);
         v._onChange = (c, f, t) => this.change("vars["+this.vars.indexOf(v)+"]."+c, f, t);
+        v._onDrag = () => {
+            if (!this.hasPage() || !this.page.hasSource() || !this.hasApp()) return;
+            this.app.dragData = this.page.source.root.lookup(v.path);
+            this.app.dragging = true;
+            v._onRemove();
+        };
         v.addHandler("remove", v._onRemove);
         v.addHandler("change", v._onChange);
+        v.addHandler("drag", v._onDrag);
         this.change("addVar", null, v);
         return v;
     }
+    addVar(v) { return this.insertVar(v, this.vars.length); }
     remVar(v) {
         if (!(v instanceof Panel.TableTab.Variable)) return false;
         if (v.tab != this) return false;
         if (!this.hasVar(v)) return false;
-        let i = this.vars.indexOf(v);
-        this.#vars.delete(v);
+        this.#vars.splice(this.#vars.indexOf(v), 1);
         v.tab = null;
         this.eHeader.removeChild(v.eHeader);
         v.eSections.forEach(elem => this.eBody.removeChild(elem));
         v.remHandler("remove", v._onRemove);
         v.remHandler("change", v._onChange);
+        v.remHandler("drag", v._onDrag);
         delete v._onRemove;
         delete v._onChange;
+        delete v._onDrag;
         this.change("remVar", v, null);
         return v;
     }
@@ -2358,15 +2368,42 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(data.path) : null;
         if (!(data instanceof Source.Field)) return null;
         if (!data.hasType()) return null;
-        return {
-            r: r,
-            submit: () => {
-                const addVar = field => {
-                    let pth = field.path;
-                    if (field.hasType() && field.isJustPrimitive)
-                        this.addVar(new Panel.TableTab.Variable(pth));
-                    field.fields.forEach(field => addVar(field));
+        let y = r.top, h = r.height;
+        let at = 0;
+        const addVar = field => {
+            let pth = field.path;
+            if (field.hasType() && field.isJustPrimitive) {
+                this.insertVar(new Panel.TableTab.Variable(pth), at);
+                at++;
+            }
+            field.fields.forEach(field => addVar(field));
+        };
+        for (let i = 0; i < this.vars.length; i++) {
+            let v = this.vars[i];
+            r = v.eHeader.getBoundingClientRect();
+            if (i <= 0) {
+                if (pos.x < r.left+r.width/2) return {
+                    r: [[r.left, y], [0, h]],
+                    submit: () => {
+                        at = i;
+                        addVar(data);
+                    },
                 };
+            }
+            if (pos.x < r.left+r.width/2) continue;
+            return {
+                r: [[r.right, y], [0, h]],
+                submit: () => {
+                    at = i+1;
+                    addVar(data);
+                },
+            };
+        }
+        r = this.eOptions.getBoundingClientRect();
+        return {
+            r: [[r.right, y], [0, h]],
+            submit: () => {
+                at = 0;
                 addVar(data);
             },
         };
@@ -2405,6 +2442,23 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
 
         this.#eHeader = document.createElement("div");
         this.eHeader.classList.add("item");
+
+        this.eHeader.addEventListener("mousedown", e => {
+            let trigger = 0;
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+                if (trigger < 10) return;
+                this.post("drag", e);
+            };
+            const mousemove = () => {
+                trigger++;
+                if (trigger < 10) return;
+                mouseup();
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        });
 
         if (a.length <= 0 || a.length > 1) a = [null];
         if (a.length == 1) {
@@ -2468,7 +2522,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 if (section.children[0] instanceof HTMLDivElement)
                     section.children[0].textContent = valueLog[i].v;
                 if (section.children[1] instanceof HTMLDivElement) {
-                    section.children[1].style.top = (30*Math.min(j2-j1, Math.max(0, j3-j1)))+"px";
+                    section.children[1].style.top = (30*Math.min(j2-j1, Math.max(0, j3-j1)) - 2)+"px";
                     section.children[1].textContent = valueLog[i].v;
                 }
             }
@@ -2503,6 +2557,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         this.eHeader.appendChild(removeBtn);
         removeBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
         removeBtn.addEventListener("click", e => this.post("remove"));
+        removeBtn.addEventListener("mousedown", e => e.stopPropagation());
     }
 
     get field() { return this.#field; }
