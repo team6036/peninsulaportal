@@ -1494,7 +1494,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             {
                 type: Panel.LoggerTab,
                 name: "logger",
-                dname: "PlexusLogger",
+                dname: "Logger",
             },
         ];
         toolItems = toolItems.map(item => {
@@ -2646,7 +2646,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #eLogs;
 
     constructor() {
-        super("PlexusLogger", "logger");
+        super("Logger", "logger");
 
         this.elem.classList.add("logger");
 
@@ -6803,7 +6803,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragData = new Panel.WebViewTab();
             this.app.dragging = true;
         });
-        this.addToolButton(new ToolButton("PLogger", "logger")).addHandler("drag", () => {
+        this.addToolButton(new ToolButton("Logger", "logger")).addHandler("drag", () => {
             this.app.dragData = new Panel.LoggerTab();
             this.app.dragging = true;
         });
