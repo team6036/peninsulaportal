@@ -2094,7 +2094,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             btn.classList.add("item");
             btn.classList.add("override");
             btn.textContent = (i > 0) ? path[i-1] : "/";
-            btn.addEventListener("click", e => { this.path = pth; });
+            btn.addEventListener("click", e => (this.path = pth));
         }
     }
 
@@ -2453,13 +2453,12 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
-                if (trigger < 10) return;
-                this.post("drag", e);
             };
             const mousemove = () => {
                 trigger++;
                 if (trigger < 10) return;
                 mouseup();
+                this.post("drag", e);
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -2766,7 +2765,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                     this.app.error("There was an error downloading log: "+name, e);
             }
         });
-        this.addHandler("log-use", name => {
+        this.addHandler("log-trigger2", (e, name) => {
             name = String(name);
             if (!LOGGERCONTEXT.hasClientLog(name)) return;
             if (!this.hasPage()) return;
@@ -2823,7 +2822,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
             itm.disabled = names.length != 1;
             itm.addHandler("trigger", e => {
-                this.post("log-use", names[0]);
+                this.post("log-trigger2", e, names[0]);
             });
             itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
             itm.disabled = names.length <= 0;
@@ -2944,18 +2943,18 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         log._onDownload = () => {
             this.post("log-download", log.name);
         };
-        log._onUse = () => {
-            this.post("log-use", log.name);
-        };
         log._onTrigger = e => {
             this.post("log-trigger", e, log.name, !!(util.ensure(e, "obj").shiftKey));
+        };
+        log._onTrigger2 = e => {
+            this.post("log-trigger2", e, log.name);
         };
         log._onContextMenu = e => {
             this.post("log-contextmenu", e, log.name);
         };
         log.addHandler("download", log._onDownload);
-        log.addHandler("use", log._onUse);
         log.addHandler("trigger", log._onTrigger);
+        log.addHandler("trigger2", log._onTrigger2);
         log.addHandler("contextmenu", log._onContextMenu);
         this.eLogs.appendChild(log.elem);
         this.format();
@@ -2966,12 +2965,12 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         if (!this.hasLog(log)) return false;
         this.#logs.delete(log);
         log.remHandler("download", log._onDownload);
-        log.remHandler("use", log._onUse);
         log.remHandler("trigger", log._onTrigger);
+        log.remHandler("trigger2", log._onTrigger2);
         log.remHandler("contextmenu", log._onContextMenu);
         delete log._onDownload;
-        delete log._onUse;
         delete log._onTrigger;
+        delete log._onTrigger2;
         delete log._onContextMenu;
         this.eLogs.removeChild(log.elem);
         return log;
@@ -3025,14 +3024,14 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
         });
         this.eUseBtn.addEventListener("click", e => {
             e.stopPropagation();
-            if (this.downloaded) this.post("use");
+            if (this.downloaded) this.post("trigger2");
         });
         this.elem.addEventListener("click", e => {
             e.stopPropagation();
             this.post("trigger", e);
         });
         this.elem.addEventListener("dblclick", e => {
-            if (this.downloaded) this.post("use");
+            if (this.downloaded) this.post("trigger2");
             else if (!this.deprecated) this.post("download");
         });
         this.elem.addEventListener("contextmenu", e => {
@@ -3462,9 +3461,13 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         eValue.textContent = "0.1";
 
         let tooltipCycle = 0;
-        document.body.addEventListener("keydown", e => {
-            if (e.code == "Tab") tooltipCycle++;
-        });
+        const onKeyDown = e => {
+            if (e.code != "Tab") return;
+            e.preventDefault();
+            tooltipCycle++;
+        };
+        this.addHandler("add", () => document.body.addEventListener("keydown", onKeyDown));
+        this.addHandler("rem", () => document.body.removeEventListener("keydown", onKeyDown));
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
@@ -4817,22 +4820,22 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
         this.eUnitsMeters.textContent = "Meters";
-        this.eUnitsMeters.addEventListener("click", e => { this.isMeters = true; });
+        this.eUnitsMeters.addEventListener("click", e => (this.isMeters = true));
         this.#eUnitsCentimeters = document.createElement("button");
         eNav.appendChild(this.eUnitsCentimeters);
         this.eUnitsCentimeters.textContent = "Centimeters";
-        this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
+        this.eUnitsCentimeters.addEventListener("click", e => (this.isCentimeters = true));
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
         this.#eUnitsDegrees = document.createElement("button");
         eNav.appendChild(this.eUnitsDegrees);
         this.eUnitsDegrees.textContent = "Degrees";
-        this.eUnitsDegrees.addEventListener("click", e => { this.isDegrees = true; });
+        this.eUnitsDegrees.addEventListener("click", e => (this.isDegrees = true));
         this.#eUnitsRadians = document.createElement("button");
         eNav.appendChild(this.eUnitsRadians);
         this.eUnitsRadians.textContent = "Radians";
-        this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
+        this.eUnitsRadians.addEventListener("click", e => (this.isRadians = true));
 
         this.quality = this.odometry.quality;
 
@@ -5280,11 +5283,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eViewProjection = document.createElement("button");
         eNav.appendChild(this.eViewProjection);
         this.eViewProjection.textContent = "Projection";
-        this.eViewProjection.addEventListener("click", e => { this.isProjection = true; });
+        this.eViewProjection.addEventListener("click", e => (this.isProjection = true));
         this.#eViewIsometric = document.createElement("button");
         eNav.appendChild(this.eViewIsometric);
         this.eViewIsometric.textContent = "Isometric";
-        this.eViewIsometric.addEventListener("click", e => { this.isIsometric = true; });
+        this.eViewIsometric.addEventListener("click", e => (this.isIsometric = true));
 
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
@@ -5292,11 +5295,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eViewOrbit = document.createElement("button");
         eNav.appendChild(this.eViewOrbit);
         this.eViewOrbit.textContent = "Orbit";
-        this.eViewOrbit.addEventListener("click", e => { this.isOrbit = true; });
+        this.eViewOrbit.addEventListener("click", e => (this.isOrbit = true));
         this.#eViewFree = document.createElement("button");
         eNav.appendChild(this.eViewFree);
         this.eViewFree.textContent = "Free";
-        this.eViewFree.addEventListener("click", e => { this.isFree = true; });
+        this.eViewFree.addEventListener("click", e => (this.isFree = true));
 
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
@@ -5304,11 +5307,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
         this.eUnitsMeters.textContent = "Meters";
-        this.eUnitsMeters.addEventListener("click", e => { this.isMeters = true; });
+        this.eUnitsMeters.addEventListener("click", e => (this.isMeters = true));
         this.#eUnitsCentimeters = document.createElement("button");
         eNav.appendChild(this.eUnitsCentimeters);
         this.eUnitsCentimeters.textContent = "Centimeters";
-        this.eUnitsCentimeters.addEventListener("click", e => { this.isCentimeters = true; });
+        this.eUnitsCentimeters.addEventListener("click", e => (this.isCentimeters = true));
 
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
@@ -5316,11 +5319,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eUnitsDegrees = document.createElement("button");
         eNav.appendChild(this.eUnitsDegrees);
         this.eUnitsDegrees.textContent = "Degrees";
-        this.eUnitsDegrees.addEventListener("click", e => { this.isDegrees = true; });
+        this.eUnitsDegrees.addEventListener("click", e => (this.isDegrees = true));
         this.#eUnitsRadians = document.createElement("button");
         eNav.appendChild(this.eUnitsRadians);
         this.eUnitsRadians.textContent = "Radians";
-        this.eUnitsRadians.addEventListener("click", e => { this.isRadians = true; });
+        this.eUnitsRadians.addEventListener("click", e => (this.isRadians = true));
 
         let infoUnits = [];
         let info = document.createElement("div");
@@ -5407,8 +5410,16 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let template = "§null", model = null;
         
         let keys = new Set();
-        document.body.addEventListener("keydown", e => keys.add(e.code));
-        document.body.addEventListener("keyup", e => keys.delete(e.code));
+        const onKeyDown = e => keys.add(e.code);
+        const onKeyUp = e => keys.delete(e.code);
+        this.addHandler("add", () => {
+            document.body.addEventListener("keydown", onKeyDown);
+            document.body.addEventListener("keyup", onKeyUp);
+        });
+        this.addHandler("rem", () => {
+            document.body.removeEventListener("keydown", onKeyDown);
+            document.body.removeEventListener("keyup", onKeyUp);
+        });
         let velocity = new util.V3();
 
         this.addHandler("update", delta => {
@@ -5509,7 +5520,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     [obj, pobj] = [new THREE.Object3D(), obj];
                     obj.add(pobj);
                     preloadedFields[template] = obj;
-                }, null, err => { delete preloadedFields[template]; });
+                }, null, err => (delete preloadedFields[template]));
             }
 
             if (template != this.template || model != preloadedFields[this.template]) {
@@ -5931,7 +5942,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         [obj, pobj] = [new THREE.Object3D(), obj];
                         obj.add(pobj);
                         preloadedRobots[robot] = obj;
-                    }, null, err => { delete preloadedRobots[robot]; });
+                    }, null, err => (delete preloadedRobots[robot]));
                 }
                 let obj = this.#objs[0];
                 if (!this.#has || type != this.pose.type || model != (this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type])) {
@@ -7252,7 +7263,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         projectOnly.forEach(id => (items[id] = true));
         await window.api.send("menu-ables", items);
         await window.api.send("menu-visibles", items);
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
+        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
         await this.refresh();
         if (this.app.hasProject(data.id)) {
             this.project = this.app.getProject(data.id);
@@ -7274,7 +7285,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         projectOnly.forEach(id => (items[id] = false));
         await window.api.send("menu-ables", items);
         await window.api.send("menu-visibles", items);
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
+        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
         this.app.markChange("*all");
         await this.app.post("cmd-save");
         this.project = null;

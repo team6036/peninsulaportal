@@ -29,6 +29,11 @@ class FeatureButton extends util.Target {
         this.eTooltip.classList.add("hov");
         this.eTooltip.classList.add("sx");
 
+        this.elem.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("trigger", e);
+        });
+
         this.name = name;
         this.icon = icon;
         this.tooltip = "";
@@ -72,6 +77,11 @@ class UpperFeatureButton extends util.Target {
         this.#elem = document.createElement("button");
         this.#eIcon = document.createElement("ion-icon");
         this.elem.appendChild(this.eIcon);
+
+        this.elem.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("trigger", e);
+        });
 
         this.icon = icon;
     }
@@ -325,24 +335,24 @@ export default class App extends core.App {
             let btn;
 
             btn = this.addFeatureButton(new FeatureButton("Panel", "grid"));
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PANEL"));
 
             btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PLANNER"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
 
             btn = this.addFeatureButton(new FeatureButton("Perception", "eye"));
             btn.tooltip = "Coming soon!";
             btn.tooltipColor = "var(--a)";
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PERCEPTION"));
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PANEL"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PANEL"));
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("analytics"));
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PLANNER"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("eye"));
-            btn.elem.addEventListener("click", e => this.post("cmd-spawn", "PERCEPTION"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PERCEPTION"));
 
             let prevLoads = [];
             let lock = false;

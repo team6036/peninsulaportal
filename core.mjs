@@ -982,6 +982,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
     get inner() { return this.#inner; }
 
     close() { this.post("close"); }
+    result(r) { this.post("result", r); }
 };
 App.Popup = class AppPopup extends App.PopupBase {
     #eClose;
@@ -1100,7 +1101,7 @@ App.Alert = class AppAlert extends App.CorePopup {
         this.inner.appendChild(this.eButton);
         this.eButton.classList.add("special");
 
-        this.eButton.addEventListener("click", e => this.post("result", null));
+        this.eButton.addEventListener("click", e => this.result(null));
 
         this.button = button;
     }
@@ -1135,12 +1136,8 @@ App.Confirm = class AppConfirm extends App.CorePopup {
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
 
-        this.eConfirm.addEventListener("click", async e => {
-            await this.post("result", true);
-        });
-        this.eCancel.addEventListener("click", async e => {
-            await this.post("result", false);
-        });
+        this.eConfirm.addEventListener("click", e => this.result(true));
+        this.eCancel.addEventListener("click", e => this.result(false));
 
         this.confirm = confirm;
         this.cancel = cancel;
@@ -1174,12 +1171,8 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
 
-        this.eConfirm.addEventListener("click", async e => {
-            await this.post("result", this.eInput.value);
-        });
-        this.eCancel.addEventListener("click", async e => {
-            await this.post("result", null);
-        });
+        this.eConfirm.addEventListener("click", e => this.result(this.eInput.value));
+        this.eCancel.addEventListener("click", e => this.result(null));
 
         this.eInput.value = value;
         this.confirm = confirm;
@@ -2216,7 +2209,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         let projects = this.app.projects.map(id => this.app.getProject(id));
         if (projects.length > 0) {
             projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
-            projects.forEach(project => this.addButton(new this.constructor.Button(this, project)));
+            projects.forEach(project => this.addButton(new this.constructor.Button(project)));
         } else this.eEmpty.style.display = "block";
     }
 
@@ -2249,16 +2242,17 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     }
     hasButton(btn) {
         if (!(btn instanceof this.constructor.Button)) return false;
-        return this.#buttons.has(btn) && btn.page == this;
+        return this.#buttons.has(btn);
     }
     addButton(btn) {
         if (!(btn instanceof this.constructor.Button)) return false;
-        if (btn.page != this) return false;
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
         btn._onTrigger = e => this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey));
+        btn._onTrigger2 = e => this.app.setPage("PROJECT", { id: (btn.hasProject() ? btn.project.id : null) });
         btn._onContextMenu = e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null);
         btn.addHandler("trigger", btn._onTrigger);
+        btn.addHandler("trigger2", btn._onTrigger2);
         btn.addHandler("contextmenu", btn._onContextMenu);
         this.eContent.appendChild(btn.elemList);
         this.eContent.appendChild(btn.elemGrid);
@@ -2266,12 +2260,13 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     }
     remButton(btn) {
         if (!(btn instanceof this.constructor.Button)) return false;
-        if (btn.page != this) return false;
         if (!this.hasButton(btn)) return false;
         this.#buttons.delete(btn);
         btn.remHandler("trigger", btn._onTrigger);
+        btn.remHandler("trigger2", btn._onTrigger2);
         btn.remHandler("contextmenu", btn._onContextMenu);
         delete btn._onTrigger;
+        delete btn._onTrigger2;
         delete btn._onContextMenu;
         this.eContent.removeChild(btn.elemList);
         this.eContent.removeChild(btn.elemGrid);
@@ -2321,8 +2316,6 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     }
 };
 AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util.Target {
-    #page;
-
     #project;
 
     #time;
@@ -2338,11 +2331,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     #eGridOptions;
     #eGridImage;
 
-    constructor(page, project) {
+    constructor(project) {
         super();
-
-        if (!(page instanceof AppFeature.ProjectsPage)) throw "Page is not of class ProjectsPage";
-        this.#page = page;
 
         this.#project = null;
 
@@ -2403,8 +2393,9 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         };
         this.elemList.addEventListener("click", click);
         this.elemGrid.addEventListener("click", click);
-        const dblClick = () => {
-            this.app.setPage("PROJECT", { id: this.project.id });
+        const dblClick = e => {
+            e.stopPropagation();
+            this.post("trigger2", e);
         };
         this.elemList.addEventListener("dblclick", dblClick);
         this.elemGrid.addEventListener("dblclick", dblClick);
@@ -2412,8 +2403,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         this.project = project;
 
         this.addHandler("update", delta => {
-            this.eListIcon.setAttribute("name", this.app.constructor.ICON);
-            this.eGridIcon.setAttribute("name", this.app.constructor.ICON);
+            this.eListIcon.setAttribute("name", "document-outline");
+            this.eGridIcon.setAttribute("name", "document-outline");
             if (!this.hasProject()) return;
             this.name = this.project.meta.name;
             this.time = this.project.meta.modified;
@@ -2421,15 +2412,12 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         });
     }
 
-    get page() { return this.#page; }
-    get app() { return this.page.app; }
-
     get project() { return this.#project; }
     set project(v) {
         if (this.project == v) return;
         this.change("project", this.project, this.#project=v);
     }
-    hasProject() { return (this.#project instanceof Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
+    hasProject() { return this.#project instanceof Project; }
 
     get name() { return this.eListName.textContent; }
     set name(v) { this.eListName.textContent = this.eGridName.textContent = v; }

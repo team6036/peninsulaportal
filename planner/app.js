@@ -1374,7 +1374,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         projectOnly.forEach(id => (items[id] = true));
         await window.api.send("menu-ables", items);
         await window.api.send("menu-visibles", items);
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = ""; });
+        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
         await this.refresh();
         this.eDisplay.focus();
         const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
@@ -1441,7 +1441,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         projectOnly.forEach(id => (items[id] = false));
         await window.api.send("menu-ables", items);
         await window.api.send("menu-visibles", items);
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => { elem.style.display = "none"; });
+        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
         this.app.markChange("*all");
         await this.app.post("cmd-save");
         this.project = null;
