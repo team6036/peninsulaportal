@@ -3,7 +3,6 @@ import { V } from "./util.mjs";
 
 
 export class App extends util.Target {
-    #setupConfig;
     #setupDone;
 
     #fullscreen;
@@ -40,7 +39,6 @@ export class App extends util.Target {
     constructor() {
         super();
 
-        this.#setupConfig = {};
         this.#setupDone = false;
 
         this.#fullscreen = false;
@@ -109,7 +107,6 @@ export class App extends util.Target {
         });
     }
 
-    get setupConfig() { return this.#setupConfig; }
     get setupDone() { return this.#setupDone; }
 
     start() { this.post("start"); }
@@ -181,9 +178,7 @@ export class App extends util.Target {
                 location = location.join("/");
                 if (elem.src.startsWith(location)) {
                     let path = elem.src.substring(location.length);
-                    location = location.split("/");
-                    location.pop();
-                    location = location.join("/");
+                    location = "file://"+(await window.api.getAppRoot());
                     if (path.endsWith("icon.png")) {
                         const onHolidayState = async holiday => {
                             elem.src = (holiday == null) ? (location + path) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
@@ -355,7 +350,7 @@ export class App extends util.Target {
     async setup() {
         if (this.setupDone) return false;
 
-        const root = ("root" in this.setupConfig) ? this.setupConfig.root : "..";
+        const root = "file://"+(await window.api.getAppRoot());
 
         window.api.onPerm(() => {
             (async () => {

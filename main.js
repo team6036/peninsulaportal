@@ -860,6 +860,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 return OS;
             });
 
+            ipc.handle("get-root", async (e, type) => {
+                let feat = identify(e);
+                if (type == "app") return __dirname;
+                if (type == "feature") return path.join(__dirname, feat.name.toLowerCase());
+                return null;
+            });
+
             ipc.handle("get", async (e, k) => await this.getCallback(e.sender.id, k));
             ipc.handle("set", async (e, k, v) => await this.setCallback(e.sender.id, k, v));
 
@@ -1780,7 +1787,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
             this.#clientManager = new ClientManager();
 
             name = String(name).toUpperCase();
-            this.#name = FEATURES.includes(name) ? name : null;
+            if (!FEATURES.includes(name)) throw "Feature name "+name+" is not valid";
+            this.#name = name;
             
             this.#window = null;
             this.#menu = null;
@@ -1802,7 +1810,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         get portal() { return this.#portal; }
         
         get name() { return this.#name; }
-        hasName() { return util.is(this.name, "str"); }
 
         get window() { return this.#window; }
         hasWindow() { return (this.window instanceof electron.BrowserWindow) && !this.window.isDestroyed() && !this.window.webContents.isDestroyed(); }
@@ -1813,7 +1820,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
         async getPerm() {
             if (!this.started) return true;
-            if (!this.hasName()) return false;
             this.log("GET PERM");
             let perm = await new Promise((res, rej) => {
                 if (!this.hasWindow()) return;
@@ -1858,7 +1864,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         get started() { return this.#started; }
         start() {
             if (this.started) return false;
-            if (!this.hasName()) return false;
             this.log("START");
             this.#started = true;
             this.#ready = 0;
@@ -2320,7 +2325,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         async stop() {
             if (!this.started) return false;
-            if (!this.hasName()) return false;
             this.log("STOP");
             if (!this.perm) {
                 this.log("STOP - no perm > get perm");
@@ -2506,7 +2510,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
         async get(k) {
             if (!this.started) return null;
-            if (!this.hasName()) return null;
             k = String(k);
             try {
                 return await this.portal.get(k);
@@ -2557,7 +2560,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         async set(k, v) {
             if (!this.started) return false;
-            if (!this.hasName()) return false;
             k = String(k);
             try {
                 return await this.portal.set(k, v);
@@ -2596,7 +2598,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         async on(k, ...a) {
             if (!this.started) return null;
-            if (!this.hasName()) return null;
             k = String(k);
             try {
                 return await this.portal.on(k, ...a);
@@ -3125,7 +3126,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         async send(k, ...a) {
             if (!this.started) return false;
-            if (!this.hasName()) return false;
             k = String(k);
             this.log(`SEND - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
             if (!this.hasWindow()) return false;
@@ -3134,21 +3134,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         cacheSet(k, v) {
             if (!this.started) return false;
-            if (!this.hasName()) return false;
             k = String(k);
             if (!this.hasWindow()) return false;
             this.window.webContents.send("cache-set", k, v);
         }
         cacheDel(k) {
             if (!this.started) return false;
-            if (!this.hasName()) return false;
             k = String(k);
             if (!this.hasWindow()) return false;
             this.window.webContents.send("cache-del", k);
         }
         cacheClear() {
             if (!this.started) return false;
-            if (!this.hasName()) return false;
             if (!this.hasWindow()) return false;
             this.window.webContents.send("cache-clear");
         }

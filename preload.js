@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld("api", {
     sendPerm: perm => ipcRenderer.send("perm", perm),
     sendReady: () => ipcRenderer.send("ready"),
 
+    getAppRoot: () => ipcRenderer.invoke("get-root", "app"),
+    getRoot: () => ipcRenderer.invoke("get-root", "feature"),
+
     get: k => ipcRenderer.invoke("get", k),
     set: (k, v) => ipcRenderer.invoke("set", k, v),
     
