@@ -822,6 +822,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.placeContextMenu(e.pageX, e.pageY);
         });
         this.odometry.canvas.addEventListener("mousedown", e => {
+            e.preventDefault();
             const hovered = this.odometry.hovered;
             const hoveredPart = this.odometry.hoveredPart;
             if (this.choosing) {
@@ -971,6 +972,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.elem.insertBefore(this.eDivider, this.eEdit);
         this.eDivider.classList.add("divider");
         this.eDivider.addEventListener("mousedown", e => {
+            e.preventDefault();
             if (this.choosing) return;
             if (e.button != 0) return;
             const mouseup = () => {
@@ -1711,6 +1713,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             eName.classList.add("name");
             eName.textContent = name.split(" ").map(v => util.capitalize(v)).join(" ");
             btn.addEventListener("mousedown", e => {
+                e.preventDefault();
                 if (this.page.choosing) return;
                 this.app.post("cmd-add"+name);
             });
@@ -1800,6 +1803,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.robotHeadingDrag.innerHTML = "<div><button></button></div>";
         this.robotHeading.elem.appendChild(this.robotHeadingDrag);
         this.robotHeadingDrag.addEventListener("mousedown", e => {
+            e.preventDefault();
             const place = e => {
                 let r = this.robotHeadingDrag.getBoundingClientRect();
                 let center = new V(r.left + r.width/2, r.top + r.height/2).mul(+1, -1);

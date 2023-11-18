@@ -295,6 +295,7 @@ class BrowserField extends util.Target {
             this.post("trigger", e, [this.name]);
         });
         this.eDisplay.addEventListener("mousedown", e => {
+            e.preventDefault();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -508,6 +509,7 @@ class ToolButton extends util.Target {
             this.post("trigger", e);
         });
         this.elem.addEventListener("mousedown", e => {
+            e.preventDefault();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -971,6 +973,7 @@ class Container extends Widget {
             this.elem.appendChild(elem);
             elem.classList.add("divider");
             elem.addEventListener("mousedown", e => {
+                e.preventDefault();
                 const mouseup = () => {
                     elem.classList.remove("this");
                     document.body.removeEventListener("mouseup", mouseup);
@@ -1282,6 +1285,7 @@ Panel.Tab = class PanelTab extends util.Target {
             this.parent.tabIndex = this.parent.tabs.indexOf(this);
         });
         this.eTab.addEventListener("mousedown", e => {
+            e.preventDefault();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -2444,6 +2448,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         this.eHeader.classList.add("item");
 
         this.eHeader.addEventListener("mousedown", e => {
+            e.preventDefault();
             let trigger = 0;
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
@@ -3118,6 +3123,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
             this.optionState = (this.optionState == 0) ? 0.5 : 0;
         });
         this.eOpen.addEventListener("mousedown", e => {
+            e.preventDefault();
             let offset = e.offsetY;
             const mouseup = e => {
                 document.body.removeEventListener("mouseup", mouseup);
@@ -4203,7 +4209,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         this.eNav.insertBefore(this.eProgress, this.eSubNav);
         this.eProgress.classList.add("progress");
         this.eProgress.addEventListener("mousedown", e => {
-            if (e.button != 0) return;
+            e.preventDefault();
             e.stopPropagation();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
@@ -6917,6 +6923,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.elem.appendChild(this.eDivider);
         this.eDivider.classList.add("divider");
         this.eDivider.addEventListener("mousedown", e => {
+            e.preventDefault();
             const mouseup = () => {
                 this.eDivider.classList.remove("this");
                 document.body.removeEventListener("mouseup", mouseup);
