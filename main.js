@@ -889,6 +889,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 let feat = identify(e);
                 return await feat.fileWrite(pth, content);
             });
+            ipc.handle("file-write-raw", async (e, pth, content) => {
+                let feat = identify(e);
+                return await feat.fileWriteRaw(pth, content);
+            });
             ipc.handle("file-append", async (e, pth, content) => {
                 let feat = identify(e);
                 return await feat.fileAppend(pth, content);
@@ -1225,8 +1229,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
         static async fileWrite(pth, content) {
             pth = this.makePath(pth);
+            content = String(content);
             this.log(`fs:file-write ${pth}`);
             return await fs.promises.writeFile(pth, content, { encoding: "utf-8" });
+        }
+        static async fileWriteRaw(pth, content) {
+            pth = this.makePath(pth);
+            content = Buffer.from(content);
+            this.log(`fs:file-write-raw ${pth}`);
+            return await fs.promises.writeFile(pth, content);
         }
         static async fileAppend(pth, content) {
             pth = this.makePath(pth);
@@ -1293,6 +1304,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
         async fileRead(pth) { return await Portal.fileRead([this.dataPath, pth]); }
         async fileReadRaw(pth) { return await Portal.fileReadRaw([this.dataPath, pth]); }
         async fileWrite(pth, content) { return await Portal.fileWrite([this.dataPath, pth], content); }
+        async fileWriteRaw(pth, content) { return await Portal.fileWriteRaw([this.dataPath, pth], content); }
         async fileAppend(pth, content) { return await Portal.fileAppend([this.dataPath, pth], content); }
         async fileDelete(pth) { return await Portal.fileDelete([this.dataPath, pth]); }
 
@@ -2371,6 +2383,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
             await this.affirm(portal, name, started);
             return await Portal.fileWrite(Portal.makePath(this.getDataPath(portal, name, started), pth), content);
         }
+        static async fileWriteRaw(portal, name, pth, content, started=true) {
+            if (!this.getCanOperate(portal, name, started)) return null;
+            await this.affirm(portal, name, started);
+            return await Portal.fileWriteRaw(Portal.makePath(this.getDataPath(portal, name, started), pth), content);
+        }
         static async fileAppend(portal, name, pth, content, started=true) {
             if (!this.getCanOperate(portal, name, started)) return null;
             await this.affirm(portal, name, started);
@@ -2407,6 +2424,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
         async fileRead(pth) { return Portal.Feature.fileRead(this.portal, this.name, pth, this.started); }
         async fileReadRaw(pth) { return Portal.Feature.fileReadRaw(this.portal, this.name, pth, this.started); }
         async fileWrite(pth, content) { return Portal.Feature.fileWrite(this.portal, this.name, pth, content, this.started); }
+        async fileWriteRaw(pth, content) { return Portal.Feature.fileWriteRaw(this.portal, this.name, pth, content, this.started); }
         async fileAppend(pth, content) { return Portal.Feature.fileAppend(this.portal, this.name, pth, content, this.started); }
         async fileDelete(pth) { return Portal.Feature.fileDelete(this.portal, this.name, pth, this.started); }
 
