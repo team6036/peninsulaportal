@@ -19,6 +19,11 @@
     align-self: stretch;
 
     aspect-ratio: 1 / 1;
+
+    pointer-events: none;
+}
+#titlebar.this > button {
+    pointer-events: auto;
 }
 
 body {

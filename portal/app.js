@@ -101,6 +101,145 @@ class UpperFeatureButton extends util.Target {
     }
 }
 
+class Speck extends util.Target {
+    #type;
+    #r; #l;
+
+    #vel;
+    #cvel;
+
+    #sphereGeometry;
+    #cylinderGeometry;
+    #material;
+    #headMesh; #tailMesh; #midMesh;
+    #object;
+
+    static sphereGeometryCache = {};
+    static cylinderGeometryCache = {};
+    static materials = [
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    ];
+
+    constructor(type, r, l) {
+        super();
+
+        this.#type = 0;
+        this.#r = 0;
+        this.#l = 0;
+
+        this.#vel = [0, 0, 0];
+        this.#cvel = [0, 0, 0];
+
+        this.type = type;
+        this.r = r;
+        this.l = l;
+
+        let vel = [null, null, null];
+
+        this.addHandler("update", delta => {
+            let newVel = [
+                this.velX+this.cvelX,
+                this.velY+this.cvelY,
+                this.velZ+this.cvelZ,
+            ];
+            let changed = false;
+            for (let i = 0; i < 3; i++) {
+                if (vel[i] == newVel[i]) continue;
+                vel[i] = newVel[i];
+                changed = true;
+            }
+            let d = Math.sqrt(vel[0]**2 + vel[1]**2 + vel[2]**2);
+            this.l = Math.min(2.5, d * 2.5);
+            this.object.position.set(
+                this.object.position.x+vel[0],
+                this.object.position.y+vel[1],
+                this.object.position.z+vel[2],
+            );
+            this.#headMesh.position.setZ(+this.l/2);
+            this.#tailMesh.position.setZ(-this.l/2);
+            if (changed) {
+                this.object.lookAt(
+                    this.object.position.x+vel[0],
+                    this.object.position.y+vel[1],
+                    this.object.position.z+vel[2],
+                );
+            }
+            let p = 0.99 ** (5/delta);
+            this.velX *= p;
+            this.velY *= p;
+            this.velZ *= p;
+        });
+    }
+
+    #check() {
+        if (!(this.r in Speck.sphereGeometryCache))
+            Speck.sphereGeometryCache[this.r] = new THREE.SphereGeometry(this.r, 8, 8);
+        if (!(this.r in Speck.cylinderGeometryCache))
+            Speck.cylinderGeometryCache[this.r] = {};
+        if (!(this.l in Speck.cylinderGeometryCache[this.r]))
+            Speck.cylinderGeometryCache[this.r][this.l] = new THREE.CylinderGeometry(this.r, this.r, this.l, 8, 1, true);
+        this.#sphereGeometry = Speck.sphereGeometryCache[this.r];
+        this.#cylinderGeometry = Speck.cylinderGeometryCache[this.r][this.l];
+        this.#material = Speck.materials[this.type];
+        if (!(this.#headMesh instanceof THREE.Mesh)) this.#headMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
+        if (!(this.#tailMesh instanceof THREE.Mesh)) this.#tailMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
+        if (!(this.#midMesh instanceof THREE.Mesh)) {
+            this.#midMesh = new THREE.Mesh(this.#cylinderGeometry, this.#material);
+            this.#midMesh.rotateX(Math.PI/2);
+        }
+        this.#headMesh.geometry = this.#tailMesh.geometry = this.#sphereGeometry;
+        this.#midMesh.geometry = this.#cylinderGeometry;
+        this.#headMesh.material = this.#tailMesh.material = this.#midMesh.material = this.#material;
+        if (!(this.#object instanceof THREE.Object3D)) {
+            this.#object = new THREE.Object3D();
+            this.#object.add(this.#headMesh);
+            this.#object.add(this.#tailMesh);
+            this.#object.add(this.#midMesh);
+        }
+    }
+
+    get type() { return this.#type; }
+    set type(v) {
+        v = Math.min(Speck.materials.length-1, Math.max(0, util.ensure(v, "int")));
+        if (this.type == v) return;
+        this.#type = v;
+        this.#check();
+    }
+
+    get r() { return this.#r; }
+    set r(v) {
+        v = Math.max(0, Math.floor(util.ensure(v, "num")*100)/100);
+        if (this.r == v) return;
+        this.#r = v;
+        this.#check();
+    }
+    get l() { return this.#l; }
+    set l(v) {
+        v = Math.max(0, Math.floor(util.ensure(v, "num")*100)/100);
+        if (this.l == v) return;
+        this.#l = v;
+        this.#check();
+    }
+
+    get velX() { return this.#vel[0]; }
+    set velX(v) { this.#vel[0] = util.ensure(v, "num"); }
+    get velY() { return this.#vel[1]; }
+    set velY(v) { this.#vel[1] = util.ensure(v, "num"); }
+    get velZ() { return this.#vel[2]; }
+    set velZ(v) { this.#vel[2] = util.ensure(v, "num"); }
+    get cvelX() { return this.#cvel[0]; }
+    set cvelX(v) { this.#cvel[0] = util.ensure(v, "num"); }
+    get cvelY() { return this.#cvel[1]; }
+    set cvelY(v) { this.#cvel[1] = util.ensure(v, "num"); }
+    get cvelZ() { return this.#cvel[2]; }
+    set cvelZ(v) { this.#cvel[2] = util.ensure(v, "num"); }
+
+    get object() { return this.#object; }
+
+    update(delta) { this.post("update", delta); }
+}
+
 export default class App extends core.App {
     #featureButtons;
     #upperFeatureButtons;
@@ -143,93 +282,105 @@ export default class App extends core.App {
                 const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
                 scene.add(hemLight);
 
-                const starGeometries = [
-                    new THREE.SphereGeometry(0.02, 8, 8),
-                    new THREE.SphereGeometry(0.015, 8, 8),
-                    new THREE.SphereGeometry(0.01, 8, 8),
-                ];
-                const starCylinderGeometries = [{}, {}, {}];
-                const starMaterials = [
-                    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-                    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-                ];
-                const stars = [];
+                const specks = [];
 
                 const near = camera.near;
                 const fov = camera.fov;
                 const height = 2 * Math.tan((fov*(Math.PI/180))/2) * near;
                 const width = height * camera.aspect;
 
-                let starSpawn = 0;
+                let spawn = 0;
 
                 let first = true;
+
+                const getScroll = () => (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
+                const getSpeed = () => {
+                    let scroll = getScroll();
+                    return util.lerp(1, 25, (scroll<0) ? 0 : (scroll>1) ? 1 : scroll)*0.02;
+                };
 
                 this.addHandler("update", delta => {
                     controls.target.set(0, 0, 0);
                     controls.update();
 
-                    let scroll = (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
-                    let starSpeed = util.lerp(1, 25, (scroll<0) ? 0 : (scroll>1) ? 1 : scroll)*0.02;
+                    let scroll = getScroll();
+                    let speed = getSpeed();
 
                     canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
 
                     for (let i = 0; i < (first ? 60*10 : 1); i++) {
-                        if (stars.length < 1000) {
-                            while (starSpawn < 0) {
-                                starSpawn += util.lerp(0.01, 0.1, Math.random());
-                                let geometry = Math.floor(starGeometries.length*Math.random());
-                                let material = starMaterials[Math.floor(starMaterials.length*Math.random())];
-                                const starHead = new THREE.Mesh(
-                                    starGeometries[geometry],
-                                    material,
-                                );
-                                const starTail = starHead.clone();
-                                const starMid = new THREE.Mesh(
-                                    starGeometries[geometry],
-                                    material,
-                                );
-                                starMid.rotateX(Math.PI/2);
-                                const starGlobal = new THREE.Group();
-                                starGlobal.add(starHead);
-                                starGlobal.add(starTail);
-                                starGlobal.add(starMid);
-                                const star = {
-                                    geometry: geometry,
-                                    head: starHead,
-                                    tail: starTail,
-                                    mid: starMid,
-                                    global: starGlobal,
-                                };
-                                let pos;
-                                do {
-                                    pos = new V(Math.random(), Math.random()).map(v => util.lerp(-15, +15, v));
-                                } while (Math.abs(pos.x) < width && Math.abs(pos.y) < height);
-                                star.global.position.set(pos.x, pos.y, -15);
-                                scene.add(star.global);
-                                stars.push(star);
+                        if (specks.length < 1000) {
+                            while (spawn < 0) {
+                                if (this.holiday == "july4") {
+                                    spawn += util.lerp(1, 10, Math.random());
+                                    let radii = [0.02, 0.015, 0.01];
+                                    let pos = new util.V3(util.lerp(-5, +5, Math.random()), util.lerp(-5, +5, Math.random()), -5);
+                                    for (let i = 0; i < 20; i++) {
+                                        let azimuth = util.lerp(0, 360, Math.random());
+                                        let elevation = util.lerp(0, 360, Math.random());
+                                        let xz = V.dir(azimuth);
+                                        let y = V.dir(elevation);
+                                        xz.imul(y.x);
+                                        let mag = new util.V3(xz.x, y.y, xz.y);
+                                        const speck = new Speck(
+                                            Math.floor(Speck.materials.length*Math.random()),
+                                            radii[Math.floor(radii.length*Math.random())], 0,
+                                        );
+                                        speck.object.position.set(...pos.xyz);
+                                        [speck.velX, speck.velY, speck.velZ] = mag.mul(util.lerp(0.05, 0.15, Math.random())).xyz;
+                                        scene.add(speck.object);
+                                        specks.push(speck);
+                                        speck.addHandler("update", delta => {
+                                            speck.velY -= 0.001;
+                                            if (
+                                                Math.abs(speck.object.position.x) <= +15 &&
+                                                Math.abs(speck.object.position.y) <= +15 &&
+                                                Math.abs(speck.object.position.z) <= +15
+                                            ) return;
+                                            specks.splice(specks.indexOf(speck), 1);
+                                            scene.remove(speck.object);
+                                        });
+                                    }
+                                } else {
+                                    spawn += util.lerp(0.01, 0.1, Math.random());
+                                    let radii = [0.02, 0.015, 0.01];
+                                    const speck = new Speck(
+                                        Math.floor(Speck.materials.length*Math.random()),
+                                        radii[Math.floor(radii.length*Math.random())], 0,
+                                    );
+                                    let pos;
+                                    do {
+                                        pos = new V(Math.random(), Math.random()).map(v => util.lerp(-15, +15, v));
+                                    } while (Math.abs(pos.x) < width && Math.abs(pos.y) < height);
+                                    speck.object.position.set(pos.x, pos.y, -15);
+                                    scene.add(speck.object);
+                                    specks.push(speck);
+                                    speck.addHandler("update", delta => {
+                                        speck.velX = speck.velY = speck.velZ = 0;
+                                        speck.cvelX = speck.cvelY = 0;
+                                        speck.cvelZ = getSpeed();
+                                        if (
+                                            Math.abs(speck.object.position.x) <= +15 &&
+                                            Math.abs(speck.object.position.y) <= +15 &&
+                                            Math.abs(speck.object.position.z) <= +15
+                                        ) return;
+                                        specks.splice(specks.indexOf(speck), 1);
+                                        scene.remove(speck.object);
+                                    });
+                                }
                             }
-                            starSpawn -= 2*starSpeed;
+                            if (this.holiday == "july4") spawn -= 0.1;
+                            else spawn -= 2*speed;
                         }
-                        [...stars].forEach(star => {
-                            let streakSize = Math.round((Math.abs(starSpeed) * 2.5) * 100000) / 100000;
-                            star.head.position.setZ(+streakSize/2);
-                            star.tail.position.setZ(-streakSize/2);
-                            if (!(streakSize in starCylinderGeometries[star.geometry]))
-                                starCylinderGeometries[star.geometry][streakSize] = new THREE.CylinderGeometry([0.02, 0.015, 0.01][star.geometry], [0.02, 0.015, 0.01][star.geometry], streakSize, 8, 1, true);
-                            star.mid.geometry = starCylinderGeometries[star.geometry][streakSize];
-                            star.global.position.setZ(star.global.position.z+starSpeed);
-                            if (star.global.position.z < +15) return;
-                            stars.splice(stars.indexOf(star), 1);
-                            scene.remove(star.global);
-                        });
+                        [...specks].forEach(speck => speck.update(delta));
                     }
                     first = false;
 
                     let colorW = new util.Color(getComputedStyle(document.body).getPropertyValue("--v8"));
                     let colorA = new util.Color(getComputedStyle(document.body).getPropertyValue("--a"));
                     let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v2"));
-                    starMaterials[0].color.set(colorW.toHex(false));
-                    starMaterials[1].color.set(colorA.toHex(false));
+                    Speck.materials[0].color.set(colorW.toHex(false));
+                    Speck.materials[1].color.set(colorA.toHex(false));
                     scene.fog.color.set(colorV.toHex(false));
                     
                     camera.aspect = window.innerWidth/window.innerHeight;
