@@ -1359,7 +1359,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     }
     async loadState(state) {
         state = util.ensure(state, "obj");
-        await this.app.syncWithFiles();
+        await this.app.loadProjects();
         await this.app.setPage(this.name, { id: state.id });
     }
 

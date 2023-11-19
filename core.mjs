@@ -1786,7 +1786,7 @@ export class AppFeature extends App {
                 this.page = "PROJECT";
             });
             this.addHandler("cmd-save", async () => {
-                await this.syncFilesWithClean();
+                await this.saveProjectsClean();
             });
             this.addHandler("cmd-savecopy", async source => {
                 if (!this.hasPage("PROJECT")) return;
@@ -1830,7 +1830,7 @@ export class AppFeature extends App {
                 this.page = "PROJECTS";
             });
 
-            await this.syncWithFilesClean();
+            await this.loadProjects();
         });
         this.addHandler("post-setup", async () => {
             await this.post("pre-post-setup");
@@ -1861,7 +1861,7 @@ export class AppFeature extends App {
         this.change("clearChanges", changes, []);
         return changes;
     }
-    async syncWithFiles() {
+    async loadProjects() {
         await this.post("sync-with-files");
         let projectIdsContent = await window.api.send("projects-get");
         let projectIds = JSON.parse(projectIdsContent);
@@ -1876,16 +1876,16 @@ export class AppFeature extends App {
         this.clearChanges();
         await this.post("synced-with-files");
     }
-    async syncWithFilesClean() {
+    async loadProjectsClean() {
         try {
-            await this.syncWithFiles();
+            await this.loadProjects();
         } catch (e) {
             await this.error("Projects Load Error", e).whenResult();
             return false;
         }
         return true;
     }
-    async syncFilesWith() {
+    async saveProjects() {
         await this.post("sync-files-with");
         let changes = new Set(this.changes);
         this.clearChanges();
@@ -1925,9 +1925,9 @@ export class AppFeature extends App {
         }
         await this.post("synced-files-with");
     }
-    async syncFilesWithClean() {
+    async saveProjectsClean() {
         try {
-            await this.syncFilesWith();
+            await this.saveProjects();
         } catch (e) {
             await this.error("Projects Save Error", e).whenResult();
             return false;
@@ -2164,7 +2164,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 let result = await pop.whenResult();
                 if (result == null) return;
                 project.meta.name = result;
-                await this.app.syncFilesWithClean();
+                await this.app.saveProjectsClean();
             });
             menu.addItem(new App.ContextMenu.Divider());
             itm = menu.addItem(new App.ContextMenu.Item("Delete"));
@@ -2498,7 +2498,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
         this.app.addHandler("perm", async () => {
             this.app.markChange("*");
-            return await this.app.syncFilesWithClean();
+            return await this.app.saveProjectsClean();
         });
 
         let lock = false;
@@ -2513,7 +2513,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
 
     async refresh() {
-        await this.app.syncWithFilesClean();
+        await this.app.loadProjectsClean();
         this.app.dragging = false;
         await this.post("refresh");
     }
@@ -2551,7 +2551,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
     async loadState(state) {
         state = util.ensure(state, "obj");
-        await this.app.syncWithFilesClean();
+        await this.app.loadProjects();
         await this.app.setPage(this.name, { id: state.id });
     }
 
