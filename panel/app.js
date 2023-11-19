@@ -2240,6 +2240,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.#ts = ts = [...ts].sort((a, b) => a-b);
             this.eBody.style.gridTemplateRows = "repeat("+ts.length+", auto)";
             this.vars.forEach(v => v.update(delta));
+            let doFormat = false;
             while (rows.length-1 < ts.length) {
                 let row = {};
                 row.elem = document.createElement("div");
@@ -2247,13 +2248,14 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 row.elem.classList.add("item");
                 rows.push(row);
                 row.x = 0;
-                this.format();
+                doFormat = true;
             }
             while (rows.length-1 > ts.length) {
                 let row = rows.pop();
                 this.eBody.removeChild(row.elem);
-                this.format();
+                doFormat = true;
             }
+            this.format();
             for (let i = 0; i < ts.length; i++) {
                 let row = rows[i+1];
                 row.elem.style.gridRow = (i+1) + "/" + (i+2);
@@ -2382,10 +2384,10 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             }
             field.fields.forEach(field => addVar(field));
         };
-        for (let i = 0; i < this.vars.length; i++) {
-            let v = this.vars[i];
-            r = v.eHeader.getBoundingClientRect();
+        let vars = this.vars;
+        for (let i = 0; i <= vars.length; i++) {
             if (i <= 0) {
+                r = vars.at(0).eHeader.getBoundingClientRect();
                 if (pos.x < r.left+r.width/2) return {
                     r: [[r.left, y], [0, h]],
                     submit: () => {
@@ -2393,12 +2395,26 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                         addVar(data);
                     },
                 };
+                continue;
             }
-            if (pos.x < r.left+r.width/2) continue;
+            if (i >= vars.length) {
+                r = vars.at(-1).eHeader.getBoundingClientRect();
+                if (pos.x >= r.left+r.width/2) return {
+                    r: [[r.right, y], [0, h]],
+                    submit: () => {
+                        at = i;
+                        addVar(data);
+                    },
+                };
+                continue;
+            }
+            let rj = vars[i-1].eHeader.getBoundingClientRect(), ri = vars[i].eHeader.getBoundingClientRect();
+            if (pos.x < rj.left+rj.width/2) continue;
+            if (pos.x >= ri.left+ri.width/2) continue;
             return {
-                r: [[r.right, y], [0, h]],
+                r: [[ri.left, y], [0, h]],
                 submit: () => {
-                    at = i+1;
+                    at = i;
                     addVar(data);
                 },
             };
