@@ -33,7 +33,7 @@ export default class WPILOGSource extends Source {
         this.clear();
         const client = new WorkerClient("../sources/wpilog/decoder-worker.js");
         return await new Promise((res, rej) => {
-            client.addHandler("error", data => rej(util.ensure(data, "obj").e));
+            client.addHandler("error", e => rej(e));
             client.addHandler("stop", data => rej("WORKER TERMINATED"));
             client.addHandler("cmd-progress", progress => this.post("progress", progress));
             client.addHandler("cmd-finish", data => {
@@ -43,4 +43,17 @@ export default class WPILOGSource extends Source {
             client.start([...this.data]);
         });
     }
+
+    static async export(source) {
+        if (!(source instanceof Source)) return null;
+        const client = new WorkerClient("../sources/wpilog/encoder-worker.js");
+        return await new Promise((res, rej) => {
+            client.addHandler("error", e => rej(e));
+            client.addHandler("stop", data => rej("WORKER TERMINATED"));
+            client.addHandler("cmd-progress", progress => this.post("progress", progress));
+            client.addHandler("cmd-finish", data => res(Uint8Array.from(util.ensure(data, "arr"))));
+            client.start(source.toSerialized());
+        });
+    }
+    async export() { return await WPILOGSource.export(this); }
 }
