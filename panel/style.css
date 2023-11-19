@@ -1142,7 +1142,7 @@
 
     background-color: #fff;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .status {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status {
     position: relative;
 
     width: 100%;
@@ -1162,7 +1162,7 @@
 
     font-size: 12px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .status::before {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status::before {
     content: "";
     
     position: absolute;
@@ -1181,20 +1181,20 @@
 
     transition: opacity var(--t), visibility var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks.loading_ > .status::before {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger.loading_ > .status::before {
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .status > .space {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > .space {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .status > * {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > * {
     min-width: max-content;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .status > ion-icon {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > ion-icon {
     min-width: 1em;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .status > button {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > button {
     --bg: var(--a);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -1202,7 +1202,7 @@
     --bgd: var(--a2);
     --fgd: var(--v6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs {
     width: 100%;
     max-width: 100%;
     height: calc(100% - 33.33px);
@@ -1216,7 +1216,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item {
     position: relative;
 
     padding: 10px;
@@ -1237,7 +1237,7 @@
 
     transition: background-color var(--t), color var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item::before {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item::before {
     content: "";
     
     position: absolute;
@@ -1255,11 +1255,11 @@
 
     transition: opacity var(--t), visibility var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.loading_::before {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.loading_::before {
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item::after {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item::after {
     position: absolute;
     top: 50%;
     left: 0%;
@@ -1270,36 +1270,36 @@
 
     background-color: var(--a);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.selected::after {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.selected::after {
     content: "";
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item:hover {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item:hover {
     background-color: var(--v2-8);
     color: var(--v6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.downloaded {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded {
     background-color: var(--v2-8);
     color: var(--v7);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.downloaded:hover {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded:hover {
     background-color: var(--v2);
     color: var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.deprecated {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated {
     background-color: var(--cr-8);
     color: var(--v7);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.deprecated:hover {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated:hover {
     background-color: var(--cr);
     color: var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item > .name {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .name {
     min-width: max-content;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item > .space {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .space {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item > .nav {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1308,7 +1308,7 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item > .nav > button {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav > button {
     --bg: transparent;
     --fg: var(--v5);
     --bgh: transparent;
@@ -1318,7 +1318,7 @@
 
     padding: 0px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.downloaded > .nav > button {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded > .nav > button {
     --bg: transparent;
     --fg: var(--v7);
     --bgh: transparent;
@@ -1326,7 +1326,7 @@
     --bgd: transparent;
     --fgd: var(--v6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .logs > .item.deprecated > .nav > button {
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated > .nav > button {
     --bg: transparent;
     --fg: var(--v7);
     --bgh: transparent;
