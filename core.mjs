@@ -942,19 +942,19 @@ export class App extends util.Target {
     async fileSaveDialog(options) { return await window.api.send("file-save-dialog", options); }
 }
 App.PopupBase = class AppPopupBase extends util.Target {
+    #result;
+
+    #resolver;
+
     #elem;
     #inner;
-
-    #hasResult;
-    #result;
-    #resultRes;
 
     constructor() {
         super();
 
-        this.#hasResult = false;
         this.#result = null;
-        this.#resultRes = [];
+
+        this.#resolver = new util.Resolver(false);
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("popup");
@@ -963,19 +963,18 @@ App.PopupBase = class AppPopupBase extends util.Target {
         this.inner.classList.add("inner");
 
         this.addHandler("result", result => {
-            this.#hasResult = true;
+            this.#resolver.state = true;
             this.#result = result;
-            this.#resultRes.forEach(res => res(this.result));
-            this.#resultRes = [];
             this.close();
         });
     }
 
-    get hasResult() { return this.#hasResult; }
-    get result() { return this.#result; }
+    get hasResult() { return this.#resolver.state; }
+    get theResult() { return this.#result; }
     async whenResult() {
-        if (this.hasResult) return this.result;
-        return await new Promise((res, rej) => this.#resultRes.push(res));
+        if (this.hasResult) return this.theResult;
+        await this.#resolver.whenTrue();
+        return this.theResult;
     }
 
     get elem() { return this.#elem; }
@@ -2537,14 +2536,10 @@ export class Client extends util.Target {
 
     #location;
 
-    #connected;
-    #connectedRes;
-    #disconnectedRes;
+    #connectionResolver;
     #socketId;
 
-    #destroyed;
-    #destroyedRes;
-    #notDestroyedRes;
+    #destructionResolver;
 
     constructor(location) {
         super();
@@ -2553,31 +2548,17 @@ export class Client extends util.Target {
 
         this.#location = String(location);
 
-        this.#connected = false;
-        this.#connectedRes = [];
-        this.#disconnectedRes = [];
+        this.#connectionResolver = new util.Resolver(false);
+        this.#connectionResolver.addHandler("change-state", () => console.log(this.id+":meta.connected = "+this.connected));
         this.#socketId = null;
 
-        this.#destroyed = true;
-        this.#destroyedRes = [];
-        this.#notDestroyedRes = [];
+        this.#destructionResolver = new util.Resolver(true);
 
         const confirm = (id, meta) => {
             if (this.id != id) return false;
             meta = util.ensure(meta, "obj");
             if (this.location != meta.location) return false;
-            let connected = !!meta.connected;
-            if (this.#connected != connected) {
-                console.log(this.id+":meta.connected = "+connected);
-                this.#connected = connected;
-                if (this.connected) {
-                    this.#connectedRes.forEach(res => res());
-                    this.#connectedRes = [];
-                } else {
-                    this.#disconnectedRes.forEach(res => res());
-                    this.#disconnectedRes = [];
-                }
-            }
+            this.#connectionResolver.state = !!meta.connected;
             let socketId = (meta.socketId == null) ? null : String(meta.socketId);
             if (this.#socketId != socketId) {
                 console.log(this.id+":meta.socketId = "+socketId);
@@ -2613,9 +2594,7 @@ export class Client extends util.Target {
 
         (async () => {
             await window.api.clientMake(this.id, this.location);
-            this.#destroyed = false;
-            this.#notDestroyedRes.forEach(res => res());
-            this.#notDestroyedRes = [];
+            this.#destructionResolver.state = false;
         })();
     }
 
@@ -2623,28 +2602,21 @@ export class Client extends util.Target {
 
     get location() { return this.#location; }
 
-    get connected() { return this.#connected; }
+    get connected() { return this.#connectionResolver.state; }
     get disconnected() { return !this.connected; }
     get socketId() { return this.#socketId; }
 
-    get destroyed() { return this.#destroyed; }
+    get destroyed() { return this.#destructionResolver.state; }
+    get created() { return !this.destroyed; }
 
-    async whenDestroyed() {
-        if (this.destroyed) return;
-        return new Promise((res, rej) => this.#destroyedRes.push(res));
-    }
-    async whenNotDestroyed() {
-        if (!this.destroyed) return;
-        return new Promise((res, rej) => this.#notDestroyedRes.push(res));
-    }
-    async whenConnected() {
-        if (this.connected) return;
-        return new Promise((res, rej) => this.#connectedRes.push(res));
-    }
-    async whenDisconnected() {
-        if (this.disconnected) return;
-        return new Promise((res, rej) => this.#disconnectedRes.push(res));
-    }
+    async whenConnected() { await this.#connectionResolver.whenTrue(); }
+    async whenNotConnected() { await this.#connectionResolver.whenFalse(); }
+    async whenDisconnected() { return await this.whenNotConnected(); }
+    async whenNotDisconnected() { return await this.whenConnected(); }
+    async whenDestroyed() { await this.#destructionResolver.whenTrue(); }
+    async whenNotDestroyed() { await this.#destructionResolver.whenFalse(); }
+    async whenCreated() { return this.whenNotDestroyed(); }
+    async whenNotCreated() { return this.whenDestroyed(); }
 
     async connect() {
         if (this.destroyed) return false;
@@ -2674,9 +2646,7 @@ export class Client extends util.Target {
     async destroy() {
         if (this.destroyed) return false;
         await window.api.clientDestroy(this.id);
-        this.#destroyed = true;
-        this.#destroyedRes.forEach(res => res());
-        this.#destroyedRes = [];
+        this.#destructionResolver.state = true;
         return true;
     }
 }
