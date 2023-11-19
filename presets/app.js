@@ -77,7 +77,11 @@ class Action extends util.Target {
         await this.action();
         if (this.#checkDisabled) this.elem.disabled = disabled;
     }
-    async action() { await window.api.send("cmd-"+this.id); }
+    async action() {
+        try {
+            await window.api.send("cmd-"+this.id);
+        } catch (e) { await this.app.error("Action Error: "+this.id, e).whenResult(); }
+    }
 }
 
 
@@ -120,8 +124,14 @@ export default class App extends core.App {
                     if (!(btn instanceof HTMLButtonElement)) return;
                     input.addEventListener("change", async e => {
                         input.disabled = btn.disabled = true;
-                        await window.api.send("feature", name, "set", "root", input.value);
-                        input.value = await window.api.send("feature", name, "get", "root");
+                        try {
+                            await window.api.send("feature", name, "set", "root", input.value);
+                        } catch (e) { await this.error("Feature Root Set Error: "+name, e).whenResult(); }
+                        let value = "";
+                        try {
+                            value = await window.api.send("feature", name, "get", "root");
+                        } catch (e) { await this.error("Feature Root Get Root: "+name, e).whenResult(); }
+                        input.value = value;
                         input.disabled = btn.disabled = false;
                     });
                     btn.addEventListener("click", async e => {
@@ -136,11 +146,21 @@ export default class App extends core.App {
                         });
                         result = util.ensure(result, "obj");
                         let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
-                        await window.api.send("feature", name, "set", "root", path);
-                        input.value = await window.api.send("feature", name, "get", "root");
+                        try {
+                            await window.api.send("feature", name, "set", "root", path);
+                        } catch (e) { await this.error("Feature Root Set Error: "+name, e).whenResult(); }
+                        let value = "";
+                        try {
+                            value = await window.api.send("feature", name, "get", "root");
+                        } catch (e) { await this.error("Feature Root Get Error: "+name, e).whenResult(); }
+                        input.value = value;
                         input.disabled = btn.disabled = false;
                     });
-                    input.value = await window.api.send("feature", name, "get", "root");
+                    let value = "";
+                    try {
+                        value = await window.api.send("feature", name, "get", "root");
+                    } catch (e) { await this.error("Feature Root Get Error: "+name, e).whenResult(); }
+                    input.value = value;
                 });
                 Array.from(document.querySelectorAll("#PAGE > .content > article button.cmd")).forEach(async elem => {
                     const action = new Action(this, elem);
@@ -162,7 +182,10 @@ export default class App extends core.App {
                         const disabled = elem.disabled;
                         elem.disabled = true;
                         if (type == "bool") {
-                            let checked = !!(await window.api.get("val-"+elem.id));
+                            let checked = false;
+                            try {
+                                checked = !!(await window.api.get("val-"+elem.id));
+                            } catch (e) { await this.error("Input Boolean Get Error: "+elem.id, e).whenResult(); }
                             if (elem.checked == checked) {
                                 elem.disabled = disabled;
                                 lock = false;
@@ -170,7 +193,10 @@ export default class App extends core.App {
                             }
                             elem.checked = checked;
                         } else {
-                            let value = String(await window.api.get("val-"+elem.id));
+                            let value = "";
+                            try {
+                                value = String(await window.api.get("val-"+elem.id));
+                            } catch (e) { await this.error("Input Get Error: "+elem.id, e).whenResult(); }
                             let idfs = {
                                 "holiday": async () => {
                                     value = (value == "null") ? "" : value.split(" ").map(v => util.capitalize(v)).join(" ");
@@ -226,7 +252,9 @@ export default class App extends core.App {
                             lock = true;
                             const disabled = elem.disabled;
                             elem.disabled = true;
-                            await window.api.set("val-"+elem.id, v);
+                            try {
+                                await window.api.set("val-"+elem.id, v);
+                            } catch (e) { await this.error("Input Set Error: "+elem.id, e).whenResult(); }
                             elem.disabled = disabled;
                             lock = false;
                             await updateValue();
@@ -247,8 +275,10 @@ export default class App extends core.App {
                         let menu = new core.App.ContextMenu();
                         for (let id in themes) {
                             itm = menu.addItem(new core.App.ContextMenu.Item(util.ensure(themes[id], "obj").name, (theme == id) ? "checkmark" : ""));
-                            itm.addHandler("trigger", e => {
-                                window.api.set("theme", [id]);
+                            itm.addHandler("trigger", async e => {
+                                try {
+                                    await window.api.set("theme", id);
+                                } catch (e) { await this.error("Theme Set Error: "+id, e).whenResult(); }
                             });
                         }
                         this.contextMenu = menu;
@@ -274,8 +304,10 @@ export default class App extends core.App {
                         let menu = new core.App.ContextMenu();
                         for (let id in nativeThemes) {
                             itm = menu.addItem(new core.App.ContextMenu.Item(util.ensure(nativeThemes[id], "obj").name, (nativeTheme == id) ? "checkmark" : ""));
-                            itm.addHandler("trigger", e => {
-                                window.api.set("native-theme", [id]);
+                            itm.addHandler("trigger", async e => {
+                                try {
+                                    window.api.set("native-theme", id);
+                                } catch (e) { await this.error("Native Theme Set Error: "+id, e).whenResult(); }
                             });
                         }
                         this.contextMenu = menu;

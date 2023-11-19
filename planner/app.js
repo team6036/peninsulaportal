@@ -2149,10 +2149,12 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         this.#eActivateBtn = document.createElement("button");
         this.addItem(this.eActivateBtn);
         this.eActivateBtn.id = "activatebtn";
-        this.eActivateBtn.addEventListener("click", e => {
+        this.eActivateBtn.addEventListener("click", async e => {
             e.stopPropagation();
             if (this.generating) {
-                window.api.send("exec-term");
+                try {
+                    window.api.send("exec-term");
+                } catch (e) { await this.app.error("Exec Termination Error", e).whenResult(); }
                 return;
             }
             const projectId = this.page.projectId;
@@ -2162,24 +2164,22 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             let id = this.page.selectedPaths[0];
             if (!project.hasPath(id)) return;
             let path = project.getPath(id);
-            (async () => {
-                this.generating = true;
-                this.app.markChange("*all");
-                await this.app.post("cmd-save");
-                try {
-                    await window.api.send("exec", project.id, path.id);
-                    await this.checkVisuals();
-                    this.visuals.forEach(id => {
-                        let visual = this.getVisual(id);
-                        if (!this.page.isPathSelected(id)) return;
-                        visual.play();
-                    });
-                    this.generating = false;
-                } catch (e) {
-                    this.generating = false;
-                    this.error("There was an error executing the generation script!", e);
-                }
-            })();
+            this.generating = true;
+            this.app.markChange("*all");
+            await this.app.post("cmd-save");
+            try {
+                await window.api.send("exec", project.id, path.id);
+                await this.checkVisuals();
+                this.visuals.forEach(id => {
+                    let visual = this.getVisual(id);
+                    if (!this.page.isPathSelected(id)) return;
+                    visual.play();
+                });
+                this.generating = false;
+            } catch (e) {
+                this.generating = false;
+                this.error("Exec Error", e);
+            }
         });
 
         this.generating = false;
@@ -2504,7 +2504,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             }
         } catch (e) {
             return;
-            this.app.error("There was an error checking for generated trajectories!", e);
+            this.app.error("Exec Data Get Error", e);
         }
     };
 

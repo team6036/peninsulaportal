@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
-(async () => {
+const MAIN = async () => {
 
     const log = (...a) => {
         let now = new Date();
@@ -12,12 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
         let min = String(now.getMinutes());
         let s = String(now.getSeconds());
         let ms = String(now.getMilliseconds());
-        while (mon.length < 2) mon = "0"+mon;
-        while (d.length < 2) d = "0"+d;
-        while (hr.length < 2) hr = "0"+hr;
-        while (min.length < 2) min = "0"+min;
-        while (s.length < 2) s = "0"+s;
-        while (ms.length < 3) ms += "0";
+        mon = mon.padStart(2, "0");
+        d = d.padStart(2, "0");
+        hr = hr.padStart(2, "0");
+        min = min.padStart(2, "0");
+        s = s.padStart(2, "0");
+        ms = ms.padEnd(3, "0");
         return console.log(`${yr}-${mon}-${d} ${hr}:${min}:${s}.${ms}`, ...a);
     };
 
@@ -383,6 +383,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             return this.clients.filter(client => client.hasTag(tag));
         }
     }
+    const showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
     class Portal extends util.Target {
         #started;
 
@@ -413,11 +414,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
         }
 
         async init() {
-            await this.affirm();
+            try {
+                await this.affirm();
+            } catch (e) {
+                showError("Portal Initialize - Affirmation Error", e);
+                return;
+            }
             let version = await this.get("base-version");
             if (!(await this.canFS(version))) {
                 let fsVersion = await this.get("fs-version");
-                return "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")";
+                showError("Portal Initialize - Version Error", "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")");
+                return false;
             }
             const stdoutWrite = process.stdout.write;
             const stderrWrite = process.stderr.write;
@@ -482,7 +489,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (feat.portal != this) return false;
             if (this.hasFeature(feat)) return false;
             this.#features.add(feat);
-            feat.start();
+            try {
+                feat.start();
+            } catch (e) {
+                this.#features.delete(feat);
+                showError("Feature Start Error", e);
+                return false;
+            }
             feat._onFocus = () => {
                 if (feat.hasMenu()) {
                     if (OS.platform == "darwin")
@@ -503,7 +516,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (feat.portal != this) return false;
             if (!this.hasFeature(feat)) return false;
             feat.log("REM");
-            if (feat.started) return await feat.stop();
+            if (feat.started) {
+                try {
+                    return await feat.stop();
+                } catch (e) {
+                    this.#features.delete(feat);
+                    this.change("remFeature", feat, null);
+                    showError("Feature Stop Error", e);
+                    return;
+                }
+            }
             feat.log("REM - already stopped");
             this.#features.delete(feat);
             this.change("remFeature", feat, null);
@@ -545,7 +567,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
             let version = await this.get("base-version");
             this.#isLoading = true;
             let r = await (async () => {
-                await this.affirm();
+                try {
+                    await this.affirm();
+                } catch (e) {
+                    showError("Load - Affirmation Error", e);
+                    return false;
+                }
                 this.clearLoads();
                 let fsVersion = await this.get("fs-version");
                 this.log(`DB fs-version check (${version} ?>= ${fsVersion})`);
@@ -854,6 +881,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 return OS;
             });
 
+            const identify = e => {
+                let feat = this.identifyFeature(e.sender.id);
+                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
+                return feat;
+            };
+
             ipc.handle("get-root", async (e, type) => {
                 let feat = identify(e);
                 if (type == "app") return __dirname;
@@ -867,12 +900,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
             ipc.handle("on", async (e, k, ...a) => {
                 return await this.onCallback(e.sender.id, k, ...a);
             });
-
-            const identify = e => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                return feat;
-            };
 
             ipc.handle("file-has", async (e, pth) => {
                 let feat = identify(e);
@@ -950,8 +977,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
             });
 
             (async () => {
-                await this.affirm();
-                await this.post("start");
+                try {
+                    await this.affirm();
+                } catch (e) {
+                    showError("Portal Start Error - Affirmation Error", e);
+                    return;
+                }
+                try {
+                    await this.post("start");
+                } catch (e) {
+                    showError("Portal Start Error - 'start' event", e);
+                    return;
+                }
 
                 let feats = util.ensure(await this.on("state-get", "features"), "arr");
                 feats.forEach(name => {
@@ -959,15 +996,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     try {
                         feat = new Portal.Feature(this, name);
                     } catch (e) {
-                        electron.dialog.showErrorBox("Error creating feature with name: "+name, String(e));
-                        return;
+                        return showError("Portal Start Error - Feature:"+name, e);
                     }
                     this.addFeature(feat);
                 });
 
                 if (this.features.length <= 0) this.addFeature(new Portal.Feature(this, "PORTAL"));
                 
-                await this.tryLoad();
+                try {
+                    await this.tryLoad();
+                } catch (e) { showError("Portal Start Error - Load Error", e); }
             })();
 
             return true;
@@ -975,7 +1013,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
         async stop() {
             this.log("STOP");
             this.processManager.processes.forEach(process => process.terminate());
-            await this.post("stop");
+            try {
+                await this.post("stop");
+            } catch (e) {
+                showError("Portal Stop Error - 'stop' event", e);
+                return true;
+            }
             let feats = this.features;
             let all = true;
             for (let i = 0; i < feats.length; i++) {
@@ -1030,12 +1073,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 let min = String(now.getMinutes());
                 let s = String(now.getSeconds());
                 let ms = String(now.getMilliseconds());
-                while (mon.length < 2) mon = "0"+mon;
-                while (d.length < 2) d = "0"+d;
-                while (hr.length < 2) hr = "0"+hr;
-                while (min.length < 2) min = "0"+min;
-                while (s.length < 2) s = "0"+s;
-                while (ms.length < 3) ms += "0";
+                mon = mon.padStart(2, "0");
+                d = d.padStart(2, "0");
+                hr = hr.padStart(2, "0");
+                min = min.padStart(2, "0");
+                s = s.padStart(2, "0");
+                ms = ms.padEnd(3, "0");
                 let name = `${yr}-${mon}-${d} ${hr}-${min}-${s}-${ms}.log`;
                 this.#stream = fs.createWriteStream(Portal.makePath(this.dataPath, "logs", name));
                 await new Promise((res, rej) => this.stream.on("open", () => res()));
@@ -1941,7 +1984,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 this.#resolver.state++;
             });
             let id = setTimeout(() => {
-                electron.dialog.showErrorBox("Startup Error", "The application refused to start properly");
+                showError("Feature Start Error - Startup", "The application did not acknowledge readyness within 1 second");
                 clear();
                 this.stop();
             }, 1000);
@@ -2166,7 +2209,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
                         let feats = this.portal.features;
                         let nFeats = 0;
                         feats.forEach(feat => (["PORTAL"].includes(feat.name) ? null : nFeats++));
-                        console.log(n, nFeats);
                         if (nFeats > 0) this.window.hide();
                         else this.window.show();
                         resolver.state = false;
@@ -3209,11 +3251,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
     const portal = new Portal();
 
-    let initialized = false, initializedRes = [];
-    async function whenInitialized() {
-        if (initialized) return;
-        return await new Promise((res, rej) => initializedRes.push(res));
-    }
+    let initializeResolver = new util.Resolver(false);
+    async function whenInitialized() { await initializeResolver.whenTrue(); }
 
     app.on("activate", async () => {
         log("> activate");
@@ -3234,7 +3273,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
         let stopped = true;
         try {
             stopped = await portal.stop();
-        } catch (e) {}
+        } catch (e) {
+            stopped = true;
+            showError("Portal Stop Error", e);
+        }
         if (!stopped) return beforeQuitResolver.state = false;
         allowQuit = true;
         beforeQuitResolver.state = false;
@@ -3248,7 +3290,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
     app.on("quit", async () => {
         log("> quit");
         await whenInitialized();
-        await portal.quit();
+        try {
+            await portal.quit();
+        } catch (e) { showError("Portal Quit Error", e); }
     });
 
     await app.whenReady();
@@ -3256,24 +3300,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
     log("> ready");
 
     let allowStart = await portal.init();
-    if (allowStart != true) {
-        electron.dialog.showErrorBox("Startup Error", allowStart);
+    if (!allowStart) {
         allowQuit = true;
         app.quit();
         return;
     }
 
     portal.start();
-    initialized = true;
-    initializedRes.forEach(res => res());
-    initializedRes = [];
+    initializeResolver.state = true;
 
     let t0 = null;
-    setInterval(() => {
+    let id = setInterval(() => {
         let t1 = util.getTime();
         if (t0 == null) return t1 = t0;
-        portal.update(t1-t0);
+        try {
+            portal.update(t1-t0);
+        } catch (e) {
+            showError("Portal Update Error", e);
+            clearInterval(id);
+            allowQuit = true;
+            app.quit();
+            return;
+        }
         t1 = t0;
     }, 10);
 
-})();
+};
+MAIN();

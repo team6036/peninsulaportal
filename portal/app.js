@@ -329,7 +329,9 @@ export default class App extends core.App {
                     let result = await pop.whenResult();
                     if (!result) return;
                 }
-                window.api.send("spawn", name);
+                try {
+                    await window.api.send("spawn", name);
+                } catch (e) { await this.error("Spawn Error: "+name, e).whenResult(); }
             });
             
             let btn;
