@@ -1971,11 +1971,17 @@ const MAIN = async () => {
             };
             const onHolidayState = async holiday => {
                 let tag = "png";
-                let icon = (holiday == null) ? path.join(__dirname, "assets", "app", "icon."+tag) : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
+                let defaultIcon = path.join(__dirname, "assets", "app", "icon."+tag);
+                let icon = (holiday == null) ? defaultIcon : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
                 if (!this.hasWindow()) return;
-                if (OS.platform == "win32") this.window.setIcon(icon);
-                if (OS.platform == "darwin") app.dock.setIcon(icon);
-                if (OS.platform == "linux") this.window.setIcon(icon);
+                if (OS.platform == "win32") this.window.setIcon(defaultIcon);
+                if (OS.platform == "darwin") app.dock.setIcon(defaultIcon);
+                if (OS.platform == "linux") this.window.setIcon(defaultIcon);
+                try {
+                    if (OS.platform == "win32") this.window.setIcon(icon);
+                    if (OS.platform == "darwin") app.dock.setIcon(icon);
+                    if (OS.platform == "linux") this.window.setIcon(icon);
+                } catch (e) {}
             };
             (async () => await onHolidayState(await this.get("active-holiday")))();
             this.#window = new electron.BrowserWindow(options);
