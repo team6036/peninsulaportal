@@ -2762,7 +2762,7 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
                 await PLEXUSCONTEXT.logsDownload([name]);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("There was an error downloading log: "+name, e);
+                    this.app.error("Plexus Log Download Error: "+name, e);
             }
         });
         this.addHandler("log-trigger2", (e, name) => {
@@ -2869,7 +2869,7 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
                 await PLEXUSCONTEXT.logsServerDelete(names);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("There was an error deleting the logs", e);
+                    this.app.error("Plexus Log Delete Error: "+names.join(", "), e);
             }
         });
 
@@ -6790,7 +6790,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        this.app.error("There was an error loading the WPILOG!", e);
+                        this.app.error("WPILOG Load Error: "+this.project.config.source, e);
                     }
                     this.app.progress = null;
                     delete this.source.importing;

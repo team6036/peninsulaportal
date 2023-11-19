@@ -65,9 +65,11 @@ export class App extends util.Target {
 
         this.#title = null;
 
-        window.api.onPerm(() => {
+        window.api.onPerm(async () => {
             if (this.setupDone) return;
-            window.api.sendPerm(true);
+            try {
+                window.api.sendPerm(true);
+            } catch (e) { await this.error("Permission Send Error", e).whenResult(); }
         });
 
         this.addHandler("start", () => {
@@ -78,23 +80,43 @@ export class App extends util.Target {
                     await this.post("pre-setup");
                     await this.setup();
                     await this.post("post-setup");
-                    let page = await window.api.send("state-get", "page");
-                    let pageState = await window.api.send("state-get", "page-state");
-                    let pageLazyStates = util.ensure(await window.api.send("state-get", "page-lazy-states"), "obj");
+                    let page = "";
+                    try {
+                        page = await window.api.send("state-get", "page");
+                    } catch (e) { await this.error("State CurrentPage Get Error", e).whenResult(); }
+                    let pageState = null;
+                    try {
+                        pageState = await window.api.send("state-get", "page-state");
+                    } catch (e) { await this.error("State PageState Get Error", e).whenResult(); }
+                    let pageLazyStates = {};
+                    try {
+                        pageLazyStates = util.ensure(await window.api.send("state-get", "page-lazy-states"), "obj");
+                    } catch (e) { await this.error("State PageLazyStates Get Error", e).whenResult(); }
                     for (let name in pageLazyStates) {
                         if (!this.hasPage(name)) continue;
-                        await this.getPage(name).loadLazyState(util.ensure(pageLazyStates[name], "obj"));
+                        try {
+                            await this.getPage(name).loadLazyState(util.ensure(pageLazyStates[name], "obj"));
+                        } catch (e) { await this.error("Load LazyState Error ("+name+")", e).whenResult(); }
                     }
                     if (this.hasPage(page)) {
-                        await this.getPage(page).loadState(util.ensure(pageState, "obj"));
+                        try {
+                            await this.getPage(page).loadState(util.ensure(pageState, "obj"));
+                        } catch (e) { await this.error("Load State Error ("+page+")", e).whenResult(); }
                         if (this.page != page) this.page = page;
                     }
-                    let t0 = null;
-                    const update = () => {
+                    let t0 = null, error = false;
+                    const update = async () => {
                         window.requestAnimationFrame(update);
                         let t1 = util.getTime();
-                        if (t0 == null) return t0 = t1;
-                        this.post("update", t1-t0);
+                        if (t0 == null || error) return t0 = t1;
+                        try {
+                            this.update(t1-t0);
+                        } catch (e) {
+                            error = true;
+                            await this.error("Update Error", e).whenResult();
+                            error = false;
+                            return t0 = null;
+                        }
                         t0 = t1;
                     };
                     update();
@@ -110,6 +132,7 @@ export class App extends util.Target {
     get setupDone() { return this.#setupDone; }
 
     start() { this.post("start"); }
+    update(delta) { this.post("update", delta); }
 
     async getAbout() {
         let os = util.ensure(await window.version.os(), "obj");
@@ -120,7 +143,9 @@ export class App extends util.Target {
             cpu.model = util.ensure(cpu.model, "str", "?");
             return cpu;
         });
-        let app = await window.api.get("version");
+        let app;
+        try { app = await window.api.get("version"); }
+        catch (e) { app = String(e); }
         return {
             node: String(window.version.node()),
             chrome: String(window.version.chrome()),
@@ -352,11 +377,11 @@ export class App extends util.Target {
 
         const root = "file://"+(await window.api.getAppRoot());
 
-        window.api.onPerm(() => {
-            (async () => {
-                let perm = await this.getPerm();
+        window.api.onPerm(async () => {
+            let perm = await this.getPerm();
+            try {
                 window.api.sendPerm(perm);
-            })();
+            } catch (e) { await this.error("Send Permission Error", e).whenResult(); }
         });
         window.api.on((_, cmd, ...a) => {
             cmd = String(cmd);
@@ -365,11 +390,17 @@ export class App extends util.Target {
         });
         this.addHandler("perm", async () => {
             if (this.hasPage(this.page)) {
-                await window.api.send("state-set", "page", this.page);
-                await window.api.send("state-set", "page-state", this.getPage(this.page).state);
+                try {
+                    await window.api.send("state-set", "page", this.page);
+                } catch (e) { await this.error("State CurrentPage Set Error", e).whenResult(); }
+                try {
+                    await window.api.send("state-set", "page-state", this.getPage(this.page).state);
+                } catch (e) { await this.error("State PageState Set Error", e).whenResult(); }
                 let pageLazyStates = {};
                 this.pages.forEach(name => (pageLazyStates[name] = this.getPage(name).lazyState));
-                await window.api.send("state-set", "page-lazy-states", pageLazyStates);
+                try {
+                    await window.api.send("state-set", "page-lazy-states", pageLazyStates);
+                } catch (e) { await this.error("State PageLazyStates Set Error", e).whenResult(); }
             }
             return true;
         });
@@ -1082,7 +1113,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     set hasInfo(v) {
         v = !!v;
         if (this.hasInfo == v) return;
-        if (v) this.inner.insertBefore(this.eInfo, this.eButton);
+        if (v) this.inner.insertBefore(this.eInfo, this.eContent.nextElementSibling);
         else this.inner.removeChild(this.eInfo);
     }
     get info() { return this.eInfo.innerHTML; }
@@ -1849,7 +1880,7 @@ export class AppFeature extends App {
         try {
             await this.syncWithFiles();
         } catch (e) {
-            this.error("There was an error loading your projects!", e);
+            await this.error("Projects Load Error", e).whenResult();
             return false;
         }
         return true;
@@ -1898,7 +1929,7 @@ export class AppFeature extends App {
         try {
             await this.syncFilesWith();
         } catch (e) {
-            this.error("There was an error saving your projects!", e);
+            await this.error("Projects Save Error", e).whenResult();
             return false;
         }
         return true;
@@ -2633,14 +2664,12 @@ export class Client extends util.Target {
     async emit(name, payload) {
         if (this.destroyed) return null;
         if (this.disconnected) return null;
-        let r = await window.api.clientEmit(this.id, name, payload);
-        return r;
+        return await window.api.clientEmit(this.id, name, payload);
     }
     async stream(pth, name, payload) {
         if (this.destroyed) return null;
         if (this.disconnected) return null;
-        let r = await window.api.clientStream(this.id, pth, name, payload);
-        return r;
+        return await window.api.clientStream(this.id, pth, name, payload);
     }
 
     async destroy() {
