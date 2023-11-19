@@ -410,8 +410,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
             this.#loads = new Set();
             this.#isLoading = false;
-
-            // electron.nativeTheme.themeSource = "dark";
         }
 
         async init() {
@@ -453,6 +451,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             electron.nativeTheme.themeSource = await this.get("native-theme");
             return true;
         }
+        async quit() {}
 
         get stream() { return this.#stream; }
         hasStream() { return this.stream instanceof fs.WriteStream; }
@@ -504,12 +503,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (feat.portal != this) return false;
             if (!this.hasFeature(feat)) return false;
             feat.log("REM");
-            if (feat.started) {
-                feat.log("REM - not stopped");
-                let r = await feat.stop();
-                feat.log(`REM - stop: ${!!r}`);
-                return await this.remFeature(feat);
-            }
+            if (feat.started) return await feat.stop();
             feat.log("REM - already stopped");
             this.#features.delete(feat);
             this.change("remFeature", feat, null);
@@ -959,10 +953,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 await this.affirm();
                 await this.post("start");
 
-                this.addFeature(new Portal.Feature(this, "PORTAL"));
-                setTimeout(async () => {
-                    await this.tryLoad();
-                }, 0*1000);
+                let feats = util.ensure(await this.on("state-get", "features"), "arr");
+                feats.forEach(name => {
+                    let feat = null;
+                    try {
+                        feat = new Portal.Feature(this, name);
+                    } catch (e) {
+                        electron.dialog.showErrorBox("Error creating feature with name: "+name, String(e));
+                        return;
+                    }
+                    this.addFeature(feat);
+                });
+
+                if (this.features.length <= 0) this.addFeature(new Portal.Feature(this, "PORTAL"));
+                
+                await this.tryLoad();
             })();
 
             return true;
@@ -975,8 +980,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
             let all = true;
             for (let i = 0; i < feats.length; i++) {
                 let r = await this.remFeature(feats[i]);
-                all &&= r;
+                all &&= !!r;
             }
+            feats = feats.map(feat => feat.name);
+            await this.on("state-set", "features", feats);
             return all;
         }
 
@@ -1007,6 +1014,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
             if (!hasClientConfig) await this.fileWrite([dataPath, ".clientconfig"], JSON.stringify({}, null, "\t"));
             let hasVersion = await this.fileHas([dataPath, ".version"]);
             if (!hasVersion) await this.fileWrite([dataPath, ".version"], "");
+            let hasState = await this.fileHas([dataPath, ".state"]);
+            if (!hasState) await this.fileWrite([dataPath, ".state"], "");
             return true;
         }
         async affirm() {
@@ -1717,15 +1726,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     const notif = new electron.Notification(options);
                     notif.show();
                 },
+                "_state": async () => {
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".state");
+                    } catch (e) {}
+                    let state = null;
+                    try {
+                        state = JSON.parse(content);
+                    } catch (e) {}
+                    state = util.ensure(state, "obj");
+                    return state;
+                },
+                "state-get": async k => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    return state[k];
+                },
+                "state-set": async (k, v) => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    state[k] = v;
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
+                "state-del": async k => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    let v = state[k];
+                    delete state[k];
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
             };
             if (k in kfs) return await kfs[k](...a);
             throw "§O No possible \"on\" for key: "+k;
         }
         async onCallback(id, k, ...a) {
-            try {
-                return await this.on(k, ...a);
-            } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             let feat = this.identifyFeature(id);
+            if (!(feat instanceof Portal.Feature)) {
+                try {
+                    return await this.on(k, ...a);
+                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
+            }
             if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
             return await feat.on(k, ...a);
         }
@@ -1772,8 +1816,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
         #perm;
 
         #started;
-        #ready;
-        #readyRes;
+        #resolver;
 
         #state;
 
@@ -1796,8 +1839,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
             this.#started = false;
 
-            this.#ready = 0;
-            this.#readyRes = [];
+            this.#resolver = new util.Resolver(0);
 
             this.#state = {};
 
@@ -1844,8 +1886,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     clear();
                     res(!!given);
                 };
-                ipc.once("permack", permack);
-                ipc.once("perm", perm);
+                ipc.on("permack", permack);
+                ipc.on("perm", perm);
             });
             let namefs = {
             };
@@ -1855,18 +1897,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
         get state() { return this.#state; }
 
-        get ready() { return this.#ready == 2; }
-        async whenReady() {
-            if (this.ready) return;
-            await new Promise((res, rej) => this.#readyRes.push(res));
-        }
+        get ready() { return this.#resolver.state == 2; }
+        async whenReady() { await this.#resolver.when(2); }
+        async whenNotReady() { await this.#resolver.whenNot(2); }
 
         get started() { return this.#started; }
         start() {
             if (this.started) return false;
             this.log("START");
             this.#started = true;
-            this.#ready = 0;
+            this.#resolver.state = 0;
 
             let namefs;
 
@@ -1898,16 +1938,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
             this.#window = new electron.BrowserWindow(options);
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
-                this.#ready++;
-                if (this.ready) {
-                    this.#readyRes.forEach(res => res());
-                    this.#readyRes = [];
-                }
+                this.#resolver.state++;
             });
             let id = setTimeout(() => {
                 electron.dialog.showErrorBox("Startup Error", "The application refused to start properly");
                 clear();
-                this.portal.remFeature(this);
+                this.stop();
             }, 1000);
             const clear = () => {
                 clearInterval(id);
@@ -1917,13 +1953,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
                 if (!this.hasWindow()) return;
                 if (e.sender.id != this.window.webContents.id) return;
                 clear();
-                this.#ready++;
-                if (this.ready) {
-                    this.#readyRes.forEach(res => res());
-                    this.#readyRes = [];
-                }
+                this.#resolver.state++;
             };
-            ipc.once("ready", ready);
+            ipc.on("ready", ready);
 
             this.window.on("unresponsive", () => {});
             this.window.webContents.on("did-fail-load", () => { if (this.hasWindow()) this.window.close(); });
@@ -2122,17 +2154,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
             namefs = {
                 PORTAL: () => {
+                    let resolver = new util.Resolver(false);
+                    let nAll = 0;
                     const checkForShow = async () => {
+                        nAll++;
+                        let n = nAll;
                         if (!this.hasWindow()) return;
+                        await this.whenReady();
+                        await resolver.whenFalse();
+                        resolver.state = true;
                         let feats = this.portal.features;
                         let nFeats = 0;
                         feats.forEach(feat => (["PORTAL"].includes(feat.name) ? null : nFeats++));
-                        await this.whenReady();
-                        (nFeats > 0) ? this.window.hide() : this.window.show();
+                        console.log(n, nFeats);
+                        if (nFeats > 0) this.window.hide();
+                        else this.window.show();
+                        resolver.state = false;
                     };
                     checkForShow();
                     this.portal.addHandler("change-addFeature", () => checkForShow());
                     this.portal.addHandler("change-remFeature", () => checkForShow());
+                    this.window.on("show", checkForShow);
                 },
                 PANEL: () => {
                     this.addHandler("client-stream-logs", async () => ["logs"]);
@@ -2599,9 +2641,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
         async on(k, ...a) {
             if (!this.started) return null;
             k = String(k);
-            try {
-                return await this.portal.on(k, ...a);
-            } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             let doLog = true;
             let kfs = {
                 "close": async () => await this.stop(),
@@ -3117,11 +3156,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
                     },
                 },
             };
-            let r = null;
-            if (this.name in namefs)
-                if (k in namefs[this.name])
+            let r = null, hasR = false;
+            if (this.name in namefs) {
+                if (k in namefs[this.name]) {
                     r = await namefs[this.name][k](...a);
+                    hasR = true;
+                }
+            }
             if (doLog) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            if (!hasR) {
+                try {
+                    r = await this.portal.on(k, ...a);
+                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
+            }
             return r;
         }
         async send(k, ...a) {
@@ -3174,18 +3221,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
         portal.start();
     });
 
-    let allowQuit = false;
+    let allowQuit = false, beforeQuitResolver = new util.Resolver(false);
     app.on("before-quit", async e => {
         if (allowQuit) return;
         e.preventDefault();
+        await beforeQuitResolver.whenFalse();
+        if (allowQuit) return;
+        beforeQuitResolver.state = true;
         await whenInitialized();
+        if (allowQuit) return;
         log("> before-quit");
         let stopped = true;
         try {
             stopped = await portal.stop();
         } catch (e) {}
-        if (!stopped) return;
+        if (!stopped) return beforeQuitResolver.state = false;
         allowQuit = true;
+        beforeQuitResolver.state = false;
         app.quit();
     });
     app.on("window-all-closed", async () => {
@@ -3196,6 +3248,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
     app.on("quit", async () => {
         log("> quit");
         await whenInitialized();
+        await portal.quit();
     });
 
     await app.whenReady();

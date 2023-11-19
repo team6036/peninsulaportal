@@ -1699,6 +1699,47 @@ export class Polygon extends Shape {
 Shape.Polygon = Polygon;
 
 
+export class Resolver extends Target {
+    #state;
+
+    #resolves;
+
+    constructor(state) {
+        super();
+
+        this.#state = state;
+
+        this.#resolves = [];
+    }
+
+    get state() { return this.#state; }
+    set state(v) {
+        if (this.state == v) return;
+        this.change("state", this.state, this.#state=v);
+        [...this.#resolves].forEach(o => {
+            if (this.state != v) return;
+            let methodfs = {
+                "==": o.v == this.state,
+                "!=": o.v != this.state,
+            };
+            if (!methodfs[o.method]) return;
+            o.res();
+        });
+    }
+
+    async when(v) {
+        if (this.state == v) return;
+        return await new Promise((res, rej) => this.#resolves.push({ v: v, res: res, method: "==" }));
+    }
+    async whenNot(v) {
+        if (this.state != v) return;
+        return await new Promise((res, rej) => this.#resolves.push({ v: v, res: res, method: "!=" }));
+    }
+    async whenTrue() { return await this.when(true); }
+    async whenFalse() { return await this.when(false); }
+}
+
+
 export class Reviver extends Target {
     #rules;
 
