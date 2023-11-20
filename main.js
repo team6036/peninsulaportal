@@ -46,6 +46,8 @@ const MAIN = async () => {
     const sc = require("socket.io-client");
     const ss = require("socket.io-stream");
 
+    const tba = require("tba-api-v3client");
+
     const OS = {
         arch: os.arch(),
         platform: os.platform(),
@@ -60,7 +62,6 @@ const MAIN = async () => {
     }
 
     const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
-    // const APPDATA = path.join(app.getPath("appData"), "PeninsulaPortal");
 
     class Process extends util.Target {
         #id;
@@ -383,6 +384,191 @@ const MAIN = async () => {
             return this.clients.filter(client => client.hasTag(tag));
         }
     }
+    class TbaClient extends util.Target {
+        #id;
+        #tags;
+
+        #client;
+        #tbaAPI;
+        #listAPI;
+        #teamAPI;
+        #eventAPI;
+        #matchAPI;
+        #districtAPI;
+
+        constructor() {
+            super();
+
+            this.#id = null;
+            this.#tags = new Set();
+
+            this.#client = tba.ApiClient.instance;
+            this.#tbaAPI = new tba.TBAApi();
+            this.#listAPI = new tba.ListApi();
+            this.#teamAPI = new tba.TeamApi();
+            this.#eventAPI = new tba.EventApi();
+            this.#matchAPI = new tba.MatchApi();
+            this.#districtAPI = new tba.DistrictApi();
+        }
+
+        get id() { return this.#id; }
+        set id(v) {
+            v = (v == null) ? null : String(v);
+            if (this.id == v) return;
+            this.#id = v;
+        }
+        get tags() { return [...this.#tags]; }
+        set tags(v) {
+            v = util.ensure(v, "arr");
+            this.clearTags();
+            v.forEach(v => this.addTag(v));
+        }
+        clearTags() {
+            let tags = this.tags;
+            tags.forEach(tag => this.remTag(tag));
+            return tags;
+        }
+        hasTag(tag) {
+            return this.#tags.has(tag);
+        }
+        addTag(tag) {
+            this.#tags.add(tag);
+            return true;
+        }
+        remTag(tag) {
+            this.#tags.delete(tag);
+            return true;
+        }
+
+        get client() { return this.#client; }
+        get tbaAPI() { return this.#tbaAPI; }
+        get listAPI() { return this.#listAPI; }
+        get teamAPI() { return this.#teamAPI; }
+        get eventAPI() { return this.#eventAPI; }
+        get matchAPI() { return this.#matchAPI; }
+        get districtAPI() { return this.#districtAPI; }
+
+        async invoke(invoke, ...a) {
+            let ref = String(invoke).split(".");
+            if (ref.length != 2) throw "Invalid invocation (split length) ("+invoke+")";
+            let [api, f] = ref;
+            if (!api.endsWith("API")) throw "Invalid invocation (api name) ("+invoke+")";
+            if (!(api in this)) throw "Invalid invocation (api existence) ("+invoke+")";
+            api = this[api];
+            if (!(f in api)) throw "Invalid invocation (method existence) ("+invoke+")";
+            let l = 1;
+            let apifs = {
+                tbaAPI: {
+                    getStatus: 0,
+                },
+                listAPI: {
+                    getTeamEventsStatusesByYear: 2,
+                    getTeamsByYear: 2,
+                    getTeamsByYearKeys: 2,
+                    getTeamsByYearSimple: 2,
+                },
+                teamAPI: {
+                    getTeamAwardsByYear: 2,
+                    getTeamEventAwards: 2,
+                    getTeamEventMatches: 2,
+                    getTeamEventMatchesKeys: 2,
+                    getTeamEventMatchesSimple: 2,
+                    getTeamEventStatus: 2,
+                    getTeamEventsByYear: 2,
+                    getTeamEventsByYearKeys: 2,
+                    getTeamEventsByYearSimple: 2,
+                    getTeamEventsStatusesByYear: 2,
+                    getTeamMatchesByYear: 2,
+                    getTeamMatchesByYearKeys: 2,
+                    getTeamMatchesByYearSimple: 2,
+                    getTeamMediaByTag: 2,
+                    getTeamMediaByTagYear: 3,
+                    getTeamMediaByYear: 2,
+                    getTeamsByYear: 2,
+                    getTeamsByYearKeys: 2,
+                    getTeamsByYearSimple: 2,
+                },
+                eventAPI: {
+                    getTeamEventAwards: 2,
+                    getTeamEventMatches: 2,
+                    getTeamEventMatchesKeys: 2,
+                    getTeamEventMatchesSimple: 2,
+                    getTeamEventStatus: 2,
+                    getTeamEventsByYear: 2,
+                    getTeamEventsByYearKeys: 2,
+                    getTeamEventsByYearSimple: 2,
+                    getTeamEventsStatusesByYear: 2,
+                },
+                matchAPI: {
+                    getTeamEventMatches: 2,
+                    getTeamEventMatchesKeys: 2,
+                    getTeamEventMatchesSimple: 2,
+                    getTeamMatchesByYear: 2,
+                    getTeamMatchesByYearKeys: 2,
+                    getTeamMatchesByYearSimple: 2,
+                },
+            };
+            if ((api in apifs) && (f in apifs[api])) l = apifs[api][f];
+            while (a.length > l+1) a.pop();
+            while (a.length < l) a.push(null);
+            if (a.length == l) a.push({});
+            a[l] = util.ensure(a[l], "obj");
+            return await new Promise((res, rej) => {
+                api[f](...a, (e, data, resp) => {
+                    if (e) return rej(e);
+                    res(data);
+                });
+            });
+        }
+    }
+    class TbaClientManager extends util.Target {
+        #clients;
+
+        constructor() {
+            super();
+
+            this.#clients = new Set();
+        }
+
+        get clients() { return [...this.#clients]; }
+        set clients(v) {
+            v = util.ensure(v, "arr");
+            this.clearClients();
+            v.forEach(v => this.addClient(v));
+        }
+        clearClients() {
+            let clients = this.clients;
+            clients.forEach(client => this.remClient(client));
+            return clients;
+        }
+        hasClient(client) {
+            if (!(client instanceof TbaClient)) return false;
+            return this.#clients.has(client);
+        }
+        addClient(client) {
+            if (!(client instanceof TbaClient)) return false;
+            if (this.hasClient(client)) return false;
+            this.#clients.add(client);
+            return client;
+        }
+        remClient(client) {
+            if (!(client instanceof TbaClient)) return false;
+            if (!this.hasClient(client)) return false;
+            this.#clients.delete(client);
+            return client;
+        }
+
+        getClientById(id) {
+            for (let i = 0; i < this.clients.length; i++)
+                if (this.clients[i].id == id)
+                    return this.clients[i];
+            return null;
+        }
+        getClientsByTag(tag) {
+            tag = String(tag);
+            return this.clients.filter(client => client.hasTag(tag));
+        }
+    }
     const showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
     class Portal extends util.Target {
         #started;
@@ -391,6 +577,7 @@ const MAIN = async () => {
 
         #processManager;
         #clientManager;
+        #tbaClientManager;
 
         #features;
 
@@ -406,6 +593,7 @@ const MAIN = async () => {
 
             this.#processManager = new ProcessManager();
             this.#clientManager = new ClientManager();
+            this.#tbaClientManager = new TbaClientManager();
 
             this.#features = new Set();
 
@@ -465,6 +653,7 @@ const MAIN = async () => {
 
         get processManager() { return this.#processManager; }
         get clientManager() { return this.#clientManager; }
+        get tbaClientManager() { return this.#tbaClientManager; }
 
         get features() { return [...this.#features]; }
         set features(v) {
@@ -976,6 +1165,23 @@ const MAIN = async () => {
                 return await feat.clientStream(id, pth, name, payload);
             });
 
+            ipc.handle("tba-client-make", async (e, id) => {
+                let feat = identify(e);
+                return await feat.tbaClientMake(id);
+            });
+            ipc.handle("tba-client-destroy", async (e, id) => {
+                let feat = identify(e);
+                return await feat.tbaClientDestroy(id);
+            });
+            ipc.handle("tba-client-has", async (e, id) => {
+                let feat = identify(e);
+                return await feat.tbaClientHas(id);
+            });
+            ipc.handle("tba-client-invoke", async (e, id, invoke, ...a) => {
+                let feat = identify(e);
+                return await feat.tbaClientInvoke(id, invoke, ...a);
+            });
+
             (async () => {
                 try {
                     await this.affirm();
@@ -1378,8 +1584,8 @@ const MAIN = async () => {
 
         async clientMake(id, location) {
             if (await this.clientHas(id)) return null;
-            let client = this.clientManager.addClient(new Client(location));
             this.log(`CLIENT:make - ${id} = ${location}`);
+            let client = this.clientManager.addClient(new Client(location));
             client.id = id;
             return client;
         }
@@ -1420,6 +1626,31 @@ const MAIN = async () => {
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
             this.log(`CLIENT:stream - ${client.id} > ${name}`);
             return await client.stream(pth, name, payload);
+        }
+
+        async tbaClientMake(id) {
+            if (await this.tbaClientHas(id)) return null;
+            this.log(`TBACLIENT:make - ${id}`);
+            let client = this.tbaClientManager.addClient(new TbaClient());
+            client.id = id;
+            return client;
+        }
+        async tbaClientDestroy(id) {
+            if (!(await this.tbaClientHas(id))) return null;
+            this.log(`TBACLIENT:destroy - ${id}`);
+            let client = this.tbaClientDestroy.remClient((id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id));
+            return client;
+        }
+        async tbaClientHas(id) { return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(id) instanceof TbaClient); }
+        async tbaClientGet(id) {
+            if (!(await this.tbaClientHas(id))) return null;
+            return (id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id);
+        }
+        async tbaClientInvoke(id, invoke, ...a) {
+            if (!(await this.tbaClientHas(id))) return null;
+            let client = (id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id);
+            this.log(`TBACLIENT:emit - ${client.id} > ${invoke}`);
+            return await client.invoke(invoke, ...a);
         }
 
         identifyFeature(id) {
@@ -1851,6 +2082,7 @@ const MAIN = async () => {
 
         #processManager;
         #clientManager;
+        #tbaClientManager;
 
         #name;
 
@@ -1871,6 +2103,7 @@ const MAIN = async () => {
 
             this.#processManager = new ProcessManager();
             this.#clientManager = new ClientManager();
+            this.#tbaClientManager = new TbaClientManager();
 
             name = String(name).toUpperCase();
             if (!FEATURES.includes(name)) throw "Feature name "+name+" is not valid";
@@ -1891,6 +2124,7 @@ const MAIN = async () => {
 
         get processManager() { return this.#processManager; }
         get clientManager() { return this.#clientManager; }
+        get tbaClientManager() { return this.#tbaClientManager; }
 
         get portal() { return this.#portal; }
         
@@ -2596,6 +2830,27 @@ const MAIN = async () => {
         }
         async clientStream(id, pth, name, payload) {
             return await this.portal.clientStream((id instanceof Client) ? id : (this.name+":"+id), pth, name, payload);
+        }
+
+        async tbaClientMake(id) {
+            let client = await this.portal.tbaClientMake(this.name+":"+id, location);
+            client = this.tbaClientManager.addClient(client);
+            client.addTag(this.name);
+            return client;
+        }
+        async tbaClientDestroy(id) {
+            return await this.portal.tbaClientDestroy((id instanceof TbaClient) ? id : (this.name+":"+id));
+        }
+        async tbaClientHas(id) {
+            if (!(await this.portal.tbaClientHas((id instanceof TbaClient) ? id : (this.name+":"+id)))) return false;
+            return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(this.name+":"+id) instanceof TbaClient);
+        }
+        async tbaClientGet(id) {
+            if (!(await this.tbaClientHas(id))) return null;
+            return (id instanceof TbaClient) ? id : this.portal.tbaClientGet(this.name+":"+id);
+        }
+        async tbaClientInvoke(id, invoke, ...a) {
+            return await this.portal.tbaClientInvoke((id instanceof TbaClient) ? id : (this.name+":"+id), invoke, ...a);
         }
 
         async get(k) {
