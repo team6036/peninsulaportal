@@ -2586,6 +2586,12 @@ export class Client extends util.Target {
         this.#destructionResolver = new util.Resolver(true);
 
         const confirm = (id, meta) => {
+            if (this.destroyed) {
+                remClientMsg();
+                remClientStreamStart();
+                remClientStreamStop();
+                return false;
+            }
             if (this.id != id) return false;
             meta = util.ensure(meta, "obj");
             if (this.location != meta.location) return false;
@@ -2597,14 +2603,14 @@ export class Client extends util.Target {
             }
             return true;
         };
-        window.api.onClientMsg((_, id, name, payload, meta) => {
+        const remClientMsg = window.sio.onClientMsg((_, id, name, payload, meta) => {
             if (!confirm(id, meta)) return;
             name = String(name);
             console.log(this.id+":msg", name, payload);
             this.post("msg", name, payload);
             this.post("msg-"+name, payload);
         });
-        window.api.onClientStreamStart((_, id, name, pth, fname, payload, meta) => {
+        const remClientStreamStart = window.sio.onClientStreamStart((_, id, name, pth, fname, payload, meta) => {
             if (!confirm(id, meta)) return;
             name = String(name);
             pth = String(pth);
@@ -2613,7 +2619,7 @@ export class Client extends util.Target {
             this.post("stream-start", name, pth, fname, payload);
             this.post("stream-start-"+name, pth, fname, payload);
         });
-        window.api.onClientStreamStop((_, id, name, pth, fname, payload, meta) => {
+        const remClientStreamStop = window.sio.onClientStreamStop((_, id, name, pth, fname, payload, meta) => {
             if (!confirm(id, meta)) return;
             name = String(name);
             pth = String(pth);
@@ -2624,7 +2630,7 @@ export class Client extends util.Target {
         });
 
         (async () => {
-            await window.api.clientMake(this.id, this.location);
+            await window.sio.clientMake(this.id, this.location);
             this.#destructionResolver.state = false;
         })();
     }
@@ -2652,29 +2658,29 @@ export class Client extends util.Target {
     async connect() {
         if (this.destroyed) return false;
         if (this.connected) return false;
-        await window.api.clientConn(this.id);
+        await window.sio.clientConn(this.id);
         return true;
     }
     async disconnect() {
         if (this.destroyed) return false;
         if (this.disconnected) return false;
-        await window.api.clientDisconn(this.id);
+        await window.sio.clientDisconn(this.id);
         return true;
     }
     async emit(name, payload) {
         if (this.destroyed) return null;
         if (this.disconnected) return null;
-        return await window.api.clientEmit(this.id, name, payload);
+        return await window.sio.clientEmit(this.id, name, payload);
     }
     async stream(pth, name, payload) {
         if (this.destroyed) return null;
         if (this.disconnected) return null;
-        return await window.api.clientStream(this.id, pth, name, payload);
+        return await window.sio.clientStream(this.id, pth, name, payload);
     }
 
     async destroy() {
         if (this.destroyed) return false;
-        await window.api.clientDestroy(this.id);
+        await window.sio.clientDestroy(this.id);
         this.#destructionResolver.state = true;
         return true;
     }
