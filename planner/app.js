@@ -1958,28 +1958,30 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.useRobotHeading.disabled = !has || !allNode;
             if (allNode) {
                 let same = true, sameValue = null, first = true;
-                itms.forEach(itm => {
-                    if (!same) return;
+                for (let itm of itms) {
                     if (first) {
                         first = false;
                         sameValue = itm.useHeading;
-                        return;
+                        continue;
                     }
-                    if (itm.useHeading != sameValue) same = false;
-                });
+                    if (sameValue == itm.useHeading) continue;
+                    same = false;
+                    break;
+                }
                 this.useRobotHeading.checked = same ? sameValue : false;
             } else this.useRobotHeading.checked = false;
             if (allNode) {
                 let same = true, sameValue = null, first = true;
-                itms.forEach(itm => {
-                    if (!same) return;
+                for (let itm of itms) {
                     if (first) {
                         first = false;
                         sameValue = itm.heading;
-                        return;
+                        continue;
                     }
-                    if (itm.heading != sameValue) same = false;
-                });
+                    if (sameValue == itm.heading) continue;
+                    same = false;
+                    break;
+                }
                 this.robotHeading.inputs[0].value = same ? sameValue : "";
                 this.robotHeadingDrag.style.setProperty("--dir", (-(180/Math.PI)*(same ? sameValue : 0))+"deg");
             } else {
@@ -1989,71 +1991,76 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.useRobotVelocity.disabled = !has || !allNode;
             if (allNode) {
                 let same = true, sameValue = null, first = true;
-                itms.forEach(itm => {
-                    if (!same) return;
+                for (let itm of itms) {
                     if (first) {
                         first = false;
                         sameValue = itm.useVelocity;
-                        return;
+                        continue;
                     }
-                    if (itm.useVelocity != sameValue) same = false;
-                });
+                    if (sameValue == itm.useVelocity) continue;
+                    same = false;
+                    break;
+                }
                 this.useRobotVelocity.checked = same ? sameValue : false;
             } else this.useRobotVelocity.checked = false;
             this.robotVelocity.inputs[0].disabled = !has || !allNode || !this.useRobotVelocity.checked;
             if (allNode) {
                 let same = true, sameValue = null, first = true;
-                itms.forEach(itm => {
-                    if (!same) return;
+                for (let itm of itms) {
                     if (first) {
                         first = false;
                         sameValue = itm.velocityX;
-                        return;
+                        continue;
                     }
-                    if (itm.velocityX != sameValue) same = false;
-                });
+                    if (sameValue == itm.velocityX) continue;
+                    same = false;
+                    break;
+                }
                 this.robotVelocity.inputs[0].value = same ? sameValue/100 : "";
             } else this.robotVelocity.inputs[0].value = "";
             this.robotVelocity.inputs[1].disabled = !has || !allNode || !this.useRobotVelocity.checked;
             if (allNode) {
                 let same = true, sameValue = null, first = true;
-                itms.forEach(itm => {
-                    if (!same) return;
+                for (let itm of itms) {
                     if (first) {
                         first = false;
                         sameValue = itm.velocityY;
-                        return;
+                        continue;
                     }
-                    if (itm.velocityY != sameValue) same = false;
-                });
+                    if (sameValue == itm.velocityY) continue;
+                    same = false;
+                    break;
+                }
                 this.robotVelocity.inputs[1].value = same ? sameValue/100 : "";
             } else this.robotVelocity.inputs[1].value = "";
             this.robotRotVelocity.inputs[0].disabled = !has || !allNode || !this.useRobotVelocity.checked;
             if (allNode) {
                 let same = true, sameValue = null, first = true;
-                itms.forEach(itm => {
-                    if (!same) return;
+                for (let itm of itms) {
                     if (first) {
                         first = false;
                         sameValue = itm.velocityRot;
-                        return;
+                        continue;
                     }
-                    if (itm.velocityRot != sameValue) same = false;
-                });
+                    if (sameValue == itm.velocityRot) continue;
+                    same = false;
+                    break;
+                }
                 this.robotRotVelocity.inputs[0].value = same ? sameValue : "";
             } else this.robotRotVelocity.inputs[0].value = "";
             this.radius.inputs[0].disabled = !has || !allObstacle;
             if (allObstacle) {
                 let same = true, sameValue = null, first = true;
-                itms.forEach(itm => {
-                    if (!same) return;
+                for (let itm of itms) {
                     if (first) {
                         first = false;
                         sameValue = itm.radius;
-                        return;
+                        continue;
                     }
-                    if (itm.radius != sameValue) same = false;
-                });
+                    if (sameValue == itm.radius) continue;
+                    same = false;
+                    break;
+                }
                 this.radius.inputs[0].value = same ? sameValue/100 : "";
             } else this.radius.inputs[0].value = "";
         });

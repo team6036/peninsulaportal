@@ -241,13 +241,11 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         this.#length = failed ? null : bX;
         this.helper.patterns.forEach(name => {
             let pattern = this.helper.getPattern(name);
-            let has = false;
-            pattern.fields.forEach(field => {
-                if (has) return;
-                if (field.type != this.name) return;
-                has = true;
-            });
-            if (has) pattern.build();
+            for (let field of pattern.fields) {
+                if (field.type != this.name) continue;
+                pattern.build();
+                break;
+            }
         });
     }
 

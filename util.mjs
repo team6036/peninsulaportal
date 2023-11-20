@@ -605,7 +605,11 @@ export class Color extends Target {
                     a = a.substring(1).toLowerCase();
                     const hex = "0123456789abcdef";
                     let all = true;
-                    a.split("").forEach(c => (hex.includes(c) ? null : (all = false)));
+                    for (let c of a) {
+                        if (hex.includes(c)) continue;
+                        all = false;
+                        break;
+                    }
                     if (!all) a = [0, 0, 0];
                     else {
                         if (a.length == 3 || a.length == 4) a = new Array(a.length).fill(null).map((_, i) => hex.indexOf(a[i])).map(x => x*16+x);
@@ -1336,9 +1340,8 @@ export class InvertedCircle extends Circle {
             return false;
         }
         if (strictlyIs(o, Polygon)) {
-            let points = o.finalPoints;
-            for (let i = 0; i < points.length; i++)
-                if (this.collides(points[i]))
+            for (let point of points)
+                if (this.collides(point))
                     return true;
             return false;
         }
@@ -1716,15 +1719,21 @@ export class Resolver extends Target {
     set state(v) {
         if (this.state == v) return;
         this.change("state", this.state, this.#state=v);
-        [...this.#resolves].forEach(o => {
-            if (this.state != v) return;
+        let i = 0;
+        while (i < this.#resolves.length) {
+            let o = this.#resolves[i];
             let methodfs = {
                 "==": o.v == this.state,
                 "!=": o.v != this.state,
             };
-            if (!methodfs[o.method]) return;
+            if (!methodfs[o.method]) {
+                i++;
+                continue;
+            }
+            this.#resolves.splice(i, 1);
             o.res();
-        });
+            if (this.state != v) break;
+        }
     }
 
     async when(v) {

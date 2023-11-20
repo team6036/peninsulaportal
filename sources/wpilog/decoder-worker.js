@@ -66,9 +66,9 @@ class WPILOGDecoderWorker extends WorkerBase {
                                 let name = path.shift();
                                 let found = null;
                                 for (let fname in fields) {
-                                    if (found) continue;
                                     if (fname != name) continue;
                                     found = fields[fname];
+                                    break;
                                 }
                                 if (!found) {
                                     found = {

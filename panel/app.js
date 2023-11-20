@@ -940,12 +940,10 @@ class Container extends Widget {
 
     contains(v) {
         if (v == this) return true;
-        let contains = false;
-        this.children.forEach(child => {
-            if (contains) return;
-            contains ||= child.contains(v);
-        });
-        return contains;
+        for (let child of this.children)
+            if (child.contains(v))
+                return true;
+        return false;
     }
 
     format() {

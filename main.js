@@ -184,9 +184,9 @@ const MAIN = async () => {
         }
 
         getProcessById(id) {
-            for (let i = 0; i < this.processes.length; i++)
-                if (this.processes[i].id == id)
-                    return this.processes[i];
+            for (let process of this.processes)
+                if (process.id == id)
+                    return process;
             return null;
         }
         getProcessesByTag(tag) {
@@ -374,9 +374,9 @@ const MAIN = async () => {
         }
 
         getClientById(id) {
-            for (let i = 0; i < this.clients.length; i++)
-                if (this.clients[i].id == id)
-                    return this.clients[i];
+            for (let client of this.clients)
+                if (client.id == id)
+                    return client;
             return null;
         }
         getClientsByTag(tag) {
@@ -559,9 +559,9 @@ const MAIN = async () => {
         }
 
         getClientById(id) {
-            for (let i = 0; i < this.clients.length; i++)
-                if (this.clients[i].id == id)
-                    return this.clients[i];
+            for (let client of this.clients)
+                if (client.id == id)
+                    return client;
             return null;
         }
         getClientsByTag(tag) {
@@ -665,8 +665,7 @@ const MAIN = async () => {
         }
         async clearFeatures() {
             let feats = this.features;
-            for (let i = 0; i < feats.length; i++)
-                await this.remFeature(feats[i]);
+            await Promise.all(feats.map(async feat => await this.remFeature(feat)));
             return feats;
         }
         hasFeature(feat) {
@@ -1201,9 +1200,7 @@ const MAIN = async () => {
                     let feat = null;
                     try {
                         feat = new Portal.Feature(this, name);
-                    } catch (e) {
-                        return showError("Portal Start Error - Feature:"+name, e);
-                    }
+                    } catch (e) { return showError("Portal Start Error - Feature:"+name, e); }
                     this.addFeature(feat);
                 });
 
@@ -1227,10 +1224,10 @@ const MAIN = async () => {
             }
             let feats = this.features;
             let all = true;
-            for (let i = 0; i < feats.length; i++) {
-                let r = await this.remFeature(feats[i]);
+            await Promise.all(feats.map(async feat => {
+                let r = await this.remFeature(feat);
                 all &&= !!r;
-            }
+            }));
             feats = feats.map(feat => feat.name);
             await this.on("state-set", "features", feats);
             return all;
@@ -1654,11 +1651,10 @@ const MAIN = async () => {
         }
 
         identifyFeature(id) {
-            let feats = this.features;
-            for (let i = 0; i < feats.length; i++) {
-                if (!feats[i].hasWindow()) continue;
-                if (id == feats[i].window.webContents.id)
-                    return feats[i];
+            for (let feat of this.features) {
+                if (!feat.hasWindow()) continue;
+                if (feat.window.webContents.id != id) continue;
+                return feat;
             }
             return null;
         }
@@ -1983,14 +1979,10 @@ const MAIN = async () => {
             let kfs = {
                 "spawn": async name => {
                     name = String(name);
-                    let feats = this.features;
-                    let hasFeat = false;
-                    feats.forEach(feat => {
-                        if (hasFeat) return;
+                    for (let feat of this.features) {
                         if (feat.name != name) return;
-                        hasFeat = true;
-                    });
-                    if (hasFeat) return false;
+                        return false;
+                    }
                     if (!FEATURES.includes(name)) return false;
                     let feat = new Portal.Feature(this, name);
                     this.addFeature(feat);
@@ -2250,7 +2242,12 @@ const MAIN = async () => {
                 }
             });
             let any = false;
-            this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => (any ||= feat.hasWindow() && feat.window.webContents.isDevToolsOpened()));
+            for (let feat of this.portal.features.filter(feat => feat.hasWindow())) {
+                if (!feat.hasWindow()) continue;
+                if (!feat.window.webContents.isDevToolsOpened()) continue;
+                any = true;
+                break;
+            }
             if (this.hasWindow() && any) this.window.webContents.openDevTools();
             this.window.webContents.on("devtools-opened", () => {
                 this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.openDevTools());
@@ -2446,9 +2443,11 @@ const MAIN = async () => {
                         await this.whenReady();
                         await resolver.whenFalse();
                         resolver.state = true;
-                        let feats = this.portal.features;
                         let nFeats = 0;
-                        feats.forEach(feat => (["PORTAL"].includes(feat.name) ? null : nFeats++));
+                        for (let feat in this.portal.features) {
+                            if (feat.name == "PORTAL") continue;
+                            nFeats++;
+                        }
                         if (nFeats > 0) this.window.hide();
                         else this.window.show();
                         resolver.state = false;
@@ -3135,11 +3134,10 @@ const MAIN = async () => {
                     "log-delete": async name => {
                         let logs = await this.get("logs");
                         let has = false;
-                        logs.forEach(log => {
-                            if (has) return;
-                            if (log.name != name) return;
+                        for (let log of logs) {
+                            if (log.name != name) continue;
                             has = true;
-                        });
+                        }
                         if (!has) return false;
                         if (await this.fileHas(["logs", name]))
                             await this.fileDelete(["logs", name]);
@@ -3358,13 +3356,15 @@ const MAIN = async () => {
                         let pathNames = project.paths.map(id => project.getPath(id).name);
                         let pathList = await Portal.dirList(path.join(root, "paths", project.meta.name));
                         pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
-                        for (let i = 0; i < pathList.length; i++) {
-                            let name = pathList[i];
+                        await Promise.all(pathList.map(async name => {
                             let pathId = null;
-                            project.paths.forEach(id => {
+                            for (let id of project.paths) {
                                 let pth = project.getPath(id);
-                                if (pth.name == name) pathId = id;
-                            });
+                                if (pth.name != name) continue;
+                                pathId = id;
+                                break;
+                            }
+                            if (pathId == null) return;
                             let contentOut = "";
                             try {
                                 contentOut = await Portal.fileRead(path.join(root, "paths", project.meta.name, name, "data.out"));
@@ -3373,9 +3373,9 @@ const MAIN = async () => {
                             try {
                                 dataOut = JSON.parse(contentOut);
                             } catch (e) {}
-                            if (dataOut == null) continue;
+                            if (dataOut == null) return;
                             datas[pathId] = dataOut;
-                        }
+                        }));
                         return datas;
                     },
                 },
