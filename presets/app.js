@@ -34,7 +34,7 @@ class Action extends util.Target {
             "clear-app-log-dir": () => {
                 this.action = async () => {
                     let id = setInterval(() => {
-                        const progress = Math.min(1, Math.max(0, util.ensure(window.api.cacheGet(this.id+"-progress"), "num")));
+                        const progress = Math.min(1, Math.max(0, util.ensure(window.cache.get(this.id+"-progress"), "num")));
                         if (this.hasApp()) this.app.progress = progress;
                         if (progress < 1) return;
                         if (this.hasApp()) this.app.progress = null;
