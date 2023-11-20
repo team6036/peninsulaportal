@@ -328,20 +328,11 @@ export default class App extends core.App {
 
             this.#eInfo = document.querySelector("#PAGE > .content > .info");
             if (this.hasEInfo()) {
-                let eLoading = document.createElement("div");
-                eLoading.classList.add("loading");
-                eLoading.style.setProperty("--size", "5px");
-                eLoading.style.setProperty("--color", "var(--v2)");
-                eLoading.style.padding = "5px";
-                this.eInfo.appendChild(eLoading);
-                (async () => {
-                    eLoading.remove();
-                    (await this.getAboutLines()).forEach(line => {
-                        let elem = document.createElement("div");
-                        this.eInfo.appendChild(elem);
-                        elem.textContent = line;
-                    });
-                })();
+                this.getAbout().forEach(line => {
+                    let elem = document.createElement("div");
+                    this.eInfo.appendChild(elem);
+                    elem.textContent = line;
+                });
                 setInterval(async () => {
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)

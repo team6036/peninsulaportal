@@ -3,6 +3,8 @@ import { V } from "./util.mjs";
 
 
 export class App extends util.Target {
+    #ABOUT;
+
     #setupDone;
 
     #fullscreen;
@@ -39,6 +41,8 @@ export class App extends util.Target {
     constructor() {
         super();
 
+        this.#ABOUT = {};
+
         this.#setupDone = false;
 
         this.#fullscreen = false;
@@ -72,7 +76,25 @@ export class App extends util.Target {
             } catch (e) { await this.error("Permission Send Error", e).whenResult(); }
         });
 
-        this.addHandler("start", () => {
+        this.addHandler("start", async () => {
+            let os = util.ensure(await window.version.os(), "obj");
+            os.platform = util.ensure(os.platform, "str", "?");
+            os.arch = util.ensure(os.arch, "str", "?");
+            os.cpus = util.ensure(os.cpus, "arr").map(cpu => {
+                cpu = util.ensure(cpu, "obj");
+                cpu.model = util.ensure(cpu.model, "str", "?");
+                return cpu;
+            });
+            let app;
+            try { app = await window.api.get("version"); }
+            catch (e) { app = String(e); }
+            this.#ABOUT = {
+                node: String(window.version.node()),
+                chrome: String(window.version.chrome()),
+                electron: String(window.version.electron()),
+                os: os,
+                app: String(app),
+            };
             let id = setInterval(() => {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
@@ -134,28 +156,10 @@ export class App extends util.Target {
     start() { this.post("start"); }
     update(delta) { this.post("update", delta); }
 
-    async getAbout() {
-        let os = util.ensure(await window.version.os(), "obj");
-        os.platform = util.ensure(os.platform, "str", "?");
-        os.arch = util.ensure(os.arch, "str", "?");
-        os.cpus = util.ensure(os.cpus, "arr").map(cpu => {
-            cpu = util.ensure(cpu, "obj");
-            cpu.model = util.ensure(cpu.model, "str", "?");
-            return cpu;
-        });
-        let app;
-        try { app = await window.api.get("version"); }
-        catch (e) { app = String(e); }
-        return {
-            node: String(window.version.node()),
-            chrome: String(window.version.chrome()),
-            electron: String(window.version.electron()),
-            os: os,
-            app: String(app),
-        };
-    }
-    async getAboutLines() {
-        let about = await this.getAbout();
+    get ABOUT() { return this.#ABOUT; }
+
+    getAbout() {
+        let about = this.ABOUT;
         let lines = new Array(5).fill("");
         lines[0] = "NodeJS: "+about.node;
         lines[1] = "Chrome: "+about.chrome;
@@ -334,11 +338,8 @@ export class App extends util.Target {
         v = !!v;
         if (this.fullscreen == v) return;
         this.#fullscreen = v;
-        (async () => {
-            let about = await this.getAbout();
-            document.documentElement.style.setProperty("--fs", (v ? 1 : 0));
-            document.documentElement.style.setProperty("--LEFT", ((v || about.os.platform != "darwin") ? 0 : 80)+"px");
-        })();
+        document.documentElement.style.setProperty("--fs", (v ? 1 : 0));
+        document.documentElement.style.setProperty("--LEFT", ((v || this.ABOUT.os.platform != "darwin") ? 0 : 80)+"px");
     }
     get devMode() { return this.#devMode; }
     set devMode(v) {
@@ -412,7 +413,7 @@ export class App extends util.Target {
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.content = "Peninsula "+util.capitalize(name);
-            pop.info = (await this.getAboutLines()).join("\n");
+            pop.info = this.getAbout().join("\n");
             pop.hasInfo = true;
         });
         this.addHandler("cmd-win-fullscreen", async v => {
@@ -571,10 +572,9 @@ export class App extends util.Target {
         this.devMode = await window.api.get("devmode");
         this.holiday = await window.api.get("active-holiday");
 
-        let about = await this.getAbout();
-        document.documentElement.style.setProperty("--WIN32", ((about.os.platform == "win32") ? 1 : 0));
-        document.documentElement.style.setProperty("--DARWIN", ((about.os.platform == "darwin") ? 1 : 0));
-        document.documentElement.style.setProperty("--LINUX", ((about.os.platform == "linux") ? 1 : 0));
+        document.documentElement.style.setProperty("--WIN32", ((this.ABOUT.os.platform == "win32") ? 1 : 0));
+        document.documentElement.style.setProperty("--DARWIN", ((this.ABOUT.os.platform == "darwin") ? 1 : 0));
+        document.documentElement.style.setProperty("--LINUX", ((this.ABOUT.os.platform == "linux") ? 1 : 0));
 
         let themeUpdating = false;
         const themeUpdate = async () => {
