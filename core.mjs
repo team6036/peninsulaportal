@@ -754,10 +754,10 @@ export class App extends util.Target {
     }
 
     async getPerm() {
-        let perms = await this.post("perm");
-        let all = this.popups.length <= 0;
-        perms.forEach(v => { all &&= v; });
-        return all;
+        if (this.popups.length > 0) return false;
+        for (let perm of await this.post("perm"))
+            if (!perm) return false;
+        return true;
     }
 
     get popups() { return [...this.#popups]; }
@@ -1791,10 +1791,10 @@ export class AppFeature extends App {
             this.addHandler("cmd-savecopy", async source => {
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
-                let results = await this.post("cmd-savecopy-block");
-                let anyBlock = false;
-                results.forEach(result => result ? null : (anyBlock = true));
-                if (anyBlock) return;
+                for (let perm in await this.post("cmd-savecopy-block")) {
+                    if (perm) continue;
+                    return;
+                }
                 if (!((source instanceof Project) && (source instanceof this.constructor.PROJECTCLASS))) source = page.project;
                 if (!((source instanceof Project) && (source instanceof this.constructor.PROJECTCLASS))) return;
                 let project = new this.constructor.PROJECTCLASS(source);
@@ -1807,10 +1807,10 @@ export class AppFeature extends App {
                 ids = util.ensure(ids, "arr").map(id => String(id));
                 if (!this.hasPage("PROJECT")) return;
                 const page = this.getPage("PROJECT");
-                let results = await this.post("cmd-delete-block");
-                let anyBlock = false;
-                results.forEach(result => result ? null : (anyBlock = true));
-                if (anyBlock) return;
+                for (let perm of await this.post("cmd-delete-block")) {
+                    if (perm) continue;
+                    return;
+                }
                 ids = ids.filter(id => this.hasProject(id));
                 if (ids.length <= 0) ids.push(page.projectId);
                 ids = ids.filter(id => this.hasProject(id));
@@ -2931,13 +2931,11 @@ export class Odometry2d extends util.Target {
     }
 
     get hovered() {
-        let hovered = null;
-        this.renders.forEach(render => {
-            if (hovered != null) return;
-            if (render.hovered == null) return;
-            hovered = render;
-        });
-        return hovered;
+        for (let render of this.renders) {
+            if (render.hovered == null) continue;
+            return render;
+        }
+        return null;
     }
     get hoveredPart() {
         let hovered = this.hovered;
