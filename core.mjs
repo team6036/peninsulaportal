@@ -77,7 +77,7 @@ export class App extends util.Target {
         });
 
         this.addHandler("start", async () => {
-            let os = util.ensure(await window.version.os(), "obj");
+            let os = util.ensure(await window.ver.os(), "obj");
             os.platform = util.ensure(os.platform, "str", "?");
             os.arch = util.ensure(os.arch, "str", "?");
             os.cpus = util.ensure(os.cpus, "arr").map(cpu => {
@@ -89,9 +89,9 @@ export class App extends util.Target {
             try { app = await window.api.get("version"); }
             catch (e) { app = String(e); }
             this.#ABOUT = {
-                node: String(window.version.node()),
-                chrome: String(window.version.chrome()),
-                electron: String(window.version.electron()),
+                node: String(window.ver.node()),
+                chrome: String(window.ver.chrome()),
+                electron: String(window.ver.electron()),
                 os: os,
                 app: String(app),
             };

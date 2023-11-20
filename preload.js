@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld("cache", {
     clear: () => (cache = {}),
 });
 
-contextBridge.exposeInMainWorld("version", {
+contextBridge.exposeInMainWorld("ver", {
     node: () => process.versions.node,
     chrome: () => process.versions.chrome,
     electron: () => process.versions.electron,
