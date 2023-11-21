@@ -421,7 +421,7 @@ export default class App extends core.AppFeature {
                                 itm.accelerator = data.accelerator;
                                 itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
                             }
-                            menu.insertItem(itm, 5+i);
+                            menu.menu.insertItem(itm, 5+i);
                         });
                     },
                     view: () => {
@@ -438,7 +438,7 @@ export default class App extends core.AppFeature {
                                 itm.accelerator = data.accelerator;
                                 itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
                             }
-                            menu.insertItem(itm, 0+i);
+                            menu.menu.insertItem(itm, 0+i);
                         });
                     },
                 };

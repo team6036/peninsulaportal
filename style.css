@@ -1180,19 +1180,19 @@ div.contextmenu .item:not(.divider) > .accelerator {
 
     color: var(--v5);
 }
-div.contextmenu .item:not(.divider) > ion-icon.dropdown {
+div.contextmenu .item:not(.divider) > ion-icon.sub {
     color: var(--v6);
 
     font-size: 16px;
 }
-div.contextmenu .item:not(.divider) > div.dropdown {
+div.contextmenu .item:not(.divider) > div.contextmenu {
     position: absolute;
     top: 0%;
     left: 100%;
 
     visibility: hidden;
 }
-div.contextmenu .item:not(.divider):not(.disabled):hover > div.dropdown {
+div.contextmenu .item:not(.divider):not(.disabled):hover > div.contextmenu {
     visibility: inherit;
 }
 div.contextmenu .item.divider {
