@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
+let context = {};
+
 const MAIN = async () => {
 
     const log = (...a) => {
@@ -36,7 +38,8 @@ const MAIN = async () => {
     const cp = require("child_process");
 
     const electron = require("electron");
-    const app = electron.app;
+    const showError = context.showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
+    const app = context.app = electron.app;
     const ipc = electron.ipcMain;
 
     const fetch = require("electron-fetch").default;
@@ -597,7 +600,6 @@ const MAIN = async () => {
             },
         ];
     };
-    const showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
     class Portal extends util.Target {
         #started;
 
@@ -3317,4 +3319,14 @@ const MAIN = async () => {
     }, 10);
 
 };
-MAIN();
+(async () => {
+    try {
+        await MAIN();
+    } catch (e) {
+        if (context.showError)
+            context.showError("Main Script Error", e);
+        if (context.app && context.app.quit)
+            context.app.quit();
+        process.exit();
+    }
+})();
