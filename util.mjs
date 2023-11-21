@@ -15,6 +15,11 @@ export const TEXTENCODER = new TextEncoder();
 export const TEXTDECODER = new TextDecoder();
 
 
+Array.prototype.sum = function() {
+    return this.reduce((sum, x) => sum+x, 0);
+};
+
+
 export function is(o, type) {
     let typefs = {
         any_num: () => {
