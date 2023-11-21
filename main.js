@@ -739,15 +739,14 @@ const MAIN = async () => {
         }
 
         checkMenu() {
-            if (OS.platform != "darwin") return;
             electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault("")));
             let window = electron.BrowserWindow.getFocusedWindow();
             for (let feat of this.features) {
                 if (!feat.hasWindow()) continue;
+                let menu = feat.hasMenu() ? feat.menu : electron.Menu.buildFromTemplate(makeMenuDefault(feat.name));
+                feat.window.setMenu(menu);
                 if (feat.window != window) continue;
-                if (feat.hasMenu()) electron.Menu.setApplicationMenu(feat.menu);
-                else electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault(feat.name)));
-                break;
+                electron.Menu.setApplicationMenu(menu);
             }
         }
 
@@ -2339,8 +2338,6 @@ const MAIN = async () => {
             };
 
             if (namefs[this.name]) namefs[this.name]();
-
-            this.window.setMenu(this.menu);
             
             (async () => {
                 await this.whenReady();
