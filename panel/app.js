@@ -6292,8 +6292,8 @@ export default class App extends core.AppFeature {
                             }
                             return itm;
                         });
-                        menu.insertItem(itms.pop(), 9);
-                        menu.insertItem(itms.pop(), 4);
+                        menu.menu.insertItem(itms.pop(), 9);
+                        menu.menu.insertItem(itms.pop(), 4);
                     },
                     edit: () => {
                         let itms = [
@@ -6308,7 +6308,7 @@ export default class App extends core.AppFeature {
                                 itm.accelerator = data.accelerator;
                                 itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
                             }
-                            menu.insertItem(itm, 0+i);
+                            menu.menu.insertItem(itm, 0+i);
                         });
                     },
                     view: () => {
@@ -6326,7 +6326,7 @@ export default class App extends core.AppFeature {
                                 itm.accelerator = data.accelerator;
                                 itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
                             }
-                            menu.insertItem(itm, 0+i);
+                            menu.menu.insertItem(itm, 0+i);
                         });
                     },
                 };

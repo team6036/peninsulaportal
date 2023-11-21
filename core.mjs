@@ -832,9 +832,6 @@ export class App extends util.Target {
             if (!(itm instanceof App.Menu.Item)) return;
             itm.addHandler("trigger", e => window.api.send("spawn", name));
         });
-        let itm = this.menu.findItemWithId("reload");
-        if (itm instanceof App.Menu.Item)
-            itm.addHandler("trigger", e => window.api.send("reload"));
         ["ionicons", "repo", "db-host"].forEach(id => {
             let itm = this.menu.findItemWithId(id);
             if (!(itm instanceof App.Menu.Item)) return;
@@ -845,6 +842,13 @@ export class App extends util.Target {
                 window.api.send("open", url);
             });
         });
+        let itm;
+        itm = this.menu.findItemWithId("about");
+        if (itm instanceof App.Menu.Item)
+            itm.addHandler("trigger", e => this.post("cmd-about"));
+        itm = this.menu.findItemWithId("reload");
+        if (itm instanceof App.Menu.Item)
+            itm.addHandler("trigger", e => window.api.send("reload"));
     }
     get contextMenu() { return this.#contextMenu; }
     set contextMenu(v) {
@@ -1402,7 +1406,7 @@ App.Menu = class AppMenu extends util.Target {
             let subitm = new App.Menu.Item(util.capitalize(name));
             subitm.id = "spawn:"+name;
             subitm.accelerator = "CmdOrCtrl+"+(i+1);
-            itm.addItem(subitm);
+            itm.menu.addItem(subitm);
         });
         return [itm];
     }
@@ -1482,7 +1486,7 @@ App.Menu = class AppMenu extends util.Target {
             let itm = new App.Menu.Item(util.capitalize(name));
             itm.id = "menu:"+name;
             if (name == "help") itm.role = "help";
-            submenu.items.forEach(subitm => itm.addItem(subitm));
+            submenu.items.forEach(subitm => itm.menu.addItem(subitm));
             menu.addItem(itm);
         });
         return menu;
@@ -1492,7 +1496,7 @@ App.Menu = class AppMenu extends util.Target {
         let menu = new App.Menu();
         let itm = new App.Menu.item((name.length > 0) ? name : "Peninsula", "navigate");
         itm.id = "menu:main";
-        this.buildMainMenu().items.forEach(subitm => itm.addItem(subitm));
+        this.buildMainMenu().items.forEach(subitm => itm.menu.addItem(subitm));
         menu.addItem(itm);
         this.buildMenu(platform).items.forEach(itm => menu.addItem(itm));
         return menu;
@@ -1507,15 +1511,13 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     #accelerator;
     #enabled;
     #visible;
-    #items;
-    // #menu;
+    #menu;
 
     #elem;
     #eIcon;
     #eLabel;
     #eAccelerator;
-    #eDropdownIcon;
-    #eDropdown;
+    #eSubIcon;
 
     constructor(label, icon="") {
         super();
@@ -1528,9 +1530,8 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.#accelerator = null;
         this.#enabled = true;
         this.#visible = true;
-        this.#items = [];
-        // this.#menu = new App.Menu();
-        // this.menu.addHandler("change", (c, f, t) => this.change("menu."+c, f, t));
+        this.#menu = new App.Menu();
+        this.menu.addHandler("change", (c, f, t) => this.change("menu."+c, f, t));
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -1543,13 +1544,11 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.#eAccelerator = document.createElement("div");
         this.elem.appendChild(this.eAccelerator);
         this.eAccelerator.classList.add("accelerator");
-        this.#eDropdownIcon = document.createElement("ion-icon");
-        this.elem.appendChild(this.eDropdownIcon);
-        this.eDropdownIcon.classList.add("dropdown");
-        this.eDropdownIcon.setAttribute("name", "chevron-forward");
-        this.#eDropdown = document.createElement("div");
-        this.elem.appendChild(this.eDropdown);
-        this.eDropdown.classList.add("dropdown");
+        this.#eSubIcon = document.createElement("ion-icon");
+        this.elem.appendChild(this.eSubIcon);
+        this.eSubIcon.classList.add("sub");
+        this.eSubIcon.setAttribute("name", "chevron-forward");
+        this.elem.appendChild(this.menu.elem);
 
         this.elem.addEventListener("mouseenter", e => this.fix());
         this.elem.addEventListener("click", e => {
@@ -1561,11 +1560,9 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.label = label;
 
         this.addHandler("change", () => {
-            // this.eDropdownIcon.style.display = (this.menu.items.length > 0) ? "" : "none";
-            this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
+            this.eSubIcon.style.display = (this.menu.items.length > 0) ? "" : "none";
         });
-        // this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
-        this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
+        this.eSubIcon.style.display = (this.menu.items.length > 0) ? "" : "none";
     }
 
     get id() { return this.#id; }
@@ -1651,63 +1648,23 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.post("format");
     }
     
-    // get menu() { return this.#menu; }
+    get menu() { return this.#menu; }
+    set menu(v) {
+        if (v instanceof App.Menu) this.menu.items = v.items;
+        else if (util.is(v, "arr")) this.menu.items = v;
+        else this.menu.items = [];
+    }
 
-    get items() { return [...this.#items]; }
-    set items(v) {
-        v = util.ensure(v, "arr");
-        this.clearItems();
-        v.forEach(v => this.addItem(v));
-    }
-    clearItems() {
-        let itms = this.items;
-        itms.forEach(itm => this.remItem(itm));
-        return itms;
-    }
-    hasItem(itm) {
-        if (!(itm instanceof App.Menu.Item)) return false;
-        return this.#items.includes(itm);
-    }
-    insertItem(itm, at) {
-        if (!(itm instanceof App.Menu.Item)) return false;
-        if (this.hasItem(itm)) return false;
-        at = Math.min(this.items.length, Math.max(0, util.ensure(at, "int")));
-        this.#items.splice(at, 0, itm);
-        itm.addLinkedHandler(this, "format", () => this.format());
-        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.items.indexOf(itm)+"]."+c, f, t));
-        this.change("addItem", null, itm);
-        this.format();
-        return itm;
-    }
-    addItem(itm) {
-        return this.insertItem(itm, this.items.length);
-    }
-    remItem(itm) {
-        if (!(itm instanceof App.Menu.Item)) return false;
-        if (!this.hasItem(itm)) return false;
-        this.#items.splice(this.#items.indexOf(itm), 1);
-        itm.clearLinkedHandlers(this, "format");
-        itm.clearLinkedHandlers(this, "change");
-        this.change("remItem", itm, null);
-        this.format();
-        return itm;
-    }
     findItemWithId(id) {
         if (this.id == id) return this;
-        for (let itm of this.items) {
-            let foundItm = itm.findItemWithId(id);
-            if (!(foundItm instanceof App.Menu.Item)) continue;
-            return foundItm;
-        }
-        return null;
+        return this.menu.findItemWithId(id);
     }
 
     get elem() { return this.#elem; }
     get eIcon() { return this.#eIcon; }
     get eLabel() { return this.#eLabel; }
     get eAccelerator() { return this.#eAccelerator; }
-    get eDropdownIcon() { return this.#eDropdownIcon; }
-    get eDropdown() { return this.#eDropdown; }
+    get eSubIcon() { return this.#eSubIcon; }
 
     get icon() { return this.eIcon.getAttribute("name"); }
     set icon(v) {
@@ -1722,33 +1679,8 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
-    fix() {
-        let r = this.eDropdown.getBoundingClientRect();
-        let ox = 0, oy = 0;
-        if (r.right > window.innerWidth) ox = window.innerWidth-r.right;
-        if (r.left < 0) ox = 0-r.left;
-        if (r.bottom > window.innerHeight) oy = window.innerHeight-r.bottom;
-        if (r.top < 0) oy = 0-r.top;
-        this.eDropdown.style.transform = "translate("+ox+"px, "+oy+"px)";
-    }
-    format() {
-        this.eDropdown.innerHTML = "";
-        let itms = this.items;
-        let prevItm = null;
-        for (let i = 0; i < itms.length; i++) {
-            let itm = itms[i];
-            if (itm.type == "separator") {
-                if (prevItm != null)
-                    if (prevItm.type == "separator")
-                        continue;
-            } else if (itm.hasRole()) continue;
-            this.eDropdown.appendChild(itm.elem);
-            prevItm = itm;
-        }
-        if (prevItm != null)
-            if (prevItm.type == "separator")
-                this.eDropdown.removeChild(prevItm.elem);
-    }
+    fix() { return this.menu.fix(); }
+    format() { return this.menu.format(); }
 
     toMenu() {
         let menu = { id: this.id };
@@ -1758,10 +1690,8 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         if (this.hasAccelerator()) menu.accelerator = this.accelerator;
         menu.enabled = this.enabled;
         menu.visible = this.visible;
-        if (this.items.length > 0)
-            menu.submenu = this.items.map(itm => itm.toMenu());
-        // let submenu = this.menu.toMenu();
-        // if (submenu.length > 0) menu.submenu = submenu;
+        let submenu = this.menu.toMenu();
+        if (submenu.length > 0) menu.submenu = submenu;
         return menu;
     }
 };
@@ -2006,9 +1936,7 @@ export class AppFeature extends App {
                 e.stopPropagation();
                 let itm = this.menu.findItemWithId("menu:file");
                 if (!(itm instanceof App.Menu.Item)) return;
-                let menu = new App.Menu();
-                itm.items.forEach(itm => menu.addItem(itm));
-                this.contextMenu = menu;
+                this.contextMenu = itm.menu;
                 let r = this.eFileBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
             });
@@ -2022,9 +1950,7 @@ export class AppFeature extends App {
                 e.stopPropagation();
                 let itm = this.menu.findItemWithId("menu:edit");
                 if (!(itm instanceof App.Menu.Item)) return;
-                let menu = new App.Menu();
-                itm.items.forEach(itm => menu.addItem(itm));
-                this.contextMenu = menu;
+                this.contextMenu = itm.menu;
                 let r = this.eEditBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
             });
@@ -2038,9 +1964,7 @@ export class AppFeature extends App {
                 e.stopPropagation();
                 let itm = this.menu.findItemWithId("menu:view");
                 if (!(itm instanceof App.Menu.Item)) return;
-                let menu = new App.Menu();
-                itm.items.forEach(itm => menu.addItem(itm));
-                this.contextMenu = menu;
+                this.contextMenu = itm.menu;
                 let r = this.eViewBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
             });
@@ -2233,7 +2157,7 @@ export class AppFeature extends App {
                                 itm.accelerator = data.accelerator;
                                 itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
                             }
-                            menu.insertItem(itm, 3+i);
+                            menu.menu.insertItem(itm, 3+i);
                         });
                     },
                 };

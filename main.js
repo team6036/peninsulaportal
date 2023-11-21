@@ -579,7 +579,7 @@ const MAIN = async () => {
                 submenu: [
                     {
                         label: (name.length > 0) ? ("About Peninsula "+util.capitalize(name)) : "About Peninsula",
-                        click: () => aboutCallback,
+                        click: () => aboutCallback(),
                     },
                     { type: "separator" },
                     {
@@ -2254,7 +2254,7 @@ const MAIN = async () => {
                 showError("Feature Start Error - Startup", "The application did not acknowledge readyness within 1 second");
                 clear();
                 this.stop();
-            }, 1000);
+            }, 10000);
             const clear = () => {
                 clearInterval(id);
                 ipc.removeListener("ready", ready);
