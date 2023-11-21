@@ -413,16 +413,7 @@ export default class App extends core.AppFeature {
                             { id: "addpath", label: "Add Path" },
                             "separator",
                         ];
-                        itms.forEach((data, i) => {
-                            let itm = new App.Menu.Item(data.label);
-                            if (data == "separator") itm.type = "separator";
-                            else {
-                                itm.id = data.id;
-                                itm.accelerator = data.accelerator;
-                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
-                            }
-                            menu.menu.insertItem(itm, 5+i);
-                        });
+                        itms.forEach((data, i) => menu.menu.insertItem(App.Menu.Item.fromObj(data), 5+i));
                     },
                     view: () => {
                         let itms = [
@@ -430,16 +421,7 @@ export default class App extends core.AppFeature {
                             { id: "resetdivider", label: "Reset Divider" },
                             "separator",
                         ];
-                        itms.forEach((data, i) => {
-                            let itm = new App.Menu.Item(data.label);
-                            if (data == "separator") itm.type = "separator";
-                            else {
-                                itm.id = data.id;
-                                itm.accelerator = data.accelerator;
-                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
-                            }
-                            menu.menu.insertItem(itm, 0+i);
-                        });
+                        itms.forEach((data, i) => menu.menu.insertItem(App.Menu.Item.fromObj(data), 0+i));
                     },
                 };
                 if (name in namefs) namefs[name]();

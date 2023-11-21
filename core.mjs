@@ -825,8 +825,8 @@ export class App extends util.Target {
         if (this.menu instanceof App.Menu)
             this.menu.clearLinkedHandlers(this, "change");
         this.#menu = v;
-        this.menu.addLinkedHandler(this, "change", () => window.api.set("menu", this.menu.toMenu()));
-        window.api.set("menu", this.menu.toMenu());
+        this.menu.addLinkedHandler(this, "change", () => window.api.set("menu", this.menu.toObj()));
+        window.api.set("menu", this.menu.toObj());
         ["PANEL", "PLANNER"].forEach(name => {
             let itm = this.menu.findItemWithId("spawn:"+name);
             if (!(itm instanceof App.Menu.Item)) return;
@@ -1354,8 +1354,13 @@ App.Menu = class AppMenu extends util.Target {
                 this.elem.removeChild(prevItm.elem);
     }
 
-    toMenu() {
-        return this.items.map(itm => itm.toMenu());
+    toObj() {
+        return this.items.map(itm => itm.toObj());
+    }
+    static fromObj(data) {
+        let menu = new App.Menu();
+        menu.items = util.ensure(data, "arr").map(data => App.Menu.Item.fromObj(data));
+        return menu;
     }
 
     static buildRoleItems(...roles) {
@@ -1577,7 +1582,9 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.role == v) return;
         this.change("role", this.role, this.#role=v);
+        if (!this.hasRole()) return;
         (async () => {
+            let v = this.role;
             let label = await window.api.send("menu-role-label", v);
             if (this.role != v) return;
             this.eLabel.textContent = label;
@@ -1599,7 +1606,13 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.label == v) return;
         this.change("label", this.label, this.#label=v);
-        this.eLabel.textContent = this.hasLabel() ? this.label : "";
+        if (!this.hasRole()) return this.eLabel.textContent = this.hasLabel() ? this.label : "";
+        (async () => {
+            let v = this.role;
+            let label = await window.api.send("menu-role-label", v);
+            if (this.role != v) return;
+            this.eLabel.textContent = label;
+        })();
     }
     hasLabel() { return this.label != null; }
     get accelerator() { return this.#accelerator; }
@@ -1627,7 +1640,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         v = !!v;
         if (this.enabled == v) return;
         this.change("enabled", this.enabled, this.#enabled=v);
-        if (this.enabled) this.elem.classList.add("disabled");
+        if (this.disabled) this.elem.classList.add("disabled");
         else this.elem.classList.remove("disabled");
     }
     get disabled() { return !this.enabled; }
@@ -1682,17 +1695,31 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     fix() { return this.menu.fix(); }
     format() { return this.menu.format(); }
 
-    toMenu() {
-        let menu = { id: this.id };
-        if (this.hasRole()) menu.role = this.role;
-        if (this.hasType()) menu.type = this.type;
-        if (this.hasLabel()) menu.label = this.label;
-        if (this.hasAccelerator()) menu.accelerator = this.accelerator;
-        menu.enabled = this.enabled;
-        menu.visible = this.visible;
-        let submenu = this.menu.toMenu();
-        if (submenu.length > 0) menu.submenu = submenu;
-        return menu;
+    toObj() {
+        let data = { id: this.id };
+        if (this.hasRole()) data.role = this.role;
+        if (this.hasType()) data.type = this.type;
+        if (this.hasLabel()) data.label = this.label;
+        if (this.hasAccelerator()) data.accelerator = this.accelerator;
+        data.enabled = this.enabled;
+        data.visible = this.visible;
+        let submenu = this.menu.toObj();
+        if (submenu.length > 0) data.submenu = submenu;
+        return data;
+    }
+    static fromObj(data) {
+        if (data == "separator") return this.fromObj({ type: "separator" });
+        data = util.ensure(data, "obj");
+        let itm = new App.Menu.Item();
+        if ("id" in data) itm.id = data.id;
+        itm.role = ("role" in data) ? data.role : null;
+        itm.type = ("type" in data) ? data.type : null;
+        itm.label = ("label" in data) ? data.label : null;
+        itm.accelerator = ("accelerator" in data) ? data.accelerator : null;
+        itm.enabled = ("enabled" in data) ? data.enabled : true;
+        itm.visible = ("visible" in data) ? data.visible : true;
+        itm.menu = App.Menu.fromObj(data.submenu);
+        return itm;
     }
 };
 App.Menu.Divider = class AppMenuDivider extends App.Menu.Item {
@@ -2150,6 +2177,8 @@ export class AppFeature extends App {
                             { id: "closeproject", label: "Close Project" },
                         ];
                         itms.forEach((data, i) => {
+                            let itm = App.Menu.Item.fromObj(data);
+                            /*
                             let itm = new App.Menu.Item(data.label);
                             if (data == "separator") itm.type = "separator";
                             else {
@@ -2157,6 +2186,7 @@ export class AppFeature extends App {
                                 itm.accelerator = data.accelerator;
                                 itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
                             }
+                            */
                             menu.menu.insertItem(itm, 3+i);
                         });
                     },
