@@ -1182,6 +1182,7 @@ class Panel extends Widget {
         if (!(tab instanceof Panel.Tab)) return false;
         if (!this.hasTab(tab)) return false;
         if (tab.parent != this) return false;
+        let activeTab = this.tabs[this.tabIndex];
         let at = this.#tabs.indexOf(tab);
         this.#tabs.splice(at, 1);
         tab.parent = null;
@@ -1192,9 +1193,12 @@ class Panel extends Widget {
         this.eContent.removeChild(tab.elem);
         tab.close();
         this.format();
-        let index = this.tabIndex;
-        this.#tabIndex = null;
-        this.tabIndex = index;
+        if (this.tabs.indexOf(activeTab) >= 0) this.tabIndex = this.tabs.indexOf(activeTab);
+        else {
+            let index = this.tabIndex;
+            this.#tabIndex = null;
+            this.tabIndex = index;
+        }
         return tab;
     }
 
