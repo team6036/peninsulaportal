@@ -8,8 +8,6 @@ export const VERSION = 2;
 
 
 export class Project extends core.Project {
-    #cache;
-
     #items;
     #paths;
     #size;
@@ -18,8 +16,6 @@ export class Project extends core.Project {
 
     constructor(...a) {
         super();
-
-        this.#cache = {};
 
         this.#items = {};
         this.#paths = {};
@@ -110,8 +106,7 @@ export class Project extends core.Project {
         } while (this.hasItem(id));
         this.#items[id] = itm;
         itm.id = id;
-        let onChange = this.#cache["item_"+itm.id+"_change"] = (c, f, t) => this.change("getItem("+id+")."+c, f, t);
-        itm.addHandler("change", onChange);
+        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
         this.change("addItem", null, itm);
         return itm;
     }
@@ -122,16 +117,14 @@ export class Project extends core.Project {
         if (this.hasItem(itm)) return false;
         this.#items[id] = itm;
         itm.id = id;
-        let onChange = this.#cache["item_"+itm.id+"_change"] = (c, f, t) => this.change("getItem("+id+")."+c, f, t);
-        itm.addHandler("change", onChange);
+        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
         this.change("addItem", null, itm);
         return itm;
     }
     remItem(v) {
         if (util.is(v, "str")) {
             let itm = this.getItem(v);
-            itm.remHandler("change", this.#cache["item_"+itm.id+"_change"]);
-            delete this.#cache["item_"+itm.id+"_change"];
+            itm.clearLinkedHandlers(this, "change");
             itm.id = null;
             delete this.#items[v];
             this.paths.forEach(id => {
@@ -175,8 +168,7 @@ export class Project extends core.Project {
         this.#paths[id] = pth;
         pth.id = id;
         pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
-        let onChange = this.#cache["path_"+pth.id+"_change"] = (c, f, t) => this.change("getPath("+id+")."+c, f, t);
-        pth.addHandler("change", onChange);
+        pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+id+")."+c, f, t));
         this.change("addPath", null, pth);
         return pth;
     }
@@ -188,16 +180,14 @@ export class Project extends core.Project {
         this.#paths[id] = pth;
         pth.id = id;
         pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
-        let onChange = this.#cache["path_"+pth.id+"_change"] = (c, f, t) => this.change("getPath("+id+")."+c, f, t);
-        pth.addHandler("change", onChange);
+        pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+id+")."+c, f, t));
         this.change("addPath", null, pth);
         return pth;
     }
     remPath(v) {
         if (util.is(v, "str")) {
             let pth = this.getPath(v);
-            pth.remHandler("change", this.#cache["path_"+pth.id+"_change"]);
-            delete this.#cache["path_"+pth.id+"_change"];
+            pth.clearLinkedHandlers(this, "change");
             let id = pth.id;
             pth.id = null;
             delete this.#paths[v];

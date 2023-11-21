@@ -13,6 +13,7 @@ export class App extends util.Target {
 
     #popups;
 
+    #menu;
     #contextMenu;
 
     #base;
@@ -51,6 +52,7 @@ export class App extends util.Target {
 
         this.#popups = [];
 
+        this.#menu = null;
         this.#contextMenu = null;
         document.body.addEventListener("click", e => {
             this.contextMenu = null;
@@ -95,6 +97,7 @@ export class App extends util.Target {
                 os: os,
                 app: String(app),
             };
+            this.menu = App.Menu.buildMenu(this.ABOUT.os.platform);
             let id = setInterval(() => {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
@@ -364,6 +367,9 @@ export class App extends util.Target {
             if (window.app == this) delete window.app;
             delete window.colors;
         }
+        let itm = this.menu.findItemWithId("toggleDevTools");
+        if (!(itm instanceof App.Menu.Item)) return;
+        itm.enabled = this.devMode;
     }
     get holiday() { return this.#holiday; }
     set holiday(v) {
@@ -424,6 +430,12 @@ export class App extends util.Target {
         });
         this.addHandler("cmd-win-holiday", async v => {
             this.holiday = v;
+        });
+
+        this.addHandler("cmd-menu-click", async id => {
+            let itm = this.menu.findItemWithId(id);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.post("trigger", null);
         });
 
         this.#eTitle = document.querySelector("head > title");
@@ -779,10 +791,7 @@ export class App extends util.Target {
         if (!(pop instanceof App.PopupBase)) return false;
         if (this.hasPopup(pop)) this.remPopup(pop);
         this.#popups.push(pop);
-        pop._onClose = () => {
-            this.remPopup(pop);
-        };
-        pop.addHandler("close", pop._onClose);
+        pop.addLinkedHandler(this, "close", () => this.remPopup(pop));
         document.body.appendChild(pop.elem);
         setTimeout(() => {
             if (!this.hasPopup(pop)) return;
@@ -795,8 +804,7 @@ export class App extends util.Target {
         if (!(pop instanceof App.PopupBase)) return false;
         if (!this.hasPopup(pop)) return false;
         this.#popups.splice(this.#popups.indexOf(pop), 1);
-        pop.remHandler("close", pop._onClose);
-        delete pop._onClose;
+        pop.clearLinkedHandlers(this, "close");
         pop.elem.classList.remove("in");
         setTimeout(() => {
             if (this.hasPopup(pop)) return;
@@ -810,9 +818,37 @@ export class App extends util.Target {
     confirm(...a) { return this.addPopup(new App.Confirm(...a)); }
     prompt(...a) { return this.addPopup(new App.Prompt(...a)); }
 
+    get menu() { return this.#menu; }
+    set menu(v) {
+        if (!(v instanceof App.Menu)) return;
+        if (this.menu == v) return;
+        if (this.menu instanceof App.Menu)
+            this.menu.clearLinkedHandlers(this, "change");
+        this.#menu = v;
+        this.menu.addLinkedHandler(this, "change", () => window.api.set("menu", this.menu.toMenu()));
+        window.api.set("menu", this.menu.toMenu());
+        ["PANEL", "PLANNER"].forEach(name => {
+            let itm = this.menu.findItemWithId("spawn:"+name);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.addHandler("trigger", e => window.api.send("spawn", name));
+        });
+        let itm = this.menu.findItemWithId("reload");
+        if (itm instanceof App.Menu.Item)
+            itm.addHandler("trigger", e => window.api.send("reload"));
+        ["ionicons", "repo", "db-host"].forEach(id => {
+            let itm = this.menu.findItemWithId(id);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.addHandler("trigger", async e => {
+                let url;
+                if (id == "ionicons") url = "https://ionic.io/ionicons";
+                else url = await window.api.get(id);
+                window.api.send("open", url);
+            });
+        });
+    }
     get contextMenu() { return this.#contextMenu; }
     set contextMenu(v) {
-        v = (v instanceof App.ContextMenu) ? v : null;
+        v = (v instanceof App.Menu) ? v : null;
         if (this.contextMenu == v) return;
         if (this.hasContextMenu())
             document.body.removeChild(this.contextMenu.elem);
@@ -820,7 +856,7 @@ export class App extends util.Target {
         if (this.hasContextMenu())
             document.body.appendChild(this.contextMenu.elem);
     }
-    hasContextMenu() { return this.contextMenu instanceof App.ContextMenu; }
+    hasContextMenu() { return this.contextMenu instanceof App.Menu; }
     placeContextMenu(...v) {
         v = new V(...v);
         if (!this.hasContextMenu()) return false;
@@ -1222,7 +1258,7 @@ App.Prompt = class AppPrompt extends App.CorePopup {
     get placeholder() { return this.eInput.placeholder; }
     set placeholder(v) { this.eInput.placeholder = v; }
 };
-App.ContextMenu = class AppContextMenu extends util.Target {
+App.Menu = class AppMenu extends util.Target {
     #items;
 
     #elem;
@@ -1248,22 +1284,40 @@ App.ContextMenu = class AppContextMenu extends util.Target {
         return itms;
     }
     hasItem(itm) {
-        if (!(itm instanceof App.ContextMenu.Item)) return false;
+        if (!(itm instanceof App.Menu.Item)) return false;
         return this.#items.includes(itm);
     }
-    addItem(itm) {
-        if (!(itm instanceof App.ContextMenu.Item)) return false;
+    insertItem(itm, at) {
+        if (!(itm instanceof App.Menu.Item)) return false;
         if (this.hasItem(itm)) return false;
-        this.#items.push(itm);
-        this.elem.appendChild(itm.elem);
+        at = Math.min(this.items.length, Math.max(0, util.ensure(at, "int")));
+        this.#items.splice(at, 0, itm);
+        itm.addLinkedHandler(this, "format", () => this.format());
+        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.items.indexOf(itm)+"]."+c, f, t));
+        this.change("addItem", null, itm);
+        this.format();
         return itm;
     }
+    addItem(itm) {
+        return this.insertItem(itm, this.items.length);
+    }
     remItem(itm) {
-        if (!(itm instanceof App.ContextMenu.Item)) return false;
+        if (!(itm instanceof App.Menu.Item)) return false;
         if (!this.hasItem(itm)) return false;
         this.#items.splice(this.#items.indexOf(itm), 1);
-        this.elem.removeChild(itm.elem);
+        itm.clearLinkedHandlers(this, "format");
+        itm.clearLinkedHandlers(this, "change");
+        this.change("remItem", itm, null);
+        this.format();
         return itm;
+    }
+    findItemWithId(id) {
+        for (let itm of this.items) {
+            let foundItm = itm.findItemWithId(id);
+            if (!(foundItm instanceof App.Menu.Item)) continue;
+            return foundItm;
+        }
+        return null;
     }
 
     get elem() { return this.#elem; }
@@ -1277,21 +1331,206 @@ App.ContextMenu = class AppContextMenu extends util.Target {
         if (r.top < 0) oy = 0-r.top;
         this.elem.style.transform = "translate("+ox+"px, "+oy+"px)";
     }
+    format() {
+        this.elem.innerHTML = "";
+        let itms = this.items;
+        let prevItm = null;
+        for (let i = 0; i < itms.length; i++) {
+            let itm = itms[i];
+            if (itm.type == "separator") {
+                if (prevItm != null)
+                    if (prevItm.type == "separator")
+                        continue;
+            } else if (itm.hasRole()) continue;
+            this.elem.appendChild(itm.elem);
+            prevItm = itm;
+        }
+        if (prevItm != null)
+            if (prevItm.type == "separator")
+                this.elem.removeChild(prevItm.elem);
+    }
+
+    toMenu() {
+        return this.items.map(itm => itm.toMenu());
+    }
+
+    static buildRoleItems(...roles) {
+        return roles.map(role => {
+            let itm = new App.Menu.Item(null);
+            itm.role = role;
+            if (itm.hasRole()) itm.id = itm.role;
+            return itm;
+        });
+    }
+
+    static buildAboutItems() {
+        let itm = new App.Menu.Item("About Peninsula");
+        itm.id = "about";
+        return [itm];
+    }
+    static buildSettingsItems() {
+        let itm = new App.Menu.Item("Settings", "settings-outline");
+        itm.id = "settings";
+        itm.accelerator = "CmdOrCtrl+,";
+        return [itm];
+    }
+    static buildHideItems() { return this.buildRoleItems("hide", "hideOthers", "unhide"); }
+    static buildQuitItems() { return this.buildRoleItems("quit"); }
+    static buildCloseItems() { return this.buildRoleItems("close"); }
+    static buildUndoRedoItems() { return this.buildRoleItems("undo", "redo"); }
+    static buildCutCopyPasteItems() { return this.buildRoleItems("cut", "copy", "paste"); }
+    static buildFullscreenItems() { return this.buildRoleItems("togglefullscreen"); }
+    static buildWindowItems() { return this.buildRoleItems("minimize", "zoom"); }
+    static buildFrontItems() { return this.buildRoleItems("front"); }
+    static buildHelpItems() {
+        return ["Ionicons", "Github Repository", "Open Database"].map((label, i) => {
+            let itm = new App.Menu.Item(label);
+            itm.id = ["ionicons", "repo", "db-host"][i];
+            return itm;
+        });
+    }
+    static buildReloadItems() {
+        let itm = new App.Menu.Item("Reload");
+        itm.id = "reload";
+        itm.accelerator = "CmdOrCtrl+R";
+        return [itm];
+    }
+    static buildSpawnItems() {
+        let itm = new App.Menu.Item("New Feature");
+        itm.id = "spawn";
+        ["PANEL", "PLANNER"].forEach((name, i) => {
+            let subitm = new App.Menu.Item(util.capitalize(name));
+            subitm.id = "spawn:"+name;
+            subitm.accelerator = "CmdOrCtrl+"+(i+1);
+            itm.addItem(subitm);
+        });
+        return [itm];
+    }
+    static buildDevToolsItems() { return this.buildRoleItems("toggleDevTools"); }
+    static buildMainMenu() {
+        let menu = new App.Menu();
+        let itms = [
+            ...this.buildAboutItems(),
+            new App.Menu.Divider(),
+            ...this.buildSettingsItems(),
+            new App.Menu.Divider(),
+            ...this.buildHideItems(),
+            new App.Menu.Divider(),
+            ...this.buildQuitItems(),
+        ];
+        itms.forEach(itm => menu.addItem(itm));
+        return menu;
+    }
+    static buildFileMenu() {
+        let menu = new App.Menu();
+        let itms = [
+            ...this.buildReloadItems(),
+            ...this.buildSpawnItems(),
+            new App.Menu.Divider(),
+            ...this.buildCloseItems(),
+        ];
+        itms.forEach(itm => menu.addItem(itm));
+        return menu;
+    }
+    static buildEditMenu() {
+        let menu = new App.Menu();
+        let itms = [
+            ...this.buildUndoRedoItems(),
+            new App.Menu.Divider(),
+            ...this.buildCutCopyPasteItems(),
+        ];
+        itms.forEach(itm => menu.addItem(itm));
+        return menu;
+    }
+    static buildViewMenu() {
+        let menu = new App.Menu();
+        let itms = [
+            ...this.buildFullscreenItems(),
+        ];
+        itms.forEach(itm => menu.addItem(itm));
+        return menu;
+    }
+    static buildWindowMenu(platform) {
+        let menu = new App.Menu();
+        let itms = [
+            ...this.buildWindowItems(),
+            ...this.buildDevToolsItems(),
+        ];
+        if (platform == "darwin") itms.splice(2, 0, new App.Menu.Divider(), ...this.buildFrontItems(), new App.Menu.Divider());
+        itms.forEach(itm => menu.addItem(itm));
+        return menu;
+    }
+    static buildHelpMenu() {
+        let menu = new App.Menu();
+        let itms = [
+            ...this.buildHelpItems(),
+        ];
+        itms.forEach(itm => menu.addItem(itm));
+        return menu;
+    }
+    static buildMenu(platform) {
+        let menu = new App.Menu();
+        let menus = [
+            this.buildFileMenu(),
+            this.buildEditMenu(),
+            this.buildViewMenu(),
+            this.buildWindowMenu(platform),
+            this.buildHelpMenu(),
+        ];
+        menus.forEach((submenu, i) => {
+            let name = ["file", "edit", "view", "window", "help"][i];
+            let itm = new App.Menu.Item(util.capitalize(name));
+            itm.id = "menu:"+name;
+            if (name == "help") itm.role = "help";
+            submenu.items.forEach(subitm => itm.addItem(subitm));
+            menu.addItem(itm);
+        });
+        return menu;
+    }
+    static buildWholeMenu(name, platform) {
+        name = String(name);
+        let menu = new App.Menu();
+        let itm = new App.Menu.item((name.length > 0) ? name : "Peninsula", "navigate");
+        itm.id = "menu:main";
+        this.buildMainMenu().items.forEach(subitm => itm.addItem(subitm));
+        menu.addItem(itm);
+        this.buildMenu(platform).items.forEach(itm => menu.addItem(itm));
+        return menu;
+    }
 };
-App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
+App.Menu.Item = class AppMenuItem extends util.Target {
+    #id;
+
+    #role;
+    #type;
+    #label;
+    #accelerator;
+    #enabled;
+    #visible;
     #items;
+    // #menu;
 
     #elem;
     #eIcon;
     #eLabel;
-    #eShortcut;
+    #eAccelerator;
     #eDropdownIcon;
     #eDropdown;
 
     constructor(label, icon="") {
         super();
 
+        this.#id = new Array(64).fill(null).map(_ => util.BASE64[Math.floor(util.BASE64.length*Math.random())]).join("");
+
+        this.#role = null;
+        this.#type = null;
+        this.#label = null;
+        this.#accelerator = null;
+        this.#enabled = true;
+        this.#visible = true;
         this.#items = [];
+        // this.#menu = new App.Menu();
+        // this.menu.addHandler("change", (c, f, t) => this.change("menu."+c, f, t));
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -1301,9 +1540,9 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
         this.#eLabel = document.createElement("div");
         this.elem.appendChild(this.eLabel);
         this.eLabel.classList.add("label");
-        this.#eShortcut = document.createElement("div");
-        this.elem.appendChild(this.eShortcut);
-        this.eShortcut.classList.add("shortcut");
+        this.#eAccelerator = document.createElement("div");
+        this.elem.appendChild(this.eAccelerator);
+        this.eAccelerator.classList.add("accelerator");
         this.#eDropdownIcon = document.createElement("ion-icon");
         this.elem.appendChild(this.eDropdownIcon);
         this.eDropdownIcon.classList.add("dropdown");
@@ -1321,8 +1560,98 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
         this.icon = icon;
         this.label = label;
 
+        this.addHandler("change", () => {
+            // this.eDropdownIcon.style.display = (this.menu.items.length > 0) ? "" : "none";
+            this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
+        });
+        // this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
         this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
     }
+
+    get id() { return this.#id; }
+    set id(v) {
+        v = String(v);
+        if (this.id == v) return;
+        this.change("id", this.id, this.#id=v);
+    }
+
+    get role() { return this.#role; }
+    set role(v) {
+        v = (v == null) ? null : String(v);
+        if (this.role == v) return;
+        this.change("role", this.role, this.#role=v);
+        (async () => {
+            let label = await window.api.send("menu-role-label", v);
+            if (this.role != v) return;
+            this.eLabel.textContent = label;
+        })();
+    }
+    hasRole() { return this.role != null; }
+    get type() { return this.#type; }
+    set type(v) {
+        v = (v == null) ? null : String(v);
+        if (this.type == v) return;
+        this.change("type", this.type, this.#type=v);
+        if (this.type == "separator") this.elem.classList.add("divider");
+        else this.elem.classList.remove("divider");
+        this.#check();
+    }
+    hasType() { return this.type != null; }
+    get label() { return this.#label; }
+    set label(v) {
+        v = (v == null) ? null : String(v);
+        if (this.label == v) return;
+        this.change("label", this.label, this.#label=v);
+        this.eLabel.textContent = this.hasLabel() ? this.label : "";
+    }
+    hasLabel() { return this.label != null; }
+    get accelerator() { return this.#accelerator; }
+    set accelerator(v) {
+        v = (v == null) ? null : String(v);
+        if (this.accelerator == v) return;
+        this.change("accelerator", this.accelerator, this.#accelerator=v);
+        let parts = this.hasAccelerator() ? this.accelerator.split("+") : [];
+        parts = parts.map(part => {
+            if (["CommandOrControl", "CmdOrCtrl", "Command", "Cmd"].includes(part)) return "⌘";
+            if (["Control", "Ctrl"].includes(part)) return "⌃";
+            if (part == "Alt") return "⎇";
+            if (part == "Option") return "⌥";
+            if (part == "Shift") return "⇧";
+            if (part == "Super") return "❖";
+            if (part == "Meta") return "⌘";
+            return part;
+        });
+        this.eAccelerator.textContent = parts.join("");
+        this.eAccelerator.style.display = (this.eAccelerator.textContent.length > 0) ? "" : "none";
+    }
+    hasAccelerator() { return this.accelerator != null; }
+    get enabled() { return this.#enabled; }
+    set enabled(v) {
+        v = !!v;
+        if (this.enabled == v) return;
+        this.change("enabled", this.enabled, this.#enabled=v);
+        if (this.enabled) this.elem.classList.add("disabled");
+        else this.elem.classList.remove("disabled");
+    }
+    get disabled() { return !this.enabled; }
+    set disabled(v) { this.enabled = !v; }
+    get visible() { return this.#visible; }
+    set visible(v) {
+        v = !!v;
+        if (this.visible == v) return;
+        this.change("visible", this.visible, this.#visible=v);
+        this.#check();
+    }
+    get hidden() { return !this.visible; }
+    set hidden(v) { this.visible = !v; }
+
+    #check() {
+        if (this.visible && !this.hasRole()) this.elem.style.display = "";
+        else this.elem.style.display = "none";
+        this.post("format");
+    }
+    
+    // get menu() { return this.#menu; }
 
     get items() { return [...this.#items]; }
     set items(v) {
@@ -1336,30 +1665,47 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
         return itms;
     }
     hasItem(itm) {
-        if (!(itm instanceof App.ContextMenu.Item)) return false;
+        if (!(itm instanceof App.Menu.Item)) return false;
         return this.#items.includes(itm);
     }
-    addItem(itm) {
-        if (!(itm instanceof App.ContextMenu.Item)) return false;
+    insertItem(itm, at) {
+        if (!(itm instanceof App.Menu.Item)) return false;
         if (this.hasItem(itm)) return false;
-        this.#items.push(itm);
-        this.eDropdown.appendChild(itm.elem);
-        this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
+        at = Math.min(this.items.length, Math.max(0, util.ensure(at, "int")));
+        this.#items.splice(at, 0, itm);
+        itm.addLinkedHandler(this, "format", () => this.format());
+        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.items.indexOf(itm)+"]."+c, f, t));
+        this.change("addItem", null, itm);
+        this.format();
         return itm;
     }
+    addItem(itm) {
+        return this.insertItem(itm, this.items.length);
+    }
     remItem(itm) {
-        if (!(itm instanceof App.ContextMenu.Item)) return false;
+        if (!(itm instanceof App.Menu.Item)) return false;
         if (!this.hasItem(itm)) return false;
         this.#items.splice(this.#items.indexOf(itm), 1);
-        this.eDropdown.removeChild(itm.elem);
-        this.eDropdownIcon.style.display = (this.items.length > 0) ? "" : "none";
+        itm.clearLinkedHandlers(this, "format");
+        itm.clearLinkedHandlers(this, "change");
+        this.change("remItem", itm, null);
+        this.format();
         return itm;
+    }
+    findItemWithId(id) {
+        if (this.id == id) return this;
+        for (let itm of this.items) {
+            let foundItm = itm.findItemWithId(id);
+            if (!(foundItm instanceof App.Menu.Item)) continue;
+            return foundItm;
+        }
+        return null;
     }
 
     get elem() { return this.#elem; }
     get eIcon() { return this.#eIcon; }
     get eLabel() { return this.#eLabel; }
-    get eShortcut() { return this.#eShortcut; }
+    get eAccelerator() { return this.#eAccelerator; }
     get eDropdownIcon() { return this.#eDropdownIcon; }
     get eDropdown() { return this.#eDropdown; }
 
@@ -1376,26 +1722,6 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
-    get label() { return this.eLabel.textContent; }
-    set label(v) { this.eLabel.textContent = v; }
-
-    get shortcut() { return this.eShortcut.textContent; }
-    set shortcut(v) {
-        this.eShortcut.textContent = v;
-        this.eShortcut.style.display = (this.eShortcut.textContent.length > 0) ? "" : "none";
-    }
-    get shortcut() { return this.eShortcut.textContent; }
-    set shortcut(v) {
-        this.eShortcut.textContent = v;
-        this.eShortcut.style.display = (this.eShortcut.textContent.length > 0) ? "" : "none";
-    }
-
-    get disabled() { return this.elem.classList.contains("disabled"); }
-    set disabled(v) {
-        if (v) this.elem.classList.add("disabled");
-        else this.elem.classList.remove("disabled");
-    }
-
     fix() {
         let r = this.eDropdown.getBoundingClientRect();
         let ox = 0, oy = 0;
@@ -1405,12 +1731,45 @@ App.ContextMenu.Item = class AppContextMenuItem extends util.Target {
         if (r.top < 0) oy = 0-r.top;
         this.eDropdown.style.transform = "translate("+ox+"px, "+oy+"px)";
     }
+    format() {
+        this.eDropdown.innerHTML = "";
+        let itms = this.items;
+        let prevItm = null;
+        for (let i = 0; i < itms.length; i++) {
+            let itm = itms[i];
+            if (itm.type == "separator") {
+                if (prevItm != null)
+                    if (prevItm.type == "separator")
+                        continue;
+            } else if (itm.hasRole()) continue;
+            this.eDropdown.appendChild(itm.elem);
+            prevItm = itm;
+        }
+        if (prevItm != null)
+            if (prevItm.type == "separator")
+                this.eDropdown.removeChild(prevItm.elem);
+    }
+
+    toMenu() {
+        let menu = { id: this.id };
+        if (this.hasRole()) menu.role = this.role;
+        if (this.hasType()) menu.type = this.type;
+        if (this.hasLabel()) menu.label = this.label;
+        if (this.hasAccelerator()) menu.accelerator = this.accelerator;
+        menu.enabled = this.enabled;
+        menu.visible = this.visible;
+        if (this.items.length > 0)
+            menu.submenu = this.items.map(itm => itm.toMenu());
+        // let submenu = this.menu.toMenu();
+        // if (submenu.length > 0) menu.submenu = submenu;
+        return menu;
+    }
 };
-App.ContextMenu.Divider = class AppContextMenuDivider extends App.ContextMenu.Item {
+App.Menu.Divider = class AppMenuDivider extends App.Menu.Item {
     constructor() {
         super();
 
-        this.elem.classList.add("divider");
+        this.type = "separator";
     }
 };
 App.Page = class AppPage extends util.Target {
@@ -1645,7 +2004,13 @@ export class AppFeature extends App {
             this.eFileBtn.textContent = "File";
             this.eFileBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                this.post("file", e);
+                let itm = this.menu.findItemWithId("menu:file");
+                if (!(itm instanceof App.Menu.Item)) return;
+                let menu = new App.Menu();
+                itm.items.forEach(itm => menu.addItem(itm));
+                this.contextMenu = menu;
+                let r = this.eFileBtn.getBoundingClientRect();
+                this.placeContextMenu(r.left, r.bottom);
             });
 
             this.#eEditBtn = document.createElement("button");
@@ -1655,7 +2020,13 @@ export class AppFeature extends App {
             this.eEditBtn.textContent = "Edit";
             this.eEditBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                this.post("edit", e);
+                let itm = this.menu.findItemWithId("menu:edit");
+                if (!(itm instanceof App.Menu.Item)) return;
+                let menu = new App.Menu();
+                itm.items.forEach(itm => menu.addItem(itm));
+                this.contextMenu = menu;
+                let r = this.eEditBtn.getBoundingClientRect();
+                this.placeContextMenu(r.left, r.bottom);
             });
 
             this.#eViewBtn = document.createElement("button");
@@ -1665,7 +2036,13 @@ export class AppFeature extends App {
             this.eViewBtn.textContent = "View";
             this.eViewBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                this.post("view", e);
+                let itm = this.menu.findItemWithId("menu:view");
+                if (!(itm instanceof App.Menu.Item)) return;
+                let menu = new App.Menu();
+                itm.items.forEach(itm => menu.addItem(itm));
+                this.contextMenu = menu;
+                let r = this.eViewBtn.getBoundingClientRect();
+                this.placeContextMenu(r.left, r.bottom);
             });
 
             this.#eProjectInfo = document.createElement("div");
@@ -1825,7 +2202,7 @@ export class AppFeature extends App {
                 await this.post("cmd-save");
                 this.page = "PROJECTS";
             });
-            this.addHandler("cmd-close", () => {
+            this.addHandler("cmd-closeproject", () => {
                 if (this.page != "PROJECT") return;
                 this.page = "PROJECTS";
             });
@@ -1833,6 +2210,38 @@ export class AppFeature extends App {
             await this.loadProjects();
         });
         this.addHandler("post-setup", async () => {
+
+            ["file", "edit", "view"].forEach(name => {
+                let id = "menu:"+name;
+                let menu = this.menu.findItemWithId(id);
+                let namefs = {
+                    file: () => {
+                        let itms = [
+                            { id: "newproject", label: "New Project", accelerator: "CmdOrCtrl+N" },
+                            "separator",
+                            { id: "save", label: "Save", accelerator: "CmdOrCtrl+S" },
+                            { id: "savecopy", label: "Save as copy", accelerator: "CmdOrCtrl+Shift+S" },
+                            "separator",
+                            { id: "delete", label: "Delete Project" },
+                            { id: "closeproject", label: "Close Project" },
+                        ];
+                        itms.forEach((data, i) => {
+                            let itm = new App.Menu.Item(data.label);
+                            if (data == "separator") itm.type = "separator";
+                            else {
+                                itm.id = data.id;
+                                itm.accelerator = data.accelerator;
+                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
+                            }
+                            menu.insertItem(itm, 3+i);
+                        });
+                    },
+                };
+                if (name in namefs) namefs[name]();
+            });
+            let itm = this.menu.findItemWithId("close");
+            if (itm instanceof App.Menu.Item) itm.accelerator = "CmdOrCtrl+Shift+W";
+
             await this.post("pre-post-setup");
 
             this.addPage(new this.constructor.TitlePage(this));
@@ -1961,10 +2370,7 @@ export class AppFeature extends App {
         if (this.hasProject(id)) return false;
         this.#projects[id] = proj;
         proj.id = id;
-        proj._onChange = c => {
-            this.markChange(":"+proj.id);
-        };
-        proj.addHandler("change", proj._onChange);
+        proj.addLinkedHandler(this, "change", c => this.markChange(":"+proj.id));
         this.markChange("projects");
         this.markChange(":"+id);
         return proj;
@@ -1974,8 +2380,7 @@ export class AppFeature extends App {
         if (!this.hasProject(id)) return false;
         let proj = this.getProject(id);
         delete this.#projects[id];
-        proj.remHandler("change", proj._onChange);
-        delete proj._onChange;
+        proj.clearLinkedHandlers(this, "change");
         proj.id = null;
         this.markChange("projects");
         this.markChange(":"+id);
@@ -2144,18 +2549,18 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         const contextMenu = e => {
             let ids = [...selected];
             let itm;
-            let menu = new App.ContextMenu();
-            itm = menu.addItem(new App.ContextMenu.Item("Create"));
+            let menu = new App.Menu();
+            itm = menu.addItem(new App.Menu.Item("Create"));
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-newproject");
             });
-            menu.addItem(new App.ContextMenu.Divider());
-            itm = menu.addItem(new App.ContextMenu.Item("Open"));
+            menu.addItem(new App.Menu.Divider());
+            itm = menu.addItem(new App.Menu.Item("Open"));
             itm.disabled = ids.length != 1;
             itm.addHandler("trigger", e => {
                 this.app.setPage("PROJECT", { id: ids[0] });
             });
-            itm = menu.addItem(new App.ContextMenu.Item("Rename"));
+            itm = menu.addItem(new App.Menu.Item("Rename"));
             itm.disabled = ids.length != 1;
             itm.addHandler("trigger", async e => {
                 let project = this.app.getProject(ids[0]);
@@ -2166,13 +2571,13 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 project.meta.name = result;
                 await this.app.saveProjectsClean();
             });
-            menu.addItem(new App.ContextMenu.Divider());
-            itm = menu.addItem(new App.ContextMenu.Item("Delete"));
+            menu.addItem(new App.Menu.Divider());
+            itm = menu.addItem(new App.Menu.Item("Delete"));
             itm.disabled = ids.length <= 0;
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-delete", ids);
             });
-            itm = menu.addItem(new App.ContextMenu.Item("Duplicate"));
+            itm = menu.addItem(new App.Menu.Item("Duplicate"));
             itm.disabled = ids.length <= 0;
             itm.addHandler("trigger", async e => {
                 for (let i = 0; i < ids.length; i++)
@@ -2278,12 +2683,9 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (!(btn instanceof this.constructor.Button)) return false;
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
-        btn._onTrigger = e => this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey));
-        btn._onTrigger2 = e => this.app.setPage("PROJECT", { id: (btn.hasProject() ? btn.project.id : null) });
-        btn._onContextMenu = e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null);
-        btn.addHandler("trigger", btn._onTrigger);
-        btn.addHandler("trigger2", btn._onTrigger2);
-        btn.addHandler("contextmenu", btn._onContextMenu);
+        btn.addLinkedHandler(this, "trigger", e => this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey)));
+        btn.addLinkedHandler(this, "trigger2", e => this.app.setPage("PROJECT", { id: (btn.hasProject() ? btn.project.id : null) }));
+        btn.addLinkedHandler(this, "contextmenu", e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null));
         this.eContent.appendChild(btn.elemList);
         this.eContent.appendChild(btn.elemGrid);
         return btn;
@@ -2292,12 +2694,9 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (!(btn instanceof this.constructor.Button)) return false;
         if (!this.hasButton(btn)) return false;
         this.#buttons.delete(btn);
-        btn.remHandler("trigger", btn._onTrigger);
-        btn.remHandler("trigger2", btn._onTrigger2);
-        btn.remHandler("contextmenu", btn._onContextMenu);
-        delete btn._onTrigger;
-        delete btn._onTrigger2;
-        delete btn._onContextMenu;
+        btn.clearLinkedHandlers(this, "trigger");
+        btn.clearLinkedHandlers(this, "trigger2");
+        btn.clearLinkedHandlers(this, "contextmenu");
         this.eContent.removeChild(btn.elemList);
         this.eContent.removeChild(btn.elemGrid);
         return btn;

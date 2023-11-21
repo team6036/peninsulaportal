@@ -525,34 +525,63 @@ export class Target {
     #handlers;
 
     constructor() {
-        this.#handlers = {};
+        this.#handlers = new Map();
     }
 
-    addHandler(e, f) {
+    addLinkedHandler(o, e, f) {
         e = String(e);
         if (!is(f, "func")) return false;
-        if (!(e in this.#handlers)) this.#handlers[e] = new Set();
-        if (this.#handlers[e].has(f)) return false;
-        this.#handlers[e].add(f);
+        if (!this.#handlers.has(o)) this.#handlers.set(o, {});
+        let handlers = this.#handlers.get(o);
+        if (!(e in handlers)) handlers[e] = new Set();
+        if (handlers[e].has(f)) return false;
+        handlers[e].add(f);
         return f;
     }
-    remHandler(e, f) {
+    remLinkedHandler(o, e, f) {
         e = String(e);
         if (!is(f, "func")) return false;
-        if (!(e in this.#handlers)) return false;
-        if (!this.#handlers[e].has(e)) return false;
-        this.#handlers[e].delete(f);
+        if (!this.#handlers.has(o)) return false;
+        let handlers = this.#handlers.get(o);
+        if (!(e in handlers)) return false;
+        if (!handlers[e].has(e)) return false;
+        handlers[e].delete(f);
+        if (handlers[e].size <= 0) delete handlers[e];
+        if (Object.keys(handlers[e]).length <= 0) this.#handlers.delete(o);
         return f;
     }
-    hasHandler(e, f) {
+    hasLinkedHandler(o, e, f) {
         e = String(e);
         if (!is(f, "func")) return false;
-        if (!(e in this.#handlers)) return false;
-        return this.#handlers[e].has(f);
+        if (!this.#handlers.has(o)) return false;
+        let handlers = this.#handlers.get(o);
+        if (!(e in handlers)) return false;
+        return handlers[e].has(f);
     }
+    getLinkedHandlers(o, e) {
+        e = String(e);
+        if (!this.#handlers.has(o)) return [];
+        let handlers = this.#handlers.get(o);
+        if (!(e in handlers)) return [];
+        return [...handlers[e]];
+    }
+    clearLinkedHandlers(o, e) {
+        let fs = this.getLinkedHandlers(o, e);
+        fs.forEach(f => this.remLinkedHandler(o, e, f));
+        return fs;
+    }
+
+    addHandler(e, f) { return this.addLinkedHandler(null, e, f); }
+    remHandler(e, f) { return this.remLinkedHandler(null, e, f); }
+    hasHandler(e, f) { return this.hasLinkedHandler(null, e, f); }
+    getHandlers(e) { return this.getLinkedHandlers(null, e); }
+    clearHandlers(e) { return this.clearLinkedHandlers(null, e); }
     async post(e, ...a) {
-        if (!(e in this.#handlers)) return [];
-        let fs = [...this.#handlers[e]];
+        let fs = [];
+        for (let handlers of this.#handlers.values()) {
+            if (!(e in handlers)) continue;
+            fs.push(...handlers[e]);
+        }
         fs = fs.map(f => (async () => {
             if (f.constructor.name == "AsyncFunction") return await f(...a);
             else if (f.constructor.name == "Function") return f(...a);
@@ -1719,20 +1748,21 @@ export class Resolver extends Target {
     set state(v) {
         if (this.state == v) return;
         this.change("state", this.state, this.#state=v);
-        let i = 0;
-        while (i < this.#resolves.length) {
-            let o = this.#resolves[i];
+        let resolves = this.#resolves.filter(o => {
             let methodfs = {
                 "==": o.v == this.state,
                 "!=": o.v != this.state,
             };
-            if (!methodfs[o.method]) {
-                i++;
-                continue;
-            }
-            this.#resolves.splice(i, 1);
+            return methodfs[o.method];
+        });
+        for (let o of resolves) {
+            this.#resolves.splice(this.#resolves.indexOf(o), 1);
+            let stateChanged = false;
+            const stateChange = () => (stateChanged = true);
+            this.addHandler("change-state", stateChange);
             o.res();
-            if (this.state != v) break;
+            this.remHandler("change-state", stateChange);
+            if (stateChanged) break;
         }
     }
 

@@ -385,14 +385,8 @@ class BrowserField extends util.Target {
             if (!(field instanceof BrowserField)) return;
             if (field.name in this.#fields) return;
             this.#fields[field.name] = field;
-            field._onTrigger = (e, path) => {
-                this.post("trigger", e, [this.name, ...util.ensure(path, "arr")]);
-            };
-            field._onDrag = path => {
-                this.post("drag", [this.name, ...util.ensure(path, "arr")]);
-            };
-            field.addHandler("trigger", field._onTrigger);
-            field.addHandler("drag", field._onDrag);
+            field.addLinkedHandler(this, "trigger", this.post("trigger", e, [this.name, ...util.ensure(path, "arr")]));
+            field.addLinkedHandler(this, "drag", this.post("drag", [this.name, ...util.ensure(path, "arr")]));
             this.eContent.appendChild(field.elem);
             doneFields.push(field);
         });
@@ -410,10 +404,8 @@ class BrowserField extends util.Target {
             if (!(field instanceof BrowserField)) return;
             if (!(field.name in this.#fields)) return;
             delete this.#fields[field.name];
-            field.remHandler("trigger", field._onTrigger);
-            field.remHandler("drag", field._onDrag);
-            delete field._onTrigger;
-            delete field._onDrag;
+            field.clearLinkedHandlers(this, "trigger");
+            field.clearLinkedHandlers(this, "drag");
             this.eContent.removeChild(field.elem);
             doneFields.push(field);
         });
@@ -884,8 +876,7 @@ class Container extends Widget {
             this.#weights = this.#weights.map(w => w/wSum);
             this.#children.splice(at, 0, child);
         }
-        child._onChange = (c, f, t) => this.change("children["+this.children.indexOf(child)+"]."+c, f, t);
-        child.addHandler("change", child._onChange);
+        child.addLinkedHandler(this, "change", (c, f, t) => this.change("children["+this.children.indexOf(child)+"]."+c, f, t));
         child.post("add", this);
         this.change("addChild", null, child);
         this.change("weights", weights, this.weights);
@@ -920,8 +911,7 @@ class Container extends Widget {
             this.#weights.forEach(w => (wSum += w));
             this.#weights = this.#weights.map(w => w/wSum);
         }
-        child.remHandler("change", child._onChange);
-        delete child._onChange;
+        child.clearLinkedHandlers(this, "change");
         child.post("rem", this);
         this.change("remChild", child, null);
         this.change("weights", weights, this.weights);
@@ -1089,14 +1079,14 @@ class Panel extends Widget {
             if (!this.hasApp()) return;
             e.stopPropagation();
             let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-expand" : "chevron-collapse"));
-            itm.shortcut = "⇧⌃F";
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-expand" : "chevron-collapse"));
+            itm.accelerator = "Ctrl+Shift+F";
             itm.addHandler("trigger", e => {
                 this.isTitleCollapsed = !this.isTitleCollapsed;
             });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Close Panel", "close"));
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Close Panel", "close"));
             itm.addHandler("trigger", e => {
                 if (this.hasPageParent()) return this.parent.widget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
@@ -1179,8 +1169,7 @@ class Panel extends Widget {
         if (at == null) at = this.#tabs.length;
         this.#tabs.splice(at, 0, tab);
         tab.parent = this;
-        tab._onChange = (c, f, t) => this.change("tabs["+this.tabs.indexOf(tab)+"]."+c, f, t);
-        tab.addHandler("change", tab._onChange);
+        tab.addLinkedHandler(this, "change", (c, f, t) => this.change("tabs["+this.tabs.indexOf(tab)+"]."+c, f, t));
         tab.post("add", this);
         this.change("addTab", null, tab);
         this.eTop.appendChild(tab.eTab);
@@ -1196,8 +1185,7 @@ class Panel extends Widget {
         let at = this.#tabs.indexOf(tab);
         this.#tabs.splice(at, 1);
         tab.parent = null;
-        tab.remHandler("change", tab._onChange);
-        delete tab._onChange;
+        tab.clearLinkedHandlers(this, "change");
         tab.post("rem", this);
         this.change("remTab", tab, null);
         this.eTop.removeChild(tab.eTab);
@@ -1988,17 +1976,17 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     (...bfields) => {
                         bfields.forEach(bfield => {
                             state.fields.push(bfield);
-                            bfield._onTrigger = (e, path) => {
+                            const onTrigger = (e, path) => {
                                 this.path = [...this.path, ...util.ensure(path, "arr")];
                             };
-                            bfield._onDrag = path => {
+                            const onDrag = path => {
                                 path = [...this.path, ...util.ensure(path, "arr")];
                                 if (!this.hasApp() || !this.hasPage()) return;
                                 this.app.dragData = this.page.hasSource() ? this.page.source.root.lookup(path) : null;
                                 this.app.dragging = true;
                             };
-                            bfield.addHandler("trigger", bfield._onTrigger);
-                            bfield.addHandler("drag", bfield._onDrag);
+                            bfield.addLinkedHandler(this, "trigger", onTrigger);
+                            bfield.addLinkedHandler(this, "drag", onDrag);
                             this.eBrowser.appendChild(bfield.elem);
                         });
                         state.fields.sort((a, b) => compare(a.name, b.name)).forEach((field, i) => {
@@ -2009,10 +1997,8 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     (...bfields) => {
                         bfields.forEach(bfield => {
                             state.fields.splice(state.fields.indexOf(bfield), 1);
-                            bfield.remHandler("trigger", bfield._onTrigger);
-                            bfield.remHandler("drag", bfield._onDrag);
-                            delete bfield._onTrigger;
-                            delete bfield._onDrag;
+                            bfield.clearLinkedHandlers(this, "trigger");
+                            bfield.clearLinkedHandlers(this, "drag");
                             this.eBrowser.removeChild(bfield.elem);
                         });
                     },
@@ -2298,17 +2284,14 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.#vars.splice(at, 0, v);
         v.tab = this;
         this.eHeader.appendChild(v.eHeader);
-        v._onRemove = () => this.remVar(v);
-        v._onChange = (c, f, t) => this.change("vars["+this.vars.indexOf(v)+"]."+c, f, t);
-        v._onDrag = () => {
+        v.addLinkedHandler(this, "remove", () => this.remVar(v));
+        v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.vars.indexOf(v)+"]."+c, f, t));
+        v.addLinkedHandler(this, "drag", () => {
             if (!this.hasPage() || !this.page.hasSource() || !this.hasApp()) return;
             this.app.dragData = this.page.source.root.lookup(v.path);
             this.app.dragging = true;
-            v._onRemove();
-        };
-        v.addHandler("remove", v._onRemove);
-        v.addHandler("change", v._onChange);
-        v.addHandler("drag", v._onDrag);
+            v.post("remove");
+        });
         this.change("addVar", null, v);
         return v;
     }
@@ -2321,12 +2304,9 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         v.tab = null;
         this.eHeader.removeChild(v.eHeader);
         v.eSections.forEach(elem => this.eBody.removeChild(elem));
-        v.remHandler("remove", v._onRemove);
-        v.remHandler("change", v._onChange);
-        v.remHandler("drag", v._onDrag);
-        delete v._onRemove;
-        delete v._onChange;
-        delete v._onDrag;
+        v.clearLinkedHandlers(this, "remove");
+        v.clearLinkedHandlers(this, "change");
+        v.clearLinkedHandlers(this, "drag");
         this.change("remVar", v, null);
         return v;
     }
@@ -2827,34 +2807,34 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             names.forEach(name => LOGGERCONTEXT.hasClientLog(name) ? (anyClientHas = true) : null);
             names.forEach(name => LOGGERCONTEXT.hasServerLog(name) ? (anyServerHas = true) : null);
             let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("Upload"));
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item("Upload"));
             itm.addHandler("trigger", e => {
                 this.eUploadBtn.click();
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Upload Selected"));
+            itm = menu.addItem(new core.App.Menu.Item("Upload Selected"));
             itm.disabled = names.length <= 0 || !anyClientHas;
             itm.addHandler("trigger", e => {
                 LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
             });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Open"));
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Open"));
             itm.disabled = names.length != 1;
             itm.addHandler("trigger", e => {
                 this.post("log-trigger2", e, names[0]);
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Download"));
+            itm = menu.addItem(new core.App.Menu.Item("Download"));
             itm.disabled = names.length <= 0;
             itm.addHandler("trigger", e => {
                 names.forEach(name => this.post("log-download", name));
             });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Delete locally"));
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Delete locally"));
             itm.disabled = !anyClientHas;
             itm.addHandler("trigger", e => {
                 this.post("log-client-delete", names);
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Delete from server"));
+            itm = menu.addItem(new core.App.Menu.Item("Delete from server"));
             itm.disabled = !anyServerHas;
             itm.addHandler("trigger", e => {
                 this.post("log-server-delete", names);
@@ -2959,22 +2939,10 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         if (!(log instanceof Panel.LoggerTab.Log)) return false;
         if (this.hasLog(log)) return false;
         this.#logs.add(log);
-        log._onDownload = () => {
-            this.post("log-download", log.name);
-        };
-        log._onTrigger = e => {
-            this.post("log-trigger", e, log.name, !!(util.ensure(e, "obj").shiftKey));
-        };
-        log._onTrigger2 = e => {
-            this.post("log-trigger2", e, log.name);
-        };
-        log._onContextMenu = e => {
-            this.post("log-contextmenu", e, log.name);
-        };
-        log.addHandler("download", log._onDownload);
-        log.addHandler("trigger", log._onTrigger);
-        log.addHandler("trigger2", log._onTrigger2);
-        log.addHandler("contextmenu", log._onContextMenu);
+        log.addLinkedHandler(this, "download", () => this.post("log-download", log.name));
+        log.addLinkedHandler(this, "trigger", e => this.post("log-trigger", e, log.name, !!(util.ensure(e, "obj").shiftKey)));
+        log.addLinkedHandler(this, "trigger2", e => this.post("log-trigger2", e, log.name));
+        log.addLinkedHandler(this, "contextmenu", e => this.post("log-contextmenu", e, log.name));
         this.eLogs.appendChild(log.elem);
         this.format();
         return log;
@@ -2983,14 +2951,10 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         if (!(log instanceof Panel.LoggerTab.Log)) return false;
         if (!this.hasLog(log)) return false;
         this.#logs.delete(log);
-        log.remHandler("download", log._onDownload);
-        log.remHandler("trigger", log._onTrigger);
-        log.remHandler("trigger2", log._onTrigger2);
-        log.remHandler("contextmenu", log._onContextMenu);
-        delete log._onDownload;
-        delete log._onTrigger;
-        delete log._onTrigger2;
-        delete log._onContextMenu;
+        log.clearLinkedHandlers(this, "download");
+        log.clearLinkedHandlers(this, "trigger");
+        log.clearLinkedHandlers(this, "trigger2");
+        log.clearLinkedHandlers(this, "contextmenu");
         this.eLogs.removeChild(log.elem);
         return log;
     }
@@ -3886,10 +3850,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
         if (this.hasLVar(lVar)) return false;
         this.#lVars.add(lVar);
-        lVar._onRemove = () => this.remLVar(lVar);
-        lVar._onChange = (c, f, t) => this.change("lVars["+this.lVars.indexOf(lVar)+"]."+c, f, t);
-        lVar.addHandler("remove", lVar._onRemove);
-        lVar.addHandler("change", lVar._onChange);
+        lVar.addLinkedHandler(this, "remove", () => this.remLVar(lVar));
+        lVar.addLinkedHandler(this, "change", (c, f, t) => this.change("lVars["+this.lVars.indexOf(lVar)+"]."+c, f, t));
         if (this.hasEOptionSection("l"))
             this.getEOptionSection("l").appendChild(lVar.elem);
         this.change("addLVar", null, lVar);
@@ -3899,10 +3861,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
         if (!this.hasLVar(lVar)) return false;
         this.#lVars.delete(lVar);
-        lVar.remHandler("remove", lVar._onRemove);
-        lVar.remHandler("change", lVar._onChange);
-        delete lVar._onRemove;
-        delete lVar._onChange;
+        lVar.clearLinkedHandlers(this, "remove");
+        lVar.clearLinkedHandlers(this, "change");
         if (this.hasEOptionSection("l"))
             this.getEOptionSection("l").removeChild(lVar.elem);
         this.change("remLVar", lVar, null);
@@ -3927,10 +3887,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
         if (this.hasRVar(rVar)) return false;
         this.#rVars.add(rVar);
-        rVar._onRemove = () => this.remRVar(rVar);
-        rVar._onChange = (c, f, t) => this.change("rVars["+this.rVars.indexOf(rVar)+"]."+c, f, t);
-        rVar.addHandler("remove", rVar._onRemove);
-        rVar.addHandler("change", rVar._onChange);
+        rVar.addLinkedHandler(this, "remove", () => this.remRVar(rVar));
+        rVar.addLinkedHandler(this, "change", (c, f, t) => this.change("rVars["+this.rVars.indexOf(rVar)+"]."+c, f, t));
         if (this.hasEOptionSection("r"))
             this.getEOptionSection("r").appendChild(rVar.elem);
         this.change("addRVar", null, rVar);
@@ -3941,8 +3899,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (!this.hasRVar(rVar)) return false;
         let i = this.rVars.indexOf(rVar);
         this.#rVars.delete(rVar);
-        rVar.remHandler("remove", rVar._onRemove);
-        delete rVar._onRemove;
+        rVar.clearLinkedHandlers(this, "remove");
+        rVar.clearLinkedHandlers(this, "change");
         if (this.hasEOptionSection("r"))
             this.getEOptionSection("r").removeChild(rVar.elem);
         this.change("remRVar", rVar, null);
@@ -4308,14 +4266,14 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         if (!this.hasApp()) return;
                         e.stopPropagation();
                         let itm;
-                        let menu = new core.App.ContextMenu();
-                        itm = menu.addItem(new core.App.ContextMenu.Item("No Template", (this.template == null) ? "checkmark" : ""));
+                        let menu = new core.App.Menu();
+                        itm = menu.addItem(new core.App.Menu.Item("No Template", (this.template == null) ? "checkmark" : ""));
                         itm.addHandler("trigger", e => {
                             this.template = null;
                         });
-                        menu.addItem(new core.App.ContextMenu.Divider());
+                        menu.addItem(new core.App.Menu.Divider());
                         for (let name in templates) {
-                            itm = menu.addItem(new core.App.ContextMenu.Item(name, (this.template == name) ? "checkmark" : ""));
+                            itm = menu.addItem(new core.App.Menu.Item(name, (this.template == name) ? "checkmark" : ""));
                             itm.addHandler("trigger", e => {
                                 this.template = name;
                             });
@@ -4399,10 +4357,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!(pose instanceof this.constructor.Pose)) return false;
         if (this.hasPose(pose)) return false;
         this.#poses.add(pose);
-        pose._onRemove = () => this.remPose(pose);
-        pose._onChange = (c, f, t) => this.change("poses["+this.poses.indexOf(pose)+"]."+c, f, t);
-        pose.addHandler("remove", pose._onRemove);
-        pose.addHandler("change", pose._onChange);
+        pose.addLinkedHandler(this, "remove", () => this.remPose(pose));
+        pose.addLinkedHandler(this, "change", (c, f, t) => this.change("poses["+this.poses.indexOf(pose)+"]."+c, f, t));
         if (this.hasEOptionSection("p"))
             this.getEOptionSection("p").appendChild(pose.elem);
         this.change("addPose", null, pose);
@@ -4415,10 +4371,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         pose.state.tab = null;
         let i = this.poses.indexOf(pose);
         this.#poses.delete(pose);
-        pose.remHandler("remove", pose._onRemove);
-        pose.remHandler("change", pose._onChange);
-        delete pose._onRemove;
-        delete pose._onChange;
+        pose.clearLinkedHandlers(this, "remove");
+        pose.clearLinkedHandlers(this, "change");
         if (this.hasEOptionSection("p"))
             this.getEOptionSection("p").removeChild(pose.elem);
         this.change("remPose", pose, null);
@@ -4938,14 +4892,14 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     addPose(pose) {
         let r = super.addPose(pose);
         if (r instanceof this.constructor.Pose) {
-            r._onType = () => {
+            const onType = () => {
                 let current = core.Odometry2d.Robot.lookupTypeName(r.type);
                 if (!this.hasApp()) return;
                 let itm;
-                let menu = new core.App.ContextMenu();
+                let menu = new core.App.Menu();
                 Object.keys(core.Odometry2d.Robot.Types).forEach(k => {
                     let name = String(k).split(" ").map(v => util.capitalize(v)).join(" ");
-                    itm = menu.addItem(new core.App.ContextMenu.Item(name, (current == k) ? "checkmark" : ""));
+                    itm = menu.addItem(new core.App.Menu.Item(name, (current == k) ? "checkmark" : ""));
                     itm.addHandler("trigger", e => {
                         r.type = k;
                     });
@@ -4954,15 +4908,14 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
             };
-            r.addHandler("type", r._onType);
+            r.addLinkedHandler(this, "type", onType);
         }
         return r;
     }
     remPose(pose) {
         let r = super.remPose(pose);
         if (r instanceof this.constructor.Pose) {
-            r.remHandler("type", r._onType);
-            delete r._onType;
+            r.clearLinkedHandlers(this, "type");
         }
         return r;
     }
@@ -5611,12 +5564,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     addPose(pose) {
         let r = super.addPose(pose);
         if (r instanceof this.constructor.Pose) {
-            r._onType = async () => {
+            const onType = async () => {
                 let robots = util.ensure(await window.api.get("robots"), "obj");
                 let current = r.type;
                 if (!this.hasApp()) return;
                 let itm;
-                let menu = new core.App.ContextMenu();
+                let menu = new core.App.Menu();
                 let customTypes = {
                     "§node": {
                         name: "Node",
@@ -5630,14 +5583,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 };
                 for (let k in customTypes) {
                     let data = customTypes[k];
-                    itm = menu.addItem(new core.App.ContextMenu.Item(data.name, (current == k) ? "checkmark" : ""));
+                    itm = menu.addItem(new core.App.Menu.Item(data.name, (current == k) ? "checkmark" : ""));
                     itm.addHandler("trigger", e => {
                         r.type = k;
                     });
                 }
-                menu.addItem(new core.App.ContextMenu.Divider());
+                menu.addItem(new core.App.Menu.Divider());
                 Object.keys(robots).forEach(k => {
-                    itm = menu.addItem(new core.App.ContextMenu.Item(k, (current == k) ? "checkmark" : ""));
+                    itm = menu.addItem(new core.App.Menu.Item(k, (current == k) ? "checkmark" : ""));
                     itm.addHandler("trigger", e => {
                         r.type = k;
                     });
@@ -5646,15 +5599,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
             };
-            r.addHandler("type", r._onType);
+            r.addLinkedHandler(this, "type", onType);
         }
         return r;
     }
     remPose(pose) {
         let r = super.remPose(pose);
         if (r instanceof this.constructor.Pose) {
-            r.remHandler("type", r._onType);
-            delete r._onType;
+            r.clearLinkedHandlers(this, "type");
         }
         return r;
     }
@@ -6321,80 +6273,64 @@ export default class App extends core.AppFeature {
         this.#eProjectInfoSourceTypes = {};
 
         this.addHandler("pre-post-setup", () => {
-            this.addHandler("file", () => {
-                let itm;
-                let menu = new core.App.ContextMenu();
-                itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
-                itm.shortcut = "⌘N";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-newproject");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("New Tab", "add"));
-                itm.shortcut = "⌘T";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-newtab");
-                });
-                menu.addItem(new core.App.ContextMenu.Divider());
-                itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
-                itm.shortcut = "⌘S";
-                itm.addHandler("trigger", async e => {
-                    this.post("cmd-save");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
-                itm.shortcut = "⇧⌘S";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-savecopy");
-                });
-                menu.addItem(new core.App.ContextMenu.Divider());
-                itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-delete");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Close Tab"));
-                itm.shortcut = "⌘W";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-closetab");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-close");
-                });
-                this.contextMenu = menu;
-                let r = this.eFileBtn.getBoundingClientRect();
-                this.placeContextMenu(r.left, r.bottom);
-            });
-            this.addHandler("edit", () => {
-                let itm;
-                let menu = new core.App.ContextMenu();
-                itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Connect / Disconnect"));
-                itm.shortcut = "⌘K";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-conndisconn");
-                });
-                this.contextMenu = menu;
-                let r = this.eEditBtn.getBoundingClientRect();
-                this.placeContextMenu(r.left, r.bottom);
-            });
-            this.addHandler("view", () => {
-                let itm;
-                let menu = new core.App.ContextMenu();
-                itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Options Opened / Closed"));
-                itm.shortcut = "⌃F";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-openclose");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Title Collapsed"));
-                itm.shortcut = "⇧⌘F";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-expandcollapse");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Reset Divider"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-resetdivider");
-                });
-                this.contextMenu = menu;
-                let r = this.eViewBtn.getBoundingClientRect();
-                this.placeContextMenu(r.left, r.bottom);
+            ["file", "edit", "view"].forEach(name => {
+                let id = "menu:"+name;
+                let menu = this.menu.findItemWithId(id);
+                let namefs = {
+                    file: () => {
+                        let itms = [
+                            { id: "newtab", label: "New Tab", accelerator: "CmdOrCtrl+T" },
+                            { id: "closetab", label: "Close Tab", accelerator: "CmdOrCtrl+W" },
+                        ];
+                        itms = itms.map((data, i) => {
+                            let itm = new App.Menu.Item(data.label);
+                            if (data == "separator") itm.type = "separator";
+                            else {
+                                itm.id = data.id;
+                                itm.accelerator = data.accelerator;
+                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
+                            }
+                            return itm;
+                        });
+                        menu.insertItem(itms.pop(), 9);
+                        menu.insertItem(itms.pop(), 4);
+                    },
+                    edit: () => {
+                        let itms = [
+                            { id: "conndisconn", label: "Toggle Connect / Disconnect", accelerator: "CmdOrCtrl+K" },
+                            "separator",
+                        ];
+                        itms.forEach((data, i) => {
+                            let itm = new App.Menu.Item(data.label);
+                            if (data == "separator") itm.type = "separator";
+                            else {
+                                itm.id = data.id;
+                                itm.accelerator = data.accelerator;
+                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
+                            }
+                            menu.insertItem(itm, 0+i);
+                        });
+                    },
+                    view: () => {
+                        let itms = [
+                            { id: "openclose", label: "Toggle Options Opened / Closed", accelerator: "Ctrl+F" },
+                            { id: "expandcollapse", label: "Toggle Title Collapsed", accelerator: "Ctrl+Shift+F" },
+                            { id: "resetdivider", label: "Reset Divider" },
+                            "separator",
+                        ];
+                        itms.forEach((data, i) => {
+                            let itm = new App.Menu.Item(data.label);
+                            if (data == "separator") itm.type = "separator";
+                            else {
+                                itm.id = data.id;
+                                itm.accelerator = data.accelerator;
+                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
+                            }
+                            menu.insertItem(itm, 0+i);
+                        });
+                    },
+                };
+                if (name in namefs) namefs[name]();
             });
 
             let eNav;
@@ -7095,14 +7031,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!(field instanceof BrowserField)) return;
             if (this.hasBrowserField(field)) return;
             this.#browserFields.push(field);
-            field._onDrag = path => {
+            const onDrag = path => {
                 path = util.ensure(path, "arr");
                 let field = this.hasSource() ? this.source.root.lookup(path) : null;
                 if (!(field instanceof Source.Field)) return;
                 this.app.dragData = field;
                 this.app.dragging = true;
             };
-            field.addHandler("drag", field._onDrag);
+            field.addLinkedHandler(this, "drag", onDrag);
             this.getESideSection("browser").eContent.appendChild(field.elem);
             doneFields.push(field);
         });
@@ -7120,8 +7056,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!(field instanceof BrowserField)) return;
             if (!this.hasBrowserField(field)) return;
             this.#browserFields.splice(this.#browserFields.indexOf(field), 1);
-            field.remHandler("drag", field._onDrag);
-            delete field._onDrag;
+            field.clearLinkedHandlers(this, "drag");
             this.getESideSection("browser").eContent.removeChild(field.elem);
             doneFields.push(field);
         });
@@ -7164,18 +7099,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (this.widget == v) return;
         if (this.hasWidget()) {
             this.widget.parent = null;
-            this.widget.remHandler("change", this.widget._onChange);
-            delete this.widget._onChange;
+            this.widget.clearLinkedHandlers(this, "change");
             this.eContent.removeChild(this.widget.elem);
         }
         this.#widget = v;
         if (this.hasWidget()) {
             this.widget.parent = this;
-            this.widget._onChange = () => {
+            const onChange = () => {
                 if (this.hasProject())
                     this.project.widgetData = JSON.stringify(this.widget);
             };
-            this.widget.addHandler("change", this.widget._onChange);
+            this.widget.addLinkedHandler(this, "change", onChange);
             this.eContent.appendChild(this.widget.elem);
             this.activeWidget = this.widget;
         }
@@ -7201,13 +7135,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (this.source == v) return;
         if (this.hasSource()) {
             if (this.source instanceof NTSource) this.source.address = null;
-            this.source.remHandler("change", this.source.root._onChange);
-            delete this.source._onChange;
+            this.source.clearLinkedHandlers(this, "change");
         }
         this.#source = v;
         if (this.hasSource()) {
-            this.source._onChange = () => {};
-            this.source.addHandler("change", this.source._onChange);
+            this.source.addLinkedHandler(this, "change", () => {});
         }
     }
     hasSource() { return this.source instanceof Source; }
@@ -7287,10 +7219,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             "savecopy",
             "delete", "closetab", "closeproject",
         ];
-        let items = {};
-        projectOnly.forEach(id => (items[id] = true));
-        await window.api.send("menu-ables", items);
-        await window.api.send("menu-visibles", items);
+        projectOnly.forEach(id => {
+            let itm = this.app.menu.findItemWithId(id);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.enabled = itm.visible = true;
+        });
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
         await this.refresh();
         if (this.app.hasProject(data.id)) {
@@ -7309,10 +7242,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             "savecopy",
             "delete", "closetab", "closeproject",
         ];
-        let items = {};
-        projectOnly.forEach(id => (items[id] = false));
-        await window.api.send("menu-ables", items);
-        await window.api.send("menu-visibles", items);
+        projectOnly.forEach(id => {
+            let itm = this.app.menu.findItemWithId(id);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.enabled = itm.visible = false;
+        });
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
         this.app.markChange("*all");
         await this.app.post("cmd-save");
