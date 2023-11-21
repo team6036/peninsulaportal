@@ -6282,16 +6282,7 @@ export default class App extends core.AppFeature {
                             { id: "newtab", label: "New Tab", accelerator: "CmdOrCtrl+T" },
                             { id: "closetab", label: "Close Tab", accelerator: "CmdOrCtrl+W" },
                         ];
-                        itms = itms.map((data, i) => {
-                            let itm = new App.Menu.Item(data.label);
-                            if (data == "separator") itm.type = "separator";
-                            else {
-                                itm.id = data.id;
-                                itm.accelerator = data.accelerator;
-                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
-                            }
-                            return itm;
-                        });
+                        itms = itms.map((data, i) => App.Menu.Item.fromObj(data));
                         menu.menu.insertItem(itms.pop(), 9);
                         menu.menu.insertItem(itms.pop(), 4);
                     },
@@ -6301,13 +6292,7 @@ export default class App extends core.AppFeature {
                             "separator",
                         ];
                         itms.forEach((data, i) => {
-                            let itm = new App.Menu.Item(data.label);
-                            if (data == "separator") itm.type = "separator";
-                            else {
-                                itm.id = data.id;
-                                itm.accelerator = data.accelerator;
-                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
-                            }
+                            let itm = App.Menu.Item.fromObj(data);
                             menu.menu.insertItem(itm, 0+i);
                         });
                     },
@@ -6318,16 +6303,7 @@ export default class App extends core.AppFeature {
                             { id: "resetdivider", label: "Reset Divider" },
                             "separator",
                         ];
-                        itms.forEach((data, i) => {
-                            let itm = new App.Menu.Item(data.label);
-                            if (data == "separator") itm.type = "separator";
-                            else {
-                                itm.id = data.id;
-                                itm.accelerator = data.accelerator;
-                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
-                            }
-                            menu.menu.insertItem(itm, 0+i);
-                        });
+                        itms.forEach((data, i) => menu.menu.insertItem(App.Menu.Item.fromObj(data), 0+i));
                     },
                 };
                 if (name in namefs) namefs[name]();
@@ -7222,6 +7198,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         projectOnly.forEach(id => {
             let itm = this.app.menu.findItemWithId(id);
             if (!(itm instanceof App.Menu.Item)) return;
+            console.log(itm);
             itm.enabled = itm.visible = true;
         });
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));

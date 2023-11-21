@@ -2663,7 +2663,10 @@ const MAIN = async () => {
                         if (!util.is(itms, "arr")) return;
                         itms.forEach(itm => {
                             if (!util.is(itm, "obj")) return;
-                            itm.click = () => this.send("menu-click", itm.id);
+                            itm.click = () => {
+                                this.send("menu-click", itm.id);
+                                this.send(itm.id);
+                            };
                             dfs(itm.submenu);
                         });
                     };
