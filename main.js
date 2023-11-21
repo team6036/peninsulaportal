@@ -569,6 +569,34 @@ const MAIN = async () => {
             return this.clients.filter(client => client.hasTag(tag));
         }
     }
+    const makeMenuDefault = (name, aboutCallback, settingsCallback) => {
+        name = String(name);
+        aboutCallback = util.ensure(aboutCallback, "func");
+        settingsCallback = util.ensure(settingsCallback, "func");
+        return [
+            {
+                label: (name.length > 0) ? util.capitalize(name) : "Portal",
+                submenu: [
+                    {
+                        label: (name.length > 0) ? ("About Peninsula "+util.capitalize(name)) : "About Peninsula",
+                        click: () => aboutCallback,
+                    },
+                    { type: "separator" },
+                    {
+                        label: "Settings",
+                        accelerator: "CmdOrCtrl+,",
+                        click: () => settingsCallback(),
+                    },
+                    { type: "separator" },
+                    { role: "hide" },
+                    { role: "hideOthers" },
+                    { role: "unhide" },
+                    { type: "separator" },
+                    { role: "quit" },
+                ],
+            },
+        ];
+    };
     const showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
     class Portal extends util.Target {
         #started;
@@ -684,19 +712,8 @@ const MAIN = async () => {
                 showError("Feature Start Error", e);
                 return false;
             }
-            feat._onFocus = () => {
-                if (feat.hasMenu()) {
-                    if (OS.platform == "darwin")
-                        electron.Menu.setApplicationMenu(feat.menu);
-                    return;
-                }
-                if (feat.hasWindow())
-                    feat.window.removeListener("focus", feat._onFocus);
-                delete feat._onFocus;
-            };
-            if (feat.hasWindow())
-                feat.window.on("focus", feat._onFocus);
             this.change("addFeature", null, feat);
+            this.checkMenu();
             return feat;
         }
         async remFeature(feat) {
@@ -717,7 +734,21 @@ const MAIN = async () => {
             feat.log("REM - already stopped");
             this.#features.delete(feat);
             this.change("remFeature", feat, null);
+            this.checkMenu();
             return feat;
+        }
+
+        checkMenu() {
+            if (OS.platform != "darwin") return;
+            electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault("")));
+            let window = electron.BrowserWindow.getFocusedWindow();
+            for (let feat of this.features) {
+                if (!feat.hasWindow()) continue;
+                if (feat.window != window) continue;
+                if (feat.hasMenu()) electron.Menu.setApplicationMenu(feat.menu);
+                else electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault(feat.name)));
+                break;
+            }
         }
 
         get loads() { return [...this.#loads]; }
@@ -1980,7 +2011,7 @@ const MAIN = async () => {
                 "spawn": async name => {
                     name = String(name);
                     for (let feat of this.features) {
-                        if (feat.name != name) return;
+                        if (feat.name != name) continue;
                         return false;
                     }
                     if (!FEATURES.includes(name)) return false;
@@ -1991,6 +2022,10 @@ const MAIN = async () => {
                 "notify": async options => {
                     const notif = new electron.Notification(options);
                     notif.show();
+                },
+                "menu-role-label": async role => {
+                    role = String(role);
+                    return electron.Menu.buildFromTemplate([{ role: role }]).items[0].label;
                 },
                 "_state": async () => {
                     await this.affirm();
@@ -2025,6 +2060,7 @@ const MAIN = async () => {
                     await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
                     return v;
                 },
+                "open": async url => await electron.shell.openExternal(url),
             };
             if (k in kfs) return await kfs[k](...a);
             throw "§O No possible \"on\" for key: "+k;
@@ -2238,7 +2274,7 @@ const MAIN = async () => {
                 if (!this.hasWindow()) return;
                 if (url != this.window.webContents.getURL()) {
                     e.preventDefault();
-                    electron.shell.openExternal(url);
+                    this.on("open", url);
                 }
             });
             let any = false;
@@ -2259,6 +2295,9 @@ const MAIN = async () => {
             this.window.on("enter-full-screen", () => this.send("win-fullscreen", true));
             this.window.on("leave-full-screen", () => this.send("win-fullscreen", false));
 
+            this.window.on("focus", () => this.portal.checkMenu());
+            this.window.on("blur", () => this.portal.checkMenu());
+
             this.perm = false;
             this.window.on("close", e => {
                 this.log("CLOSE");
@@ -2270,181 +2309,16 @@ const MAIN = async () => {
 
             this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
-            const build = {
-                about: [
-                    {
-                        id: "about",
-                        label: "About Peninsula "+util.capitalize(this.name),
-                        click: () => this.send("about"),
-                    },
-                ],
-                settings: [
-                    {
-                        id: "settings",
-                        label: "Settings",
-                        accelerator: "CmdOrCtrl+,",
-                        click: () => this.on("spawn", "PRESETS"),
-                    },
-                ],
-                hide: [
-                    { id: "hide", role: "hide" },
-                    { id: "hideOthers", role: "hideOthers" },
-                    { id: "unhide", role: "unhide" },
-                ],
-                quit: [
-                    { id: "quit", role: "quit" },
-                ],
-                close: [
-                    { role: "close" },
-                ],
-                undoredo: [
-                    { id: "undo", role: "undo" },
-                    { id: "redo", role: "redo" },
-                ],
-                cutcopypaste: [
-                    { id: "cut", role: "cut" },
-                    { id: "copy", role: "copy" },
-                    { id: "paste", role: "paste" },
-                ],
-                fullscreen: [
-                    { id: "toggleFullscreen", role: "togglefullscreen" },
-                ],
-                window: [
-                    { id: "minimize", role: "minimize" },
-                    { id: "zoom", role: "zoom" },
-                ],
-                front: [
-                    { id: "front", role: "front" },
-                ],
-                help: [
-                    {
-                        id: "ionicons",
-                        label: "Ionicons",
-                        click: () => electron.shell.openExternal("https://ionic.io/ionicons"),
-                    },
-                    {
-                        id: "repo",
-                        label: "Github Repository",
-                        click: async () => await electron.shell.openExternal(await this.get("repo")),
-                    },
-                    {
-                        id: "db",
-                        label: "Open Database",
-                        click: async () => await electron.shell.openExternal(await this.get("db-host")),
-                    },
-                ],
-                reload: [
-                    {
-                        id: "reload",
-                        label: "Reload Feature",
-                        accelerator: "CmdOrCtrl+R",
-                        click: () => {
-                            const portal = this.portal, name = this.name;
-                            portal.remFeature(this);
-                            portal.addFeature(new Portal.Feature(portal, name));
-                        },
-                    },
-                ],
-                spawn: [
-                    {
-                        id: "spawn",
-                        label: "New Feature",
-                        submenu: [
-                            {
-                                id: "spawnPanel",
-                                label: "Peninsula Panel",
-                                accelerator: "CmdOrCtrl+1",
-                                click: () => this.on("spawn", "PANEL"),
-                            },
-                            {
-                                id: "spawnPlanner",
-                                label: "Peninsula Planner",
-                                accelerator: "CmdOrCtrl+2",
-                                click: () => this.on("spawn", "PLANNER"),
-                            },
-                        ],
-                    },
-                ],
-                div: { type: "separator" },
-            };
-            let template = [
-                {
-                    id: "main",
-                    label: util.capitalize(this.name),
-                    submenu: [
-                        ...build.about,
-                        build.div,
-                        ...build.settings,
-                        build.div,
-                        ...build.hide,
-                        build.div,
-                        ...build.quit,
-                    ],
-                },
-                {
-                    id: "file",
-                    label: "File",
-                    submenu: [
-                        ...build.reload,
-                        ...build.spawn,
-                        build.div,
-                        ...build.close,
-                    ],
-                },
-                {
-                    id: "edit",
-                    label: "Edit",
-                    submenu: [
-                        ...build.undoredo,
-                        build.div,
-                        ...build.cutcopypaste,
-                    ],
-                },
-                {
-                    id: "view",
-                    label: "View",
-                    submenu: [
-                        ...build.fullscreen,
-                    ],
-                },
-                {
-                    id: "window",
-                    label: "Window",
-                    submenu: [
-                        ...build.window,
-                        ...(
-                            (OS.platform == "darwin") ?
-                            [
-                                build.div,
-                                ...build.front,
-                            ] :
-                            []
-                        ),
-                        { id: "toggleDevTools", role: "toggleDevTools" },
-                    ],
-                },
-                {
-                    id: "help",
-                    role: "help",
-                    submenu: [
-                        ...build.help,
-                    ],
-                },
-            ];
-
             namefs = {
                 PORTAL: () => {
                     let resolver = new util.Resolver(false);
-                    let nAll = 0;
                     const checkForShow = async () => {
-                        nAll++;
-                        let n = nAll;
                         if (!this.hasWindow()) return;
                         await this.whenReady();
                         await resolver.whenFalse();
                         resolver.state = true;
                         let nFeats = 0;
-                        for (let feat in this.portal.features) {
+                        for (let feat of this.portal.features) {
                             if (feat.name == "PORTAL") continue;
                             nFeats++;
                         }
@@ -2459,154 +2333,13 @@ const MAIN = async () => {
                 },
                 PANEL: () => {
                     this.addHandler("client-stream-logs", async () => ["logs"]);
-                    build.close[0].accelerator = "CmdOrCtrl+Shift+W";
-                    template[1].submenu.splice(
-                        3, 0,
-                        {
-                            id: "newproject",
-                            label: "New Project",
-                            accelerator: "CmdOrCtrl+N",
-                            click: () => this.send("newproject"),
-                        },
-                        {
-                            id: "newtab",
-                            label: "New Tab",
-                            accelerator: "CmdOrCtrl+T",
-                            click: () => this.send("newtab"),
-                        },
-                        build.div,
-                        {
-                            id: "save",
-                            label: "Save",
-                            accelerator: "CmdOrCtrl+S",
-                            click: () => this.send("save"),
-                        },
-                        {
-                            id: "savecopy",
-                            label: "Save as copy",
-                            accelerator: "CmdOrCtrl+Shift+S",
-                            click: () => this.send("savecopy"),
-                        },
-                        build.div,
-                        {
-                            id: "delete",
-                            label: "Delete Project",
-                            click: () => this.send("delete"),
-                        },
-                        {
-                            id: "closetab",
-                            label: "Close Tab",
-                            accelerator: "CmdOrCtrl+W",
-                            click: () => this.send("closetab"),
-                        },
-                        {
-                            id: "closeproject",
-                            label: "Close Project",
-                            click: () => this.send("close"),
-                        },
-                    );
-                    template[2].submenu.unshift(
-                        {
-                            id: "conndisconn",
-                            label: "Toggle Connect / Disconnect",
-                            accelerator: "CmdOrCtrl+K",
-                            click: () => this.send("conndisconn"),
-                        },
-                        build.div,
-                    );
-                    template[3].submenu.unshift(
-                        {
-                            id: "openclose",
-                            label: "Toggle Options Opened / Closed",
-                            accelerator: "Ctrl+F",
-                            click: () => this.send("openclose"),
-                        },
-                        {
-                            id: "expandcollapse",
-                            label: "Toggle Title Collapsed",
-                            accelerator: "Ctrl+Shift+F",
-                            click: () => this.send("expandcollapse"),
-                        },
-                        {
-                            id: "resetdivider",
-                            label: "Reset Divider",
-                            click: () => this.send("resetdivider"),
-                        },
-                        build.div,
-                    );
                 },
                 PLANNER: () => {
-                    build.close[0].accelerator = "CmdOrCtrl+Shift+W";
-                    template[1].submenu.splice(
-                        3, 0,
-                        {
-                            id: "newproject",
-                            label: "New Project",
-                            accelerator: "CmdOrCtrl+N",
-                            click: () => this.send("newproject"),
-                        },
-                        build.div,
-                        {
-                            id: "addnode",
-                            label: "Add Node",
-                            click: () => this.send("addnode"),
-                        },
-                        {
-                            id: "addobstacle",
-                            label: "Add Obstacle",
-                            click: () => this.send("addobstacle"),
-                        },
-                        {
-                            id: "addpath",
-                            label: "Add Path",
-                            click: () => this.send("addpath"),
-                        },
-                        build.div,
-                        {
-                            id: "save",
-                            label: "Save",
-                            accelerator: "CmdOrCtrl+S",
-                            click: () => this.send("save"),
-                        },
-                        {
-                            id: "savecopy",
-                            label: "Save as copy",
-                            accelerator: "CmdOrCtrl+Shift+S",
-                            click: () => this.send("savecopy"),
-                        },
-                        build.div,
-                        {
-                            id: "delete",
-                            label: "Delete Project",
-                            click: () => this.send("delete"),
-                        },
-                        {
-                            id: "closeproject",
-                            label: "Close Project",
-                            accelerator: "CmdOrCtrl+W",
-                            click: () => this.send("close"),
-                        },
-                    );
-                    template[3].submenu.unshift(
-                        {
-                            id: "maxmin",
-                            label: "Toggle Maximized",
-                            accelerator: "Ctrl+F",
-                            click: () => this.send("maxmin"),
-                        },
-                        {
-                            id: "resetdivider",
-                            label: "Reset Divider",
-                            click: () => this.send("resetdivider"),
-                        },
-                        build.div,
-                    );
-                },
+                }
             };
 
             if (namefs[this.name]) namefs[this.name]();
 
-            this.#menu = electron.Menu.buildFromTemplate(template);
             this.window.setMenu(this.menu);
             
             (async () => {
@@ -2615,7 +2348,6 @@ const MAIN = async () => {
                 let prevIsDevMode = null;
                 const checkDevConfig = async () => {
                     let isDevMode = !!(await this.get("devmode"));
-                    this.on("menu-ables", { toggleDevTools: isDevMode });
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
                         this.send("win-devmode", isDevMode);
@@ -2927,6 +2659,22 @@ const MAIN = async () => {
                     this.window.setMaximizable(maximizable);
                     return true;
                 },
+                "menu": async () => {
+                    const dfs = itms => {
+                        if (!util.is(itms, "arr")) return;
+                        itms.forEach(itm => {
+                            if (!util.is(itm, "obj")) return;
+                            itm.click = () => this.send("menu-click", itm.id);
+                            dfs(itm.submenu);
+                        });
+                    };
+                    dfs(v);
+                    this.#menu = null;
+                    try {
+                        this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, () => this.send("about"), () => this.on("spawn", "PRESETS")), ...util.ensure(v, "arr")]);
+                    } catch (e) {}
+                    this.portal.checkMenu();
+                },
             };
             let r = false;
             if (k in kfs) r = await kfs[k]();
@@ -2945,27 +2693,12 @@ const MAIN = async () => {
             k = String(k);
             let doLog = true;
             let kfs = {
+                "reload": async () => {
+                    const portal = this.portal, name = this.name;
+                    portal.remFeature(this);
+                    portal.addFeature(new Portal.Feature(portal, name));
+                },
                 "close": async () => await this.stop(),
-                "menu-ables": async items => {
-                    items = util.ensure(items, "obj");
-                    for (let id in items) {
-                        let v = !!items[id];
-                        let item = this.menu.getMenuItemById(id);
-                        if (!(item instanceof electron.MenuItem)) continue;
-                        item.enabled = v;
-                    }
-                    return true;
-                },
-                "menu-visibles": async items => {
-                    items = util.ensure(items, "obj");
-                    for (let id in items) {
-                        let v = !!items[id];
-                        let item = this.menu.getMenuItemById(id);
-                        if (!(item instanceof electron.MenuItem)) continue;
-                        item.visible = v;
-                    }
-                    return true;
-                },
                 "_config": async () => {
                     await this.affirm();
                     let content = "";

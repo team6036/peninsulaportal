@@ -402,98 +402,47 @@ export default class App extends core.AppFeature {
         super();
 
         this.addHandler("pre-post-setup", () => {
-            this.addHandler("file", () => {
-                let itm;
-                let menu = new core.App.ContextMenu();
-                itm = menu.addItem(new core.App.ContextMenu.Item("New Project", "add"));
-                itm.shortcut = "⌘N";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-newproject");
-                });
-                menu.addItem(new core.App.ContextMenu.Divider());
-                itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-addnode");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Add Obstacle", "add"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-addobstacle");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Add Path", "add"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-addpath");
-                });
-                menu.addItem(new core.App.ContextMenu.Divider());
-                itm = menu.addItem(new core.App.ContextMenu.Item("Save", "document-outline"));
-                itm.shortcut = "⌘S";
-                itm.addHandler("trigger", async e => {
-                    this.post("cmd-save");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Save as copy", "documents-outline"));
-                itm.shortcut = "⇧⌘S";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-savecopy");
-                });
-                menu.addItem(new core.App.ContextMenu.Divider());
-                itm = menu.addItem(new core.App.ContextMenu.Item("Delete Project"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-delete");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Close Project"));
-                itm.shortcut = "⌘W";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-close");
-                });
-                this.contextMenu = menu;
-                let r = this.eFileBtn.getBoundingClientRect();
-                this.placeContextMenu(r.left, r.bottom);
-            });
-            this.addHandler("edit", () => {
-                let itm;
-                let menu = new core.App.ContextMenu();
-                itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
-                itm.shortcut = "⌘X";
-                itm.addHandler("trigger", e => {
-                    if (!this.hasPage("PROJECT")) return;
-                    this.getPage("PROJECT").cut();
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Copy"));
-                itm.shortcut = "⌘C";
-                itm.addHandler("trigger", e => {
-                    if (!this.hasPage("PROJECT")) return;
-                    this.getPage("PROJECT").copy();
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Paste"));
-                itm.shortcut = "⌘V";
-                itm.addHandler("trigger", e => {
-                    if (!this.hasPage("PROJECT")) return;
-                    this.getPage("PROJECT").paste();
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Select All"));
-                itm.shortcut = "⌘A";
-                itm.addHandler("trigger", e => {
-                    if (!this.hasPage("PROJECT")) return;
-                    this.getPage("PROJECT").selected = this.getPage("PROJECT").project.items;
-                });
-                this.contextMenu = menu;
-                let r = this.eEditBtn.getBoundingClientRect();
-                this.placeContextMenu(r.left, r.bottom);
-            });
-            this.addHandler("view", () => {
-                let itm;
-                let menu = new core.App.ContextMenu();
-                itm = menu.addItem(new core.App.ContextMenu.Item("Toggle Maximized"));
-                itm.shortcut = "⌃F";
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-maxmin");
-                });
-                itm = menu.addItem(new core.App.ContextMenu.Item("Reset Divider"));
-                itm.addHandler("trigger", e => {
-                    this.post("cmd-resetdivider");
-                });
-                this.contextMenu = menu;
-                let r = this.eViewBtn.getBoundingClientRect();
-                this.placeContextMenu(r.left, r.bottom);
+            ["file", "edit", "view"].forEach(name => {
+                let id = "menu:"+name;
+                let menu = this.menu.findItemWithId(id);
+                let namefs = {
+                    file: () => {
+                        let itms = [
+                            { id: "addnode", label: "Add Node" },
+                            { id: "addobstacle", label: "Add Obstacle" },
+                            { id: "addpath", label: "Add Path" },
+                            "separator",
+                        ];
+                        itms.forEach((data, i) => {
+                            let itm = new App.Menu.Item(data.label);
+                            if (data == "separator") itm.type = "separator";
+                            else {
+                                itm.id = data.id;
+                                itm.accelerator = data.accelerator;
+                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
+                            }
+                            menu.insertItem(itm, 5+i);
+                        });
+                    },
+                    view: () => {
+                        let itms = [
+                            { id: "maxmin", label: "Toggle Maximized", accelerator: "Ctrl+F" },
+                            { id: "resetdivider", label: "Reset Divider" },
+                            "separator",
+                        ];
+                        itms.forEach((data, i) => {
+                            let itm = new App.Menu.Item(data.label);
+                            if (data == "separator") itm.type = "separator";
+                            else {
+                                itm.id = data.id;
+                                itm.accelerator = data.accelerator;
+                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
+                            }
+                            menu.insertItem(itm, 0+i);
+                        });
+                    },
+                };
+                if (name in namefs) namefs[name]();
             });
 
             const cmdAdd = name => {
@@ -722,8 +671,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#eDisplay = document.createElement("div");
         this.elem.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
-        this.eDisplay.tabIndex = 0;
-        this.eDisplay.addEventListener("keydown", e => {
+        this.#eBlockage = document.createElement("div");
+        this.eDisplay.appendChild(this.eBlockage);
+        this.eBlockage.classList.add("blockage");
+        this.odometry.canvas = document.createElement("canvas");
+        this.eDisplay.appendChild(this.odometry.canvas);
+        this.odometry.canvas.tabIndex = 1;
+        this.odometry.canvas.addEventListener("keydown", e => {
             if (this.choosing) return;
             if (!this.hasProject()) return;
             if (["Backspace", "Delete"].includes(e.code)) {
@@ -751,11 +705,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 }
             }
         });
-        this.#eBlockage = document.createElement("div");
-        this.eDisplay.appendChild(this.eBlockage);
-        this.eBlockage.classList.add("blockage");
-        this.odometry.canvas = document.createElement("canvas");
-        this.eDisplay.appendChild(this.odometry.canvas);
         new ResizeObserver(() => {
             let r = this.eDisplay.getBoundingClientRect();
             this.odometry.canvas.width = r.width*this.odometry.quality;
@@ -766,52 +715,51 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.odometry.canvas.addEventListener("contextmenu", e => {
             if (this.choosing) return;
             let itm;
-            let menu = new core.App.ContextMenu();
-            itm = menu.addItem(new core.App.ContextMenu.Item("Add Node", "add"));
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item("Add Node", "add"));
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-addnode");
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Add Obstacle", "add"));
+            itm = menu.addItem(new core.App.Menu.Item("Add Obstacle", "add"));
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-addobstacle");
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Add Path", "add"));
+            itm = menu.addItem(new core.App.Menu.Item("Add Path", "add"));
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-addpath");
             });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Cut"));
-            itm.shortcut = "⌘X";
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Cut"));
+            itm.accelerator = "CmdOrCtrl+X";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.cut();
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Copy"));
-            itm.shortcut = "⌘C";
+            itm = menu.addItem(new core.App.Menu.Item("Copy"));
+            itm.accelerator = "CmdOrCtrl+C";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.copy();
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Paste"));
-            itm.shortcut = "⌘V";
+            itm = menu.addItem(new core.App.Menu.Item("Paste"));
+            itm.accelerator = "CmdOrCtrl+V";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.paste();
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Select All"));
-            itm.shortcut = "⌘A";
+            itm = menu.addItem(new core.App.Menu.Item("Select All"));
+            itm.accelerator = "CmdOrCtrl+A";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 if (!this.hasProject()) return;
                 this.selected = this.project.items;
             });
-            menu.addItem(new core.App.ContextMenu.Divider());
-            itm = menu.addItem(new core.App.ContextMenu.Item("Edit"));
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Edit"));
             itm.addHandler("trigger", e => {
                 this.panel = "objects";
             });
-            itm = menu.addItem(new core.App.ContextMenu.Item("Delete"));
-            itm.shortcut = "⌫";
+            itm = menu.addItem(new core.App.Menu.Item("Delete"));
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 if (!this.hasProject()) return;
@@ -822,7 +770,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.placeContextMenu(e.pageX, e.pageY);
         });
         this.odometry.canvas.addEventListener("mousedown", e => {
-            e.preventDefault();
             const hovered = this.odometry.hovered;
             const hoveredPart = this.odometry.hoveredPart;
             if (this.choosing) {
@@ -1370,13 +1317,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             "delete", "closeproject",
             "maxmin", "resetdivider",
         ];
-        let items = {};
-        projectOnly.forEach(id => (items[id] = true));
-        await window.api.send("menu-ables", items);
-        await window.api.send("menu-visibles", items);
+        projectOnly.forEach(id => {
+            let itm = this.app.menu.findItemWithId(id);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.enabled = itm.visible = true;
+        });
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
         await this.refresh();
-        this.eDisplay.focus();
+        this.odometry.canvas.focus();
         const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
         const globalTemplateImages = util.ensure(await window.api.get("template-images"), "obj");
         const activeTemplate = await window.api.get("active-template");
@@ -1437,10 +1385,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             "delete", "closeproject",
             "maxmin", "resetdivider",
         ];
-        let items = {};
-        projectOnly.forEach(id => (items[id] = false));
-        await window.api.send("menu-ables", items);
-        await window.api.send("menu-visibles", items);
+        projectOnly.forEach(id => {
+            let itm = this.app.menu.findItemWithId(id);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.enabled = itm.visible = false;
+        });
         Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
         this.app.markChange("*all");
         await this.app.post("cmd-save");
@@ -2352,12 +2301,12 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         if (btn.panel != this) return false;
         if (this.hasButton(btn)) return false;
         this.#buttons.add(btn);
-        btn._onTrigger = e => {
+        const onTrigger = e => {
             this.page.clearSelectedPaths();
             this.page.addSelectedPath(btn.path);
         };
-        btn._onEdit = () => {
-            btn._onTrigger(null);
+        const onEdit = () => {
+            onTrigger(null);
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             let pths = this.page.selectedPaths;
@@ -2404,21 +2353,21 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 chooseState.path.nodes = nodes;
             });
         };
-        btn._onRemove = () => {
-            btn._onTrigger(null);
+        const onRemove = () => {
+            onTrigger(null);
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             this.page.selectedPaths.forEach(id => this.page.project.remPath(id));
             this.page.selectedPaths = this.page.selectedPaths;
         };
-        btn._onChange = () => {
+        const onChange = () => {
             this.page.post("refresh-selectitem");
             this.page.post("refresh-options");
         };
-        btn.addHandler("trigger", btn._onTrigger);
-        btn.addHandler("edit", btn._onEdit);
-        btn.addHandler("remove", btn._onRemove);
-        btn.addHandler("change", btn._onChange);
+        btn.addLinkedHandler(this, "trigger", onTrigger);
+        btn.addLinkedHandler(this, "edit", onEdit);
+        btn.addLinkedHandler(this, "remove", onRemove);
+        btn.addLinkedHandler(this, "change", onChange);
         this.ePathsBox.appendChild(btn.elem);
         this.page.post("refresh-options");
         return btn;
@@ -2428,14 +2377,10 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         if (btn.panel != this) return false;
         if (!this.hasButton(btn)) return false;
         this.#buttons.delete(btn);
-        btn.remHandler("trigger", btn._onTrigger);
-        btn.remHandler("edit", btn._onEdit);
-        btn.remHandler("remove", btn._onRemove);
-        btn.remHandler("change", btn._onChange);
-        delete btn._onTrigger;
-        delete btn._onEdit;
-        delete btn._onRemove;
-        delete btn._onChange;
+        btn.clearLinkedHandlers(this, "trigger");
+        btn.clearLinkedHandlers(this, "edit");
+        btn.clearLinkedHandlers(this, "remove");
+        btn.clearLinkedHandlers(this, "change");
         btn.post("rem");
         this.ePathsBox.removeChild(btn.elem);
         this.page.post("refresh-options");

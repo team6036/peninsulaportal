@@ -1174,7 +1174,7 @@ div.contextmenu .item:not(.divider) > ion-icon.icon {
 div.contextmenu .item:not(.divider) > .label {
     flex-basis: 100%;
 }
-div.contextmenu .item:not(.divider) > .shortcut {
+div.contextmenu .item:not(.divider) > .accelerator {
     margin-right: 5px;
     margin-left: 15px;
 
