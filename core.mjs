@@ -832,12 +832,13 @@ export class App extends util.Target {
             if (!(itm instanceof App.Menu.Item)) return;
             itm.addHandler("trigger", e => window.api.send("spawn", name));
         });
-        ["ionicons", "repo", "db-host"].forEach(id => {
+        ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
             let itm = this.menu.findItemWithId(id);
             if (!(itm instanceof App.Menu.Item)) return;
             itm.addHandler("trigger", async e => {
                 let url;
                 if (id == "ionicons") url = "https://ionic.io/ionicons";
+                else if (id == "electronjs") url = "https://www.electronjs.org/";
                 else url = await window.api.get(id);
                 window.api.send("open", url);
             });
@@ -1392,9 +1393,9 @@ App.Menu = class AppMenu extends util.Target {
     static buildWindowItems() { return this.buildRoleItems("minimize", "zoom"); }
     static buildFrontItems() { return this.buildRoleItems("front"); }
     static buildHelpItems() {
-        return ["Ionicons", "Github Repository", "Open Database"].map((label, i) => {
+        return ["Ionicons", "Electron.js", "Github Repository", "Open Database"].map((label, i) => {
             let itm = new App.Menu.Item(label);
-            itm.id = ["ionicons", "repo", "db-host"][i];
+            itm.id = ["ionicons", "electronjs", "repo", "db-host"][i];
             return itm;
         });
     }
