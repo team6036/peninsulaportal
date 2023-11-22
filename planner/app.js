@@ -1055,16 +1055,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("enter", async data => {
             let projectOnly = [
                 "addnode", "addobstacle", "addpath",
-                "savecopy",
-                "delete", "closeproject",
                 "maxmin", "resetdivider",
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
                 if (!(itm instanceof App.Menu.Item)) return;
-                itm.enabled = itm.visible = true;
+                itm.exists = true;
             });
-            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
             await this.refresh();
             this.odometry.canvas.focus();
             const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
@@ -1123,19 +1120,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("leave", async data => {
             let projectOnly = [
                 "addnode", "addobstacle", "addpath",
-                "savecopy",
-                "delete", "closeproject",
                 "maxmin", "resetdivider",
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
                 if (!(itm instanceof App.Menu.Item)) return;
-                itm.enabled = itm.visible = false;
+                itm.exists = false;
             });
-            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
-            this.app.markChange("*all");
-            await this.app.post("cmd-save");
-            this.project = null;
         });
     }
 
