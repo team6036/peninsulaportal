@@ -1051,6 +1051,92 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.choosing = false;
             this.app.dragging = false;
         });
+
+        this.addHandler("enter", async data => {
+            let projectOnly = [
+                "addnode", "addobstacle", "addpath",
+                "savecopy",
+                "delete", "closeproject",
+                "maxmin", "resetdivider",
+            ];
+            projectOnly.forEach(id => {
+                let itm = this.app.menu.findItemWithId(id);
+                if (!(itm instanceof App.Menu.Item)) return;
+                itm.enabled = itm.visible = true;
+            });
+            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
+            await this.refresh();
+            this.odometry.canvas.focus();
+            const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
+            const globalTemplateImages = util.ensure(await window.api.get("template-images"), "obj");
+            const activeTemplate = await window.api.get("active-template");
+            let templatesContent = "";
+            try {
+                templatesContent = await window.api.fileRead("templates.json");
+            } catch (e) {}
+            let templates = null;
+            try {
+                templates = JSON.parse(templatesContent);
+            } catch (e) {}
+            templates = util.ensure(util.ensure(templates, "obj").templates, "obj");
+            if (this.app.hasProject(data.id)) {
+                this.project = this.app.getProject(data.id);
+            } else if (data.project instanceof subcore.Project) {
+                this.project = data.project;
+            } else {
+                this.project = new subcore.Project();
+                this.project.meta.created = this.project.meta.modified = util.getTime();
+                this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
+                this.post("refresh-options");
+            }
+            if (this.hasProject()) {
+                for (let name in globalTemplates) {
+                    if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
+                    const globalTemplate = util.ensure(globalTemplates[name], "obj");
+                    let template = util.ensure(templates[name], "obj");
+                    template[".size"] = globalTemplate["size"];
+                    template[".robotW"] = globalTemplate["robotSize"];
+                    template[".robotMass"] = globalTemplate["robotMass"];
+                    template[".meta.backgroundScale"] = globalTemplate["imageScale"];
+                    template[".meta.backgroundImage"] = globalTemplateImages[name];
+                    for (let k in template) {
+                        let v = template[k];
+                        k = String(k).split(".");
+                        while (k.length > 0 && k.at(0).length <= 0) k.shift();
+                        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+                        let obj = this.project;
+                        while (k.length > 1) {
+                            if (!util.is(obj, "obj")) {
+                                obj = null;
+                                break;
+                            }
+                            obj = obj[k.shift()];
+                        }
+                        if (obj == null || k.length != 1) continue;
+                        obj[k] = v;
+                    }
+                    break;
+                }
+                this.post("refresh-options");
+            }
+        });
+        this.addHandler("leave", async data => {
+            let projectOnly = [
+                "addnode", "addobstacle", "addpath",
+                "savecopy",
+                "delete", "closeproject",
+                "maxmin", "resetdivider",
+            ];
+            projectOnly.forEach(id => {
+                let itm = this.app.menu.findItemWithId(id);
+                if (!(itm instanceof App.Menu.Item)) return;
+                itm.enabled = itm.visible = false;
+            });
+            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
+            this.app.markChange("*all");
+            await this.app.post("cmd-save");
+            this.project = null;
+        });
     }
 
     get odometry() { return this.#odometry; }
@@ -1292,91 +1378,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         await this.app.setPage(this.name, { id: state.id });
     }
 
-    async enter(data) {
-        let projectOnly = [
-            "addnode", "addobstacle", "addpath",
-            "savecopy",
-            "delete", "closeproject",
-            "maxmin", "resetdivider",
-        ];
-        projectOnly.forEach(id => {
-            let itm = this.app.menu.findItemWithId(id);
-            if (!(itm instanceof App.Menu.Item)) return;
-            itm.enabled = itm.visible = true;
-        });
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
-        await this.refresh();
-        this.odometry.canvas.focus();
-        const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
-        const globalTemplateImages = util.ensure(await window.api.get("template-images"), "obj");
-        const activeTemplate = await window.api.get("active-template");
-        let templatesContent = "";
-        try {
-            templatesContent = await window.api.fileRead("templates.json");
-        } catch (e) {}
-        let templates = null;
-        try {
-            templates = JSON.parse(templatesContent);
-        } catch (e) {}
-        templates = util.ensure(util.ensure(templates, "obj").templates, "obj");
-        if (this.app.hasProject(data.id)) {
-            this.project = this.app.getProject(data.id);
-        } else if (data.project instanceof subcore.Project) {
-            this.project = data.project;
-        } else {
-            this.project = new subcore.Project();
-            this.project.meta.created = this.project.meta.modified = util.getTime();
-            this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
-            this.post("refresh-options");
-        }
-        if (this.hasProject()) {
-            for (let name in globalTemplates) {
-                if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
-                const globalTemplate = util.ensure(globalTemplates[name], "obj");
-                let template = util.ensure(templates[name], "obj");
-                template[".size"] = globalTemplate["size"];
-                template[".robotW"] = globalTemplate["robotSize"];
-                template[".robotMass"] = globalTemplate["robotMass"];
-                template[".meta.backgroundScale"] = globalTemplate["imageScale"];
-                template[".meta.backgroundImage"] = globalTemplateImages[name];
-                for (let k in template) {
-                    let v = template[k];
-                    k = String(k).split(".");
-                    while (k.length > 0 && k.at(0).length <= 0) k.shift();
-                    while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-                    let obj = this.project;
-                    while (k.length > 1) {
-                        if (!util.is(obj, "obj")) {
-                            obj = null;
-                            break;
-                        }
-                        obj = obj[k.shift()];
-                    }
-                    if (obj == null || k.length != 1) continue;
-                    obj[k] = v;
-                }
-                break;
-            }
-            this.post("refresh-options");
-        }
-    }
-    async leave(data) {
-        let projectOnly = [
-            "addnode", "addobstacle", "addpath",
-            "savecopy",
-            "delete", "closeproject",
-            "maxmin", "resetdivider",
-        ];
-        projectOnly.forEach(id => {
-            let itm = this.app.menu.findItemWithId(id);
-            if (!(itm instanceof App.Menu.Item)) return;
-            itm.enabled = itm.visible = false;
-        });
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
-        this.app.markChange("*all");
-        await this.app.post("cmd-save");
-        this.project = null;
-    }
     async determineSame(data) {
         if (this.app.hasProject(data.id)) return this.projectId == data.id;
         else if (data.project instanceof subcore.Project) return this.project == data.project;
