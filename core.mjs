@@ -1356,7 +1356,7 @@ App.Menu = class AppMenu extends util.Target {
     }
 
     toObj() {
-        return this.items.map(itm => itm.toObj());
+        return this.items.filter(itm => itm.exists).map(itm => itm.toObj());
     }
     static fromObj(data) {
         let menu = new App.Menu();
@@ -1517,6 +1517,8 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     #accelerator;
     #enabled;
     #visible;
+    #checked;
+    #exists;
     #menu;
 
     #elem;
@@ -1536,6 +1538,8 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.#accelerator = null;
         this.#enabled = true;
         this.#visible = true;
+        this.#checked = false;
+        this.#exists = true;
         this.#menu = new App.Menu();
         this.menu.addHandler("change", (c, f, t) => this.change("menu."+c, f, t));
 
@@ -1655,6 +1659,20 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     }
     get hidden() { return !this.visible; }
     set hidden(v) { this.visible = !v; }
+    get checked() { return this.#checked; }
+    set checked(v) {
+        v = !!v;
+        if (this.checked == v) return;
+        this.change("checked", this.checked, this.#checked=v);
+    }
+    get unchecked() { return !this.unchecked; }
+    set unchecked(v) { this.unchecked = !v; }
+    get exists() { return this.#exists; }
+    set exists(v) {
+        v = !!v;
+        if (this.exists == v) return;
+        this.change("exists", this.exists, this.#exists=v);
+    }
 
     #check() {
         if (this.visible && !this.hasRole()) this.elem.style.display = "";
@@ -1704,6 +1722,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         if (this.hasAccelerator()) data.accelerator = this.accelerator;
         data.enabled = this.enabled;
         data.visible = this.visible;
+        data.checked = this.checked;
         let submenu = this.menu.toObj();
         if (submenu.length > 0) data.submenu = submenu;
         return data;
@@ -1719,6 +1738,9 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         itm.accelerator = ("accelerator" in data) ? data.accelerator : null;
         itm.enabled = ("enabled" in data) ? data.enabled : true;
         itm.visible = ("visible" in data) ? data.visible : true;
+        itm.checked = ("checked" in data) ? data.checked : false;
+        if (util.is(data.click, "func"))
+            itm.addHandler("trigger", e => data.click(e));
         itm.menu = App.Menu.fromObj(data.submenu);
         return itm;
     }
@@ -2179,15 +2201,6 @@ export class AppFeature extends App {
                         ];
                         itms.forEach((data, i) => {
                             let itm = App.Menu.Item.fromObj(data);
-                            /*
-                            let itm = new App.Menu.Item(data.label);
-                            if (data == "separator") itm.type = "separator";
-                            else {
-                                itm.id = data.id;
-                                itm.accelerator = data.accelerator;
-                                itm.addHandler("trigger", e => this.post("cmd-"+itm.id));
-                            }
-                            */
                             menu.menu.insertItem(itm, 3+i);
                         });
                     },
@@ -2864,6 +2877,34 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         }, 10000);
 
         this.#projectId = null;
+
+        this.addHandler("enter", async data => {
+            let projectOnly = [
+                "savecopy",
+                "delete", "closeproject",
+            ];
+            projectOnly.forEach(id => {
+                let itm = this.app.menu.findItemWithId(id);
+                if (!(itm instanceof App.Menu.Item)) return;
+                itm.exists = true;
+            });
+            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
+        });
+        this.addHandler("leave", async data => {
+            let projectOnly = [
+                "savecopy",
+                "delete", "closeproject",
+            ];
+            projectOnly.forEach(id => {
+                let itm = this.app.menu.findItemWithId(id);
+                if (!(itm instanceof App.Menu.Item)) return;
+                itm.exists = false;
+            });
+            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
+            this.app.markChange("*all");
+            await this.app.post("cmd-save");
+            this.project = null;
+        });
     }
 
     async refresh() {

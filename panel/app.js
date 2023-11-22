@@ -2778,7 +2778,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             page.project.config.source = LOGGERCONTEXT.getClientPath(name);
             page.update(0);
             if (!this.hasApp()) return;
-            this.app.post("cmd-conndisconn");
+            this.app.post("cmd-action");
         });
         let selected = new Set(), lastSelected = null, lastAction = null;
         this.addHandler("log-trigger", (e, name, shift) => {
@@ -6265,7 +6265,7 @@ export default class App extends core.AppFeature {
 
     #eProjectInfoSourceTypes;
     #eProjectInfoSourceInput;
-    #eProjectInfoConnectionBtn;
+    #eProjectInfoActionBtn;
 
     static ICON = "grid";
     static PROJECTCLASS = Project;
@@ -6292,7 +6292,30 @@ export default class App extends core.AppFeature {
                     },
                     edit: () => {
                         let itms = [
-                            { id: "conndisconn", label: "Toggle Connect / Disconnect", accelerator: "CmdOrCtrl+K" },
+                            { id: "action", label: "?", accelerator: "CmdOrCtrl+K" },
+                            {
+                                id: "source", label: "Select Source...",
+                                submenu: [
+                                    {
+                                        id: "source:nt", label: "NetworkTables", type: "radio",
+                                        click: () => {
+                                            if (!this.hasPage("PROJECT")) return;
+                                            const page = this.getPage("PROJECT");
+                                            if (!page.hasProject()) return;
+                                            page.project.config.sourceType = "nt";
+                                        },
+                                    },
+                                    {
+                                        id: "source:wpilog", label: "WPILOG", type: "radio",
+                                        click: () => {
+                                            if (!this.hasPage("PROJECT")) return;
+                                            const page = this.getPage("PROJECT");
+                                            if (!page.hasProject()) return;
+                                            page.project.config.sourceType = "wpilog";
+                                        },
+                                    },
+                                ],
+                            },
                             "separator",
                         ];
                         itms.forEach((data, i) => {
@@ -6302,8 +6325,8 @@ export default class App extends core.AppFeature {
                     },
                     view: () => {
                         let itms = [
-                            { id: "openclose", label: "Toggle Options Opened / Closed", accelerator: "Ctrl+F" },
-                            { id: "expandcollapse", label: "Toggle Title Collapsed", accelerator: "Ctrl+Shift+F" },
+                            { id: "openclose", label: "Toggle Options", accelerator: "Ctrl+F" },
+                            { id: "expandcollapse", label: "Toggle Panel Titlebar", accelerator: "Ctrl+Shift+F" },
                             { id: "resetdivider", label: "Reset Divider" },
                             "separator",
                         ];
@@ -6338,9 +6361,9 @@ export default class App extends core.AppFeature {
             eNav = document.createElement("div");
             this.eProjectInfoContent.appendChild(eNav);
             eNav.classList.add("nav");
-            this.#eProjectInfoConnectionBtn = document.createElement("button");
-            eNav.appendChild(this.eProjectInfoConnectionBtn);
-            this.eProjectInfoConnectionBtn.addEventListener("click", e => this.post("cmd-conndisconn"));
+            this.#eProjectInfoActionBtn = document.createElement("button");
+            eNav.appendChild(this.eProjectInfoActionBtn);
+            this.eProjectInfoActionBtn.addEventListener("click", e => this.post("cmd-action"));
 
             this.#eBlock = document.getElementById("block");
 
@@ -6642,7 +6665,7 @@ export default class App extends core.AppFeature {
     hasEProjectInfoSourceType(type) { return type in this.#eProjectInfoSourceTypes; }
     getEProjectInfoSourceType(type) { return this.#eProjectInfoSourceTypes[type]; }
     get eProjectInfoSourceInput() { return this.#eProjectInfoSourceInput; }
-    get eProjectInfoConnectionBtn() { return this.#eProjectInfoConnectionBtn; }
+    get eProjectInfoActionBtn() { return this.#eProjectInfoActionBtn; }
     
     get eBlock() { return this.#eBlock; }
     hasEBlock() { return this.eBlock instanceof HTMLDivElement; }
@@ -6704,9 +6727,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!["nt", "wpilog"].includes(type)) return;
             this.project.config.sourceType = type;
             this.update(0);
-            this.app.post("cmd-conndisconn");
+            this.app.post("cmd-action");
         });
-        this.app.addHandler("cmd-conndisconn", () => {
+        this.app.addHandler("cmd-action", () => {
             if (!this.hasProject() || !this.hasSource()) return;
             if (this.source instanceof NTSource) {
                 this.source.address = (this.source.address == null) ? this.project.config.source : null;
@@ -6871,7 +6894,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.project.config.sourceType = "wpilog";
             this.project.config.source = file.path;
             this.update(0);
-            this.app.post("cmd-conndisconn");
+            this.app.post("cmd-action");
         }, { capture: true });
 
         this.#eDivider = document.createElement("div");
@@ -6951,29 +6974,50 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
             if (this.source instanceof NTSource) {
                 this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
-                this.app.eProjectInfoConnectionBtn.disabled = false;
+                this.app.eProjectInfoActionBtn.disabled = false;
                 let on = !this.source.connecting && !this.source.connected;
-                if (on) this.app.eProjectInfoConnectionBtn.classList.add("on");
-                else this.app.eProjectInfoConnectionBtn.classList.remove("on");
-                if (!on) this.app.eProjectInfoConnectionBtn.classList.add("off");
-                else this.app.eProjectInfoConnectionBtn.classList.remove("off");
-                this.app.eProjectInfoConnectionBtn.classList.remove("special");
-                this.app.eProjectInfoConnectionBtn.textContent = on ? "Connect" : "Disconnect";
+                if (on) this.app.eProjectInfoActionBtn.classList.add("on");
+                else this.app.eProjectInfoActionBtn.classList.remove("on");
+                if (!on) this.app.eProjectInfoActionBtn.classList.add("off");
+                else this.app.eProjectInfoActionBtn.classList.remove("off");
+                this.app.eProjectInfoActionBtn.classList.remove("special");
+                this.app.eProjectInfoActionBtn.textContent = on ? "Connect" : "Disconnect";
             } else if (this.source instanceof WPILOGSource) {
                 this.app.eProjectInfoSourceInput.placeholder = "Path...";
-                this.app.eProjectInfoConnectionBtn.disabled = this.source.importing;
-                this.app.eProjectInfoConnectionBtn.classList.remove("on");
-                this.app.eProjectInfoConnectionBtn.classList.remove("off");
-                this.app.eProjectInfoConnectionBtn.classList.add("special");
-                this.app.eProjectInfoConnectionBtn.textContent = "Import";
+                this.app.eProjectInfoActionBtn.disabled = this.source.importing;
+                this.app.eProjectInfoActionBtn.classList.remove("on");
+                this.app.eProjectInfoActionBtn.classList.remove("off");
+                this.app.eProjectInfoActionBtn.classList.add("special");
+                this.app.eProjectInfoActionBtn.textContent = "Import";
             } else {
                 this.app.eProjectInfoNameInput.placeholder = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
-                this.app.eProjectInfoConnectionBtn.disabled = true;
-                this.app.eProjectInfoConnectionBtn.classList.remove("on");
-                this.app.eProjectInfoConnectionBtn.classList.remove("off");
-                this.app.eProjectInfoConnectionBtn.classList.remove("special");
-                this.app.eProjectInfoConnectionBtn.textContent = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+                this.app.eProjectInfoActionBtn.disabled = true;
+                this.app.eProjectInfoActionBtn.classList.remove("on");
+                this.app.eProjectInfoActionBtn.classList.remove("off");
+                this.app.eProjectInfoActionBtn.classList.remove("special");
+                this.app.eProjectInfoActionBtn.textContent = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
             }
+
+            let itm;
+            itm = this.app.menu.findItemWithId("action");
+            if (itm instanceof App.Menu.Item) {
+                if (this.source instanceof NTSource) {
+                    let on = !this.source.connecting && !this.source.connected;
+                    itm.enabled = true;
+                    itm.label = on ? "Connect" : "Disconnect";
+                } else if (this.source instanceof WPILOGSource) {
+                    itm.enabled = true;
+                    itm.label = "Import";
+                } else {
+                    itm.enabled = false;
+                    itm.label = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+                }
+            }
+            ["nt", "wpilog"].forEach(type => {
+                itm = this.app.menu.findItemWithId("source:"+type);
+                if (!(itm instanceof App.Menu.Item)) return;
+                itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
+            });
         });
 
         this.addHandler("refresh", () => {
@@ -6987,17 +7031,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("enter", async data => {
             let projectOnly = [
                 "newtab",
+                "closetab",
+                "action",
                 "openclose", "expandcollapse", "resetdivider",
-                "savecopy",
-                "delete", "closetab", "closeproject",
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
                 if (!(itm instanceof App.Menu.Item)) return;
-                console.log(itm);
-                itm.enabled = itm.visible = true;
+                itm.exists = true;
             });
-            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
             await this.refresh();
             if (this.app.hasProject(data.id)) {
                 this.project = this.app.getProject(data.id);
@@ -7011,19 +7053,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("leave", async data => {
             let projectOnly = [
                 "newtab",
+                "closetab",
+                "action",
                 "openclose", "expandcollapse", "resetdivider",
-                "savecopy",
-                "delete", "closetab", "closeproject",
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
                 if (!(itm instanceof App.Menu.Item)) return;
-                itm.enabled = itm.visible = false;
+                itm.exists = false;
             });
-            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
-            this.app.markChange("*all");
-            await this.app.post("cmd-save");
-            this.project = null;
         });
     }
 
