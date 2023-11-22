@@ -1248,6 +1248,8 @@ const MAIN = async () => {
         async stop() {
             this.log("STOP");
             this.processManager.processes.forEach(process => process.terminate());
+            await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
+            await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
             try {
                 await this.post("stop");
             } catch (e) {
@@ -2390,6 +2392,7 @@ const MAIN = async () => {
             this.#started = false;
             this.processManager.processes.forEach(process => process.terminate());
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
+            await Promise.all(this.#tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
             if (this.hasWindow()) this.window.close();
             this.#window = null;
             this.#menu = null;
