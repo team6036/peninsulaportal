@@ -1757,8 +1757,8 @@ App.Page = class AppPage extends util.Target {
     get lazyState() { return {}; }
     async loadLazyState(state) {}
 
-    async enter(data) {}
-    async leave(data) {}
+    async enter(data) { await this.post("enter", data); }
+    async leave(data) { await this.post("leave", data); }
     async determineSame(data) { return false; }
 
     update(delta) { this.post("update", delta); }
@@ -2397,6 +2397,10 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
             this.app.page = "PROJECTS";
         });
 
+        this.addHandler("enter", async data => {
+            this.app.title = "";
+        });
+
         (async () => {
             const name = util.capitalize(String(await window.api.get("name")));
             this.eTitle.innerHTML = "<span>Peninsula</span><span></span>";
@@ -2409,10 +2413,6 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
     get eNav() { return this.#eNav; }
     get eCreateBtn() { return this.#eCreateBtn; }
     get eProjectsBtn() { return this.#eProjectsBtn; }
-
-    async enter(data) {
-        this.app.title = "";
-    }
 };
 AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     #buttons;
@@ -2588,6 +2588,15 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 btn.update(delta);
             });
         });
+
+        this.addHandler("enter", async data => {
+            this.app.title = "Projects";
+            this.app.eProjectsBtn.classList.add("this");
+            await this.refresh();
+        });
+        this.addHandler("leave", async data => {
+            this.app.eProjectsBtn.classList.remove("this");
+        });
     }
 
     async refresh() {
@@ -2688,15 +2697,6 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     async loadLazyState(state) {
         state = util.ensure(state, "obj");
         this.displayMode = state.displayMode;
-    }
-
-    async enter(data) {
-        this.app.title = "Projects";
-        this.app.eProjectsBtn.classList.add("this");
-        await this.refresh();
-    }
-    async leave(data) {
-        this.app.eProjectsBtn.classList.remove("this");
     }
 };
 AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util.Target {

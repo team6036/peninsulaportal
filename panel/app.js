@@ -6983,6 +6983,48 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 else section.close();
             });
         });
+
+        this.addHandler("enter", async data => {
+            let projectOnly = [
+                "newtab",
+                "openclose", "expandcollapse", "resetdivider",
+                "savecopy",
+                "delete", "closetab", "closeproject",
+            ];
+            projectOnly.forEach(id => {
+                let itm = this.app.menu.findItemWithId(id);
+                if (!(itm instanceof App.Menu.Item)) return;
+                console.log(itm);
+                itm.enabled = itm.visible = true;
+            });
+            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
+            await this.refresh();
+            if (this.app.hasProject(data.id)) {
+                this.project = this.app.getProject(data.id);
+            } else if (data.project instanceof Project) {
+                this.project = data.project;
+            } else {
+                this.project = new Project();
+                this.project.meta.created = this.project.meta.modified = util.getTime();
+            }
+        });
+        this.addHandler("leave", async data => {
+            let projectOnly = [
+                "newtab",
+                "openclose", "expandcollapse", "resetdivider",
+                "savecopy",
+                "delete", "closetab", "closeproject",
+            ];
+            projectOnly.forEach(id => {
+                let itm = this.app.menu.findItemWithId(id);
+                if (!(itm instanceof App.Menu.Item)) return;
+                itm.enabled = itm.visible = false;
+            });
+            Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
+            this.app.markChange("*all");
+            await this.app.post("cmd-save");
+            this.project = null;
+        });
     }
 
     get browserFields() { return [...this.#browserFields]; }
@@ -7190,47 +7232,5 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         state = util.ensure(state, "obj");
         await this.app.loadProjects();
         await this.app.setPage(this.name, { id: state.id });
-    }
-
-    async enter(data) {
-        let projectOnly = [
-            "newtab",
-            "openclose", "expandcollapse", "resetdivider",
-            "savecopy",
-            "delete", "closetab", "closeproject",
-        ];
-        projectOnly.forEach(id => {
-            let itm = this.app.menu.findItemWithId(id);
-            if (!(itm instanceof App.Menu.Item)) return;
-            console.log(itm);
-            itm.enabled = itm.visible = true;
-        });
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
-        await this.refresh();
-        if (this.app.hasProject(data.id)) {
-            this.project = this.app.getProject(data.id);
-        } else if (data.project instanceof Project) {
-            this.project = data.project;
-        } else {
-            this.project = new Project();
-            this.project.meta.created = this.project.meta.modified = util.getTime();
-        }
-    }
-    async leave(data) {
-        let projectOnly = [
-            "newtab",
-            "openclose", "expandcollapse", "resetdivider",
-            "savecopy",
-            "delete", "closetab", "closeproject",
-        ];
-        projectOnly.forEach(id => {
-            let itm = this.app.menu.findItemWithId(id);
-            if (!(itm instanceof App.Menu.Item)) return;
-            itm.enabled = itm.visible = false;
-        });
-        Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
-        this.app.markChange("*all");
-        await this.app.post("cmd-save");
-        this.project = null;
     }
 };
