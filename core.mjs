@@ -1406,7 +1406,7 @@ App.Menu = class AppMenu extends util.Target {
         return [itm];
     }
     static buildSpawnItems() {
-        let itm = new App.Menu.Item("New Feature");
+        let itm = new App.Menu.Item("Features...");
         itm.id = "spawn";
         ["PANEL", "PLANNER"].forEach((name, i) => {
             let subitm = new App.Menu.Item(util.capitalize(name));
@@ -2889,6 +2889,10 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
                 itm.exists = true;
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
+            let itm;
+            itm = this.app.menu.findItemWithId("close");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = "CmdOrCtrl+Shift+W";
         });
         this.addHandler("leave", async data => {
             let projectOnly = [
@@ -2901,6 +2905,10 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
                 itm.exists = false;
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
+            let itm;
+            itm = this.app.menu.findItemWithId("close");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = null;
             this.app.markChange("*all");
             await this.app.post("cmd-save");
             this.project = null;
