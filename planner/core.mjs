@@ -74,6 +74,20 @@ export class Project extends core.Project {
             a = [...a.slice(0, 4), 0, ...a.slice(4)];
 
         [this.items, this.paths, this.size, this.robotSize, this.robotMass, this.config, this.meta] = a;
+
+        this.addHandler("change", () => {
+            let pathNames = new Set();
+            this.paths.forEach(id => {
+                let path = this.getPath(id);
+                if (path.name.length <= 0) path.name = "New Path";
+                if (pathNames.has(path.name)) {
+                    let n = 1;
+                    while (pathNames.has(path.name+ " ("+n+")")) n++;
+                    path.name += " ("+n+")";
+                }
+                pathNames.add(path.name);
+            });
+        });
     }
 
     get items() { return Object.keys(this.#items); }

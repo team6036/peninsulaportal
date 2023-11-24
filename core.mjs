@@ -2196,6 +2196,9 @@ export class AppFeature extends App {
                             { id: "save", label: "Save", accelerator: "CmdOrCtrl+S" },
                             { id: "savecopy", label: "Save as copy", accelerator: "CmdOrCtrl+Shift+S" },
                             "separator",
+                            { id: "export", label: "Export Project...", visible: false },
+                            { id: "import", label: "Import Project...", visible: false },
+                            { type: "separator", visible: false },
                             { id: "delete", label: "Delete Project" },
                             { id: "closeproject", label: "Close Project" },
                         ];
@@ -2217,6 +2220,20 @@ export class AppFeature extends App {
             this.addPage(new this.constructor.ProjectPage(this));
 
             this.page = "TITLE";
+        });
+
+        this.addHandler("change", () => {
+            let names = new Set();
+            this.projects.forEach(id => {
+                let project = this.getProject(id);
+                if (project.meta.name.length <= 0) project.meta.name = "New Project";
+                if (names.has(project.meta.name)) {
+                    let n = 1;
+                    while (names.has(project.meta.name+" ("+n+")")) n++;
+                    project.meta.name += " ("+n+")";
+                }
+                names.add(project.meta.name);
+            });
         });
     }
 
@@ -2881,6 +2898,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.addHandler("enter", async data => {
             let projectOnly = [
                 "savecopy",
+                "export", "import",
                 "delete", "closeproject",
             ];
             projectOnly.forEach(id => {
@@ -2897,6 +2915,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.addHandler("leave", async data => {
             let projectOnly = [
                 "savecopy",
+                "export", "import",
                 "delete", "closeproject",
             ];
             projectOnly.forEach(id => {

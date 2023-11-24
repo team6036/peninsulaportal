@@ -6287,7 +6287,7 @@ export default class App extends core.AppFeature {
                             { id: "closetab", label: "Close Tab", accelerator: "CmdOrCtrl+W" },
                         ];
                         itms = itms.map((data, i) => App.Menu.Item.fromObj(data));
-                        menu.menu.insertItem(itms.pop(), 9);
+                        menu.menu.insertItem(itms.pop(), 12);
                         menu.menu.insertItem(itms.pop(), 4);
                     },
                     edit: () => {
