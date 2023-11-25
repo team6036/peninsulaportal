@@ -94,7 +94,11 @@ export class Project extends core.Project {
     set items(v) {
         v = util.ensure(v, "obj");
         this.clearItems();
-        for (let id in v) this.addItemId(id, v[id]);
+        for (let id in v) {
+            if (!(v[id] instanceof Project.Item)) continue;
+            v[id].id = id;
+            this.addItem(v[id]);
+        }
     }
     clearItems() {
         let itms = this.items;
@@ -114,21 +118,9 @@ export class Project extends core.Project {
     addItem(itm) {
         if (!(itm instanceof Project.Item)) return false;
         if (this.hasItem(itm)) return false;
-        let id;
-        do {
+        let id = itm.id;
+        while (id == null || this.hasItem(id))
             id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
-        } while (this.hasItem(id));
-        this.#items[id] = itm;
-        itm.id = id;
-        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
-        this.change("addItem", null, itm);
-        return itm;
-    }
-    addItemId(id, itm) {
-        id = String(id);
-        if (!(itm instanceof Project.Item)) return false;
-        if (this.hasItem(id)) return false;
-        if (this.hasItem(itm)) return false;
         this.#items[id] = itm;
         itm.id = id;
         itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
@@ -155,7 +147,11 @@ export class Project extends core.Project {
     set paths(v) {
         v = util.ensure(v, "obj");
         this.clearPaths();
-        for (let id in v) this.addPathId(id, v[id]);
+        for (let id in v) {
+            if (!(v[id] instanceof Project.Path)) continue;
+            v[id].id = id;
+            this.addPath(v[id]);
+        }
     }
     clearPaths() {
         let pths = this.paths;
@@ -175,22 +171,9 @@ export class Project extends core.Project {
     addPath(pth) {
         if (!(pth instanceof Project.Path)) return false;
         if (this.hasPath(pth)) return false;
-        let id;
-        do {
+        let id = pth.id;
+        while (id == null || this.hasPath(id))
             id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
-        } while (this.hasPath(id));
-        this.#paths[id] = pth;
-        pth.id = id;
-        pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
-        pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+id+")."+c, f, t));
-        this.change("addPath", null, pth);
-        return pth;
-    }
-    addPathId(id, pth) {
-        id = String(id);
-        if (!(pth instanceof Project.Path)) return false;
-        if (this.hasPath(id)) return false;
-        if (this.hasPath(pth)) return false;
         this.#paths[id] = pth;
         pth.id = id;
         pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
