@@ -3,6 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
 let context = {};
 
+/*
+
+   ______   ______   _______   __   _______   ______   ___  __   __      _______
+  / ______\/ ______\/ _______\/ __\/ _______\/ ______\/ __\/\__\/ __\   / _______\
+ / /  __  / /  __  / /  _    / /  / /  _    /\/  ____/ /  / /  / /  /  / /  __   /
+/ /  ____/ /  ____/ /  / /  / /  / /  / /  /\_\___ \/ /  /_/  / /  /_\/ /  __   /
+\/__/    \/______/\/__/\/__/\/__/\/__/\/__/\/______/\/_______/\/_____/\/__/\/__/
+
+Welcome to Peninsula Portal!
+
+Developed by FRC 6036
+
+*/
+
 const MAIN = async () => {
 
     const log = (...a) => {
@@ -1212,6 +1226,19 @@ const MAIN = async () => {
                 let feat = identify(e);
                 return await feat.tbaClientInvoke(id, invoke, ...a);
             });
+
+            /*
+            const icon = electron.nativeImage.createFromPath(path.join(__dirname, "assets", "app", "icon.png")).resize({ height: 17 });
+            icon.setTemplateImage(true);
+            const tray = new electron.Tray(icon);
+            const contextMenu = electron.Menu.buildFromTemplate([
+                { label: 'Item1', type: 'radio' },
+                { label: 'Item2', type: 'radio' },
+                { label: 'Item3', type: 'radio', checked: true },
+                { label: 'Item4', type: 'radio' }
+            ]);
+            tray.setContextMenu(contextMenu);
+            */
 
             (async () => {
                 try {
