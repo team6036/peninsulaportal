@@ -2695,7 +2695,7 @@ const MAIN = async () => {
                             if (!util.is(itm, "obj")) return;
                             itm.click = () => {
                                 this.send("menu-click", itm.id);
-                                this.send(itm.id);
+                                // this.send(itm.id);
                             };
                             dfs(itm.submenu);
                         });

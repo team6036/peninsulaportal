@@ -1141,7 +1141,7 @@ class Panel extends Widget {
     get tabIndex() { return this.#tabIndex; }
     set tabIndex(v) {
         v = Math.min(this.#tabs.length-1, Math.max(0, util.ensure(v, "int")));
-        if (this.tabIndex == v) return;
+        // if (this.tabIndex == v) return;
         this.change("tabIndex", this.tabIndex, this.#tabIndex=v);
         this.#tabs.forEach((tab, i) => (i == this.tabIndex) ? tab.open() : tab.close());
         if (this.tabs[this.tabIndex] instanceof Panel.Tab)
@@ -1193,7 +1193,8 @@ class Panel extends Widget {
         this.eContent.removeChild(tab.elem);
         tab.close();
         this.format();
-        if (this.tabs.indexOf(activeTab) >= 0) this.tabIndex = this.tabs.indexOf(activeTab);
+        at = this.#tabs.indexOf(activeTab);
+        if (at >= 0) this.tabIndex = at;
         else {
             let index = this.tabIndex;
             this.#tabIndex = null;
@@ -6286,7 +6287,14 @@ export default class App extends core.AppFeature {
                             { id: "newtab", label: "New Tab", accelerator: "CmdOrCtrl+T" },
                             { id: "closetab", label: "Close Tab", accelerator: "CmdOrCtrl+W" },
                         ];
-                        itms = itms.map((data, i) => App.Menu.Item.fromObj(data));
+                        itms = itms.map((data, i) => {
+                            let itm = App.Menu.Item.fromObj(data);
+                            if (util.is(data, "obj")) {
+                                if (!("click" in data)) data.click = () => this.post("cmd-"+data.id);
+                                itm.addHandler("trigger", e => data.click());
+                            }
+                            return itm;
+                        });
                         menu.menu.insertItem(itms.pop(), 12);
                         menu.menu.insertItem(itms.pop(), 4);
                     },
@@ -6294,7 +6302,7 @@ export default class App extends core.AppFeature {
                         let itms = [
                             { id: "action", label: "?", accelerator: "CmdOrCtrl+K" },
                             {
-                                id: "source", label: "Select Source...",
+                                id: "source", label: "Select Source...", click: () => {},
                                 submenu: [
                                     {
                                         id: "source:nt", label: "NetworkTables", type: "radio",
@@ -6320,6 +6328,10 @@ export default class App extends core.AppFeature {
                         ];
                         itms.forEach((data, i) => {
                             let itm = App.Menu.Item.fromObj(data);
+                            if (util.is(data, "obj")) {
+                                if (!("click" in data)) data.click = () => this.post("cmd-"+data.id);
+                                itm.addHandler("trigger", e => data.click());
+                            }
                             menu.menu.insertItem(itm, 0+i);
                         });
                     },
@@ -6330,7 +6342,14 @@ export default class App extends core.AppFeature {
                             { id: "resetdivider", label: "Reset Divider" },
                             "separator",
                         ];
-                        itms.forEach((data, i) => menu.menu.insertItem(App.Menu.Item.fromObj(data), 0+i));
+                        itms.forEach((data, i) => {
+                            let itm = App.Menu.Item.fromObj(data);
+                            if (util.is(data, "obj")) {
+                                if (!("click" in data)) data.click = () => this.post("cmd-"+data.id);
+                                itm.addHandler("trigger", e => data.click());
+                            }
+                            menu.menu.insertItem(itm, 0+i);
+                        });
                     },
                 };
                 if (name in namefs) namefs[name]();

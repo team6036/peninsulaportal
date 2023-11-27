@@ -431,6 +431,27 @@ export class App extends util.Target {
             pop.info = this.getAbout().join("\n");
             pop.hasInfo = true;
         });
+        this.addHandler("cmd-spawn", async name => {
+            name = String(name);
+            let isDevMode = await window.api.get("devmode");
+            if (!isDevMode && [].includes(name)) {
+                let pop = this.confirm();
+                pop.eContent.innerText = "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs";
+                let result = await pop.whenResult();
+                if (!result) return;
+            }
+            try {
+                await window.api.send("spawn", name);
+            } catch (e) { await this.error("Spawn Error: "+name, e).whenResult(); }
+        });
+        this.addHandler("cmd-reload", async () => await window.api.send("reload"));
+        this.addHandler("cmd-helpurl", async id => {
+            let url;
+            if (id == "ionicons") url = "https://ionic.io/ionicons";
+            else if (id == "electronjs") url = "https://www.electronjs.org/";
+            else url = await window.api.get(id);
+            await window.api.send("open", url);
+        });
         this.addHandler("cmd-win-fullscreen", async v => {
             this.fullscreen = v;
         });
@@ -839,18 +860,12 @@ export class App extends util.Target {
         ["PANEL", "PLANNER"].forEach(name => {
             let itm = this.menu.findItemWithId("spawn:"+name);
             if (!(itm instanceof App.Menu.Item)) return;
-            itm.addHandler("trigger", e => window.api.send("spawn", name));
+            itm.addHandler("trigger", e => this.post("cmd-spawn", name));
         });
         ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
             let itm = this.menu.findItemWithId(id);
             if (!(itm instanceof App.Menu.Item)) return;
-            itm.addHandler("trigger", async e => {
-                let url;
-                if (id == "ionicons") url = "https://ionic.io/ionicons";
-                else if (id == "electronjs") url = "https://www.electronjs.org/";
-                else url = await window.api.get(id);
-                window.api.send("open", url);
-            });
+            itm.addHandler("trigger", e => this.post("cmd-helpurl", id));
         });
         let itm;
         itm = this.menu.findItemWithId("about");
@@ -858,7 +873,7 @@ export class App extends util.Target {
             itm.addHandler("trigger", e => this.post("cmd-about"));
         itm = this.menu.findItemWithId("reload");
         if (itm instanceof App.Menu.Item)
-            itm.addHandler("trigger", e => window.api.send("reload"));
+            itm.addHandler("trigger", e => this.post("cmd-reload"));
     }
     get contextMenu() { return this.#contextMenu; }
     set contextMenu(v) {
@@ -2213,6 +2228,10 @@ export class AppFeature extends App {
                         ];
                         itms.forEach((data, i) => {
                             let itm = App.Menu.Item.fromObj(data);
+                            if (util.is(data, "obj")) {
+                                if (!("click" in data)) data.click = () => this.post("cmd-"+data.id);
+                                itm.addHandler("trigger", e => data.click());
+                            }
                             menu.menu.insertItem(itm, 3+i);
                         });
                     },

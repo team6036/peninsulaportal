@@ -272,10 +272,8 @@ export default class App extends core.App {
                         const themes = util.ensure(await window.api.get("themes"), "obj");
                         const theme = await window.api.get("theme");
                         let itm;
-                        // let menu = new core.App.ContextMenu();
                         let menu = new core.App.Menu();
                         for (let id in themes) {
-                            // itm = menu.addItem(new core.App.ContextMenu.Item(util.ensure(themes[id], "obj").name, (theme == id) ? "checkmark" : ""));
                             itm = menu.addItem(new core.App.Menu.Item(util.ensure(themes[id], "obj").name, (theme == id) ? "checkmark" : ""));
                             itm.addHandler("trigger", async e => {
                                 try {
@@ -303,10 +301,8 @@ export default class App extends core.App {
                         e.stopPropagation();
                         const nativeTheme = await window.api.get("native-theme");
                         let itm;
-                        // let menu = new core.App.ContextMenu();
                         let menu = new core.App.Menu();
                         for (let id in nativeThemes) {
-                            // itm = menu.addItem(new core.App.ContextMenu.Item(util.ensure(nativeThemes[id], "obj").name, (nativeTheme == id) ? "checkmark" : ""));
                             itm = menu.addItem(new core.App.Menu.Item(util.ensure(nativeThemes[id], "obj").name, (nativeTheme == id) ? "checkmark" : ""));
                             itm.addHandler("trigger", async e => {
                                 try {

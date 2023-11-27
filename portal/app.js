@@ -462,19 +462,6 @@ export default class App extends core.App {
                 }, 250);
             }
             this.#eLoads = document.querySelector("#PAGE > .loads");
-
-            this.addHandler("cmd-spawn", async name => {
-                let isDevMode = await window.api.get("devmode");
-                if (!isDevMode && [].includes(name)) {
-                    let pop = this.confirm();
-                    pop.eContent.innerText = "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs";
-                    let result = await pop.whenResult();
-                    if (!result) return;
-                }
-                try {
-                    await window.api.send("spawn", name);
-                } catch (e) { await this.error("Spawn Error: "+name, e).whenResult(); }
-            });
             
             let btn;
 
