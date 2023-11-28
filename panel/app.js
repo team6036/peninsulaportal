@@ -6285,6 +6285,9 @@ export default class App extends core.AppFeature {
                     file: () => {
                         let itms = [
                             { id: "newtab", label: "New Tab", accelerator: "CmdOrCtrl+T" },
+                            "separator",
+                            { id: "nexttab", label: "Next Tab", accelerator: "CmdOrCtrl+]" },
+                            { id: "prevtab", label: "Previous Tab", accelerator: "CmdOrCtrl+[" },
                             { id: "closetab", label: "Close Tab", accelerator: "CmdOrCtrl+W" },
                         ];
                         itms = itms.map((data, i) => {
@@ -6296,6 +6299,9 @@ export default class App extends core.AppFeature {
                             return itm;
                         });
                         menu.menu.insertItem(itms.pop(), 12);
+                        menu.menu.insertItem(itms.pop(), 4);
+                        menu.menu.insertItem(itms.pop(), 4);
+                        menu.menu.insertItem(itms.pop(), 4);
                         menu.menu.insertItem(itms.pop(), 4);
                     },
                     edit: () => {
@@ -6644,6 +6650,24 @@ export default class App extends core.AppFeature {
                 if (!page.hasActivePanel()) return;
                 const active = page.activeWidget;
                 active.addTab(new Panel.AddTab());
+            });
+            this.addHandler("cmd-nexttab", () => {
+                if (this.page != "PROJECT") return;
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
+                if (!page.hasActivePanel()) return;
+                const active = page.activeWidget;
+                console.log(active.tabIndex);
+                active.tabIndex++;
+            });
+            this.addHandler("cmd-prevtab", () => {
+                if (this.page != "PROJECT") return;
+                if (!this.hasPage("PROJECT")) return;
+                const page = this.getPage("PROJECT");
+                if (!page.hasActivePanel()) return;
+                const active = page.activeWidget;
+                console.log(active.tabIndex);
+                active.tabIndex--;
             });
             this.addHandler("cmd-closetab", () => {
                 if (this.page != "PROJECT") return;
