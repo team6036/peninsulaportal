@@ -717,6 +717,33 @@ article.md ul {
     --y: +1;
 }
 
+@property --border-hov-c-line-v {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+}
+.border-hov {
+    --c: var(--a);
+    --border-hov-c-line: 1;
+    --border-hov-c-line-v: 0;
+
+    border: 2px solid;
+    border-image-slice: 1;
+    border-image-source: conic-gradient(
+        var(--c) 0deg,
+        var(--c) calc(180deg * var(--border-hov-c-line-v)),
+        transparent calc(180deg * var(--border-hov-c-line-v)),
+        transparent calc(180deg * (2 - var(--border-hov-c-line-v))),
+        var(--c) calc(180deg * (2 - var(--border-hov-c-line-v))),
+        var(--c) 360deg
+    );
+
+    transition: --border-hov-c-line-v var(--t), --btn-c-size-v var(--t), background var(--t), color var(--t) !important;
+}
+.border-hov:hover {
+    --border-hov-c-line-v: var(--border-hov-c-line);
+}
+
 .loading {
     --size: 10px;
     --color: var(--v8);
