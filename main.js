@@ -56,6 +56,13 @@ const MAIN = async () => {
     const app = context.app = electron.app;
     const ipc = electron.ipcMain;
 
+    const lock = app.requestSingleInstanceLock();
+    if (!lock) {
+        log("< PRE-EXISTING INSTANCE - QUIT >");
+        app.quit();
+        return;
+    }
+
     const fetch = require("electron-fetch").default;
     const png2icons = require("png2icons");
     const compareVersions = require("compare-versions");
@@ -1106,7 +1113,15 @@ const MAIN = async () => {
 
         get started() { return this.#started; }
         start() {
-            if (this.started) return false;
+            if (this.started) {
+                for (let feat of this.features) {
+                    if (!feat.hasWindow()) continue;
+                    if (!feat.window.isVisible()) continue;
+                    feat.window.focus();
+                    break;
+                }
+                return false;
+            }
             this.#started = true;
 
             this.log("START");
@@ -2693,10 +2708,7 @@ const MAIN = async () => {
                         if (!util.is(itms, "arr")) return;
                         itms.forEach(itm => {
                             if (!util.is(itm, "obj")) return;
-                            itm.click = () => {
-                                this.send("menu-click", itm.id);
-                                // this.send(itm.id);
-                            };
+                            itm.click = () => this.send("menu-click", itm.id);
                             dfs(itm.submenu);
                         });
                     };
@@ -3282,6 +3294,11 @@ const MAIN = async () => {
 
     app.on("activate", async () => {
         log("> activate");
+        await whenInitialized();
+        portal.start();
+    });
+    app.on("second-instance", async () => {
+        log("> second-instance");
         await whenInitialized();
         portal.start();
     });
