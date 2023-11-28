@@ -1242,19 +1242,6 @@ const MAIN = async () => {
                 return await feat.tbaClientInvoke(id, invoke, ...a);
             });
 
-            /*
-            const icon = electron.nativeImage.createFromPath(path.join(__dirname, "assets", "app", "icon.png")).resize({ height: 17 });
-            icon.setTemplateImage(true);
-            const tray = new electron.Tray(icon);
-            const contextMenu = electron.Menu.buildFromTemplate([
-                { label: 'Item1', type: 'radio' },
-                { label: 'Item2', type: 'radio' },
-                { label: 'Item3', type: 'radio', checked: true },
-                { label: 'Item4', type: 'radio' }
-            ]);
-            tray.setContextMenu(contextMenu);
-            */
-
             (async () => {
                 try {
                     await this.affirm();
