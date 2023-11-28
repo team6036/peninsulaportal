@@ -1491,11 +1491,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 name: "logger",
                 dname: "PlexusLogger",
             },
-            {
-                type: Panel.LogWorksTab,
-                name: "logworks",
-                dname: "LogWorks",
-            },
+            // {
+            //     type: Panel.LogWorksTab,
+            //     name: "logworks",
+            //     dname: "LogWorks",
+            // },
         ];
         toolItems = toolItems.map(item => {
             let display = getTabDisplay(item.name);
@@ -6885,10 +6885,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragData = new Panel.LoggerTab();
             this.app.dragging = true;
         });
-        this.addToolButton(new ToolButton("LogWorks", "logworks")).addHandler("drag", () => {
-            this.app.dragData = new Panel.LogWorksTab();
-            this.app.dragging = true;
-        });
+        // this.addToolButton(new ToolButton("LogWorks", "logworks")).addHandler("drag", () => {
+        //     this.app.dragData = new Panel.LogWorksTab();
+        //     this.app.dragging = true;
+        // });
 
         this.format();
 
