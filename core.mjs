@@ -1658,6 +1658,28 @@ App.Menu.Item = class AppMenuItem extends util.Target {
             if (part == "Shift") return "⇧";
             if (part == "Super") return "❖";
             if (part == "Meta") return "⌘";
+            if (part == "Plus") return "+";
+            if (part == "Tab") return "⇥";
+            if (part == "Backspace") return "⌫";
+            if (part == "Delete") return "⌦";
+            if (["Return", "Enter"].includes(part)) return "↩︎";
+            if (part == "Up") return "▲";
+            if (part == "Down") return "▼";
+            if (part == "Left") return "◀︎";
+            if (part == "Right") return "▶︎";
+            if (part == "Home") return "↑";
+            if (part == "End") return "↓";
+            if (part == "PageUp") return "↑";
+            if (part == "PageDown") return "↓";
+            if (["Escape", "Esc"].includes(part)) return "⎋";
+            if (part == "numdec") return ".";
+            if (part == "numadd") return "+";
+            if (part == "numsub") return "-";
+            if (part == "nummult") return "*";
+            if (part == "numdiv") return "/";
+            for (let i = 0; i < 10; i++)
+                if (part == "num"+i)
+                    return String(i);
             return part;
         });
         this.eAccelerator.textContent = parts.join("");
