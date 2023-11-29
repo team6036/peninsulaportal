@@ -852,28 +852,61 @@ export class App extends util.Target {
     set menu(v) {
         if (!(v instanceof App.Menu)) return;
         if (this.menu == v) return;
+        this.unbindMenu(this.menu);
         if (this.menu instanceof App.Menu)
             this.menu.clearLinkedHandlers(this, "change");
         this.#menu = v;
         this.menu.addLinkedHandler(this, "change", () => window.api.set("menu", this.menu.toObj()));
         window.api.set("menu", this.menu.toObj());
+        this.bindMenu(this.menu);
+    }
+    bindMenu(menu) {
+        if (!(menu instanceof App.Menu)) return false;
         ["PANEL", "PLANNER"].forEach(name => {
-            let itm = this.menu.findItemWithId("spawn:"+name);
+            let itm = menu.findItemWithId("spawn:"+name);
             if (!(itm instanceof App.Menu.Item)) return;
-            itm.addHandler("trigger", e => this.post("cmd-spawn", name));
+            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
         });
         ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
-            let itm = this.menu.findItemWithId(id);
+            let itm = menu.findItemWithId(id);
             if (!(itm instanceof App.Menu.Item)) return;
-            itm.addHandler("trigger", e => this.post("cmd-helpurl", id));
+            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-helpurl", id));
         });
         let itm;
-        itm = this.menu.findItemWithId("about");
+        itm = menu.findItemWithId("about");
         if (itm instanceof App.Menu.Item)
-            itm.addHandler("trigger", e => this.post("cmd-about"));
-        itm = this.menu.findItemWithId("reload");
+            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-about"));
+        itm = menu.findItemWithId("settings");
         if (itm instanceof App.Menu.Item)
-            itm.addHandler("trigger", e => this.post("cmd-reload"));
+            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", "PRESETS"));
+        itm = menu.findItemWithId("reload");
+        if (itm instanceof App.Menu.Item)
+            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-reload"));
+        return menu;
+    }
+    unbindMenu(menu) {
+        if (!(menu instanceof App.Menu)) return false;
+        ["PANEL", "PLANNER"].forEach(name => {
+            let itm = menu.findItemWithId("spawn:"+name);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.clearLinkedHandlers(this, "trigger");
+        });
+        ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
+            let itm = menu.findItemWithId(id);
+            if (!(itm instanceof App.Menu.Item)) return;
+            itm.clearLinkedHandlers(this, "trigger");
+        });
+        let itm;
+        itm = menu.findItemWithId("about");
+        if (itm instanceof App.Menu.Item)
+            itm.clearLinkedHandlers(this, "trigger");
+        itm = menu.findItemWithId("settings");
+        if (itm instanceof App.Menu.Item)
+            itm.clearLinkedHandlers(this, "trigger");
+        itm = menu.findItemWithId("reload");
+        if (itm instanceof App.Menu.Item)
+            itm.clearLinkedHandlers(this, "trigger");
+        return menu;
     }
     get contextMenu() { return this.#contextMenu; }
     set contextMenu(v) {
@@ -2021,6 +2054,10 @@ export class AppFeature extends App {
             this.eTitleBtn.innerHTML = "<div class='title introtitle noanimation'></div>";
             this.eTitleBtn.addEventListener("click", e => {
                 this.page = "TITLE";
+            });
+            this.eTitleBtn.addEventListener("contextmenu", e => {
+                this.contextMenu = this.bindMenu(App.Menu.buildMainMenu());
+                this.placeContextMenu(e.pageX, e.pageY);
             });
 
             this.#eFileBtn = document.createElement("button");

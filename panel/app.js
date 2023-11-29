@@ -1141,7 +1141,6 @@ class Panel extends Widget {
     get tabIndex() { return this.#tabIndex; }
     set tabIndex(v) {
         v = Math.min(this.#tabs.length-1, Math.max(0, util.ensure(v, "int")));
-        // if (this.tabIndex == v) return;
         this.change("tabIndex", this.tabIndex, this.#tabIndex=v);
         this.#tabs.forEach((tab, i) => (i == this.tabIndex) ? tab.open() : tab.close());
         if (this.tabs[this.tabIndex] instanceof Panel.Tab)
@@ -1491,11 +1490,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 name: "logger",
                 dname: "PlexusLogger",
             },
-            // {
-            //     type: Panel.LogWorksTab,
-            //     name: "logworks",
-            //     dname: "LogWorks",
-            // },
+            {
+                type: Panel.LogWorksTab,
+                name: "logworks",
+                dname: "LogWorks",
+            },
         ];
         toolItems = toolItems.map(item => {
             let display = getTabDisplay(item.name);
@@ -3065,9 +3064,101 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
     }
 };
 Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
+    #actions;
+
+    #eActions;
+
     constructor() {
         super("LogWorks", "logworks");
+
+        this.elem.classList.add("logworks");
+
+        this.#actions = new Set();
+
+        this.#eActions = document.createElement("div");
+        this.elem.appendChild(this.eActions);
+        this.eActions.classList.add("actions");
+
+        let action;
+        action = this.addAction(new Panel.LogWorksTab.Action("Edit Logs", "pencil"));
+        action.addHandler("trigger", e => console.log("edit"));
+        action = this.addAction(new Panel.LogWorksTab.Action("Merge Logs"));
+        action.iconSrc = "../assets/icons/merge.svg";
+        action.addHandler("trigger", e => console.log("merge"));
+        action = this.addAction(new Panel.LogWorksTab.Action("Convert Session"));
+        action.iconSrc = "../assets/icons/swap.svg";
+        action.addHandler("trigger", e => console.log("convert"));
     }
+
+    get actions() { return [...this.#actions]; }
+    set actions(v) {
+        v = util.ensure(v, "arr");
+        this.clearActions();
+        v.forEach(v => this.addAction(v));
+    }
+    clearActions() {
+        let actions = this.actions;
+        actions.forEach(action => this.remAction(action));
+        return actions;
+    }
+    hasAction(action) {
+        if (!(action instanceof Panel.LogWorksTab.Action)) return false;
+        return this.#actions.has(action);
+    }
+    addAction(action) {
+        if (!(action instanceof Panel.LogWorksTab.Action)) return false;
+        if (this.hasAction(action)) return false;
+        this.#actions.add(action);
+        this.eActions.appendChild(action.elem);
+        return action;
+    }
+    remAction(action) {
+        if (!(action instanceof Panel.LogWorksTab.Action)) return false;
+        if (!this.hasAction(action)) return false;
+        this.#actions.delete(action);
+        this.eActions.removeChild(action.elem);
+        return action;
+    }
+
+    get eActions() { return this.#eActions; }
+};
+Panel.LogWorksTab.Action = class PanelLoggerTabAction extends util.Target {
+    #elem;
+    #eIcon;
+    #eName;
+
+    constructor(name, icon="") {
+        super();
+
+        this.#elem = document.createElement("button");
+        this.#eIcon = document.createElement("ion-icon");
+        this.elem.appendChild(this.eIcon);
+        this.#eName = document.createElement("div");
+        this.elem.appendChild(this.eName);
+
+        this.elem.addEventListener("click", e => this.post("trigger", e));
+
+        this.name = name;
+        this.icon = icon;
+    }
+
+    get icon() { return this.eIcon.getAttribute("name"); }
+    set icon(v) {
+        this.eIcon.removeAttribute("src");
+        this.eIcon.setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
+
+    get name() { return this.eName.textContent; }
+    set name(v) { this.eName.textContent = v; }
+
+    get elem() { return this.#elem; }
+    get eIcon() { return this.#eIcon; }
+    get eName() { return this.#eName; }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
@@ -5014,8 +5105,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
                     a = [a.path, a.color, a.isShown, a.isGhost, a.type];
                 }
             }
-            // REMOVE WHEN FIXED
-            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown, a.ghost || a.isGhost, a.type];
+            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown, a.isGhost, a.type];
             else a = [[], null];
         }
         if (a.length == 2) a = [...a, true];
@@ -6885,10 +6975,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragData = new Panel.LoggerTab();
             this.app.dragging = true;
         });
-        // this.addToolButton(new ToolButton("LogWorks", "logworks")).addHandler("drag", () => {
-        //     this.app.dragData = new Panel.LogWorksTab();
-        //     this.app.dragging = true;
-        // });
+        this.addToolButton(new ToolButton("LogWorks", "logworks")).addHandler("drag", () => {
+            this.app.dragData = new Panel.LogWorksTab();
+            this.app.dragging = true;
+        });
 
         this.format();
 

@@ -2100,7 +2100,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 this.generating = false;
             } catch (e) {
                 this.generating = false;
-                this.error("Exec Error", e);
+                this.app.error("Exec Error", e);
             }
         });
 
