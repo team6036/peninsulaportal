@@ -385,8 +385,8 @@ class BrowserField extends util.Target {
             if (!(field instanceof BrowserField)) return;
             if (field.name in this.#fields) return;
             this.#fields[field.name] = field;
-            field.addLinkedHandler(this, "trigger", this.post("trigger", e, [this.name, ...util.ensure(path, "arr")]));
-            field.addLinkedHandler(this, "drag", this.post("drag", [this.name, ...util.ensure(path, "arr")]));
+            field.addLinkedHandler(this, "trigger", path => this.post("trigger", e, [this.name, ...util.ensure(path, "arr")]));
+            field.addLinkedHandler(this, "drag", path => this.post("drag", [this.name, ...util.ensure(path, "arr")]));
             this.eContent.appendChild(field.elem);
             doneFields.push(field);
         });
@@ -3065,29 +3065,75 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
 };
 Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
     #actions;
+    #actionPage;
 
     #eActions;
+    #ePage;
+    #ePageHeader;
+    #eBackBtn;
+    #eTitle;
 
-    constructor() {
+    constructor(...a) {
         super("LogWorks", "logworks");
 
         this.elem.classList.add("logworks");
 
         this.#actions = new Set();
+        this.#actionPage = 0;
 
         this.#eActions = document.createElement("div");
         this.elem.appendChild(this.eActions);
         this.eActions.classList.add("actions");
+        this.#ePage = document.createElement("div");
+        this.elem.appendChild(this.ePage);
+        this.ePage.classList.add("page");
+        this.#ePageHeader = document.createElement("div");
+        this.ePage.appendChild(this.ePageHeader);
+        this.ePageHeader.classList.add("header");
+        this.#eBackBtn = document.createElement("button");
+        this.ePageHeader.appendChild(this.eBackBtn);
+        this.eBackBtn.classList.add("icon");
+        this.eBackBtn.innerHTML = "<ion-icon name='arrow-back'><ion-icon>";
+        this.#eTitle = document.createElement("div");
+        this.ePageHeader.appendChild(this.eTitle);
+
+        this.eBackBtn.addEventListener("click", e => (this.actionPage = null));
 
         let action;
         action = this.addAction(new Panel.LogWorksTab.Action("Edit Logs", "pencil"));
-        action.addHandler("trigger", e => console.log("edit"));
+        action.addHandler("trigger", e => (this.actionPage = "edit"));
         action = this.addAction(new Panel.LogWorksTab.Action("Merge Logs"));
         action.iconSrc = "../assets/icons/merge.svg";
-        action.addHandler("trigger", e => console.log("merge"));
+        action.addHandler("trigger", e => (this.actionPage = "merge"));
         action = this.addAction(new Panel.LogWorksTab.Action("Convert Session"));
         action.iconSrc = "../assets/icons/swap.svg";
-        action.addHandler("trigger", e => console.log("convert"));
+        action.addHandler("trigger", e => (this.actionPage = "convert"));
+
+        this.addHandler("change-actionPage", () => {
+            if (![null, "edit", "merge", "convert"].includes(this.actionPage)) {
+                this.actionPage = null;
+                return;
+            }
+            if (this.actionPage == null) return;
+            this.title = {
+                "edit": "Edit Logs",
+                "merge": "Merge Logs",
+                "convert": "Convert Session",
+            }[this.actionPage];
+        });
+
+        this.actionPage = null;
+
+        if (a.length <= 0 || a.length > 1) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.LogWorksTab) a = [a.actionPage];
+            else if (util.is(a, "arr")) a = [new Panel.LogWorksTab(...a).actionPage];
+            else if (util.is(a, "obj")) a = [a.actionPage];
+            else a = [a];
+        }
+
+        [this.actionPage] = a;
     }
 
     get actions() { return [...this.#actions]; }
@@ -3120,7 +3166,33 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         return action;
     }
 
+    get actionPage() { return this.#actionPage; }
+    set actionPage(v) {
+        v = (v == null) ? null : String(v);
+        if (this.actionPage == v) return;
+        this.change("actionPage", this.actionPage, this.#actionPage=v);
+        this.elem.classList.add("home");
+        if (this.hasActionPage()) {
+            this.elem.classList.remove("home");
+            this.elem.classList.add(this.actionPage);
+        }
+    }
+    hasActionPage() { return this.actionPage != null; }
+
     get eActions() { return this.#eActions; }
+    get ePage() { return this.#ePage; }
+    get ePageHeader() { return this.#ePageHeader; }
+    get eBackBtn() { return this.#eBackBtn; }
+    get eTitle() { return this.#eTitle; }
+
+    get title() { return this.eTitle.textContent; }
+    set title(v) { this.eTitle.textContent = v; }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            actionPage: this.actionPage,
+        });
+    }
 };
 Panel.LogWorksTab.Action = class PanelLoggerTabAction extends util.Target {
     #elem;
