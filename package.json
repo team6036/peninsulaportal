@@ -27,7 +27,8 @@
     "socket.io-client": "^4.7.2",
     "socket.io-stream": "^0.9.1",
     "tba-api-v3client": "^3.3.1",
-    "three": "^0.157.0"
+    "three": "^0.157.0",
+    "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
     "electron-packager": "^17.1.2"

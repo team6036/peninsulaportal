@@ -72,6 +72,8 @@ const MAIN = async () => {
 
     const tba = require("tba-api-v3client");
 
+    const ytdl = require("ytdl-core");
+
     const OS = {
         arch: os.arch(),
         platform: os.platform(),
@@ -95,7 +97,7 @@ const MAIN = async () => {
 
         #process;
 
-        constructor(process) {
+        constructor(mode, ...a) {
             super();
 
             this.#id = null;
@@ -103,7 +105,8 @@ const MAIN = async () => {
 
             this.#parent = null;
 
-            this.#process = (process instanceof cp.ChildProcess) ? process : cp.exec(process);
+            this.#process = (mode == "exec") ? cp.exec(...a) : (mode == "execFile") ? cp.execFile(...a) : (mode == "fork") ? cp.fork(...a) : (mode == "spawn") ? cp.spawn(...a) : null;
+            if (!(this.process instanceof cp.ChildProcess)) throw "Invalid mode: "+mode;
             this.process.stdout.on("data", data => this.post("data", data));
             this.process.stderr.on("data", data => {
                 this.post("error", String(data));
@@ -161,10 +164,10 @@ const MAIN = async () => {
 
         get process() { return this.#process; }
 
-        terminate() {
+        async terminate() {
             if (this.process.exitCode != null) return false;
             this.process.kill("SIGKILL");
-            this.post("exit", null);
+            await this.post("exit", null);
             return true;
         }
     }
@@ -1276,7 +1279,7 @@ const MAIN = async () => {
         }
         async stop() {
             this.log("STOP");
-            this.processManager.processes.forEach(process => process.terminate());
+            await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
             await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
             try {
@@ -2419,9 +2422,9 @@ const MAIN = async () => {
             if (!this.perm) return false;
             if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
             this.#started = false;
-            this.processManager.processes.forEach(process => process.terminate());
+            await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
-            await Promise.all(this.#tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
+            await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
             if (this.hasWindow()) this.window.close();
             this.#window = null;
             this.#menu = null;
@@ -2997,7 +3000,7 @@ const MAIN = async () => {
                         return new Promise((res, rej) => {
                             if (this.processManager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
                             this.log("SPAWN");
-                            const process = this.processManager.addProcess(new Process(cp.spawn(project.config.scriptPython, [script], { cwd: root })));
+                            const process = this.processManager.addProcess(new Process("spawn", project.config.scriptPython, [script], { cwd: root }));
                             process.id = "script";
                             const finish = async () => {
                                 const appRoot = await this.on("root-get");
@@ -3091,7 +3094,7 @@ const MAIN = async () => {
                         this.log("SPAWN term");
                         const process = this.processManager.getProcessById("script");
                         if (!(process instanceof Process)) return false;
-                        process.terminate();
+                        await process.terminate();
                         return true;
                     },
                     "exec-get": async id => {
@@ -3146,7 +3149,7 @@ const MAIN = async () => {
                 PRESETS: {
                     "cmd-open-app-data-dir": async () => {
                         await new Promise((res, rej) => {
-                            const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: this.portal.dataPath })));
+                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.portal.dataPath }));
                             process.addHandler("exit", code => res(code));
                             process.addHandler("error", e => rej(e));
                         });
@@ -3156,7 +3159,7 @@ const MAIN = async () => {
                     },
                     "cmd-open-app-log-dir": async () => {
                         await new Promise((res, rej) => {
-                            const process = this.processManager.addProcess(new Process(cp.spawn("open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") })));
+                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") }));
                             process.addHandler("exit", code => res(code));
                             process.addHandler("error", e => rej(e));
                         });

@@ -65,6 +65,13 @@ contextBridge.exposeInMainWorld("sio", {
     },
 });
 
+contextBridge.exposeInMainWorld("tba", {
+    clientMake: id => ipcRenderer.invoke("tba-client-make", id),
+    clientDestroy: id => ipcRenderer.invoke("tba-client-destroy", id),
+    clientHas: id => ipcRenderer.invoke("tba-client-has", id),
+    clientInvoke: (id, invoke, ...a) => ipcRenderer.invoke("tba-client-invoke", id, invoke, ...a),
+});
+
 const cache = {};
 
 ipcRenderer.on("cache-set", (_, k, v) => (cache[k] = v));
