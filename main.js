@@ -1354,18 +1354,9 @@ const MAIN = async () => {
             }
             return r;
         }
-        static async cleanup(dataPath, version) {
-            version = String(version);
-            log(". cleanup");
-            let fsVersion = await this.getFSVersion(dataPath);
-            log(`. cleanup - fs-version check (${version} ?>= ${fsVersion})`);
-            if (!(await this.canFS(dataPath, version))) {
-                log(`. cleanup - fs-version mismatch (${version} !>= ${fsVersion})`);
-                return false;
-            }
-            log(`. cleanup - fs-version match (${version} >= ${fsVersion})`);
-            await this.setFSVersion(dataPath, version);
-            const l = (...a) => log(". deleting "+Portal.makePath(...a));
+        static async getCleanup(dataPath) {
+            log(". get-cleanup");
+            const l = (...a) => log(". get-cleanup - found: "+Portal.makePath(...a));
             const format = [
                 //~/logs
                 {
@@ -1503,6 +1494,7 @@ const MAIN = async () => {
                 //~/themes.json
                 { type: "file", name: "themes.json" }
             ];
+            let pths = [];
             const cleanup = async (pth, patterns) => {
                 let dirents = await this.dirList(pth);
                 await Promise.all(dirents.map(async dirent => {
@@ -1518,11 +1510,33 @@ const MAIN = async () => {
                     }));
                     if (any) return;
                     l(...pth, dirent.name);
-                    if (dirent.type == "dir") await this.dirDelete([...pth, dirent.name]);
-                    else await this.fileDelete([...pth, dirent.name]);
+                    pths.push([pth, dirent.name]);
                 }));
             };
             await cleanup([dataPath], format);
+            return pths;
+        }
+        async getCleanup() { return await Portal.getCleanup(this.dataPath); }
+        static async cleanup(dataPath, version) {
+            version = String(version);
+            log(". cleanup");
+            const l = (...a) => log(". cleanup - delete: "+Portal.makePath(...a));
+            let fsVersion = await this.getFSVersion(dataPath);
+            log(`. cleanup - fs-version check (${version} ?>= ${fsVersion})`);
+            if (!(await this.canFS(dataPath, version))) {
+                log(`. cleanup - fs-version mismatch (${version} !>= ${fsVersion})`);
+                return false;
+            }
+            log(`. cleanup - fs-version match (${version} >= ${fsVersion})`);
+            await this.setFSVersion(dataPath, version);
+            let pths = await this.getCleanup(dataPath);
+            await Promise.all(pths.map(async pth => {
+                l(...pth);
+                try { return await this.dirDelete(pth); }
+                catch (e) {}
+                try { return await this.fileDelete(pth); }
+                catch (e) {}
+            }));
             return true;
         }
         async cleanup() { return await Portal.cleanup(this.dataPath, await this.get("base-version")); }
@@ -1933,6 +1947,7 @@ const MAIN = async () => {
                     return util.ensure((await kfs._fullclientconfig()).nativeTheme, "str", "system");
                 },
                 "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
+                "cleanup": async () => await this.getCleanup(),
             };
             if (k in kfs) return await kfs[k]();
             if (k.startsWith("val-")) {
@@ -2096,6 +2111,7 @@ const MAIN = async () => {
                     return v;
                 },
                 "open": async url => await electron.shell.openExternal(url),
+                "cleanup": async () => await this.cleanup(),
             };
             if (k in kfs) return await kfs[k](...a);
             throw "§O No possible \"on\" for key: "+k;
@@ -3155,7 +3171,8 @@ const MAIN = async () => {
                         });
                     },
                     "cmd-cleanup-app-data-dir": async () => {
-                        await this.portal.cleanup();
+                        // await this.portal.cleanup();
+                        await this.on("cleanup");
                     },
                     "cmd-open-app-log-dir": async () => {
                         await new Promise((res, rej) => {

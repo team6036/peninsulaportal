@@ -145,15 +145,22 @@ export class App extends util.Target {
                         t0 = t1;
                     };
                     update();
-                    /*
-                    console.log([
-                        `   ______   ______   _______   __   _______   ______   ___  __   __      _______`,
-                        `  / ______\\/ ______\\/ _______\\/ __\\/ _______\\/ ______\\/ __\\/\\__\\/ __\\   / _______\\`,
-                        ` / /  __  / /  __  / /  _    / /  / /  _    /\\/  ____/ /  / /  / /  /  / /  __   /`,
-                        `/ /  ____/ /  ____/ /  / /  / /  / /  / /  /\\_\\___ \\/ /  /_/  / /  /_\\/ /  __   /`,
-                        `\\/__/    \\/______/\\/__/\\/__/\\/__/\\/__/\\/__/\\/______/\\/_______/\\/_____/\\/__/\\/__/`,
-                    ].join("\n"));
-                    */
+                    let cleanups = util.ensure(await window.api.get("cleanup"), "arr").map(pth => {
+                        let flatpth = [];
+                        const dfs = pth => {
+                            if (util.is(pth, "arr")) return pth.forEach(pth => dfs(pth));
+                            flatpth.push(pth);
+                        };
+                        dfs(pth);
+                        return flatpth.join("/");
+                    });
+                    if (cleanups.length <= 3) return;
+                    let pop = this.confirm("Your application some junk files that we think can be cleaned up! Would you like to clean up these files?");
+                    pop.hasInfo = true;
+                    pop.info = cleanups.join("\n");
+                    let r = await pop.whenResult();
+                    if (!r) return;
+                    await window.api.send("cleanup");
                 })();
             }, 10);
         });
@@ -2267,7 +2274,6 @@ export class AppFeature extends App {
             await this.loadProjects();
         });
         this.addHandler("post-setup", async () => {
-
             ["file", "edit", "view"].forEach(name => {
                 let id = "menu:"+name;
                 let menu = this.menu.findItemWithId(id);
