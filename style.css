@@ -1082,7 +1082,7 @@ article.md ul {
     color: var(--v8);
 }
 .popup.core > .inner {
-    max-width: 250px;
+    max-width: min(100%, max(50%, 500px));
 }
 .popup.alert > .inner:has(> .info) {
     max-width: 500px;
