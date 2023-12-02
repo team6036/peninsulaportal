@@ -75,7 +75,7 @@ export class App extends util.Target {
             if (this.setupDone) return;
             try {
                 window.api.sendPerm(true);
-            } catch (e) { await this.error("Permission Send Error", e).whenResult(); }
+            } catch (e) { await this.doError("Permission Send Error", e); }
         });
 
         this.addHandler("start", async () => {
@@ -108,25 +108,25 @@ export class App extends util.Target {
                     let page = "";
                     try {
                         page = await window.api.send("state-get", "page");
-                    } catch (e) { await this.error("State CurrentPage Get Error", e).whenResult(); }
+                    } catch (e) { await this.doError("State CurrentPage Get Error", e); }
                     let pageState = null;
                     try {
                         pageState = await window.api.send("state-get", "page-state");
-                    } catch (e) { await this.error("State PageState Get Error", e).whenResult(); }
+                    } catch (e) { await this.doError("State PageState Get Error", e); }
                     let pageLazyStates = {};
                     try {
                         pageLazyStates = util.ensure(await window.api.send("state-get", "page-lazy-states"), "obj");
-                    } catch (e) { await this.error("State PageLazyStates Get Error", e).whenResult(); }
+                    } catch (e) { await this.doError("State PageLazyStates Get Error", e); }
                     for (let name in pageLazyStates) {
                         if (!this.hasPage(name)) continue;
                         try {
                             await this.getPage(name).loadLazyState(util.ensure(pageLazyStates[name], "obj"));
-                        } catch (e) { await this.error("Load LazyState Error ("+name+")", e).whenResult(); }
+                        } catch (e) { await this.doError("Load LazyState Error ("+name+")", e); }
                     }
                     if (this.hasPage(page)) {
                         try {
                             await this.getPage(page).loadState(util.ensure(pageState, "obj"));
-                        } catch (e) { await this.error("Load State Error ("+page+")", e).whenResult(); }
+                        } catch (e) { await this.doError("Load State Error ("+page+")", e); }
                         if (this.page != page) this.page = page;
                     }
                     let t0 = null, error = false;
@@ -138,7 +138,7 @@ export class App extends util.Target {
                             this.update(t1-t0);
                         } catch (e) {
                             error = true;
-                            await this.error("Update Error", e).whenResult();
+                            await this.doError("Update Error", e);
                             error = false;
                             return t0 = null;
                         }
@@ -155,7 +155,7 @@ export class App extends util.Target {
                         return flatpth.join("/");
                     });
                     if (cleanups.length <= 3) return;
-                    let pop = this.confirm("Your application some junk files that we think can be cleaned up! Would you like to clean up these files?");
+                    let pop = this.confirm("Junk Files Found!", "We found some unnecessary files in your application data. Would you like to clean up these files?");
                     pop.hasInfo = true;
                     pop.info = cleanups.join("\n");
                     let r = await pop.whenResult();
@@ -404,7 +404,7 @@ export class App extends util.Target {
             let perm = await this.getPerm();
             try {
                 window.api.sendPerm(perm);
-            } catch (e) { await this.error("Send Permission Error", e).whenResult(); }
+            } catch (e) { await this.doError("Send Permission Error", e); }
         });
         window.api.on((_, cmd, ...a) => {
             cmd = String(cmd);
@@ -415,15 +415,15 @@ export class App extends util.Target {
             if (this.hasPage(this.page)) {
                 try {
                     await window.api.send("state-set", "page", this.page);
-                } catch (e) { await this.error("State CurrentPage Set Error", e).whenResult(); }
+                } catch (e) { await this.doError("State CurrentPage Set Error", e); }
                 try {
                     await window.api.send("state-set", "page-state", this.getPage(this.page).state);
-                } catch (e) { await this.error("State PageState Set Error", e).whenResult(); }
+                } catch (e) { await this.doError("State PageState Set Error", e); }
                 let pageLazyStates = {};
                 this.pages.forEach(name => (pageLazyStates[name] = this.getPage(name).lazyState));
                 try {
                     await window.api.send("state-set", "page-lazy-states", pageLazyStates);
-                } catch (e) { await this.error("State PageLazyStates Set Error", e).whenResult(); }
+                } catch (e) { await this.doError("State PageLazyStates Set Error", e); }
             }
             return true;
         });
@@ -434,7 +434,7 @@ export class App extends util.Target {
             pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
-            pop.content = "Peninsula "+util.capitalize(name);
+            pop.title = "Peninsula "+util.capitalize(name);
             pop.info = this.getAbout().join("\n");
             pop.hasInfo = true;
         });
@@ -442,14 +442,13 @@ export class App extends util.Target {
             name = String(name);
             let isDevMode = await window.api.get("devmode");
             if (!isDevMode && [].includes(name)) {
-                let pop = this.confirm();
-                pop.eContent.innerText = "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs";
+                let pop = this.confirm("Open "+util.capitalize(name), "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs");
                 let result = await pop.whenResult();
                 if (!result) return;
             }
             try {
                 await window.api.send("spawn", name);
-            } catch (e) { await this.error("Spawn Error: "+name, e).whenResult(); }
+            } catch (e) { await this.doError("Spawn Error: "+name, e); }
         });
         this.addHandler("cmd-reload", async () => await window.api.send("reload"));
         this.addHandler("cmd-helpurl", async id => {
@@ -854,6 +853,10 @@ export class App extends util.Target {
     error(...a) { return this.addPopup(new App.Error(...a)); }
     confirm(...a) { return this.addPopup(new App.Confirm(...a)); }
     prompt(...a) { return this.addPopup(new App.Prompt(...a)); }
+    async doAlert(...a) { return await this.alert(...a).whenResult(); }
+    async doError(...a) { return await this.error(...a).whenResult(); }
+    async doConfirm(...a) { return await this.confirm(...a).whenResult(); }
+    async doPrompt(...a) { return await this.prompt(...a).whenResult(); }
 
     get menu() { return this.#menu; }
     set menu(v) {
@@ -1154,10 +1157,11 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     #eIconBox;
     #eIcon;
     #eSubIcon;
+    #eTitle;
     #eContent;
     #eInfo;
 
-    constructor(content, icon="") {
+    constructor(title, content, icon="") {
         super();
 
         this.elem.classList.add("core");
@@ -1169,12 +1173,16 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
         this.eIconBox.appendChild(this.eIcon);
         this.#eSubIcon = document.createElement("ion-icon");
         this.eIconBox.appendChild(this.eSubIcon);
+        this.#eTitle = document.createElement("div");
+        this.inner.appendChild(this.eTitle);
+        this.eTitle.classList.add("title");
         this.#eContent = document.createElement("div");
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
         this.#eInfo = document.createElement("pre");
         this.eInfo.classList.add("info");
 
+        this.title = title;
         this.content = content;
         this.icon = icon;
     }
@@ -1182,6 +1190,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     get eIconBox() { return this.#eIconBox; }
     get eIcon() { return this.#eIcon; }
     get eSubIcon() { return this.#eSubIcon; }
+    get eTitle() { return this.#eTitle; }
     get eContent() { return this.#eContent; }
     get eInfo() { return this.#eInfo; }
 
@@ -1211,6 +1220,9 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     get subIconColor() { return this.eSubIcon.style.color; }
     set subIconColor(v) { this.eSubIcon.style.color = v; }
     
+    get title() { return this.eTitle.textContent; }
+    set title(v) { this.eTitle.textContent = v; }
+
     get content() { return this.eContent.textContent; }
     set content(v) { this.eContent.textContent = v; }
 
@@ -1227,8 +1239,8 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
 App.Alert = class AppAlert extends App.CorePopup {
     #eButton;
 
-    constructor(content, icon="alert-circle", button="OK") {
-        super(content, icon);
+    constructor(title, content, icon="alert-circle", button="OK") {
+        super(title, content, icon);
 
         this.elem.classList.add("alert");
 
@@ -1247,8 +1259,8 @@ App.Alert = class AppAlert extends App.CorePopup {
     set button(v) { this.eButton.textContent = v; }
 };
 App.Error = class AppError extends App.Alert {
-    constructor(content, info) {
-        super(content, "warning");
+    constructor(title, info) {
+        super(title, "", "warning");
 
         this.iconColor = "var(--cr)";
 
@@ -1260,8 +1272,8 @@ App.Confirm = class AppConfirm extends App.CorePopup {
     #eConfirm;
     #eCancel;
 
-    constructor(content, icon="help-circle", confirm="OK", cancel="Cancel") {
-        super(content, icon);
+    constructor(title, content, icon="help-circle", confirm="OK", cancel="Cancel") {
+        super(title, content, icon);
 
         this.elem.classList.add("confirm");
 
@@ -1291,8 +1303,8 @@ App.Prompt = class AppPrompt extends App.CorePopup {
     #eConfirm;
     #eCancel;
 
-    constructor(content, value="", icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
-        super(content, icon);
+    constructor(title, content, value="", icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
+        super(title, content, icon);
 
         this.elem.classList.add("prompt");
 
@@ -2256,8 +2268,7 @@ export class AppFeature extends App {
                 if (ids.length <= 0) ids.push(page.projectId);
                 ids = ids.filter(id => this.hasProject(id));
                 if (ids.length <= 0) return;
-                let pop = this.confirm();
-                pop.eContent.innerText = "Are you sure you want to delete these projects?\nThis action is not reversible!";
+                let pop = this.confirm("Delete Projects", "Are you sure you want to delete these projects?\nThis action is not reversible!");
                 pop.hasInfo = true;
                 pop.info = ids.map(id => this.getProject(id).meta.name).join("\n");
                 let result = await pop.whenResult();
@@ -2367,7 +2378,7 @@ export class AppFeature extends App {
         try {
             await this.loadProjects();
         } catch (e) {
-            await this.error("Projects Load Error", e).whenResult();
+            await this.doError("Projects Load Error", e);
             return false;
         }
         return true;
@@ -2416,7 +2427,7 @@ export class AppFeature extends App {
         try {
             await this.saveProjects();
         } catch (e) {
-            await this.error("Projects Save Error", e).whenResult();
+            await this.doError("Projects Save Error", e);
             return false;
         }
         return true;
@@ -2643,7 +2654,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             itm.addHandler("trigger", async e => {
                 let project = this.app.getProject(ids[0]);
                 if (!(project instanceof this.app.constructor.PROJECTCLASS)) return;
-                let pop = this.app.prompt("Rename", project.meta.name);
+                let pop = this.app.prompt("Rename", "", project.meta.name);
                 let result = await pop.whenResult();
                 if (result == null) return;
                 project.meta.name = result;
