@@ -2862,8 +2862,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             names = util.ensure(names, "arr").map(name => String(name));
             if (LOGGERCONTEXT.disconnected) return;
             names = names.filter(name => LOGGERCONTEXT.hasServerLog(name));
-            let pop = this.app.confirm();
-            pop.eContent.innerText = "Are you sure you want to delete these logs from the server?\nThis will remove the logs for everyone";
+            let pop = this.app.confirm("Delete Logs", "Are you sure you want to delete these logs from the server?\nThis will remove the logs for everyone");
             pop.hasInfo = true;
             pop.info = names.join("\n");
             let result = await pop.whenResult();

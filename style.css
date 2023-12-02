@@ -1082,10 +1082,10 @@ article.md ul {
     color: var(--v8);
 }
 .popup.core > .inner {
-    max-width: min(100%, max(50%, 500px));
+    max-width: min(100%, 300px);
 }
-.popup.alert > .inner:has(> .info) {
-    max-width: 500px;
+.popup.core > .inner:has(.info) {
+    max-width: min(100%, max(50%, 500px));
 }
 .popup.core > .inner > .icon {
     position: relative;
@@ -1114,10 +1114,17 @@ article.md ul {
 
     font-size: 25px;
 }
-.popup.core > .inner > .content {
+.popup.core > .inner > .title {
     color: var(--v8);
     
     text-align: center;
+    font-size: 16px;
+}
+.popup.core > .inner > .content {
+    color: var(--v7);
+    
+    text-align: center;
+    font-size: 12px;
 }
 .popup.core > .inner > button {
     --bg: var(--v3);

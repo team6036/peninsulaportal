@@ -2076,7 +2076,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (this.generating) {
                 try {
                     window.api.send("exec-term");
-                } catch (e) { await this.app.error("Exec Termination Error", e).whenResult(); }
+                } catch (e) { await this.app.doError("Exec Termination Error", e); }
                 return;
             }
             const projectId = this.page.projectId;
