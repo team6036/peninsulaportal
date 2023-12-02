@@ -1552,7 +1552,7 @@ const MAIN = async () => {
         }
         static async fileHas(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:file-has ${pth}`);
+            this.fsLog(`fs:file-has ${pth}`);
             try {
                 await fs.promises.access(pth);
                 return true;
@@ -1561,40 +1561,40 @@ const MAIN = async () => {
         }
         static async fileRead(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:file-read ${pth}`);
+            this.fsLog(`fs:file-read ${pth}`);
             return await fs.promises.readFile(pth, { encoding: "utf-8" });
         }
         static async fileReadRaw(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:file-read-raw ${pth}`);
+            this.fsLog(`fs:file-read-raw ${pth}`);
             return [...(await fs.promises.readFile(pth))];
         }
         static async fileWrite(pth, content) {
             pth = this.makePath(pth);
             content = String(content);
-            this.log(`fs:file-write ${pth}`);
+            this.fsLog(`fs:file-write ${pth}`);
             return await fs.promises.writeFile(pth, content, { encoding: "utf-8" });
         }
         static async fileWriteRaw(pth, content) {
             pth = this.makePath(pth);
             content = Buffer.from(content);
-            this.log(`fs:file-write-raw ${pth}`);
+            this.fsLog(`fs:file-write-raw ${pth}`);
             return await fs.promises.writeFile(pth, content);
         }
         static async fileAppend(pth, content) {
             pth = this.makePath(pth);
-            this.log(`fs:file-append ${pth}`);
+            this.fsLog(`fs:file-append ${pth}`);
             return await fs.promises.appendFile(pth, content, { encoding: "utf-8" });
         }
         static async fileDelete(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:file-delete ${pth}`);
+            this.fsLog(`fs:file-delete ${pth}`);
             return await fs.promises.unlink(pth);
         }
 
         static async dirHas(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:dir-has ${pth}`);
+            this.fsLog(`fs:dir-has ${pth}`);
             try {
                 await fs.promises.access(pth);
                 return true;
@@ -1603,7 +1603,7 @@ const MAIN = async () => {
         }
         static async dirList(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:dir-list ${pth}`);
+            this.fsLog(`fs:dir-list ${pth}`);
             let dirents = await fs.promises.readdir(pth, { withFileTypes: true });
             return dirents.map(dirent => {
                 return {
@@ -1614,12 +1614,12 @@ const MAIN = async () => {
         }
         static async dirMake(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:dir-make ${pth}`);
+            this.fsLog(`fs:dir-make ${pth}`);
             return await fs.promises.mkdir(pth);
         }
         static async dirDelete(pth) {
             pth = this.makePath(pth);
-            this.log(`fs:dir-delete ${pth}`);
+            this.fsLog(`fs:dir-delete ${pth}`);
             return await fs.promises.rm(pth, { force: true, recursive: true });
         }
 
@@ -2149,8 +2149,11 @@ const MAIN = async () => {
         }
 
         static log(...a) {
-            return;
             return log(".", ...a);
+        }
+        static fsLog(...a) {
+            return;
+            return this.log(...a);
         }
         log(...a) {
             return log(":", ...a);
@@ -2645,17 +2648,88 @@ const MAIN = async () => {
                 "name": async () => {
                     return this.name;
                 },
-                "fullscreenable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isFullScreenable();
-                },
+
                 "fullscreen": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.isFullScreen();
                 },
+                "fullscreenable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFullScreenable();
+                },
+
                 "closeable": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.isClosable();
+                },
+
+                "focused": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFocused();
+                },
+                "blurred": async () => {
+                    if (!this.hasWindow()) return null;
+                    return !(await this.get("focused"));
+                },
+                "focusable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFocusable();
+                },
+
+                "visible": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isVisible();
+                },
+                "hidden": async () => {
+                    if (!this.hasWindow()) return null;
+                    return !(await this.get("visible"));
+                },
+
+                "modal": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isModal();
+                },
+
+                "maximized": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMaximized();
+                },
+                "maximizable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMaximizable();
+                },
+
+                "minimized": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMinimized();
+                },
+                "minimizable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMinimizable();
+                },
+
+                "enabled": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isEnabled();
+                },
+                "disabled": async () => {
+                    if (!this.hasWindow()) return null;
+                    return !(await this.get("enabled"));
+                },
+
+                "resizable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isResizable();
+                },
+
+                "movable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMovable();
+                },
+
+                "opacity": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getOpacity();
                 },
             };
             let r = null;
@@ -2692,23 +2766,6 @@ const MAIN = async () => {
             } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             let doLog = true;
             let kfs = {
-                "fullscreenable": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setFullScreenable(!!v);
-                    return true;
-                },
-                "fullscreen": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setFullScreen(!!v);
-                    return true;
-                },
-                "closeable": async () => {
-                    if (!this.hasWindow()) return false;
-                    let maximizable = this.window.isMaximizable();
-                    this.window.setClosable(!!v);
-                    this.window.setMaximizable(maximizable);
-                    return true;
-                },
                 "menu": async () => {
                     const dfs = itms => {
                         if (!util.is(itms, "arr")) return;
@@ -2724,6 +2781,109 @@ const MAIN = async () => {
                         this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, () => this.send("about"), () => this.on("spawn", "PRESETS")), ...util.ensure(v, "arr")]);
                     } catch (e) {}
                     this.portal.checkMenu();
+                },
+
+                "fullscreen": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setFullScreen(!!v);
+                    return true;
+                },
+                "fullscreenable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setFullScreenable(!!v);
+                    return true;
+                },
+
+                "closeable": async () => {
+                    if (!this.hasWindow()) return false;
+                    let maximizable = this.window.isMaximizable();
+                    this.window.setClosable(!!v);
+                    this.window.setMaximizable(maximizable);
+                    return true;
+                },
+
+                "focused": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.focus();
+                    else this.window.blur();
+                    return true
+                },
+                "blurred": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.blur();
+                    else this.window.focus();
+                    return true;
+                },
+                "focusable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setFocusable(!!v);
+                    return true;
+                },
+
+                "visible": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.show();
+                    else this.window.hide();
+                    return true;
+                },
+                "hidden": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.hide();
+                    else this.window.show();
+                    return true;
+                },
+
+                "maximized": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.maximize();
+                    else this.window.unmaximize();
+                    return true;
+                },
+                "maximizable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMaximizable(!!v);
+                    return true;
+                },
+
+                "minimized": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.minimize();
+                    else this.window.restore();
+                    return true;
+                },
+                "minimizable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMinimizable(!!v);
+                    return true;
+                },
+
+                "enabled": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setEnabled(!!v);
+                    return true;
+                },
+                "disabled": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setEnabled(!v);
+                    return true;
+                },
+
+                "resizable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setResizable(!!v);
+                    return true;
+                },
+
+                "movable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMovable(!!v);
+                    return true;
+                },
+
+                "opacity": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setOpacity(Math.min(1, Math.max(0, util.ensure(v, "num"))));
+                    return true;
                 },
             };
             let r = false;
