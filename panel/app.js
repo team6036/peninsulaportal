@@ -17,6 +17,7 @@ import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
+import { WorkerClient } from "../worker.js";
 
 
 THREE.Quaternion.fromRotationSequence = (...seq) => {
@@ -746,16 +747,9 @@ class Widget extends util.Target {
     }
     hasParent() { return this.parent instanceof Container; }
     hasPageParent() { return this.parent instanceof App.ProjectPage; }
-    get page() {
-        if (this.hasPageParent()) return this.parent;
-        if (this.hasParent()) return this.parent.page;
-        return null;
-    }
+    get page() { return this.hasPageParent() ? this.parent : this.hasParent() ? this.parent.page : null; }
     hasPage() { return this.page instanceof App.ProjectPage; }
-    get app() {
-        if (!this.hasPage()) return null;
-        return this.page.app;
-    }
+    get app() { return this.hasPage() ? this.page.app : null; }
     hasApp() { return this.app instanceof App; }
 
     contains(v) { return v == this; }
@@ -1312,15 +1306,9 @@ Panel.Tab = class PanelTab extends util.Target {
         this.#parent = v;
     }
     hasParent() { return this.parent instanceof Panel; }
-    get page() {
-        if (!this.hasParent()) return null;
-        return this.parent.page;
-    }
+    get page() { return this.hasParent() ? this.parent.page : null; }
     hasPage() { return this.page instanceof App.ProjectPage; }
-    get app() {
-        if (!this.hasPage()) return null;
-        return this.page.app;
-    }
+    get app() { return this.hasPage() ? this.page.app : null; }
     hasApp() { return this.app instanceof App; }
 
     get elem() { return this.#elem; }
@@ -3067,10 +3055,6 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
     #actionPage;
 
     #eActions;
-    #ePage;
-    #ePageHeader;
-    #eBackBtn;
-    #eTitle;
 
     constructor(...a) {
         super("LogWorks", "logworks");
@@ -3083,43 +3067,11 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         this.#eActions = document.createElement("div");
         this.elem.appendChild(this.eActions);
         this.eActions.classList.add("actions");
-        this.#ePage = document.createElement("div");
-        this.elem.appendChild(this.ePage);
-        this.ePage.classList.add("page");
-        this.#ePageHeader = document.createElement("div");
-        this.ePage.appendChild(this.ePageHeader);
-        this.ePageHeader.classList.add("header");
-        this.#eBackBtn = document.createElement("button");
-        this.ePageHeader.appendChild(this.eBackBtn);
-        this.eBackBtn.classList.add("icon");
-        this.eBackBtn.innerHTML = "<ion-icon name='arrow-back'><ion-icon>";
-        this.#eTitle = document.createElement("div");
-        this.ePageHeader.appendChild(this.eTitle);
-
-        this.eBackBtn.addEventListener("click", e => (this.actionPage = null));
 
         let action;
-        action = this.addAction(new Panel.LogWorksTab.Action("Edit Logs", "pencil"));
-        action.addHandler("trigger", e => (this.actionPage = "edit"));
-        action = this.addAction(new Panel.LogWorksTab.Action("Merge Logs"));
-        action.iconSrc = "../assets/icons/merge.svg";
-        action.addHandler("trigger", e => (this.actionPage = "merge"));
-        action = this.addAction(new Panel.LogWorksTab.Action("Convert Session"));
-        action.iconSrc = "../assets/icons/swap.svg";
-        action.addHandler("trigger", e => (this.actionPage = "convert"));
-
-        this.addHandler("change-actionPage", () => {
-            if (![null, "edit", "merge", "convert"].includes(this.actionPage)) {
-                this.actionPage = null;
-                return;
-            }
-            if (this.actionPage == null) return;
-            this.title = {
-                "edit": "Edit Logs",
-                "merge": "Merge Logs",
-                "convert": "Convert Session",
-            }[this.actionPage];
-        });
+        action = this.addAction(new Panel.LogWorksTab.Action(this, "edit"));
+        action = this.addAction(new Panel.LogWorksTab.Action(this, "merge"));
+        action = this.addAction(new Panel.LogWorksTab.Action(this, "convert"));
 
         this.actionPage = null;
 
@@ -3148,20 +3100,24 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
     }
     hasAction(action) {
         if (!(action instanceof Panel.LogWorksTab.Action)) return false;
-        return this.#actions.has(action);
+        return this.#actions.has(action) && action.tab == this;
     }
     addAction(action) {
         if (!(action instanceof Panel.LogWorksTab.Action)) return false;
+        if (action.tab != this) return false;
         if (this.hasAction(action)) return false;
         this.#actions.add(action);
-        this.eActions.appendChild(action.elem);
+        this.elem.appendChild(action.elem);
+        this.eActions.appendChild(action.eBtn);
         return action;
     }
     remAction(action) {
         if (!(action instanceof Panel.LogWorksTab.Action)) return false;
+        if (action.tab != this) return false;
         if (!this.hasAction(action)) return false;
         this.#actions.delete(action);
-        this.eActions.removeChild(action.elem);
+        this.elem.removeChild(action.elem);
+        this.eActions.removeChild(action.eBtn);
         return action;
     }
 
@@ -3170,22 +3126,16 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         v = (v == null) ? null : String(v);
         if (this.actionPage == v) return;
         this.change("actionPage", this.actionPage, this.#actionPage=v);
-        this.elem.classList.add("home");
-        if (this.hasActionPage()) {
-            this.elem.classList.remove("home");
-            this.elem.classList.add(this.actionPage);
-        }
+        if (this.hasActionPage()) this.elem.classList.remove("home");
+        else this.elem.classList.add("home");
+        this.actions.forEach(action => {
+            if (action.name == this.actionPage) action.show();
+            else action.hide();
+        });
     }
     hasActionPage() { return this.actionPage != null; }
 
     get eActions() { return this.#eActions; }
-    get ePage() { return this.#ePage; }
-    get ePageHeader() { return this.#ePageHeader; }
-    get eBackBtn() { return this.#eBackBtn; }
-    get eTitle() { return this.#eTitle; }
-
-    get title() { return this.eTitle.textContent; }
-    set title(v) { this.eTitle.textContent = v; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -3193,24 +3143,314 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         });
     }
 };
-Panel.LogWorksTab.Action = class PanelLoggerTabAction extends util.Target {
-    #elem;
+Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
+    #tab;
+
+    #name;
+    #state;    
+
+    #eBtn;
     #eIcon;
     #eName;
+    #elem;
+    #eHeader;
+    #eBackBtn;
+    #eTitle;
+    #eContent;
 
-    constructor(name, icon="") {
+    constructor(tab, name) {
         super();
 
-        this.#elem = document.createElement("button");
+        if (!(tab instanceof Panel.LogWorksTab)) throw "Tab is not of class LogWorksTab";
+        this.#tab = tab;
+
+        this.#name = String(name);
+        this.#state = {};
+
+        this.#eBtn = document.createElement("button");
         this.#eIcon = document.createElement("ion-icon");
-        this.elem.appendChild(this.eIcon);
+        this.eBtn.appendChild(this.eIcon);
         this.#eName = document.createElement("div");
-        this.elem.appendChild(this.eName);
+        this.eBtn.appendChild(this.eName);
 
-        this.elem.addEventListener("click", e => this.post("trigger", e));
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("action");
+        this.elem.classList.add(this.name);
+        this.#eHeader = document.createElement("div");
+        this.elem.appendChild(this.eHeader);
+        this.eHeader.classList.add("header");
+        this.#eBackBtn = document.createElement("button");
+        this.eHeader.appendChild(this.eBackBtn);
+        this.eBackBtn.classList.add("icon");
+        this.eBackBtn.innerHTML = "<ion-icon name='arrow-back'><ion-icon>";
+        this.#eTitle = document.createElement("div");
+        this.eHeader.appendChild(this.eTitle);
+        this.#eContent = document.createElement("div");
+        this.elem.appendChild(this.eContent);
+        this.eContent.classList.add("content");
 
-        this.name = name;
-        this.icon = icon;
+        this.eBtn.addEventListener("click", e => (this.tab.actionPage = this.name));
+        this.eBackBtn.addEventListener("click", e => (this.tab.actionPage = null));
+
+        this.#init();
+    }
+
+    get tab() { return this.#tab; }
+    get parent() { return this.tab.parent; }
+    hasParent() { return this.parent instanceof Panel; }
+    get page() { return this.hasParent() ? this.parent.page : null; }
+    hasPage() { return this.page instanceof App.ProjectPage; }
+    get app() { return this.hasPage() ? this.page.app : null; }
+    hasApp() { return this.app instanceof App; }
+
+    get name() { return this.#name; }
+
+    #init() {
+        const state = this.#state;
+        let namefs = {
+            edit: () => {
+                this.displayName = this.title = "Edit Logs";
+                this.icon = "pencil";
+            },
+            merge: () => {
+                this.displayName = this.title = "Merge Logs";
+                this.iconSrc = "../assets/icons/merge.svg";
+
+                const conflictAffixMap = {
+                    prefix: "prefix",
+                    suffix: "suffix",
+                };
+                const conflictCountMap = {
+                    numerical: "numerically",
+                    hexadecimal: "hexadecimally",
+                    alphabetical: "alphabetically",
+                };
+
+                let conflictAffix = null;
+                Object.defineProperty(state, "conflictAffix", {
+                    get: () => conflictAffix,
+                    set: v => {
+                        v = String(v);
+                        if (!(v in conflictAffixMap)) return;
+                        conflictAffix = v;
+                        state.eConflictAffixBtnName.textContent = conflictAffixMap[state.conflictAffix];
+                    },
+                });
+                let conflictCount = null;
+                Object.defineProperty(state, "conflictCount", {
+                    get: () => conflictCount,
+                    set: v => {
+                        v = String(v);
+                        if (!(v in conflictCountMap)) return;
+                        conflictCount = v;
+                        state.eConflictCountBtnName.textContent = conflictCountMap[state.conflictCount];
+                    },
+                });
+                let logs = new Set();
+                Object.defineProperty(state, "logs", {
+                    get: () => [...logs],
+                    set: v => {
+                        v = util.ensure(v, "arr");
+                        state.clearLogs();
+                        v.forEach(v => state.addLog(v));
+                    },
+                });
+                state.hasLog = log => {
+                    log = String(log);
+                    return logs.has(log);
+                };
+                state.addLog = log => {
+                    log = String(log);
+                    if (state.hasLog(log)) return false;
+                    logs.add(log);
+                    state.refresh();
+                    return true;
+                };
+                state.remLog = log => {
+                    log = String(log);
+                    if (!state.hasLog(log)) return false;
+                    logs.delete(log);
+                    state.refresh();
+                    return true;
+                };
+
+                let eHeader;
+
+                eHeader = document.createElement("div");
+                eHeader.classList.add("header");
+                eHeader.textContent = "Merge Configuration";
+                this.eContent.appendChild(eHeader);
+                state.eConflict = document.createElement("div");
+                this.eContent.appendChild(state.eConflict);
+                state.eConflict.classList.add("conflict");
+                state.eConflict.innerHTML = "<div>Merge conflicts with</div>";
+                state.eConflictAffixBtn = document.createElement("button");
+                state.eConflict.appendChild(state.eConflictAffixBtn);
+                state.eConflictAffixBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+                state.eConflictAffixBtnName = state.eConflictAffixBtn.children[0];
+                state.eConflictAffixBtn.addEventListener("click", e => {
+                    if (!this.hasApp()) return;
+                    let itm;
+                    let menu = new core.App.Menu();
+                    Object.keys(conflictAffixMap).forEach(affix => {
+                        itm = menu.addItem(new core.App.Menu.Item(conflictAffixMap[affix], (state.conflictAffix == affix) ? "checkmark" : ""));
+                        itm.addHandler("trigger", e => {
+                            state.conflictAffix = affix;
+                        });
+                    });
+                    this.app.contextMenu = menu;
+                    let r = state.eConflictAffixBtn.getBoundingClientRect();
+                    this.app.placeContextMenu(r.left, r.bottom);
+                });
+                state.eConflictCountBtn = document.createElement("button");
+                state.eConflict.appendChild(state.eConflictCountBtn);
+                state.eConflictCountBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+                state.eConflictCountBtnName = state.eConflictCountBtn.children[0];
+                state.eConflictCountBtn.addEventListener("click", e => {
+                    if (!this.hasApp()) return;
+                    let itm;
+                    let menu = new core.App.Menu();
+                    Object.keys(conflictCountMap).forEach(count => {
+                        itm = menu.addItem(new core.App.Menu.Item(conflictCountMap[count], (state.conflictCount == count) ? "checkmark" : ""));
+                        itm.addHandler("trigger", e => {
+                            state.conflictCount = count;
+                        });
+                    });
+                    this.app.contextMenu = menu;
+                    let r = state.eConflictCountBtn.getBoundingClientRect();
+                    this.app.placeContextMenu(r.left, r.bottom);
+                });
+                state.ePrefix = document.createElement("div");
+                this.eContent.appendChild(state.ePrefix);
+                state.ePrefix.classList.add("prefix");
+                state.ePrefix.innerHTML = "<div>Global prefix</div>";
+                state.ePrefixInput = document.createElement("input");
+                state.ePrefix.appendChild(state.ePrefixInput);
+                state.ePrefixInput.type = "text";
+                state.ePrefixInput.placeholder = "No prefix";
+                state.ePrefixInput.autocomplete = "off";
+                state.ePrefixInput.spellcheck = false;
+                eHeader = document.createElement("div");
+                eHeader.classList.add("header");
+                eHeader.textContent = "Selected Logs";
+                this.eContent.appendChild(eHeader);
+                state.eLogs = document.createElement("div");
+                this.eContent.appendChild(state.eLogs);
+                state.eLogs.classList.add("logs");
+                state.eLogsDragBox = document.createElement("div");
+                state.eLogs.appendChild(state.eLogsDragBox);
+                state.eLogsDragBox.classList.add("dragbox");
+                state.eLogsDragBox.innerHTML = "<div></div><div></div>";
+                ["dragenter", "dragover"].forEach(name => state.eLogs.addEventListener(name, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    state.eLogsDragBox.classList.add("this");
+                }));
+                ["dragleave", "drop"].forEach(name => state.eLogs.addEventListener(name, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    state.eLogsDragBox.classList.remove("this");
+                }));
+                state.eLogs.addEventListener("drop", e => {
+                    let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+                    items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+                    if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+                    items = items.filter(item => item instanceof File);
+                    if (items.length <= 0) return;
+                    items.forEach(file => state.addLog(file.path));
+                });
+                state.eSubmit = document.createElement("button");
+                this.eContent.appendChild(state.eSubmit);
+                state.eSubmit.textContent = "Merge";
+                state.eSubmit.addEventListener("click", async e => {
+                    if (!this.hasApp()) return;
+                    state.eSubmit.disabled = true;
+                    const progress = v => (this.app.progress = v);
+                    try {
+                        progress(0);
+                        const sum = [];
+                        const updateSum = () => progress(util.lerp(0, 1/3, sum.sum()/sum.length));
+                        const sources = (await Promise.all(state.logs.map(async (log, i) => {
+                            sum.push(0);
+                            let source = null;
+                            try {
+                                source = new WPILOGSource();
+                                source.data = await window.api.send("wpilog-read", log);
+                                const progress = v => {
+                                    sum[i] = v;
+                                    updateSum();
+                                };
+                                source.addHandler("progress", progress);
+                                await source.build();
+                                source.remHandler("progress", progress);
+                            } catch (e) {}
+                            sum[i] = 1;
+                            updateSum();
+                            return source;
+                        }))).filter(source => source instanceof WPILOGSource);
+                        const client = new WorkerClient("./merge-worker.js");
+                        const sourceData = await new Promise((res, rej) => {
+                            client.addHandler("error", e => rej(e));
+                            client.addHandler("stop", data => rej("WORKER TERMINATED"));
+                            client.addHandler("cmd-progress", v => progress(util.lerp(1/3, 1, v)));
+                            client.addHandler("cmd-finish", data => res(data));
+                            client.start({
+                                opt: {
+                                    affix: state.conflictAffix,
+                                    count: state.conflictCount,
+                                },
+                                sources: sources.map(source => source.toSerialized()),
+                            });
+                        });
+                        const source = new WPILOGSource();
+                        source.fromSerialized(sourceData);
+                        progress(null);
+                        const result = util.ensure(await this.app.fileSaveDialog({
+                            title: "Save log to...",
+                            buttonLabel: "Save",
+                        }), "obj");
+                        if (!result.canceled && result.filePath) {
+                            let pth = String(result.filePath);
+                            if (!pth.endsWith(".wpilog")) pth += ".wpilog";
+                            source.addHandler("progress", progress);
+                            let data = await source.export(state.ePrefixInput.value);
+                            source.remHandler("progress", progress);
+                            await window.api.send("wpilog-write", pth, data);
+                        }
+                    } catch (e) {
+                        this.app.error("Log Merge Error", e);
+                    }
+                    progress(null);
+                    state.eSubmit.disabled = false;
+                });
+
+                state.refresh = () => {
+                    Array.from(state.eLogs.querySelectorAll(":scope > div:not(.dragbox)")).forEach(elem => elem.remove());
+                    state.logs.forEach(log => {
+                        let elem = document.createElement("div");
+                        state.eLogs.appendChild(elem);
+                        elem.innerHTML = "<div></div>";
+                        elem.children[0].textContent = log;
+                        let btn = document.createElement("button");
+                        elem.appendChild(btn);
+                        btn.innerHTML = "<ion-icon name='close'></ion-icon>";
+                        btn.addEventListener("click", e => state.remLog(log));
+                    });
+                    if (state.logs.length > 0) state.eLogs.classList.remove("empty");
+                    else state.eLogs.classList.add("empty");
+                    state.eSubmit.disabled = state.logs.length <= 0;
+                };
+
+                state.conflictAffix = "suffix";
+                state.conflictCount = "numerical";
+                state.refresh();
+            },
+            convert: () => {
+                this.displayName = this.title = "Convert Session";
+                this.iconSrc = "../assets/icons/swap.svg";
+            },
+        };
+        if (this.name in namefs) namefs[this.name]();
     }
 
     get icon() { return this.eIcon.getAttribute("name"); }
@@ -3224,12 +3464,30 @@ Panel.LogWorksTab.Action = class PanelLoggerTabAction extends util.Target {
         this.eIcon.setAttribute("src", v);
     }
 
-    get name() { return this.eName.textContent; }
-    set name(v) { this.eName.textContent = v; }
+    get displayName() { return this.eName.textContent; }
+    set displayName(v) { this.eName.textContent = v; }
 
-    get elem() { return this.#elem; }
+    get title() { return this.eTitle.textContent; }
+    set title(v) { this.eTitle.textContent = v; }
+
+    get isShown() { return this.elem.classList.contains("this"); }
+    set isShown(v) {
+        if (v) this.elem.classList.add("this");
+        else this.elem.classList.remove("this");
+    }
+    get isHidden() { return !this.isShown; }
+    set isHidden(v) { this.isShown = !v; }
+    show() { return this.isShown = true; }
+    hide() { return this.isHidden = true; }
+
+    get eBtn() { return this.#eBtn; }
     get eIcon() { return this.#eIcon; }
     get eName() { return this.#eName; }
+    get elem() { return this.#elem; }
+    get eHeader() { return this.#eHeader; }
+    get eBackBtn() { return this.#eBackBtn; }
+    get eTitle() { return this.#eTitle; }
+    get eContent() { return this.#eContent; }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
@@ -6818,7 +7076,6 @@ export default class App extends core.AppFeature {
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
                 const active = page.activeWidget;
-                console.log(active.tabIndex);
                 active.tabIndex++;
             });
             this.addHandler("cmd-prevtab", () => {
@@ -6827,7 +7084,6 @@ export default class App extends core.AppFeature {
                 const page = this.getPage("PROJECT");
                 if (!page.hasActivePanel()) return;
                 const active = page.activeWidget;
-                console.log(active.tabIndex);
                 active.tabIndex--;
             });
             this.addHandler("cmd-closetab", () => {
@@ -7081,12 +7337,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             e.preventDefault();
             e.stopPropagation();
             this.eDragBox.classList.add("this");
-        }, { capture: true }));
+        }));
         ["dragleave", "drop"].forEach(name => document.body.addEventListener(name, e => {
             e.preventDefault();
             e.stopPropagation();
             this.eDragBox.classList.remove("this");
-        }, { capture: true }));
+        }));
         document.body.addEventListener("drop", e => {
             let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
             items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
@@ -7099,7 +7355,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.project.config.source = file.path;
             this.update(0);
             this.app.post("cmd-action");
-        }, { capture: true });
+        });
 
         this.#eDivider = document.createElement("div");
         this.elem.appendChild(this.eDivider);

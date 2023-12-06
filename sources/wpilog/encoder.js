@@ -55,7 +55,7 @@ export default class WPILOGEncoder extends util.Target {
     }
 
     build(callback) {
-        let records = this.records.sort((a, b) => a.ts-b.ts);
+        let records = this.records;
         records = records.map((record, i) => {
             let data = record.build();
             if (util.is(callback, "func"))
@@ -118,7 +118,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
     static makeControlStart(ts, startData) {
         ts = util.ensure(ts, "num");
         startData = util.ensure(startData, "obj");
-        let entry = util.ensure(metadataData.entry, "num");
+        let entry = util.ensure(startData.entry, "num");
         let name = util.TEXTENCODER.encode(String(startData.name));
         let type = util.TEXTENCODER.encode(String(startData.type));
         let metadata = util.TEXTENCODER.encode(String(startData.metadata));
@@ -130,7 +130,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         dataView.setUint32(1+4, name.length, true);
         data.set(name, 1+4+4);
         dataView.setUint32(1+4+4+name.length, type.length, true);
-        data.set(type, 1+4+4+name.length + 4);
+        data.set(type, 1+4+4+name.length+4);
         dataView.setUint32(1+4+4+name.length+4+type.length, metadata.length, true);
         data.set(metadata, 1+4+4+name.length+4+type.length+4);
 
@@ -250,9 +250,9 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
     }
 
     build() {
-        let entry = this.#encodeInt(this.entry);
+        let entry = this.#encodeInt(this.entryId);
         let payloadSize = this.#encodeInt(this.data.length);
-        let ts = this.#encodeInt(this.timestamp);
+        let ts = this.#encodeInt(this.ts);
         let lBitfield = 0;
         lBitfield |= entry.length - 1;
         lBitfield |= (payloadSize.length - 1) << 2;

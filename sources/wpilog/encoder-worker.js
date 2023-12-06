@@ -1,6 +1,6 @@
 import * as util from "../../util.mjs";
 
-import { WorkerBase } from "../worker.js";
+import { WorkerBase } from "../../worker.js";
 
 import WPILOGEncoder from "./encoder.js";
 
@@ -13,10 +13,13 @@ class WPILOGEncoderWorker extends WorkerBase {
 
         this.addHandler("cmd-start", data => {
             try {
+                data = util.ensure(data, "obj");
+                const opt = util.ensure(data.opt, "obj");
+                const prefix = util.ensure(opt.prefix, "str").split("/").filter(part => part.length > 0).join("/")+"/";
                 this.progress(0);
                 const encoder = new WPILOGEncoder();
                 const source = new Source();
-                source.fromSerialized(data);
+                source.fromSerialized(data.source);
                 let fields = [];
                 const dfs = field => {
                     if (!field.hasType()) return field.fields.forEach(field => dfs(field));
@@ -35,13 +38,13 @@ class WPILOGEncoderWorker extends WorkerBase {
                             valueLog[0].ts,
                             {
                                 entry: entryId,
-                                name: field.path.join("/"),
+                                name: prefix+field.textPath,
                                 type: type,
                                 metadata: "",
                             },
                         ),
                     );
-                    valueLog.forEach(log => {
+                    valueLog.forEach((log, i) => {
                         let ts = log.ts * 1000, v = log.v;
                         let typefs = {
                             boolean: () => WPILOGEncoder.Record.makeBool(entryId, ts, v),
@@ -57,13 +60,13 @@ class WPILOGEncoderWorker extends WorkerBase {
                             "string[]": () => WPILOGEncoder.Record.makeStrArr(entryId, ts, v),
                         };
                         if (type in typefs) encoder.addRecord(typefs[type]());
-                        else encoder.addRecord(WPILOGEncoder.makeRaw(entryId, ts, v));
+                        else encoder.addRecord(WPILOGEncoder.Record.makeRaw(entryId, ts, v));
                     });
                     this.progress(util.lerp(0, 0.5, (i+1)/fields.length));
                 });
-                let data = encoder.build(progress => this.progress(util.lerp(0.5, 1, progress)));
+                data = encoder.build(progress => this.progress(util.lerp(0.5, 1, progress)));
                 this.progress(1);
-                this.send("finish", data);
+                this.send("finish", [...data]);
             } catch (e) { this.send("error", e); }
         });
     }

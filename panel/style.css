@@ -178,7 +178,7 @@
     gap: 0px !important;
 }
 #PROJECTPAGE > .dragbox {
-    z-index: 1;
+    z-index: 10;
 
     position: absolute;
     top: 50%;
@@ -192,6 +192,7 @@
     overflow: hidden;
 
     background-color: var(--a-4);
+    backdrop-filter: blur(3px);
 
     opacity: 0%;
     visibility: hidden;
@@ -220,8 +221,8 @@
     transition: width var(--t), height var(--t);
 }
 #PROJECTPAGE > .dragbox.this::before {
-    width: calc(100% - 20px);
-    height: calc(100% - 20px);
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
 }
 #PROJECTPAGE > .dragbox > div {
     position: absolute;
@@ -287,8 +288,8 @@
 #PROJECTPAGE > .side {
     order: -1;
 
-    width: var(--side);
-    max-width: var(--side);
+    width: calc(var(--side) - 1px);
+    max-width: calc(var(--side) - 1px);
     padding: 10px;
 
     display: flex;
@@ -407,8 +408,8 @@
 #PROJECTPAGE > .content {
     order: 1;
 
-    width: calc(100% - var(--side));
-    max-width: calc(100% - var(--side));
+    width: calc(100% - var(--side) - 1px);
+    max-width: calc(100% - var(--side) - 1px);
     
     display: flex;
     flex-direction: column;
@@ -1335,6 +1336,8 @@
     --fgd: var(--v6);
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks {
+    --shift: 50px;
+
     padding: 0px;
     overflow: hidden;
 }
@@ -1342,7 +1345,7 @@
     position: absolute;
     top: 0px;
     left: 0px;
-    transform: translateX(-200px);
+    transform: translateX(calc(-1 * var(--shift)));
 
     width: 100%;
     max-width: 100%;
@@ -1372,59 +1375,6 @@
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks:not(.this) > .actions {
     display: none;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .page {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    transform: translateX(0px);
-
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    max-height: 100%;
-    padding: 10px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-
-    opacity: 100%;
-    visibility: inherit;
-
-    transition: transform var(--t), opacity var(--t), visibility var(--t);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks.home > .page {
-    transform: translateX(200px);
-
-    opacity: 0%;
-    visibility: hidden;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks:not(.this) > .page {
-    display: none;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .page > .header {
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 10px;
-
-    color: var(--v8);
-    border-bottom: 2px solid var(--v2);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .page > .header > button {
-    --bg: transparent;
-    --bgh: var(--v2-8);
-    --bgd: transparent;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .actions > button {
     width: 300px;
@@ -1456,6 +1406,258 @@
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .actions > button:disabled > ion-icon {
     background-color: var(--cc3);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    transform: translateX(var(--shift));
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: transform var(--t), opacity var(--t), visibility var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks:not(.home) > .action.this {
+    transform: translateX(0px);
+
+    opacity: 100%;
+    visibility: inherit;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks:not(.this) > .action {
+    display: none;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action > .header {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    color: var(--v8);
+    border-bottom: 2px solid var(--v2);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action > .header > button {
+    --bg: transparent;
+    --bgh: var(--v2-8);
+    --bgd: transparent;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action > .content {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .header {
+    padding: 5px 0px;
+    margin-bottom: 5px;
+
+    color: var(--v4);
+
+    border-bottom: 2px solid var(--v2);
+
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 550;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    color: var(--v8);
+
+    font-size: 14px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict > button {
+    padding: 5px;
+
+    gap: 5px;
+
+    border-radius: 5px;
+
+    font-size: 14px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .prefix {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    color: var(--v8);
+
+    font-size: 14px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs {
+    position: relative;
+
+    max-width: 100%;
+    height: 100%;
+    min-height: 100px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs::before {
+    content: "No logs selected...";
+
+    display: none;
+
+    color: var(--v2);
+
+    font-size: 14px;
+    font-style: italic;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs.empty:before {
+    display: block;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) {
+    width: min(100%, max(50%, 500px));
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    background-color: var(--v2-8);
+    color: var(--v8);
+
+    font-size: 14px;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) > div {
+    flex-basis: 100%;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 0px;
+
+    min-width: max-content;
+    aspect-ratio: 1 / 1;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+
+    background-color: var(--a-4);
+    backdrop-filter: blur(3px);
+
+    opacity: 0%;
+    visibility: hidden;
+
+    pointer-events: none;
+
+    transition: opacity calc(0.5 * var(--t)), visibility calc(0.5 * var(--t));
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this {
+    opacity: 100%;
+    visibility: inherit;
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: calc(100% + 10px);
+    height: calc(100% + 10px);
+
+    border: 5px solid var(--v8);
+
+    transition: width var(--t), height var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this::before {
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(75%);
+
+    background-color: var(--v8);
+
+    transition: transform var(--t);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this > div {
+    transform: translate(-50%, -50%) scale(100%);
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div:nth-child(1) {
+    width: min(calc(0.10 * var(--w)), calc(0.10 * var(--h)));
+    height: min(calc(0.02 * var(--w)), calc(0.02 * var(--h)));
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div:nth-child(2) {
+    width: min(calc(0.02 * var(--w)), calc(0.02 * var(--h)));
+    height: min(calc(0.10 * var(--w)), calc(0.10 * var(--h)));
+}
+#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > button {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+
+    align-self: flex-start;
+
+    padding: 5px 10px;
+
+    border-radius: 5px;
 }
 #PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas {
     --options: 100%;
