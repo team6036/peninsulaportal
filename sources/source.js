@@ -14,12 +14,7 @@ export function toUint8Array(v) {
 
 
 export default class Source extends util.Target {
-    #useNestRoot;
-    #postNest;
-    #postFlat;
-
-    #nestRoot;
-    #flatRoot;
+    #root;
 
     #ts;
     #tsMin;
@@ -29,19 +24,11 @@ export default class Source extends util.Target {
 
     #playback;
 
-    constructor(root) {
+    constructor() {
         super();
 
-        this.#useNestRoot = String(root) == "nest";
-
-        this.#postNest = true;
-        this.#postFlat = true;
-
-        this.#nestRoot = new Source.Field(this, "", null);
-        this.#flatRoot = new Source.Field(this, "", null);
-
-        this.nestRoot.addHandler("change", data => this.post("change", data));
-        this.flatRoot.addHandler("change", data => this.post("change", data));
+        this.#root = new Source.Field(this, "", null);
+        this.root.addHandler("change", (...a) => this.post("change", ...a));
 
         this.#ts = 0;
         this.#tsMin = this.#tsMax = 0;
@@ -51,17 +38,7 @@ export default class Source extends util.Target {
         this.#playback = new Source.Playback(this);
     }
 
-    get useNestRoot() { return this.#useNestRoot; }
-    get useFlatRoot() { return !this.useNestRoot; }
-
-    get postNest() { return this.#postNest; }
-    set postNest(v) { this.#postNest = !!v; }
-    get postFlat() { return this.#postFlat; }
-    set postFlat(v) { this.#postFlat = !!v; }
-
-    get root() { return this.useNestRoot ? this.nestRoot : this.flatRoot; }
-    get nestRoot() { return this.#nestRoot; }
-    get flatRoot() { return this.#flatRoot; }
+    get root() { return this.#root; }
 
     get ts() { return this.#ts; }
     set ts(v) { this.#ts = util.ensure(v, "num"); }
@@ -77,26 +54,21 @@ export default class Source extends util.Target {
     create(k, type) {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        if (this.postFlat) {
-            this.flatRoot.add(new Source.Field(this.flatRoot, k.join("/"), type));
-        }
-        if (this.postNest) {
-            let kk = [...k];
-            let o = this.nestRoot, oPrev = this;
-            while (kk.length > 0) {
-                let name = kk.shift();
-                [o, oPrev] = [o.singlelookup(name), o];
-                if (kk.length > 0) {
-                    if (!(o instanceof Source.Field)) {
-                        o = new Source.Field(oPrev, name, null);
-                        oPrev.add(o);
-                    }
-                    continue;
-                }
+        let kk = [...k];
+        let o = this.root, oPrev = this;
+        while (kk.length > 0) {
+            let name = kk.shift();
+            [o, oPrev] = [o.singlelookup(name), o];
+            if (kk.length > 0) {
                 if (!(o instanceof Source.Field)) {
-                    o = new Source.Field(oPrev, name, type);
+                    o = new Source.Field(oPrev, name, null);
                     oPrev.add(o);
                 }
+                continue;
+            }
+            if (!(o instanceof Source.Field)) {
+                o = new Source.Field(oPrev, name, type);
+                oPrev.add(o);
             }
         }
         return true;
@@ -104,21 +76,16 @@ export default class Source extends util.Target {
     delete(k) {
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        if (this.postFlat) {
-            this.flatRoot.rem(this.flatRoot.singlelookup(k.join("/")));
-        }
-        if (this.postNest) {
-            let o = this.nestRoot.lookup([...k]), first = true;
-            while (o instanceof Source.Field) {
-                let oPrev = o.parent;
-                if (oPrev instanceof Source.Field) {
-                    if (first || (!o.hasType() && o.nFields.length <= 0)) {
-                        first = false;
-                        oPrev.rem(o);
-                    }
+        let o = this.root.lookup([...k]), first = true;
+        while (o instanceof Source.Field) {
+            let oPrev = o.parent;
+            if (oPrev instanceof Source.Field) {
+                if (first || (!o.hasType() && o.nFields.length <= 0)) {
+                    first = false;
+                    oPrev.rem(o);
                 }
-                o = oPrev;
             }
+            o = oPrev;
         }
         return true;
     }
@@ -126,47 +93,34 @@ export default class Source extends util.Target {
         ts = util.ensure(ts, "num", this.ts);
         k = util.ensure(k, "arr");
         if (k.length <= 0) return false;
-        if (this.postFlat) {
-            let o = this.flatRoot.singlelookup(k.join("/"));
-            if (o instanceof Source.Field)
-                o.update(v, ts);
-        }
-        if (this.postNest) {
-            let o = this.nestRoot.lookup([...k]);
-            if (o instanceof Source.Field) {
-                o.update(v, ts);
-                if (
-                    k.length == 2 &&
-                    String(k[0]) == ".schema" &&
-                    String(k[1]).startsWith("struct:") &&
-                    o.type == "structschema"
-                ) {
-                    let struct = String(k[1]);
-                    if (struct.startsWith("struct:")) {
-                        struct = struct.slice(7);
-                        if (this.structHelper.hasPattern(struct)) return; // this.structHelper.remPattern(struct);
-                        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, struct, util.TEXTDECODER.decode(v)));
-                        pattern.build();
-                        this.structHelper.build();
-                        this.nestRoot.build();
-                        this.flatRoot.build();
-                    }
+        let o = this.root.lookup([...k]);
+        if (o instanceof Source.Field) {
+            o.update(v, ts);
+            if (
+                k.length >= 2 &&
+                String(k[0]) == ".schema" &&
+                o.type == "structschema"
+            ) {
+                let struct = String(k.at(-1));
+                if (struct.startsWith("struct:")) {
+                    struct = struct.slice(7);
+                    if (this.structHelper.hasPattern(struct)) return; // this.structHelper.remPattern(struct);
+                    let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, struct, util.TEXTDECODER.decode(v)));
+                    pattern.build();
+                    this.structHelper.build();
+                    this.root.build();
                 }
             }
         }
         return true;
     }
     clear() {
-        if (this.postNest) this.nestRoot.fields.forEach(field => this.nestRoot.rem(field));
-        if (this.postFlat) this.flatRoot.fields.forEach(field => this.flatRoot.rem(field));
+        this.root.fields.forEach(field => this.root.rem(field));
     }
 
     toSerialized() {
         return {
-            postNest: this.postNest,
-            postFlat: this.postFlat,
-            nestRoot: this.nestRoot.toSerialized(),
-            flatRoot: this.flatRoot.toSerialized(),
+            root: this.root.toSerialized(),
             ts: this.ts,
             tsMin: this.tsMin, tsMax: this.tsMax,
         };
@@ -174,24 +128,22 @@ export default class Source extends util.Target {
     fromSerialized(data) {
         data = util.ensure(data, "obj");
         this.structHelper.clearPatterns();
-        this.postNest = data.postNest;
-        this.postFlat = data.postFlat;
-        if (this.postNest) this.#nestRoot = Source.Field.fromSerialized(this, data.nestRoot);
-        if (this.postFlat) this.#flatRoot = Source.Field.fromSerialized(this, data.flatRoot);
-        this.nestRoot.addHandler("change", data => this.post("change", data));
-        this.flatRoot.addHandler("change", data => this.post("change", data));
-        let schema = this.nestRoot.singlelookup(".schema");
-        if (schema instanceof Source.Field)
-            schema.fields.forEach(field => {
+        this.#root = Source.Field.fromSerialized(this, data.root);
+        this.root.addHandler("change", (...a) => this.post("change", ...a));
+        let schema = this.root.singlelookup(".schema");
+        if (schema instanceof Source.Field) {
+            const dfs = field => {
+                field.fields.forEach(field => dfs(field));
                 if (!field.name.startsWith("struct:")) return;
                 if (field.type != "structschema") return;
                 let struct = field.name.slice(7);
                 if (this.structHelper.hasPattern(struct)) return; // this.structHelper.remPattern(struct);
                 let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, struct, util.TEXTDECODER.decode(field.valueLog[0].v)));
                 pattern.build();
-                this.nestRoot.build();
-                this.flatRoot.build();
-            });
+                this.root.build();
+            };
+            dfs(schema);
+        }
         this.ts = data.ts;
         this.tsMin = data.tsMin;
         this.tsMax = data.tsMax;

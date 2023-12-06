@@ -1,6 +1,6 @@
 import * as util from "../../util.mjs";
 
-import { WorkerBase } from "../worker.js";
+import { WorkerBase } from "../../worker.js";
 
 import WPILOGDecoder from "./decoder.js";
 
@@ -13,30 +13,15 @@ class WPILOGDecoderWorker extends WorkerBase {
 
         this.addHandler("cmd-start", data => {
             try {
+                data = util.ensure(data, "obj");
+                const opt = util.ensure(data.opt, "obj");
                 this.progress(0);
-                const decoder = new WPILOGDecoder(data);
+                const decoder = new WPILOGDecoder(data.source);
                 // crude serialized source building - find better way if possible
                 // this is done to increase performance as normal method calls of an unserialized source results in way too much lag
-                const CRUDE = false;
                 // UPDATE: might have fixed the lag issue
-                // seems like repeated lookup calls results in lag
-                const source = CRUDE ? {
-                    postNest: true,
-                    postFlat: false,
-                    nestRoot: {
-                        name: "",
-                        type: null,
-                        fields: {},
-                    },
-                    flatRoot: {},
-                    tsMin: 0,
-                    tsMax: 0,
-                } : (() => {
-                    const source = new Source("nest");
-                    source.postNest = true;
-                    source.postFlat = false;
-                    return source;
-                })();
+                // seems like repeated .lookup calls results in lag
+                const source = new Source();
                 let entryId2Name = {};
                 let entryId2Type = {};
                 let entryId2Topic = {};
@@ -54,37 +39,8 @@ class WPILOGDecoderWorker extends WorkerBase {
                         let path = String(name).split("/");
                         while (path.length > 0 && path.at(0).length <= 0) path.shift();
                         while (path.length > 0 && path.at(-1).length <= 0) path.pop();
-                        if (CRUDE) {
-                            const topic = entryId2Topic[id] = {
-                                name: path.pop(),
-                                type: type,
-                                valueLog: [],
-                                fields: {},
-                            };
-                            let fields = source.nestRoot.fields;
-                            while (path.length > 0) {
-                                let name = path.shift();
-                                let found = null;
-                                for (let fname in fields) {
-                                    if (fname != name) continue;
-                                    found = fields[fname];
-                                    break;
-                                }
-                                if (!found) {
-                                    found = {
-                                        name: name,
-                                        type: null,
-                                        fields: {},
-                                    };
-                                    fields[found.name] = found;
-                                }
-                                fields = found.fields;
-                            }
-                            fields[topic.name] = topic;
-                        } else {
-                            source.create(path, type);
-                            entryId2Topic[id] = source.root.lookup(path);
-                        }
+                        source.create(path, type);
+                        entryId2Topic[id] = source.root.lookup(path);
                     } else {
                         let id = record.entryId;
                         if (!(id in entryId2Name)) return;
@@ -110,11 +66,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                             "string[]": () => record.getStrArr(),
                         };
                         let v = (type in typefs) ? typefs[type]() : record.getRaw();
-                        if (CRUDE) {
-                            topic.valueLog.push({ ts: ts, v: v });
-                        } else {
-                            topic.update(v, ts);
-                        }
+                        topic.update(v, ts);
                         if (first) {
                             first = false;
                             source.tsMin = source.tsMax = ts;
@@ -125,7 +77,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                     }
                 });
                 this.progress(1);
-                this.send("finish", CRUDE ? source : source.toSerialized());
+                this.send("finish", source.toSerialized());
             } catch (e) { this.send("error", e); }
         });
     }

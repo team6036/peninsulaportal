@@ -1,6 +1,6 @@
 import * as util from "../../util.mjs";
 
-import { WorkerClient } from "../worker.js";
+import { WorkerClient } from "../../worker.js";
 
 import Source from "../source.js";
 import { toUint8Array } from "../source.js";
@@ -10,7 +10,7 @@ export default class WPILOGSource extends Source {
     #data;
 
     constructor(data) {
-        super("nest");
+        super();
 
         this.postFlat = false;
 
@@ -40,20 +40,26 @@ export default class WPILOGSource extends Source {
                 this.fromSerialized(data);
                 res(this);
             });
-            client.start([...this.data]);
+            client.start({
+                opt: {},
+                source: [...this.data],
+            });
         });
     }
 
-    static async export(source) {
+    static async export(source, prefix="") {
         if (!(source instanceof Source)) return null;
         const client = new WorkerClient("../sources/wpilog/encoder-worker.js");
         return await new Promise((res, rej) => {
             client.addHandler("error", e => rej(e));
             client.addHandler("stop", data => rej("WORKER TERMINATED"));
-            client.addHandler("cmd-progress", progress => this.post("progress", progress));
+            client.addHandler("cmd-progress", progress => source.post("progress", progress));
             client.addHandler("cmd-finish", data => res(Uint8Array.from(util.ensure(data, "arr"))));
-            client.start(source.toSerialized());
+            client.start({
+                opt: { prefix: prefix },
+                source: source.toSerialized(),
+            });
         });
     }
-    async export() { return await WPILOGSource.export(this); }
+    async export(prefix="") { return await WPILOGSource.export(this, prefix); }
 }

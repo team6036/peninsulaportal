@@ -38,6 +38,7 @@ body {
 
 ::selection {
     background-color: var(--a5-8);
+    color: var(--v8);
 }
 
 button {

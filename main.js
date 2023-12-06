@@ -3074,6 +3074,9 @@ const MAIN = async () => {
                     "wpilog-read": async pth => {
                         return await Portal.fileReadRaw(pth);
                     },
+                    "wpilog-write": async (pth, content) => {
+                        return await Portal.fileWriteRaw(pth, content);
+                    },
                     "log-delete": async name => {
                         let logs = await this.get("logs");
                         let has = false;
