@@ -18,6 +18,13 @@ export const TEXTDECODER = new TextDecoder();
 Array.prototype.sum = function() {
     return this.reduce((sum, x) => sum+x, 0);
 };
+Array.prototype.flatten = function() {
+    return this.reduce((sum, x) => {
+        if (!is(x, "arr")) sum.push(x);
+        else sum.push(...Array.from(x).flatten());
+        return sum;
+    }, []);
+};
 
 
 export function is(o, type) {
