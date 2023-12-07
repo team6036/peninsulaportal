@@ -1544,13 +1544,7 @@ const MAIN = async () => {
         async cleanup() { return await Portal.cleanup(this.dataPath, await this.get("base-version")); }
 
         static makePath(...pth) {
-            let flattened = [];
-            const dfs = itm => {
-                if (util.is(itm, "arr")) util.ensure(itm, "arr").forEach(itm => dfs(itm));
-                else flattened.push(itm);
-            };
-            dfs(pth);
-            return path.join(...flattened);
+            return path.join(...pth.flatten());
         }
         static async fileHas(pth) {
             pth = this.makePath(pth);

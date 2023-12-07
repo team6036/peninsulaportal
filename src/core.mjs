@@ -146,13 +146,7 @@ export class App extends util.Target {
                     };
                     update();
                     let cleanups = util.ensure(await window.api.get("cleanup"), "arr").map(pth => {
-                        let flatpth = [];
-                        const dfs = pth => {
-                            if (util.is(pth, "arr")) return pth.forEach(pth => dfs(pth));
-                            flatpth.push(pth);
-                        };
-                        dfs(pth);
-                        return flatpth.join("/");
+                        return [pth].flatten().join("/");
                     });
                     if (cleanups.length <= 3) return;
                     let pop = this.confirm("Junk Files Found!", "We found some unnecessary files in your application data. Would you like to clean up these files?");
