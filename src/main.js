@@ -668,6 +668,7 @@ const MAIN = async () => {
                 showError("Portal Initialize - Version Error", "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")");
                 return false;
             }
+            // monkey patching
             const stdoutWrite = process.stdout.write;
             const stderrWrite = process.stderr.write;
             process.stdout.write = (...a) => {
@@ -681,15 +682,15 @@ const MAIN = async () => {
             this.log();
             app.dock.setMenu(electron.Menu.buildFromTemplate([
                 {
-                    label: "New Feature",
+                    label: "Features...",
                     submenu: [
                         {
-                            label: "Peninsula Panel",
+                            label: "Panel",
                             accelerator: "CmdOrCtrl+1",
                             click: () => this.on("spawn", "PANEL"),
                         },
                         {
-                            label: "Peninsula Planner",
+                            label: "Planner",
                             accelerator: "CmdOrCtrl+2",
                             click: () => this.on("spawn", "PLANNER"),
                         },
@@ -1143,6 +1144,7 @@ const MAIN = async () => {
                 let feat = identify(e);
                 if (type == "app") return __dirname;
                 if (type == "feature") return path.join(__dirname, feat.name.toLowerCase());
+                if (type == "repo") return path.join(__dirname, "..");
                 return null;
             });
 
@@ -1866,7 +1868,7 @@ const MAIN = async () => {
                 "_fullpackage": async () => {
                     let content = "";
                     try {
-                        content = await Portal.fileRead(path.join(__dirname, "package.json"));
+                        content = await Portal.fileRead(path.join(__dirname, "..", "package.json"));
                     } catch (e) {}
                     let data = null;
                     try {
