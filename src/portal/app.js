@@ -395,7 +395,7 @@ export default class App extends core.App {
             this.#eContent = document.querySelector("#PAGE > .content");
             if (this.hasEContent()) {
                 (async () => {
-                    let resp = await fetch("../README.md");
+                    let resp = await fetch("../../README.md");
                     let text = await resp.text();
                     this.eContent.appendChild(await this.createMarkdown(text));
                 })();

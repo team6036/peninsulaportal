@@ -399,6 +399,7 @@ export class App extends util.Target {
         if (this.setupDone) return false;
 
         const root = "file://"+(await window.api.getAppRoot());
+        const repoRoot = "file://"+(await window.api.getRepoRoot());
 
         window.api.onPerm(async () => {
             let perm = await this.getPerm();
@@ -524,11 +525,11 @@ export class App extends util.Target {
         const ionicons1 = document.createElement("script");
         document.body.appendChild(ionicons1);
         ionicons1.type = "module";
-        ionicons1.src = root+"/node_modules/ionicons/dist/ionicons/ionicons.esm.js";
+        ionicons1.src = repoRoot+"/node_modules/ionicons/dist/ionicons/ionicons.esm.js";
         const ionicons2 = document.createElement("script");
         document.body.appendChild(ionicons2);
         ionicons2.noModule = true;
-        ionicons2.src = root+"/node_modules/ionicons/dist/ionicons/ionicons.js";
+        ionicons2.src = repoRoot+"/node_modules/ionicons/dist/ionicons/ionicons.js";
 
         const fuse = document.createElement("script");
         document.head.appendChild(fuse);
