@@ -98,7 +98,9 @@ export default class App extends core.App {
             (async () => {
                 let resp = await fetch("./display.md");
                 let text = await resp.text();
-                document.querySelector("#PAGE > .content").appendChild(await this.createMarkdown(text));
+                let signal = new util.Target();
+                signal.addHandler("nav", (e, href) => this.addPopup(new App.MarkdownPopup(href)));
+                document.querySelector("#PAGE > .content").appendChild(await this.createMarkdown(text, signal));
                 const eColorsheet = document.getElementById("colorsheet");
                 if (eColorsheet instanceof HTMLDivElement) {
                     let headers = ["v", "a", ...this.colors.map(c => "c"+c)];

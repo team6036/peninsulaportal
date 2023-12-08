@@ -1,4 +1,4 @@
-<div class="docs-nav"><p><a href="./MAIN.md">← Back</a></p></div>
+<div class="docs-nav back"><p><a href="./MAIN.md">← Back</a></p></div>
 
 # Frequently Asked Questions
 

@@ -596,23 +596,26 @@ const MAIN = async () => {
             return this.clients.filter(client => client.hasTag(tag));
         }
     }
-    const makeMenuDefault = (name, aboutCallback, settingsCallback) => {
+    const makeMenuDefault = (name, signal) => {
+        if (!(signal instanceof util.Target)) signal = new util.Target();
         name = String(name);
-        aboutCallback = util.ensure(aboutCallback, "func");
-        settingsCallback = util.ensure(settingsCallback, "func");
+        // aboutCallback = util.ensure(aboutCallback, "func");
+        // settingsCallback = util.ensure(settingsCallback, "func");
         return [
             {
                 label: (name.length > 0) ? util.capitalize(name) : "Portal",
                 submenu: [
                     {
                         label: (name.length > 0) ? ("About Peninsula "+util.capitalize(name)) : "About Peninsula",
-                        click: () => aboutCallback(),
+                        // click: () => aboutCallback(),
+                        click: () => signal.post("about"),
                     },
                     { type: "separator" },
                     {
                         label: "Settings",
                         accelerator: "CmdOrCtrl+,",
-                        click: () => settingsCallback(),
+                        // click: () => settingsCallback(),
+                        click: () => signal.post("settings"),
                     },
                     { type: "separator" },
                     { role: "hide" },
@@ -766,11 +769,17 @@ const MAIN = async () => {
         }
 
         checkMenu() {
-            electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault("")));
+            let signal = new util.Target();
+            signal.addHandler("about", () => this.send("about"));
+            signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
+            electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault("", signal)));
             let window = electron.BrowserWindow.getFocusedWindow();
             for (let feat of this.features) {
                 if (!feat.hasWindow()) continue;
-                let menu = feat.hasMenu() ? feat.menu : electron.Menu.buildFromTemplate(makeMenuDefault(feat.name));
+                let signal = new util.Target();
+                signal.addHandler("about", () => feat.send("about"));
+                signal.addHandler("settings", () => feat.on("spawn", "PRESETS"));
+                let menu = feat.hasMenu() ? feat.menu : electron.Menu.buildFromTemplate(makeMenuDefault(feat.name, signal));
                 feat.window.setMenu(menu);
                 if (feat.window != window) continue;
                 electron.Menu.setApplicationMenu(menu);
@@ -2305,7 +2314,7 @@ const MAIN = async () => {
                 showError("Feature Start Error - Startup", "The application did not acknowledge readyness within 1 second");
                 clear();
                 this.stop();
-            }, 10000);
+            }, 1000);
             const clear = () => {
                 clearInterval(id);
                 ipc.removeListener("ready", ready);
@@ -2774,7 +2783,10 @@ const MAIN = async () => {
                     dfs(v);
                     this.#menu = null;
                     try {
-                        this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, () => this.send("about"), () => this.on("spawn", "PRESETS")), ...util.ensure(v, "arr")]);
+                        let signal = new util.Target();
+                        signal.addHandler("about", () => this.send("about"));
+                        signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
+                        this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, signal), ...util.ensure(v, "arr")]);
                     } catch (e) {}
                     this.portal.checkMenu();
                 },

@@ -397,7 +397,9 @@ export default class App extends core.App {
                 (async () => {
                     let resp = await fetch("../../README.md");
                     let text = await resp.text();
-                    this.eContent.appendChild(await this.createMarkdown(text));
+                    let signal = new util.Target();
+                    signal.addHandler("nav", (e, href) => this.addPopup(new App.MarkdownPopup(href)));
+                    this.eContent.appendChild(await this.createMarkdown(text, signal));
                 })();
                 this.addHandler("update", delta => {
                     let scroll = this.eContent.scrollTop / window.innerHeight;

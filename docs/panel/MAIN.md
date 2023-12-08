@@ -1,4 +1,4 @@
-<div class="docs-nav"><p><a href="../../README.md">← Back</a></p></div>
+<div class="docs-nav back"><p><a href="../../README.md">← Back</a></p></div>
 
 <div>
     <h1 id="peninsula-panel" align="center">Peninsula Panel</h1>
