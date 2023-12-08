@@ -1,6 +1,6 @@
 <div class="docs-nav"><p><a href="../MAIN.md">← Back</a></p></div>
 
-<img src="./webview.png">
+<img src="./webview.png" height="300px">
 
 # WebView Tab
 

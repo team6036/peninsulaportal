@@ -17,15 +17,15 @@
 ## Navigation
 
 ### Title Page
-<img src="./title.png">
+<img src="./title.png" height="300px">
 Click on <kbd>Create</kbd> to create a new project, or click on <kbd>Projects</kbd> to open the list of projects
 
 ### Projects Page
-<img src="./projects.png">
+<img src="./projects.png" height="300px"><br>
 Click on <kbd>Create</kbd> to create a new project. Additionally, you can select a template to create a project from. Double-clicking a project opens that project. Single clicking a project selects or unselects it. Right-clicking anywhere to open the context menu allows for editing of the selected projects. To switch between list display and grid display, simply click the list or grid icon next to the search bar.
 
 ### Project Page
-<img src="./project.png">
+<img src="./project.png" height="300px">
 
 #### Title Bar Navigation
 Clicking the logo will return you to the Title Page. Clicking any of the File, Edit, and View menus will open up a menu similar to the application's native File, Edit, and View menus. Clicking on the project name will open up a menu allowing you to edit the project name or save / copy / delete this project. Furthermore, on the right, you can save the project open the Projects page, or create a new project.

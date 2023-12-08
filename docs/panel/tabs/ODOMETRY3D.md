@@ -1,6 +1,6 @@
 <div class="docs-nav"><p><a href="../MAIN.md">← Back</a></p></div>
 
-<img src="./odometry3d.png">
+<img src="./odometry3d.png" height="300px">
 
 # Odometry 3D Tab
 

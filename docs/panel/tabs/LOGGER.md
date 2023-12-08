@@ -1,6 +1,6 @@
 <div class="docs-nav"><p><a href="../MAIN.md">← Back</a></p></div>
 
-<img src="./logger.png">
+<img src="./logger.png" height="300px">
 
 # Logger Tab
 
