@@ -1,6 +1,6 @@
 <div class="docs-nav"><p><a href="../MAIN.md">← Back</a></p></div>
 
-<img src="./graph.png">
+<img src="./graph.png" height="300px">
 
 # Graph Tab
 

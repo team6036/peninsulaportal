@@ -1,6 +1,6 @@
 <div class="docs-nav"><p><a href="../MAIN.md">← Back</a></p></div>
 
-<img src="./add.png">
+<img src="./add.png" height="300px">
 
 # Add Tab
 
