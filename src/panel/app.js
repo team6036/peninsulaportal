@@ -1476,7 +1476,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             {
                 type: Panel.LoggerTab,
                 name: "logger",
-                dname: "PlexusLogger",
+                dname: "Logger",
             },
             {
                 type: Panel.LogWorksTab,
@@ -2361,6 +2361,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         };
         let vars = this.vars;
         for (let i = 0; i <= vars.length; i++) {
+            if (vars.length <= 0) break;
             if (i <= 0) {
                 r = vars.at(0).eHeader.getBoundingClientRect();
                 if (pos.x < r.left+r.width/2) return {
@@ -2696,7 +2697,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #eLogs;
 
     constructor() {
-        super("PlexusLogger", "logger");
+        super("Logger", "logger");
 
         this.elem.classList.add("logger");
 
