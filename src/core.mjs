@@ -188,7 +188,8 @@ export class App extends util.Target {
         return lines;
     }
 
-    async createMarkdown(text) {
+    static async createMarkdown(text, signal, pth="") {
+        if (!(signal instanceof util.Target)) signal = new util.Target();
         const converter = new showdown.Converter({
             ghCompatibleHeaderId: true,
             strikethrough: true,
@@ -201,43 +202,56 @@ export class App extends util.Target {
         document.querySelector("#PAGE > .content").appendChild(article);
         article.classList.add("md");
         article.innerHTML = converter.makeHtml(text);
+        const repoRoot = await window.api.getRepoRoot();
+        const url = "file://"+repoRoot+"/";
         const dfs = async elem => {
-            if (elem instanceof HTMLAnchorElement) {
-                let href = elem.href;
-                if (href.startsWith(window.location.href)) {
-                    let hash = href.substring(window.location.href.length);
-                    elem.addEventListener("click", e => {
+            await (async () => {
+                if (elem instanceof HTMLImageElement && elem.classList.contains("docs-icon")) {
+                    const onHolidayState = async holiday => {
+                        elem.src = (holiday == null) ? String(new URL("./src/assets/app/icon.png", url)) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
+                    };
+                    signal.addHandler("holiday", onHolidayState);
+                    await onHolidayState(await window.api.get("active-holiday"));
+                    return;
+                }
+                if (elem instanceof HTMLDivElement && elem.classList.contains("docs-nav")) {
+                    let anchor = elem.querySelector(":scope > * > a");
+                    if (!(anchor instanceof HTMLAnchorElement)) return;
+                    if (elem.classList.contains("back")) {
+                        anchor.setAttribute("href", "");
+                        anchor.addEventListener("click", e => {
+                            e.preventDefault();
+                            signal.post("back", e);
+                        });
+                        return;
+                    }
+                    let href = anchor.getAttribute("href");
+                    if (!href.startsWith("./")) return;
+                    anchor.setAttribute("href", "");
+                    anchor.addEventListener("click", e => {
                         e.preventDefault();
-                        let target = document.querySelector(hash);
-                        if (!(target instanceof HTMLElement)) return;
-                        this.eContent.scrollTo({ top: target.offsetTop-100, behavior: "smooth" });
+                        signal.post("nav", e, String(new URL(href, new URL(pth, url))).substring(url.length));
                     });
                 }
-            }
-            if (elem instanceof HTMLImageElement) {
-                let location = window.location.href.split("/");
-                location.pop();
-                location = location.join("/");
-                if (elem.src.startsWith(location)) {
-                    let path = elem.src.substring(location.length);
-                    location = "file://"+(await window.api.getAppRoot());
-                    if (path.endsWith("icon.png")) {
-                        const onHolidayState = async holiday => {
-                            elem.src = (holiday == null) ? (location + path) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
-                        };
-                        this.addHandler("cmd-win-holiday", async holiday => {
-                            await onHolidayState(holiday);
-                        });
-                        await onHolidayState(await window.api.get("active-holiday"));
-                    } else elem.src = location + path;
-                }
-            }
+            })();
+            ["href", "src"].forEach(attr => {
+                if (!elem.hasAttribute(attr)) return;
+                let v = elem.getAttribute(attr);
+                if (!v.startsWith("./")) return;
+                v = String(new URL(v, new URL(pth, url)));
+                elem.setAttribute(attr, v);
+            });
             await Promise.all(Array.from(elem.children).map(child => dfs(child)));
         };
         await dfs(article);
         hljs.configure({ cssSelector: "article.md pre code" });
         hljs.highlightAll();
         return article;
+    }
+    async createMarkdown(text, signal, pth="") {
+        if (!(signal instanceof util.Target)) signal = new util.Target();
+        this.addHandler("cmd-win-holiday", holiday => signal.post("holiday", holiday));
+        return await App.createMarkdown(text, signal, pth);
     }
     static evaluateLoad(load) {
         let ogLoad = load = String(load);
@@ -425,13 +439,17 @@ export class App extends util.Target {
         this.addHandler("cmd-about", async () => {
             let name = String(await window.api.get("name"));
             let holiday = await window.api.get("active-holiday");
-            let pop = this.alert();
+            let pop = this.confirm();
+            pop.cancel = "Documentation";
             pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.title = "Peninsula "+util.capitalize(name);
             pop.info = this.getAbout().join("\n");
             pop.hasInfo = true;
+            let r = await pop.whenResult();
+            if (r) return;
+            this.addPopup(new App.MarkdownPopup("./README.md"));
         });
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
@@ -1138,7 +1156,14 @@ App.Popup = class AppPopup extends App.PopupBase {
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
 
-        this.eClose.addEventListener("click", e => this.close());
+        this.eClose.addEventListener("click", e => this.result(null));
+
+        const onKeyDown = e => {
+            if (!document.body.contains(this.elem)) return document.body.removeEventListener("keydown", onKeyDown);
+            if (e.code != "Escape") return;
+            this.result(null);
+        };
+        document.body.addEventListener("keydown", onKeyDown);
     }
 
     get eClose() { return this.#eClose; }
@@ -1147,6 +1172,66 @@ App.Popup = class AppPopup extends App.PopupBase {
 
     get title() { return this.eTitle.textContent; }
     set title(v) { this.eTitle.textContent = v; }
+};
+App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
+    #signal;
+    #history;
+
+    #eArticle;
+
+    constructor(href, signal) {
+        super();
+
+        this.elem.classList.add("markdown");
+
+        this.#signal = (signal instanceof util.Target) ? signal : new util.Target();
+        this.#history = [];
+
+        this.signal.addHandler("nav", async (e, href) => this.navigate(href));
+        this.signal.addHandler("back", async () => {
+            if (this.#history.length <= 1) return this.result(null);
+            this.#history.pop();
+            this.navigate(this.#history.pop(), +1);
+        });
+
+        this.#eArticle = null;
+
+        this.navigate(href);
+    }
+
+    get signal() { return this.#signal; }
+
+    async navigate(href, direction=-1) {
+        this.#history.push(href);
+        if (this.hasEArticle()) {
+            let article = this.eArticle;
+            this.#eArticle = null;
+            if (direction == +1) article.classList.add("out-right");
+            if (direction == -1) article.classList.add("out-left");
+            setTimeout(() => article.remove(), 250);
+        }
+        try {
+            const repoRoot = await window.api.getRepoRoot();
+            const url = "file://"+repoRoot+"/";
+            const hrefUrl = String(new URL(href, url));
+            const relativeUrl = String(new URL("..", hrefUrl+"/")).substring(url.length);
+            this.#eArticle = await App.createMarkdown(await (await fetch(hrefUrl)).text(), this.signal, "./"+relativeUrl);
+            this.eContent.appendChild(this.eArticle);
+        } catch (e) {}
+        if (!this.hasEArticle()) return false;
+        let article = this.eArticle;
+        article.classList.add("lighter");
+        if (direction == +1) article.classList.add("in-right");
+        if (direction == -1) article.classList.add("in-left");
+        setTimeout(() => {
+            article.classList.remove("in-right");
+            article.classList.remove("in-left");
+        }, 250);
+        return true;
+    }
+
+    get eArticle() { return this.#eArticle; }
+    hasEArticle() { return this.eArticle instanceof HTMLElement; }
 };
 App.CorePopup = class AppCorePopup extends App.PopupBase {
     #eIconBox;

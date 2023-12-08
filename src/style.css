@@ -421,6 +421,9 @@ article.md code.hljs {
     font-family: monospace;
     white-space: break-spaces;
 }
+article.md.lighter code.hljs {
+    background-color: var(--v1);
+}
 article.md code:not(.hljs) {
     padding: 3px 5px;
 
@@ -431,6 +434,9 @@ article.md code:not(.hljs) {
     font-family: monospace;
     white-space: break-spaces;
 }
+article.md.lighter code:not(.hljs) {
+    background-color: var(--v1);
+}
 article.md code * {
     font-family: monospace;
 }
@@ -439,6 +445,10 @@ article.md h2 {
     padding-bottom: 0.3em;
 
     border-bottom: 2px solid var(--v2);
+}
+article.md.lighter h1,
+article.md.lighter h2 {
+    border-bottom: 2px solid var(--v4);
 }
 article.md h3 {
     margin-top: 24px;
@@ -458,6 +468,9 @@ article.md pre:not(:has(> code.hljs)) {
     background-color: var(--v2);
     border-radius: 10px;
 }
+article.md.lighter pre:not(:has(> code.hljs)) {
+    background-color: var(--v1);
+}
 article.md kbd {
     padding: 0px 5px;
 
@@ -469,6 +482,9 @@ article.md kbd {
     filter: drop-shadow(0px 2px 0px var(--v3));
 
     font-family: monospace;
+}
+article.md.lighter kbd {
+    background-color: var(--v1);
 }
 article.md blockquote,
 article.md details,
@@ -1049,9 +1065,9 @@ article.md ul {
     transform: scale(100%);
 }
 .popup.custom > .inner > button.close {
-    --bg: var(--v3);
-    --bgh: var(--v4);
-    --bgd: var(--v3);
+    --bg: var(--v2);
+    --bgh: var(--v3);
+    --bgd: var(--v2);
 
     position: absolute;
     top: 10px;
@@ -1072,6 +1088,8 @@ article.md ul {
     font-weight: 700;
 }
 .popup.custom > .inner > .content {
+    margin-top: 30px;
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -1081,6 +1099,129 @@ article.md ul {
     gap: 10px;
 
     color: var(--v8);
+}
+.popup.custom.markdown > .inner {
+    position: absolute;
+    bottom: 0%;
+    left: 50%;
+    transform: translate(-50%, 100%);
+
+    width: min(calc(100% - 40px), 750px);
+    max-width: min(calc(100% - 40px), 750px);
+    height: calc(100% - var(--TOP) - 20px);
+    max-height: calc(100% - var(--TOP) - 20px);
+
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+.popup.custom.markdown.in > .inner {
+    transform: translate(-50%, 0%);
+}
+.popup.custom.markdown > .inner > .title {
+    display: none;
+}
+.popup.custom.markdown > .inner > .content {
+    --shift: 50px;
+
+    position: relative;
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+}
+.popup.custom.markdown > .inner > .content > article {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    padding: 10px 30px;
+    overflow: auto;
+
+    opacity: 100%;
+    visibility: inherit;
+}
+.popup.custom.markdown > .inner > .content > article.out-right {
+    animation: popup-out-right var(--t) forwards;
+}
+.popup.custom.markdown > .inner > .content > article.out-left {
+    animation: popup-out-left var(--t) forwards;
+}
+.popup.custom.markdown > .inner > .content > article.in-right {
+    animation: popup-in-right var(--t) forwards;
+}
+.popup.custom.markdown > .inner > .content > article.in-left {
+    animation: popup-in-left var(--t) forwards;
+}
+@keyframes popup-out-right {
+    0% {
+        transform: translateX(0px) translate(-50%, -50%);
+
+        opacity: 100%;
+
+        pointer-events: none;
+    }
+    100% {
+        transform: translateX(var(--shift)) translate(-50%, -50%);
+
+        opacity: 0%;
+
+        pointer-events: none;
+    }
+}
+@keyframes popup-out-left {
+    0% {
+        transform: translateX(0px) translate(-50%, -50%);
+
+        opacity: 100%;
+
+        pointer-events: none;
+    }
+    100% {
+        transform: translateX(calc(-1 * var(--shift))) translate(-50%, -50%);
+
+        opacity: 0%;
+
+        pointer-events: none;
+    }
+}
+@keyframes popup-in-right {
+    0% {
+        transform: translateX(calc(-1 * var(--shift))) translate(-50%, -50%);
+
+        opacity: 0%;
+
+        pointer-events: none;
+    }
+    100% {
+        transform: translateX(0px) translate(-50%, -50%);
+
+        opacity: 100%;
+
+        pointer-events: none;
+    }
+}
+@keyframes popup-in-left {
+    0% {
+        transform: translateX(var(--shift)) translate(-50%, -50%);
+
+        opacity: 0%;
+
+        pointer-events: none;
+    }
+    100% {
+        transform: translateX(0px) translate(-50%, -50%);
+
+        opacity: 100%;
+
+        pointer-events: none;
+    }
 }
 .popup.core > .inner {
     max-width: min(100%, 300px);

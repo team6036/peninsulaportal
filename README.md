@@ -1,6 +1,6 @@
 <div>
     <p align="center">
-        <img src="./src/assets/app/icon.png" width="100px" style="filter: drop-shadow(0px 5px 5px #0008)">
+        <img src="./src/assets/app/icon.png" width="100px" style="filter: drop-shadow(0px 5px 5px #0008)" class="docs-icon">
     </p>
     <h1 align="center">Peninsula Portal</h1>
     <p align="center">A toolbox of all apps developed by 6036</p>
