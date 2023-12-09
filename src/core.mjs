@@ -199,7 +199,6 @@ export class App extends util.Target {
         });
         converter.setFlavor("github");
         let article = document.createElement("article");
-        document.querySelector("#PAGE > .content").appendChild(article);
         article.classList.add("md");
         article.innerHTML = converter.makeHtml(text);
         const repoRoot = await window.api.getRepoRoot();
@@ -214,21 +213,19 @@ export class App extends util.Target {
                     await onHolidayState(await window.api.get("active-holiday"));
                     return;
                 }
-                if (elem instanceof HTMLDivElement && elem.classList.contains("docs-nav")) {
-                    let anchor = elem.querySelector(":scope > * > a");
-                    if (!(anchor instanceof HTMLAnchorElement)) return;
+                if (elem instanceof HTMLAnchorElement) {
                     if (elem.classList.contains("back")) {
-                        anchor.setAttribute("href", "");
-                        anchor.addEventListener("click", e => {
+                        elem.setAttribute("href", "");
+                        elem.addEventListener("click", e => {
                             e.preventDefault();
                             signal.post("back", e);
                         });
                         return;
                     }
-                    let href = anchor.getAttribute("href");
-                    if (!href.startsWith("./")) return;
-                    anchor.setAttribute("href", "");
-                    anchor.addEventListener("click", e => {
+                    let href = elem.getAttribute("href");
+                    if (!href.startsWith("./") && !href.startsWith("../")) return;
+                    elem.setAttribute("href", "");
+                    elem.addEventListener("click", e => {
                         e.preventDefault();
                         signal.post("nav", e, String(new URL(href, new URL(pth, url))).substring(url.length));
                     });
@@ -237,15 +234,19 @@ export class App extends util.Target {
             ["href", "src"].forEach(attr => {
                 if (!elem.hasAttribute(attr)) return;
                 let v = elem.getAttribute(attr);
-                if (!v.startsWith("./")) return;
+                if (!v.startsWith("./") && !v.startsWith("../")) return;
                 v = String(new URL(v, new URL(pth, url)));
                 elem.setAttribute(attr, v);
             });
             await Promise.all(Array.from(elem.children).map(child => dfs(child)));
         };
         await dfs(article);
-        hljs.configure({ cssSelector: "article.md pre code" });
-        hljs.highlightAll();
+        let id = setInterval(() => {
+            if (!document.contains(article)) return;
+            hljs.configure({ cssSelector: "article.md pre code" });
+            hljs.highlightAll();
+            clearInterval(id);
+        }, 100);
         return article;
     }
     async createMarkdown(text, signal, pth="") {
@@ -449,7 +450,9 @@ export class App extends util.Target {
             pop.hasInfo = true;
             let r = await pop.whenResult();
             if (r) return;
-            this.addPopup(new App.MarkdownPopup("./README.md"));
+            if (["PANEL", "PLANNER", "PRESETS"].includes(name))
+                this.addPopup(new App.MarkdownPopup("./docs/"+name.toLowerCase()+"/MAIN.md"));
+            else this.addPopup(new App.MarkdownPopup("./README.md"));
         });
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
@@ -557,7 +560,6 @@ export class App extends util.Target {
         const highlight2 = document.createElement("link");
         document.head.appendChild(highlight2);
         highlight2.rel = "stylesheet";
-        highlight2.href = root+"/assets/modules/highlight.min.css";
 
         const updatePage = () => {
             Array.from(document.querySelectorAll(".loading")).forEach(elem => {
@@ -643,7 +645,9 @@ export class App extends util.Target {
             themeUpdating = true;
             let data = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj");
             this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
-            if (!(await window.api.get("dark-wanted"))) this.base = this.base.reverse();
+            let darkWanted = !!(await window.api.get("dark-wanted"));
+            highlight2.href = root+"/assets/modules/" + (darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css");
+            if (!darkWanted) this.base = this.base.reverse();
             this.colors = data.colors || {
                 r: [255, 0, 0],
                 o: [255, 128, 0],
@@ -1217,7 +1221,7 @@ App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
             const relativeUrl = String(new URL("..", hrefUrl+"/")).substring(url.length);
             this.#eArticle = await App.createMarkdown(await (await fetch(hrefUrl)).text(), this.signal, "./"+relativeUrl);
             this.eContent.appendChild(this.eArticle);
-        } catch (e) {}
+        } catch (e) { console.log(e); }
         if (!this.hasEArticle()) return false;
         let article = this.eArticle;
         article.classList.add("lighter");

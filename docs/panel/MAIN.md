@@ -1,4 +1,4 @@
-<div class="docs-nav back"><p><a href="../../README.md">← Back</a></p></div>
+<a href="../../README.md" class="back">← Back</a>
 
 <div>
     <h1 id="peninsula-panel" align="center">Peninsula Panel</h1>
@@ -12,26 +12,26 @@
     - Graphing of numerical and discrete topics
     - Odometry 2D/3D displaying
 
-<div class="docs-nav"><h2><a href="./FAQ.md">FAQ</a></h2></p></div>
+## [FAQ](./FAQ.md)
 
 ## Tabs
 
 ### Basic Tabs
-<div class="docs-nav"><p><a href="./tabs/ADD.md">Add Tab →</a></p></div>
-<div class="docs-nav"><p><a href="./tabs/BROWSER.md">Browser Tab →</a></p></div>
+[Add Tab →](./tabs/ADD.md)
+[Browser Tab →](./tabs/BROWSER.md)
 
 ### Numerical Analysis Tabs
-<div class="docs-nav"><p><a href="./tabs/GRAPH.md">Graph Tab →</a></p></div>
-<div class="docs-nav"><p><a href="./tabs/TABLE.md">Table Tab →</a></p></div>
+[Graph Tab →](./tabs/GRAPH.md)
+[Table Tab →](./tabs/TABLE.md)
 
 ### Odometry Tabs
-<div class="docs-nav"><p><a href="./tabs/ODOMETRY2D.md">Odometry 2D Tab →</a></p></div>
-<div class="docs-nav"><p><a href="./tabs/ODOMETRY3D.md">Odometry 3D Tab →</a></p></div>
+[Odometry 2D Tab →](./tabs/ODOMETRY2D.md)
+[Odometry 3D Tab →](./tabs/ODOMETRY3D.md)
 
 ### External Tooling Tabs
-<div class="docs-nav"><p><a href="./tabs/WEBVIEW.md">WebView Tab →</a></p></div>
-<div class="docs-nav"><p><a href="./tabs/LOGGER.md">Logger Tab →</a></p></div>
-<div class="docs-nav"><p><a href="./tabs/LOGWORKS.md">LogWorks Tab →</a></p></div>
+[WebView Tab →](./tabs/WEBVIEW.md)
+[Logger Tab →](./tabs/LOGGER.md)
+[LogWorks Tab →](./tabs/LOGWORKS.md)
 
 ## Navigation
 

@@ -1,4 +1,4 @@
-<div class="docs-nav back"><p><a href="../MAIN.md">← Back</a></p></div>
+<a href="../MAIN.md" class="back">← Back</a>
 
 <img src="./browser.png" height="300px">
 
