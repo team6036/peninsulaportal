@@ -450,6 +450,10 @@ export class App extends util.Target {
             pop.hasInfo = true;
             let r = await pop.whenResult();
             if (r) return;
+            this.post("cmd-documentation");
+        });
+        this.addHandler("cmd-documentation", async () => {
+            let name = String(await window.api.get("name"));
             if (["PANEL", "PLANNER", "PRESETS"].includes(name))
                 this.addPopup(new App.MarkdownPopup("./docs/"+name.toLowerCase()+"/MAIN.md"));
             else this.addPopup(new App.MarkdownPopup("./README.md"));
@@ -909,6 +913,9 @@ export class App extends util.Target {
         itm = menu.findItemWithId("reload");
         if (itm instanceof App.Menu.Item)
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-reload"));
+        itm = menu.findItemWithId("documentation");
+        if (itm instanceof App.Menu.Item)
+            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-documentation"));
         return menu;
     }
     unbindMenu(menu) {
@@ -1553,11 +1560,16 @@ App.Menu = class AppMenu extends util.Target {
     static buildWindowItems() { return this.buildRoleItems("minimize", "zoom"); }
     static buildFrontItems() { return this.buildRoleItems("front"); }
     static buildHelpItems() {
-        return ["Ionicons", "Electron.js", "Github Repository", "Open Database"].map((label, i) => {
+        let itms = [];
+        let itm = new App.Menu.Item("Documentation...", "document-text-outline");
+        itms.push(itm);
+        itm.id = "documentation";
+        itms.push(...["Ionicons", "Electron.js", "Github Repository", "Open Database"].map((label, i) => {
             let itm = new App.Menu.Item(label);
             itm.id = ["ionicons", "electronjs", "repo", "db-host"][i];
             return itm;
-        });
+        }));
+        return itms;
     }
     static buildReloadItems() {
         let itm = new App.Menu.Item("Reload");
