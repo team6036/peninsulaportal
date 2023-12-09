@@ -18,19 +18,24 @@
 
 ### Basic Tabs
 [Add Tab →](./tabs/ADD.md)
+
 [Browser Tab →](./tabs/BROWSER.md)
 
 ### Numerical Analysis Tabs
 [Graph Tab →](./tabs/GRAPH.md)
+
 [Table Tab →](./tabs/TABLE.md)
 
 ### Odometry Tabs
 [Odometry 2D Tab →](./tabs/ODOMETRY2D.md)
+
 [Odometry 3D Tab →](./tabs/ODOMETRY3D.md)
 
 ### External Tooling Tabs
 [WebView Tab →](./tabs/WEBVIEW.md)
+
 [Logger Tab →](./tabs/LOGGER.md)
+
 [LogWorks Tab →](./tabs/LOGWORKS.md)
 
 ## Navigation
