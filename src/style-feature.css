@@ -571,3 +571,124 @@
     background-size: contain;
     background-position: center;
 }
+
+#PROJECTPAGE {
+    --bottom: 30px;
+
+    padding: 0px !important;
+
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    gap: 0px !important;
+
+    overflow: hidden;
+}
+#PROJECTPAGE > .main {
+    min-height: 100%;
+    max-height: 100%;
+
+    transition: height var(--t), max-height var(--t);
+}
+#PROJECTPAGE.open > .main {
+    min-height: calc(100% - var(--bottom));
+    max-height: calc(100% - var(--bottom));
+}
+#PROJECTPAGE > .nav {
+    height: var(--bottom);
+    max-height: var(--bottom);
+    padding: 0px 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    border-top: 2px solid var(--v2);
+}
+#PROJECTPAGE > .nav > .pre,
+#PROJECTPAGE > .nav > .post {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .nav > .pre *,
+#PROJECTPAGE > .nav > .post * {
+    min-width: max-content;
+}
+#PROJECTPAGE > .nav > .pre button,
+#PROJECTPAGE > .nav > .post button {
+    --bg: transparent;
+    --fg: var(--v4);
+    --bgh: transparent;
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v2);
+
+    aspect-ratio: 1 / 1;
+    padding: 0px;
+}
+#PROJECTPAGE > .nav > .pre .info,
+#PROJECTPAGE > .nav > .post .info {
+    color: var(--v4);
+
+    font-family: monospace;
+    font-size: 12px;
+}
+#PROJECTPAGE > .nav > .pre {
+    order: -1;
+
+    justify-content: flex-start;
+}
+#PROJECTPAGE > .nav > .post {
+    order: +1;
+
+    justify-content: flex-end;
+}
+#PROJECTPAGE > .nav > .progress {
+    --progress: 50%;
+
+    width: 100%;
+    height: 5px;
+
+    background-color: var(--v2);
+}
+#PROJECTPAGE > .nav > .progress > div {
+    position: relative;
+
+    width: var(--progress);
+    height: 100%;
+
+    background-color: var(--v4);
+
+    transition: background-color var(--t);
+}
+#PROJECTPAGE > .nav > .progress:hover > div {
+    background-color: var(--v8);
+}
+#PROJECTPAGE > .nav > .progress > div::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    transform: translate(-50%, -50%) scale(0%);
+
+    width: 10px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--v4);
+    border-radius: 100%;
+
+    transition: transform var(--t), background-color var(--t);
+}
+#PROJECTPAGE > .nav > .progress:hover > div::before {
+    transform: translate(-50%, -50%) scale(100%);
+
+    background-color: var(--v8);
+}

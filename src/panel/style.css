@@ -168,16 +168,17 @@
     background-color: var(--v2-0);
 }
 
-#PROJECTPAGE {
+#PROJECTPAGE > .main {
     --side: 15%;
 
-    padding: 0px !important;
-
-    flex-direction: row !important;
-    align-items: stretch !important;
-    gap: 0px !important;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
 }
-#PROJECTPAGE > .dragbox {
+#PROJECTPAGE > .main > .dragbox {
     z-index: 10;
 
     position: absolute;
@@ -201,11 +202,11 @@
 
     transition: opacity calc(0.5 * var(--t)), visibility calc(0.5 * var(--t));
 }
-#PROJECTPAGE > .dragbox.this {
+#PROJECTPAGE > .main > .dragbox.this {
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .dragbox::before {
+#PROJECTPAGE > .main > .dragbox::before {
     content: "";
 
     position: absolute;
@@ -220,11 +221,11 @@
 
     transition: width var(--t), height var(--t);
 }
-#PROJECTPAGE > .dragbox.this::before {
+#PROJECTPAGE > .main > .dragbox.this::before {
     width: calc(100% - 10px);
     height: calc(100% - 10px);
 }
-#PROJECTPAGE > .dragbox > div {
+#PROJECTPAGE > .main > .dragbox > div {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -234,18 +235,18 @@
 
     transition: transform var(--t);
 }
-#PROJECTPAGE > .dragbox.this > div {
+#PROJECTPAGE > .main > .dragbox.this > div {
     transform: translate(-50%, -50%) scale(100%);
 }
-#PROJECTPAGE > .dragbox > div:nth-child(1) {
+#PROJECTPAGE > .main > .dragbox > div:nth-child(1) {
     width: min(10vw, 10vh);
     height: min(2vw, 2vh);
 }
-#PROJECTPAGE > .dragbox > div:nth-child(2) {
+#PROJECTPAGE > .main > .dragbox > div:nth-child(2) {
     width: min(2vw, 2vh);
     height: min(10vw, 10vh);
 }
-#PROJECTPAGE > .divider {
+#PROJECTPAGE > .main > .divider {
     z-index: 1;
 
     order: 0;
@@ -260,7 +261,7 @@
 
     cursor: ew-resize;
 }
-#PROJECTPAGE > .divider::before {
+#PROJECTPAGE > .main > .divider::before {
     content: "";
 
     position: absolute;
@@ -275,17 +276,17 @@
 
     transition: width var(--t), height var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .divider:hover::before {
+#PROJECTPAGE > .main > .divider:hover::before {
     width: 5px;
 
     background-color: var(--v8);
 }
-#PROJECTPAGE > .divider.this::before {
+#PROJECTPAGE > .main > .divider.this::before {
     height: 100%;
 
     background-color: var(--a);
 }
-#PROJECTPAGE > .side {
+#PROJECTPAGE > .main > .side {
     order: -1;
 
     width: calc(var(--side) - 1px);
@@ -299,7 +300,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .side > #meta {
+#PROJECTPAGE > .main > .side > #meta {
     padding: 5px;
 
     color: var(--v4);
@@ -307,7 +308,7 @@
     text-align: left;
     font-size: 12px;
 }
-#PROJECTPAGE > .side > .section {
+#PROJECTPAGE > .main > .side > .section {
     --h: 100px;
 
     width: 100%;
@@ -325,11 +326,11 @@
 
     transition: height var(--t), max-height var(--t);
 }
-#PROJECTPAGE > .side > .section.this {
+#PROJECTPAGE > .main > .side > .section.this {
     height: var(--h);
     max-height: var(--h);
 }
-#PROJECTPAGE > .side > .section > button {
+#PROJECTPAGE > .main > .side > .section > button {
     padding: 5px;
     
     display: flex;
@@ -349,31 +350,31 @@
 
     transition: color var(--t);
 }
-#PROJECTPAGE > .side > .section > button:not(:disabled):hover {
+#PROJECTPAGE > .main > .side > .section > button:not(:disabled):hover {
     color: var(--v8);
 }
-#PROJECTPAGE > .side > .section > button:disabled {
+#PROJECTPAGE > .main > .side > .section > button:disabled {
     color: var(--v4);
 }
-#PROJECTPAGE > .side > .section > button > ion-icon {
+#PROJECTPAGE > .main > .side > .section > button > ion-icon {
     transform: rotate(0deg);
 
     transition: transform var(--t);
 }
-#PROJECTPAGE > .side > .section.this > button > ion-icon {
+#PROJECTPAGE > .main > .side > .section.this > button > ion-icon {
     transform: rotate(90deg);
 }
-#PROJECTPAGE > .side > .section > .content {
+#PROJECTPAGE > .main > .side > .section > .content {
     max-width: 100%;
     max-height: 0px;
     overflow: auto;
 
     transition: max-height var(--t);
 }
-#PROJECTPAGE > .side > .section.this > .content {
+#PROJECTPAGE > .main > .side > .section.this > .content {
     max-height: calc(var(--h) - 22px);
 }
-#PROJECTPAGE > .side > .section#tools > .content {
+#PROJECTPAGE > .main > .side > .section#tools > .content {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -382,7 +383,7 @@
     align-content: flex-start;
     gap: 10px;
 }
-#PROJECTPAGE > .side > .section#tools > .content > button.item {
+#PROJECTPAGE > .main > .side > .section#tools > .content > button.item {
     --bg: var(--v2-8);
     --bgh: var(--v2);
     --bgd: var(--v2-8);
@@ -402,10 +403,10 @@
 
     border-radius: 10px;
 }
-#PROJECTPAGE > .side > .section#tools > .content > button.item > ion-icon {
+#PROJECTPAGE > .main > .side > .section#tools > .content > button.item > ion-icon {
     font-size: 20px;
 }
-#PROJECTPAGE > .content {
+#PROJECTPAGE > .main > .content {
     order: 1;
 
     width: calc(100% - var(--side) - 1px);
@@ -418,11 +419,11 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content > .item {
+#PROJECTPAGE > .main > .content > .item {
     --w: 0px;
     --h: 0px;
 }
-#PROJECTPAGE > .content .item.container {
+#PROJECTPAGE > .main > .content .item.container {
     width: var(--w);
     max-width: var(--w);
     height: var(--h);
@@ -435,34 +436,34 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.container.x {
+#PROJECTPAGE > .main > .content .item.container.x {
     flex-direction: row;
 }
-#PROJECTPAGE > .content .item.container.y {
+#PROJECTPAGE > .main > .content .item.container.y {
     flex-direction: column;
 }
-#PROJECTPAGE > .content .item.container > .divider {
+#PROJECTPAGE > .main > .content .item.container > .divider {
     z-index: 1;
     
     position: relative;
     
     background-color: var(--v2);
 }
-#PROJECTPAGE > .content .item.container.x > .divider {
+#PROJECTPAGE > .main > .content .item.container.x > .divider {
     width: 2px;
     max-width: 2px;
     overflow: visible;
 
     cursor: ew-resize;
 }
-#PROJECTPAGE > .content .item.container.y > .divider {
+#PROJECTPAGE > .main > .content .item.container.y > .divider {
     height: 2px;
     max-height: 2px;
     overflow: visible;
 
     cursor: ns-resize;
 }
-#PROJECTPAGE > .content .item.container > .divider::before {
+#PROJECTPAGE > .main > .content .item.container > .divider::before {
     content: "";
 
     position: absolute;
@@ -474,33 +475,33 @@
 
     transition: width var(--t), height var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .content .item.container > .divider:hover::before {
+#PROJECTPAGE > .main > .content .item.container > .divider:hover::before {
     background-color: var(--v8);
 }
-#PROJECTPAGE > .content .item.container > .divider.this::before {
+#PROJECTPAGE > .main > .content .item.container > .divider.this::before {
     background-color: var(--a);
 }
-#PROJECTPAGE > .content .item.container.x > .divider::before {
+#PROJECTPAGE > .main > .content .item.container.x > .divider::before {
     width: 2px;
     height: 20px;
 }
-#PROJECTPAGE > .content .item.container.x > .divider:hover::before {
+#PROJECTPAGE > .main > .content .item.container.x > .divider:hover::before {
     width: 5px;
 }
-#PROJECTPAGE > .content .item.container.x > .divider.this::before {
+#PROJECTPAGE > .main > .content .item.container.x > .divider.this::before {
     height: 100%;
 }
-#PROJECTPAGE > .content .item.container.y > .divider::before {
+#PROJECTPAGE > .main > .content .item.container.y > .divider::before {
     width: 20px;
     height: 2px;
 }
-#PROJECTPAGE > .content .item.container.y > .divider:hover::before {
+#PROJECTPAGE > .main > .content .item.container.y > .divider:hover::before {
     height: 5px;
 }
-#PROJECTPAGE > .content .item.container.y > .divider.this::before {
+#PROJECTPAGE > .main > .content .item.container.y > .divider.this::before {
     width: 100%;
 }
-#PROJECTPAGE > .content .item.panel {
+#PROJECTPAGE > .main > .content .item.panel {
     --tab: 30px;
 
     position: relative;
@@ -518,7 +519,7 @@
     align-items: center;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > button.options {
+#PROJECTPAGE > .main > .content .item.panel > button.options {
     --bg: var(--v2);
     --bgh: var(--v2);
     --bgd: var(--v2);
@@ -532,7 +533,7 @@
 
     height: var(--tab);
 }
-#PROJECTPAGE > .content .item.panel.collapsed > button.options {
+#PROJECTPAGE > .main > .content .item.panel.collapsed > button.options {
     --bg: var(--v2-0);
     --bgh: var(--v2);
     --bgd: var(--v2-0);
@@ -542,7 +543,7 @@
 
     border-bottom-left-radius: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .top {
+#PROJECTPAGE > .main > .content .item.panel > .top {
     width: 100%;
     max-width: 100%;
     height: var(--tab);
@@ -560,13 +561,13 @@
 
     background-color: var(--v2);
 }
-#PROJECTPAGE > .content .item.panel.collapsed > .top {
+#PROJECTPAGE > .main > .content .item.panel.collapsed > .top {
     display: none;
 }
-#PROJECTPAGE > .content .item.panel > .top::-webkit-scrollbar {
+#PROJECTPAGE > .main > .content .item.panel > .top::-webkit-scrollbar {
     display: none;
 }
-#PROJECTPAGE > .content .item.panel > .top > button {
+#PROJECTPAGE > .main > .content .item.panel > .top > button {
     align-self: center;
 
     width: 20px;
@@ -579,7 +580,7 @@
 
     font-size: 12px;
 }
-#PROJECTPAGE > .content .item.panel > .top > .item {
+#PROJECTPAGE > .main > .content .item.panel > .top > .item {
     position: relative;
 
     min-width: max-content;
@@ -602,16 +603,16 @@
 
     transition: color var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .top > .item:hover {
+#PROJECTPAGE > .main > .content .item.panel > .top > .item:hover {
     color: var(--v5);
 }
-#PROJECTPAGE > .content .item.panel.active > .top > .item {
+#PROJECTPAGE > .main > .content .item.panel.active > .top > .item {
     color: var(--v7);
 }
-#PROJECTPAGE > .content .item.panel.active > .top > .item:hover {
+#PROJECTPAGE > .main > .content .item.panel.active > .top > .item:hover {
     color: var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .top > .item::before {
+#PROJECTPAGE > .main > .content .item.panel > .top > .item::before {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -621,20 +622,20 @@
 
     background-color: var(--a);
 }
-#PROJECTPAGE > .content .item.panel > .top > .item.this {
+#PROJECTPAGE > .main > .content .item.panel > .top > .item.this {
     background-color: var(--v1);
     border-bottom: 2px solid var(--v1);
 }
-#PROJECTPAGE > .content .item.panel.active > .top > .item.this::before {
+#PROJECTPAGE > .main > .content .item.panel.active > .top > .item.this::before {
     content: "";
 }
-#PROJECTPAGE > .content .item.panel > .top > .item > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .top > .item > ion-icon {
     order: 0;
 }
-#PROJECTPAGE > .content .item.panel > .top > .item > div {
+#PROJECTPAGE > .main > .content .item.panel > .top > .item > div {
     order: 1;
 }
-#PROJECTPAGE > .content .item.panel > .top > .item > button {
+#PROJECTPAGE > .main > .content .item.panel > .top > .item > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -643,7 +644,7 @@
 
     padding: 0px;
 }
-#PROJECTPAGE > .content .item.panel > .content {
+#PROJECTPAGE > .main > .content .item.panel > .content {
     position: relative;
 
     width: 100%;
@@ -652,11 +653,11 @@
     max-height: calc(100% - var(--tab));
     overflow: hidden;
 }
-#PROJECTPAGE > .content .item.panel.collapsed > .content {
+#PROJECTPAGE > .main > .content .item.panel.collapsed > .content {
     height: 100%;
     max-height: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item {
     position: absolute;
     top: 0%;
     left: 0%;
@@ -669,10 +670,10 @@
 
     visibility: hidden;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.this {
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -680,7 +681,7 @@
     align-items: stretch;
     align-content: stretch;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .path {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -704,17 +705,17 @@
     font-size: 12px;
     user-select: none;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .path > button.back {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.back {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
 
     padding: 0px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .path > .divider {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > .divider {
     user-select: none;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .path > button.item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.item {
     padding: 0px;
 
     background-color: transparent;
@@ -722,14 +723,14 @@
 
     transition: color var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .path > button.item:not(:disabled):hover {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.item:not(:disabled):hover {
     color: var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .path > button.item:disabled {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.item:disabled {
     color: var(--v4);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .browser,
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display {
     position: absolute;
     top: 26.5px;
     left: 0px;
@@ -744,14 +745,14 @@
 
     visibility: hidden;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .browser.this,
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser.this,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display.this {
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .browser > .field {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser > .field {
     max-width: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -759,7 +760,7 @@
     align-items: stretch;
     align-content: stretch;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item {
     position: relative;
 
     height: 100%;
@@ -776,10 +777,10 @@
     background-color: var(--v2-8);
     border-radius: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item > ion-icon {
     color: var(--v1);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item > .type {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item > .type {
     position: absolute;
     top: 10px;
     left: 10px;
@@ -789,7 +790,7 @@
     font-size: 14px;
     font-family: monospace;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.browser_ > .display > .item > .value {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item > .value {
     max-width: 100%;
     max-height: 100%;
     overflow: auto;
@@ -799,7 +800,7 @@
     font-family: monospace;
     word-break: break-all;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add {
     padding: 10px;
 
     display: flex;
@@ -810,7 +811,7 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .search {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search {
     overflow: hidden;
 
     min-height: 36.5px;
@@ -825,7 +826,7 @@
     background-color: var(--v2-8);
     border-radius: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .search > .tags {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags {
     padding: 10px;
 
     display: flex;
@@ -836,10 +837,10 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .search > .tags:empty {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags:empty {
     padding: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .search > .tags > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags > .item {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -852,7 +853,7 @@
 
     font-size: 12px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .search > input {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > input {
     flex-basis: 100%;
 
     padding: 10px 0px;
@@ -860,14 +861,14 @@
     background-color: transparent;
     border-radius: 0px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .search > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > button {
     --bg: transparent;
     --bgh: var(--v2);
     --bgd: transparent;
 
     aspect-ratio: 1 / 1;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .content {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -875,7 +876,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .content > .header {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .header {
     padding: 5px 10px;
 
     color: var(--v4);
@@ -885,13 +886,13 @@
     text-transform: uppercase;
     user-select: none;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .content > .divider {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .divider {
     height: 2px;
     margin: 2px 0px;
 
     background-color: var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .content > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .item {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -899,7 +900,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .content > .item > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .item > button {
     --bg: transparent;
     --bgh: var(--v2);
     --bgd: transparent;
@@ -916,7 +917,7 @@
 
     border-radius: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .content > .item > button > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .item > button > ion-icon {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -924,12 +925,12 @@
     align-items: center;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.add > .content > .item > button > .info {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .item > button > .info {
     opacity: 50%;
 
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool {
     padding: 10px;
 
     display: flex;
@@ -939,7 +940,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table {
     padding: 0px;
 
     display: flex;
@@ -949,15 +950,15 @@
     align-items: flex-start;
     align-content: flex-start;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body {
     display: grid;
     justify-items: stretch;
     align-items: stretch;
     justify-content: start;
     align-content: start;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header {
     height: 30px;
     max-height: 30px;
 
@@ -965,7 +966,7 @@
 
     border-bottom: 2px solid var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .item {
     grid-row: 1 / 2;
 
     padding: 5px;
@@ -981,10 +982,10 @@
 
     font-size: 12px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .item > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .item > div {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .item > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .item > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -992,7 +993,7 @@
     min-width: max-content;
     padding: 0px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .options {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options {
     z-index: 1;
 
     grid-row: 1 / 2;
@@ -1008,10 +1009,10 @@
     background-color: var(--v1);
     border-right: 2px solid var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .options > input {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options > input {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .options > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -1019,18 +1020,18 @@
     min-width: max-content;
     aspect-ratio: 1 / 1;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .header > .options > button.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options > button.this {
     --bg: var(--cg3);
     --bgh: var(--cg3);
     --bgd: var(--cg3);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body {
     max-height: calc(100% - 30px);
     overflow: auto;
 
     background-color: var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .item {
     z-index: 2;
 
     grid-column: 1 / 2;
@@ -1047,10 +1048,10 @@
     font-size: 12px;
     font-family: monospace;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .item.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .item.this {
     background-color: var(--v1-8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section {
     position: relative;
 
     overflow: hidden;
@@ -1067,13 +1068,13 @@
     border-right: 2px solid var(--v2);
     border-bottom: 2px solid var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section:hover {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section:hover {
     background-color: var(--v1-8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section.this:hover {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section.this:hover {
     background-color: var(--v1-6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section > div:not(.line) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section > div:not(.line) {
     z-index: 1;
 
     min-height: 30px;
@@ -1082,7 +1083,7 @@
     font-size: 12px;
     font-family: monospace;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section > div.line {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section > div.line {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -1099,10 +1100,10 @@
     font-size: 12px;
     font-family: monospace;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.table > .body > .section.this > div.line {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section.this > div.line {
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.webview > .nav {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav {
     width: 100%;
     max-width: 100%;
     height: 25px;
@@ -1117,7 +1118,7 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.webview > .nav > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav > button {
     --bg: transparent;
     --fg: var(--v7);
     --bgh: var(--v2-8);
@@ -1129,13 +1130,13 @@
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.webview > .nav > input {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav > input {
     flex-basis: 100%;
 
     background-color: var(--v2-8);
     color: var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.webview > webview {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > webview {
     width: 100%;
     max-width: 100%;
     height: calc(100% - 30px);
@@ -1143,7 +1144,7 @@
 
     background-color: #fff;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status {
     position: relative;
 
     width: 100%;
@@ -1163,7 +1164,7 @@
 
     font-size: 12px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status::before {
     content: "";
     
     position: absolute;
@@ -1182,20 +1183,20 @@
 
     transition: opacity var(--t), visibility var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger.loading_ > .status::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger.loading_ > .status::before {
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > .space {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status > .space {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > * {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status > * {
     min-width: max-content;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status > ion-icon {
     min-width: 1em;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .status > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status > button {
     --bg: var(--a);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -1203,7 +1204,7 @@
     --bgd: var(--a2);
     --fgd: var(--v6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs {
     width: 100%;
     max-width: 100%;
     height: calc(100% - 33.33px);
@@ -1217,7 +1218,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item {
     position: relative;
 
     padding: 10px;
@@ -1238,7 +1239,7 @@
 
     transition: background-color var(--t), color var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item::before {
     content: "";
     
     position: absolute;
@@ -1256,11 +1257,11 @@
 
     transition: opacity var(--t), visibility var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.loading_::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.loading_::before {
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item::after {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item::after {
     position: absolute;
     top: 50%;
     left: 0%;
@@ -1271,36 +1272,36 @@
 
     background-color: var(--a);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.selected::after {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.selected::after {
     content: "";
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item:hover {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item:hover {
     background-color: var(--v2-8);
     color: var(--v6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded {
     background-color: var(--v2-8);
     color: var(--v7);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded:hover {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded:hover {
     background-color: var(--v2);
     color: var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated {
     background-color: var(--cr-8);
     color: var(--v7);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated:hover {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated:hover {
     background-color: var(--cr);
     color: var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .name {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item > .name {
     min-width: max-content;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .space {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item > .space {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1309,7 +1310,7 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav > button {
     --bg: transparent;
     --fg: var(--v5);
     --bgh: transparent;
@@ -1319,7 +1320,7 @@
 
     padding: 0px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded > .nav > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.downloaded > .nav > button {
     --bg: transparent;
     --fg: var(--v7);
     --bgh: transparent;
@@ -1327,7 +1328,7 @@
     --bgd: transparent;
     --fgd: var(--v6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated > .nav > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.deprecated > .nav > button {
     --bg: transparent;
     --fg: var(--v7);
     --bgh: transparent;
@@ -1335,13 +1336,13 @@
     --bgd: transparent;
     --fgd: var(--v6);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks {
     --shift: 50px;
 
     padding: 0px;
     overflow: hidden;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .actions {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .actions {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -1367,16 +1368,16 @@
 
     transition: transform var(--t), opacity var(--t), visibility var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks.home > .actions {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks.home > .actions {
     transform: translateX(0px);
 
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks:not(.this) > .actions {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks:not(.this) > .actions {
     display: none;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .actions > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .actions > button {
     width: 300px;
     max-width: 100%;
     padding: 10px;
@@ -1393,7 +1394,7 @@
 
     font-size: 16px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .actions > button > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .actions > button > ion-icon {
     padding: 5px;
 
     background-color: var(--cc);
@@ -1404,10 +1405,10 @@
 
     transition: background-color var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .actions > button:disabled > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .actions > button:disabled > ion-icon {
     background-color: var(--cc3);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -1431,16 +1432,16 @@
 
     transition: transform var(--t), opacity var(--t), visibility var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks:not(.home) > .action.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks:not(.home) > .action.this {
     transform: translateX(0px);
 
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks:not(.this) > .action {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks:not(.this) > .action {
     display: none;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action > .header {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action > .header {
     padding-bottom: 10px;
     margin-bottom: 10px;
 
@@ -1455,12 +1456,12 @@
     color: var(--v8);
     border-bottom: 2px solid var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action > .header > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action > .header > button {
     --bg: transparent;
     --bgh: var(--v2-8);
     --bgd: transparent;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action > .content {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action > .content {
     width: 100%;
     max-width: 100%;
     height: 100%;
@@ -1475,7 +1476,7 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .header {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .header {
     padding: 5px 0px;
     margin-bottom: 5px;
 
@@ -1487,7 +1488,7 @@
     font-size: 12px;
     font-weight: 550;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1500,7 +1501,7 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict > button {
     padding: 5px;
 
     gap: 5px;
@@ -1509,7 +1510,7 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .prefix {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .prefix {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1522,7 +1523,7 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs {
     position: relative;
 
     max-width: 100%;
@@ -1536,7 +1537,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs::before {
     content: "No logs selected...";
 
     display: none;
@@ -1546,10 +1547,10 @@
     font-size: 14px;
     font-style: italic;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs.empty:before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs.empty:before {
     display: block;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) {
     width: min(100%, max(50%, 500px));
     padding: 10px;
 
@@ -1566,10 +1567,10 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) > div {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -1579,7 +1580,7 @@
     min-width: max-content;
     aspect-ratio: 1 / 1;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1601,11 +1602,11 @@
 
     transition: opacity calc(0.5 * var(--t)), visibility calc(0.5 * var(--t));
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this {
     opacity: 100%;
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox::before {
     content: "";
 
     position: absolute;
@@ -1620,11 +1621,11 @@
 
     transition: width var(--t), height var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this::before {
     width: calc(100% - 10px);
     height: calc(100% - 10px);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1634,18 +1635,18 @@
 
     transition: transform var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox.this > div {
     transform: translate(-50%, -50%) scale(100%);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div:nth-child(1) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div:nth-child(1) {
     width: min(calc(0.10 * var(--w)), calc(0.10 * var(--h)));
     height: min(calc(0.02 * var(--w)), calc(0.02 * var(--h)));
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div:nth-child(2) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > .dragbox > div:nth-child(2) {
     width: min(calc(0.02 * var(--w)), calc(0.02 * var(--h)));
     height: min(calc(0.10 * var(--w)), calc(0.10 * var(--h)));
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > button {
     --bg: var(--a);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -1659,19 +1660,19 @@
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas {
     --options: 100%;
 
     padding: 0px;
     overflow: hidden;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.open {
     --options: 0%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas:not(.open).half-open {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas:not(.open).half-open {
     --options: 50%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .open {
     position: absolute;
     top: var(--options);
     left: 50%;
@@ -1692,13 +1693,15 @@
 
     transition: top var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.drag > .open {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.drag > .open {
+    cursor: ns-resize;
+
     transition: none;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .open {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.open > .open {
     z-index: 2;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .open::before {
     content: "";
 
     z-index: 0;
@@ -1715,10 +1718,10 @@
 
     transition: background-color var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open:hover::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .open:hover::before {
     background-color: var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .open > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .open > ion-icon {
     z-index: 1;
 
     position: absolute;
@@ -1730,10 +1733,10 @@
 
     transition: top var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .open > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.open > .open > ion-icon {
     top: 75%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content {
     position: absolute;
 
     width: 100%;
@@ -1741,118 +1744,12 @@
     height: 100%;
     max-height: 100%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > canvas {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > canvas {
     position: absolute;
     top: 0%;
     left: 0%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav {
-    z-index: 3;
-    
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%) translateY(-10px);
-
-    width: 100%;
-    max-width: 100%;
-    padding: 0px 10px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 5px;
-
-    opacity: 0%;
-    visibility: hidden;
-
-    transition: transform var(--t), opacity var(--t), visibility var(--t);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content:hover > .nav {
-    transform: translateX(-50%) translateY(0px);
-
-    opacity: 100%;
-    visibility: inherit;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav > .progress {
-    --progress: 50%;
-
-    position: relative;
-
-    width: 100%;
-    height: 5px;
-
-    background-color: var(--v3);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav > .progress::before {
-    content: "";
-
-    position: absolute;
-    top: 50%;
-    left: var(--progress);
-    transform: translate(-50%, -50%);
-
-    width: 0px;
-    aspect-ratio: 1 / 1;
-
-    background-color: var(--cr);
-    border-radius: 100%;
-
-    transition: width var(--t);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav > .progress:hover::before {
-    width: 10px;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav > .progress::after {
-    content: "";
-
-    position: absolute;
-    top: 50%;
-    left: 0px;
-    transform: translateY(-50%);
-
-    width: var(--progress);
-    height: 100%;
-
-    background-color: var(--cr);
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav > .nav {
-    width: 100%;
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 5px;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav > .nav > button {
-    --bg: transparent;
-    --fg: var(--v3);
-    --bgh: transparent;
-    --fgh: var(--v8);
-    --bgd: transparent;
-    --fgd: var(--v2);
-
-    padding: 0px;
-    aspect-ratio: 1 / 1;
-
-    font-size: 16px;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .content > .nav > .nav > div {
-    min-width: max-content;
-
-    color: var(--v3);
-
-    font-family: monospace;
-    font-size: 12px;
-}
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options {
     position: absolute;
     top: var(--options);
     left: 0%;
@@ -1876,10 +1773,10 @@
 
     transition: top var(--t), height var(--t), max-height var(--t), padding var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.drag > .options {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.drag > .options {
     transition: padding var(--t);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options::before {
     content: "";
 
     z-index: 0;
@@ -1893,10 +1790,10 @@
 
     background-color: var(--v2-8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.open > .options {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.open > .options {
     padding-top: 35px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section {
     z-index: 1;
 
     flex-basis: 100%;
@@ -1913,7 +1810,7 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .content > .info {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .content > .info {
     position: absolute;
     bottom: 10px;
     left: 10px;
@@ -1926,14 +1823,14 @@
 
     visibility: hidden;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .content.showinfo > .info {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .content.showinfo > .info {
     visibility: inherit;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list {
     position: relative;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list.empty::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list.empty::before {
     content: "Drag some topics here";
 
     position: absolute;
@@ -1946,7 +1843,7 @@
     font-size: 12px;
     font-style: italic;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list.empty::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list.empty::before {
     content: "Drag some poses here";
 
     position: absolute;
@@ -1959,7 +1856,7 @@
     font-size: 12px;
     font-style: italic;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section > .header {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .header {
     color: var(--v8);
 
     text-align: center;
@@ -1967,7 +1864,7 @@
     font-size: 12px;
     font-weight: 550;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -1975,7 +1872,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display {
     --bg: transparent;
     --bgh: var(--v2);
     --bgd: transparent;
@@ -1987,18 +1884,18 @@
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div {
     flex-basis: 100%;
 
     text-align: left;
     font-size: 14px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content {
     position: relative;
 
     padding: 5px;
@@ -2012,7 +1909,7 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content::before {
     content: "";
 
     position: absolute;
@@ -2025,11 +1922,11 @@
 
     background-color: var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item.open > .content {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item.open > .content {
     display: flex;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -2038,19 +1935,19 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker > button,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker > button,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom) {
     height: 15px;
     aspect-ratio: 1 / 1;
 
     border: 2px solid transparent;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker > button.this,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom).this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker > button.this,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom).this {
     border: 2px solid var(--v8);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -2059,12 +1956,12 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav {
     position: relative;
 
     margin-bottom: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav::before {
     content: "";
 
     position: absolute;
@@ -2077,8 +1974,8 @@
 
     background-color: var(--v2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
     --bg: transparent;
     --bgh: var(--v2);
     --bgd: transparent;
@@ -2091,18 +1988,18 @@
     font-size: 12px;
     font-weight: 550;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button {
     width: 20%;
     max-width: 20%;
     min-width: 20%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
     width: 30%;
     max-width: 30%;
     min-width: 30%;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button.this,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button.this,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button.this {
     --bg: var(--v8);
     --fg: var(--v1);
     --bgh: var(--v8);
@@ -2110,9 +2007,9 @@
     --bgd: var(--v6);
     --fgd: var(--v1);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -2120,9 +2017,9 @@
     align-items: center;
     align-content: center;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span:not(.units),
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span:not(.units),
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span:not(.units) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span:not(.units),
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span:not(.units),
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span:not(.units) {
     flex-basis: 100%;
     
     color: var(--v8);
@@ -2132,15 +2029,15 @@
     font-size: 12px;
     font-weight: 550;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span.units,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span.units,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span.units {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span.units,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span.units,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span.units {
     color: var(--v6);
 
     font-size: 12px;
     font-style: italic;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom {
     --bg: transparent;
     --fg: var(--cr);
     --bgh: transparent;
@@ -2148,31 +2045,31 @@
     --bgd: transparent;
     --fgd: var(--cr2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom.this {
     --fg: var(--cg);
     --fgh: var(--cg5);
     --fgd: var(--cg2);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button {
     position: relative;
 
     padding: 5px;
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display > ion-icon,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display > ion-icon,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button > ion-icon {
     position: absolute;
     top: 50%;
     right: 5px;
     transform: translateY(-50%);
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field.has > .nothas {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field.has > .nothas {
     display: none !important;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -2181,8 +2078,8 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v > input,
-#PROJECTPAGE > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v > input {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v > input,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v > input {
     flex-basis: 100%;
 }
 #overlay {
