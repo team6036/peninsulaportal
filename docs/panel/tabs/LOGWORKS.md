@@ -1,4 +1,4 @@
-<div class="docs-nav back"><p><a href="../MAIN.md">← Back</a></p></div>
+<a href="../MAIN.md" class="back">← Back</a>
 
 <img src="./logworks.png" height="300px">
 
@@ -18,11 +18,11 @@ The ability to merge selected logs into a singular log.
 #### Merge Configuration
 Settings for how to merge logs
 
-| Name | Usage |
-| - | - |
-| Conflict Affix | Prefix or suffix conflict resolution |
+| Name           | Usage                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------- |
+| Conflict Affix | Prefix or suffix conflict resolution                                                               |
 | Conflict Count | How duplicates are counted. This includes numerically, hexadecimally, and alphabetically (base 26) |
-| Global Prefix | A global prefix applied to all topics |
+| Global Prefix  | A global prefix applied to all topics                                                              |
 
 #### Logs
 List of logs to merge. Drag and drop them in from your OS.

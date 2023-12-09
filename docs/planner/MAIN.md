@@ -1,4 +1,4 @@
-<div class="docs-nav back"><p><a href="../../README.md">← Back</a></p></div>
+<a href="../../README.md" class="back">← Back</a>
 
 <div>
     <h1 id="peninsula-planner" align="center">Peninsula Planner</h1>
@@ -12,7 +12,7 @@
     - Dynamic multi-path creation system with repeat-node support
 - Playback feature for trajectory generation
 
-<div class="docs-nav"><h2><a href="./FAQ.md">FAQ</a></h2></p></div>
+## [FAQ](./FAQ.md)
 
 ## Navigation
 

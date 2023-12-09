@@ -497,6 +497,20 @@ article.md ul {
     margin-top: 0px;
     margin-bottom: 16px;
 }
+article.md table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+article.md table th,
+article.md table td {
+    padding: 5px 15px;
+
+    border: 2px solid var(--v2);
+}
+article.md.lighter table th,
+article.md.lighter table td {
+    border: 2px solid var(--v4);
+}
 
 #titlebar {
     --progress: 0%;
@@ -1106,8 +1120,8 @@ article.md ul {
     left: 50%;
     transform: translate(-50%, 100%);
 
-    width: min(calc(100% - 40px), 750px);
-    max-width: min(calc(100% - 40px), 750px);
+    width: min(calc(100% - 40px), 1000px);
+    max-width: min(calc(100% - 40px), 1000px);
     height: calc(100% - var(--TOP) - 20px);
     max-height: calc(100% - var(--TOP) - 20px);
 

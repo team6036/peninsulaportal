@@ -37,11 +37,11 @@ This should create a `./build` directory with the packaged apps. Check with `pac
     <h1 id="doc-and-help" align="center">Documentation & Help</h1>
 </div>
 
-<div class="docs-nav"><p><a href="./docs/presets/MAIN.md">Peninsula Presets →</a></p></div>
+[Peninsula Presets →](./docs/presets/MAIN.md)
 
-<div class="docs-nav"><p><a href="./docs/panel/MAIN.md">Peninsula Panel →</a></p></div>
+[Peninsula Panel →](./docs/panel/MAIN.md)
 
-<div class="docs-nav"><p><a href="./docs/planner/MAIN.md">Peninsula Planner →</a></p></div>
+[Peninsula Planner →](./docs/planner/MAIN.md)
 
 <div>
     <h1 id="resources" align="center">Resources</h1>
