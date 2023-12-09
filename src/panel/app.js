@@ -3498,8 +3498,6 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #eOptionSections;
     #eContent;
     #canvas; #ctx;
-    #eNav;
-    #eSubNav;
 
     static CREATECTX = true;
 
@@ -3516,12 +3514,6 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         this.#canvas = document.createElement("canvas");
         this.eContent.appendChild(this.canvas);
         if (this.constructor.CREATECTX) this.#ctx = this.canvas.getContext("2d");
-        this.#eNav = document.createElement("div");
-        this.eContent.appendChild(this.eNav);
-        this.eNav.classList.add("nav");
-        this.#eSubNav = document.createElement("div");
-        this.eNav.appendChild(this.eSubNav);
-        this.eSubNav.classList.add("nav");
         this.#eOpen = document.createElement("div");
         this.elem.appendChild(this.eOpen);
         this.eOpen.classList.add("open");
@@ -3604,8 +3596,6 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     }
 
     get eContent() { return this.#eContent; }
-    get eNav() { return this.#eNav; }
-    get eSubNav() { return this.#eSubNav; }
     get canvas() { return this.#canvas; }
     get ctx() { return this.#ctx; }
     get eOpen() { return this.#eOpen; }
@@ -3648,10 +3638,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 
     #viewMode;
     #viewParams;
-
-    #ePlayPauseBtn;
-    #eSkipBackBtn;
-    #eSkipForwardBtn;
 
     constructor(...a) {
         super("Graph", "graph");
@@ -3803,31 +3789,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (id in idfs) idfs[id]();
         });
 
-        this.#ePlayPauseBtn = document.createElement("button");
-        this.eSubNav.appendChild(this.ePlayPauseBtn);
-        this.ePlayPauseBtn.innerHTML = "<ion-icon></ion-icon>";
-        this.ePlayPauseBtn.addEventListener("click", e => {
-            if (!this.hasPage()) return;
-            if (!this.page.hasSource()) return;
-            this.page.source.playback.paused = !this.page.source.playback.paused;
-        });
-        this.#eSkipBackBtn = document.createElement("button");
-        this.eSubNav.appendChild(this.eSkipBackBtn);
-        this.eSkipBackBtn.innerHTML = "<ion-icon name='play-skip-back'></ion-icon>";
-        this.eSkipBackBtn.addEventListener("click", e => {
-            if (!this.hasPage()) return;
-            if (!this.page.hasSource()) return;
-            this.page.source.ts = this.page.source.tsMin;
-        });
-        this.#eSkipForwardBtn = document.createElement("button");
-        this.eSubNav.appendChild(this.eSkipForwardBtn);
-        this.eSkipForwardBtn.innerHTML = "<ion-icon name='play-skip-forward'></ion-icon>";
-        this.eSkipForwardBtn.addEventListener("click", e => {
-            if (!this.hasPage()) return;
-            if (!this.page.hasSource()) return;
-            this.page.source.ts = this.page.source.tsMax;
-        });
-
         const quality = this.quality = 3;
         const padding = 40;
 
@@ -3884,12 +3845,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         this.addHandler("rem", () => document.body.removeEventListener("keydown", onKeyDown));
         this.addHandler("update", delta => {
             if (this.isClosed) return;
-
-            let paused = true;
-            if (this.hasPage() && this.page.hasSource())
-                paused = this.page.source.playback.paused;
-            if (this.ePlayPauseBtn.children[0] instanceof HTMLElement)
-                this.ePlayPauseBtn.children[0].setAttribute("name", paused ? "play" : "pause");
             
             const ctx = this.ctx;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -4347,10 +4302,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         this.change("viewParams", null, this.viewParams);
     }
 
-    get ePlayPauseBtn() { return this.#ePlayPauseBtn; }
-    get eSkipBackBtn() { return this.#eSkipBackBtn; }
-    get eSkipForwardBtn() { return this.#eSkipForwardBtn; }
-
     getHovered(data, pos, options) {
         pos = new V(pos);
         options = util.ensure(options, "obj");
@@ -4591,11 +4542,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
     #template;
 
-    #eProgress;
-    #ePlayPauseBtn;
-    #eSkipBackBtn;
-    #eSkipForwardBtn;
-    #eTimeDisplay;
     #eTemplateSelect;
 
     static PATTERNS = {};
@@ -4615,55 +4561,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (this.template != "§null") return;
             this.template = await window.api.get("active-template");
         })();
-
-        this.#eProgress = document.createElement("div");
-        this.eNav.insertBefore(this.eProgress, this.eSubNav);
-        this.eProgress.classList.add("progress");
-        this.eProgress.addEventListener("mousedown", e => {
-            e.preventDefault();
-            e.stopPropagation();
-            const mouseup = () => {
-                document.body.removeEventListener("mouseup", mouseup);
-                document.body.removeEventListener("mousemove", mousemove);
-            };
-            const mousemove = e => {
-                let r = this.eProgress.getBoundingClientRect();
-                let p = (e.pageX-r.left) / r.width;
-                if (!this.hasPage()) return;
-                if (!this.page.hasSource()) return;
-                this.page.source.ts = util.lerp(this.page.source.tsMin, this.page.source.tsMax, p);
-            };
-            mousemove(e);
-            document.body.addEventListener("mouseup", mouseup);
-            document.body.addEventListener("mousemove", mousemove);
-        });
-        this.#ePlayPauseBtn = document.createElement("button");
-        this.eSubNav.appendChild(this.ePlayPauseBtn);
-        this.ePlayPauseBtn.innerHTML = "<ion-icon></ion-icon>";
-        this.ePlayPauseBtn.addEventListener("click", e => {
-            if (!this.hasPage()) return;
-            if (!this.page.hasSource()) return;
-            this.page.source.playback.paused = !this.page.source.playback.paused;
-        });
-        this.#eSkipBackBtn = document.createElement("button");
-        this.eSubNav.appendChild(this.eSkipBackBtn);
-        this.eSkipBackBtn.innerHTML = "<ion-icon name='play-skip-back'></ion-icon>";
-        this.eSkipBackBtn.addEventListener("click", e => {
-            if (!this.hasPage()) return;
-            if (!this.page.hasSource()) return;
-            this.page.source.ts = this.page.source.tsMin;
-        });
-        this.#eSkipForwardBtn = document.createElement("button");
-        this.eSubNav.appendChild(this.eSkipForwardBtn);
-        this.eSkipForwardBtn.innerHTML = "<ion-icon name='play-skip-forward'></ion-icon>";
-        this.eSkipForwardBtn.addEventListener("click", e => {
-            if (!this.hasPage()) return;
-            if (!this.page.hasSource()) return;
-            this.page.source.ts = this.page.source.tsMax;
-        });
-        this.#eTimeDisplay = document.createElement("div");
-        this.eSubNav.appendChild(this.eTimeDisplay);
-        this.eTimeDisplay.textContent = "0:00 / 0:00";
 
         ["p", "f", "o"].forEach(id => {
             const elem = document.createElement("div");
@@ -4718,49 +4615,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 },
             };
             if (id in idfs) idfs[id]();
-        });
-
-        this.addHandler("update", delta => {
-            let t = 0, tTotal = 0, paused = true;
-            if (this.hasPage() && this.page.hasSource()) {
-                t = this.page.source.ts - this.page.source.tsMin;
-                tTotal = this.page.source.tsMax - this.page.source.tsMin;
-                paused = this.page.source.playback.paused;
-            }
-            this.eProgress.style.setProperty("--progress", (100*(t/tTotal))+"%");
-            if (this.ePlayPauseBtn.children[0] instanceof HTMLElement)
-                this.ePlayPauseBtn.children[0].setAttribute("name", paused ? "play" : "pause");
-            let split;
-            split = util.splitTimeUnits(t);
-            split[0] = Math.round(split[0]);
-            while (split.length > 3) {
-                if (split.at(-1) > 0) break;
-                split.pop();
-            }
-            split = split.map((v, i) => {
-                v = String(v);
-                if (i >= split.length-1) return v;
-                let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                if (i > 0) v = v.padStart(l, "0");
-                else v = v.padEnd(l, "0");
-                return v;
-            });
-            this.eTimeDisplay.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-            split = util.splitTimeUnits(tTotal);
-            split[0] = Math.round(split[0]);
-            while (split.length > 3) {
-                if (split.at(-1) > 0) break;
-                split.pop();
-            }
-            split = split.map((v, i) => {
-                v = String(v);
-                if (i >= split.length-1) return v;
-                let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                if (i > 0) v = v.padStart(l, "0");
-                else v = v.padEnd(l, "0");
-                return v;
-            });
-            this.eTimeDisplay.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];
         });
     }
 
@@ -4883,11 +4737,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         return null;
     }
 
-    get eProgress() { return this.#eProgress; }
-    get ePlayPauseBtn() { return this.#ePlayPauseBtn; }
-    get eSkipBackBtn() { return this.#eSkipBackBtn; }
-    get eSkipForwardBtn() { return this.#eSkipForwardBtn; }
-    get eTimeDisplay() { return this.#eTimeDisplay; }
     get eTemplateSelect() { return this.#eTemplateSelect; }
 };
 Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
@@ -7230,7 +7079,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#source = null;
 
         this.#eSide = document.createElement("div");
-        this.elem.appendChild(this.eSide);
+        this.eMain.appendChild(this.eSide);
         this.eSide.classList.add("side");
         this.#eSideMeta = document.createElement("div");
         this.eSide.appendChild(this.eSideMeta);
@@ -7275,7 +7124,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         new ResizeObserver(() => this.formatSide()).observe(this.eSide);
         this.#eContent = document.createElement("div");
-        this.elem.appendChild(this.eContent);
+        this.eMain.appendChild(this.eContent);
         this.eContent.classList.add("content");
         new ResizeObserver(() => this.formatContent()).observe(this.eContent);
         
@@ -7310,8 +7159,82 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.format();
 
+        this.eNavProgress.addEventListener("mousedown", e => {
+            if (!this.hasSource()) return;
+            let paused = this.source.playback.paused;
+            e.preventDefault();
+            e.stopPropagation();
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+                if (!this.hasSource()) return;
+                this.source.playback.paused = paused;
+            };
+            const mousemove = e => {
+                let r = this.eNavProgress.getBoundingClientRect();
+                let p = (e.pageX-r.left) / r.width;
+                if (!this.hasSource()) return;
+                this.source.playback.paused = true;
+                this.source.ts = util.lerp(this.source.tsMin, this.source.tsMax, p);
+            };
+            mousemove(e);
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        });
+        this.eNavActionButton.addEventListener("click", e => {
+            if (!this.hasSource()) return;
+            this.source.playback.paused = !this.source.playback.paused;
+        });
+        this.eNavBackButton.addEventListener("click", e => {
+            if (!this.hasSource()) return;
+            this.source.ts = this.source.tsMin;
+        });
+        this.eNavForwardButton.addEventListener("click", e => {
+            if (!this.hasSource()) return;
+            this.source.ts = this.source.tsMax;
+        });
         let timer = 0;
         this.addHandler("update", async delta => {
+            if (this.hasSource()) {
+                this.navOpen = true;
+                let t = this.source.ts - this.source.tsMin;
+                let tTotal = this.source.tsMax - this.source.tsMin;
+                let paused = this.source.playback.paused;
+                this.eNavProgress.style.setProperty("--progress", (100*(t/tTotal))+"%");
+                if (this.eNavActionButton.children[0] instanceof HTMLElement)
+                    this.eNavActionButton.children[0].setAttribute("name", paused ? "play" : "pause");
+                let split;
+                split = util.splitTimeUnits(t);
+                split[0] = Math.round(split[0]);
+                while (split.length > 3) {
+                    if (split.at(-1) > 0) break;
+                    split.pop();
+                }
+                split = split.map((v, i) => {
+                    v = String(v);
+                    if (i >= split.length-1) return v;
+                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
+                    if (i > 0) v = v.padStart(l, "0");
+                    else v = v.padEnd(l, "0");
+                    return v;
+                });
+                this.eNavInfo.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+                split = util.splitTimeUnits(tTotal);
+                split[0] = Math.round(split[0]);
+                while (split.length > 3) {
+                    if (split.at(-1) > 0) break;
+                    split.pop();
+                }
+                split = split.map((v, i) => {
+                    v = String(v);
+                    if (i >= split.length-1) return v;
+                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
+                    if (i > 0) v = v.padStart(l, "0");
+                    else v = v.padEnd(l, "0");
+                    return v;
+                });
+                this.eNavInfo.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];
+            } else this.navOpen = false;
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
             BrowserField.doubleTraverse(
@@ -7320,7 +7243,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 (...bfields) => this.addBrowserFieldBulk(...bfields),
                 (...bfields) => this.remBrowserFieldBulk(...bfields),
             );
-            this.elem.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
+            this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
             if (timer > 0) return timer -= delta;
             timer = 1000;
             if (!this.hasProject()) return;
@@ -7331,7 +7254,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             });
         });
         this.#eDragBox = document.createElement("div");
-        this.elem.appendChild(this.eDragBox);
+        this.eMain.appendChild(this.eDragBox);
         this.eDragBox.classList.add("dragbox");
         this.eDragBox.innerHTML = "<div></div><div></div>";
         ["dragenter", "dragover"].forEach(name => document.body.addEventListener(name, e => {
@@ -7359,7 +7282,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         this.#eDivider = document.createElement("div");
-        this.elem.appendChild(this.eDivider);
+        this.eMain.appendChild(this.eDivider);
         this.eDivider.classList.add("divider");
         this.eDivider.addEventListener("mousedown", e => {
             e.preventDefault();
@@ -7369,7 +7292,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 document.body.removeEventListener("mousemove", mousemove);
             };
             const mousemove = e => {
-                let r = this.elem.getBoundingClientRect();
+                let r = this.eMain.getBoundingClientRect();
                 let p = (e.pageX-r.left) / r.width;
                 if (!this.hasProject()) return;
                 this.project.sidePos = p;

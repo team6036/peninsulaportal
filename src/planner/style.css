@@ -28,14 +28,15 @@
     border-radius: 10px;
 }
 
-#PROJECTPAGE {
-    padding: 0px !important;
-
-    flex-direction: row !important;
-    align-items: stretch !important;
-    gap: 0px !important;
+#PROJECTPAGE > .main {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
 }
-#PROJECTPAGE > .divider {
+#PROJECTPAGE > .main > .divider {
     position: relative;
 
     width: 2px;
@@ -45,7 +46,7 @@
 
     cursor: ew-resize;
 }
-#PROJECTPAGE > .divider::before {
+#PROJECTPAGE > .main > .divider::before {
     content: "";
 
     position: absolute;
@@ -60,17 +61,17 @@
 
     transition: width var(--t), height var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .divider:hover::before {
+#PROJECTPAGE > .main > .divider:hover::before {
     width: 5px;
 
     background-color: var(--v8);
 }
-#PROJECTPAGE > .divider.this::before {
+#PROJECTPAGE > .main > .divider.this::before {
     height: 100%;
 
     background-color: var(--a);
 }
-#PROJECTPAGE > .display {
+#PROJECTPAGE > .main > .display {
     position: relative;
 
     display: flex;
@@ -82,7 +83,7 @@
 
     user-select: none;
 }
-#PROJECTPAGE > .display > .blockage {
+#PROJECTPAGE > .main > .display > .blockage {
     z-index: 1;
 
     position: absolute;
@@ -98,12 +99,12 @@
     
     pointer-events: none;
 }
-#PROJECTPAGE > .display.choose > .blockage {
+#PROJECTPAGE > .main > .display.choose > .blockage {
     visibility: inherit;
     
     pointer-events: auto;
 }
-#PROJECTPAGE > .display > canvas {
+#PROJECTPAGE > .main > .display > canvas {
     z-index: 2;
 
     position: absolute;
@@ -212,7 +213,7 @@
 
     cursor: inherit;
 }
-#PROJECTPAGE > .display > .nav {
+#PROJECTPAGE > .main > .display > .nav {
     z-index: 3;
     
     position: absolute;
@@ -232,7 +233,7 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .display > .nav > .progress {
+#PROJECTPAGE > .main > .display > .nav > .progress {
     --progress: 50%;
 
     position: relative;
@@ -242,7 +243,7 @@
 
     background-color: var(--v3);
 }
-#PROJECTPAGE > .display > .nav > .progress::before {
+#PROJECTPAGE > .main > .display > .nav > .progress::before {
     content: "";
 
     position: absolute;
@@ -258,10 +259,10 @@
 
     transition: width var(--t);
 }
-#PROJECTPAGE > .display > .nav > .progress:hover::before {
+#PROJECTPAGE > .main > .display > .nav > .progress:hover::before {
     width: 10px;
 }
-#PROJECTPAGE > .display > .nav > .progress::after {
+#PROJECTPAGE > .main > .display > .nav > .progress::after {
     content: "";
 
     position: absolute;
@@ -274,7 +275,7 @@
 
     background-color: var(--cr);
 }
-#PROJECTPAGE > .display > .nav > .nav {
+#PROJECTPAGE > .main > .display > .nav > .nav {
     width: 100%;
     max-width: 100%;
 
@@ -286,7 +287,7 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .display > .nav > .nav > button {
+#PROJECTPAGE > .main > .display > .nav > .nav > button {
     --bg: transparent;
     --fg: var(--v3);
     --bgh: transparent;
@@ -299,7 +300,7 @@
 
     font-size: 16px;
 }
-#PROJECTPAGE > .display > .nav > .nav > div {
+#PROJECTPAGE > .main > .display > .nav > .nav > div {
     min-width: max-content;
 
     color: var(--v3);
@@ -307,7 +308,7 @@
     font-family: monospace;
     font-size: 12px;
 }
-#PROJECTPAGE > .display > .choosenav {
+#PROJECTPAGE > .main > .display > .choosenav {
     z-index: 3;
 
     position: absolute;
@@ -323,15 +324,15 @@
 
     visibility: hidden;
 }
-#PROJECTPAGE > .display.choose > .choosenav {
+#PROJECTPAGE > .main > .display.choose > .choosenav {
     visibility: inherit;
 }
-#PROJECTPAGE > .display > .choosenav > button {
+#PROJECTPAGE > .main > .display > .choosenav > button {
     padding: 5px 10px;
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .display > .choosenav > button#donebtn {
+#PROJECTPAGE > .main > .display > .choosenav > button#donebtn {
     --bg: var(--a);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -339,7 +340,7 @@
     --bgd: var(--a2);
     --fgd: var(--v4);
 }
-#PROJECTPAGE > .display > .choosenav > button#cancelbtn {
+#PROJECTPAGE > .main > .display > .choosenav > button#cancelbtn {
     --bg: var(--cr);
     --fg: var(--v8);
     --bgh: var(--v8);
@@ -347,7 +348,7 @@
     --bgd: var(--cr2);
     --fgd: var(--v4);
 }
-#PROJECTPAGE > .edit {
+#PROJECTPAGE > .main > .edit {
     --bottom: 85px;
 
     max-height: 100%;
@@ -362,7 +363,7 @@
 
     background-color: var(--v2-8);
 }
-#PROJECTPAGE > .edit > .nav {
+#PROJECTPAGE > .main > .edit > .nav {
     height: var(--bottom);
     max-height: var(--bottom);
 
@@ -376,7 +377,7 @@
 
     background-color: var(--v2);
 }
-#PROJECTPAGE > .edit > .nav > button {
+#PROJECTPAGE > .main > .edit > .nav > button {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -392,25 +393,25 @@
 
     transition: color var(--t);
 }
-#PROJECTPAGE > .edit > .nav > button:not(:disabled):hover {
+#PROJECTPAGE > .main > .edit > .nav > button:not(:disabled):hover {
     color: var(--v8);
 }
-#PROJECTPAGE > .edit > .nav > button:disabled {
+#PROJECTPAGE > .main > .edit > .nav > button:disabled {
     color: var(--v6);
 }
-#PROJECTPAGE > .edit > .nav > button.this {
+#PROJECTPAGE > .main > .edit > .nav > button.this {
     color: var(--a);
 }
-#PROJECTPAGE > .edit > .nav > button.this:not(:disabled):hover {
+#PROJECTPAGE > .main > .edit > .nav > button.this:not(:disabled):hover {
     color: var(--a6);
 }
-#PROJECTPAGE > .edit > .nav > button.this:disabled {
+#PROJECTPAGE > .main > .edit > .nav > button.this:disabled {
     color: var(--a2);
 }
-#PROJECTPAGE > .edit > .nav > button > ion-icon {
+#PROJECTPAGE > .main > .edit > .nav > button > ion-icon {
     font-size: 20px;
 }
-#PROJECTPAGE > .edit > .content {
+#PROJECTPAGE > .main > .edit > .content {
     position: relative;
 
     height: calc(100% - var(--bottom));
@@ -423,7 +424,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .edit > .content > .panel {
+#PROJECTPAGE > .main > .edit > .content > .panel {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -446,10 +447,10 @@
 
     visibility: hidden;
 }
-#PROJECTPAGE > .edit > .content > .panel.this {
+#PROJECTPAGE > .main > .edit > .content > .panel.this {
     visibility: inherit;
 }
-#PROJECTPAGE > .edit > .content > .panel > .header {
+#PROJECTPAGE > .main > .edit > .content > .panel > .header {
     align-self: stretch;
 
     margin-top: 10px;
@@ -469,23 +470,23 @@
 
     user-select: none;
 }
-#PROJECTPAGE > .edit > .content > .panel > .header.sub {
+#PROJECTPAGE > .main > .edit > .content > .panel > .header.sub {
     font-weight: 400;
 
     user-select: none;
 }
-#PROJECTPAGE > .edit > .content > .panel > .header > span:first-child {
+#PROJECTPAGE > .main > .edit > .content > .panel > .header > span:first-child {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .edit > .content > .panel > .header > span.units {
+#PROJECTPAGE > .main > .edit > .content > .panel > .header > span.units {
     min-width: max-content;
 
     color: var(--v6);
 
     font-style: italic;
 }
-#PROJECTPAGE > .edit > .content > .panel > .input,
-#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div {
+#PROJECTPAGE > .main > .edit > .content > .panel > .input,
+#PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div {
     align-self: stretch;
 
     max-width: 100%;
@@ -498,19 +499,19 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .edit > .content > .panel > .input.d3 {
+#PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 {
     flex-direction: column;
 }
-#PROJECTPAGE > .edit > .content > .panel > .input > input,
-#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div > input {
+#PROJECTPAGE > .main > .edit > .content > .panel > .input > input,
+#PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .edit > .content > .panel > .input > input[type="text"],
-#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div > input[type="text"] {
+#PROJECTPAGE > .main > .edit > .content > .panel > .input > input[type="text"],
+#PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input[type="text"] {
     color: var(--cy);
 }
-#PROJECTPAGE > .edit > .content > .panel > .input > input[type="text"]:disabled,
-#PROJECTPAGE > .edit > .content > .panel > .input.d3 > div > input[type="text"]:disabled {
+#PROJECTPAGE > .main > .edit > .content > .panel > .input > input[type="text"]:disabled,
+#PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input[type="text"]:disabled {
     color: var(--cy3);
 }
 #objectspanel > #spawnbox {

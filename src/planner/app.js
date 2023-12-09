@@ -619,11 +619,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     #eDisplay;
     #eBlockage;
-    #eDisplayNav;
-    #eProgress;
-    #eDisplaySubNav;
-    #ePlayPauseBtn;
-    #eTimeDisplay;
     #eMaxMinBtn;
     #eChooseNav;
     #eChooseDoneBtn;
@@ -639,7 +634,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         document.body.addEventListener("click", e => {
             if (this.choosing) return;
             if (this.eDisplay.contains(e.target)) return;
-            this.clearSelectedPaths();
+            if (this.eNav.contains(e.target)) return;
+            // this.clearSelectedPaths();
         });
 
         this.app.eProjectInfoNameInput.addEventListener("change", e => {
@@ -665,7 +661,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#panel = null;
 
         this.#eDisplay = document.createElement("div");
-        this.elem.appendChild(this.eDisplay);
+        this.eMain.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
         this.#eBlockage = document.createElement("div");
         this.eDisplay.appendChild(this.eBlockage);
@@ -846,26 +842,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             }
         });
 
-        this.#eDisplayNav = document.createElement("div");
-        this.eDisplay.appendChild(this.eDisplayNav);
-        this.eDisplayNav.classList.add("nav");
-        this.#eProgress = document.createElement("div");
-        this.eDisplayNav.appendChild(this.eProgress);
-        this.eProgress.classList.add("progress");
-        this.#eDisplaySubNav = document.createElement("div");
-        this.eDisplayNav.appendChild(this.eDisplaySubNav);
-        this.eDisplaySubNav.classList.add("nav");
-        this.#ePlayPauseBtn = document.createElement("button");
-        this.eDisplaySubNav.appendChild(this.ePlayPauseBtn);
-        this.ePlayPauseBtn.innerHTML = "<ion-icon></ion-icon>";
-        this.#eTimeDisplay = document.createElement("div");
-        this.eDisplaySubNav.appendChild(this.eTimeDisplay);
-        this.eTimeDisplay.textContent = "0:00 / 0:00";
-        let space = document.createElement("div");
-        this.eDisplaySubNav.appendChild(space);
-        space.style.flexBasis = "100%";
         this.#eMaxMinBtn = document.createElement("button");
-        this.eDisplaySubNav.appendChild(this.eMaxMinBtn);
+        this.eNavPost.appendChild(this.eMaxMinBtn);
         this.eMaxMinBtn.innerHTML = "<ion-icon></ion-icon>";
         this.eMaxMinBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -901,7 +879,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         this.#eEdit = document.createElement("div");
-        this.elem.appendChild(this.eEdit);
+        this.eMain.appendChild(this.eEdit);
         this.eEdit.classList.add("edit");
         this.#eEditContent = document.createElement("div");
         this.eEdit.appendChild(this.eEditContent);
@@ -912,7 +890,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eEditNav.addEventListener("click", e => e.stopPropagation());
         
         this.#eDivider = document.createElement("div");
-        this.elem.insertBefore(this.eDivider, this.eEdit);
+        this.eMain.insertBefore(this.eDivider, this.eEdit);
         this.eDivider.classList.add("divider");
         this.eDivider.addEventListener("mousedown", e => {
             e.preventDefault();
@@ -1318,11 +1296,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     get eDisplay() { return this.#eDisplay; }
     get eBlockage() { return this.#eBlockage; }
-    get eDisplayNav() { return this.#eDisplayNav; }
-    get eProgress() { return this.#eProgress; }
-    get eDisplaySubNav() { return this.#eDisplaySubNav; }
-    get ePlayPauseBtn() { return this.#ePlayPauseBtn; }
-    get eTimeDisplay() { return this.#eTimeDisplay; }
     get eMaxMinBtn() { return this.#eMaxMinBtn; }
     get eChooseNav() { return this.#eChooseNav; }
     get eChooseDoneBtn() { return this.#eChooseDoneBtn; }
@@ -2010,6 +1983,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     constructor(page) {
         super(page, "paths", "analytics");
 
+        this.elem.addEventListener("click", e => this.page.clearSelectedPaths());
+
         this.#generating = null;
         this.#buttons = new Set();
         this.#visuals = {};
@@ -2146,18 +2121,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             });
         });
 
-        this.page.ePlayPauseBtn._onClick = () => {
-            let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
-            if (visuals.length <= 0) return;
-            let id = visuals[0];
-            let visual = this.getVisual(id);
-            if (visual.isFinished) {
-                visual.nowTime = 0;
-                visual.play();
-            } else visual.paused = !visual.paused;
-        };
-        this.page.ePlayPauseBtn.addEventListener("click", this.page.ePlayPauseBtn._onClick);
-        this.page.eProgress._onMouseDown = e => {
+        this.page.eNavProgress.addEventListener("mousedown", e => {
             if (this.page.choosing) return;
             if (e.button != 0) return;
             e.stopPropagation();
@@ -2166,7 +2130,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 document.body.removeEventListener("mousemove", mousemove);
             };
             const mousemove = e => {
-                let r = this.page.eProgress.getBoundingClientRect();
+                let r = this.page.eNavProgress.getBoundingClientRect();
                 let p = (e.pageX-r.left) / r.width;
                 let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
                 if (visuals.length <= 0) return;
@@ -2177,8 +2141,31 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             mousemove(e);
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
-        };
-        this.page.eProgress.addEventListener("mousedown", this.page.eProgress._onMouseDown);
+        });
+        this.page.eNavActionButton.addEventListener("click", e => {
+            let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
+            if (visuals.length <= 0) return;
+            let id = visuals[0];
+            let visual = this.getVisual(id);
+            if (visual.isFinished) {
+                visual.nowTime = 0;
+                visual.play();
+            } else visual.paused = !visual.paused;
+        });
+        this.page.eNavBackButton.addEventListener("click", e => {
+            let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
+            if (visuals.length <= 0) return;
+            let id = visuals[0];
+            let visual = this.getVisual(id);
+            visual.nowTime = 0;
+        });
+        this.page.eNavForwardButton.addEventListener("click", e => {
+            let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
+            if (visuals.length <= 0) return;
+            let id = visuals[0];
+            let visual = this.getVisual(id);
+            visual.nowTime = visual.totalTime;
+        });
         
         this.addHandler("update", delta => {
             let visuals = [];
@@ -2191,19 +2178,15 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     this.remVisual(id);
             });
             if (visuals.length <= 0) {
-                this.page.eProgress.style.display = "none";
-                this.page.ePlayPauseBtn.style.display = "none";
-                this.page.eTimeDisplay.style.display = "none";
+                this.page.navOpen = false;
                 return;
             }
-            this.page.eProgress.style.display = "";
-            this.page.ePlayPauseBtn.style.display = "";
-            this.page.eTimeDisplay.style.display = "";
+            this.page.navOpen = true;
             let id = visuals[0];
             let visual = this.getVisual(id);
-            this.page.eProgress.style.setProperty("--progress", (100*visual.item.interp)+"%");
-            if (this.page.ePlayPauseBtn.children[0] instanceof HTMLElement)
-                this.page.ePlayPauseBtn.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
+            this.page.eNavProgress.style.setProperty("--progress", (100*visual.item.interp)+"%");
+            if (this.page.eNavActionButton.children[0] instanceof HTMLElement)
+                this.page.eNavActionButton.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
             let split;
             split = util.splitTimeUnits(visual.nowTime);
             split[0] = Math.round(split[0]);
@@ -2219,7 +2202,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 else v = v.padEnd(l, "0");
                 return v;
             });
-            this.page.eTimeDisplay.textContent = split.slice(1).reverse().join(":")+"."+split[0];
+            this.page.eNavInfo.textContent = split.slice(1).reverse().join(":")+"."+split[0];
             split = util.splitTimeUnits(visual.totalTime);
             split[0] = Math.round(split[0]);
             while (split.length > 3) {
@@ -2234,7 +2217,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 else v = v.padEnd(l, "0");
                 return v;
             });
-            this.page.eTimeDisplay.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];
+            this.page.eNavInfo.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];
         });
     }
 

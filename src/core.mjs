@@ -3077,8 +3077,50 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     #projectId;
 
+    #eMain;
+    #eNav;
+    #eNavPre;
+    #eNavPost;
+    #eNavProgress;
+    #eNavActionButton;
+    #eNavForwardButton;
+    #eNavBackButton;
+    #eNavInfo;
+
     constructor(app) {
         super("PROJECT", app);
+
+        this.#eMain = document.createElement("div");
+        this.elem.appendChild(this.eMain);
+        this.eMain.classList.add("main");
+        this.#eNav = document.createElement("div");
+        this.elem.appendChild(this.eNav);
+        this.eNav.classList.add("nav");
+        this.#eNavPre = document.createElement("div");
+        this.eNav.appendChild(this.eNavPre);
+        this.eNavPre.classList.add("pre");
+        this.#eNavPost = document.createElement("div");
+        this.eNav.appendChild(this.eNavPost);
+        this.eNavPost.classList.add("post");
+        this.#eNavProgress = document.createElement("div");
+        this.eNav.appendChild(this.eNavProgress);
+        this.eNavProgress.classList.add("progress");
+        this.eNavProgress.innerHTML = "<div></div>";
+        this.#eNavActionButton = document.createElement("button");
+        this.eNavPre.appendChild(this.eNavActionButton);
+        this.eNavActionButton.innerHTML = "<ion-icon name='play'></ion-icon>";
+        this.#eNavBackButton = document.createElement("button");
+        this.eNavPre.appendChild(this.eNavBackButton);
+        this.eNavBackButton.innerHTML = "<ion-icon name='play-skip-back'></ion-icon>";
+        this.#eNavForwardButton = document.createElement("button");
+        this.eNavPre.appendChild(this.eNavForwardButton);
+        this.eNavForwardButton.innerHTML = "<ion-icon name='play-skip-forward'></ion-icon>";
+        this.#eNavInfo = document.createElement("div");
+        this.eNavPost.appendChild(this.eNavInfo);
+        this.eNavInfo.classList.add("info");
+        // this.eNavInfo.textContent = "0:00/0:00";
+        
+        this.navOpen = true;
 
         this.app.addHandler("perm", async () => {
             this.app.markChange("*");
@@ -3165,6 +3207,28 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         } else this.projectId = null;
     }
     hasProject() { return (this.project instanceof Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
+
+    get eMain() { return this.#eMain; }
+    get eNav() { return this.#eNav; }
+    get eNavPre() { return this.#eNavPre; }
+    get eNavPost() { return this.#eNavPost; }
+    get eNavProgress() { return this.#eNavProgress; }
+    get eNavActionButton() { return this.#eNavActionButton; }
+    get eNavForwardButton() { return this.#eNavForwardButton; }
+    get eNavBackButton() { return this.#eNavBackButton; }
+    get eNavInfo() { return this.#eNavInfo; }
+
+    get navOpen() { return this.elem.classList.contains("open"); }
+    set navOpen(v) {
+        v = !!v;
+        if (this.navOpen == v) return;
+        if (v) this.elem.classList.add("open");
+        else this.elem.classList.remove("open");
+    }
+    get navClosed() { return !this.navOpen; }
+    set navClosed(v) { this.navOpen = !v; }
+    openNav() { return this.navOpen = true; }
+    closeNav() { return this.navClosed = true; }
 
     get state() {
         return {
