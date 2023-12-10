@@ -232,6 +232,23 @@ export function splitTimeUnits(t) {
     });
     return values;
 }
+export function formatTime(t) {
+    let split = splitTimeUnits(t);
+    split[0] = Math.round(split[0]);
+    while (split.length > 3) {
+        if (split.at(-1) > 0) break;
+        split.pop();
+    }
+    split = split.map((v, i) => {
+        v = String(v);
+        if (i >= split.length-1) return v;
+        let l = String(Object.values(UNITVALUES)[i+1]).length;
+        if (i > 0) v = v.padStart(l, "0");
+        else v = v.padEnd(l, "0");
+        return v;
+    });
+    return split.slice(1).reverse().join(":")+"."+split[0];
+}
 
 export function loadImage(src) {
     return new Promise((res, rej) => {

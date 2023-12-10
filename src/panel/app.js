@@ -7008,6 +7008,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #activeWidget;
     #source;
 
+    #eNavPreInfo;
     #eSide;
     #eSideMeta;
     #eSideSections;
@@ -7077,6 +7078,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#widget = null;
         this.#activeWidget = null;
         this.#source = null;
+
+        this.#eNavPreInfo = document.createElement("div");
+        this.eNavPre.appendChild(this.eNavPreInfo);
+        this.eNavPreInfo.classList.add("info");
 
         this.#eSide = document.createElement("div");
         this.eMain.appendChild(this.eSide);
@@ -7171,11 +7176,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.source.playback.paused = paused;
             };
             const mousemove = e => {
-                let r = this.eNavProgress.getBoundingClientRect();
-                let p = (e.pageX-r.left) / r.width;
                 if (!this.hasSource()) return;
                 this.source.playback.paused = true;
-                this.source.ts = util.lerp(this.source.tsMin, this.source.tsMax, p);
+                this.source.ts = util.lerp(this.source.tsMin, this.source.tsMax, this.progressHover);
             };
             mousemove(e);
             document.body.addEventListener("mouseup", mouseup);
@@ -7197,43 +7200,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("update", async delta => {
             if (this.hasSource()) {
                 this.navOpen = true;
-                let t = this.source.ts - this.source.tsMin;
-                let tTotal = this.source.tsMax - this.source.tsMin;
+                let tMin = this.source.tsMin, tMax = this.source.tsMax;
+                let tNow = this.source.ts;
                 let paused = this.source.playback.paused;
-                this.eNavProgress.style.setProperty("--progress", (100*(t/tTotal))+"%");
+                this.progress = (tNow - tMin) / (tMax - tMin);
                 if (this.eNavActionButton.children[0] instanceof HTMLElement)
                     this.eNavActionButton.children[0].setAttribute("name", paused ? "play" : "pause");
-                let split;
-                split = util.splitTimeUnits(t);
-                split[0] = Math.round(split[0]);
-                while (split.length > 3) {
-                    if (split.at(-1) > 0) break;
-                    split.pop();
-                }
-                split = split.map((v, i) => {
-                    v = String(v);
-                    if (i >= split.length-1) return v;
-                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                    if (i > 0) v = v.padStart(l, "0");
-                    else v = v.padEnd(l, "0");
-                    return v;
-                });
-                this.eNavInfo.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-                split = util.splitTimeUnits(tTotal);
-                split[0] = Math.round(split[0]);
-                while (split.length > 3) {
-                    if (split.at(-1) > 0) break;
-                    split.pop();
-                }
-                split = split.map((v, i) => {
-                    v = String(v);
-                    if (i >= split.length-1) return v;
-                    let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                    if (i > 0) v = v.padStart(l, "0");
-                    else v = v.padEnd(l, "0");
-                    return v;
-                });
-                this.eNavInfo.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];
+                this.eNavProgressTooltip.textContent = util.formatTime(util.lerp(tMin, tMax, this.progressHover));
+                this.eNavPreInfo.textContent = util.formatTime(tMin);
+                this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);
             } else this.navOpen = false;
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
@@ -7604,6 +7579,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return "No source";
     }
 
+    get eNavPreInfo() { return this.#eNavPreInfo; }
     get eSide() { return this.#eSide; }
     get eSideMeta() { return this.#eSideMeta; }
     get eSideSections() { return Object.keys(this.#eSideSections); }
