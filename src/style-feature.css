@@ -652,14 +652,21 @@
 }
 #PROJECTPAGE > .nav > .progress {
     --progress: 50%;
+    --hover: 50%;
+
+    position: relative;
 
     width: 100%;
     height: 5px;
 
     background-color: var(--v2);
 }
-#PROJECTPAGE > .nav > .progress > div {
-    position: relative;
+#PROJECTPAGE > .nav > .progress::before {
+    content: "";
+
+    position: absolute;
+    top: 0%;
+    left: 0%;
 
     width: var(--progress);
     height: 100%;
@@ -668,15 +675,15 @@
 
     transition: background-color var(--t);
 }
-#PROJECTPAGE > .nav > .progress:hover > div {
+#PROJECTPAGE > .nav > .progress:hover::before {
     background-color: var(--v8);
 }
-#PROJECTPAGE > .nav > .progress > div::before {
+#PROJECTPAGE > .nav > .progress::after {
     content: "";
 
     position: absolute;
     top: 50%;
-    left: 100%;
+    left: var(--progress);
     transform: translate(-50%, -50%) scale(0%);
 
     width: 10px;
@@ -687,8 +694,25 @@
 
     transition: transform var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .nav > .progress:hover > div::before {
+#PROJECTPAGE > .nav > .progress:hover::after {
     transform: translate(-50%, -50%) scale(100%);
 
     background-color: var(--v8);
+}
+#PROJECTPAGE > .nav > .progress > .hover {
+    z-index: 1;
+
+    position: absolute;
+    top: 50%;
+    left: var(--hover);
+    transform: translate(-50%, -50%);
+
+    height: 5px;
+    aspect-ratio: 1 / 1;
+}
+#PROJECTPAGE > .nav > .progress > .hover > .tooltip {
+    padding: 5px;
+
+    font-family: monospace;
+    font-size: 12px;
 }

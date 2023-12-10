@@ -3077,11 +3077,15 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     #projectId;
 
+    #progress;
+    #progressHover;
+
     #eMain;
     #eNav;
     #eNavPre;
     #eNavPost;
     #eNavProgress;
+    #eNavProgressTooltip;
     #eNavActionButton;
     #eNavForwardButton;
     #eNavBackButton;
@@ -3089,6 +3093,9 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
     constructor(app) {
         super("PROJECT", app);
+
+        this.#progress = null;
+        this.#progressHover = null;
 
         this.#eMain = document.createElement("div");
         this.elem.appendChild(this.eMain);
@@ -3105,7 +3112,13 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.#eNavProgress = document.createElement("div");
         this.eNav.appendChild(this.eNavProgress);
         this.eNavProgress.classList.add("progress");
-        this.eNavProgress.innerHTML = "<div></div>";
+        this.eNavProgress.innerHTML = "<div class='hover'><div class='tooltip hov nx'></div></div>";
+        this.#eNavProgressTooltip = this.eNavProgress.querySelector(":scope > .hover > .tooltip");
+        document.body.addEventListener("mousemove", e => {
+            let r = this.eNavProgress.getBoundingClientRect();
+            let p = (e.pageX-r.left) / r.width;
+            this.progressHover = p;
+        });
         this.#eNavActionButton = document.createElement("button");
         this.eNavPre.appendChild(this.eNavActionButton);
         this.eNavActionButton.innerHTML = "<ion-icon name='play'></ion-icon>";
@@ -3118,9 +3131,11 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.#eNavInfo = document.createElement("div");
         this.eNavPost.appendChild(this.eNavInfo);
         this.eNavInfo.classList.add("info");
-        // this.eNavInfo.textContent = "0:00/0:00";
         
         this.navOpen = true;
+
+        this.progress = 0;
+        this.progressHover = 0;
 
         this.app.addHandler("perm", async () => {
             this.app.markChange("*");
@@ -3208,11 +3223,27 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
     hasProject() { return (this.project instanceof Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
 
+    get progress() { return this.#progress; }
+    set progress(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (this.progress == v) return;
+        this.change("progress", this.progress, this.#progress=v);
+        this.eNavProgress.style.setProperty("--progress", (this.progress*100)+"%");
+    }
+    get progressHover() { return this.#progressHover; }
+    set progressHover(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (this.progressHover == v) return;
+        this.change("progressHover", this.progressHover, this.#progressHover=v);
+        this.eNavProgress.style.setProperty("--hover", (this.progressHover*100)+"%");
+    }
+
     get eMain() { return this.#eMain; }
     get eNav() { return this.#eNav; }
     get eNavPre() { return this.#eNavPre; }
     get eNavPost() { return this.#eNavPost; }
     get eNavProgress() { return this.#eNavProgress; }
+    get eNavProgressTooltip() { return this.#eNavProgressTooltip; }
     get eNavActionButton() { return this.#eNavActionButton; }
     get eNavForwardButton() { return this.#eNavForwardButton; }
     get eNavBackButton() { return this.#eNavBackButton; }

@@ -771,6 +771,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 return;
             }
             if (e.button != 0) return;
+            e.preventDefault();
+            e.stopPropagation();
             if (!(hovered instanceof core.Odometry2d.Render) || !(hovered.source instanceof RSelectable)) {
                 this.clearSelected();
                 let selectItem = this.odometry.addRender(new RSelect(this.odometry));
@@ -894,6 +896,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eDivider.classList.add("divider");
         this.eDivider.addEventListener("mousedown", e => {
             e.preventDefault();
+            e.stopPropagation();
             if (this.choosing) return;
             if (e.button != 0) return;
             const mouseup = () => {
@@ -1602,6 +1605,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             eName.textContent = name.split(" ").map(v => util.capitalize(v)).join(" ");
             btn.addEventListener("mousedown", e => {
                 e.preventDefault();
+                e.stopPropagation();
                 if (this.page.choosing) return;
                 this.app.post("cmd-add"+name);
             });
@@ -1692,6 +1696,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.robotHeading.elem.appendChild(this.robotHeadingDrag);
         this.robotHeadingDrag.addEventListener("mousedown", e => {
             e.preventDefault();
+            e.stopPropagation();
             const place = e => {
                 let r = this.robotHeadingDrag.getBoundingClientRect();
                 let center = new V(r.left + r.width/2, r.top + r.height/2).mul(+1, -1);
@@ -2124,19 +2129,18 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         this.page.eNavProgress.addEventListener("mousedown", e => {
             if (this.page.choosing) return;
             if (e.button != 0) return;
+            e.preventDefault();
             e.stopPropagation();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
             };
             const mousemove = e => {
-                let r = this.page.eNavProgress.getBoundingClientRect();
-                let p = (e.pageX-r.left) / r.width;
                 let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
                 if (visuals.length <= 0) return;
                 let id = visuals[0];
                 let visual = this.getVisual(id);
-                visual.nowTime = visual.totalTime*p;
+                visual.nowTime = visual.totalTime*this.page.progressHover;
             };
             mousemove(e);
             document.body.addEventListener("mouseup", mouseup);
@@ -2184,40 +2188,11 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             this.page.navOpen = true;
             let id = visuals[0];
             let visual = this.getVisual(id);
-            this.page.eNavProgress.style.setProperty("--progress", (100*visual.item.interp)+"%");
+            this.page.progress = visual.item.interp;
             if (this.page.eNavActionButton.children[0] instanceof HTMLElement)
                 this.page.eNavActionButton.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
-            let split;
-            split = util.splitTimeUnits(visual.nowTime);
-            split[0] = Math.round(split[0]);
-            while (split.length > 3) {
-                if (split.at(-1) > 0) break;
-                split.pop();
-            }
-            split = split.map((v, i) => {
-                v = String(v);
-                if (i >= split.length-1) return v;
-                let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                if (i > 0) v = v.padStart(l, "0");
-                else v = v.padEnd(l, "0");
-                return v;
-            });
-            this.page.eNavInfo.textContent = split.slice(1).reverse().join(":")+"."+split[0];
-            split = util.splitTimeUnits(visual.totalTime);
-            split[0] = Math.round(split[0]);
-            while (split.length > 3) {
-                if (split.at(-1) > 0) break;
-                split.pop();
-            }
-            split = split.map((v, i) => {
-                v = String(v);
-                if (i >= split.length-1) return v;
-                let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                if (i > 0) v = v.padStart(l, "0");
-                else v = v.padEnd(l, "0");
-                return v;
-            });
-            this.page.eNavInfo.textContent += " / " + split.slice(1).reverse().join(":")+"."+split[0];
+            this.page.eNavProgressTooltip.textContent = util.formatTime(visual.totalTime*this.page.progressHover);
+            this.page.eNavInfo.textContent = util.formatTime(visual.nowTime) + " / " + util.formatTime(visual.totalTime);
         });
     }
 
