@@ -11,7 +11,6 @@ class MergeWorker extends WorkerBase {
 
         this.addHandler("cmd-start", data => {
             try {
-                throw "WILL FIX LATER - REMIND ME";
                 data = util.ensure(data, "obj");
                 const opt = util.ensure(data.opt, "obj");
                 this.progress(0);
@@ -40,39 +39,39 @@ class MergeWorker extends WorkerBase {
                 const existingConflicts = {};
                 sources.forEach((source, i) => {
                     let fields = [];
-                    const dfs = field => {
-                        if (!field.hasType()) return field.fields.forEach(field => dfs(field));
-                        fields.push(field);
+                    const dfs = node => {
+                        if (!node.hasField()) return node.nodeObjects.forEach(node => dfs(node));
+                        fields.push(node.field);
                     };
-                    dfs(source.root);
+                    dfs(source.tree);
                     fields.forEach((field, j) => {
                         this.progress(util.lerp(0, 0.5, (i+(j/fields.length))/sources.length));
-                        let pth = field.textPath;
+                        let pth = field.path;
                         if (existing.has(pth)) return existingConflicts[pth] = 0;
                         existing.add(pth);
                     });
                 });
-                const outputSource = new Source();
+                const outputSource = new Source(false);
                 sources.forEach((source, i) => {
                     let fields = [];
-                    const dfs = field => {
-                        if (!field.hasType()) return field.fields.forEach(field => dfs(field));
-                        fields.push(field);
+                    const dfs = node => {
+                        if (!node.hasField()) return node.nodeObjects.forEach(node => dfs(node));
+                        fields.push(node.field);
                     };
-                    dfs(source.root);
+                    dfs(source.tree);
                     fields.forEach((field, j) => {
                         this.progress(util.lerp(0.5, 1, (i+(j/fields.length))/sources.length));
                         let pth = field.path;
-                        let isSchema = pth.length >= 2 && pth[0] == ".schema";
-                        let txtPth = field.textPath;
-                        if (!isSchema && (txtPth in existingConflicts)) {
-                            let count = getConflictCount(++existingConflicts[txtPth]);
-                            let name = pth.pop();
-                            if (conflictAffix == "prefix") pth.push(count, name);
-                            else pth.push(name, count);
+                        let arrPth = pth.split("/").filter(part => part.length > 0);
+                        if ((field.type != "structschema") && (pth in existingConflicts)) {
+                            let count = getConflictCount(++existingConflicts[pth]);
+                            let name = arrPth.pop();
+                            if (conflictAffix == "prefix") arrPth.push(count, name);
+                            else arrPth.push(name, count);
+                            pth = arrPth.join("/");
                         }
-                        outputSource.create(pth, field.type);
-                        outputSource.root.lookup(pth).valueLog = field.valueLog;
+                        outputSource.add(pth, field.type);
+                        outputSource.getField(pth).valueLog = field.valueLog;
                     });
                 });
                 this.progress(1);

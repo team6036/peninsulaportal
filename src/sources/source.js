@@ -77,7 +77,7 @@ export default class Source extends util.Target {
                 this.#fields[field.path] = field;
                 r = field;
                 if (this.buildTree) {
-                    let path = field.path.split("/");
+                    let path = field.path.split("/").filter(part => part.length > 0);
                     let node = this.tree;
                     while (path.length > 0) {
                         let name = path.shift();
@@ -112,7 +112,7 @@ export default class Source extends util.Target {
                 delete this.#fields[field.path];
                 r = field;
                 if (this.buildTree) {
-                    let path = field.path.split("/");
+                    let path = field.path.split("/").filter(part => part.length > 0);
                     let node = this.tree;
                     while (path.length > 0) {
                         let name = path.shift();
@@ -170,8 +170,9 @@ export default class Source extends util.Target {
         return this.getField(path).update(v, ts);
     }
     clear() {
-        this.structHelper.clearPatterns();
         this.clearFields();
+        this.tree.clearNodes();
+        this.structHelper.clearPatterns();
         return this;
     }
 
@@ -291,7 +292,7 @@ Source.Field = class SourceField extends util.Target {
         this.#node = null;
 
         this.#path = Source.generatePath(path);
-        path = this.path.split("/");
+        path = this.path.split("/").filter(part => part.length > 0);
         this.#name = (path.length > 0) ? path.at(-1) : "";
         if (type == null) throw "Type is null";
         this.#type = String(type);
@@ -333,6 +334,13 @@ Source.Field = class SourceField extends util.Target {
     get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
 
     get valueLog() { return [...this.#valueLog]; }
+    set valueLog(v) {
+        console.log(this.path, this.valueLog.length, v.length);
+        this.#valueLog = util.ensure(v, "arr").map(log => {
+            log = util.ensure(log, "obj");
+            return { ts: util.ensure(log.ts, "num"), v: Source.Field.ensureType(this.type, log.v) };
+        }).sort((a, b) => a.ts-b.ts);
+    }
 
     getIndex(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
@@ -414,10 +422,11 @@ Source.Field = class SourceField extends util.Target {
     static fromSerialized(source, data) {
         data = util.ensure(data, "obj");
         let field = new Source.Field(source, data.path, data.type);
-        field.#valueLog = util.ensure(data.valueLog, "arr").map(log => {
-            log = util.ensure(log, "obj");
-            return { ts: util.ensure(log.ts, "num"), v: Source.Field.ensureType(field.type, log.v) };
-        }).sort((a, b) => a.ts-b.ts);
+        field.valueLog = data.valueLog;
+        // field.#valueLog = util.ensure(data.valueLog, "arr").map(log => {
+        //     log = util.ensure(log, "obj");
+        //     return { ts: util.ensure(log.ts, "num"), v: Source.Field.ensureType(field.type, log.v) };
+        // }).sort((a, b) => a.ts-b.ts);
         return field;
     }
 };
@@ -482,7 +491,7 @@ Source.Node = class SourceNode extends util.Target {
         return nodes;
     }
     hasNode(v) {
-        if (v instanceof Source.Field) return this.hasNode(v.name) && v.parent == this;
+        if (v instanceof Source.Node) return this.hasNode(v.name) && v.parent == this;
         return v in this.#nodes;
     }
     getNode(name) {
@@ -507,7 +516,7 @@ Source.Node = class SourceNode extends util.Target {
             nodes.forEach(node => {
                 let r2 = this.addNode(node);
                 if (!r2) return;
-                node.push(r2);
+                r.push(r2);
             });
         }
         return r;
@@ -530,7 +539,7 @@ Source.Node = class SourceNode extends util.Target {
             nodes.forEach(node => {
                 let r2 = this.remNode(node);
                 if (!r2) return;
-                node.push(r2);
+                r.push(r2);
             });
         }
         return r;

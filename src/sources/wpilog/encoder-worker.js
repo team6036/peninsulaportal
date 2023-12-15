@@ -20,7 +20,8 @@ class WPILOGEncoderWorker extends WorkerBase {
                 const encoder = new WPILOGEncoder();
                 const source = new Source();
                 source.fromSerialized(data.source);
-                source.fieldObjects.forEach((field, i) => {
+                let fields = source.fieldObjects;
+                fields.forEach((field, i) => {
                     let entryId = i+1;
                     let type = field.type;
                     if (type == "int") type = "int64";
@@ -32,7 +33,7 @@ class WPILOGEncoderWorker extends WorkerBase {
                             valueLog[0].ts,
                             {
                                 entry: entryId,
-                                name: prefix+field.textPath,
+                                name: prefix+field.path,
                                 type: type,
                                 metadata: "",
                             },
