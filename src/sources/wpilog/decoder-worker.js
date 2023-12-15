@@ -13,18 +13,13 @@ class WPILOGDecoderWorker extends WorkerBase {
 
         this.addHandler("cmd-start", data => {
             try {
-                data = util.ensure(data, "obj");
                 const opt = util.ensure(data.opt, "obj");
                 this.progress(0);
                 const decoder = new WPILOGDecoder(data.source);
-                // crude serialized source building - find better way if possible
-                // this is done to increase performance as normal method calls of an unserialized source results in way too much lag
-                // UPDATE: might have fixed the lag issue
-                // seems like repeated .lookup calls results in lag
-                const source = new Source();
+                const source = new Source(false);
                 let entryId2Name = {};
                 let entryId2Type = {};
-                let entryId2Topic = {};
+                let entryId2Field = {};
                 let first = true;
                 decoder.build((record, progress) => {
                     this.progress(progress);
@@ -36,19 +31,16 @@ class WPILOGDecoderWorker extends WorkerBase {
                         let type = entryId2Type[id] = startData.type;
                         if (["int64"].includes(type)) type = "int";
                         if (["int64[]"].includes(type)) type = "int[]";
-                        let path = String(name).split("/");
-                        while (path.length > 0 && path.at(0).length <= 0) path.shift();
-                        while (path.length > 0 && path.at(-1).length <= 0) path.pop();
-                        source.create(path, type);
-                        entryId2Topic[id] = source.root.lookup(path);
+                        source.add(name, type);
+                        entryId2Field[id] = source.getField(name);
                     } else {
                         let id = record.entryId;
                         if (!(id in entryId2Name)) return;
                         if (!(id in entryId2Type)) return;
-                        if (!(id in entryId2Topic)) return;
+                        if (!(id in entryId2Field)) return;
                         let name = entryId2Name[id];
                         let type = entryId2Type[id];
-                        const topic = entryId2Topic[id];
+                        const field = entryId2Field[id];
                         let ts = record.ts / 1000;
                         let typefs = {
                             boolean: () => record.getBool(),
@@ -66,7 +58,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                             "string[]": () => record.getStrArr(),
                         };
                         let v = (type in typefs) ? typefs[type]() : record.getRaw();
-                        topic.update(v, ts);
+                        field.update(v, ts);
                         if (first) {
                             first = false;
                             source.tsMin = source.tsMax = ts;

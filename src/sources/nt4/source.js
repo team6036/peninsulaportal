@@ -9,9 +9,7 @@ export default class NTSource extends Source {
     #client;
 
     constructor(address) {
-        super("nest");
-
-        this.postFlat = false;
+        super();
 
         this.#client = null;
 
@@ -19,27 +17,6 @@ export default class NTSource extends Source {
     }
 
     #hasClient() { return this.#client instanceof NTClient; }
-
-    hasRoot() { return true; }
-
-    announceTopic(k, type) {
-        k = k.split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-        return this.create(k, type);
-    }
-    unannounceTopic(k) {
-        k = k.split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-        return this.delete(k);
-    }
-    updateTopic(k, v, ts=null) {
-        k = k.split("/");
-        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-        return this.update(k, v, ts);
-    }
 
     get address() { return this.#hasClient() ? this.#client.baseAddr : null; }
     set address(v) {
@@ -52,16 +29,16 @@ export default class NTSource extends Source {
             "Peninsula",
             topic => {
                 if (client != this.#client) return client.disconnect();
-                this.announceTopic(topic.name, topic.type);
+                this.add(topic.name, topic.type);
             },
             topic => {
                 if (client != this.#client) return client.disconnect();
-                this.unannounceTopic(topic.name);
+                this.rem(topic.name);
             },
             (topic, ts, v) => {
                 if (client != this.#client) return client.disconnect();
                 ts /= 1000;
-                this.updateTopic(topic.name, v, ts);
+                this.update(topic.name, v, ts);
             },
             () => {
                 if (client != this.#client) return client.disconnect();

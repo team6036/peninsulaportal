@@ -11,6 +11,7 @@ class MergeWorker extends WorkerBase {
 
         this.addHandler("cmd-start", data => {
             try {
+                throw "WILL FIX LATER - REMIND ME";
                 data = util.ensure(data, "obj");
                 const opt = util.ensure(data.opt, "obj");
                 this.progress(0);

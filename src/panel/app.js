@@ -182,11 +182,11 @@ function getTabDisplay(name) {
 }
 
 
-class BrowserField extends util.Target {
+class BrowserNode extends util.Target {
     #name;
     #type;
     #value;
-    #fields;
+    #nodes;
     #showValue;
 
     #elem;
@@ -200,42 +200,42 @@ class BrowserField extends util.Target {
     #eContent;
     #eSide;
 
-    static doubleTraverse(fieldArr, bfieldArr, addFunc, remFunc) {
-        let fieldMap = {}, bfieldMap = {};
-        util.ensure(fieldArr, "arr").forEach(field => {
-            if (!(field instanceof Source.Field)) return;
-            fieldMap[field.name] = field;
+    static doubleTraverse(nodeArr, bnodeArr, addFunc, remFunc) {
+        let nodeMap = {}, bnodeMap = {};
+        util.ensure(nodeArr, "arr").forEach(node => {
+            if (!(node instanceof Source.Node)) return;
+            nodeMap[node.name] = node;
         });
-        util.ensure(bfieldArr, "arr").forEach(bfield => {
-            if (!(bfield instanceof BrowserField)) return;
-            bfieldMap[bfield.name] = bfield;
+        util.ensure(bnodeArr, "arr").forEach(bnode => {
+            if (!(bnode instanceof BrowserNode)) return;
+            bnodeMap[bnode.name] = bnode;
         });
         let add = [];
-        for (let name in fieldMap) {
-            let field = fieldMap[name];
-            if (name in bfieldMap) continue;
-            let bfield = bfieldMap[field.name] = new BrowserField(field.name, field.type);
-            add.push(bfield);
+        for (let name in nodeMap) {
+            let node = nodeMap[name];
+            if (name in bnodeMap) continue;
+            let bnode = bnodeMap[node.name] = new BrowserNode(node.name, node.hasField() ? node.field.type : null);
+            add.push(bnode);
         }
         if (util.is(addFunc, "func")) addFunc(...add);
         let rem = [];
-        for (let name in bfieldMap) {
-            let bfield = bfieldMap[name];
-            if (name in fieldMap) continue;
-            rem.push(bfield);
+        for (let name in bnodeMap) {
+            let bnode = bnodeMap[name];
+            if (name in nodeMap) continue;
+            rem.push(bnode);
         }
         if (util.is(remFunc, "func")) remFunc(...rem);
-        for (let name in fieldMap) {
-            let field = fieldMap[name];
-            let bfield = bfieldMap[name];
-            if (bfield.isOpen)
-                BrowserField.doubleTraverse(
-                    field.fields,
-                    bfield.fields,
-                    (...bf) => bfield.addBulk(...bf),
-                    (...bf) => bfield.remBulk(...bf),
+        for (let name in nodeMap) {
+            let node = nodeMap[name];
+            let bnode = bnodeMap[name];
+            if (bnode.isOpen)
+                BrowserNode.doubleTraverse(
+                    node.nodeObjects,
+                    bnode.nodes,
+                    (...bn) => bnode.addBulk(...bn),
+                    (...bn) => bnode.remBulk(...bn),
                 );
-            bfield.value = field.get();
+            bnode.value = node.hasField() ? node.field.get() : null;
         }
     };
 
@@ -245,7 +245,7 @@ class BrowserField extends util.Target {
         this.#name = String(name);
         this.#type = (type == null) ? null : String(type);
 
-        this.#fields = {};
+        this.#nodes = {};
 
         this.#showValue = null;
 
@@ -351,12 +351,12 @@ class BrowserField extends util.Target {
         this.updateDisplay();
     }
 
-    get nFields() {
+    get nNodes() {
         let n = 1;
-        this.fields.forEach(field => (n += field.nFields));
+        this.nodes.forEach(node => (n += node.nNodes));
         return n;
     }
-    get fields() { return Object.values(this.#fields); }
+    get nodes() { return Object.values(this.#nodes); }
     lookup(k) {
         k = util.ensure(k, "arr");
         let o = this;
@@ -368,49 +368,57 @@ class BrowserField extends util.Target {
     }
     singlelookup(k) {
         k = String(k);
-        if (k in this.#fields) return this.#fields[k];
+        if (k in this.#nodes) return this.#nodes[k];
         return null;
     }
-    has(field) {
-        if (!(field instanceof BrowserField)) return false;
-        return field.name in this.#fields;
+    has(node) {
+        if (!(node instanceof BrowserNode)) return false;
+        return node.name in this.#nodes;
     }
-    add(field) {
-        let r = this.addBulk(field);
+    add(node) {
+        let r = this.addBulk(node);
         return (r.length > 0) ? r[0] : false;
     }
-    addBulk(...fields) {
-        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBulk(...fields[0]);
-        let doneFields = [];
-        fields.forEach(field => {
-            if (!(field instanceof BrowserField)) return;
-            if (field.name in this.#fields) return;
-            this.#fields[field.name] = field;
-            field.addLinkedHandler(this, "trigger", path => this.post("trigger", e, [this.name, ...util.ensure(path, "arr")]));
-            field.addLinkedHandler(this, "drag", path => this.post("drag", [this.name, ...util.ensure(path, "arr")]));
-            this.eContent.appendChild(field.elem);
-            doneFields.push(field);
+    addBulk(...nodes) {
+        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.addBulk(...nodes[0]);
+        let doneNodes = [];
+        nodes.forEach(node => {
+            if (!(node instanceof BrowserNode)) return;
+            if (node.name in this.#nodes) return;
+            this.#nodes[node.name] = node;
+            node.addLinkedHandler(this, "trigger", (e, path) => {
+                path = Source.generatePath(path);
+                if (this.name.length > 0) path = this.name+"/"+path;
+                this.post("trigger", e, path);
+            });
+            node.addLinkedHandler(this, "drag", path => {
+                path = Source.generatePath(path);
+                if (this.name.length > 0) path = this.name+"/"+path;
+                this.post("drag", path);
+            });
+            this.eContent.appendChild(node.elem);
+            doneNodes.push(node);
         });
         this.format();
-        return doneFields;
+        return doneNodes;
     }
-    rem(field) {
-        let r = this.remBulk(field);
+    rem(node) {
+        let r = this.remBulk(node);
         return (r.length > 0) ? r[0] : false;
     }
-    remBulk(...fields) {
-        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBulk(...fields[0]);
-        let doneFields = [];
-        fields.forEach(field => {
-            if (!(field instanceof BrowserField)) return;
-            if (!(field.name in this.#fields)) return;
-            delete this.#fields[field.name];
-            field.clearLinkedHandlers(this, "trigger");
-            field.clearLinkedHandlers(this, "drag");
-            this.eContent.removeChild(field.elem);
-            doneFields.push(field);
+    remBulk(...nodes) {
+        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.addBulk(...nodes[0]);
+        let doneNodes = [];
+        nodes.forEach(node => {
+            if (!(node instanceof BrowserNode)) return;
+            if (!(node.name in this.#nodes)) return;
+            delete this.#nodes[node.name];
+            node.clearLinkedHandlers(this, "trigger");
+            node.clearLinkedHandlers(this, "drag");
+            this.eContent.removeChild(node.elem);
+            doneNodes.push(node);
         });
-        return doneFields;
+        return doneNodes;
     }
 
     get showValue() { return this.#showValue; }
@@ -474,9 +482,9 @@ class BrowserField extends util.Target {
 
     format() {
         this.updateDisplay();
-        this.fields.sort((a, b) => compare(a.name, b.name)).forEach((field, i) => {
-            field.elem.style.order = i;
-            field.format();
+        this.nodes.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
+            node.elem.style.order = i;
+            node.format();
         });
     }
 }
@@ -1513,35 +1521,35 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.placeholder = "Search tools, tables, and topics";
             if (this.query.length > 0) {
                 toolItems = util.search(toolItems, ["name"], this.query);
-                let fieldItems = [];
+                let nodeItems = [];
                 if (this.hasPage() && this.page.hasSource()) {
-                    let root = this.page.source.root;
-                    const dfs = field => {
-                        let itm = new Panel.AddTab.FieldButton(field);
-                        fieldItems.push({
+                    let node = this.page.source.tree;
+                    const dfs = node => {
+                        let itm = new Panel.AddTab.NodeButton(node);
+                        nodeItems.push({
                             item: itm,
                             trigger: () => {
                                 if (!this.hasParent()) return;
                                 let index = this.parent.tabs.indexOf(this);
-                                this.parent.addTab(new Panel.BrowserTab(field.path), index);
+                                this.parent.addTab(new Panel.BrowserTab(node.path), index);
                                 this.parent.remTab(this);
                             },
                         });
-                        field.fields.forEach(field => dfs(field));
+                        node.nodeObjects.forEach(node => dfs(node));
                     };
-                    dfs(root);
+                    dfs(node);
                 }
-                fieldItems = fieldItems.map(item => {
+                nodeItems = nodeItems.map(item => {
                     if (item.init) item.init(item.item);
                     item.item.addHandler("trigger", item.trigger);
                     return item.item;
                 });
-                fieldItems = util.search(fieldItems, ["field.textPath", "field.type"], this.query);
+                nodeItems = util.search(nodeItems, ["node.path", "node.field.type"], this.query);
                 this.items = [
                     new Panel.AddTab.Header("Tools"),
                     ...toolItems,
                     new Panel.AddTab.Header("Tables and Topics"),
-                    ...fieldItems,
+                    ...nodeItems,
                 ];
             } else {
                 this.items = [
@@ -1550,7 +1558,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     new Panel.AddTab.Button("All", "", "", true),
                     new Panel.AddTab.Divider(),
                     new Panel.AddTab.Header("Tools"),
-                    new Panel.AddTab.Button("Tools", "cube-outline", "", true),
+                    new Panel.AddTab.Button("Tools", "hammer", "", true),
                     ...toolItems,
                 ];
                 this.items[0].addHandler("trigger", () => {
@@ -1568,7 +1576,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 });
             }
         } else if (this.searchPart == "tools") {
-            this.tags = [new Panel.AddTab.Tag("Tools", "cube-outline")];
+            this.tags = [new Panel.AddTab.Tag("Tools", "hammer")];
             this.placeholder = "Search tools";
             toolItems = util.search(toolItems, ["name"], this.query);
             this.items = toolItems;
@@ -1581,12 +1589,12 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
             if (this.hasPage() && this.page.hasSource()) {
-                let root = this.page.source.root;
-                const dfs = field => {
-                    let itm = new Panel.AddTab.FieldButton(field);
+                let node = this.page.source.tree;
+                const dfs = node => {
+                    let itm = new Panel.AddTab.NodeButton(node);
                     if ({
-                        tables: !field.hasType(),
-                        topics: field.hasType(),
+                        tables: !node.hasField(),
+                        topics: node.hasField(),
                         all: true,
                     }[this.searchPart])
                         items.push({
@@ -1594,20 +1602,20 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                             trigger: () => {
                                 if (!this.hasParent()) return;
                                 let index = this.parent.tabs.indexOf(this);
-                                this.parent.addTab(new Panel.BrowserTab(field.path), index);
+                                this.parent.addTab(new Panel.BrowserTab(node.path), index);
                                 this.parent.remTab(this);
                             },
                         });
-                    field.fields.forEach(field => dfs(field));
+                    node.nodeObjects.forEach(node => dfs(node));
                 };
-                dfs(root);
+                dfs(node);
             }
             items = items.map(item => {
                 if (item.init) item.init(item.item);
                 item.item.addHandler("trigger", item.trigger);
                 return item.item;
             });
-            items = util.search(items, ["field.textPath", "field.type"], this.query);
+            items = util.search(items, ["node.path", "node.field.type"], this.query);
             this.items = items;
         }
         this.eSearchInput.focus();
@@ -1845,10 +1853,10 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         else this.btn.removeChild(this.eChevron);
     }
 };
-Panel.AddTab.FieldButton = class PanelAddTabFieldButton extends Panel.AddTab.Button {
-    #field;
+Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Button {
+    #node;
 
-    constructor(field) {
+    constructor(node) {
         super();
 
         this.elem.classList.remove("item");
@@ -1861,33 +1869,33 @@ Panel.AddTab.FieldButton = class PanelAddTabFieldButton extends Panel.AddTab.But
         this.eInfo.classList.add("tag");
 
         this.addHandler("update", delta => {
-            if (!this.hasField()) {
+            if (!this.hasNode()) {
                 this.icon = "document-outline";
                 this.name = "?";
                 return;
             }
-            this.name = this.field.textPath;
+            this.name = this.node.path;
             if (this.name.length <= 0) this.name = "/";
-            let display = getDisplay(this.field.type, this.hasField() ? this.field.get() : null);
+            let display = getDisplay(this.node.hasField() ? this.node.field.type : null, this.node.hasField() ? this.node.field.get() : null);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
                 if ("color" in display) this.iconColor = display.color;
                 else this.iconColor = "";
             }
-            this.info = util.ensure(this.field.clippedType, "str");
+            this.info = util.ensure(this.node.hasField() ? this.node.field.clippedType : "", "str");
         });
 
-        this.field = field;
+        this.node = node;
     }
 
-    get field() { return this.#field; }
-    set field(v) {
-        v = (v instanceof Source.Field) ? v : null;
-        if (this.field == v) return;
-        this.#field = v;
+    get node() { return this.#node; }
+    set node(v) {
+        v = (v instanceof Source.Node) ? v : null;
+        if (this.node == v) return;
+        this.#node = v;
     }
-    hasField() { return this.field instanceof Source.Field; }
+    hasNode() { return this.node instanceof Source.Node; }
 };
 Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #path;
@@ -1901,7 +1909,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         this.elem.classList.add("browser_");
 
-        this.#path = [null];
+        this.#path = null;
 
         this.#ePath = document.createElement("div");
         this.elem.appendChild(this.ePath);
@@ -1918,11 +1926,8 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             a = a[0];
             if (a instanceof Panel.BrowserTab) a = [a.path];
             else if (util.is(a, "arr")) {
-                if (util.is(a[0], "str")) a = [a];
-                else {
-                    a = new Panel.BrowserTab(...a);
-                    a = [a.path];
-                }
+                a = new Panel.BrowserTab(...a);
+                a = [a.path];
             }
             else if (util.is(a, "obj")) a = [a.path];
             else a = [a];
@@ -1930,84 +1935,84 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         [this.path] = a;
 
-        let prevField = null;
+        let prevNode = null;
         let state = {};
 
         this.addHandler("format", () => {
-            util.ensure(state.fields, "arr").forEach(field => field.format());
+            util.ensure(state.nodes, "arr").forEach(node => node.format());
         });
         this.addHandler("update", delta => {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
-            const field = (source instanceof Source) ? source.root.lookup(this.path) : null;
-            if (prevField != field) {
-                prevField = field;
+            const node = (source instanceof Source) ? source.tree.lookup(this.path) : null;
+            if (prevNode != node) {
+                prevNode = node;
                 state = {};
             }
             this.eTabIcon.style.color = "";
             this.eTabName.style.color = "";
             this.iconColor = "";
-            let display = getDisplay((field instanceof Source.Field) ? field.type : null, (field instanceof Source.Field) ? field.get() : null);
+            let display = getDisplay((node instanceof Source.Node && node.hasField()) ? node.field.type : null, (node instanceof Source.Node && node.hasField()) ? node.field.get() : null);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
                 if ("color" in display) this.eTabIcon.style.color = display.color;
                 else this.eTabIcon.style.color = "";
             }
-            this.name = (field instanceof Source.Field) ? (field.name.length > 0) ? field.name : "/" : "?";
-            if ((field instanceof Source.Field) && (!field.hasType() || field.isArray || field.isStruct || field.nFields > 1)) {
+            this.name = (node instanceof Source.Node) ? (node.name.length > 0) ? node.name : "/" : "?";
+            if ((node instanceof Source.Node) && (!node.hasField() || node.field.isArray || node.field.isStruct || node.nNodes > 1)) {
                 this.eBrowser.classList.add("this");
                 this.eDisplay.classList.remove("this");
                 if (this.isClosed) return;
-                if (!("fields" in state)) {
-                    state.fields = [];
+                if (!("nodes" in state)) {
+                    state.nodes = [];
                     this.eBrowser.innerHTML = "";
                 }
-                BrowserField.doubleTraverse(
-                    field.fields,
-                    state.fields,
-                    (...bfields) => {
-                        bfields.forEach(bfield => {
-                            state.fields.push(bfield);
+                BrowserNode.doubleTraverse(
+                    node.nodeObjects,
+                    state.nodes,
+                    (...bnodes) => {
+                        bnodes.forEach(bnode => {
+                            state.nodes.push(bnode);
                             const onTrigger = (e, path) => {
-                                this.path = [...this.path, ...util.ensure(path, "arr")];
+                                this.path += "/"+path;
                             };
                             const onDrag = path => {
-                                path = [...this.path, ...util.ensure(path, "arr")];
+                                path = Source.generatePath(path);
                                 if (!this.hasApp() || !this.hasPage()) return;
-                                this.app.dragData = this.page.hasSource() ? this.page.source.root.lookup(path) : null;
+                                this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(path) : null;
                                 this.app.dragging = true;
                             };
-                            bfield.addLinkedHandler(this, "trigger", onTrigger);
-                            bfield.addLinkedHandler(this, "drag", onDrag);
-                            this.eBrowser.appendChild(bfield.elem);
+                            bnode.addLinkedHandler(this, "trigger", onTrigger);
+                            bnode.addLinkedHandler(this, "drag", onDrag);
+                            this.eBrowser.appendChild(bnode.elem);
                         });
-                        state.fields.sort((a, b) => compare(a.name, b.name)).forEach((field, i) => {
-                            field.elem.style.order = i;
-                            field.format();
+                        state.nodes.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
+                            node.elem.style.order = i;
+                            node.format();
                         });
                     },
-                    (...bfields) => {
-                        bfields.forEach(bfield => {
-                            state.fields.splice(state.fields.indexOf(bfield), 1);
-                            bfield.clearLinkedHandlers(this, "trigger");
-                            bfield.clearLinkedHandlers(this, "drag");
-                            this.eBrowser.removeChild(bfield.elem);
+                    (...bnodes) => {
+                        bnodes.forEach(bnode => {
+                            state.nodes.splice(state.nodes.indexOf(bnode), 1);
+                            bnode.clearLinkedHandlers(this, "trigger");
+                            bnode.clearLinkedHandlers(this, "drag");
+                            this.eBrowser.removeChild(bnode.elem);
                         });
                     },
                 );
-            } else if (field instanceof Source.Field) {
+            } else if (node instanceof Source.Node) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
-                let value = field.get();
+                let value = node.field.get();
                 if (this.isClosed) return;
-                if (state.type != field.type) {
-                    state.type = field.type;
+                if (state.type != node.field.type) {
+                    state.type = node.field.type;
                     this.eDisplay.innerHTML = "";
                     let item = document.createElement("div");
                     this.eDisplay.appendChild(item);
                     item.classList.add("item");
                     let eIcon = null, eType = null, eValue = null;
-                    if (field.type == "boolean") {
+                    if (node.field.type == "boolean") {
                         item.innerHTML = "<ion-icon></ion-icon>";
                         eIcon = item.children[0];
                     } else {
@@ -2016,17 +2021,17 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         eValue = item.children[1];
                     }
                     state.update = () => {
-                        let value = field.get();
-                        if (field.type == "boolean") {
+                        let value = node.field.get();
+                        if (node.field.type == "boolean") {
                             item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
                             eIcon.setAttribute("name", value ? "checkmark" : "close");
                             let r = item.getBoundingClientRect();
                             eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                         } else {
-                            eType.textContent = field.type;
-                            let display = getDisplay(field.type, value);
+                            eType.textContent = node.field.type;
+                            let display = getDisplay(node.field.type, value);
                             eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
-                            eValue.style.fontSize = (["double", "float", "int"].includes(field.arrayType) ? 32 : 16)+"px";
+                            eValue.style.fontSize = (["double", "float", "int"].includes(node.field.arrayType) ? 32 : 16)+"px";
                             eValue.textContent = getRepresentation(value);
                         }
                     };
@@ -2036,21 +2041,21 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.remove("this");
                 this.icon = "document-outline";
-                this.name = (this.path.length > 0) ? this.path.at(-1) : "/";
+                let path = this.path.split("/").filter(part => part.length > 0);
+                this.name = (path.length > 0) ? path.at(-1) : "/";
                 this.eTabName.style.color = "var(--cr)";
                 this.iconColor = "var(--cr)";
             }
         });
     }
 
-    get path() { return [...this.#path]; }
+    get path() { return this.#path; }
     set path(v) {
-        v = util.ensure(v, "arr");
-        if (util.arrEquals(v, this.path)) return;
-        this.change("path", this.path, [...(this.#path=v)]);
-        this.#path = v;
+        v = Source.generatePath(v);
+        if (this.path == v) return;
+        this.change("path", this.path, this.#path=v);
         this.ePath.innerHTML = "";
-        let path = this.path;
+        let path = this.path.split("/").filter(part => part.length > 0);
         if (path.length > 0) {
             let btn = document.createElement("button");
             this.ePath.appendChild(btn);
@@ -2059,7 +2064,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
             btn.addEventListener("click", e => {
                 path.pop();
-                this.path = path;
+                this.path = path.join("/");
             });
         }
         for (let i = 0; i <= path.length; i++) {
@@ -2075,7 +2080,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             btn.classList.add("item");
             btn.classList.add("override");
             btn.textContent = (i > 0) ? path[i-1] : "/";
-            btn.addEventListener("click", e => (this.path = pth));
+            btn.addEventListener("click", e => (this.path = pth.join("/")));
         }
     }
 
@@ -2208,10 +2213,10 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 this.eTSInput.value = this.tsNow;
             let ts = new Set();
             this.vars.forEach((v, i) => {
-                let field = v.field = (source instanceof Source) ? source.root.lookup(v.path) : null;
+                let node = v.node = (source instanceof Source) ? source.tree.lookup(v.path) : null;
                 v.x = i+1;
-                if (!v.hasField()) return;
-                let valueLog = field.valueLog;
+                if (!v.hasNode() || !v.node.hasField()) return;
+                let valueLog = node.field.valueLog;
                 valueLog = valueLog.filter((log, i) => {
                     if (i <= 0) return true;
                     return log.v != valueLog[i-1].v;
@@ -2280,7 +2285,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.vars.indexOf(v)+"]."+c, f, t));
         v.addLinkedHandler(this, "drag", () => {
             if (!this.hasPage() || !this.page.hasSource() || !this.hasApp()) return;
-            this.app.dragData = this.page.source.root.lookup(v.path);
+            this.app.dragData = this.page.source.tree.lookup(v.path);
             this.app.dragging = true;
             v.post("remove");
         });
@@ -2346,18 +2351,18 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         r = this.elem.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(data.path) : null;
-        if (!(data instanceof Source.Field)) return null;
-        if (!data.hasType()) return null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (!(data instanceof Source.Node)) return null;
+        if (!data.hasField()) return null;
         let y = r.top, h = r.height;
         let at = 0;
-        const addVar = field => {
-            let pth = field.path;
-            if (field.hasType() && field.isJustPrimitive) {
+        const addVar = node => {
+            let pth = node.path;
+            if (node.hasField() && node.field.isJustPrimitive) {
                 this.insertVar(new Panel.TableTab.Variable(pth), at);
                 at++;
             }
-            field.fields.forEach(field => addVar(field));
+            node.nodeObjects.forEach(node => addVar(node));
         };
         let vars = this.vars;
         for (let i = 0; i <= vars.length; i++) {
@@ -2418,7 +2423,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
 
     #path;
 
-    #field;
+    #node;
 
     #x;
 
@@ -2430,9 +2435,9 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
 
         this.#tab = null;
 
-        this.#path = [];
+        this.#path = "";
 
-        this.#field = null;
+        this.#node = null;
 
         this.#x = 0;
 
@@ -2461,8 +2466,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
             a = a[0];
             if (a instanceof Panel.TableTab.Variable) a = [a.path];
             else if (util.is(a, "arr")) {
-                if (util.is(a[0], "str")) a = [a];
-                else a = [new Panel.GraphTab.Variable(...a).path];
+                a = [new Panel.GraphTab.Variable(...a).path];
             }
             else if (util.is(a, "obj")) a = [a.path];
             else a = [[]];
@@ -2483,7 +2487,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         });
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
-            let valueLog = (this.hasField() && this.field.hasType() && this.field.isJustPrimitive) ? this.field.valueLog : [];
+            let valueLog = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.valueLog : [];
             valueLog = valueLog.filter((log, i) => {
                 if (i <= 0) return true;
                 return log.v != valueLog[i-1].v;
@@ -2534,21 +2538,22 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
     }
     hasTab() { return this.tab instanceof Panel.TableTab; }
 
-    get path() { return [...this.#path]; }
+    get path() { return this.#path; }
     set path(v) {
-        v = util.ensure(v, "arr");
-        if (util.arrEquals(v, this.path)) return;
-        this.change("path", this.path, [...(this.#path=v)]);
+        v = Source.generatePath(v);
+        if (this.path == v) return;
+        this.change("path", this.path, this.#path=v);
+        let path = this.path.split("/").filter(part => part.length > 0);
         this.eHeader.innerHTML = "";
         let name = document.createElement("div");
         this.eHeader.appendChild(name);
-        name.textContent = (this.path.length > 0) ? this.path.at(-1) : "/";
+        name.textContent = (path.length > 0) ? path.at(-1) : "/";
         let tooltip = document.createElement("div");
         this.eHeader.appendChild(tooltip);
         tooltip.classList.add("tooltip");
         tooltip.classList.add("hov");
         tooltip.classList.add("swx");
-        tooltip.textContent = "/"+this.path.join("/");
+        tooltip.textContent = "/"+this.path;
         let removeBtn = document.createElement("button");
         this.eHeader.appendChild(removeBtn);
         removeBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
@@ -2556,13 +2561,13 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         removeBtn.addEventListener("mousedown", e => e.stopPropagation());
     }
 
-    get field() { return this.#field; }
-    set field(v) {
-        v = (v instanceof Source.Field) ? v : null;
-        if (this.field == v) return;
-        this.#field = v;
+    get node() { return this.#node; }
+    set node(v) {
+        v = (v instanceof Source.Node) ? v : null;
+        if (this.node == v) return;
+        this.#node = v;
     }
-    hasField() { return this.field instanceof Source.Field; }
+    hasNode() { return this.node instanceof Source.Node; }
 
     get eHeader() { return this.#eHeader; }
     get eSections() { return [...this.#eSections]; }
@@ -3877,21 +3882,22 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             graphVars.forEach((o, i) => {
                 let vars = o.vars;
                 let range = [null, null];
-                let logs = {}, fields = {};
+                let logs = {}, nodes = {};
                 vars.forEach(v => {
                     if (!v.isShown) return;
-                    let field = source.root.lookup(v.path);
-                    if (!(field instanceof Source.Field)) return;
-                    if (!field.isJustPrimitive) return;
-                    let log = field.getRange(...graphRange);
+                    let node = source.tree.lookup(v.path);
+                    if (!(node instanceof Source.Node)) return;
+                    if (!node.hasField()) return;
+                    if (!node.field.isJustPrimitive) return;
+                    let log = node.field.getRange(...graphRange);
                     if (!util.is(log, "arr")) return;
-                    let start = field.get(graphRange[0]), stop = field.get(graphRange[1]);
+                    let start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
                     if (stop != null) log.push({ ts: graphRange[1], v: stop });
                     if (log.length <= 0) return;
                     logs[v.path] = log;
-                    fields[v.path] = field;
-                    if (!["double", "float", "int"].includes(field.type)) return;
+                    nodes[v.path] = node;
+                    if (!["double", "float", "int"].includes(node.field.type)) return;
                     let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
                     if (range[0] == null || range[1] == null) return range = subrange;
                     range[0] = Math.min(range[0], subrange[0]);
@@ -3904,7 +3910,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 o.range = range;
                 o.step = step;
                 o.logs = logs;
-                o.fields = fields;
+                o.nodes = nodes;
             });
             let maxNSteps = 0;
             graphVars.forEach(o => {
@@ -3970,7 +3976,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let range = o.range;
                 let step = o.step;
                 let logs = o.logs;
-                let fields = o.fields;
+                let nodes = o.nodes;
                 let x1 = [padding*quality, ctx.canvas.width-padding*quality][i];
                 let x2 = [(padding-5)*quality, ctx.canvas.width-(padding-5)*quality][i];
                 let x3 = [(padding-10)*quality, ctx.canvas.width-(padding-10)*quality][i];
@@ -3993,10 +3999,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 }
                 vars.forEach(v => {
                     if (!(v.path in logs)) return;
-                    if (!(v.path in fields)) return;
+                    if (!(v.path in nodes)) return;
                     let log = logs[v.path];
-                    let field = fields[v.path];
-                    if (!["double", "float", "int"].includes(field.type)) {
+                    let node = nodes[v.path];
+                    if (!["double", "float", "int"].includes(node.field.type)) {
                         log = log.filter((p, i) => {
                             if (i <= 0) return true;
                             return p.v != log[i-1].v;
@@ -4059,7 +4065,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         if (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x)) {
                             if (Math.abs(py-mouseYCanv) < 2*quality) {
                                 foundTooltips.push({
-                                    name: field.textPath,
+                                    name: node.path,
                                     color: ctx.strokeStyle,
                                     value: v,
                                 });
@@ -4310,7 +4316,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -4319,15 +4325,15 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             let idfs = {
                 _: side => {
-                    if (!(data instanceof Source.Field)) return null;
-                    if (!data.hasType()) return null;
+                    if (!(data instanceof Source.Node)) return null;
+                    if (!data.hasField()) return null;
                     return {
                         r: r,
                         submit: () => {
                             const colors = "rybgpocm";
-                            const addVar = field => {
-                                let pth = field.path;
-                                if (field.hasType() && field.isJustPrimitive) {
+                            const addVar = node => {
+                                let pth = node.path;
+                                if (node.hasField() && node.field.isJustPrimitive) {
                                     let taken = new Array(colors.length).fill(false);
                                     [...this.lVars, ...this.rVars].forEach(v => {
                                         colors.split("").forEach((c, i) => {
@@ -4346,7 +4352,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     if (has) return;
                                     this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
                                 }
-                                field.fields.forEach(field => addVar(field));
+                                node.nodeObjects.forEach(node => addVar(node));
                             };
                             addVar(data);
                         },
@@ -4391,7 +4397,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     constructor(...a) {
         super();
 
-        this.#path = [];
+        this.#path = "";
         this.#color = null;
 
         this.#elem = document.createElement("div");
@@ -4459,11 +4465,8 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             a = a[0];
             if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.color, a.isShown];
             else if (util.is(a, "arr")) {
-                if (util.is(a[0], "str")) a = [a, null];
-                else {
-                    a = new Panel.GraphTab.Variable(...a);
-                    a = [a.path, a.color, a.isShown];
-                }
+                a = new Panel.GraphTab.Variable(...a);
+                a = [a.path, a.color, a.isShown];
             }
             else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown];
             else a = [[], null];
@@ -4473,12 +4476,12 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         [this.path, this.color, this.isShown] = a;
     }
 
-    get path() { return [...this.#path]; }
+    get path() { return this.#path; }
     set path(v) {
-        v = util.ensure(v, "arr");
-        if (util.arrEquals(v, this.path)) return;
-        this.change("path", this.path, [...(this.#path=v)]);
-        this.eDisplayName.textContent = this.path.join("/");
+        v = Source.generatePath(v);
+        if (this.path == v) return;
+        this.change("path", this.path, this.#path=v);
+        this.eDisplayName.textContent = this.path;
     }
     get color() { return this.#color; }
     set color(v) {
@@ -4668,18 +4671,20 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
     }
 
-    getValue(field) {
-        if (!(field instanceof Source.Field)) return null;
-        if (field.isStruct && (field.structType in this.constructor.PATTERNS)) {
-            let paths = util.ensure(this.constructor.PATTERNS[field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+    getValue(node) {
+        if (!(node instanceof Source.Node)) return null;
+        if (!node.hasField()) return null;
+        if (node.field.isStruct && (node.field.structType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[node.field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let value = paths.map(path => {
-                let subfield = field.lookup(path);
-                if (!(subfield instanceof Source.Field)) return null;
-                return subfield.get();
+                let subnode = node.lookup(path.join("/"));
+                if (!(subnode instanceof Source.Node)) return null;
+                if (!subnode.hasField()) return null;
+                return subnode.field.get();
             });
             return value.filter(v => util.is(v, "num"));
         }
-        return field.get();
+        return node.field.get();
     }
 
     getHovered(data, pos, options) {
@@ -4690,7 +4695,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         r = this.eOptions.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.root.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -4699,8 +4704,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             let idfs = {
                 p: () => {
-                    if (!(data instanceof Source.Field)) return null;
-                    if (!data.hasType()) return null;
+                    if (!(data instanceof Source.Node)) return null;
+                    if (!data.hasField()) return null;
                     return {
                         r: r,
                         submit: () => {
@@ -4720,7 +4725,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                                 });
                                 if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
                                 let has = false;
-                                this.poses.forEach(v => util.arrEquals(v.path, pth) ? (has = true) : null);
+                                this.poses.forEach(v => v.path == pth ? (has = true) : null);
                                 if (has) return;
                                 this.addPose(new this.constructor.Pose(pth, "--c"+nextColor));
                             };
@@ -4759,7 +4764,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     constructor(...a) {
         super();
 
-        this.#path = [];
+        this.#path = "";
         this.#color = null;
 
         this.#state = new this.constructor.State();
@@ -4829,11 +4834,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             a = a[0];
             if (a instanceof this.constructor) a = [a.path, a.color, a.isShown];
             else if (util.is(a, "arr")) {
-                if (util.is(a[0], "str")) a = [a, null];
-                else {
-                    a = new this.constructor(...a);
-                    a = [a.path, a.color, a.isShown];
-                }
+                a = new this.constructor(...a);
+                a = [a.path, a.color, a.isShown];
             }
             else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown];
             else a = [[], null];
@@ -4843,12 +4845,12 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         [this.path, this.color, this.isShown] = a;
     }
 
-    get path() { return [...this.#path]; }
+    get path() { return this.#path; }
     set path(v) {
-        v = util.ensure(v, "arr");
-        if (util.arrEquals(v, this.path)) return;
-        this.change("path", this.path, [...(this.#path=v)]);
-        this.eDisplayName.textContent = this.path.join("/");
+        v = Source.generatePath(v);
+        if (this.path == v) return;
+        this.change("path", this.path, this.#path=v);
+        this.eDisplayName.textContent = this.path;
     }
     get color() { return this.#color; }
     set color(v) {
@@ -5122,12 +5124,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             finished = true;
         })();
 
-        window.hottest2d = () => {
-            const page = app.getPage("PROJECT");
-            page.source.announceTopic("k", "double[]");
-            page.source.updateTopic("k", [2, 2, 0]);
-        };
-
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
@@ -5156,8 +5152,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
-                const field = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = this.getValue(field);
+                const node = (source instanceof Source) ? source.tree.lookup(pose.path) : null;
+                pose.state.value = this.getValue(node);
                 pose.state.update(delta);
             });
             this.odometry.update(delta);
@@ -5652,12 +5648,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             finished = true;
         })();
 
-        window.hottest3d = () => {
-            const page = app.getPage("PROJECT");
-            page.source.announceTopic("k", "double[]");
-            page.source.updateTopic("k", [0, 0, 0, 0, 0, 0, 0]);
-        };
-
         let template = "§null", model = null;
         
         let keys = new Set();
@@ -5707,8 +5697,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 pose.state.offsetX = +((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
                 pose.state.offsetZ = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
-                const field = (source instanceof Source) ? source.root.lookup(pose.path) : null;
-                pose.state.value = this.getValue(field);
+                const node = (source instanceof Source) ? source.tree.lookup(pose.path) : null;
+                pose.state.value = this.getValue(node);
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.camera = this.camera;
@@ -6739,57 +6729,57 @@ export default class App extends core.AppFeature {
                 };
             };
             const isValid = o => {
-                if (o instanceof Source.Field) return true;
+                if (o instanceof Source.Node) return true;
                 if (o instanceof Widget) return true;
                 if (o instanceof Panel.Tab) return true;
                 return false;
             };
             const canGetWidgetFromData = () => {
-                if (this.dragData instanceof Source.Field) return true;
+                if (this.dragData instanceof Source.Node) return true;
                 if (this.dragData instanceof Widget) return true;
                 if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
             const getWidgetFromData = () => {
-                if (this.dragData instanceof Source.Field) return new Panel([new Panel.BrowserTab(this.dragData.path)]);
+                if (this.dragData instanceof Source.Node) return new Panel([new Panel.BrowserTab(this.dragData.path)]);
                 if (this.dragData instanceof Widget) return this.dragData;
                 if (this.dragData instanceof Panel.Tab) return new Panel([this.dragData]);
                 return null;
             };
             const canGetTabFromData = () => {
-                if (this.dragData instanceof Source.Field) return true;
+                if (this.dragData instanceof Source.Node) return true;
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return true;
                 return false;
             };
             const getTabFromData = () => {
-                if (this.dragData instanceof Source.Field) return new Panel.BrowserTab(this.dragData.path);
+                if (this.dragData instanceof Source.Node) return new Panel.BrowserTab(this.dragData.path);
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) return this.dragData;
                 return null;
             };
-            const canGetFieldFromData = () => {
-                if (this.dragData instanceof Source.Field) return true;
+            const canGetNodeFromData = () => {
+                if (this.dragData instanceof Source.Node) return true;
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) {
                     if (!(this.dragData instanceof Panel.BrowserTab)) return false;
                     if (!this.hasPage("PROJECT")) return false;
                     const page = this.getPage("PROJECT");
                     if (!page.hasSource()) return false;
-                    if (!(page.source.root.lookup(this.dragData.path) instanceof Source.Field)) return false;
+                    if (!(page.source.tree.lookup(this.dragData.path) instanceof Source.Node)) return false;
                     return true;
                 }
                 return false;
             };
-            const getFieldFromData = () => {
-                if (this.dragData instanceof Source.Field) return this.dragData;
+            const getNodeFromData = () => {
+                if (this.dragData instanceof Source.Node) return this.dragData;
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) {
                     if (!(this.dragData instanceof Panel.BrowserTab)) return null;
                     if (!this.hasPage("PROJECT")) return null;
                     const page = this.getPage("PROJECT");
                     if (!page.hasSource()) return null;
-                    return page.source.root.lookup(this.dragData.path);
+                    return page.source.tree.lookup(this.dragData.path);
                 }
                 return null;
             };
@@ -6798,14 +6788,14 @@ export default class App extends core.AppFeature {
                 if (!isValid(this.dragData)) return;
                 let canWidget = canGetWidgetFromData();
                 let canTab = canGetTabFromData();
-                let canField = canGetFieldFromData();
-                if (canField) {
-                    let field = getFieldFromData();
+                let canNode = canGetNodeFromData();
+                if (canNode) {
+                    let node = getNodeFromData();
                     this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
                     let btn = this.eDrag.children[0].children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
-                    name.textContent = (field.name.length > 0) ? field.name : "/";
-                    let display = getDisplay(field.type, field.get());
+                    name.textContent = (node.name.length > 0) ? node.name : "/";
+                    let display = getDisplay(node.hasField() ? node.field.type : null, node.hasField() ? node.field.get() : null);
                     if (display != null) {
                         if ("src" in display) icon.setAttribute("src", display.src);
                         else icon.setAttribute("name", display.name);
@@ -7002,7 +6992,7 @@ App.TitlePage = class AppTitlePage extends App.TitlePage {
     static DESCRIPTION = "The tool for debugging network tables";
 };
 App.ProjectPage = class AppProjectPage extends App.ProjectPage {
-    #browserFields;
+    #browserNodes;
     #toolButtons;
     #widget;
     #activeWidget;
@@ -7018,11 +7008,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     
     constructor(app) {
         super(app);
-
-        window.hotteststruct = () => {
-            this.source.create([".schema", "struct:my_struct"], "raw");
-            this.source.update([".schema", "struct:my_struct"], util.TEXTENCODER.encode("bool value; double arr[4]; enum {a=1, b=2} int8 val; bool value2 : 1; enum{a=1,b=2}int8 value3:2; int16 a:4; uint16 b:5; bool c:1; int16 d:7"));
-        };
 
         this.app.eProjectInfoNameInput.addEventListener("change", e => {
             if (this.choosing) return;
@@ -7073,7 +7058,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             }
         });
 
-        this.#browserFields = [];
+        this.#browserNodes = [];
         this.#toolButtons = new Set();
         this.#widget = null;
         this.#activeWidget = null;
@@ -7212,11 +7197,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             } else this.navOpen = false;
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
-            BrowserField.doubleTraverse(
-                this.hasSource() ? this.source.root.fields : [],
-                this.browserFields,
-                (...bfields) => this.addBrowserFieldBulk(...bfields),
-                (...bfields) => this.remBrowserFieldBulk(...bfields),
+            BrowserNode.doubleTraverse(
+                this.hasSource() ? this.source.tree.nodeObjects : [],
+                this.browserNodes,
+                (...bnodes) => this.addBrowserNodeBulk(...bnodes),
+                (...bnodes) => this.remBrowserNodeBulk(...bnodes),
             );
             this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
             if (timer > 0) return timer -= delta;
@@ -7424,62 +7409,62 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
     }
 
-    get browserFields() { return [...this.#browserFields]; }
-    set browserFields(v) {
+    get browserNodes() { return [...this.#browserNodes]; }
+    set browserNodes(v) {
         v = util.ensure(v, "arr");
-        this.clearBrowserFields();
-        v.forEach(v => this.addBrowserField(v));
+        this.clearBrowserNodes();
+        v.forEach(v => this.addBrowserNode(v));
     }
-    clearBrowserFields() {
-        let fields = this.browserFields;
-        fields.forEach(field => this.remBrowserField(field));
-        return fields;
+    clearBrowserNodes() {
+        let nodes = this.browserNodes;
+        nodes.forEach(node => this.remBrowserNode(node));
+        return nodes;
     }
-    hasBrowserField(field) {
-        if (!(field instanceof BrowserField)) return false;
-        return this.#browserFields.includes(field);
+    hasBrowserNode(node) {
+        if (!(node instanceof BrowserNode)) return false;
+        return this.#browserNodes.includes(node);
     }
-    addBrowserField(field) {
-        let r = this.addBrowserFieldBulk(field);
+    addBrowserNode(node) {
+        let r = this.addBrowserNodeBulk(node);
         return (r.length > 0) ? r[0] : false;
     }
-    addBrowserFieldBulk(...fields) {
-        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBrowserFieldBulk(...fields[0]);
-        let doneFields = [];
-        fields.forEach(field => {
-            if (!(field instanceof BrowserField)) return;
-            if (this.hasBrowserField(field)) return;
-            this.#browserFields.push(field);
+    addBrowserNodeBulk(...nodes) {
+        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.addBrowserNodeBulk(...nodes[0]);
+        let doneNodes = [];
+        nodes.forEach(node => {
+            if (!(node instanceof BrowserNode)) return;
+            if (this.hasBrowserNode(node)) return;
+            this.#browserNodes.push(node);
             const onDrag = path => {
-                path = util.ensure(path, "arr");
-                let field = this.hasSource() ? this.source.root.lookup(path) : null;
-                if (!(field instanceof Source.Field)) return;
-                this.app.dragData = field;
+                path = Source.generatePath(path);
+                let node = this.hasSource() ? this.source.tree.lookup(path) : null;
+                if (!(node instanceof Source.Node)) return;
+                this.app.dragData = node;
                 this.app.dragging = true;
             };
-            field.addLinkedHandler(this, "drag", onDrag);
-            this.getESideSection("browser").eContent.appendChild(field.elem);
-            doneFields.push(field);
+            node.addLinkedHandler(this, "drag", onDrag);
+            this.getESideSection("browser").eContent.appendChild(node.elem);
+            doneNodes.push(node);
         });
         this.formatSide();
-        return doneFields;
+        return doneNodes;
     }
-    remBrowserField(field) {
-        let r = this.remBrowserFieldBulk(field);
+    remBrowserNode(node) {
+        let r = this.remBrowserNodeBulk(node);
         return (r.length > 0) ? r[0] : false;
     }
-    remBrowserFieldBulk(...fields) {
-        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBrowserFieldBulk(...fields[0]);
-        let doneFields = [];
-        fields.forEach(field => {
-            if (!(field instanceof BrowserField)) return;
-            if (!this.hasBrowserField(field)) return;
-            this.#browserFields.splice(this.#browserFields.indexOf(field), 1);
-            field.clearLinkedHandlers(this, "drag");
-            this.getESideSection("browser").eContent.removeChild(field.elem);
-            doneFields.push(field);
+    remBrowserNodeBulk(...nodes) {
+        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.remBrowserNodeBulk(...nodes[0]);
+        let doneNodes = [];
+        nodes.forEach(node => {
+            if (!(node instanceof BrowserNode)) return;
+            if (!this.hasBrowserNode(node)) return;
+            this.#browserNodes.splice(this.#browserNodes.indexOf(node), 1);
+            node.clearLinkedHandlers(this, "drag");
+            this.getESideSection("browser").eContent.removeChild(node.elem);
+            doneNodes.push(node);
         });
-        return doneFields;
+        return doneNodes;
     }
 
     get toolButtons() { return [...this.#toolButtons]; }
@@ -7554,25 +7539,21 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (this.source == v) return;
         if (this.hasSource()) {
             if (this.source instanceof NTSource) this.source.address = null;
-            this.source.clearLinkedHandlers(this, "change");
         }
         this.#source = v;
-        if (this.hasSource()) {
-            this.source.addLinkedHandler(this, "change", () => {});
-        }
     }
     hasSource() { return this.source instanceof Source; }
     get sourceInfo() {
         if (this.source instanceof NTSource) {
             if (!this.source.connecting && !this.source.connected) return "Disconnected";
             if (this.source.connecting) return "Connecting to "+this.source.address;
-            const n = this.source.root.nFields;
+            const n = this.source.tree.nNodes;
             return this.source.address+" : "+n+" field"+(n==1?"":"s");
         }
         if (this.source instanceof WPILOGSource) {
             if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
             if (this.source.importing) return "Importing from "+this.source.file;
-            const n = this.source.root.nFields;
+            const n = this.source.tree.nNodes;
             return this.source.file+" : "+n+" field"+(n==1?"":"s");
         }
         if (this.hasSource()) return "Unknown source: "+this.source.constructor.name;
@@ -7606,9 +7587,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         let divideAmong = idsOpen.length;
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
-        this.browserFields.sort((a, b) => compare(a.name, b.name)).forEach((field, i) => {
-            field.elem.style.order = i;
-            field.format();
+        this.browserNodes.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
+            node.elem.style.order = i;
+            node.format();
         });
         return true;
     }

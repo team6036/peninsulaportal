@@ -12,8 +12,6 @@ export default class WPILOGSource extends Source {
     constructor(data) {
         super();
 
-        this.postFlat = false;
-
         this.#data = null;
 
         this.data = data;
