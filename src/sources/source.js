@@ -31,7 +31,6 @@ export default class Source extends util.Target {
 
         this.#fields = {};
         this.#tree = new Source.Node(this, "");
-        // this.tree.addHandler("change", (c, f, t) => this.change("tree."+c, f, t));
         this.#buildTree = !!buildTree;
 
         this.#ts = 0;
@@ -77,7 +76,6 @@ export default class Source extends util.Target {
             else {
                 this.#fields[field.path] = field;
                 r = field;
-                // field.addLinkedHandler(this, "change", (c, f, t) => this.change("fields["+r.path+"]."+c, f, t));
                 if (this.buildTree) {
                     let path = field.path.split("/");
                     let node = this.tree;
@@ -90,7 +88,6 @@ export default class Source extends util.Target {
                     node.field = field;
                     field.node = node;
                 }
-                // this.change("addField", null, r);
             }
         } else {
             r = [];
@@ -114,7 +111,6 @@ export default class Source extends util.Target {
             else {
                 delete this.#fields[field.path];
                 r = field;
-                // field.clearLinkedHandlers(this, "change");
                 if (this.buildTree) {
                     let path = field.path.split("/");
                     let node = this.tree;
@@ -132,7 +128,6 @@ export default class Source extends util.Target {
                         node.field = null;
                     field.node = null;
                 }
-                // this.change("remField", r, null);
             }
         } else {
             r = [];
@@ -159,19 +154,7 @@ export default class Source extends util.Target {
 
     get structHelper() { return this.#structHelper; }
 
-    static generateArrayPath(...path) {
-        return path.flatten().join("/").split("/").filter(part => part.length > 0);
-        // let flatPath = [];
-        // const dfs = path => {
-        //     if (util.is(path, "arr")) return path.forEach(part => dfs(part));
-        //     path = String(path);
-        //     if (!path) return;
-        //     if (path.includes("/")) return dfs(path.split("/"));
-        //     flatPath.push(path);
-        // };
-        // dfs(path);
-        // return flatPath.map(part => String(part)).filter(part => part.length > 0);
-    }
+    static generateArrayPath(...path) { return path.flatten().join("/").split("/").filter(part => part.length > 0); }
     static generatePath(...path) { return this.generateArrayPath(...path).join("/"); }
 
     add(path, type) {
@@ -223,7 +206,6 @@ export default class Source extends util.Target {
         this.ts = data.ts;
         this.tsMin = data.tsMin;
         this.tsMax = data.tsMax;
-        // this.post("change");
         return this;
     }
 }
@@ -324,7 +306,6 @@ Source.Field = class SourceField extends util.Target {
         v = (v instanceof Source.Node) ? v : null;
         if (this.node == v) return;
         this.#node = v;
-        // this.change("node", this.node, this.#node=v);
     }
     hasNode() { return this.node instanceof Source.Node; }
 
@@ -421,7 +402,6 @@ Source.Field = class SourceField extends util.Target {
                 this.source.getField(path).update(v, ts);
             });
         } else if (this.name.startsWith("struct:") && this.type == "structschema") this.source.createStruct(this.name.substring(7), v);
-        // this.post("change", [this.name]);
     }
 
     toSerialized() {
@@ -473,7 +453,6 @@ Source.Node = class SourceNode extends util.Target {
         v = (v instanceof Source.Field) ? v : null;
         if (this.field == v) return;
         this.#field = v;
-        // this.change("field", this.field, this.#field=v);
     }
     hasField() { return this.field instanceof Source.Field; }
 
@@ -522,8 +501,6 @@ Source.Node = class SourceNode extends util.Target {
             else {
                 this.#nodes[node.name] = node;
                 r = node;
-                // node.addLinkedHandler(this, "change", (c, f, t) => this.change("nodes["+r.name+"]."+c, f, t));
-                // this.change("addNode", null, r);
             }
         } else {
             r = [];
@@ -547,8 +524,6 @@ Source.Node = class SourceNode extends util.Target {
             else {
                 delete this.#nodes[node.name];
                 r = node;
-                // node.clearLinkedHandlers(this, "change");
-                // this.change("remNode", r, null);
             }
         } else {
             r = [];
