@@ -4348,7 +4348,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     });
                                     if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
                                     let has = false;
-                                    this[side+"Vars"].forEach(v => util.arrEquals(v.path, pth) ? (has = true) : null);
+                                    this[side+"Vars"].forEach(v => (v.path == pth) ? (has = true) : null);
                                     if (has) return;
                                     this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
                                 }
