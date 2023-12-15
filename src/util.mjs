@@ -233,6 +233,9 @@ export function splitTimeUnits(t) {
     return values;
 }
 export function formatTime(t) {
+    t = ensure(t, "num");
+    let negative = t < 0;
+    t = Math.abs(t);
     let split = splitTimeUnits(t);
     split[0] = Math.round(split[0]);
     while (split.length > 3) {
@@ -247,7 +250,7 @@ export function formatTime(t) {
         else v = v.padEnd(l, "0");
         return v;
     });
-    return split.slice(1).reverse().join(":")+"."+split[0];
+    return (negative?"-":"")+split.slice(1).reverse().join(":")+"."+split[0];
 }
 
 export function loadImage(src) {
@@ -606,6 +609,7 @@ export class Target {
     getHandlers(e) { return this.getLinkedHandlers(null, e); }
     clearHandlers(e) { return this.clearLinkedHandlers(null, e); }
     async post(e, ...a) {
+        e = String(e);
         let fs = [];
         for (let handlers of this.#handlers.values()) {
             if (!(e in handlers)) continue;

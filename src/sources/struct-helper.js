@@ -84,6 +84,8 @@ export default class StructHelper extends util.Target {
         if (this.hasPattern(pattern.name) || this.hasPattern(pattern)) return false;
         if (pattern.helper != this) return false;
         this.#patterns[pattern.name] = pattern;
+        pattern.addLinkedHandler(this, "change", () => this.post("change"));
+        this.post("change");
         return pattern;
     }
     remPattern(name) {
@@ -91,6 +93,8 @@ export default class StructHelper extends util.Target {
         if (!this.hasPattern(name)) return false;
         let pattern = this.getPattern(name);
         delete this.#patterns[name];
+        pattern.clearLinkedHandlers(this, "change");
+        this.post("change");
         return pattern;
     }
 
@@ -247,6 +251,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
                 break;
             }
         });
+        this.post("change");
     }
 
     decode(data) {

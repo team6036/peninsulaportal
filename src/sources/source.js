@@ -14,7 +14,9 @@ export function toUint8Array(v) {
 
 
 export default class Source extends util.Target {
-    #root;
+    #fields;
+    #tree;
+    #buildTree;
 
     #ts;
     #tsMin;
@@ -24,21 +26,127 @@ export default class Source extends util.Target {
 
     #playback;
 
-    constructor() {
+    constructor(buildTree=true) {
         super();
 
-        this.#root = new Source.Field(this, "", null);
-        this.root.addHandler("change", (...a) => this.post("change", ...a));
+        this.#fields = {};
+        this.#tree = new Source.Node(this, "");
+        // this.tree.addHandler("change", (c, f, t) => this.change("tree."+c, f, t));
+        this.#buildTree = !!buildTree;
 
         this.#ts = 0;
         this.#tsMin = this.#tsMax = 0;
 
         this.#structHelper = new StructHelper();
+        this.structHelper.addHandler("change", () => this.post("struct"));
 
         this.#playback = new Source.Playback(this);
     }
 
-    get root() { return this.#root; }
+    get fields() { return Object.keys(this.#fields); }
+    get fieldObjects() { return Object.values(this.#fields); }
+    set fields(v) {
+        v = util.ensure(v, "arr");
+        this.clearFields();
+        this.addField(v);
+    }
+    clearFields() {
+        let fields = this.fieldObjects;
+        this.remField(fields);
+        return fields;
+    }
+    hasField(v) {
+        if (v instanceof Source.Field) return this.hasField(v.path) && v.source == this;
+        v = Source.generatePath(v);
+        return v in this.#fields;
+    }
+    getField(path) {
+        if (!this.hasField(path)) return null;
+        path = Source.generatePath(path);
+        return this.#fields[path];
+    }
+    addField(...fields) {
+        fields = fields.flatten();
+        let r;
+        if (fields.length == 1) {
+            let field = fields[0];
+            r = false;
+            if (!(field instanceof Source.Field));
+            else if (field.source != this);
+            else if (this.hasField(field));
+            else {
+                this.#fields[field.path] = field;
+                r = field;
+                // field.addLinkedHandler(this, "change", (c, f, t) => this.change("fields["+r.path+"]."+c, f, t));
+                if (this.buildTree) {
+                    let path = field.path.split("/");
+                    let node = this.tree;
+                    while (path.length > 0) {
+                        let name = path.shift();
+                        if (!node.hasNode(name))
+                            node.addNode(new Source.Node(node, name));
+                        node = node.getNode(name);
+                    }
+                    node.field = field;
+                    field.node = node;
+                }
+                // this.change("addField", null, r);
+            }
+        } else {
+            r = [];
+            fields.forEach(field => {
+                let r2 = this.addField(field);
+                if (!r2) return;
+                r.push(r2);
+            });
+        }
+        return r;
+    }
+    remField(...fields) {
+        fields = fields.flatten();
+        let r;
+        if (fields.length == 1) {
+            let field = fields[0];
+            r = false;
+            if (!(field instanceof Source.Field));
+            else if (field.source != this);
+            else if (!this.hasField(field));
+            else {
+                delete this.#fields[field.path];
+                r = field;
+                // field.clearLinkedHandlers(this, "change");
+                if (this.buildTree) {
+                    let path = field.path.split("/");
+                    let node = this.tree;
+                    while (path.length > 0) {
+                        let name = path.shift();
+                        if (!node.hasNode(name)) {
+                            node = null;
+                            break;
+                        }
+                        node = node.getNode(name);
+                    }
+                    if (node instanceof Source.Field && node.parent instanceof Source.Field)
+                        node.parent.remNode(node);
+                    if (node instanceof Source.Field)
+                        node.field = null;
+                    field.node = null;
+                }
+                // this.change("remField", r, null);
+            }
+        } else {
+            r = [];
+            fields.forEach(field => {
+                let r2 = this.remField(field);
+                if (!r2) return;
+                r.push(r2);
+            });
+        }
+        return r;
+    }
+
+    get tree() { return this.#tree; }
+    get buildTree() { return this.#buildTree; }
 
     get ts() { return this.#ts; }
     set ts(v) { this.#ts = util.ensure(v, "num"); }
@@ -51,103 +159,71 @@ export default class Source extends util.Target {
 
     get structHelper() { return this.#structHelper; }
 
-    create(k, type) {
-        k = util.ensure(k, "arr");
-        if (k.length <= 0) return false;
-        let kk = [...k];
-        let o = this.root, oPrev = this;
-        while (kk.length > 0) {
-            let name = kk.shift();
-            [o, oPrev] = [o.singlelookup(name), o];
-            if (kk.length > 0) {
-                if (!(o instanceof Source.Field)) {
-                    o = new Source.Field(oPrev, name, null);
-                    oPrev.add(o);
-                }
-                continue;
-            }
-            if (!(o instanceof Source.Field)) {
-                o = new Source.Field(oPrev, name, type);
-                oPrev.add(o);
-            }
-        }
-        return true;
+    static generateArrayPath(...path) {
+        return path.flatten().join("/").split("/").filter(part => part.length > 0);
+        // let flatPath = [];
+        // const dfs = path => {
+        //     if (util.is(path, "arr")) return path.forEach(part => dfs(part));
+        //     path = String(path);
+        //     if (!path) return;
+        //     if (path.includes("/")) return dfs(path.split("/"));
+        //     flatPath.push(path);
+        // };
+        // dfs(path);
+        // return flatPath.map(part => String(part)).filter(part => part.length > 0);
     }
-    delete(k) {
-        k = util.ensure(k, "arr");
-        if (k.length <= 0) return false;
-        let o = this.root.lookup([...k]), first = true;
-        while (o instanceof Source.Field) {
-            let oPrev = o.parent;
-            if (oPrev instanceof Source.Field) {
-                if (first || (!o.hasType() && o.nFields.length <= 0)) {
-                    first = false;
-                    oPrev.rem(o);
-                }
-            }
-            o = oPrev;
-        }
-        return true;
+    static generatePath(...path) { return this.generateArrayPath(...path).join("/"); }
+
+    add(path, type) {
+        path = Source.generatePath(path);
+        let field = new this.constructor.Field(this, path, type);
+        return this.addField(field);
     }
-    update(k, v, ts=null) {
-        ts = util.ensure(ts, "num", this.ts);
-        k = util.ensure(k, "arr");
-        if (k.length <= 0) return false;
-        let o = this.root.lookup([...k]);
-        if (o instanceof Source.Field) {
-            o.update(v, ts);
-            if (
-                k.length >= 2 &&
-                String(k[0]) == ".schema" &&
-                o.type == "structschema"
-            ) {
-                let struct = String(k.at(-1));
-                if (struct.startsWith("struct:")) {
-                    struct = struct.slice(7);
-                    if (this.structHelper.hasPattern(struct)) return; // this.structHelper.remPattern(struct);
-                    let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, struct, util.TEXTDECODER.decode(v)));
-                    pattern.build();
-                    this.structHelper.build();
-                    this.root.build();
-                }
-            }
-        }
-        return true;
+    rem(path) {
+        return this.remField(path);
+    }
+    update(path, v, ts=null) {
+        if (!this.hasField(path)) return false;
+        return this.getField(path).update(v, ts);
     }
     clear() {
-        this.root.fields.forEach(field => this.root.rem(field));
+        this.structHelper.clearPatterns();
+        this.clearFields();
+        return this;
+    }
+
+    createStruct(name, data) {
+        name = String(name);
+        if (this.structHelper.hasPattern(name)) return false;
+        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, util.TEXTDECODER.decode(toUint8Array(data))));
+        pattern.build();
+        return pattern;
+    }
+    createAllStructs() {
+        this.fieldObjects.forEach(field => {
+            if (field.name.startsWith("struct:") && field.type == "structschema")
+                if (field.valueLog.length > 0)
+                    this.createStruct(field.name.substring(7), field.valueLog[0].v);
+        });
     }
 
     toSerialized() {
         return {
-            root: this.root.toSerialized(),
             ts: this.ts,
             tsMin: this.tsMin, tsMax: this.tsMax,
+            fields: this.fieldObjects.map(field => field.toSerialized()),
+            tree: this.tree.toSerialized(),
         };
     }
     fromSerialized(data) {
         data = util.ensure(data, "obj");
-        this.structHelper.clearPatterns();
-        this.#root = Source.Field.fromSerialized(this, data.root);
-        this.root.addHandler("change", (...a) => this.post("change", ...a));
-        let schema = this.root.singlelookup(".schema");
-        if (schema instanceof Source.Field) {
-            const dfs = field => {
-                field.fields.forEach(field => dfs(field));
-                if (!field.name.startsWith("struct:")) return;
-                if (field.type != "structschema") return;
-                let struct = field.name.slice(7);
-                if (this.structHelper.hasPattern(struct)) return; // this.structHelper.remPattern(struct);
-                let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, struct, util.TEXTDECODER.decode(field.valueLog[0].v)));
-                pattern.build();
-                this.root.build();
-            };
-            dfs(schema);
-        }
+        this.clear();
+        this.addField(util.ensure(data.fields, "arr").map(data => Source.Field.fromSerialized(this, data)));
+        this.createAllStructs();
         this.ts = data.ts;
         this.tsMin = data.tsMin;
         this.tsMax = data.tsMax;
-        this.post("change");
+        // this.post("change");
         return this;
     }
 }
@@ -185,11 +261,14 @@ Source.Playback = class SourcePlayback extends util.Target {
     }
 };
 Source.Field = class SourceField extends util.Target {
-    #parent;
+    #source;
+
+    #node;
+
+    #path;
     #name;
     #type;
     #valueLog;
-    #fields;
 
     static TYPES = [
         "boolean", "boolean[]",
@@ -204,7 +283,7 @@ Source.Field = class SourceField extends util.Target {
 
     static ensureType(t, v) {
         t = String(t);
-        if (t.startsWith("struct:")) return util.ensure(v, "obj");
+        if (t.startsWith("struct:")) return v;
         if (t.endsWith("[]")) {
             t = t.slice(0, t.length-2);
             return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
@@ -221,88 +300,60 @@ Source.Field = class SourceField extends util.Target {
         return (t in map) ? util.ensure(v, map[t]) : v;
     }
 
-    constructor(parent, name, type) {
+    constructor(source, path, type) {
         super();
 
-        if (!(parent instanceof Source.Field || parent instanceof Source)) throw "Parent "+(util.is(parent, "obj") ? parent.constructor.name : parent)+" is not valid";
+        if (!(source instanceof Source)) throw "Source is not of class Source";
+        this.#source = source;
 
-        this.#parent = parent;
+        this.#node = null;
 
-        this.#name = String(name);
-        this.#type = (type == null) ? null : String(type);
+        this.#path = Source.generatePath(path);
+        path = this.path.split("/");
+        this.#name = (path.length > 0) ? path.at(-1) : "";
+        if (type == null) throw "Type is null";
+        this.#type = String(type);
 
         this.#valueLog = [];
-
-        this.#fields = {};
     }
 
-    get parent() { return this.#parent; }
-    hasFieldParent() { return this.parent instanceof Source.Field; }
-    hasSourceParent() { return this.parent instanceof Source; }
-    get source() { return this.hasSourceParent() ? this.parent : this.parent.source; }
+    get source() { return this.#source; }
 
-    get path() {
-        if (this.hasSourceParent()) return [];
-        return [...this.parent.path, this.name];
+    get node() { return this.#node; }
+    set node(v) {
+        v = (v instanceof Source.Node) ? v : null;
+        if (this.node == v) return;
+        this.#node = v;
+        // this.change("node", this.node, this.#node=v);
     }
-    get textPath() { return this.path.join("/"); }
+    hasNode() { return this.node instanceof Source.Node; }
+
+    get path() { return this.#path; }
 
     get name() { return this.#name; }
     get isHidden() { return this.name.startsWith("."); }
 
     get type() { return this.#type; }
-    hasType() { return this.type != null; }
-    get isStruct() { return this.hasType() && this.type.startsWith("struct:"); }
+    get isStruct() { return this.type.startsWith("struct:"); }
     get structType() {
-        if (!this.hasType()) return null;
         if (!this.isStruct) return this.type;
         return this.type.slice(7);
     }
     get clippedType() {
-        if (!this.hasType()) return null;
         if (this.isStruct) return this.structType;
         return this.type;
     }
-    get isArray() { return this.hasType() && this.clippedType.endsWith("[]"); }
+    get isArray() { return this.clippedType.endsWith("[]"); }
     get arrayType() {
-        if (!this.hasType()) return null;
         if (!this.isArray) return this.clippedType;
         return this.clippedType.slice(0, this.clippedType.length-2);
     }
-    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.arrayType); }
+    get isPrimitive() { return Source.Field.TYPES.includes(this.arrayType); }
     get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
 
     get valueLog() { return [...this.#valueLog]; }
-    set valueLog(v) {
-        if (!this.hasType()) return;
-        v = util.ensure(v, "arr");
-        this.#fields = {};
-        let typeCheck = {};
-        this.#valueLog = v.map(log => {
-            log = util.ensure(log, "obj");
-            let ts = util.ensure(log.ts, "num"), v = log.v;
-            v = Source.Field.ensureType(this.type, v);
-            if (this.isStruct) {
-                if (util.is(v, "obj") && v["%"]) {
-                    v = util.ensure(v, "obj");
-                    v["%"] = true;
-                    v.unbuilt = toUint8Array(v.unbuilt);
-                    v.built = (v.built == null) ? null : util.ensure(v.built, "obj");
-                } else v = { "%": true, unbuilt: toUint8Array(v), built: null };
-            } else if (this.isArray) {
-                v.forEach((v, i) => {
-                    if ((i in typeCheck) && (typeCheck[i] == v)) return;
-                    typeCheck[i] = v;
-                    if (!(i in this.#fields)) this.add(new Source.Field(this, i, this.arrayType));
-                    this.#fields[i].update(v, ts);
-                });
-            } else;
-            return { ts: ts, v: v };
-        }).sort((a, b) => a.ts-b.ts);
-        this.build();
-    }
+
     getIndex(ts=null) {
-        if (!this.hasType()) return -1;
         ts = util.ensure(ts, "num", this.source.ts);
         if (this.#valueLog.length <= 0) return -1;
         if (ts < this.#valueLog.at(0).ts) return -1;
@@ -318,155 +369,217 @@ Source.Field = class SourceField extends util.Target {
         return -1;
     }
     get(ts=null) {
-        if (!this.hasType()) return null;
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
         if (i < 0 || i >= this.#valueLog.length) return null;
         let v = this.#valueLog[i].v;
-        if (this.isStruct && !this.isArray) v = v.built;
         return v;
     }
     getRange(tsStart=null, tsStop=null) {
-        if (!this.hasType()) return [];
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart);
         let stop = this.getIndex(tsStop);
         return this.#valueLog.slice(start+1, stop+1).map(log => {
             let ts = log.ts, v = log.v;
-            if (this.isStruct && !this.isArray) v = v.built;
             return { ts: ts, v: v };
         });
     }
     update(v, ts=null) {
-        if (!this.hasType()) return;
         v = Source.Field.ensureType(this.type, v);
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
-        if (this.isStruct) {
-            if (util.is(v, "obj") && v["%"]) {
-                v = util.ensure(v, "obj");
-                v["%"] = true;
-                v.unbuilt = toUint8Array(v.unbuilt);
-                v.built = (v.built == null) ? null : util.ensure(v.built, "obj");
-            } else v = { "%": true, unbuilt: toUint8Array(v), built: null };
-        } else if (this.isArray) {
-            v.forEach((v, i) => {
-                if (!(i in this.#fields)) this.add(new Source.Field(this, i, this.arrayType));
-                this.#fields[i].update(v, ts);
-            });
-        } else;
         this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
-        this.build();
-        this.post("change", [this.name]);
-    }
-    build() {
         if (this.isStruct) {
-            let pattern = this.source.structHelper.getPattern(this.arrayType);
-            let hasPattern = pattern instanceof StructHelper.Pattern;
-            this.#valueLog.forEach(log => {
-                if (!hasPattern) return;
-                if (pattern.length == null) return;
-                let ts = log.ts, v = log.v;
-                if (util.is(v.built, "obj")) return;
+            const checkStructFail = () => this.source.addLinkedHandler(this, "struct", checkStruct);
+            const checkStruct = () => {
+                this.source.remLinkedHandler(this, "struct", checkStruct);
+                if (!this.source.structHelper.hasPattern(this.arrayType)) return checkStructFail();
+                let pattern = this.source.structHelper.getPattern(this.arrayType);
+                if (pattern.length == null) return checkStructFail();
                 if (this.isArray) {
-                    v.built = util.ensure(pattern.splitData(v.unbuilt), "arr");
-                    v.built.forEach((v, i) => {
-                        if (!(i in this.#fields)) this.add(new Source.Field(this, i, "struct:"+this.arrayType));
-                        this.#fields[i].update(v, ts);
+                    let datas = util.ensure(pattern.splitData(v), "arr");
+                    datas.forEach((data, i) => {
+                        let path = this.path+"/"+i;
+                        if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, "struct:"+this.arrayType));
+                        this.source.getField(path).update(data, ts);
                     });
                 } else {
-                    v.built = util.ensure(pattern.decode(v.unbuilt), "obj");
+                    let data = util.ensure(pattern.decode(v), "obj");
                     pattern.fields.forEach(field => {
-                        if (!(field.name in this.#fields)) this.add(new Source.Field(this, field.name, field.isStruct ? ("struct:"+field.type) : field.type));
-                        this.#fields[field.name].update(v.built[field.name], ts);
+                        let path = this.path+"/"+field.name;
+                        if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, field.isStruct ? ("struct:"+field.type) : field.type));
+                        this.source.getField(path).update(data[field.name], ts);
                     });
                 }
+            };
+            checkStruct();
+        } else if (this.isArray) {
+            v.forEach((v, i) => {
+                let path = this.path+"/"+i;
+                if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, this.arrayType));
+                this.source.getField(path).update(v, ts);
             });
-        }
-        this.fields.forEach(field => field.build());
-    }
-
-    get nFields() {
-        let n = 1;
-        this.fields.forEach(field => (n += field.nFields));
-        return n;
-    }
-    get fields() { return Object.values(this.#fields); }
-    lookup(k) {
-        k = util.ensure(k, "arr");
-        let o = this;
-        while (k.length > 0) {
-            o = o.singlelookup(k.shift());
-            if (!o) return null;
-        }
-        return o;
-    }
-    singlelookup(k) {
-        k = String(k);
-        if (k in this.#fields) return this.#fields[k];
-        return null;
-    }
-    has(field) {
-        if (!(field instanceof Source.Field)) return false;
-        if (field.parent != this) return false;
-        return field.name in this.#fields;
-    }
-    add(field) {
-        let r = this.addBulk(field);
-        return (r.length > 0) ? r[0] : false;
-    }
-    addBulk(...fields) {
-        if (fields.length == 1 && util.is(fields[0], "arr")) return this.addBulk(...fields[0]);
-        let doneFields = [];
-        fields.forEach(field => {
-            if (!(field instanceof Source.Field)) return;
-            if (field.parent != this) return;
-            if (field.name in this.#fields) return;
-            this.#fields[field.name] = field;
-            field._onChange = () => this.post("change", field.path);
-            field.addHandler("change", field._onChange);
-            doneFields.push(field);
-        });
-        this.post("change", this.path);
-        return doneFields;
-    }
-    rem(field) {
-        let r = this.remBulk(field);
-        return (r.length > 0) ? r[0] : false;
-    }
-    remBulk(...fields) {
-        if (fields.length == 1 && util.is(fields[0], "arr")) return this.remBulk(...fields[0]);
-        let doneFields = [];
-        fields.forEach(field => {
-            if (!(field instanceof Source.Field)) return;
-            if (field.parent != this) return;
-            if (!(field.name in this.#fields)) return;
-            delete this.#fields[field.name];
-            field.remHandler("change", field._onChange);
-            delete field._onChange;
-            doneFields.push(field);
-        });
-        this.post("change", this.path);
-        return doneFields;
+        } else if (this.name.startsWith("struct:") && this.type == "structschema") this.source.createStruct(this.name.substring(7), v);
+        // this.post("change", [this.name]);
     }
 
     toSerialized() {
-        let fields = {};
-        this.fields.forEach(field => (fields[field.name] = field.toSerialized()));
         return {
-            name: this.name,
+            path: this.path,
             type: this.type,
             valueLog: this.#valueLog,
-            fields: fields,
+        };
+    }
+    static fromSerialized(source, data) {
+        data = util.ensure(data, "obj");
+        let field = new Source.Field(source, data.path, data.type);
+        field.#valueLog = util.ensure(data.valueLog, "arr").map(log => {
+            log = util.ensure(log, "obj");
+            return { ts: util.ensure(log.ts, "num"), v: Source.Field.ensureType(field.type, log.v) };
+        }).sort((a, b) => a.ts-b.ts);
+        return field;
+    }
+};
+Source.Node = class SourceNode extends util.Target {
+    #parent;
+
+    #field;
+
+    #name;
+
+    #nodes;
+
+    constructor(parent, name, nodes) {
+        super();
+
+        if (!(parent instanceof Source || parent instanceof Source.Node)) throw "Parent is not of class Source nor of class SourceNode";
+        this.#parent = parent;
+
+        this.#field = null;
+
+        this.#name = String(name);
+
+        this.#nodes = {};
+
+        this.nodes = nodes;
+    }
+
+    get parent() { return this.#parent; }
+    get source() { return (this.parent instanceof Source) ? this.parent : this.parent.source; }
+
+    get field() { return this.#field; }
+    set field(v) {
+        v = (v instanceof Source.Field) ? v : null;
+        if (this.field == v) return;
+        this.#field = v;
+        // this.change("field", this.field, this.#field=v);
+    }
+    hasField() { return this.field instanceof Source.Field; }
+
+    get name() { return this.#name; }
+    get path() {
+        let path = (this.parent instanceof Source) ? "" : this.parent.path;
+        if (path.length > 0) path += "/";
+        path += this.name;
+        return path;
+    }
+
+    get nodes() { return Object.keys(this.#nodes); }
+    get nodeObjects() { return Object.values(this.#nodes); }
+    get nNodes() {
+        let n = 1;
+        this.nodeObjects.forEach(node => (n += node.nNodes));
+        return n;
+    }
+    set nodes(v) {
+        v = util.ensure(v, "arr");
+        this.clearNodes();
+        this.addNode(v);
+    }
+    clearNodes() {
+        let nodes = this.nodeObjects;
+        this.remNode(nodes);
+        return nodes;
+    }
+    hasNode(v) {
+        if (v instanceof Source.Field) return this.hasNode(v.name) && v.parent == this;
+        return v in this.#nodes;
+    }
+    getNode(name) {
+        if (!this.hasNode(name)) return null;
+        return this.#nodes[name];
+    }
+    addNode(...nodes) {
+        nodes = nodes.flatten();
+        let r;
+        if (nodes.length == 1) {
+            let node = nodes[0];
+            r = false;
+            if (!(node instanceof Source.Node));
+            else if (node.parent != this);
+            else if (this.hasNode(node));
+            else {
+                this.#nodes[node.name] = node;
+                r = node;
+                // node.addLinkedHandler(this, "change", (c, f, t) => this.change("nodes["+r.name+"]."+c, f, t));
+                // this.change("addNode", null, r);
+            }
+        } else {
+            r = [];
+            nodes.forEach(node => {
+                let r2 = this.addNode(node);
+                if (!r2) return;
+                node.push(r2);
+            });
+        }
+        return r;
+    }
+    remNode(...nodes) {
+        nodes = nodes.flatten();
+        let r;
+        if (nodes.length == 1) {
+            let node = nodes[0];
+            r = false;
+            if (!(node instanceof Source.Node));
+            else if (node.parent != this);
+            else if (!this.hasNode(node));
+            else {
+                delete this.#nodes[node.name];
+                r = node;
+                // node.clearLinkedHandlers(this, "change");
+                // this.change("remNode", r, null);
+            }
+        } else {
+            r = [];
+            nodes.forEach(node => {
+                let r2 = this.remNode(node);
+                if (!r2) return;
+                node.push(r2);
+            });
+        }
+        return r;
+    }
+    lookup(path) {
+        path = Source.generateArrayPath(path);
+        let node = this;
+        while (path.length > 0) {
+            let name = path.shift();
+            if (!node.hasNode(name)) return null;
+            node = node.getNode(name);
+        }
+        return node;
+    }
+
+    toSerialized() {
+        return {
+            name: this.name,
+            nodes: this.nodeObjects.map(node => node.toSerialized()),
         };
     }
     static fromSerialized(parent, data) {
         data = util.ensure(data, "obj");
-        let field = new Source.Field(parent, data.name, data.type);
-        field.valueLog = data.valueLog;
-        let fields = util.ensure(data.fields, "obj");
-        for (let name in fields) field.add(Source.Field.fromSerialized(field, fields[name]));
-        return field;
+        let node = new Source.Node(parent, null, data.name, data.nodes);
+        return node;
     }
 };

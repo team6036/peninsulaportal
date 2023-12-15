@@ -20,13 +20,7 @@ class WPILOGEncoderWorker extends WorkerBase {
                 const encoder = new WPILOGEncoder();
                 const source = new Source();
                 source.fromSerialized(data.source);
-                let fields = [];
-                const dfs = field => {
-                    if (!field.hasType()) return field.fields.forEach(field => dfs(field));
-                    fields.push(field);
-                };
-                dfs(source.root);
-                fields.forEach((field, i) => {
+                source.fieldObjects.forEach((field, i) => {
                     let entryId = i+1;
                     let type = field.type;
                     if (type == "int") type = "int64";
