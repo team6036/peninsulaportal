@@ -3074,10 +3074,9 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         this.elem.appendChild(this.eActions);
         this.eActions.classList.add("actions");
 
-        let action;
-        action = this.addAction(new Panel.LogWorksTab.Action(this, "edit"));
-        action = this.addAction(new Panel.LogWorksTab.Action(this, "merge"));
-        action = this.addAction(new Panel.LogWorksTab.Action(this, "convert"));
+        this.addAction(new Panel.LogWorksTab.Action(this, "edit"));
+        this.addAction(new Panel.LogWorksTab.Action(this, "merge"));
+        this.addAction(new Panel.LogWorksTab.Action(this, "convert"));
 
         this.actionPage = null;
 
@@ -3452,7 +3451,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.refresh();
             },
             convert: () => {
-                this.displayName = this.title = "Convert Session";
+                this.displayName = this.title = "Convert Logs";
                 this.iconSrc = "../assets/icons/swap.svg";
             },
         };
