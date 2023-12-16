@@ -683,23 +683,24 @@ const MAIN = async () => {
                 this.stream.write.apply(this.stream, a);
             };
             this.log();
-            app.dock.setMenu(electron.Menu.buildFromTemplate([
-                {
-                    label: "Features...",
-                    submenu: [
-                        {
-                            label: "Panel",
-                            accelerator: "CmdOrCtrl+1",
-                            click: () => this.on("spawn", "PANEL"),
-                        },
-                        {
-                            label: "Planner",
-                            accelerator: "CmdOrCtrl+2",
-                            click: () => this.on("spawn", "PLANNER"),
-                        },
-                    ],
-                },
-            ]));
+            if (app.dock)
+                app.dock.setMenu(electron.Menu.buildFromTemplate([
+                    {
+                        label: "Features...",
+                        submenu: [
+                            {
+                                label: "Panel",
+                                accelerator: "CmdOrCtrl+1",
+                                click: () => this.on("spawn", "PANEL"),
+                            },
+                            {
+                                label: "Planner",
+                                accelerator: "CmdOrCtrl+2",
+                                click: () => this.on("spawn", "PLANNER"),
+                            },
+                        ],
+                    },
+                ]));
             electron.nativeTheme.on("updated", () => this.send("native-theme"));
             electron.nativeTheme.themeSource = await this.get("native-theme");
             return true;
