@@ -52,7 +52,7 @@ const MAIN = async () => {
     const cp = require("child_process");
 
     const electron = require("electron");
-    const showError = context.showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
+    let showError = context.showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
     const app = context.app = electron.app;
     const ipc = electron.ipcMain;
 
@@ -600,22 +600,20 @@ const MAIN = async () => {
     const makeMenuDefault = (name, signal) => {
         if (!(signal instanceof util.Target)) signal = new util.Target();
         name = String(name);
-        // aboutCallback = util.ensure(aboutCallback, "func");
-        // settingsCallback = util.ensure(settingsCallback, "func");
         return [
             {
                 label: (name.length > 0) ? util.capitalize(name) : "Portal",
                 submenu: [
                     {
                         label: (name.length > 0) ? ("About Peninsula "+util.capitalize(name)) : "About Peninsula",
-                        // click: () => aboutCallback(),
+                        enabled: !!("about" in signal ? signal.about : true),
                         click: () => signal.post("about"),
                     },
                     { type: "separator" },
                     {
                         label: "Settings",
                         accelerator: "CmdOrCtrl+,",
-                        // click: () => settingsCallback(),
+                        enabled: !!("about" in signal ? signal.about : true),
                         click: () => signal.post("settings"),
                     },
                     { type: "separator" },
@@ -950,7 +948,8 @@ const MAIN = async () => {
                 if (("width" in bounds) && (bounds.width < 50)) return finishAndShow();
                 if (("height" in bounds) && (bounds.height < 50)) return finishAndShow();
                 this.window.setBounds(bounds);
-                this.window.show();
+                size = this.window.getSize();
+                finishAndShow();
             })();
 
             return this;
@@ -2111,6 +2110,8 @@ const MAIN = async () => {
                 ]));
             electron.nativeTheme.on("updated", () => this.send("native-theme"));
             electron.nativeTheme.themeSource = await this.get("native-theme");
+            app.on("browser-window-blur", () => this.checkMenu());
+            app.on("browser-window-focus", () => this.checkMenu());
             return true;
         }
         async quit() {
@@ -2185,8 +2186,10 @@ const MAIN = async () => {
 
         checkMenu() {
             if (this.hasWindow()) return this.window.manager.checkMenu();
+
             let signal = new util.Target();
-            signal.addHandler("about", () => this.send("about"));
+            signal.about = false;
+            // signal.settings = false;
             signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
             electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault("", signal)));
             let window = electron.BrowserWindow.getFocusedWindow();
@@ -2198,6 +2201,7 @@ const MAIN = async () => {
             dfs(this);
             for (let win of windows) {
                 if (!win.hasWindow()) continue;
+                if (win.isModal) continue;
                 let signal = new util.Target();
                 signal.addHandler("about", () => win.send("about"));
                 signal.addHandler("settings", () => win.on("spawn", "PRESETS"));
@@ -3697,6 +3701,8 @@ const MAIN = async () => {
         app.quit();
         return;
     }
+
+    showError = context.showError = async (name, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, hasInfo: true, info: e }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;

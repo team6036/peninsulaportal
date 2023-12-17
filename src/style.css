@@ -1279,15 +1279,22 @@ article.md.lighter table td {
     font-size: 25px;
 }
 .popup.core > .inner > .title {
+    width: 100%;
+    max-width: 100%;
+
     color: var(--v8);
     
     text-align: center;
-    font-size: 16px;
+    font-size: 14px;
 }
 .popup.core > .inner > .content {
+    width: 100%;
+    max-width: 100%;
+
     color: var(--v7);
     
     text-align: center;
+    word-break: break-word;
     font-size: 12px;
 }
 .popup.core > .inner > button {
@@ -1317,6 +1324,7 @@ article.md.lighter table td {
     border-radius: 10px;
 
     font-family: monospace;
+    font-size: 12px;
     word-wrap: break-word;
     white-space: pre-wrap;
 }

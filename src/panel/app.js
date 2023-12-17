@@ -2759,7 +2759,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsDownload([name]);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Download Error: "+name, e);
+                    this.app.error("Log Download Error", e).content = name;
             }
         });
         this.addHandler("log-trigger2", (e, name) => {
@@ -2865,7 +2865,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsServerDelete(names);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Delete Error: "+names.join(", "), e);
+                    this.app.error("Log Delete Error", e).content = names.join(", ");
             }
         });
 
@@ -7048,7 +7048,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        this.app.error("WPILOG Load Error: "+this.project.config.source, e);
+                        this.app.error("WPILOG Load Error", e).content = this.project.config.source;
                     }
                     this.app.progress = null;
                     delete this.source.importing;
