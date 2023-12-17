@@ -52,7 +52,11 @@ const MAIN = async () => {
     const cp = require("child_process");
 
     const electron = require("electron");
-    let showError = context.showError = (name, e) => electron.dialog.showErrorBox(String(name), String(e));
+    let showError = context.showError = (name, type, e) => {
+        let message = String(name);
+        if (type) message += " - "+String(type);
+        electron.dialog.showErrorBox(message, util.stringifyError(e));
+    };
     const app = context.app = electron.app;
     const ipc = electron.ipcMain;
 
@@ -107,15 +111,15 @@ const MAIN = async () => {
             this.#parent = null;
 
             this.#process = (mode == "exec") ? cp.exec(...a) : (mode == "execFile") ? cp.execFile(...a) : (mode == "fork") ? cp.fork(...a) : (mode == "spawn") ? cp.spawn(...a) : null;
-            if (!(this.process instanceof cp.ChildProcess)) throw "Invalid mode: "+mode;
+            if (!(this.process instanceof cp.ChildProcess)) throw new Error(`Invalid spawn mode '${mode}'`);
             this.process.stdout.on("data", data => this.post("data", data));
             this.process.stderr.on("data", data => {
-                this.post("error", String(data));
+                this.post("error", data);
                 this.terminate();
             });
             this.process.on("exit", code => this.post("exit", code));
             this.process.on("error", e => {
-                this.post("error", String(e));
+                this.post("error", e);
                 this.terminate();
             });
 
@@ -343,8 +347,8 @@ const MAIN = async () => {
             });
         }
         async stream(pth, name, payload) {
-            pth = Portal.makePath(pth);
-            if (!Portal.fileHas(pth)) return null;
+            pth = WindowManager.makePath(pth);
+            if (!WindowManager.fileHas(pth)) return null;
             const stream = fs.createReadStream(pth);
             name = String(name);
             const fname = path.basename(pth);
@@ -478,12 +482,12 @@ const MAIN = async () => {
 
         async invoke(invoke, ...a) {
             let ref = String(invoke).split(".");
-            if (ref.length != 2) throw "Invalid invocation (split length) ("+invoke+")";
+            if (ref.length != 2) throw new Error(`Invalid invocation (split length) (${invoke})`);
             let [api, f] = ref;
-            if (!api.endsWith("API")) throw "Invalid invocation (api name) ("+invoke+")";
-            if (!(api in this)) throw "Invalid invocation (api existence) ("+invoke+")";
+            if (!api.endsWith("API")) throw new Error(`Invalid invocation (api name) (${invoke})`);
+            if (!(api in this)) throw new Error(`Invalid invocation (api existence) (${invoke})`);
             api = this[api];
-            if (!(f in api)) throw "Invalid invocation (method existence) ("+invoke+")";
+            if (!(f in api)) throw new Error(`Invalid invocation (method existence) (${invoke})`);
             let l = 1;
             let apifs = {
                 tbaAPI: {
@@ -651,7 +655,7 @@ const MAIN = async () => {
         constructor(manager, name) {
             super();
 
-            if (!(manager instanceof WindowManager)) throw "Manager is not of class WindowManager";
+            if (!(manager instanceof WindowManager)) throw new Error("Manager is not of class WindowManager");
             this.#manager = manager;
 
             this.#id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*util.BASE64.length)]).join("");
@@ -666,7 +670,7 @@ const MAIN = async () => {
             this.#windowManager = new WindowManager(this);
 
             name = String(name);
-            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.substring(6))))) throw "Name "+name+" is not valid";
+            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.substring(6))))) throw new Error(`Name '${name}' is not valid`);
             this.#name = name;
 
             this.#window = null;
@@ -803,7 +807,7 @@ const MAIN = async () => {
                 this.#resolver.state++;
             });
             let id = setTimeout(() => {
-                showError("Window Start Error - Startup", "The application did not acknowledge readyness within 1 second");
+                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readyness within 1 second`);
                 clear();
                 this.stop();
             }, 1000);
@@ -1136,7 +1140,7 @@ const MAIN = async () => {
                             ssStream.on("error", e => rej(e));
                         });
                     });
-                } catch (e) { return { success: false, reason: String(e) }; }
+                } catch (e) { return { success: false, reason: util.stringifyError(e) }; }
                 return { success: true };
             });
             return client;
@@ -1695,15 +1699,15 @@ const MAIN = async () => {
                         try {
                             project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
                         } catch (e) {}
-                        if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
-                        if (!project.hasPath(pathId)) throw "Nonexistent path with id: "+pathId+" for project id: "+id;
+                        if (!(project instanceof subcore.Project)) throw new Error("Invalid project content with id: "+id);
+                        if (!project.hasPath(pathId)) throw new Error("Nonexistent path with id: "+pathId+" for project id: "+id);
                         let pth = project.getPath(pathId);
 
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
-                        if (script == null) throw "No script for project with id: "+id;
+                        if (script == null) throw new Error("No script for project with id: "+id);
                         script = String(script);
                         let hasScript = await WindowManager.fileHas(script);
-                        if (!hasScript) throw "Script ("+script+") does not exist for project id: "+id;
+                        if (!hasScript) throw new Error("Script ("+script+") does not exist for project id: "+id);
                         const root = path.dirname(script);
 
                         let dataIn = { config: {}, nodes: [], obstacles: [] };
@@ -1860,13 +1864,13 @@ const MAIN = async () => {
                         try {
                             project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
                         } catch (e) {}
-                        if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
+                        if (!(project instanceof subcore.Project)) throw new Error("Invalid project content with id: "+id);
 
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
-                        if (script == null) return {}; // throw "No script for project with id: "+id;
+                        if (script == null) return {}; // throw new Error("No script for project with id: "+id);
                         script = String(script);
                         let has = await WindowManager.fileHas(script);
-                        if (!has) throw "Script ("+script+") does not exist for project id: "+id;
+                        if (!has) throw new Error("Script ("+script+") does not exist for project id: "+id);
                         let root = path.dirname(script);
 
                         let hasMainDir = await WindowManager.dirHas(path.join(root, "paths"));
@@ -2069,13 +2073,13 @@ const MAIN = async () => {
             try {
                 await this.affirm();
             } catch (e) {
-                showError("Portal Initialize - Affirmation Error", e);
+                showError("WindowManager Initialize", "Affirmation Error", e);
                 return;
             }
             let version = await this.get("base-version");
             if (!(await this.canFS(version))) {
                 let fsVersion = await this.get("fs-version");
-                showError("Portal Initialize - Version Error", "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")");
+                showError("WindowManager Initialize", "Version Error", "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")");
                 return false;
             }
             // monkey patching
@@ -2155,7 +2159,7 @@ const MAIN = async () => {
                 win.start(params);
             } catch (e) {
                 this.#windows.delete(win);
-                showError("Window Start Error", e);
+                showError("Window Start Error", null, e);
                 return false;
             }
             this.change("addWindow", null, win);
@@ -2173,7 +2177,7 @@ const MAIN = async () => {
                 } catch (e) {
                     this.#windows.delete(win);
                     this.change("remWindow", win, null);
-                    showError("Window Stop Error", e);
+                    showError("Window Stop Error", null, e);
                     return win;
                 }
             }
@@ -2256,7 +2260,7 @@ const MAIN = async () => {
                 try {
                     await this.affirm();
                 } catch (e) {
-                    showError("Load - Affirmation Error", e);
+                    showError("Load", "Affirmation Error", e);
                     return false;
                 }
                 this.clearLoads();
@@ -2571,7 +2575,7 @@ const MAIN = async () => {
 
             const identify = e => {
                 let win = this.identifyWindow(e.sender.id);
-                if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+e.sender.id;
+                if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+e.sender.id);
                 return win;
             };
 
@@ -2702,13 +2706,13 @@ const MAIN = async () => {
                 try {
                     await this.affirm();
                 } catch (e) {
-                    showError("Portal Start Error - Affirmation Error", e);
+                    showError("WindowManager Start Error", "Affirmation Error", e);
                     return;
                 }
                 try {
                     await this.post("start");
                 } catch (e) {
-                    showError("Portal Start Error - 'start' event", e);
+                    showError("WindowManager Start Error", "'start' event", e);
                     return;
                 }
 
@@ -2716,7 +2720,7 @@ const MAIN = async () => {
                 
                 try {
                     await this.tryLoad();
-                } catch (e) { showError("Portal Start Error - Load Error", e); }
+                } catch (e) { showError("WindowManager Start Error", "Load Error", e); }
             })();
 
             return true;
@@ -2731,7 +2735,7 @@ const MAIN = async () => {
             try {
                 await this.post("stop");
             } catch (e) {
-                showError("Portal Stop Error - 'stop' event", e);
+                showError("WindowManager Stop Error", "'stop' event", e);
                 return true;
             }
             return await this.clearWindows();
@@ -3452,7 +3456,7 @@ const MAIN = async () => {
                 return await this.get(k);
             } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
             let win = this.identifyWindow(id);
-            if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+id;
+            if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+id);
             return await win.get(k);
         }
         async set(k, v) {
@@ -3529,7 +3533,7 @@ const MAIN = async () => {
                 return await this.set(k, v);
             } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             let win = this.identifyWindow(id);
-            if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+id;
+            if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+id);
             return await win.set(k, v);
         }
         async on(k, ...a) {
@@ -3600,7 +3604,7 @@ const MAIN = async () => {
                     return await this.on(k, ...a);
                 } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             }
-            if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+id;
+            if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+id);
             return await win.on(k, ...a);
         }
         async send(k, ...a) {
@@ -3671,7 +3675,7 @@ const MAIN = async () => {
             stopped = await manager.stop();
         } catch (e) {
             stopped = true;
-            showError("Portal Stop Error", e);
+            showError("WindowManager Stop Error", null, e);
         }
         if (!stopped) return beforeQuitResolver.state = false;
         allowQuit = true;
@@ -3688,7 +3692,7 @@ const MAIN = async () => {
         await whenInitialized();
         try {
             await manager.quit();
-        } catch (e) { showError("Portal Quit Error", e); }
+        } catch (e) { showError("WindowManager Quit Error", null, e); }
     });
 
     await app.whenReady();
@@ -3702,7 +3706,7 @@ const MAIN = async () => {
         return;
     }
 
-    showError = context.showError = async (name, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, hasInfo: true, info: e }).whenModalResult();
+    showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, hasInfo: true, info: e }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;
@@ -3714,7 +3718,7 @@ const MAIN = async () => {
         try {
             manager.update(t1-t0);
         } catch (e) {
-            showError("Portal Update Error", e);
+            showError("WindowManager Update Error", null, e);
             clearInterval(id);
             allowQuit = true;
             app.quit();
@@ -3729,7 +3733,7 @@ const MAIN = async () => {
         await MAIN();
     } catch (e) {
         if (context.showError)
-            context.showError("Main Script Error", e);
+            context.showError("Main Script Error", null, e);
         if (context.app && context.app.quit)
             context.app.quit();
         process.exit();

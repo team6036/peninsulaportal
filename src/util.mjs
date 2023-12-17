@@ -214,6 +214,17 @@ export function angleRelRadians(a, b) {
     return r;
 }
 
+export function stringifyError(e, nl="") {
+    let lines = [String(e)];
+    if (e instanceof Error) {
+        if (e.stack) lines.push(String(e.stack));
+        if (e.cause) lines.push(stringifyError(e.cause, nl+"  "));
+    }
+    lines = lines.flatten().join("\n").split("\n").filter(part => part.length > 0);
+    if (lines[0] == lines[1]) lines.shift();
+    return lines.map(line => nl+line).join("\n");
+}
+
 export function getTime() {
     return new Date().getTime();
 }
@@ -1086,7 +1097,7 @@ export class Unit extends Target {
         if (this.type == "number") return new Unit(this.value, found);
         let u1 = this.unit, u2 = found;
         let t1 = Unit.getType(this.unit), t2 = Unit.getType(found);
-        if (t1 != t2) throw "Cannot convert "+u1+" ("+t1+") to "+u2+" ("+t2+")";
+        if (t1 != t2) throw new Error("Cannot convert "+u1+" ("+t1+") to "+u2+" ("+t2+")");
         let v = this.value;
         v *= Unit.TOMETRIC[t1][u1];
         v /= Unit.TOMETRIC[t2][u2];

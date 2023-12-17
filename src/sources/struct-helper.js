@@ -113,7 +113,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
     constructor(helper, name, pattern) {
         super();
 
-        if (!(helper instanceof StructHelper)) throw "Helper is not of class StructHelper";
+        if (!(helper instanceof StructHelper)) throw new Error("Helper is not of class StructHelper");
         this.#helper = helper;
 
         this.#name = String(name);
@@ -311,7 +311,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         data = toUint8Array(data);
         type = String(type);
         enums = (enums == null) ? null : util.ensure(enums, "obj");
-        if (!StructHelper.TYPES.includes(type)) throw "Invalid type "+type;
+        if (!StructHelper.TYPES.includes(type)) throw new Error(`Invalid type '${type}'`);
         let pdata = new Uint8Array(StructHelper.BITFIELDLENGTHS[type]/8);
         pdata.set(data);
         let dataView = new DataView(pdata.buffer);
@@ -351,7 +351,7 @@ StructHelper.Pattern.Field = class StructHelperPatternField extends util.Target 
     constructor(pattern, name, type, length, bfLength) {
         super();
 
-        if (!(pattern instanceof StructHelper.Pattern)) throw "Pattern is not of class StructHelper.Pattern";
+        if (!(pattern instanceof StructHelper.Pattern)) throw new Error("Pattern is not of class StructHelper.Pattern");
         this.#pattern = pattern;
 
         this.#name = String(name);
