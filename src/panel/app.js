@@ -2759,7 +2759,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsDownload([name]);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Download Error", e).content = name;
+                    this.app.error("Log Download Error", name, e);
             }
         });
         this.addHandler("log-trigger2", (e, name) => {
@@ -2865,7 +2865,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsServerDelete(names);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Delete Error", e).content = names.join(", ");
+                    this.app.error("Log Delete Error", names.join(", "), e);
             }
         });
 
@@ -3166,7 +3166,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     constructor(tab, name) {
         super();
 
-        if (!(tab instanceof Panel.LogWorksTab)) throw "Tab is not of class LogWorksTab";
+        if (!(tab instanceof Panel.LogWorksTab)) throw new Error("Tab is not of class LogWorksTab");
         this.#tab = tab;
 
         this.#name = String(name);
@@ -7048,7 +7048,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        this.app.error("WPILOG Load Error", e).content = this.project.config.source;
+                        this.app.error("WPILOG Load Error", this.project.config.source, e);
                     }
                     this.app.progress = null;
                     delete this.source.importing;

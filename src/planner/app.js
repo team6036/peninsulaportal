@@ -1359,7 +1359,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
 
         this.#name = String(name);
 
-        if (!(page instanceof App.ProjectPage)) throw "Page is not of class ProjectPage";
+        if (!(page instanceof App.ProjectPage)) throw new Error("Page is not of class ProjectPage");
         this.#page = page;
         this.#items = [];
 
@@ -2080,7 +2080,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 this.generating = false;
             } catch (e) {
                 this.generating = false;
-                this.app.error("Exec Error", e);
+                this.app.error("Exec Error", null, e);
             }
         });
 
@@ -2380,7 +2380,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             }
         } catch (e) {
             return;
-            this.app.error("Exec Data Get Error", e);
+            this.app.error("Exec Data Get Error", null, e);
         }
     };
 
@@ -2404,7 +2404,7 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
     constructor(panel) {
         super();
 
-        if (!(panel instanceof App.ProjectPage.PathsPanel)) throw "Panel is not of class PathsPanel";
+        if (!(panel instanceof App.ProjectPage.PathsPanel)) throw new Error("Panel is not of class PathsPanel");
         this.#panel = panel;
 
         this.#id = null;
@@ -2489,7 +2489,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     constructor(panel, path) {
         super();
 
-        if (!(panel instanceof App.ProjectPage.PathsPanel)) throw "Panel is not of class PathsPanel";
+        if (!(panel instanceof App.ProjectPage.PathsPanel)) throw new Error("Panel is not of class PathsPanel");
         this.#panel = panel;
 
         this.#path = null;

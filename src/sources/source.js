@@ -218,8 +218,8 @@ Source.Playback = class SourcePlayback extends util.Target {
     constructor(source) {
         super();
 
-        if (!(source instanceof Source)) throw "Source "+source+" is not a Source";
-        if (source.playback != null) throw "Source already has a playback";
+        if (!(source instanceof Source)) throw new Error("Source is not of class Source");
+        if (source.playback != null) throw new Error("Source already has a playback");
 
         this.#source = source;
 
@@ -286,7 +286,7 @@ Source.Field = class SourceField extends util.Target {
     constructor(source, path, type) {
         super();
 
-        if (!(source instanceof Source)) throw "Source is not of class Source";
+        if (!(source instanceof Source)) throw new Error("Source is not of class Source");
         this.#source = source;
 
         this.#node = null;
@@ -294,7 +294,7 @@ Source.Field = class SourceField extends util.Target {
         this.#path = Source.generatePath(path);
         path = this.path.split("/").filter(part => part.length > 0);
         this.#name = (path.length > 0) ? path.at(-1) : "";
-        if (type == null) throw "Type is null";
+        if (type == null) throw new Error("Type is null");
         this.#type = String(type);
 
         this.#valueLog = [];
@@ -442,7 +442,7 @@ Source.Node = class SourceNode extends util.Target {
     constructor(parent, name, nodes) {
         super();
 
-        if (!(parent instanceof Source || parent instanceof Source.Node)) throw "Parent is not of class Source nor of class SourceNode";
+        if (!(parent instanceof Source || parent instanceof Source.Node)) throw new Error("Parent is not of class Source nor of class SourceNode");
         this.#parent = parent;
 
         this.#field = null;

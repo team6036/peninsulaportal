@@ -89,7 +89,7 @@ export class App extends util.Target {
             });
             let app;
             try { app = await window.api.get("version"); }
-            catch (e) { app = String(e); }
+            catch (e) { app = util.stringifyError(e); }
             this.#ABOUT = {
                 node: String(window.ver.node()),
                 chrome: String(window.ver.chrome()),
@@ -1389,7 +1389,8 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     }
     get info() { return this.eInfo.innerHTML; }
     set info(v) {
-        this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt");
+        v = (v instanceof Error) ? util.stringifyError(v) : String(v);
+        this.eInfo.innerHTML = v.replaceAll("<", "&lt").replaceAll(">", "&gt");
         this.change("info", null, this.info);
     }
 }
@@ -1425,8 +1426,8 @@ App.Alert = class AppAlert extends App.CorePopup {
     }
 };
 App.Error = class AppError extends App.Alert {
-    constructor(title, info) {
-        super(title, "", "warning");
+    constructor(title, content, info) {
+        super(title, content, "warning");
 
         this.iconColor = "var(--cr)";
 
@@ -2101,7 +2102,7 @@ App.Page = class AppPage extends util.Target {
 
         this.#name = String(name);
 
-        if (!(app instanceof App)) throw "App is not of class App";
+        if (!(app instanceof App)) throw new Error("App is not of class App");
         this.#app = app;
 
         this.#elem = document.createElement("div");
@@ -4028,7 +4029,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     constructor(odometry, pos) {
         super(odometry);
 
-        if (!(odometry instanceof Odometry2d)) throw "Odometry is not of class Odometry2d";
+        if (!(odometry instanceof Odometry2d)) throw new Error("Odometry is not of class Odometry2d");
         this.#odometry = odometry;
 
         this.#pos = new V();

@@ -1240,16 +1240,16 @@ article.md.lighter table td {
     }
 }
 .popup.core > .inner {
-    width: min(100%, 200px);
-    max-width: min(100%, 200px);
+    width: min(100%, 300px);
+    max-width: min(100%, 300px);
 }
 .popup.core > .inner:has(.info) {
-    width: min(100%, 400px);
-    max-width: min(100%, 400px);
+    width: min(100%, 600px);
+    max-width: min(100%, 600px);
 }
 .popup.core.progress > .inner {
-    width: min(100%, 400px) !important;
-    max-width: min(100%, 400px) !important;
+    width: min(100%, 600px) !important;
+    max-width: min(100%, 600px) !important;
 }
 .popup.core > .inner > .icon {
     position: relative;
