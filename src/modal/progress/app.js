@@ -12,7 +12,7 @@ export default class App extends core.AppModal {
     constructor() {
         super();
 
-        this.addHandler("post-setup", async () => {
+        this.addHandler("pre-post-setup", async () => {
             this.ielem.classList.add("progress");
 
             this.ieIconBox.style.display = "none";
@@ -22,6 +22,8 @@ export default class App extends core.AppModal {
             this.ieProgress.classList.add("progress");
     
             this.#ivalue = null;
+
+            this.ivalue = 0;
         });
     }
 

@@ -12,7 +12,7 @@ export default class App extends core.AppModal {
     constructor() {
         super();
 
-        this.addHandler("post-setup", async () => {
+        this.addHandler("pre-post-setup", async () => {
             this.ielem.classList.add("prompt");
 
             this.#ieInput = document.createElement("input");
@@ -27,6 +27,12 @@ export default class App extends core.AppModal {
 
             this.ieConfirm.addEventListener("click", e => this.result(this.ivalue));
             this.ieCancel.addEventListener("click", e => this.result(null));
+
+            this.ivalue = "";
+            this.iicon = "pencil";
+            this.iconfirm = "OK";
+            this.icancel = "Cancel";
+            this.iplaceholder = "...";
         });
     }
 

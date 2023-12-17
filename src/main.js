@@ -772,12 +772,16 @@ const MAIN = async () => {
                     webviewTag: true,
                 },
             };
-            if (this.manager.hasWindow() && this.manager.window.hasWindow()) {
+            let isModal = this.manager.hasWindow() && this.manager.window.hasWindow();
+            if (isModal) {
                 options.modal = true;
                 options.parent = this.manager.window.window;
                 options.width = Math.ceil(this.manager.window.window.getBounds().width*0.5);
                 options.height = Math.ceil(this.manager.window.window.getBounds().height*0.5);
-                options.titleBarStyle = "hidden";
+            }
+            if (isModal || this.isModal) {
+                options.frame = false;
+                delete options.titleBarStyle;
                 delete options.trafficLightPosition;
             }
             const onHolidayState = async holiday => {
@@ -1066,9 +1070,10 @@ const MAIN = async () => {
         async dirMake(pth) { return Window.dirMake(this.manager, this.name, pth, this.started); }
         async dirDelete(pth) { return Window.dirDelete(this.manager, this.name, pth, this.started); }
 
-        async modalResult(r) { await this.post("result", r); }
-        async modalSpawn(name, params) {
-            let win = await this.windowManager.modalSpawn(name, params);
+        modalResult(r) { this.post("result", r); }
+        async whenModalResult() { return await new Promise((res, rej) => this.addHandler("result", r => res(r))); }
+        modalSpawn(name, params) {
+            let win = this.windowManager.modalSpawn(name, params);
             if (!win) return null;
             win.addHandler("result", async r => {
                 if (!this.hasWindow()) return;
@@ -1076,11 +1081,11 @@ const MAIN = async () => {
             });
             return win.id;
         }
-        async modalAlert(params) { return await this.modalSpawn("ALERT", params); }
-        async modalConfirm(params) { return await this.modalSpawn("CONFIRM", params); }
-        async modalPrompt(params) { return await this.modalSpawn("PROMPT", params); }
-        async modalProgress(params) { return await this.modalSpawn("PROGRESS", params); }
-        async modalModify(id, params) {
+        modalAlert(params) { return this.modalSpawn("ALERT", params); }
+        modalConfirm(params) { return this.modalSpawn("CONFIRM", params); }
+        modalPrompt(params) { return this.modalSpawn("PROMPT", params); }
+        modalProgress(params) { return this.modalSpawn("PROGRESS", params); }
+        modalModify(id, params) {
             for (let win of this.windowManager.windows) {
                 if (win.id != id) continue;
                 if (!win.hasWindow()) continue;
@@ -1445,7 +1450,10 @@ const MAIN = async () => {
 
                 "size": async () => {
                     if (!this.hasWindow()) return false;
-                    this.window.setSize(...new V(v).ceil().xy);
+                    v = new V(v).ceil();
+                    let bounds = this.window.getBounds();
+                    let cx = bounds.x+bounds.width/2, cy = bounds.y+bounds.height/2;
+                    this.window.setBounds({ x: Math.floor(cx-v.x/2), y: Math.floor(cy-v.y/2), width: v.x, height: v.y });
                     return true;
                 },
                 "bounds": async () => {
@@ -2548,9 +2556,7 @@ const MAIN = async () => {
         start(params=null) {
             if (this.hasWindow()) return this.window.manager.start(params);
 
-            if (this.started) {
-                return false;
-            }
+            if (this.started) return false;
             this.#started = true;
 
             this.log("START");
@@ -2631,15 +2637,15 @@ const MAIN = async () => {
 
             ipc.handle("modal-result", async (e, r) => {
                 let win = identify(e);
-                return await win.modalResult(r);
+                return win.modalResult(r);
             });
             ipc.handle("modal-spawn", async (e, name, params) => {
                 let win = identify(e);
-                return await win.modalSpawn(name, params);
+                return win.modalSpawn(name, params);
             });
             ipc.handle("modal-modify", async (e, id, params) => {
                 let win = identify(e);
-                return await win.modalModify(id, params);
+                return win.modalModify(id, params);
             });
 
             ipc.handle("client-make", async (e, id, location) => {
@@ -3086,18 +3092,18 @@ const MAIN = async () => {
         async setFSVersion(verison) { return this.hasWindow() ? await this.window.manager.setFSVersion(verison) : await WindowManager.setFSVersion(this.dataPath, verison); }
         async canFS(version) { return this.hasWindow() ? await this.window.manager.canFS(version) : await WindowManager.canFS(this.dataPath, version); }
 
-        async modalSpawn(name, params) {
+        modalSpawn(name, params) {
             name = String(name);
             if (!MODALS.includes(name)) return null;
             let win = this.addWindow(new Window(this, "modal:"+name), params);
             if (!win) return null;
             return win;
         }
-        async modalAlert(params) { return await this.modalSpawn("ALERT", params); }
-        async modalConfirm(params) { return await this.modalSpawn("CONFIRM", params); }
-        async modalPrompt(params) { return await this.modalSpawn("PROMPT", params); }
-        async modalProgress(params) { return await this.modalSpawn("PROGRESS", params); }
-        async modalModify(id, params) {
+        modalAlert(params) { return this.modalSpawn("ALERT", params); }
+        modalConfirm(params) { return this.modalSpawn("CONFIRM", params); }
+        modalPrompt(params) { return this.modalSpawn("PROMPT", params); }
+        modalProgress(params) { return this.modalSpawn("PROGRESS", params); }
+        modalModify(id, params) {
             for (let win of this.windowManager.windows) {
                 if (win.id != id) continue;
                 if (!win.hasWindow()) continue;
