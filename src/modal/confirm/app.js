@@ -11,7 +11,7 @@ export default class App extends core.AppModal {
     constructor() {
         super();
 
-        this.addHandler("post-setup", async () => {
+        this.addHandler("pre-post-setup", async () => {
             this.ielem.classList.add("confirm");
 
             this.#ieConfirm = document.createElement("button");
@@ -23,7 +23,9 @@ export default class App extends core.AppModal {
             this.ieConfirm.addEventListener("click", e => this.result(true));
             this.ieCancel.addEventListener("click", e => this.result(false));
 
-            await this.resize();
+            this.iicon = "help-circle";
+            this.iconfirm = "OK";
+            this.icancel = "Cancel";
         });
     }
 

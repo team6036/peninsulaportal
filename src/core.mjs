@@ -2189,6 +2189,14 @@ export class AppModal extends App {
             this.#ieContent = document.querySelector(".popup.core > .inner > .content");
             this.#ieInfo = document.querySelector(".popup.core > .inner > .info");
 
+            this.ititle = "";
+            this.icontent = "";
+            this.iicon = "";
+            this.ihasInfo = false;
+            this.iinfo = "";
+
+            await this.post("pre-post-setup");
+
             await this.resize();
         });
 

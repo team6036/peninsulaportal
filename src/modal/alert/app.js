@@ -10,7 +10,7 @@ export default class App extends core.AppModal {
     constructor() {
         super();
 
-        this.addHandler("post-setup", async () => {
+        this.addHandler("pre-post-setup", async () => {
             this.ielem.classList.add("alert");
 
             this.#ieButton = document.createElement("button");
@@ -19,7 +19,8 @@ export default class App extends core.AppModal {
 
             this.ieButton.addEventListener("click", e => this.result(null));
 
-            await this.resize();
+            this.iicon = "alert-circle";
+            this.ibutton = "OK";
         });
     }
 
