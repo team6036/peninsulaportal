@@ -629,9 +629,6 @@ export class App extends util.Target {
         };
         setInterval(updatePage, 500);
         updatePage();
-
-        if (this.hasELoadingTo())
-            this.eLoadingTo.style.visibility = "hidden";
         
         let t = util.getTime();
         
@@ -670,6 +667,9 @@ export class App extends util.Target {
         await themeUpdate();
 
         await this.post("setup");
+
+        if (this.hasELoadingTo())
+            this.eLoadingTo.style.visibility = "hidden";
 
         setTimeout(() => {
             this.eLoading.classList.remove("this");
@@ -848,12 +848,8 @@ export class App extends util.Target {
         if (!(pop instanceof App.PopupBase)) return false;
         if (this.hasPopup(pop)) this.remPopup(pop);
         this.#popups.push(pop);
-        pop.addLinkedHandler(this, "close", () => this.remPopup(pop));
-        document.body.appendChild(pop.elem);
-        setTimeout(() => {
-            if (!this.hasPopup(pop)) return;
-            pop.elem.classList.add("in");
-        }, 0.01*1000);
+        pop.addLinkedHandler(this, "result", () => this.remPopup(pop));
+        pop.doAdd(document.body);
         window.api.set("closeable", this.popups.length <= 0);
         return pop;
     }
@@ -861,12 +857,8 @@ export class App extends util.Target {
         if (!(pop instanceof App.PopupBase)) return false;
         if (!this.hasPopup(pop)) return false;
         this.#popups.splice(this.#popups.indexOf(pop), 1);
-        pop.clearLinkedHandlers(this, "close");
-        pop.elem.classList.remove("in");
-        setTimeout(() => {
-            if (this.hasPopup(pop)) return;
-            document.body.removeChild(pop.elem);
-        }, 0.25*1000);
+        pop.clearLinkedHandlers(this, "result");
+        pop.doRem(document.body);
         window.api.set("closeable", this.popups.length <= 0);
         return pop;
     }
@@ -1112,6 +1104,9 @@ App.PopupBase = class AppPopupBase extends util.Target {
     #elem;
     #inner;
 
+    static NAME = null;
+    static PARAMS = [];
+
     constructor() {
         super();
 
@@ -1124,12 +1119,43 @@ App.PopupBase = class AppPopupBase extends util.Target {
         this.#inner = document.createElement("div");
         this.elem.appendChild(this.inner);
         this.inner.classList.add("inner");
+    }
 
-        this.addHandler("result", result => {
-            this.#resolver.state = true;
-            this.#result = result;
-            this.close();
-        });
+    async doAdd(parent) {
+        if (!(parent instanceof HTMLElement)) return false;
+        let id = await window.modal.spawn(this.constructor.NAME, this.generateParams());
+        if (id == null) {
+            parent.appendChild(this.elem);
+            setTimeout(() => {
+                this.elem.classList.add("in");
+            }, 0.01*1000);
+        } else {
+            const onChange = () => window.modal.modify(id, this.generateParams());
+            this.addHandler("change", onChange);
+            onChange();
+            const remove = window.modal.onResult((_, id2, r) => {
+                if (id2 != id) return;
+                this.result(r);
+                remove();
+                this.remHandler("change", onChange);
+            });
+        }
+        return true;
+    }
+    async doRem(parent) {
+        if (!(parent instanceof HTMLElement)) return false;
+        if (parent.contains(this.elem)) {
+            this.elem.classList.remove("in");
+            setTimeout(() => {
+                parent.removeChild(this.elem);
+            }, 0.25*1000);
+        }
+        return true;
+    }
+    generateParams() {
+        let params = {};
+        this.constructor.PARAMS.forEach(param => (params[param] = this[param]));
+        return params;
     }
 
     get hasResult() { return this.#resolver.state; }
@@ -1143,13 +1169,20 @@ App.PopupBase = class AppPopupBase extends util.Target {
     get elem() { return this.#elem; }
     get inner() { return this.#inner; }
 
-    close() { this.post("close"); }
-    result(r) { this.post("result", r); }
+    result(r) {
+        this.#resolver.state = true;
+        this.#result = r;
+        this.post("result", r);
+    }
 };
 App.Popup = class AppPopup extends App.PopupBase {
     #eClose;
     #eTitle;
     #eContent;
+
+    static {
+        this.PARAMS = [...this.PARAMS, "title"];
+    }
 
     constructor() {
         super();
@@ -1182,7 +1215,10 @@ App.Popup = class AppPopup extends App.PopupBase {
     get eContent() { return this.#eContent; }
 
     get title() { return this.eTitle.textContent; }
-    set title(v) { this.eTitle.textContent = v; }
+    set title(v) {
+        this.eTitle.textContent = v;
+        this.change("title", null, this.title);
+    }
 };
 App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
     #signal;
@@ -1252,6 +1288,16 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     #eContent;
     #eInfo;
 
+    static {
+        this.PARAMS = [
+            ...this.PARAMS,
+            "icon", "iconSrc", "iconColor",
+            "subIcon", "subIconSrc", "subIconColor",
+            "title", "content",
+            "hasInfo", "info",
+        ];
+    }
+
     constructor(title, content, icon="") {
         super();
 
@@ -1289,33 +1335,49 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     set icon(v) {
         this.eIcon.removeAttribute("src");
         this.eIcon.setAttribute("name", v);
+        this.change("icon", null, this.icon);
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
     set iconSrc(v) {
         this.eIcon.removeAttribute("name");
         this.eIcon.setAttribute("src", v);
+        this.change("iconSrc", null, this.iconSrc);
     }
     get iconColor() { return this.eIcon.style.color; }
-    set iconColor(v) { this.eIcon.style.color = v; }
+    set iconColor(v) {
+        this.eIcon.style.color = v;
+        this.change("iconColor", null, this.iconColor);
+    }
 
     get subIcon() { return this.eSubIcon.getAttribute("name"); }
     set subIcon(v) {
         this.eSubIcon.removeAttribute("src");
         this.eSubIcon.setAttribute("name", v);
+        this.change("subIcon", null, this.subIcon);
     }
     get subIconSrc() { return this.eSubIcon.getAttribute("src"); }
     set subIconSrc(v) {
         this.eSubIcon.removeAttribute("name");
         this.eSubIcon.setAttribute("src", v);
+        this.change("subIconSrc", null, this.subIconSrc);
     }
     get subIconColor() { return this.eSubIcon.style.color; }
-    set subIconColor(v) { this.eSubIcon.style.color = v; }
+    set subIconColor(v) {
+        this.eSubIcon.style.color = v;
+        this.change("subIconColor", null, this.subIconColor);
+    }
     
     get title() { return this.eTitle.textContent; }
-    set title(v) { this.eTitle.textContent = v; }
+    set title(v) {
+        this.eTitle.textContent = v;
+        this.change("title", null, this.title);
+    }
 
     get content() { return this.eContent.textContent; }
-    set content(v) { this.eContent.textContent = v; }
+    set content(v) {
+        this.eContent.textContent = v;
+        this.change("content", null, this.content);
+    }
 
     get hasInfo() { return this.elem.contains(this.eInfo); }
     set hasInfo(v) {
@@ -1323,12 +1385,22 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
         if (this.hasInfo == v) return;
         if (v) this.inner.insertBefore(this.eInfo, this.eContent.nextElementSibling);
         else this.inner.removeChild(this.eInfo);
+        this.change("hasInfo", null, this.hasInfo);
     }
     get info() { return this.eInfo.innerHTML; }
-    set info(v) { this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
+    set info(v) {
+        this.eInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt");
+        this.change("info", null, this.info);
+    }
 }
 App.Alert = class AppAlert extends App.CorePopup {
     #eButton;
+
+    static NAME = "ALERT";
+
+    static {
+        this.PARAMS = [...this.PARAMS, "button"];
+    }
 
     constructor(title, content, icon="alert-circle", button="OK") {
         super(title, content, icon);
@@ -1347,7 +1419,10 @@ App.Alert = class AppAlert extends App.CorePopup {
     get eButton() { return this.#eButton; }
 
     get button() { return this.eButton.textContent; }
-    set button(v) { this.eButton.textContent = v; }
+    set button(v) {
+        this.eButton.textContent = v;
+        this.change("button", null, this.button);
+    }
 };
 App.Error = class AppError extends App.Alert {
     constructor(title, info) {
@@ -1362,6 +1437,12 @@ App.Error = class AppError extends App.Alert {
 App.Confirm = class AppConfirm extends App.CorePopup {
     #eConfirm;
     #eCancel;
+
+    static NAME = "CONFIRM";
+
+    static {
+        this.PARAMS = [...this.PARAMS, "confirm", "cancel"];
+    }
 
     constructor(title, content, icon="help-circle", confirm="OK", cancel="Cancel") {
         super(title, content, icon);
@@ -1385,14 +1466,26 @@ App.Confirm = class AppConfirm extends App.CorePopup {
     get eConfirm() { return this.#eConfirm; }
 
     get confirm() { return this.eConfirm.textContent; }
-    set confirm(v) { this.eConfirm.textContent = v; }
+    set confirm(v) {
+        this.eConfirm.textContent = v;
+        this.change("confirm", null, this.confirm);
+    }
     get cancel() { return this.eCancel.textContent; }
-    set cancel(v) { this.eCancel.textContent = v; }
+    set cancel(v) {
+        this.eCancel.textContent = v;
+        this.change("cancel", null, this.cancel);
+    }
 };
 App.Prompt = class AppPrompt extends App.CorePopup {
     #eInput;
     #eConfirm;
     #eCancel;
+
+    static NAME = "PROMPT";
+
+    static {
+        this.PARAMS = [...this.PARAMS, "confirm", "cancel", "value", "placeholder"];
+    }
 
     constructor(title, content, value="", icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
         super(title, content, icon);
@@ -1409,10 +1502,10 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
 
-        this.eConfirm.addEventListener("click", e => this.result(this.eInput.value));
+        this.eConfirm.addEventListener("click", e => this.result(this.value));
         this.eCancel.addEventListener("click", e => this.result(null));
 
-        this.eInput.value = value;
+        this.value = value;
         this.confirm = confirm;
         this.cancel = cancel;
         this.placeholder = placeholder;
@@ -1423,12 +1516,64 @@ App.Prompt = class AppPrompt extends App.CorePopup {
     get eConfirm() { return this.#eConfirm; }
 
     get confirm() { return this.eConfirm.textContent; }
-    set confirm(v) { this.eConfirm.textContent = v; }
+    set confirm(v) {
+        this.eConfirm.textContent = v;
+        this.change("confirm", null, this.confirm);
+    }
     get cancel() { return this.eCancel.textContent; }
-    set cancel(v) { this.eCancel.textContent = v; }
+    set cancel(v) {
+        this.eCancel.textContent = v;
+        this.change("cancel", null, this.cancel);
+    }
+
+    get value() { return this.eInput.value; }
+    set value(v) {
+        this.eInput.value = v;
+        this.change("value", null, this.value);
+    }
 
     get placeholder() { return this.eInput.placeholder; }
-    set placeholder(v) { this.eInput.placeholder = v; }
+    set placeholder(v) {
+        this.eInput.placeholder = v;
+        this.change("placeholder", null, this.placeholder);
+    }
+};
+App.Progress = class AppProgress extends App.CorePopup {
+    #eProgress;
+
+    #value;
+
+    static NAME = "PROGRESS";
+
+    static {
+        this.PARAMS = [...this.PARAMS, "value"];
+    }
+
+    constructor(title, content, value=0) {
+        super(title, content, "");
+
+        this.elem.classList.add("progress");
+
+        this.eIconBox.style.display = "none";
+
+        this.#eProgress = document.createElement("div");
+        this.inner.appendChild(this.eProgress);
+        this.eProgress.classList.add("progress");
+
+        this.#value = null;
+
+        this.value = value;
+    }
+
+    get eProgress() { return this.#eProgress; }
+
+    get value() { return this.#value; }
+    set value(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (this.value == v) return;
+        this.change("value", this.value, this.#value=v);
+        this.eProgress.style.setProperty("--progress", (100*this.value)+"%");
+    }
 };
 App.Menu = class AppMenu extends util.Target {
     #items;
@@ -1979,6 +2124,150 @@ App.Page = class AppPage extends util.Target {
 
     update(delta) { this.post("update", delta); }
 };
+export class AppModal extends App {
+    #result;
+
+    #resolver;
+
+    #eModalStyle;
+
+    #ielem;
+    #iinner;
+    #ieIconBox;
+    #ieIcon;
+    #ieSubIcon;
+    #ieTitle;
+    #ieContent;
+    #ieInfo;
+
+    constructor() {
+        super();
+
+        this.#result = null;
+
+        this.#resolver = new util.Resolver(false);
+        window.modal.onModify((_, params) => {
+            params = util.ensure(params, "obj");
+            for (let param in params) {
+                if (params[param] == null) continue;
+                this["i"+param] = params[param];
+            }
+            this.resize();
+        });
+        (async () => {
+            await window.modal.result(await this.whenResult());
+            await window.api.send("close");
+        })();
+
+        this.addHandler("setup", async () => {
+            this.#eModalStyle = document.createElement("link");
+            document.head.appendChild(this.eModalStyle);
+            this.eModalStyle.rel = "stylesheet";
+            this.eModalStyle.href = "../style-modal.css";
+
+            document.body.innerHTML = `
+<div id="mount">
+    <div id="PAGE" class="page this popup core override in">
+        <div class="inner">
+            <div class="icon">
+                <ion-icon></ion-icon>
+                <ion-icon></ion-icon>
+            </div>
+            <div class="title"></div>
+            <div class="content"></div>
+            <div class="info"></div>
+        </div>
+    </div>
+</div>
+            `;
+            this.#ielem = document.querySelector(".popup.core");
+            this.#iinner = document.querySelector(".popup.core > .inner");
+            this.#ieIconBox = document.querySelector(".popup.core > .inner > .icon");
+            this.#ieIcon = document.querySelector(".popup.core > .inner > .icon > ion-icon:first-child");
+            this.#ieSubIcon = document.querySelector(".popup.core > .inner > .icon > ion-icon:last-child");
+            this.#ieTitle = document.querySelector(".popup.core > .inner > .title");
+            this.#ieContent = document.querySelector(".popup.core > .inner > .content");
+            this.#ieInfo = document.querySelector(".popup.core > .inner > .info");
+
+            await this.resize();
+        });
+
+        this.addHandler("perm", async () => this.hasResult);
+    }
+
+    async resize() {
+        await util.wait(50);
+        let r = this.iinner.getBoundingClientRect();
+        await window.api.set("size", [r.width, r.height]);
+    }
+
+    get hasResult() { return this.#resolver.state; }
+    get theResult() { return this.#result; }
+    async whenResult() {
+        if (this.hasResult) return this.theResult;
+        await this.#resolver.whenTrue();
+        return this.theResult;
+    }
+
+    async result(r) {
+        this.#resolver.state = true;
+        this.#result = r;
+    }
+
+    get eModalStyle() { return this.#eModalStyle; }
+
+    get ielem() { return this.#ielem; }
+    get iinner() { return this.#iinner; }
+    get ieIconBox() { return this.#ieIconBox; }
+    get ieIcon() { return this.#ieIcon; }
+    get ieSubIcon() { return this.#ieSubIcon; }
+    get ieTitle() { return this.#ieTitle; }
+    get ieContent() { return this.#ieContent; }
+    get ieInfo() { return this.#ieInfo; }
+
+    get iicon() { return this.ieIcon.getAttribute("name"); }
+    set iicon(v) {
+        this.ieIcon.removeAttribute("src");
+        this.ieIcon.setAttribute("name", v);
+    }
+    get iiconSrc() { return this.ieIcon.getAttribute("src"); }
+    set iiconSrc(v) {
+        this.ieIcon.removeAttribute("name");
+        this.ieIcon.setAttribute("src", v);
+    }
+    get iiconColor() { return this.ieIcon.style.color; }
+    set iiconColor(v) { this.ieIcon.style.color = v; }
+
+    get isubIcon() { return this.ieSubIcon.getAttribute("name"); }
+    set isubIcon(v) {
+        this.ieSubIcon.removeAttribute("src");
+        this.ieSubIcon.setAttribute("name", v);
+    }
+    get isubIconSrc() { return this.ieSubIcon.getAttribute("src"); }
+    set isubIconSrc(v) {
+        this.ieSubIcon.removeAttribute("name");
+        this.ieSubIcon.setAttribute("src", v);
+    }
+    get isubIconColor() { return this.ieSubIcon.style.color; }
+    set isubIconColor(v) { this.ieSubIcon.style.color = v; }
+    
+    get ititle() { return this.ieTitle.textContent; }
+    set ititle(v) { this.ieTitle.textContent = v; }
+
+    get icontent() { return this.eContent.textContent; }
+    set icontent(v) { this.ieContent.textContent = v; }
+
+    get ihasInfo() { return this.iinner.contains(this.ieInfo); }
+    set ihasInfo(v) {
+        v = !!v;
+        if (this.ihasInfo == v) return;
+        if (v) this.iinner.insertBefore(this.ieInfo, this.ieContent.nextElementSibling);
+        else this.iinner.removeChild(this.ieInfo);
+        this.resize();
+    }
+    get iinfo() { return this.ieInfo.innerHTML; }
+    set iinfo(v) { this.ieInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
+}
 export class Project extends util.Target {
     #id;
 
