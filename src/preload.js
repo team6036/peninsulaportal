@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld("api", {
     sendReady: () => ipcRenderer.send("ready"),
 
     getAppRoot: () => ipcRenderer.invoke("get-root", "app"),
-    getRoot: () => ipcRenderer.invoke("get-root", "feature"),
+    getRoot: () => ipcRenderer.invoke("get-root", "window"),
     getRepoRoot: () => ipcRenderer.invoke("get-root", "repo"),
 
     get: k => ipcRenderer.invoke("get", k),
@@ -42,6 +42,26 @@ contextBridge.exposeInMainWorld("api", {
     dirList: path => ipcRenderer.invoke("dir-list", path),
     dirMake: path => ipcRenderer.invoke("dir-make", path),
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
+});
+
+contextBridge.exposeInMainWorld("modal", {
+    result: r => ipcRenderer.invoke("modal-result", r),
+    onResult: f => {
+        ipcRenderer.on("modal-result", f);
+        return () => ipcRenderer.removeListener("modal-result", f);
+    },
+
+    spawnAlert: params => ipcRenderer.invoke("modal-spawn", "ALERT", params),
+    spawnConfirm: params => ipcRenderer.invoke("modal-spawn", "CONFIRM", params),
+    spawnPrompt: params => ipcRenderer.invoke("modal-spawn", "PROMPT", params),
+    spawnProgress: params => ipcRenderer.invoke("modal-spawn", "PROGRESS", params),
+    spawn: (name, params) => ipcRenderer.invoke("modal-spawn", name, params),
+
+    modify: (id, params) => ipcRenderer.invoke("modal-modify", id, params),
+    onModify: f => {
+        ipcRenderer.on("modal-modify", f);
+        return () => ipcRenderer.removeListener("modal-modify", f);
+    },
 });
 
 contextBridge.exposeInMainWorld("sio", {

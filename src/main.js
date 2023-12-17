@@ -88,6 +88,7 @@ const MAIN = async () => {
     }
 
     const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
+    const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
     class Process extends util.Target {
         #id;
@@ -627,7 +628,1400 @@ const MAIN = async () => {
             },
         ];
     };
-    class Portal extends util.Target {
+    class Window extends util.Target {
+        #manager;
+
+        #id;
+
+        #started;
+        #resolver;
+
+        #processManager;
+        #clientManager;
+        #tbaClientManager;
+
+        #windowManager;
+
+        #name;
+
+        #window;
+        #menu;
+        #perm;
+
+        #state;
+
+        constructor(manager, name) {
+            super();
+
+            if (!(manager instanceof WindowManager)) throw "Manager is not of class WindowManager";
+            this.#manager = manager;
+
+            this.#id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*util.BASE64.length)]).join("");
+
+            this.#started = false;
+            this.#resolver = new util.Resolver(0);
+
+            this.#processManager = new ProcessManager();
+            this.#clientManager = new ClientManager();
+            this.#tbaClientManager = new TbaClientManager();
+
+            this.#windowManager = new WindowManager(this);
+
+            name = String(name);
+            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.substring(6))))) throw "Name "+name+" is not valid";
+            this.#name = name;
+
+            this.#window = null;
+            this.#menu = null;
+            this.#perm = false;
+
+            this.#started = false;
+
+            this.#resolver = new util.Resolver(0);
+
+            this.#state = {};
+
+            this.log();
+        }
+
+        get manager() { return this.#manager; }
+        get rootManager() { return this.manager.rootManager; }
+
+        get id() { return this.#id; }
+
+        get started() { return this.#started; }
+
+        get ready() { return this.#resolver.state == 2; }
+        async whenReady() { await this.#resolver.when(2); }
+        async whenNotReady() { await this.#resolver.whenNot(2); }
+
+        get processManager() { return this.#processManager; }
+        get clientManager() { return this.#clientManager; }
+        get tbaClientManager() { return this.#tbaClientManager; }
+
+        get windowManager() { return this.#windowManager; }
+
+        get name() { return this.#name; }
+        get isModal() { return this.name.startsWith("modal:"); }
+
+        get window() { return this.#window; }
+        hasWindow() { return (this.window instanceof electron.BrowserWindow) && !this.window.isDestroyed() && !this.window.webContents.isDestroyed(); }
+        get menu() { return this.#menu; }
+        hasMenu() { return this.menu instanceof electron.Menu; }
+        get perm() { return this.#perm; }
+        set perm(v) { this.#perm = !!v; }
+
+        async getPerm() {
+            if (!this.started) return true;
+            this.log("GET PERM");
+            let perm = await new Promise((res, rej) => {
+                if (!this.hasWindow()) return;
+                this.window.webContents.send("perm");
+                let id = setTimeout(() => {
+                    clear();
+                    res(true);
+                }, 500);
+                const clear = () => {
+                    clearTimeout(id);
+                    ipc.removeListener("permack", permack);
+                    ipc.removeListener("perm", perm);
+                };
+                const permack = e => {
+                    if (!this.hasWindow()) return;
+                    if (e.sender.id != this.window.webContents.id) return;
+                    clear();
+                };
+                const perm = (e, given) => {
+                    if (!this.hasWindow()) return;
+                    if (e.sender.id != this.window.webContents.id) return;
+                    clear();
+                    res(!!given);
+                };
+                ipc.on("permack", permack);
+                ipc.on("perm", perm);
+            });
+            let namefs = {
+            };
+            if (this.name in namefs) perm &&= namefs[this.name]();
+            return perm;
+        }
+
+        get state() { return this.#state; }
+
+        start(params=null) {
+            if (this.started) return false;
+            this.log("START");
+            this.#started = true;
+            this.#resolver.state = 0;
+
+            let namefs;
+
+            let options = {
+                width: 1250,
+                height: 750,
+
+                show: false,
+                resizable: true,
+                maximizable: false,
+
+                titleBarStyle: (OS.platform == "darwin" ? "hidden" : "default"),
+                trafficLightPosition: { x: (40-16)/2, y: (40-16)/2 },
+
+                webPreferences: {
+                    preload: path.join(__dirname, "preload.js"),
+                    webviewTag: true,
+                },
+            };
+            if (this.manager.hasWindow() && this.manager.window.hasWindow()) {
+                options.modal = true;
+                options.parent = this.manager.window.window;
+                options.width = Math.ceil(this.manager.window.window.getBounds().width*0.5);
+                options.height = Math.ceil(this.manager.window.window.getBounds().height*0.5);
+                options.titleBarStyle = "hidden";
+                delete options.trafficLightPosition;
+            }
+            const onHolidayState = async holiday => {
+                let tag = "png";
+                let defaultIcon = path.join(__dirname, "assets", "app", "icon."+tag);
+                let icon = (holiday == null) ? defaultIcon : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
+                if (!this.hasWindow()) return;
+                if (OS.platform == "win32") this.window.setIcon(defaultIcon);
+                if (OS.platform == "darwin") app.dock.setIcon(defaultIcon);
+                if (OS.platform == "linux") this.window.setIcon(defaultIcon);
+                try {
+                    if (OS.platform == "win32") this.window.setIcon(icon);
+                    if (OS.platform == "darwin") app.dock.setIcon(icon);
+                    if (OS.platform == "linux") this.window.setIcon(icon);
+                } catch (e) {}
+            };
+            (async () => await onHolidayState(await this.get("active-holiday")))();
+            this.#window = new electron.BrowserWindow(options);
+            this.window.once("ready-to-show", () => {
+                if (!this.hasWindow()) return;
+                this.#resolver.state++;
+            });
+            let id = setTimeout(() => {
+                showError("Window Start Error - Startup", "The application did not acknowledge readyness within 1 second");
+                clear();
+                this.stop();
+            }, 1000);
+            const clear = () => {
+                clearInterval(id);
+                ipc.removeListener("ready", ready);
+            };
+            const ready = e => {
+                if (!this.hasWindow()) return;
+                if (e.sender.id != this.window.webContents.id) return;
+                clear();
+                this.#resolver.state++;
+            };
+            ipc.on("ready", ready);
+
+            this.window.on("unresponsive", () => {});
+            this.window.webContents.on("did-fail-load", () => { if (this.hasWindow()) this.window.close(); });
+            this.window.webContents.on("will-navigate", (e, url) => {
+                if (!this.hasWindow()) return;
+                if (url != this.window.webContents.getURL()) {
+                    e.preventDefault();
+                    this.on("open", url);
+                }
+            });
+            let any = false;
+            for (let win of this.manager.windows) {
+                if (!win.hasWindow()) continue;
+                if (!win.window.webContents.isDevToolsOpened()) continue;
+                any = true;
+                break;
+            }
+            if (this.hasWindow() && any) this.window.webContents.openDevTools();
+            this.window.webContents.on("devtools-opened", () => {
+                this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.openDevTools());
+            });
+            this.window.webContents.on("devtools-closed", () => {
+                this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.closeDevTools());
+            });
+
+            this.window.on("enter-full-screen", () => this.send("win-fullscreen", true));
+            this.window.on("leave-full-screen", () => this.send("win-fullscreen", false));
+
+            this.window.on("focus", () => this.manager.checkMenu());
+            this.window.on("blur", () => this.manager.checkMenu());
+
+            this.perm = false;
+            this.window.on("close", e => {
+                this.log("CLOSE");
+                if (this.perm) return this.log("CLOSE - yes perm");
+                this.log("CLOSE - no perm");
+                e.preventDefault();
+                this.stop();
+            });
+
+            if (this.isModal) this.window.loadFile(path.join(__dirname, "modal", this.name.substring(6).toLowerCase(), "index.html"));
+            else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
+
+            namefs = {
+                PORTAL: () => {
+                    let resolver = new util.Resolver(false);
+                    const checkForShow = async () => {
+                        if (!this.hasWindow()) return;
+                        await this.whenReady();
+                        await resolver.whenFalse();
+                        resolver.state = true;
+                        let nWins = 0;
+                        for (let win of this.manager.windows) {
+                            if (win.name == "PORTAL") continue;
+                            nWins++;
+                        }
+                        if (nWins > 0) this.window.hide();
+                        else this.window.show();
+                        resolver.state = false;
+                    };
+                    checkForShow();
+                    this.manager.addHandler("change-addWindow", () => checkForShow());
+                    this.manager.addHandler("change-remWindow", () => checkForShow());
+                    this.window.on("show", checkForShow);
+                },
+                PANEL: () => {
+                    this.addHandler("client-stream-logs", async () => ["logs"]);
+                },
+                PLANNER: () => {
+                }
+            };
+
+            if (namefs[this.name]) namefs[this.name]();
+
+            let useQueue = true, modifyQueue = [params];
+            const checkModify = () => {
+                if (!this.isModal) return null;
+                if (useQueue) return false;
+                if (!this.hasWindow()) return false;
+                while (modifyQueue.length > 0)
+                    this.window.webContents.send("modal-modify", modifyQueue.shift());
+                return true;
+            };
+            const addModify = params => {
+                let r = checkModify();
+                if (r == null) return;
+                if (r) return;
+                modifyQueue.push(params);
+            };
+            this.addHandler("modal-modify", addModify);
+            
+            (async () => {
+                await this.whenReady();
+                if (!this.hasWindow()) return;
+                let prevIsDevMode = null;
+                const checkDevConfig = async () => {
+                    let isDevMode = !!(await this.get("devmode"));
+                    if (prevIsDevMode != isDevMode) {
+                        prevIsDevMode = isDevMode;
+                        this.send("win-devmode", isDevMode);
+                    }
+                };
+                let prevHoliday = null;
+                const checkHoliday = async () => {
+                    let holiday = await this.get("active-holiday");
+                    holiday = (holiday == null) ? null : String(holiday);
+                    await onHolidayState(holiday);
+                    if (prevHoliday != holiday) {
+                        prevHoliday = holiday;
+                        this.send("win-holiday", holiday);
+                    }
+                };
+                fs.watchFile(path.join(__dirname, ".config"), () => checkDevConfig());
+                fs.watchFile(path.join(this.rootManager.dataPath, "holidays", "holidays.json"), () => checkHoliday());
+                await checkDevConfig();
+                await checkHoliday();
+                if (!this.hasWindow()) return;
+                let size = this.window.getSize();
+                const finishAndShow = () => {
+                    if (!this.hasWindow()) return;
+                    this.window.show();
+                    this.window.setSize(...size);
+                    useQueue = false;
+                    checkModify();
+                };
+                if (!this.canOperate) return finishAndShow();
+                let bounds = util.ensure(await this.on("state-get", "bounds"), "obj");
+                if (("width" in bounds) && (bounds.width < 50)) return finishAndShow();
+                if (("height" in bounds) && (bounds.height < 50)) return finishAndShow();
+                this.window.setBounds(bounds);
+                this.window.show();
+            })();
+
+            return this;
+        }
+        async stop() {
+            if (!this.started) return false;
+            this.log("STOP");
+            if (!this.perm) {
+                this.log("STOP - no perm > get perm");
+                this.perm = await this.getPerm();
+            }
+            this.log(`STOP - perm: ${this.perm}`);
+            if (!this.perm) return false;
+            if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
+            this.#started = false;
+            await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
+            await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
+            await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
+            if (this.hasWindow()) this.window.close();
+            this.#window = null;
+            this.#menu = null;
+            await this.manager.remWindow(this);
+            return this;
+        }
+        
+        static getDataPath(manager, name, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            return path.join(manager.dataPath, name.toLowerCase());
+        }
+        get dataPath() { return Window.getDataPath(this.manager, this.name, this.started); }
+
+        static getCanOperate(manager, name, started=true) {
+            return (manager instanceof WindowManager) && FEATURES.includes(name) && started;
+        }
+        get canOperate() { return Window.getCanOperate(this.manager, this.name, this.started); }
+
+        static async affirm(manager, name, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return false;
+            await manager.affirm();
+            let hasWindowData = await WindowManager.dirHas(this.getDataPath(manager, name, started));
+            if (!hasWindowData) await WindowManager.dirMake(this.getDataPath(manager, name, started));
+            let hasConfig = await WindowManager.fileHas([this.getDataPath(manager, name, started), ".config"]);
+            if (!hasConfig) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".config"], JSON.stringify({}, null, "\t"));
+            let hasState = await WindowManager.fileHas([this.getDataPath(manager, name, started), ".state"]);
+            if (!hasState) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".state"], JSON.stringify({}, null, "\t"));
+            return true;
+        }
+        async affirm() { return await Window.affirm(this.manager, this.name, this.started); }
+
+        static async fileHas(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileHas(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+        static async fileRead(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileRead(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+        static async fileReadRaw(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileReadRaw(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+        static async fileWrite(manager, name, pth, content, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileWrite(WindowManager.makePath(this.getDataPath(manager, name, started), pth), content);
+        }
+        static async fileWriteRaw(manager, name, pth, content, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileWriteRaw(WindowManager.makePath(this.getDataPath(manager, name, started), pth), content);
+        }
+        static async fileAppend(manager, name, pth, content, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileAppend(WindowManager.makePath(this.getDataPath(manager, name, started), pth), content);
+        }
+        static async fileDelete(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileDelete(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+
+        static async dirHas(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.dirHas(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+        static async dirList(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.dirList(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+        static async dirMake(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.dirMake(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+        static async dirDelete(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.dirDelete(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+
+        async fileHas(pth) { return Window.fileHas(this.manager, this.name, pth, this.started); }
+        async fileRead(pth) { return Window.fileRead(this.manager, this.name, pth, this.started); }
+        async fileReadRaw(pth) { return Window.fileReadRaw(this.manager, this.name, pth, this.started); }
+        async fileWrite(pth, content) { return Window.fileWrite(this.manager, this.name, pth, content, this.started); }
+        async fileWriteRaw(pth, content) { return Window.fileWriteRaw(this.manager, this.name, pth, content, this.started); }
+        async fileAppend(pth, content) { return Window.fileAppend(this.manager, this.name, pth, content, this.started); }
+        async fileDelete(pth) { return Window.fileDelete(this.manager, this.name, pth, this.started); }
+
+        async dirHas(pth) { return Window.dirHas(this.manager, this.name, pth, this.started); }
+        async dirList(pth) { return Window.dirList(this.manager, this.name, pth, this.started); }
+        async dirMake(pth) { return Window.dirMake(this.manager, this.name, pth, this.started); }
+        async dirDelete(pth) { return Window.dirDelete(this.manager, this.name, pth, this.started); }
+
+        async modalResult(r) { await this.post("result", r); }
+        async modalSpawn(name, params) {
+            let win = await this.windowManager.modalSpawn(name, params);
+            if (!win) return null;
+            win.addHandler("result", async r => {
+                if (!this.hasWindow()) return;
+                this.window.webContents.send("modal-result", win.id, r);
+            });
+            return win.id;
+        }
+        async modalAlert(params) { return await this.modalSpawn("ALERT", params); }
+        async modalConfirm(params) { return await this.modalSpawn("CONFIRM", params); }
+        async modalPrompt(params) { return await this.modalSpawn("PROMPT", params); }
+        async modalProgress(params) { return await this.modalSpawn("PROGRESS", params); }
+        async modalModify(id, params) {
+            for (let win of this.windowManager.windows) {
+                if (win.id != id) continue;
+                if (!win.hasWindow()) continue;
+                win.post("modal-modify", params);
+                return true;
+            }
+            return false;
+        }
+
+        async clientMake(id, location) {
+            let client = await this.manager.clientMake(this.name+":"+id, location);
+            client = this.clientManager.addClient(client);
+            client.addTag(this.name);
+            client.addHandler("msg", async (name, payload, meta) => {
+                name = String(name);
+                meta = util.ensure(meta, "obj");
+                if (!this.hasWindow()) return { success: false, reason: "No window" };
+                await this.post("client-msg", id, name, payload, meta);
+                await this.post("client-msg-"+name, id, payload, meta);
+                this.window.webContents.send("client-msg", id, name, payload, meta);
+                return { success: true };
+            });
+            client.addHandler("stream", async (name, fname, payload, meta, ssStream) => {
+                name = String(name);
+                fname = String(fname);
+                meta = util.ensure(meta, "obj");
+                await this.affirm();
+                let results = [];
+                results.push(...(await this.post("client-stream", id, name, fname, payload, meta)));
+                results.push(...(await this.post("client-stream-"+name, id, fname, payload, meta)));
+                let pth = (results.length > 0) ? results[0] : [];
+                if (!(await this.dirHas(pth)))
+                    await this.dirMake(pth);
+                pth = WindowManager.makePath(this.dataPath, pth, fname);
+                const stream = fs.createWriteStream(pth);
+                try {
+                    await new Promise((res, rej) => {
+                        stream.on("open", async () => {
+                            await this.post("client-stream-start", id, name, pth, fname, payload, meta);
+                            await this.post("clietn-stream-start-"+name, id, pth, fname, payload, meta);
+                            this.window.webContents.send("client-stream-start", id, name, pth, fname, payload, meta);
+                            ssStream.pipe(stream);
+                            ssStream.on("end", async () => {
+                                await this.post("client-stream-stop", id, name, pth, fname, payload, meta);
+                                await this.post("client-stream-stop-"+name, id, pth, fname, payload, meta);
+                                this.window.webContents.send("client-stream-stop", id, name, pth, fname, payload, meta);
+                                res();
+                            });
+                            ssStream.on("error", e => rej(e));
+                        });
+                    });
+                } catch (e) { return { success: false, reason: String(e) }; }
+                return { success: true };
+            });
+            return client;
+        }
+        async clientDestroy(id) {
+            return await this.manager.clientDestroy((id instanceof Client) ? id : (this.name+":"+id));
+        }
+        async clientHas(id) {
+            if (!(await this.manager.clientHas((id instanceof Client) ? id : (this.name+":"+id)))) return false;
+            return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(this.name+":"+id) instanceof Client);
+        }
+        async clientGet(id) {
+            if (!(await this.clientHas(id))) return null;
+            return (id instanceof Client) ? id : this.manager.clientGet(this.name+":"+id);
+        }
+        async clientConn(id) {
+            return await this.manager.clientConn((id instanceof Client) ? id : (this.name+":"+id));
+        }
+        async clientDisconn(id) {
+            return await this.manager.clientDisconn((id instanceof Client) ? id : (this.name+":"+id));
+        }
+        async clientEmit(id, name, payload) {
+            return await this.manager.clientEmit((id instanceof Client) ? id : (this.name+":"+id), name, payload);
+        }
+        async clientStream(id, pth, name, payload) {
+            return await this.manager.clientStream((id instanceof Client) ? id : (this.name+":"+id), pth, name, payload);
+        }
+
+        async tbaClientMake(id) {
+            let client = await this.manager.tbaClientMake(this.name+":"+id, location);
+            client = this.tbaClientManager.addClient(client);
+            client.addTag(this.name);
+            return client;
+        }
+        async tbaClientDestroy(id) {
+            return await this.manager.tbaClientDestroy((id instanceof TbaClient) ? id : (this.name+":"+id));
+        }
+        async tbaClientHas(id) {
+            if (!(await this.manager.tbaClientHas((id instanceof TbaClient) ? id : (this.name+":"+id)))) return false;
+            return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(this.name+":"+id) instanceof TbaClient);
+        }
+        async tbaClientGet(id) {
+            if (!(await this.tbaClientHas(id))) return null;
+            return (id instanceof TbaClient) ? id : this.manager.tbaClientGet(this.name+":"+id);
+        }
+        async tbaClientInvoke(id, invoke, ...a) {
+            return await this.manager.tbaClientInvoke((id instanceof TbaClient) ? id : (this.name+":"+id), invoke, ...a);
+        }
+
+        async get(k) {
+            if (!this.started) return null;
+            k = String(k);
+            try {
+                return await this.manager.get(k);
+            } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
+            let doLog = true;
+            let kfs = {
+                "name": async () => {
+                    return this.name;
+                },
+
+                "fullscreen": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFullScreen();
+                },
+                "fullscreenable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFullScreenable();
+                },
+
+                "closeable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isClosable();
+                },
+
+                "focused": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFocused();
+                },
+                "blurred": async () => {
+                    if (!this.hasWindow()) return null;
+                    return !(await this.get("focused"));
+                },
+                "focusable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isFocusable();
+                },
+
+                "visible": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isVisible();
+                },
+                "hidden": async () => {
+                    if (!this.hasWindow()) return null;
+                    return !(await this.get("visible"));
+                },
+
+                "modal": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isModal();
+                },
+
+                "maximized": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMaximized();
+                },
+                "maximizable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMaximizable();
+                },
+
+                "minimized": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMinimized();
+                },
+                "minimizable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMinimizable();
+                },
+
+                "enabled": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isEnabled();
+                },
+                "disabled": async () => {
+                    if (!this.hasWindow()) return null;
+                    return !(await this.get("enabled"));
+                },
+
+                "resizable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isResizable();
+                },
+
+                "movable": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.isMovable();
+                },
+
+                "opacity": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getOpacity();
+                },
+
+                "size": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getSize();
+                },
+                "bounds": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getBounds();
+                },
+            };
+            let r = null;
+            if (k in kfs) r = await kfs[k]();
+            else {
+                let namefs = {
+                    PANEL: {
+                        "logs": async () => {
+                            doLog = false;
+                            let hasLogsDir = await this.dirHas("logs");
+                            if (!hasLogsDir) return [];
+                            let dirents = await this.dirList("logs");
+                            return dirents.filter(dirent => dirent.type == "file" && dirent.name.endsWith(".wpilog")).map(dirent => {
+                                return {
+                                    name: dirent.name,
+                                    path: path.join(this.dataPath, "logs", dirent.name),
+                                };
+                            });
+                        },
+                    },
+                };
+                if (this.name in namefs)
+                    if (k in namefs[this.name])
+                        r = await namefs[this.name][k]();
+            }
+            if (doLog) this.log(`GET - ${k}`);
+            return r;
+        }
+        async set(k, v) {
+            if (!this.started) return false;
+            k = String(k);
+            try {
+                return await this.manager.set(k, v);
+            } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
+            let doLog = true;
+            let kfs = {
+                "menu": async () => {
+                    const dfs = itms => {
+                        if (!util.is(itms, "arr")) return;
+                        itms.forEach(itm => {
+                            if (!util.is(itm, "obj")) return;
+                            itm.click = () => this.send("menu-click", itm.id);
+                            dfs(itm.submenu);
+                        });
+                    };
+                    dfs(v);
+                    this.#menu = null;
+                    try {
+                        let signal = new util.Target();
+                        signal.addHandler("about", () => this.send("about"));
+                        signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
+                        this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, signal), ...util.ensure(v, "arr")]);
+                    } catch (e) {}
+                    this.manager.checkMenu();
+                },
+
+                "fullscreen": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setFullScreen(!!v);
+                    return true;
+                },
+                "fullscreenable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setFullScreenable(!!v);
+                    return true;
+                },
+
+                "closeable": async () => {
+                    if (!this.hasWindow()) return false;
+                    let maximizable = this.window.isMaximizable();
+                    this.window.setClosable(!!v);
+                    this.window.setMaximizable(maximizable);
+                    return true;
+                },
+
+                "focused": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.focus();
+                    else this.window.blur();
+                    return true
+                },
+                "blurred": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.blur();
+                    else this.window.focus();
+                    return true;
+                },
+                "focusable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setFocusable(!!v);
+                    return true;
+                },
+
+                "visible": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.show();
+                    else this.window.hide();
+                    return true;
+                },
+                "hidden": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.hide();
+                    else this.window.show();
+                    return true;
+                },
+
+                "maximized": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.maximize();
+                    else this.window.unmaximize();
+                    return true;
+                },
+                "maximizable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMaximizable(!!v);
+                    return true;
+                },
+
+                "minimized": async () => {
+                    if (!this.hasWindow()) return false;
+                    if (v) this.window.minimize();
+                    else this.window.restore();
+                    return true;
+                },
+                "minimizable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMinimizable(!!v);
+                    return true;
+                },
+
+                "enabled": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setEnabled(!!v);
+                    return true;
+                },
+                "disabled": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setEnabled(!v);
+                    return true;
+                },
+
+                "resizable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setResizable(!!v);
+                    return true;
+                },
+
+                "movable": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMovable(!!v);
+                    return true;
+                },
+
+                "opacity": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setOpacity(Math.min(1, Math.max(0, util.ensure(v, "num"))));
+                    return true;
+                },
+
+                "size": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setSize(...new V(v).ceil().xy);
+                    return true;
+                },
+                "bounds": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setBounds(v);
+                    return true;
+                },
+            };
+            let r = false;
+            if (k in kfs) r = await kfs[k]();
+            else {
+                let namefs = {
+                };
+                if (this.name in namefs)
+                    if (k in namefs[this.name])
+                        r = await namefs[this.name][k]();
+            }
+            if (doLog) this.log(`SET - ${k} = ${simplify(JSON.stringify(v))}`);
+            return r;
+        }
+        async on(k, ...a) {
+            if (!this.started) return null;
+            k = String(k);
+            let doLog = true;
+            let kfs = {
+                "reload": async () => {
+                    const manager = this.manager, name = this.name;
+                    manager.remWindow(this);
+                    manager.addWindow(new this.constructor(manager, name));
+                },
+                "close": async () => await this.stop(),
+                "_config": async () => {
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".config");
+                    } catch (e) {}
+                    let config = null;
+                    try {
+                        config = JSON.parse(content);
+                    } catch (e) {}
+                    config = util.ensure(config, "obj");
+                    return config;
+                },
+                "config-get": async k => {
+                    k = String(k);
+                    let config = await kfs._config();
+                    return config[k];
+                },
+                "config-set": async (k, v) => {
+                    k = String(k);
+                    let config = await kfs._config();
+                    config[k] = v;
+                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
+                    return v;
+                },
+                "config-del": async k => {
+                    k = String(k);
+                    let config = await kfs._config();
+                    let v = config[k];
+                    delete config[k];
+                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
+                    return v;
+                },
+                "root-get": async () => {
+                    return (await kfs["config-get"]("root")) || this.dataPath;
+                },
+                "root-set": async root => {
+                    root = util.ensure(root, "str", this.dataPath);
+                    return await kfs["config-set"]("root", root);
+                },
+                "_state": async () => {
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(".state");
+                    } catch (e) {}
+                    let state = null;
+                    try {
+                        state = JSON.parse(content);
+                    } catch (e) {}
+                    state = util.ensure(state, "obj");
+                    return state;
+                },
+                "state-get": async k => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    return state[k];
+                },
+                "state-set": async (k, v) => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    state[k] = v;
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
+                "state-del": async k => {
+                    k = String(k);
+                    let state = await kfs._state();
+                    let v = state[k];
+                    delete state[k];
+                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    return v;
+                },
+                "capture": async rect => {
+                    if (!this.hasWindow()) return;
+                    const img = await ((rect == null) ? this.window.webContents.capturePage() : this.window.webContents.capturePage(rect));
+                    return img.toDataURL();
+                },
+                "file-open-dialog": async options => {
+                    return await electron.dialog.showOpenDialog(this.window, options);
+                },
+                "file-save-dialog": async options => {
+                    return await electron.dialog.showSaveDialog(this.window, options);
+                },
+                "project-affirm": async () => {
+                    const root = await kfs["root-get"]();
+                    let hasDir = await WindowManager.dirHas(root);
+                    if (!hasDir) await WindowManager.dirMake(root);
+                    let hasProjectsContent = await WindowManager.fileHas([root, "projects.json"]);
+                    if (!hasProjectsContent) await WindowManager.fileWrite([root, "projects.json"], "");
+                    let hasProjectsMetaContent = await WindowManager.fileHas([root, "projects.meta.json"]);
+                    if (!hasProjectsMetaContent) await WindowManager.fileWrite([root, "projects.meta.json"], "");
+                    let hasProjectsDir = await WindowManager.dirHas([root, "projects"]);
+                    if (!hasProjectsDir) await WindowManager.dirMake([root, "projects"]);
+                },
+                "projects-get": async () => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    let content = null;
+                    try {
+                        content = await WindowManager.fileRead([root, "projects.json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "projects-set": async content => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    await WindowManager.fileWrite([root, "projects.json"], content);
+                },
+                "projects-list": async () => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    let dirents = null;
+                    try {
+                        dirents = WindowManager.dirList([root, "projects"]);
+                    } catch (e) {}
+                    return util.ensure(dirents, "arr");
+                },
+                "project-get": async id => {
+                    await kfs["project-affirm"]();
+                    id = String(id);
+                    const root = await kfs["root-get"]();
+                    let content = null;
+                    try {
+                        content = await WindowManager.fileRead([root, "projects", id+".json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "project-set": async (id, content) => {
+                    await kfs["project-affirm"]();
+                    id = String(id);
+                    const root = await kfs["root-get"]();
+                    await WindowManager.fileWrite([root, "projects", id+".json"], content);
+                },
+                "project-del": async id => {
+                    await kfs["project-affirm"]();
+                    id = String(id);
+                    const root = await kfs["root-get"]();
+                    try {
+                        await WindowManager.fileDelete([root, "projects", id+".json"]);
+                    } catch (e) { return false; }
+                    return true;
+                },
+                "projects-meta-get": async () => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    let content = null;
+                    try {
+                        content = await WindowManager.fileRead([root, "projects", id+".meta.json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "projects-meta-set": async content => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    await WindowManager.fileWrite([root, "projects", id+".meta.json"], content);
+                },
+            };
+            if (k in kfs)
+                return await kfs[k](...a);
+            let namefs = {
+                PANEL: {
+                    "wpilog-read": async pth => {
+                        return await WindowManager.fileReadRaw(pth);
+                    },
+                    "wpilog-write": async (pth, content) => {
+                        return await WindowManager.fileWriteRaw(pth, content);
+                    },
+                    "log-delete": async name => {
+                        let logs = await this.get("logs");
+                        let has = false;
+                        for (let log of logs) {
+                            if (log.name != name) continue;
+                            has = true;
+                        }
+                        if (!has) return false;
+                        if (await this.fileHas(["logs", name]))
+                            await this.fileDelete(["logs", name]);
+                        return true;
+                    },
+                    "log-cache": async pth => {
+                        pth = String(pth);
+                        if (!(await WindowManager.fileHas(pth))) return false;
+                        await this.manager.affirm();
+                        if (!(await this.dirHas(["logs"])))
+                            await this.manager.dirMake(["logs"]);
+                        const name = path.basename(pth);
+                        let pthDest = path.join(this.dataPath, "logs", name);
+                        if (path.resolve(pth) == path.resolve(pthDest)) return true;
+                        await fs.promises.cp(
+                            pth,
+                            pthDest,
+                            {
+                                force: true,
+                                recursive: true,
+                            },
+                        );
+                        return true;
+                    },
+                },
+                PLANNER: {
+                    "exec": async (id, pathId) => {
+                        id = String(id);
+                        pathId = String(pathId);
+
+                        const subcore = await import("./planner/core.mjs");
+
+                        let project = null;
+                        try {
+                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
+                        } catch (e) {}
+                        if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
+                        if (!project.hasPath(pathId)) throw "Nonexistent path with id: "+pathId+" for project id: "+id;
+                        let pth = project.getPath(pathId);
+
+                        let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
+                        if (script == null) throw "No script for project with id: "+id;
+                        script = String(script);
+                        let hasScript = await WindowManager.fileHas(script);
+                        if (!hasScript) throw "Script ("+script+") does not exist for project id: "+id;
+                        const root = path.dirname(script);
+
+                        let dataIn = { config: {}, nodes: [], obstacles: [] };
+                        dataIn.config.map_w = project.w / 100;
+                        dataIn.config.map_h = project.h / 100;
+                        dataIn.config.side_length = project.robotW / 100;
+                        dataIn.config.mass = project.robotMass;
+                        dataIn.config.moment_of_inertia = project.config.momentOfInertia;
+                        dataIn.config.efficiency_percent = project.config.efficiency;
+                        dataIn.config["12_motor_mode"] = project.config.is12MotorMode;
+                        pth.nodes.forEach(id => {
+                            if (!project.hasItem(id)) return;
+                            let itm = project.getItem(id);
+                            if (!(itm instanceof subcore.Project.Node)) return;
+                            dataIn.nodes.push({
+                                x: itm.x/100, y: itm.y/100,
+                                vx: itm.useVelocity ? itm.velocityX/100 : null,
+                                vy: itm.useVelocity ? itm.velocityY/100 : null,
+                                vt: itm.useVelocity ? itm.velocityRot : null,
+                                theta: itm.useHeading ? itm.heading : null,
+                            });
+                        });
+                        project.items.forEach(id => {
+                            let itm = project.getItem(id);
+                            if (!(itm instanceof subcore.Project.Obstacle)) return;
+                            dataIn.obstacles.push({
+                                x: itm.x/100, y: itm.y/100,
+                                radius: itm.radius/100,
+                            });
+                        });
+                        let contentIn = JSON.stringify(dataIn, null, "\t");
+
+                        this.log("REMOVE data.in/data.out");
+                        if (await WindowManager.fileHas(path.join(root, "data.in")))
+                            await WindowManager.fileDelete(path.join(root, "data.in"));
+                        if (await WindowManager.fileHas(path.join(root, "data.out")))
+                            await WindowManager.fileDelete(path.join(root, "data.out"));
+                        this.log("REMOVE stdout.log/stderr.log");
+                        if (await WindowManager.fileHas(path.join(root, "stdout.log")))
+                            await WindowManager.fileDelete(path.join(root, "stdout.log"));
+                        if (await WindowManager.fileHas(path.join(root, "stderr.log")))
+                            await WindowManager.fileDelete(path.join(root, "stderr.log"));
+                        this.log("CREATE data.in");
+                        await WindowManager.fileWrite(path.join(root, "data.in"), contentIn);
+                        this.log("CREATE stdout.log/stderr.log");
+                        await WindowManager.fileWrite(path.join(root, "stdout.log"), "");
+                        await WindowManager.fileWrite(path.join(root, "stderr.log"), "");
+                        return new Promise((res, rej) => {
+                            if (this.processManager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
+                            this.log("SPAWN");
+                            const process = this.processManager.addProcess(new Process("spawn", project.config.scriptPython, [script], { cwd: root }));
+                            process.id = "script";
+                            const finish = async () => {
+                                const appRoot = await this.on("root-get");
+                                const doAppRoot = appRoot != this.dataPath;
+                                let hasMainDir = await WindowManager.dirHas(path.join(root, "paths"));
+                                if (!hasMainDir) await WindowManager.dirMake(path.join(root, "paths"));
+                                if (doAppRoot) {
+                                    let hasMainDir = await WindowManager.dirHas(path.join(appRoot, "paths"));
+                                    if (!hasMainDir) await WindowManager.dirMake(path.join(appRoot, "paths"));
+                                }
+                                let hasProjectDir = await WindowManager.dirHas(path.join(root, "paths", project.meta.name));
+                                if (!hasProjectDir) await WindowManager.dirMake(path.join(root, "paths", project.meta.name));
+                                if (doAppRoot) {
+                                    let hasProjectDir = await WindowManager.dirHas(path.join(appRoot, "paths", project.meta.name));
+                                    if (!hasProjectDir) await WindowManager.dirMake(path.join(appRoot, "paths", project.meta.name));
+                                }
+                                let hasPathDir = await WindowManager.dirHas(path.join(root, "paths", project.meta.name, pth.name));
+                                if (!hasPathDir) await WindowManager.dirMake(path.join(root, "paths", project.meta.name, pth.name));
+                                if (doAppRoot) {
+                                    let hasPathDir = await WindowManager.dirHas(path.join(appRoot, "paths", project.meta.name, pth.name));
+                                    if (!hasPathDir) await WindowManager.dirMake(path.join(appRoot, "paths", project.meta.name, pth.name));
+                                }
+                                let hasDataIn = await WindowManager.fileHas(path.join(root, "data.in"));
+                                if (hasDataIn) {
+                                    if (doAppRoot)
+                                        await fs.promises.cp(
+                                            path.join(root, "data.in"),
+                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.in"),
+                                            {
+                                                force: true,
+                                                recursive: true,
+                                            },
+                                        );
+                                    await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
+                                }
+                                let hasDataOut = await WindowManager.fileHas(path.join(root, "data.out"));
+                                if (hasDataOut) {
+                                    if (doAppRoot)
+                                        await fs.promises.cp(
+                                            path.join(root, "data.out"),
+                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.out"),
+                                            {
+                                                force: true,
+                                                recursive: true,
+                                            },
+                                        );
+                                    await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
+                                }
+                                let hasOutLog = await WindowManager.fileHas(path.join(root, "stdout.log"));
+                                if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, "paths", project.meta.name, pth.name, "stdout.log"));
+                                let hasErrLog = await WindowManager.fileHas(path.join(root, "stderr.log"));
+                                if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, "paths", project.meta.name, pth.name, "stderr.log"));
+                            };
+                            process.addHandler("data", async data => {
+                                WindowManager.fileAppend(path.join(root, "stdout.log"), data);
+                            });
+                            let already = false;
+                            const resolve = async data => {
+                                if (already) return;
+                                already = true;
+                                this.log("SPAWN exit", data);
+                                await finish();
+                                if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
+                                    const notif = new electron.Notification({
+                                        title: "Script Process Finished",
+                                        body: "Your script finished executing with no errors!",
+                                    });
+                                    notif.show();
+                                }
+                                return res(data);
+                            };
+                            const reject = async data => {
+                                if (already) return;
+                                already = true;
+                                this.log("SPAWN err", data);
+                                await finish();
+                                if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
+                                    const notif = new electron.Notification({
+                                        title: "Script Process Finished",
+                                        body: "Your script finished executing with an error!",
+                                    });
+                                    notif.show();
+                                }
+                                return rej(data);
+                            };
+                            process.addHandler("exit", data => resolve(data));
+                            process.addHandler("error", data => reject(data));
+                        });
+                    },
+                    "exec-term": async () => {
+                        this.log("SPAWN term");
+                        const process = this.processManager.getProcessById("script");
+                        if (!(process instanceof Process)) return false;
+                        await process.terminate();
+                        return true;
+                    },
+                    "exec-get": async id => {
+                        id = String(id);
+
+                        const subcore = await import("./planner/core.mjs");
+
+                        let project = null;
+                        try {
+                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
+                        } catch (e) {}
+                        if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
+
+                        let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
+                        if (script == null) return {}; // throw "No script for project with id: "+id;
+                        script = String(script);
+                        let has = await WindowManager.fileHas(script);
+                        if (!has) throw "Script ("+script+") does not exist for project id: "+id;
+                        let root = path.dirname(script);
+
+                        let hasMainDir = await WindowManager.dirHas(path.join(root, "paths"));
+                        if (!hasMainDir) return {};
+                        let hasProjectDir = await WindowManager.dirHas(path.join(root, "paths", project.meta.name));
+                        if (!hasProjectDir) return {};
+                        let datas = {};
+                        let pathNames = project.paths.map(id => project.getPath(id).name);
+                        let pathList = await WindowManager.dirList(path.join(root, "paths", project.meta.name));
+                        pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
+                        await Promise.all(pathList.map(async name => {
+                            let pathId = null;
+                            for (let id of project.paths) {
+                                let pth = project.getPath(id);
+                                if (pth.name != name) continue;
+                                pathId = id;
+                                break;
+                            }
+                            if (pathId == null) return;
+                            let contentOut = "";
+                            try {
+                                contentOut = await WindowManager.fileRead(path.join(root, "paths", project.meta.name, name, "data.out"));
+                            } catch (e) {}
+                            let dataOut = null;
+                            try {
+                                dataOut = JSON.parse(contentOut);
+                            } catch (e) {}
+                            if (dataOut == null) return;
+                            datas[pathId] = dataOut;
+                        }));
+                        return datas;
+                    },
+                },
+                PRESETS: {
+                    "cmd-open-app-data-dir": async () => {
+                        await new Promise((res, rej) => {
+                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.manager.dataPath }));
+                            process.addHandler("exit", code => res(code));
+                            process.addHandler("error", e => rej(e));
+                        });
+                    },
+                    "cmd-cleanup-app-data-dir": async () => {
+                        await this.on("cleanup");
+                    },
+                    "cmd-open-app-log-dir": async () => {
+                        await new Promise((res, rej) => {
+                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: WindowManager.makePath(this.manager.dataPath, "logs") }));
+                            process.addHandler("exit", code => res(code));
+                            process.addHandler("error", e => rej(e));
+                        });
+                    },
+                    "cmd-clear-app-log-dir": async () => {
+                        let dirents = await this.manager.dirList("logs");
+                        let n = 0, nTotal = dirents.length;
+                        await Promise.all(dirents.map(async dirent => {
+                            await this.manager.fileDelete(["logs", dirent.name]);
+                            n++;
+                            this.cacheSet("clear-app-log-dir-progress", n/nTotal);
+                        }));
+                        this.cacheSet("clear-app-log-dir-progress", 1);
+                    },
+                    "cmd-poll-db-host": async () => {
+                        (async () => {
+                            await this.manager.tryLoad();
+                        })();
+                    },
+                    "feature": async (name, cmd, k, ...a) => {
+                        let cmdfs = {
+                            get: {
+                                "root": async () => {
+                                    let content = "";
+                                    try {
+                                        content = await Window.fileRead(this.manager, name, [".config"]);
+                                    } catch (e) {}
+                                    let data = null;
+                                    try {
+                                        data = JSON.parse(content);
+                                    } catch (e) {}
+                                    data = util.ensure(data, "obj");
+                                    return util.ensure(data.root, "str", Window.getDataPath(this.manager, name));
+                                },
+                            },
+                            set: {
+                                "root": async v => {
+                                    let content = "";
+                                    try {
+                                        content = await Window.fileRead(this.manager, name, [".config"]);
+                                    } catch (e) {}
+                                    let data = null;
+                                    try {
+                                        data = JSON.parse(content);
+                                    } catch (e) {}
+                                    data = util.ensure(data, "obj");
+                                    data.root = util.ensure(v, "str", Window.getDataPath(this.manager, name));
+                                    if (data.root == Window.getDataPath(this.manager, name)) delete data.root;
+                                    content = JSON.stringify(data);
+                                    await Window.fileWrite(this.manager, name, [".config"], content);
+                                },
+                            },
+                        };
+                        let namefs = {
+                        };
+                        if (cmd in cmdfs)
+                            if (k in cmdfs[cmd])
+                                return await cmdfs[cmd][k](...a);
+                        if (name in namefs)
+                            if (cmd in namefs[name])
+                                if (k in namefs[name][cmd])
+                                    return await namefs[name][cmd][k](...a);
+                        return null;
+                    },
+                },
+            };
+            let r = null, hasR = false;
+            if (this.name in namefs) {
+                if (k in namefs[this.name]) {
+                    r = await namefs[this.name][k](...a);
+                    hasR = true;
+                }
+            }
+            if (doLog) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            if (!hasR) {
+                try {
+                    r = await this.manager.on(k, ...a);
+                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
+            }
+            return r;
+        }
+        async send(k, ...a) {
+            if (!this.started) return false;
+            this.windowManager.send(k, ...a);
+            k = String(k);
+            this.log(`SEND - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("send", k, ...a);
+            return true;
+        }
+        cacheSet(k, v) {
+            if (!this.started) return false;
+            k = String(k);
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("cache-set", k, v);
+        }
+        cacheDel(k) {
+            if (!this.started) return false;
+            k = String(k);
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("cache-del", k);
+        }
+        cacheClear() {
+            if (!this.started) return false;
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("cache-clear");
+        }
+
+        update(delta) { this.windowManager.update(delta); this.post("update", delta); }
+
+        log(...a) { return this.manager.log(`[${this.name}]`, ...a); }
+    }
+    class WindowManager extends util.Target {
+        #window;
+
         #started;
 
         #stream;
@@ -636,13 +2030,15 @@ const MAIN = async () => {
         #clientManager;
         #tbaClientManager;
 
-        #features;
+        #windows;
 
         #loads;
         #isLoading;
 
-        constructor() {
+        constructor(window) {
             super();
+
+            this.#window = (window instanceof Window) ? window : null;
 
             this.#started = false;
 
@@ -652,13 +2048,17 @@ const MAIN = async () => {
             this.#clientManager = new ClientManager();
             this.#tbaClientManager = new TbaClientManager();
 
-            this.#features = new Set();
+            this.#windows = new Set();
 
             this.#loads = new Set();
             this.#isLoading = false;
         }
 
+        get window() { return this.#window; }
+        get rootManager() { return this.hasWindow() ? this.window.rootManager : this; }
+
         async init() {
+            if (this.hasWindow()) return await this.window.manager.init();
             try {
                 await this.affirm();
             } catch (e) {
@@ -705,7 +2105,9 @@ const MAIN = async () => {
             electron.nativeTheme.themeSource = await this.get("native-theme");
             return true;
         }
-        async quit() {}
+        async quit() {
+            if (this.hasWindow()) return await this.window.manager.quit();
+        }
 
         get stream() { return this.#stream; }
         hasStream() { return this.stream instanceof fs.WriteStream; }
@@ -714,95 +2116,110 @@ const MAIN = async () => {
         get clientManager() { return this.#clientManager; }
         get tbaClientManager() { return this.#tbaClientManager; }
 
-        get features() { return [...this.#features]; }
-        set features(v) {
+        get windows() { return [...this.#windows]; }
+        set windows(v) {
             v = util.ensure(v, "arr");
             (async () => {
-                await this.clearFeatures();
-                v.forEach(v => this.addFeature(v));
+                if (!(await this.clearWindows())) return;
+                v.forEach(v => this.addWindow(v));
             })();
         }
-        async clearFeatures() {
-            let feats = this.features;
-            await Promise.all(feats.map(async feat => await this.remFeature(feat)));
-            return feats;
+        async clearWindows() {
+            let r = true;
+            await Promise.all(this.windows.map(async win => {
+                r &&= await win.windowManager.clearWindows();
+                r &&= await this.remWindow(win);
+            }));
+            return r;
         }
-        hasFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            return this.#features.has(feat) && feat.portal == this;
+        hasWindow(win) {
+            if (win == null) return this.window instanceof Window;
+            if (!(win instanceof Window)) return false;
+            return this.#windows.has(win) && win.manager == this;
         }
-        addFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            if (feat.portal != this) return false;
-            if (this.hasFeature(feat)) return false;
-            this.#features.add(feat);
+        addWindow(win, params=null) {
+            if (!(win instanceof Window)) return false;
+            if (win.manager != this) return false;
+            if (this.hasWindow(win)) return false;
+            this.#windows.add(win);
             try {
-                feat.start();
+                win.start(params);
             } catch (e) {
-                this.#features.delete(feat);
-                showError("Feature Start Error", e);
+                this.#windows.delete(win);
+                showError("Window Start Error", e);
                 return false;
             }
-            this.change("addFeature", null, feat);
+            this.change("addWindow", null, win);
             this.checkMenu();
-            return feat;
+            return win;
         }
-        async remFeature(feat) {
-            if (!(feat instanceof Portal.Feature)) return false;
-            if (feat.portal != this) return false;
-            if (!this.hasFeature(feat)) return false;
-            feat.log("REM");
-            if (feat.started) {
+        async remWindow(win) {
+            if (!(win instanceof Window)) return false;
+            if (win.manager != this) return false;
+            if (!this.hasWindow(win)) return false;
+            win.log("REM");
+            if (win.started) {
                 try {
-                    return await feat.stop();
+                    return await win.stop();
                 } catch (e) {
-                    this.#features.delete(feat);
-                    this.change("remFeature", feat, null);
-                    showError("Feature Stop Error", e);
-                    return;
+                    this.#windows.delete(win);
+                    this.change("remWindow", win, null);
+                    showError("Window Stop Error", e);
+                    return win;
                 }
             }
-            feat.log("REM - already stopped");
-            this.#features.delete(feat);
-            this.change("remFeature", feat, null);
+            win.log("REM - already stopped");
+            this.#windows.delete(win);
+            this.change("remWindow", win, null);
             this.checkMenu();
-            return feat;
+            return win;
         }
 
         checkMenu() {
+            if (this.hasWindow()) return this.window.manager.checkMenu();
             let signal = new util.Target();
             signal.addHandler("about", () => this.send("about"));
             signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
             electron.Menu.setApplicationMenu(electron.Menu.buildFromTemplate(makeMenuDefault("", signal)));
             let window = electron.BrowserWindow.getFocusedWindow();
-            for (let feat of this.features) {
-                if (!feat.hasWindow()) continue;
+            let windows = [];
+            const dfs = manager => {
+                if (manager.hasWindow()) windows.push(manager.window);
+                manager.windows.forEach(window => dfs(window.windowManager));
+            };
+            dfs(this);
+            for (let win of windows) {
+                if (!win.hasWindow()) continue;
                 let signal = new util.Target();
-                signal.addHandler("about", () => feat.send("about"));
-                signal.addHandler("settings", () => feat.on("spawn", "PRESETS"));
-                let menu = feat.hasMenu() ? feat.menu : electron.Menu.buildFromTemplate(makeMenuDefault(feat.name, signal));
-                feat.window.setMenu(menu);
-                if (feat.window != window) continue;
+                signal.addHandler("about", () => win.send("about"));
+                signal.addHandler("settings", () => win.on("spawn", "PRESETS"));
+                let menu = win.hasMenu() ? win.menu : electron.Menu.buildFromTemplate(makeMenuDefault(win.name, signal));
+                win.window.setMenu(menu);
+                if (win.window != window) continue;
                 electron.Menu.setApplicationMenu(menu);
             }
         }
 
-        get loads() { return [...this.#loads]; }
+        get loads() { return this.hasWindow() ? this.window.manager.loads : [...this.#loads]; }
         set loads(v) {
+            if (this.hasWindow()) return this.window.manager.loads = v;
             v = util.ensure(v, "arr");
             this.clearLoads();
             v.forEach(v => this.addLoad(v));
         }
         clearLoads() {
+            if (this.hasWindow()) return this.window.manager.clearLoads();
             let loads = this.loads;
             loads.forEach(load => this.remLoad(load));
             return loads;
         }
         hasLoad(load) {
+            if (this.hasWindow()) return this.window.manager.hasLoad(load);
             load = String(load);
             return this.#loads.has(load);
         }
         addLoad(load) {
+            if (this.hasWindow()) return this.window.manager.addLoad(load);
             load = String(load);
             if (this.hasLoad(load)) return false;
             this.#loads.add(load);
@@ -810,14 +2227,16 @@ const MAIN = async () => {
             return true;
         }
         remLoad(load) {
+            if (this.hasWindow()) return this.window.manager.remLoad(load);
             load = String(load);
             if (!this.hasLoad(load)) return false;
             this.#loads.delete(load);
             this.change("remLoad", load, null);
             return true;
         }
-        get isLoading() { return this.#isLoading; }
+        get isLoading() { return this.hasWindow() ? this.window.manager.isLoading : this.#isLoading; }
         async tryLoad() {
+            if (this.hasWindow()) return await this.window.manager.tryLoad();
             if (this.isLoading) return false;
             let version = await this.get("base-version");
             this.#isLoading = true;
@@ -1079,16 +2498,16 @@ const MAIN = async () => {
                         this.remLoad(name+":search");
                         let namefs = {
                             PLANNER: async () => {
-                                await Portal.Feature.affirm(this, name);
+                                await Window.affirm(this, name);
                                 await Promise.all([
                                     async () => {
                                         log("solver");
                                         this.addLoad(name+":solver");
                                         try {
-                                            if (await Portal.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                            if (await WindowManager.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
                                                 await fs.promises.cp(
                                                     path.join(__dirname, name.toLowerCase(), "solver"),
-                                                    path.join(Portal.Feature.getDataPath(this, name), "solver"),
+                                                    path.join(Window.getDataPath(this, name), "solver"),
                                                     {
                                                         force: true,
                                                         recursive: true,
@@ -1105,7 +2524,7 @@ const MAIN = async () => {
                                         log("templates.json");
                                         this.addLoad(name+":templates.json");
                                         try {
-                                            await fetchAndPipe(subhost+"/templates.json", path.join(Portal.Feature.getDataPath(this, name), "templates.json"));
+                                            await fetchAndPipe(subhost+"/templates.json", path.join(Window.getDataPath(this, name), "templates.json"));
                                             log("templates.json - success");
                                         } catch (e) {
                                             log(`templates.json - error - ${e}`);
@@ -1125,15 +2544,11 @@ const MAIN = async () => {
             return r;
         }
 
-        get started() { return this.#started; }
-        start() {
+        get started() { return this.hasWindow() ? this.window.manager.started : this.#started; }
+        start(params=null) {
+            if (this.hasWindow()) return this.window.manager.start(params);
+
             if (this.started) {
-                for (let feat of this.features) {
-                    if (!feat.hasWindow()) continue;
-                    if (!feat.window.isVisible()) continue;
-                    feat.window.focus();
-                    break;
-                }
                 return false;
             }
             this.#started = true;
@@ -1145,15 +2560,18 @@ const MAIN = async () => {
             });
 
             const identify = e => {
-                let feat = this.identifyFeature(e.sender.id);
-                if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+e.sender.id;
-                return feat;
+                let win = this.identifyWindow(e.sender.id);
+                if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+e.sender.id;
+                return win;
             };
 
             ipc.handle("get-root", async (e, type) => {
-                let feat = identify(e);
+                let win = identify(e);
                 if (type == "app") return __dirname;
-                if (type == "feature") return path.join(__dirname, feat.name.toLowerCase());
+                if (type == "window") {
+                    if (win.isModal) return path.join(__dirname, "modal", win.name.substring(6).toLowerCase());
+                    return path.join(__dirname, win.name.toLowerCase());
+                }
                 if (type == "repo") return path.join(__dirname, "..");
                 return null;
             });
@@ -1166,95 +2584,108 @@ const MAIN = async () => {
             });
 
             ipc.handle("file-has", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.fileHas(pth);
+                let win = identify(e);
+                return await win.fileHas(pth);
             });
             ipc.handle("file-read", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.fileRead(pth);
+                let win = identify(e);
+                return await win.fileRead(pth);
             });
             ipc.handle("file-read-raw", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.fileReadRaw(pth);
+                let win = identify(e);
+                return await win.fileReadRaw(pth);
             });
             ipc.handle("file-write", async (e, pth, content) => {
-                let feat = identify(e);
-                return await feat.fileWrite(pth, content);
+                let win = identify(e);
+                return await win.fileWrite(pth, content);
             });
             ipc.handle("file-write-raw", async (e, pth, content) => {
-                let feat = identify(e);
-                return await feat.fileWriteRaw(pth, content);
+                let win = identify(e);
+                return await win.fileWriteRaw(pth, content);
             });
             ipc.handle("file-append", async (e, pth, content) => {
-                let feat = identify(e);
-                return await feat.fileAppend(pth, content);
+                let win = identify(e);
+                return await win.fileAppend(pth, content);
             });
             ipc.handle("file-delete", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.fileDelete(pth);
+                let win = identify(e);
+                return await win.fileDelete(pth);
             });
 
             ipc.handle("dir-has", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.dirHas(pth);
+                let win = identify(e);
+                return await win.dirHas(pth);
             });
             ipc.handle("dir-list", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.dirList(pth);
+                let win = identify(e);
+                return await win.dirList(pth);
             });
             ipc.handle("dir-make", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.dirMake(pth);
+                let win = identify(e);
+                return await win.dirMake(pth);
             });
             ipc.handle("dir-delete", async (e, pth) => {
-                let feat = identify(e);
-                return await feat.dirDelete(pth);
+                let win = identify(e);
+                return await win.dirDelete(pth);
+            });
+
+            ipc.handle("modal-result", async (e, r) => {
+                let win = identify(e);
+                return await win.modalResult(r);
+            });
+            ipc.handle("modal-spawn", async (e, name, params) => {
+                let win = identify(e);
+                return await win.modalSpawn(name, params);
+            });
+            ipc.handle("modal-modify", async (e, id, params) => {
+                let win = identify(e);
+                return await win.modalModify(id, params);
             });
 
             ipc.handle("client-make", async (e, id, location) => {
-                let feat = identify(e);
-                return await feat.clientMake(id, location);
+                let win = identify(e);
+                return await win.clientMake(id, location);
             });
             ipc.handle("client-destroy", async (e, id) => {
-                let feat = identify(e);
-                return await feat.clientDestroy(id);
+                let win = identify(e);
+                return await win.clientDestroy(id);
             });
             ipc.handle("client-has", async (e, id) => {
-                let feat = identify(e);
-                return await feat.clientHas(id);
+                let win = identify(e);
+                return await win.clientHas(id);
             });
             ipc.handle("client-conn", async (e, id) => {
-                let feat = identify(e);
-                return await feat.clientConn(id);
+                let win = identify(e);
+                return await win.clientConn(id);
             });
             ipc.handle("client-disconn", async (e, id) => {
-                let feat = identify(e);
-                return await feat.clientDisconn(id);
+                let win = identify(e);
+                return await win.clientDisconn(id);
             });
             ipc.handle("client-emit", async (e, id, name, payload) => {
-                let feat = identify(e);
-                return await feat.clientEmit(id, name, payload);
+                let win = identify(e);
+                return await win.clientEmit(id, name, payload);
             });
             ipc.handle("client-stream", async (e, id, pth, name, payload) => {
-                let feat = identify(e);
-                return await feat.clientStream(id, pth, name, payload);
+                let win = identify(e);
+                return await win.clientStream(id, pth, name, payload);
             });
 
             ipc.handle("tba-client-make", async (e, id) => {
-                let feat = identify(e);
-                return await feat.tbaClientMake(id);
+                let win = identify(e);
+                return await win.tbaClientMake(id);
             });
             ipc.handle("tba-client-destroy", async (e, id) => {
-                let feat = identify(e);
-                return await feat.tbaClientDestroy(id);
+                let win = identify(e);
+                return await win.tbaClientDestroy(id);
             });
             ipc.handle("tba-client-has", async (e, id) => {
-                let feat = identify(e);
-                return await feat.tbaClientHas(id);
+                let win = identify(e);
+                return await win.tbaClientHas(id);
             });
             ipc.handle("tba-client-invoke", async (e, id, invoke, ...a) => {
-                let feat = identify(e);
-                return await feat.tbaClientInvoke(id, invoke, ...a);
+                let win = identify(e);
+                return await win.tbaClientInvoke(id, invoke, ...a);
             });
 
             (async () => {
@@ -1271,16 +2702,7 @@ const MAIN = async () => {
                     return;
                 }
 
-                let feats = util.ensure(await this.on("state-get", "features"), "arr");
-                feats.forEach(name => {
-                    let feat = null;
-                    try {
-                        feat = new Portal.Feature(this, name);
-                    } catch (e) { return showError("Portal Start Error - Feature:"+name, e); }
-                    this.addFeature(feat);
-                });
-
-                if (this.features.length <= 0) this.addFeature(new Portal.Feature(this, "PORTAL"));
+                this.addWindow(new Window(this, "PORTAL"));
                 
                 try {
                     await this.tryLoad();
@@ -1290,6 +2712,8 @@ const MAIN = async () => {
             return true;
         }
         async stop() {
+            if (this.hasWindow()) return this.window.manager.stop();
+
             this.log("STOP");
             await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
@@ -1300,22 +2724,18 @@ const MAIN = async () => {
                 showError("Portal Stop Error - 'stop' event", e);
                 return true;
             }
-            let feats = this.features;
-            let all = true;
-            await Promise.all(feats.map(async feat => {
-                let r = await this.remFeature(feat);
-                all &&= !!r;
-            }));
-            feats = feats.map(feat => feat.name);
-            await this.on("state-set", "features", feats);
-            return all;
+            return await this.clearWindows();
         }
 
-        get dataPath() { return path.join(app.getPath("appData"), "PeninsulaPortal"); }
+        get dataPath() { return this.hasWindow() ? this.window.dataPath : path.join(app.getPath("appData"), "PeninsulaPortal"); }
 
+        static async basicAffirm(dataPath) {
+            let hasData = await this.dirHas(dataPath);
+            if (!hasData) await this.dirMake(dataPath);
+            return true;
+        }
         static async affirm(dataPath) {
-            let hasAppData = await this.dirHas(dataPath);
-            if (!hasAppData) await this.dirMake(dataPath);
+            await this.basicAffirm(dataPath);
             let hasLogDir = await this.dirHas([dataPath, "logs"]);
             if (!hasLogDir) await this.dirMake([dataPath, "logs"]);
             let hasTemplatesDir = await this.dirHas([dataPath, "templates"]);
@@ -1343,7 +2763,8 @@ const MAIN = async () => {
             return true;
         }
         async affirm() {
-            let r = await Portal.affirm(this.dataPath);
+            if (this.hasWindow()) return (await this.window.manager.affirm()) && (await WindowManager.basicAffirm(this.dataPath));
+            let r = await WindowManager.affirm(this.dataPath);
             if (!r) return r;
             if (!this.hasStream()) {
                 let now = new Date();
@@ -1361,14 +2782,14 @@ const MAIN = async () => {
                 s = s.padStart(2, "0");
                 ms = ms.padEnd(3, "0");
                 let name = `${yr}-${mon}-${d} ${hr}-${min}-${s}-${ms}.log`;
-                this.#stream = fs.createWriteStream(Portal.makePath(this.dataPath, "logs", name));
+                this.#stream = fs.createWriteStream(WindowManager.makePath(this.dataPath, "logs", name));
                 await new Promise((res, rej) => this.stream.on("open", () => res()));
             }
             return r;
         }
         static async getCleanup(dataPath) {
             log(". get-cleanup");
-            const l = (...a) => log(". get-cleanup - found: "+Portal.makePath(...a));
+            const l = (...a) => log(". get-cleanup - found: "+WindowManager.makePath(...a));
             const format = [
                 //~/logs
                 {
@@ -1528,11 +2949,11 @@ const MAIN = async () => {
             await cleanup([dataPath], format);
             return pths;
         }
-        async getCleanup() { return await Portal.getCleanup(this.dataPath); }
+        async getCleanup() { return this.hasWindow() ? await this.window.manager.getCleanup() : await WindowManager.getCleanup(this.dataPath); }
         static async cleanup(dataPath, version) {
             version = String(version);
             log(". cleanup");
-            const l = (...a) => log(". cleanup - delete: "+Portal.makePath(...a));
+            const l = (...a) => log(". cleanup - delete: "+WindowManager.makePath(...a));
             let fsVersion = await this.getFSVersion(dataPath);
             log(`. cleanup - fs-version check (${version} ?>= ${fsVersion})`);
             if (!(await this.canFS(dataPath, version))) {
@@ -1551,7 +2972,7 @@ const MAIN = async () => {
             }));
             return true;
         }
-        async cleanup() { return await Portal.cleanup(this.dataPath, await this.get("base-version")); }
+        async cleanup() { return this.hasWindow() ? await this.window.manager.cleanup() : await WindowManager.cleanup(this.dataPath, await this.get("base-version")); }
 
         static makePath(...pth) {
             return path.join(...pth.flatten());
@@ -1648,24 +3069,46 @@ const MAIN = async () => {
             return compareVersions.compare(version, fsVersion, ">=");
         }
 
-        async fileHas(pth) { return await Portal.fileHas([this.dataPath, pth]); }
-        async fileRead(pth) { return await Portal.fileRead([this.dataPath, pth]); }
-        async fileReadRaw(pth) { return await Portal.fileReadRaw([this.dataPath, pth]); }
-        async fileWrite(pth, content) { return await Portal.fileWrite([this.dataPath, pth], content); }
-        async fileWriteRaw(pth, content) { return await Portal.fileWriteRaw([this.dataPath, pth], content); }
-        async fileAppend(pth, content) { return await Portal.fileAppend([this.dataPath, pth], content); }
-        async fileDelete(pth) { return await Portal.fileDelete([this.dataPath, pth]); }
+        async fileHas(pth) { return await WindowManager.fileHas([this.dataPath, pth]); }
+        async fileRead(pth) { return await WindowManager.fileRead([this.dataPath, pth]); }
+        async fileReadRaw(pth) { return await WindowManager.fileReadRaw([this.dataPath, pth]); }
+        async fileWrite(pth, content) { return await WindowManager.fileWrite([this.dataPath, pth], content); }
+        async fileWriteRaw(pth, content) { return await WindowManager.fileWriteRaw([this.dataPath, pth], content); }
+        async fileAppend(pth, content) { return await WindowManager.fileAppend([this.dataPath, pth], content); }
+        async fileDelete(pth) { return await WindowManager.fileDelete([this.dataPath, pth]); }
 
-        async dirHas(pth) { return await Portal.dirHas([this.dataPath, pth]); }
-        async dirList(pth) { return await Portal.dirList([this.dataPath, pth]); }
-        async dirMake(pth) { return await Portal.dirMake([this.dataPath, pth]); }
-        async dirDelete(pth) { return await Portal.dirDelete([this.dataPath, pth]); }
+        async dirHas(pth) { return await WindowManager.dirHas([this.dataPath, pth]); }
+        async dirList(pth) { return await WindowManager.dirList([this.dataPath, pth]); }
+        async dirMake(pth) { return await WindowManager.dirMake([this.dataPath, pth]); }
+        async dirDelete(pth) { return await WindowManager.dirDelete([this.dataPath, pth]); }
 
-        async getFSVersion() { return await Portal.getFSVersion(this.dataPath); }
-        async setFSVersion(verison) { return await Portal.setFSVersion(this.dataPath, verison); }
-        async canFS(version) { return await Portal.canFS(this.dataPath, version); }
+        async getFSVersion() { return this.hasWindow() ? await this.window.manager.getFSVersion() : await WindowManager.getFSVersion(this.dataPath); }
+        async setFSVersion(verison) { return this.hasWindow() ? await this.window.manager.setFSVersion(verison) : await WindowManager.setFSVersion(this.dataPath, verison); }
+        async canFS(version) { return this.hasWindow() ? await this.window.manager.canFS(version) : await WindowManager.canFS(this.dataPath, version); }
+
+        async modalSpawn(name, params) {
+            name = String(name);
+            if (!MODALS.includes(name)) return null;
+            let win = this.addWindow(new Window(this, "modal:"+name), params);
+            if (!win) return null;
+            return win;
+        }
+        async modalAlert(params) { return await this.modalSpawn("ALERT", params); }
+        async modalConfirm(params) { return await this.modalSpawn("CONFIRM", params); }
+        async modalPrompt(params) { return await this.modalSpawn("PROMPT", params); }
+        async modalProgress(params) { return await this.modalSpawn("PROGRESS", params); }
+        async modalModify(id, params) {
+            for (let win of this.windowManager.windows) {
+                if (win.id != id) continue;
+                if (!win.hasWindow()) continue;
+                win.post("modal-modify", params);
+                return true;
+            }
+            return false;
+        }
 
         async clientMake(id, location) {
+            if (this.hasWindow()) return await this.window.clientMake(id, location);
             if (await this.clientHas(id)) return null;
             this.log(`CLIENT:make - ${id} = ${location}`);
             let client = this.clientManager.addClient(new Client(location));
@@ -1673,18 +3116,21 @@ const MAIN = async () => {
             return client;
         }
         async clientDestroy(id) {
+            if (this.hasWindow()) return await this.window.clientDestroy(id);
             if (!(await this.clientHas(id))) return null;
             await this.clientDisconn(id);
             this.log(`CLIENT:destroy - ${id}`);
             let client = this.clientManager.remClient((id instanceof Client) ? id : this.clientManager.getClientById(id));
             return client;
         }
-        async clientHas(id) { return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(id) instanceof Client); }
+        async clientHas(id) { return this.hasWindow() ? !!(await this.window.clientHas(id)) : (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(id) instanceof Client); }
         async clientGet(id) {
+            if (this.hasWindow()) return await this.window.clientGet(id);
             if (!(await this.clientHas(id))) return null;
             return (id instanceof Client) ? id : this.clientManager.getClientById(id);
         }
         async clientConn(id) {
+            if (this.hasWindow()) return await this.window.clientConn(id);
             if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
             this.log(`CLIENT:conn - ${client.id}`);
@@ -1692,6 +3138,7 @@ const MAIN = async () => {
             return client;
         }
         async clientDisconn(id) {
+            if (this.hasWindow()) return await this.window.clientDisconn(id);
             if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
             this.log(`CLIENT:disconn - ${client.id}`);
@@ -1699,12 +3146,14 @@ const MAIN = async () => {
             return client;
         }
         async clientEmit(id, name, payload) {
+            if (this.hasWindow()) return await this.window.clientEmit(id, name, payload);
             if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
             this.log(`CLIENT:emit - ${client.id} > ${name}`);
             return await client.emit(name, payload);
         }
         async clientStream(id, pth, name, payload) {
+            if (this.hasWindow()) return await this.window.clientStream(id, pth, name, payload);
             if (!(await this.clientHas(id))) return null;
             let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
             this.log(`CLIENT:stream - ${client.id} > ${name}`);
@@ -1712,6 +3161,7 @@ const MAIN = async () => {
         }
 
         async tbaClientMake(id) {
+            if (this.hasWindow()) return await this.window.tbaClientMake(id);
             if (await this.tbaClientHas(id)) return null;
             this.log(`TBACLIENT:make - ${id}`);
             let client = this.tbaClientManager.addClient(new TbaClient());
@@ -1719,33 +3169,39 @@ const MAIN = async () => {
             return client;
         }
         async tbaClientDestroy(id) {
+            if (this.hasWindow()) return await this.window.tbaClientDestroy(id);
             if (!(await this.tbaClientHas(id))) return null;
             this.log(`TBACLIENT:destroy - ${id}`);
             let client = this.tbaClientDestroy.remClient((id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id));
             return client;
         }
-        async tbaClientHas(id) { return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(id) instanceof TbaClient); }
+        async tbaClientHas(id) { return this.hasWindow() ? !!(await this.window.tbaClientHas(id)) : (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(id) instanceof TbaClient); }
         async tbaClientGet(id) {
+            if (this.hasWindow()) return await this.window.tbaClientGet(id);
             if (!(await this.tbaClientHas(id))) return null;
             return (id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id);
         }
         async tbaClientInvoke(id, invoke, ...a) {
+            if (this.hasWindow()) return await this.window.tbaClientInvoke(id, invoke, ...a);
             if (!(await this.tbaClientHas(id))) return null;
             let client = (id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id);
             this.log(`TBACLIENT:emit - ${client.id} > ${invoke}`);
             return await client.invoke(invoke, ...a);
         }
 
-        identifyFeature(id) {
-            for (let feat of this.features) {
-                if (!feat.hasWindow()) continue;
-                if (feat.window.webContents.id != id) continue;
-                return feat;
+        identifyWindow(id) {
+            for (let win of this.windows) {
+                let found = win.windowManager.identifyWindow(id);
+                if (found) return found;
+                if (!win.hasWindow()) continue;
+                if (win.window.webContents.id != id) continue;
+                return win;
             }
             return null;
         }
 
         async get(k) {
+            if (this.hasWindow()) return await this.window.manager.get(k);
             k = String(k);
             let kfs = {
                 "loads": async () => {
@@ -1872,7 +3328,7 @@ const MAIN = async () => {
                 "_fullpackage": async () => {
                     let content = "";
                     try {
-                        content = await Portal.fileRead(path.join(__dirname, "..", "package.json"));
+                        content = await WindowManager.fileRead(path.join(__dirname, "..", "package.json"));
                     } catch (e) {}
                     let data = null;
                     try {
@@ -1894,7 +3350,7 @@ const MAIN = async () => {
                 "_fulldevconfig": async () => {
                     let content = "";
                     try {
-                        content = await Portal.fileRead(path.join(__dirname, ".config"));
+                        content = await WindowManager.fileRead(path.join(__dirname, ".config"));
                     } catch (e) {}
                     let data = null;
                     try {
@@ -1964,6 +3420,7 @@ const MAIN = async () => {
             throw "§G No possible \"get\" for key: "+k;
         }
         async getValue(k) {
+            if (this.hasWindow()) return await this.window.manager.getValue(k);
             k = String(k);
             let kfs = {
                 "version": async () => await this.get("version"),
@@ -1980,14 +3437,16 @@ const MAIN = async () => {
             throw "§GV No possible \"getValue\" for key: "+k;
         }
         async getCallback(id, k) {
+            if (this.hasWindow()) return await this.window.manager.getCallback(id, k);
             try {
                 return await this.get(k);
             } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
-            let feat = this.identifyFeature(id);
-            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
-            return await feat.get(k);
+            let win = this.identifyWindow(id);
+            if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+id;
+            return await win.get(k);
         }
         async set(k, v) {
+            if (this.hasWindow()) return await this.window.manager.set(k, v);
             k = String(k);
             let kfs = {
                 "fs-version": async () => await this.setFSVersion(v),
@@ -2043,6 +3502,7 @@ const MAIN = async () => {
             throw "§S No possible \"set\" for key: "+k;
         }
         async setValue(k, v) {
+            if (this.hasWindow()) return await this.window.manager.setValue(k, v);
             k = String(k);
             let kfs = {
                 "db-host": async () => await this.set("db-host", v),
@@ -2054,25 +3514,25 @@ const MAIN = async () => {
             throw "§SV No possible \"setValue\" for key: "+k;
         }
         async setCallback(id, k, v) {
+            if (this.hasWindow()) return await this.window.manager.setCallback(id, k, v);
             try {
                 return await this.set(k, v);
             } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
-            let feat = this.identifyFeature(id);
-            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
-            return await feat.set(k, v);
+            let win = this.identifyWindow(id);
+            if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+id;
+            return await win.set(k, v);
         }
         async on(k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.on(k, ...a);
             k = String(k);
             let kfs = {
                 "spawn": async name => {
                     name = String(name);
-                    for (let feat of this.features) {
-                        if (feat.name != name) continue;
+                    for (let win of this.windows) {
+                        if (win.name != name) continue;
                         return false;
                     }
-                    if (!FEATURES.includes(name)) return false;
-                    let feat = new Portal.Feature(this, name);
-                    this.addFeature(feat);
+                    this.addWindow(new Window(this, name));
                     return true;
                 },
                 "notify": async options => {
@@ -2123,35 +3583,36 @@ const MAIN = async () => {
             throw "§O No possible \"on\" for key: "+k;
         }
         async onCallback(id, k, ...a) {
-            let feat = this.identifyFeature(id);
-            if (!(feat instanceof Portal.Feature)) {
+            if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
+            let win = this.identifyWindow(id);
+            if (!(win instanceof Window)) {
                 try {
                     return await this.on(k, ...a);
                 } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             }
-            if (!(feat instanceof Portal.Feature)) throw "Nonexistent feature corresponding with id: "+id;
-            return await feat.on(k, ...a);
+            if (!(win instanceof Window)) throw "Nonexistent window corresponding with id: "+id;
+            return await win.on(k, ...a);
         }
         async send(k, ...a) {
-            await Promise.all(this.features.map(async feat => await feat.send(k, ...a)));
+            await Promise.all(this.windows.map(async win => await win.send(k, ...a)));
             return true;
         }
         cacheSet(k, v) {
-            this.features.map(async feat => await feat.cacheSet(k, v))
+            this.windows.map(win => win.cacheSet(k, v))
             return true;
         }
         cacheDel(k) {
-            this.features.map(async feat => await feat.cacheDel(k))
+            this.windows.map(win => win.cacheDel(k))
             return true;
         }
         cacheClear() {
-            this.features.map(async feat => await feat.cacheClear())
+            this.windows.map(win => win.cacheClear())
             return true;
         }
 
         update(delta) {
             this.post("update", delta);
-            this.features.forEach(feat => feat.update(delta));
+            this.windows.forEach(win => win.update(delta));
         }
 
         static log(...a) {
@@ -2162,1311 +3623,14 @@ const MAIN = async () => {
             return this.log(...a);
         }
         log(...a) {
+            if (this.hasWindow()) return this.window.log(...a);
             return log(":", ...a);
         }
     }
-    Portal.Feature = class PortalFeature extends util.Target {
-        #portal;
 
-        #processManager;
-        #clientManager;
-        #tbaClientManager;
+    log("< BUILT CLASSES >");
 
-        #name;
-
-        #window;
-        #menu;
-        #perm;
-
-        #started;
-        #resolver;
-
-        #state;
-
-        constructor(portal, name) {
-            super();
-
-            if (!(portal instanceof Portal)) throw "Portal is not of class Portal";
-            this.#portal = portal;
-
-            this.#processManager = new ProcessManager();
-            this.#clientManager = new ClientManager();
-            this.#tbaClientManager = new TbaClientManager();
-
-            name = String(name).toUpperCase();
-            if (!FEATURES.includes(name)) throw "Feature name "+name+" is not valid";
-            this.#name = name;
-            
-            this.#window = null;
-            this.#menu = null;
-            this.#perm = false;
-
-            this.#started = false;
-
-            this.#resolver = new util.Resolver(0);
-
-            this.#state = {};
-
-            this.log();
-        }
-
-        get processManager() { return this.#processManager; }
-        get clientManager() { return this.#clientManager; }
-        get tbaClientManager() { return this.#tbaClientManager; }
-
-        get portal() { return this.#portal; }
-        
-        get name() { return this.#name; }
-
-        get window() { return this.#window; }
-        hasWindow() { return (this.window instanceof electron.BrowserWindow) && !this.window.isDestroyed() && !this.window.webContents.isDestroyed(); }
-        get menu() { return this.#menu; }
-        hasMenu() { return this.menu instanceof electron.Menu; }
-        get perm() { return this.#perm; }
-        set perm(v) { this.#perm = !!v; }
-
-        async getPerm() {
-            if (!this.started) return true;
-            this.log("GET PERM");
-            let perm = await new Promise((res, rej) => {
-                if (!this.hasWindow()) return;
-                this.window.webContents.send("perm");
-                let id = setTimeout(() => {
-                    clear();
-                    res(true);
-                }, 500);
-                const clear = () => {
-                    clearTimeout(id);
-                    ipc.removeListener("permack", permack);
-                    ipc.removeListener("perm", perm);
-                };
-                const permack = e => {
-                    if (!this.hasWindow()) return;
-                    if (e.sender.id != this.window.webContents.id) return;
-                    clear();
-                };
-                const perm = (e, given) => {
-                    if (!this.hasWindow()) return;
-                    if (e.sender.id != this.window.webContents.id) return;
-                    clear();
-                    res(!!given);
-                };
-                ipc.on("permack", permack);
-                ipc.on("perm", perm);
-            });
-            let namefs = {
-            };
-            if (this.name in namefs) perm &&= namefs[this.name]();
-            return perm;
-        }
-
-        get state() { return this.#state; }
-
-        get ready() { return this.#resolver.state == 2; }
-        async whenReady() { await this.#resolver.when(2); }
-        async whenNotReady() { await this.#resolver.whenNot(2); }
-
-        get started() { return this.#started; }
-        start() {
-            if (this.started) return false;
-            this.log("START");
-            this.#started = true;
-            this.#resolver.state = 0;
-
-            let namefs;
-
-            let options = {
-                width: 1250,
-                height: 750,
-
-                show: false,
-                resizable: true,
-                maximizable: false,
-
-                titleBarStyle: (OS.platform == "darwin" ? "hidden" : "default"),
-                trafficLightPosition: { x: (40-16)/2, y: (40-16)/2 },
-
-                webPreferences: {
-                    preload: path.join(__dirname, "preload.js"),
-                    webviewTag: true,
-                },
-            };
-            const onHolidayState = async holiday => {
-                let tag = "png";
-                let defaultIcon = path.join(__dirname, "assets", "app", "icon."+tag);
-                let icon = (holiday == null) ? defaultIcon : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
-                if (!this.hasWindow()) return;
-                if (OS.platform == "win32") this.window.setIcon(defaultIcon);
-                if (OS.platform == "darwin") app.dock.setIcon(defaultIcon);
-                if (OS.platform == "linux") this.window.setIcon(defaultIcon);
-                try {
-                    if (OS.platform == "win32") this.window.setIcon(icon);
-                    if (OS.platform == "darwin") app.dock.setIcon(icon);
-                    if (OS.platform == "linux") this.window.setIcon(icon);
-                } catch (e) {}
-            };
-            (async () => await onHolidayState(await this.get("active-holiday")))();
-            this.#window = new electron.BrowserWindow(options);
-            this.window.once("ready-to-show", () => {
-                if (!this.hasWindow()) return;
-                this.#resolver.state++;
-            });
-            let id = setTimeout(() => {
-                showError("Feature Start Error - Startup", "The application did not acknowledge readyness within 1 second");
-                clear();
-                this.stop();
-            }, 1000);
-            const clear = () => {
-                clearInterval(id);
-                ipc.removeListener("ready", ready);
-            };
-            const ready = e => {
-                if (!this.hasWindow()) return;
-                if (e.sender.id != this.window.webContents.id) return;
-                clear();
-                this.#resolver.state++;
-            };
-            ipc.on("ready", ready);
-
-            this.window.on("unresponsive", () => {});
-            this.window.webContents.on("did-fail-load", () => { if (this.hasWindow()) this.window.close(); });
-            this.window.webContents.on("will-navigate", (e, url) => {
-                if (!this.hasWindow()) return;
-                if (url != this.window.webContents.getURL()) {
-                    e.preventDefault();
-                    this.on("open", url);
-                }
-            });
-            let any = false;
-            for (let feat of this.portal.features.filter(feat => feat.hasWindow())) {
-                if (!feat.hasWindow()) continue;
-                if (!feat.window.webContents.isDevToolsOpened()) continue;
-                any = true;
-                break;
-            }
-            if (this.hasWindow() && any) this.window.webContents.openDevTools();
-            this.window.webContents.on("devtools-opened", () => {
-                this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.openDevTools());
-            });
-            this.window.webContents.on("devtools-closed", () => {
-                this.portal.features.filter(feat => feat.hasWindow()).forEach(feat => feat.window.webContents.closeDevTools());
-            });
-
-            this.window.on("enter-full-screen", () => this.send("win-fullscreen", true));
-            this.window.on("leave-full-screen", () => this.send("win-fullscreen", false));
-
-            this.window.on("focus", () => this.portal.checkMenu());
-            this.window.on("blur", () => this.portal.checkMenu());
-
-            this.perm = false;
-            this.window.on("close", e => {
-                this.log("CLOSE");
-                if (this.perm) return this.log("CLOSE - yes perm");
-                this.log("CLOSE - no perm");
-                e.preventDefault();
-                this.stop();
-            });
-
-            this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
-
-            namefs = {
-                PORTAL: () => {
-                    let resolver = new util.Resolver(false);
-                    const checkForShow = async () => {
-                        if (!this.hasWindow()) return;
-                        await this.whenReady();
-                        await resolver.whenFalse();
-                        resolver.state = true;
-                        let nFeats = 0;
-                        for (let feat of this.portal.features) {
-                            if (feat.name == "PORTAL") continue;
-                            nFeats++;
-                        }
-                        if (nFeats > 0) this.window.hide();
-                        else this.window.show();
-                        resolver.state = false;
-                    };
-                    checkForShow();
-                    this.portal.addHandler("change-addFeature", () => checkForShow());
-                    this.portal.addHandler("change-remFeature", () => checkForShow());
-                    this.window.on("show", checkForShow);
-                },
-                PANEL: () => {
-                    this.addHandler("client-stream-logs", async () => ["logs"]);
-                },
-                PLANNER: () => {
-                }
-            };
-
-            if (namefs[this.name]) namefs[this.name]();
-            
-            (async () => {
-                await this.whenReady();
-                if (!this.hasWindow()) return;
-                let prevIsDevMode = null;
-                const checkDevConfig = async () => {
-                    let isDevMode = !!(await this.get("devmode"));
-                    if (prevIsDevMode != isDevMode) {
-                        prevIsDevMode = isDevMode;
-                        this.send("win-devmode", isDevMode);
-                    }
-                };
-                let prevHoliday = null;
-                const checkHoliday = async () => {
-                    let holiday = await this.get("active-holiday");
-                    holiday = (holiday == null) ? null : String(holiday);
-                    await onHolidayState(holiday);
-                    if (prevHoliday != holiday) {
-                        prevHoliday = holiday;
-                        this.send("win-holiday", holiday);
-                    }
-                };
-                fs.watchFile(path.join(__dirname, ".config"), () => checkDevConfig());
-                fs.watchFile(path.join(this.portal.dataPath, "holidays", "holidays.json"), () => checkHoliday());
-                await checkDevConfig();
-                await checkHoliday();
-                if (!this.canOperate) return;
-                let bounds = util.ensure(await this.on("state-get", "bounds"), "obj");
-                if (!this.hasWindow()) return;
-                this.window.show();
-                if (("width" in bounds) && (bounds.width < 50)) return;
-                if (("height" in bounds) && (bounds.height < 50)) return;
-                this.window.setContentBounds(bounds);
-            })();
-
-            return this;
-        }
-        async stop() {
-            if (!this.started) return false;
-            this.log("STOP");
-            if (!this.perm) {
-                this.log("STOP - no perm > get perm");
-                this.perm = await this.getPerm();
-            }
-            this.log(`STOP - perm: ${this.perm}`);
-            if (!this.perm) return false;
-            if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
-            this.#started = false;
-            await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
-            await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
-            await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
-            if (this.hasWindow()) this.window.close();
-            this.#window = null;
-            this.#menu = null;
-            await this.portal.remFeature(this);
-            return this;
-        }
-        
-        static getDataPath(portal, name, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            return path.join(portal.dataPath, name.toLowerCase());
-        }
-        get dataPath() { return Portal.Feature.getDataPath(this.portal, this.name, this.started); }
-
-        static getCanOperate(portal, name, started=true) {
-            return (portal instanceof Portal) && FEATURES.includes(name) && started;
-        }
-        get canOperate() { return Portal.Feature.getCanOperate(this.portal, this.name, this.started); }
-
-        static async affirm(portal, name, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return false;
-            await portal.affirm();
-            let hasFeatureData = await Portal.dirHas(this.getDataPath(portal, name, started));
-            if (!hasFeatureData) await Portal.dirMake(this.getDataPath(portal, name, started));
-            let hasConfig = await Portal.fileHas([this.getDataPath(portal, name, started), ".config"]);
-            if (!hasConfig) await Portal.fileWrite([this.getDataPath(portal, name, started), ".config"], JSON.stringify({}, null, "\t"));
-            let hasState = await Portal.fileHas([this.getDataPath(portal, name, started), ".state"]);
-            if (!hasState) await Portal.fileWrite([this.getDataPath(portal, name, started), ".state"], JSON.stringify({}, null, "\t"));
-            return true;
-        }
-        async affirm() { return await Portal.Feature.affirm(this.portal, this.name, this.started); }
-
-        static async fileHas(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.fileHas(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-        static async fileRead(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.fileRead(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-        static async fileReadRaw(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.fileReadRaw(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-        static async fileWrite(portal, name, pth, content, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.fileWrite(Portal.makePath(this.getDataPath(portal, name, started), pth), content);
-        }
-        static async fileWriteRaw(portal, name, pth, content, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.fileWriteRaw(Portal.makePath(this.getDataPath(portal, name, started), pth), content);
-        }
-        static async fileAppend(portal, name, pth, content, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.fileAppend(Portal.makePath(this.getDataPath(portal, name, started), pth), content);
-        }
-        static async fileDelete(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.fileDelete(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-
-        static async dirHas(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.dirHas(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-        static async dirList(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.dirList(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-        static async dirMake(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.dirMake(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-        static async dirDelete(portal, name, pth, started=true) {
-            if (!this.getCanOperate(portal, name, started)) return null;
-            await this.affirm(portal, name, started);
-            return await Portal.dirDelete(Portal.makePath(this.getDataPath(portal, name, started), pth));
-        }
-
-        async fileHas(pth) { return Portal.Feature.fileHas(this.portal, this.name, pth, this.started); }
-        async fileRead(pth) { return Portal.Feature.fileRead(this.portal, this.name, pth, this.started); }
-        async fileReadRaw(pth) { return Portal.Feature.fileReadRaw(this.portal, this.name, pth, this.started); }
-        async fileWrite(pth, content) { return Portal.Feature.fileWrite(this.portal, this.name, pth, content, this.started); }
-        async fileWriteRaw(pth, content) { return Portal.Feature.fileWriteRaw(this.portal, this.name, pth, content, this.started); }
-        async fileAppend(pth, content) { return Portal.Feature.fileAppend(this.portal, this.name, pth, content, this.started); }
-        async fileDelete(pth) { return Portal.Feature.fileDelete(this.portal, this.name, pth, this.started); }
-
-        async dirHas(pth) { return Portal.Feature.dirHas(this.portal, this.name, pth, this.started); }
-        async dirList(pth) { return Portal.Feature.dirList(this.portal, this.name, pth, this.started); }
-        async dirMake(pth) { return Portal.Feature.dirMake(this.portal, this.name, pth, this.started); }
-        async dirDelete(pth) { return Portal.Feature.dirDelete(this.portal, this.name, pth, this.started); }
-
-        async clientMake(id, location) {
-            let client = await this.portal.clientMake(this.name+":"+id, location);
-            client = this.clientManager.addClient(client);
-            client.addTag(this.name);
-            client.addHandler("msg", async (name, payload, meta) => {
-                name = String(name);
-                meta = util.ensure(meta, "obj");
-                if (!this.hasWindow()) return { success: false, reason: "No window" };
-                await this.post("client-msg", id, name, payload, meta);
-                await this.post("client-msg-"+name, id, payload, meta);
-                this.window.webContents.send("client-msg", id, name, payload, meta);
-                return { success: true };
-            });
-            client.addHandler("stream", async (name, fname, payload, meta, ssStream) => {
-                name = String(name);
-                fname = String(fname);
-                meta = util.ensure(meta, "obj");
-                await this.affirm();
-                let results = [];
-                results.push(...(await this.post("client-stream", id, name, fname, payload, meta)));
-                results.push(...(await this.post("client-stream-"+name, id, fname, payload, meta)));
-                let pth = (results.length > 0) ? results[0] : [];
-                if (!(await this.dirHas(pth)))
-                    await this.dirMake(pth);
-                pth = Portal.makePath(this.dataPath, pth, fname);
-                const stream = fs.createWriteStream(pth);
-                try {
-                    await new Promise((res, rej) => {
-                        stream.on("open", async () => {
-                            await this.post("client-stream-start", id, name, pth, fname, payload, meta);
-                            await this.post("clietn-stream-start-"+name, id, pth, fname, payload, meta);
-                            this.window.webContents.send("client-stream-start", id, name, pth, fname, payload, meta);
-                            ssStream.pipe(stream);
-                            ssStream.on("end", async () => {
-                                await this.post("client-stream-stop", id, name, pth, fname, payload, meta);
-                                await this.post("client-stream-stop-"+name, id, pth, fname, payload, meta);
-                                this.window.webContents.send("client-stream-stop", id, name, pth, fname, payload, meta);
-                                res();
-                            });
-                            ssStream.on("error", e => rej(e));
-                        });
-                    });
-                } catch (e) { return { success: false, reason: String(e) }; }
-                return { success: true };
-            });
-            return client;
-        }
-        async clientDestroy(id) {
-            return await this.portal.clientDestroy((id instanceof Client) ? id : (this.name+":"+id));
-        }
-        async clientHas(id) {
-            if (!(await this.portal.clientHas((id instanceof Client) ? id : (this.name+":"+id)))) return false;
-            return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(this.name+":"+id) instanceof Client);
-        }
-        async clientGet(id) {
-            if (!(await this.clientHas(id))) return null;
-            return (id instanceof Client) ? id : this.portal.clientGet(this.name+":"+id);
-        }
-        async clientConn(id) {
-            return await this.portal.clientConn((id instanceof Client) ? id : (this.name+":"+id));
-        }
-        async clientDisconn(id) {
-            return await this.portal.clientDisconn((id instanceof Client) ? id : (this.name+":"+id));
-        }
-        async clientEmit(id, name, payload) {
-            return await this.portal.clientEmit((id instanceof Client) ? id : (this.name+":"+id), name, payload);
-        }
-        async clientStream(id, pth, name, payload) {
-            return await this.portal.clientStream((id instanceof Client) ? id : (this.name+":"+id), pth, name, payload);
-        }
-
-        async tbaClientMake(id) {
-            let client = await this.portal.tbaClientMake(this.name+":"+id, location);
-            client = this.tbaClientManager.addClient(client);
-            client.addTag(this.name);
-            return client;
-        }
-        async tbaClientDestroy(id) {
-            return await this.portal.tbaClientDestroy((id instanceof TbaClient) ? id : (this.name+":"+id));
-        }
-        async tbaClientHas(id) {
-            if (!(await this.portal.tbaClientHas((id instanceof TbaClient) ? id : (this.name+":"+id)))) return false;
-            return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(this.name+":"+id) instanceof TbaClient);
-        }
-        async tbaClientGet(id) {
-            if (!(await this.tbaClientHas(id))) return null;
-            return (id instanceof TbaClient) ? id : this.portal.tbaClientGet(this.name+":"+id);
-        }
-        async tbaClientInvoke(id, invoke, ...a) {
-            return await this.portal.tbaClientInvoke((id instanceof TbaClient) ? id : (this.name+":"+id), invoke, ...a);
-        }
-
-        async get(k) {
-            if (!this.started) return null;
-            k = String(k);
-            try {
-                return await this.portal.get(k);
-            } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
-            let doLog = true;
-            let kfs = {
-                "name": async () => {
-                    return this.name;
-                },
-
-                "fullscreen": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isFullScreen();
-                },
-                "fullscreenable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isFullScreenable();
-                },
-
-                "closeable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isClosable();
-                },
-
-                "focused": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isFocused();
-                },
-                "blurred": async () => {
-                    if (!this.hasWindow()) return null;
-                    return !(await this.get("focused"));
-                },
-                "focusable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isFocusable();
-                },
-
-                "visible": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isVisible();
-                },
-                "hidden": async () => {
-                    if (!this.hasWindow()) return null;
-                    return !(await this.get("visible"));
-                },
-
-                "modal": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isModal();
-                },
-
-                "maximized": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isMaximized();
-                },
-                "maximizable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isMaximizable();
-                },
-
-                "minimized": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isMinimized();
-                },
-                "minimizable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isMinimizable();
-                },
-
-                "enabled": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isEnabled();
-                },
-                "disabled": async () => {
-                    if (!this.hasWindow()) return null;
-                    return !(await this.get("enabled"));
-                },
-
-                "resizable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isResizable();
-                },
-
-                "movable": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.isMovable();
-                },
-
-                "opacity": async () => {
-                    if (!this.hasWindow()) return null;
-                    return this.window.getOpacity();
-                },
-            };
-            let r = null;
-            if (k in kfs) r = await kfs[k]();
-            else {
-                let namefs = {
-                    PANEL: {
-                        "logs": async () => {
-                            doLog = false;
-                            let hasLogsDir = await this.dirHas("logs");
-                            if (!hasLogsDir) return [];
-                            let dirents = await this.dirList("logs");
-                            return dirents.filter(dirent => dirent.type == "file" && dirent.name.endsWith(".wpilog")).map(dirent => {
-                                return {
-                                    name: dirent.name,
-                                    path: path.join(this.dataPath, "logs", dirent.name),
-                                };
-                            });
-                        },
-                    },
-                };
-                if (this.name in namefs)
-                    if (k in namefs[this.name])
-                        r = await namefs[this.name][k]();
-            }
-            if (doLog) this.log(`GET - ${k}`);
-            return r;
-        }
-        async set(k, v) {
-            if (!this.started) return false;
-            k = String(k);
-            try {
-                return await this.portal.set(k, v);
-            } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
-            let doLog = true;
-            let kfs = {
-                "menu": async () => {
-                    const dfs = itms => {
-                        if (!util.is(itms, "arr")) return;
-                        itms.forEach(itm => {
-                            if (!util.is(itm, "obj")) return;
-                            itm.click = () => this.send("menu-click", itm.id);
-                            dfs(itm.submenu);
-                        });
-                    };
-                    dfs(v);
-                    this.#menu = null;
-                    try {
-                        let signal = new util.Target();
-                        signal.addHandler("about", () => this.send("about"));
-                        signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
-                        this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, signal), ...util.ensure(v, "arr")]);
-                    } catch (e) {}
-                    this.portal.checkMenu();
-                },
-
-                "fullscreen": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setFullScreen(!!v);
-                    return true;
-                },
-                "fullscreenable": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setFullScreenable(!!v);
-                    return true;
-                },
-
-                "closeable": async () => {
-                    if (!this.hasWindow()) return false;
-                    let maximizable = this.window.isMaximizable();
-                    this.window.setClosable(!!v);
-                    this.window.setMaximizable(maximizable);
-                    return true;
-                },
-
-                "focused": async () => {
-                    if (!this.hasWindow()) return false;
-                    if (v) this.window.focus();
-                    else this.window.blur();
-                    return true
-                },
-                "blurred": async () => {
-                    if (!this.hasWindow()) return false;
-                    if (v) this.window.blur();
-                    else this.window.focus();
-                    return true;
-                },
-                "focusable": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setFocusable(!!v);
-                    return true;
-                },
-
-                "visible": async () => {
-                    if (!this.hasWindow()) return false;
-                    if (v) this.window.show();
-                    else this.window.hide();
-                    return true;
-                },
-                "hidden": async () => {
-                    if (!this.hasWindow()) return false;
-                    if (v) this.window.hide();
-                    else this.window.show();
-                    return true;
-                },
-
-                "maximized": async () => {
-                    if (!this.hasWindow()) return false;
-                    if (v) this.window.maximize();
-                    else this.window.unmaximize();
-                    return true;
-                },
-                "maximizable": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setMaximizable(!!v);
-                    return true;
-                },
-
-                "minimized": async () => {
-                    if (!this.hasWindow()) return false;
-                    if (v) this.window.minimize();
-                    else this.window.restore();
-                    return true;
-                },
-                "minimizable": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setMinimizable(!!v);
-                    return true;
-                },
-
-                "enabled": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setEnabled(!!v);
-                    return true;
-                },
-                "disabled": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setEnabled(!v);
-                    return true;
-                },
-
-                "resizable": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setResizable(!!v);
-                    return true;
-                },
-
-                "movable": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setMovable(!!v);
-                    return true;
-                },
-
-                "opacity": async () => {
-                    if (!this.hasWindow()) return false;
-                    this.window.setOpacity(Math.min(1, Math.max(0, util.ensure(v, "num"))));
-                    return true;
-                },
-            };
-            let r = false;
-            if (k in kfs) r = await kfs[k]();
-            else {
-                let namefs = {
-                };
-                if (this.name in namefs)
-                    if (k in namefs[this.name])
-                        r = await namefs[this.name][k]();
-            }
-            if (doLog) this.log(`SET - ${k} = ${simplify(JSON.stringify(v))}`);
-            return r;
-        }
-        async on(k, ...a) {
-            if (!this.started) return null;
-            k = String(k);
-            let doLog = true;
-            let kfs = {
-                "reload": async () => {
-                    const portal = this.portal, name = this.name;
-                    portal.remFeature(this);
-                    portal.addFeature(new Portal.Feature(portal, name));
-                },
-                "close": async () => await this.stop(),
-                "_config": async () => {
-                    await this.affirm();
-                    let content = "";
-                    try {
-                        content = await this.fileRead(".config");
-                    } catch (e) {}
-                    let config = null;
-                    try {
-                        config = JSON.parse(content);
-                    } catch (e) {}
-                    config = util.ensure(config, "obj");
-                    return config;
-                },
-                "config-get": async k => {
-                    k = String(k);
-                    let config = await kfs._config();
-                    return config[k];
-                },
-                "config-set": async (k, v) => {
-                    k = String(k);
-                    let config = await kfs._config();
-                    config[k] = v;
-                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
-                    return v;
-                },
-                "config-del": async k => {
-                    k = String(k);
-                    let config = await kfs._config();
-                    let v = config[k];
-                    delete config[k];
-                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
-                    return v;
-                },
-                "root-get": async () => {
-                    return (await kfs["config-get"]("root")) || this.dataPath;
-                },
-                "root-set": async root => {
-                    root = util.ensure(root, "str", this.dataPath);
-                    return await kfs["config-set"]("root", root);
-                },
-                "_state": async () => {
-                    await this.affirm();
-                    let content = "";
-                    try {
-                        content = await this.fileRead(".state");
-                    } catch (e) {}
-                    let state = null;
-                    try {
-                        state = JSON.parse(content);
-                    } catch (e) {}
-                    state = util.ensure(state, "obj");
-                    return state;
-                },
-                "state-get": async k => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    return state[k];
-                },
-                "state-set": async (k, v) => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    state[k] = v;
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
-                    return v;
-                },
-                "state-del": async k => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    let v = state[k];
-                    delete state[k];
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
-                    return v;
-                },
-                "capture": async rect => {
-                    if (!this.hasWindow()) return;
-                    const img = await ((rect == null) ? this.window.webContents.capturePage() : this.window.webContents.capturePage(rect));
-                    return img.toDataURL();
-                },
-                "file-open-dialog": async options => {
-                    return await electron.dialog.showOpenDialog(this.window, options);
-                },
-                "file-save-dialog": async options => {
-                    return await electron.dialog.showSaveDialog(this.window, options);
-                },
-                "project-affirm": async () => {
-                    const root = await kfs["root-get"]();
-                    let hasDir = await Portal.dirHas(root);
-                    if (!hasDir) await Portal.dirMake(root);
-                    let hasProjectsContent = await Portal.fileHas([root, "projects.json"]);
-                    if (!hasProjectsContent) await Portal.fileWrite([root, "projects.json"], "");
-                    let hasProjectsMetaContent = await Portal.fileHas([root, "projects.meta.json"]);
-                    if (!hasProjectsMetaContent) await Portal.fileWrite([root, "projects.meta.json"], "");
-                    let hasProjectsDir = await Portal.dirHas([root, "projects"]);
-                    if (!hasProjectsDir) await Portal.dirMake([root, "projects"]);
-                },
-                "projects-get": async () => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    let content = null;
-                    try {
-                        content = await Portal.fileRead([root, "projects.json"]);
-                    } catch (e) {}
-                    return content;
-                },
-                "projects-set": async content => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    await Portal.fileWrite([root, "projects.json"], content);
-                },
-                "projects-list": async () => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    let dirents = null;
-                    try {
-                        dirents = Portal.dirList([root, "projects"]);
-                    } catch (e) {}
-                    return util.ensure(dirents, "arr");
-                },
-                "project-get": async id => {
-                    await kfs["project-affirm"]();
-                    id = String(id);
-                    const root = await kfs["root-get"]();
-                    let content = null;
-                    try {
-                        content = await Portal.fileRead([root, "projects", id+".json"]);
-                    } catch (e) {}
-                    return content;
-                },
-                "project-set": async (id, content) => {
-                    await kfs["project-affirm"]();
-                    id = String(id);
-                    const root = await kfs["root-get"]();
-                    await Portal.fileWrite([root, "projects", id+".json"], content);
-                },
-                "project-del": async id => {
-                    await kfs["project-affirm"]();
-                    id = String(id);
-                    const root = await kfs["root-get"]();
-                    try {
-                        await Portal.fileDelete([root, "projects", id+".json"]);
-                    } catch (e) { return false; }
-                    return true;
-                },
-                "projects-meta-get": async () => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    let content = null;
-                    try {
-                        content = await Portal.fileRead([root, "projects", id+".meta.json"]);
-                    } catch (e) {}
-                    return content;
-                },
-                "projects-meta-set": async content => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    await Portal.fileWrite([root, "projects", id+".meta.json"], content);
-                },
-            };
-            if (k in kfs)
-                return await kfs[k](...a);
-            let namefs = {
-                PANEL: {
-                    "wpilog-read": async pth => {
-                        return await Portal.fileReadRaw(pth);
-                    },
-                    "wpilog-write": async (pth, content) => {
-                        return await Portal.fileWriteRaw(pth, content);
-                    },
-                    "log-delete": async name => {
-                        let logs = await this.get("logs");
-                        let has = false;
-                        for (let log of logs) {
-                            if (log.name != name) continue;
-                            has = true;
-                        }
-                        if (!has) return false;
-                        if (await this.fileHas(["logs", name]))
-                            await this.fileDelete(["logs", name]);
-                        return true;
-                    },
-                    "log-cache": async pth => {
-                        pth = String(pth);
-                        if (!(await Portal.fileHas(pth))) return false;
-                        await this.portal.affirm();
-                        if (!(await this.dirHas(["logs"])))
-                            await this.portal.dirMake(["logs"]);
-                        const name = path.basename(pth);
-                        let pthDest = path.join(this.dataPath, "logs", name);
-                        if (path.resolve(pth) == path.resolve(pthDest)) return true;
-                        await fs.promises.cp(
-                            pth,
-                            pthDest,
-                            {
-                                force: true,
-                                recursive: true,
-                            },
-                        );
-                        return true;
-                    },
-                },
-                PLANNER: {
-                    "exec": async (id, pathId) => {
-                        id = String(id);
-                        pathId = String(pathId);
-
-                        const subcore = await import("./planner/core.mjs");
-
-                        let project = null;
-                        try {
-                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
-                        } catch (e) {}
-                        if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
-                        if (!project.hasPath(pathId)) throw "Nonexistent path with id: "+pathId+" for project id: "+id;
-                        let pth = project.getPath(pathId);
-
-                        let script = project.config.scriptUseDefault ? Portal.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
-                        if (script == null) throw "No script for project with id: "+id;
-                        script = String(script);
-                        let hasScript = await Portal.fileHas(script);
-                        if (!hasScript) throw "Script ("+script+") does not exist for project id: "+id;
-                        const root = path.dirname(script);
-
-                        let dataIn = { config: {}, nodes: [], obstacles: [] };
-                        dataIn.config.map_w = project.w / 100;
-                        dataIn.config.map_h = project.h / 100;
-                        dataIn.config.side_length = project.robotW / 100;
-                        dataIn.config.mass = project.robotMass;
-                        dataIn.config.moment_of_inertia = project.config.momentOfInertia;
-                        dataIn.config.efficiency_percent = project.config.efficiency;
-                        dataIn.config["12_motor_mode"] = project.config.is12MotorMode;
-                        pth.nodes.forEach(id => {
-                            if (!project.hasItem(id)) return;
-                            let itm = project.getItem(id);
-                            if (!(itm instanceof subcore.Project.Node)) return;
-                            dataIn.nodes.push({
-                                x: itm.x/100, y: itm.y/100,
-                                vx: itm.useVelocity ? itm.velocityX/100 : null,
-                                vy: itm.useVelocity ? itm.velocityY/100 : null,
-                                vt: itm.useVelocity ? itm.velocityRot : null,
-                                theta: itm.useHeading ? itm.heading : null,
-                            });
-                        });
-                        project.items.forEach(id => {
-                            let itm = project.getItem(id);
-                            if (!(itm instanceof subcore.Project.Obstacle)) return;
-                            dataIn.obstacles.push({
-                                x: itm.x/100, y: itm.y/100,
-                                radius: itm.radius/100,
-                            });
-                        });
-                        let contentIn = JSON.stringify(dataIn, null, "\t");
-
-                        this.log("REMOVE data.in/data.out");
-                        if (await Portal.fileHas(path.join(root, "data.in")))
-                            await Portal.fileDelete(path.join(root, "data.in"));
-                        if (await Portal.fileHas(path.join(root, "data.out")))
-                            await Portal.fileDelete(path.join(root, "data.out"));
-                        this.log("REMOVE stdout.log/stderr.log");
-                        if (await Portal.fileHas(path.join(root, "stdout.log")))
-                            await Portal.fileDelete(path.join(root, "stdout.log"));
-                        if (await Portal.fileHas(path.join(root, "stderr.log")))
-                            await Portal.fileDelete(path.join(root, "stderr.log"));
-                        this.log("CREATE data.in");
-                        await Portal.fileWrite(path.join(root, "data.in"), contentIn);
-                        this.log("CREATE stdout.log/stderr.log");
-                        await Portal.fileWrite(path.join(root, "stdout.log"), "");
-                        await Portal.fileWrite(path.join(root, "stderr.log"), "");
-                        return new Promise((res, rej) => {
-                            if (this.processManager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
-                            this.log("SPAWN");
-                            const process = this.processManager.addProcess(new Process("spawn", project.config.scriptPython, [script], { cwd: root }));
-                            process.id = "script";
-                            const finish = async () => {
-                                const appRoot = await this.on("root-get");
-                                const doAppRoot = appRoot != this.dataPath;
-                                let hasMainDir = await Portal.dirHas(path.join(root, "paths"));
-                                if (!hasMainDir) await Portal.dirMake(path.join(root, "paths"));
-                                if (doAppRoot) {
-                                    let hasMainDir = await Portal.dirHas(path.join(appRoot, "paths"));
-                                    if (!hasMainDir) await Portal.dirMake(path.join(appRoot, "paths"));
-                                }
-                                let hasProjectDir = await Portal.dirHas(path.join(root, "paths", project.meta.name));
-                                if (!hasProjectDir) await Portal.dirMake(path.join(root, "paths", project.meta.name));
-                                if (doAppRoot) {
-                                    let hasProjectDir = await Portal.dirHas(path.join(appRoot, "paths", project.meta.name));
-                                    if (!hasProjectDir) await Portal.dirMake(path.join(appRoot, "paths", project.meta.name));
-                                }
-                                let hasPathDir = await Portal.dirHas(path.join(root, "paths", project.meta.name, pth.name));
-                                if (!hasPathDir) await Portal.dirMake(path.join(root, "paths", project.meta.name, pth.name));
-                                if (doAppRoot) {
-                                    let hasPathDir = await Portal.dirHas(path.join(appRoot, "paths", project.meta.name, pth.name));
-                                    if (!hasPathDir) await Portal.dirMake(path.join(appRoot, "paths", project.meta.name, pth.name));
-                                }
-                                let hasDataIn = await Portal.fileHas(path.join(root, "data.in"));
-                                if (hasDataIn) {
-                                    if (doAppRoot)
-                                        await fs.promises.cp(
-                                            path.join(root, "data.in"),
-                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.in"),
-                                            {
-                                                force: true,
-                                                recursive: true,
-                                            },
-                                        );
-                                    await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
-                                }
-                                let hasDataOut = await Portal.fileHas(path.join(root, "data.out"));
-                                if (hasDataOut) {
-                                    if (doAppRoot)
-                                        await fs.promises.cp(
-                                            path.join(root, "data.out"),
-                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.out"),
-                                            {
-                                                force: true,
-                                                recursive: true,
-                                            },
-                                        );
-                                    await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
-                                }
-                                let hasOutLog = await Portal.fileHas(path.join(root, "stdout.log"));
-                                if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, "paths", project.meta.name, pth.name, "stdout.log"));
-                                let hasErrLog = await Portal.fileHas(path.join(root, "stderr.log"));
-                                if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, "paths", project.meta.name, pth.name, "stderr.log"));
-                            };
-                            process.addHandler("data", async data => {
-                                Portal.fileAppend(path.join(root, "stdout.log"), data);
-                            });
-                            let already = false;
-                            const resolve = async data => {
-                                if (already) return;
-                                already = true;
-                                this.log("SPAWN exit", data);
-                                await finish();
-                                if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
-                                    const notif = new electron.Notification({
-                                        title: "Script Process Finished",
-                                        body: "Your script finished executing with no errors!",
-                                    });
-                                    notif.show();
-                                }
-                                return res(data);
-                            };
-                            const reject = async data => {
-                                if (already) return;
-                                already = true;
-                                this.log("SPAWN err", data);
-                                await finish();
-                                if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
-                                    const notif = new electron.Notification({
-                                        title: "Script Process Finished",
-                                        body: "Your script finished executing with an error!",
-                                    });
-                                    notif.show();
-                                }
-                                return rej(data);
-                            };
-                            process.addHandler("exit", data => resolve(data));
-                            process.addHandler("error", data => reject(data));
-                        });
-                    },
-                    "exec-term": async () => {
-                        this.log("SPAWN term");
-                        const process = this.processManager.getProcessById("script");
-                        if (!(process instanceof Process)) return false;
-                        await process.terminate();
-                        return true;
-                    },
-                    "exec-get": async id => {
-                        id = String(id);
-
-                        const subcore = await import("./planner/core.mjs");
-
-                        let project = null;
-                        try {
-                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
-                        } catch (e) {}
-                        if (!(project instanceof subcore.Project)) throw "Invalid project content with id: "+id;
-
-                        let script = project.config.scriptUseDefault ? Portal.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
-                        if (script == null) return {}; // throw "No script for project with id: "+id;
-                        script = String(script);
-                        let has = await Portal.fileHas(script);
-                        if (!has) throw "Script ("+script+") does not exist for project id: "+id;
-                        let root = path.dirname(script);
-
-                        let hasMainDir = await Portal.dirHas(path.join(root, "paths"));
-                        if (!hasMainDir) return {};
-                        let hasProjectDir = await Portal.dirHas(path.join(root, "paths", project.meta.name));
-                        if (!hasProjectDir) return {};
-                        let datas = {};
-                        let pathNames = project.paths.map(id => project.getPath(id).name);
-                        let pathList = await Portal.dirList(path.join(root, "paths", project.meta.name));
-                        pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
-                        await Promise.all(pathList.map(async name => {
-                            let pathId = null;
-                            for (let id of project.paths) {
-                                let pth = project.getPath(id);
-                                if (pth.name != name) continue;
-                                pathId = id;
-                                break;
-                            }
-                            if (pathId == null) return;
-                            let contentOut = "";
-                            try {
-                                contentOut = await Portal.fileRead(path.join(root, "paths", project.meta.name, name, "data.out"));
-                            } catch (e) {}
-                            let dataOut = null;
-                            try {
-                                dataOut = JSON.parse(contentOut);
-                            } catch (e) {}
-                            if (dataOut == null) return;
-                            datas[pathId] = dataOut;
-                        }));
-                        return datas;
-                    },
-                },
-                PRESETS: {
-                    "cmd-open-app-data-dir": async () => {
-                        await new Promise((res, rej) => {
-                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.portal.dataPath }));
-                            process.addHandler("exit", code => res(code));
-                            process.addHandler("error", e => rej(e));
-                        });
-                    },
-                    "cmd-cleanup-app-data-dir": async () => {
-                        // await this.portal.cleanup();
-                        await this.on("cleanup");
-                    },
-                    "cmd-open-app-log-dir": async () => {
-                        await new Promise((res, rej) => {
-                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: Portal.makePath(this.portal.dataPath, "logs") }));
-                            process.addHandler("exit", code => res(code));
-                            process.addHandler("error", e => rej(e));
-                        });
-                    },
-                    "cmd-clear-app-log-dir": async () => {
-                        let dirents = await this.portal.dirList("logs");
-                        let n = 0, nTotal = dirents.length;
-                        await Promise.all(dirents.map(async dirent => {
-                            await this.portal.fileDelete(["logs", dirent.name]);
-                            n++;
-                            this.cacheSet("clear-app-log-dir-progress", n/nTotal);
-                        }));
-                        this.cacheSet("clear-app-log-dir-progress", 1);
-                    },
-                    "cmd-poll-db-host": async () => {
-                        (async () => {
-                            await this.portal.tryLoad();
-                        })();
-                    },
-                    "feature": async (name, cmd, k, ...a) => {
-                        let cmdfs = {
-                            get: {
-                                "root": async () => {
-                                    let content = "";
-                                    try {
-                                        content = await Portal.Feature.fileRead(this.portal, name, [".config"]);
-                                    } catch (e) {}
-                                    let data = null;
-                                    try {
-                                        data = JSON.parse(content);
-                                    } catch (e) {}
-                                    data = util.ensure(data, "obj");
-                                    return util.ensure(data.root, "str", Portal.Feature.getDataPath(this.portal, name));
-                                },
-                            },
-                            set: {
-                                "root": async v => {
-                                    let content = "";
-                                    try {
-                                        content = await Portal.Feature.fileRead(this.portal, name, [".config"]);
-                                    } catch (e) {}
-                                    let data = null;
-                                    try {
-                                        data = JSON.parse(content);
-                                    } catch (e) {}
-                                    data = util.ensure(data, "obj");
-                                    data.root = util.ensure(v, "str", Portal.Feature.getDataPath(this.portal, name));
-                                    if (data.root == Portal.Feature.getDataPath(this.portal, name)) delete data.root;
-                                    content = JSON.stringify(data);
-                                    await Portal.Feature.fileWrite(this.portal, name, [".config"], content);
-                                },
-                            },
-                        };
-                        let namefs = {
-                        };
-                        if (cmd in cmdfs)
-                            if (k in cmdfs[cmd])
-                                return await cmdfs[cmd][k](...a);
-                        if (name in namefs)
-                            if (cmd in namefs[name])
-                                if (k in namefs[name][cmd])
-                                    return await namefs[name][cmd][k](...a);
-                        return null;
-                    },
-                },
-            };
-            let r = null, hasR = false;
-            if (this.name in namefs) {
-                if (k in namefs[this.name]) {
-                    r = await namefs[this.name][k](...a);
-                    hasR = true;
-                }
-            }
-            if (doLog) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
-            if (!hasR) {
-                try {
-                    r = await this.portal.on(k, ...a);
-                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
-            }
-            return r;
-        }
-        async send(k, ...a) {
-            if (!this.started) return false;
-            k = String(k);
-            this.log(`SEND - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
-            if (!this.hasWindow()) return false;
-            this.window.webContents.send("send", k, ...a);
-            return true;
-        }
-        cacheSet(k, v) {
-            if (!this.started) return false;
-            k = String(k);
-            if (!this.hasWindow()) return false;
-            this.window.webContents.send("cache-set", k, v);
-        }
-        cacheDel(k) {
-            if (!this.started) return false;
-            k = String(k);
-            if (!this.hasWindow()) return false;
-            this.window.webContents.send("cache-del", k);
-        }
-        cacheClear() {
-            if (!this.started) return false;
-            if (!this.hasWindow()) return false;
-            this.window.webContents.send("cache-clear");
-        }
-
-        update(delta) { this.post("update", delta); }
-
-        static log(name, ...a) {
-            return log(`[${name}]`, ...a);
-        }
-        log(...a) { Portal.Feature.log(this.name, ...a); }
-    };
-
-    log("< BUILT PORTAL >");
-
-    const portal = new Portal();
+    const manager = new WindowManager();
 
     let initializeResolver = new util.Resolver(false);
     async function whenInitialized() { await initializeResolver.whenTrue(); }
@@ -3474,12 +3638,12 @@ const MAIN = async () => {
     app.on("activate", async () => {
         log("> activate");
         await whenInitialized();
-        portal.start();
+        manager.start();
     });
     app.on("second-instance", async () => {
         log("> second-instance");
         await whenInitialized();
-        portal.start();
+        manager.start();
     });
 
     let allowQuit = false, beforeQuitResolver = new util.Resolver(false);
@@ -3494,7 +3658,7 @@ const MAIN = async () => {
         log("> before-quit");
         let stopped = true;
         try {
-            stopped = await portal.stop();
+            stopped = await manager.stop();
         } catch (e) {
             stopped = true;
             showError("Portal Stop Error", e);
@@ -3513,7 +3677,7 @@ const MAIN = async () => {
         log("> quit");
         await whenInitialized();
         try {
-            await portal.quit();
+            await manager.quit();
         } catch (e) { showError("Portal Quit Error", e); }
     });
 
@@ -3521,14 +3685,14 @@ const MAIN = async () => {
 
     log("> ready");
 
-    let allowStart = await portal.init();
+    let allowStart = await manager.init();
     if (!allowStart) {
         allowQuit = true;
         app.quit();
         return;
     }
 
-    portal.start();
+    manager.start();
     initializeResolver.state = true;
 
     let t0 = null;
@@ -3536,7 +3700,7 @@ const MAIN = async () => {
         let t1 = util.getTime();
         if (t0 == null) return t1 = t0;
         try {
-            portal.update(t1-t0);
+            manager.update(t1-t0);
         } catch (e) {
             showError("Portal Update Error", e);
             clearInterval(id);

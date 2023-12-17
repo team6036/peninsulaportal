@@ -1026,7 +1026,7 @@ article.md.lighter table td {
     transform: none;
 }
 
-.popup {
+.popup:not(.override) {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1051,13 +1051,12 @@ article.md.lighter table td {
 
     transition: opacity var(--t), visibility var(--t);;
 }
-.popup.in {
+.popup:not(.override).in {
     opacity: 100%;
     visibility: inherit;
 }
 .popup > .inner {
     position: relative;
-    transform: scale(75%);
 
     padding: 10px;
 
@@ -1068,6 +1067,9 @@ article.md.lighter table td {
     align-items: stretch;
     align-content: center;
     gap: 10px;
+}
+.popup:not(.override) > .inner {
+    transform: scale(75%);
 
     background-color: var(--v2);
     border-radius: 10px;
@@ -1075,10 +1077,10 @@ article.md.lighter table td {
 
     transition: transform var(--t);
 }
-.popup.in > .inner {
+.popup:not(.override).in > .inner {
     transform: scale(100%);
 }
-.popup.custom > .inner > button.close {
+.popup:not(.override).custom > .inner > button.close {
     --bg: var(--v2);
     --bgh: var(--v3);
     --bgd: var(--v2);
@@ -1092,7 +1094,7 @@ article.md.lighter table td {
 
     border-radius: 100%;
 }
-.popup.custom > .inner > .title {
+.popup:not(.override).custom > .inner > .title {
     padding: 0px 40px;
 
     color: var(--v8);
@@ -1101,7 +1103,7 @@ article.md.lighter table td {
     font-size: 16px;
     font-weight: 700;
 }
-.popup.custom > .inner > .content {
+.popup:not(.override).custom > .inner > .content {
     margin-top: 30px;
 
     display: flex;
@@ -1114,7 +1116,7 @@ article.md.lighter table td {
 
     color: var(--v8);
 }
-.popup.custom.markdown > .inner {
+.popup:not(.override).custom.markdown > .inner {
     position: absolute;
     bottom: 0%;
     left: 50%;
@@ -1128,13 +1130,13 @@ article.md.lighter table td {
     border-bottom-left-radius: 0px;
     border-bottom-right-radius: 0px;
 }
-.popup.custom.markdown.in > .inner {
+.popup:not(.override).custom.markdown.in > .inner {
     transform: translate(-50%, 0%);
 }
-.popup.custom.markdown > .inner > .title {
+.popup:not(.override).custom.markdown > .inner > .title {
     display: none;
 }
-.popup.custom.markdown > .inner > .content {
+.popup:not(.override).custom.markdown > .inner > .content {
     --shift: 50px;
 
     position: relative;
@@ -1145,7 +1147,7 @@ article.md.lighter table td {
     max-height: 100%;
     overflow: hidden;
 }
-.popup.custom.markdown > .inner > .content > article {
+.popup:not(.override).custom.markdown > .inner > .content > article {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1161,16 +1163,16 @@ article.md.lighter table td {
     opacity: 100%;
     visibility: inherit;
 }
-.popup.custom.markdown > .inner > .content > article.out-right {
+.popup:not(.override).custom.markdown > .inner > .content > article.out-right {
     animation: popup-out-right var(--t) forwards;
 }
-.popup.custom.markdown > .inner > .content > article.out-left {
+.popup:not(.override).custom.markdown > .inner > .content > article.out-left {
     animation: popup-out-left var(--t) forwards;
 }
-.popup.custom.markdown > .inner > .content > article.in-right {
+.popup:not(.override).custom.markdown > .inner > .content > article.in-right {
     animation: popup-in-right var(--t) forwards;
 }
-.popup.custom.markdown > .inner > .content > article.in-left {
+.popup:not(.override).custom.markdown > .inner > .content > article.in-left {
     animation: popup-in-left var(--t) forwards;
 }
 @keyframes popup-out-right {
@@ -1238,10 +1240,16 @@ article.md.lighter table td {
     }
 }
 .popup.core > .inner {
-    max-width: min(100%, 300px);
+    width: min(100%, 200px);
+    max-width: min(100%, 200px);
 }
 .popup.core > .inner:has(.info) {
-    max-width: min(100%, max(50%, 500px));
+    width: min(100%, 400px);
+    max-width: min(100%, 400px);
+}
+.popup.core.progress > .inner {
+    width: min(100%, 400px) !important;
+    max-width: min(100%, 400px) !important;
 }
 .popup.core > .inner > .icon {
     position: relative;
@@ -1312,8 +1320,32 @@ article.md.lighter table td {
     word-wrap: break-word;
     white-space: pre-wrap;
 }
-.popup.prompt > .inner > input {
+.popup.core > .inner > input {
     width: 100%;
+}
+.popup.core > .inner > .progress {
+    --progress: 0%;
+
+    position: relative;
+
+    height: 10px;
+    width: 100%;
+
+    background-color: var(--v1-8);
+}
+.popup.core > .inner > .progress::before {
+    content: "";
+
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    width: var(--progress);
+    height: 100%;
+
+    background-color: var(--a);
+
+    transition: width var(--t);
 }
 
 div.contextmenu {
