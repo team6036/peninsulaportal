@@ -33,13 +33,13 @@ export function is(o, type) {
             return (typeof(o) == "number") && !Number.isNaN(o);
         },
         num: () => {
-            return typefs.any_num() && Number.isFinite(o);
+            return is(o, "any_num") && Number.isFinite(o);
         },
         float: () => {
-            return typefs.num();
+            return is(o, "num");
         },
         int: () => {
-            return typefs.num() && (o % 1 == 0);
+            return is(o, "num") && (o % 1 == 0);
         },
         bool: () => {
             return typeof(o) == "boolean";
@@ -48,16 +48,21 @@ export function is(o, type) {
             return typeof(o) == "string";
         },
         arr: () => {
-            return Array.isArray(o);
+            return Array.isArray(o) || (
+                o &&
+                is(o, "obj") &&
+                is(o.length, "num") && 
+                ((o.length == 0) || (o.length > 0 && (o.length - 1) in o))
+            );
         },
         obj: () => {
-            return (typeof(o) == "object") && !typefs.null();
+            return (typeof(o) == "object") && !is(o, "null");
         },
         func: () => {
             return typeof(o) == "function";
         },
         async_func: () => {
-            return typefs.func() && o.constructor.name == "AsyncFunction";
+            return is(o, "func") && o.constructor.name == "AsyncFunction";
         },
         null: () => {
             return o == null;
@@ -80,7 +85,7 @@ export function ensure(o, type, def=ENSURE_NONE) {
             return (def == ENSURE_NONE) ? 0 : def;
         },
         float: () => {
-            return typefs.num();
+            return ensure(o, "num", def);
         },
         int: () => {
             if (is(o, "num")) return Math.round(o);
@@ -94,7 +99,7 @@ export function ensure(o, type, def=ENSURE_NONE) {
             return (def == ENSURE_NONE) ? "" : def;
         },
         arr: () => {
-            if (is(o, "arr")) return o;
+            if (is(o, "arr")) return Array.from(o);
             return (def == ENSURE_NONE) ? [] : def;
         },
         obj: () => {
