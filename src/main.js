@@ -330,7 +330,6 @@ const MAIN = async () => {
             response = util.ensure(response, "obj");
             const serverTs = util.ensure(response.ts, "num");
             const clientTs = util.getTime();
-            // console.log(`INC:latency ${clientTs-serverTs}ms\n\tclient: ${clientTs}\n\tserver: ${serverTs}`);
             if (!response.success) return rej(response.reason);
             return res(response.payload);
         }
@@ -2326,7 +2325,6 @@ const MAIN = async () => {
                 this.log("DB config");
                 this.addLoad("config");
                 try {
-                    // await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
                     await fetchAndPipe(theHost+"/config", path.join(this.dataPath, ".config"));
                     this.log("DB config - success");
                 } catch (e) {
@@ -2349,7 +2347,6 @@ const MAIN = async () => {
                         this.log("DB templates.json");
                         this.addLoad("templates.json");
                         try {
-                            // await fetchAndPipe(host+"/templates.json", path.join(this.dataPath, "templates", "templates.json"));
                             await fetchAndPipe(theHost+"/templates", path.join(this.dataPath, "templates", "templates.json"));
                             this.log("DB templates.json - success");
                         } catch (e) {
@@ -2389,7 +2386,6 @@ const MAIN = async () => {
                         this.log("DB robots.json");
                         this.addLoad("robots.json");
                         try {
-                            // await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
                             await fetchAndPipe(theHost+"/robots", path.join(this.dataPath, "robots", "robots.json"));
                             this.log("DB robots.json - success");
                         } catch (e) {
@@ -2429,7 +2425,6 @@ const MAIN = async () => {
                         this.log("DB holidays.json");
                         this.addLoad("holidays.json");
                         try {
-                            // await fetchAndPipe(host+"/holidays.json", path.join(this.dataPath, "holidays", "holidays.json"));
                             await fetchAndPipe(theHost+"/holidays", path.join(this.dataPath, "holidays", "holidays.json"));
                             this.log("DB holidays.json - success");
                         } catch (e) {
@@ -2495,7 +2490,6 @@ const MAIN = async () => {
                         this.log("DB themes.json");
                         this.addLoad("themes.json");
                         try {
-                            // await fetchAndPipe(host+"/themes.json", path.join(this.dataPath, "themes.json"));
                             await fetchAndPipe(theHost+"/themes", path.join(this.dataPath, "themes.json"));
                             this.log("DB themes.json - success");
                         } catch (e) {
@@ -2511,7 +2505,6 @@ const MAIN = async () => {
                         log("search");
                         this.addLoad(name+":search");
                         try {
-                            // let resp = await util.timeout(10000, fetch(subhost+"/confirm.txt"));
                             let resp = await util.timeout(10000, fetch(subhost));
                             if (resp.status != 200) throw resp.status;
                         } catch (e) {
@@ -2549,7 +2542,6 @@ const MAIN = async () => {
                                         log("templates.json");
                                         this.addLoad(name+":templates.json");
                                         try {
-                                            // await fetchAndPipe(subhost+"/templates.json", path.join(Window.getDataPath(this, name), "templates.json"));
                                             await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
                                             log("templates.json - success");
                                         } catch (e) {
