@@ -583,7 +583,7 @@ class LoggerContext extends util.Target {
             } else {
                 this.#host = await window.api.get("socket-host");
                 this.#host = (this.#host == null) ? null : String(this.#host);
-                if (this.#hasHost()) this.#client = new core.Client(this.#host+"/panel");
+                if (this.#hasHost()) this.#client = new core.Client(this.#host+"/api/panel");
             }
             await this.pollServer();
         }, 1000);
