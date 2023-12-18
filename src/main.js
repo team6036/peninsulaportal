@@ -48,6 +48,8 @@ const MAIN = async () => {
 
     const path = require("path");
     const fs = require("fs");
+    util.FSOperator.path = path;
+    util.FSOperator.fs = fs;
 
     const cp = require("child_process");
 
@@ -2030,7 +2032,7 @@ const MAIN = async () => {
 
         log(...a) { return this.manager.log(`[${this.name}]`, ...a); }
     }
-    class WindowManager extends util.Target {
+    class WindowManager extends util.FSOperator {
         #window;
 
         #started;
@@ -2278,7 +2280,8 @@ const MAIN = async () => {
                 await this.set("fs-version", version);
                 this.log("DB finding host");
                 this.addLoad("find");
-                const host = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
+                const host = ((await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co");
+                const theHost = host + "/api";
                 const assetsHost = String(await this.get("assets-host"));
                 const isCompMode = await this.get("val-comp-mode");
                 this.remLoad("find");
@@ -2323,7 +2326,8 @@ const MAIN = async () => {
                 this.log("DB config");
                 this.addLoad("config");
                 try {
-                    await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
+                    // await fetchAndPipe(host+"/config.json", path.join(this.dataPath, ".config"));
+                    await fetchAndPipe(theHost+"/config", path.join(this.dataPath, ".config"));
                     this.log("DB config - success");
                 } catch (e) {
                     this.log(`DB config - error - ${e}`);
@@ -2345,7 +2349,8 @@ const MAIN = async () => {
                         this.log("DB templates.json");
                         this.addLoad("templates.json");
                         try {
-                            await fetchAndPipe(host+"/templates.json", path.join(this.dataPath, "templates", "templates.json"));
+                            // await fetchAndPipe(host+"/templates.json", path.join(this.dataPath, "templates", "templates.json"));
+                            await fetchAndPipe(theHost+"/templates", path.join(this.dataPath, "templates", "templates.json"));
                             this.log("DB templates.json - success");
                         } catch (e) {
                             this.log(`DB templates.json - error - ${e}`);
@@ -2384,7 +2389,8 @@ const MAIN = async () => {
                         this.log("DB robots.json");
                         this.addLoad("robots.json");
                         try {
-                            await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
+                            // await fetchAndPipe(host+"/robots.json", path.join(this.dataPath, "robots", "robots.json"));
+                            await fetchAndPipe(theHost+"/robots", path.join(this.dataPath, "robots", "robots.json"));
                             this.log("DB robots.json - success");
                         } catch (e) {
                             this.log(`DB robots.json - error - ${e}`);
@@ -2423,7 +2429,8 @@ const MAIN = async () => {
                         this.log("DB holidays.json");
                         this.addLoad("holidays.json");
                         try {
-                            await fetchAndPipe(host+"/holidays.json", path.join(this.dataPath, "holidays", "holidays.json"));
+                            // await fetchAndPipe(host+"/holidays.json", path.join(this.dataPath, "holidays", "holidays.json"));
+                            await fetchAndPipe(theHost+"/holidays", path.join(this.dataPath, "holidays", "holidays.json"));
                             this.log("DB holidays.json - success");
                         } catch (e) {
                             this.log(`DB holidays.json - error - ${e}`);
@@ -2488,7 +2495,8 @@ const MAIN = async () => {
                         this.log("DB themes.json");
                         this.addLoad("themes.json");
                         try {
-                            await fetchAndPipe(host+"/themes.json", path.join(this.dataPath, "themes.json"));
+                            // await fetchAndPipe(host+"/themes.json", path.join(this.dataPath, "themes.json"));
+                            await fetchAndPipe(theHost+"/themes", path.join(this.dataPath, "themes.json"));
                             this.log("DB themes.json - success");
                         } catch (e) {
                             this.log(`DB themes.json - error - ${e}`);
@@ -2498,12 +2506,13 @@ const MAIN = async () => {
                         await this.send("theme");
                     })(),
                     ...FEATURES.map(async name => {
-                        const subhost = host+"/"+name.toLowerCase();
+                        const subhost = theHost+"/"+name.toLowerCase();
                         const log = (...a) => this.log(`DB [${name}]`, ...a);
                         log("search");
                         this.addLoad(name+":search");
                         try {
-                            let resp = await util.timeout(10000, fetch(subhost+"/confirm.txt"));
+                            // let resp = await util.timeout(10000, fetch(subhost+"/confirm.txt"));
+                            let resp = await util.timeout(10000, fetch(subhost));
                             if (resp.status != 200) throw resp.status;
                         } catch (e) {
                             log(`search - not found - ${e}`);
@@ -2540,7 +2549,8 @@ const MAIN = async () => {
                                         log("templates.json");
                                         this.addLoad(name+":templates.json");
                                         try {
-                                            await fetchAndPipe(subhost+"/templates.json", path.join(Window.getDataPath(this, name), "templates.json"));
+                                            // await fetchAndPipe(subhost+"/templates.json", path.join(Window.getDataPath(this, name), "templates.json"));
+                                            await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
                                             log("templates.json - success");
                                         } catch (e) {
                                             log(`templates.json - error - ${e}`);
@@ -2742,6 +2752,8 @@ const MAIN = async () => {
         }
 
         get dataPath() { return this.hasWindow() ? this.window.dataPath : path.join(app.getPath("appData"), "PeninsulaPortal"); }
+        get root() { return this.dataPath; }
+        set root(v) {}
 
         static async basicAffirm(dataPath) {
             let hasData = await this.dirHas(dataPath);
@@ -2988,82 +3000,6 @@ const MAIN = async () => {
         }
         async cleanup() { return this.hasWindow() ? await this.window.manager.cleanup() : await WindowManager.cleanup(this.dataPath, await this.get("base-version")); }
 
-        static makePath(...pth) {
-            return path.join(...pth.flatten());
-        }
-        static async fileHas(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:file-has ${pth}`);
-            try {
-                await fs.promises.access(pth);
-                return true;
-            } catch (e) {}
-            return false;
-        }
-        static async fileRead(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:file-read ${pth}`);
-            return await fs.promises.readFile(pth, { encoding: "utf-8" });
-        }
-        static async fileReadRaw(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:file-read-raw ${pth}`);
-            return [...(await fs.promises.readFile(pth))];
-        }
-        static async fileWrite(pth, content) {
-            pth = this.makePath(pth);
-            content = String(content);
-            this.fsLog(`fs:file-write ${pth}`);
-            return await fs.promises.writeFile(pth, content, { encoding: "utf-8" });
-        }
-        static async fileWriteRaw(pth, content) {
-            pth = this.makePath(pth);
-            content = Buffer.from(content);
-            this.fsLog(`fs:file-write-raw ${pth}`);
-            return await fs.promises.writeFile(pth, content);
-        }
-        static async fileAppend(pth, content) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:file-append ${pth}`);
-            return await fs.promises.appendFile(pth, content, { encoding: "utf-8" });
-        }
-        static async fileDelete(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:file-delete ${pth}`);
-            return await fs.promises.unlink(pth);
-        }
-
-        static async dirHas(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:dir-has ${pth}`);
-            try {
-                await fs.promises.access(pth);
-                return true;
-            } catch (e) {}
-            return false;
-        }
-        static async dirList(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:dir-list ${pth}`);
-            let dirents = await fs.promises.readdir(pth, { withFileTypes: true });
-            return dirents.map(dirent => {
-                return {
-                    type: dirent.isFile() ? "file" : "dir",
-                    name: dirent.name,
-                };
-            });
-        }
-        static async dirMake(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:dir-make ${pth}`);
-            return await fs.promises.mkdir(pth);
-        }
-        static async dirDelete(pth) {
-            pth = this.makePath(pth);
-            this.fsLog(`fs:dir-delete ${pth}`);
-            return await fs.promises.rm(pth, { force: true, recursive: true });
-        }
-
         static async getFSVersion(pth) {
             try {
                 return await this.fileRead([pth, ".version"]);
@@ -3082,19 +3018,6 @@ const MAIN = async () => {
             if (!compareVersions.validateStrict(version)) return false;
             return compareVersions.compare(version, fsVersion, ">=");
         }
-
-        async fileHas(pth) { return await WindowManager.fileHas([this.dataPath, pth]); }
-        async fileRead(pth) { return await WindowManager.fileRead([this.dataPath, pth]); }
-        async fileReadRaw(pth) { return await WindowManager.fileReadRaw([this.dataPath, pth]); }
-        async fileWrite(pth, content) { return await WindowManager.fileWrite([this.dataPath, pth], content); }
-        async fileWriteRaw(pth, content) { return await WindowManager.fileWriteRaw([this.dataPath, pth], content); }
-        async fileAppend(pth, content) { return await WindowManager.fileAppend([this.dataPath, pth], content); }
-        async fileDelete(pth) { return await WindowManager.fileDelete([this.dataPath, pth]); }
-
-        async dirHas(pth) { return await WindowManager.dirHas([this.dataPath, pth]); }
-        async dirList(pth) { return await WindowManager.dirList([this.dataPath, pth]); }
-        async dirMake(pth) { return await WindowManager.dirMake([this.dataPath, pth]); }
-        async dirDelete(pth) { return await WindowManager.dirDelete([this.dataPath, pth]); }
 
         async getFSVersion() { return this.hasWindow() ? await this.window.manager.getFSVersion() : await WindowManager.getFSVersion(this.dataPath); }
         async setFSVersion(verison) { return this.hasWindow() ? await this.window.manager.setFSVersion(verison) : await WindowManager.setFSVersion(this.dataPath, verison); }
@@ -3732,8 +3655,8 @@ const MAIN = async () => {
     try {
         await MAIN();
     } catch (e) {
-        if (context.showError)
-            context.showError("Main Script Error", null, e);
+        if (context.showError) context.showError("Main Script Error", null, e);
+        else console.log("Main Script Error", e);
         if (context.app && context.app.quit)
             context.app.quit();
         process.exit();
