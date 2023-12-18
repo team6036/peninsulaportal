@@ -2387,3 +2387,136 @@ REVIVER.addRuleAndAllSub(Range);
 REVIVER.addRuleAndAllSub(V);
 REVIVER.addRuleAndAllSub(V3);
 REVIVER.addRuleAndAllSub(Shape);
+
+export class FSOperator extends Target {
+    #root;
+
+    static FS;
+    static PATH;
+    static FSLOGFUNC = null;
+
+    static get fs() { return this.FS; }
+    static set fs(v) { this.FS = is(v, "obj") ? v : null; }
+    static hasFS() { return this.fs != null; }
+    static get path() { return this.PATH; }
+    static set path(v) { this.PATH = is(v, "obj") ? v : null; }
+    static hasPath() { return this.path != null; }
+    static hasModules() { return this.hasFS() && this.hasPath(); }
+    static get fsLogFunc() { return this.FSLOGFUNC; }
+    static set fsLogFunc(v) { this.FSLOGFUNC = is(v, "func") ? v : null; }
+    static hasFSLogFunc() { return this.fsLogFunc != null; }
+
+    constructor(root) {
+        super();
+
+        this.#root = null;
+
+        this.root = root;
+    }
+
+    get root() { return this.#root; }
+    set root(v) { this.#root = v; }
+
+    static makePath(...pth) {
+        if (!this.hasModules()) return null;
+        return this.path.join(...pth.flatten());
+    }
+    static async fileHas(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:file-has ${pth}`);
+        try {
+            await this.fs.promises.access(pth);
+            return true;
+        } catch (e) {}
+        return false;
+    }
+    static async fileRead(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:file-read ${pth}`);
+        return await this.fs.promises.readFile(pth, { encoding: "utf-8" });
+    }
+    static async fileReadRaw(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:file-read-raw ${pth}`);
+        return [...(await this.fs.promises.readFile(pth))];
+    }
+    static async fileWrite(pth, content) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        content = String(content);
+        this.fsLog(`fs:file-write ${pth}`);
+        return await this.fs.promises.writeFile(pth, content, { encoding: "utf-8" });
+    }
+    static async fileWriteRaw(pth, content) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        content = Buffer.from(content);
+        this.fsLog(`fs:file-write-raw ${pth}`);
+        return await this.fs.promises.writeFile(pth, content);
+    }
+    static async fileAppend(pth, content) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:file-append ${pth}`);
+        return await this.fs.promises.appendFile(pth, content, { encoding: "utf-8" });
+    }
+    static async fileDelete(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:file-delete ${pth}`);
+        return await this.fs.promises.unlink(pth);
+    }
+
+    static async dirHas(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:dir-has ${pth}`);
+        try {
+            await this.fs.promises.access(pth);
+            return true;
+        } catch (e) {}
+        return false;
+    }
+    static async dirList(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:dir-list ${pth}`);
+        let dirents = await this.fs.promises.readdir(pth, { withFileTypes: true });
+        return dirents.map(dirent => {
+            return {
+                type: dirent.isFile() ? "file" : "dir",
+                name: dirent.name,
+            };
+        });
+    }
+    static async dirMake(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:dir-make ${pth}`);
+        return await this.fs.promises.mkdir(pth);
+    }
+    static async dirDelete(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:dir-delete ${pth}`);
+        return await this.fs.promises.rm(pth, { force: true, recursive: true });
+    }
+
+    async fileHas(pth) { return await this.constructor.fileHas([this.root, pth]); }
+    async fileRead(pth) { return await this.constructor.fileRead([this.root, pth]); }
+    async fileReadRaw(pth) { return await this.constructor.fileReadRaw([this.root, pth]); }
+    async fileWrite(pth, content) { return await this.constructor.fileWrite([this.root, pth], content); }
+    async fileWriteRaw(pth, content) { return await this.constructor.fileWriteRaw([this.root, pth], content); }
+    async fileAppend(pth, content) { return await this.constructor.fileAppend([this.root, pth], content); }
+    async fileDelete(pth) { return await this.constructor.fileDelete([this.root, pth]); }
+
+    async dirHas(pth) { return await this.constructor.dirHas([this.root, pth]); }
+    async dirList(pth) { return await this.constructor.dirList([this.root, pth]); }
+    async dirMake(pth) { return await this.constructor.dirMake([this.root, pth]); }
+    async dirDelete(pth) { return await this.constructor.dirDelete([this.root, pth]); }
+
+    static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
+}
