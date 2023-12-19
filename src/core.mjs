@@ -2688,7 +2688,7 @@ export class AppFeature extends App {
                             { id: "import", label: "Import Project...", visible: false },
                             { type: "separator", visible: false },
                             { id: "delete", label: "Delete Project" },
-                            { id: "closeproject", label: "Close Project" },
+                            { id: "closeproject", label: "Close Project", accelerator: "CmdOrCtrl+W" },
                         ];
                         itms.forEach((data, i) => {
                             let itm = App.Menu.Item.fromObj(data);
@@ -3457,9 +3457,13 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
             let itm;
+            itm = this.app.menu.findItemWithId("closeproject");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = "CmdOrCtrl+W";
             itm = this.app.menu.findItemWithId("close");
             if (itm instanceof App.Menu.Item)
                 itm.accelerator = "CmdOrCtrl+Shift+W";
+            await this.post("post-enter", data);
         });
         this.addHandler("leave", async data => {
             let projectOnly = [
@@ -3474,12 +3478,16 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
             let itm;
-            itm = this.app.menu.findItemWithId("close");
+            itm = this.app.menu.findItemWithId("closeproject");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = null;
+                itm = this.app.menu.findItemWithId("close");
             if (itm instanceof App.Menu.Item)
                 itm.accelerator = null;
             this.app.markChange("*all");
             await this.app.post("cmd-save");
             this.project = null;
+            await this.post("post-leave", data);
         });
     }
 
@@ -3828,8 +3836,8 @@ export class Odometry2d extends util.Target {
                     ctx.globalCompositeOperation = "overlay";
                     ctx.drawImage(
                         this.#image,
-                        (ctx.canvas.width - this.w*scale*quality)/2,
-                        (ctx.canvas.height - this.h*scale*quality)/2,
+                        (ctx.canvas.width - this.#image.width*this.imageScale*scale*quality)/2,
+                        (ctx.canvas.height - this.#image.height*this.imageScale*scale*quality)/2,
                         this.#image.width*this.imageScale*scale*quality,
                         this.#image.height*this.imageScale*scale*quality,
                     );
@@ -3920,6 +3928,7 @@ export class Odometry2d extends util.Target {
     }
     get imageScale() { return this.#imageScale; }
     set imageScale(v) { this.#imageScale = Math.max(0, util.ensure(v, "num")); }
+    autoScale() { return this.imageScale = ((this.w/this.#image.width)+(this.h/this.#image.height))/2; }
 
     get doRender() { return this.#doRender; }
     set doRender(v) { this.#doRender = !!v; }

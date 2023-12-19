@@ -335,30 +335,28 @@ Project.Config = class ProjectConfig extends Project.Config {
 };
 Project.Meta = class ProjectMeta extends Project.Meta {
     #backgroundImage;
-    #backgroundScale;
 
     constructor(...a) {
         super();
 
         this.#backgroundImage = null;
-        this.#backgroundScale = 1;
 
-        if (a.length <= 0 || [3, 5].includes(a.length) || a.length > 6) a = [null];
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
+            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage];
             else if (util.is(a, "arr")) {
                 a = new Project.Meta(...a);
-                a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
+                a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage];
             }
             else if (util.is(a, "str")) a = [a, null];
-            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage, a.backgroundScale];
+            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage];
             else a = ["New Project", null];
         }
         if (a.length == 2) a = [a[0], 0, 0, a[1]];
-        if (a.length == 4) a = [...a, null, 0];
+        if (a.length == 4) a = [...a, null];
         
-        [this.name, this.modified, this.created, this.thumb, this.backgroundImage, this.backgroundScale] = a;
+        [this.name, this.modified, this.created, this.thumb, this.backgroundImage] = a;
     }
 
     get backgroundImage() { return this.#backgroundImage; }
@@ -366,12 +364,6 @@ Project.Meta = class ProjectMeta extends Project.Meta {
         v = (v == null) ? null : String(v);
         if (this.backgroundImage == v) return;
         this.change("backgroundImage", this.backgroundImage, this.#backgroundImage=v);
-    }
-    get backgroundScale() { return this.#backgroundScale; }
-    set backgroundScale(v) {
-        v = Math.max(0, util.ensure(v, "num"));
-        if (this.backgroundScale == v) return;
-        this.change("backgroundScale", this.backgroundScale, this.#backgroundScale=v);
     }
 
     toJSON() {
@@ -381,7 +373,6 @@ Project.Meta = class ProjectMeta extends Project.Meta {
             modified: this.modified, created: this.created,
             thumb: this.thumb,
             backgroundImage: this.backgroundImage,
-            backgroundScale: this.backgroundScale,
         });
     }
 }
