@@ -25,6 +25,12 @@ export default class App extends core.AppModal {
             this.#ieCancel = document.createElement("button");
             this.iinner.appendChild(this.ieCancel);
 
+            this.ieInput.addEventListener("keydown", e => {
+                if (e.code != "Enter" && e.code != "Return") return;
+                e.preventDefault();
+                this.ieConfirm.click();
+            });
+
             this.ieConfirm.addEventListener("click", e => this.result(this.ivalue));
             this.ieCancel.addEventListener("click", e => this.result(null));
 
@@ -33,6 +39,9 @@ export default class App extends core.AppModal {
             this.iconfirm = "OK";
             this.icancel = "Cancel";
             this.iplaceholder = "...";
+        });
+        this.addHandler("post-setup", async () => {
+            this.ieInput.focus();
         });
     }
 
