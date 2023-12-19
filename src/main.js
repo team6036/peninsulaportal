@@ -1716,9 +1716,12 @@ const MAIN = async () => {
                         dataIn.config.map_h = project.h / 100;
                         dataIn.config.side_length = project.robotW / 100;
                         dataIn.config.mass = project.robotMass;
-                        dataIn.config.moment_of_inertia = project.config.momentOfInertia;
-                        dataIn.config.efficiency_percent = project.config.efficiency;
-                        dataIn.config["12_motor_mode"] = project.config.is12MotorMode;
+                        project.config.options.forEach(k => {
+                            let v = project.config.getOption(k);
+                            try { v = JSON.parse(v); }
+                            catch (e) { return; }
+                            dataIn.config[k] = v;
+                        });
                         pth.nodes.forEach(id => {
                             if (!project.hasItem(id)) return;
                             let itm = project.getItem(id);
