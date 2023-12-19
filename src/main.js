@@ -2298,7 +2298,8 @@ const MAIN = async () => {
                 this.log(`DB polling`);
                 this.addLoad("poll");
                 try {
-                    await util.timeout(10000, fetch(host));
+                    let resp = await util.timeout(10000, fetch(theHost));
+                    if (resp.status != 200) throw resp.status;
                 } catch (e) {
                     this.log(`DB polling - fail`);
                     this.remLoad("poll");
