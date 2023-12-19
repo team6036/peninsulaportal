@@ -22,6 +22,9 @@ export default class App extends core.AppModal {
             this.iicon = "alert-circle";
             this.ibutton = "OK";
         });
+        this.addHandler("post-setup", async () => {
+            this.ieButton.focus();
+        });
     }
 
     get ieButton() { return this.#ieButton; }

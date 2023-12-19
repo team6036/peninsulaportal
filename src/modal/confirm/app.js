@@ -27,6 +27,9 @@ export default class App extends core.AppModal {
             this.iconfirm = "OK";
             this.icancel = "Cancel";
         });
+        this.addHandler("post-setup", async () => {
+            this.ieConfirm.focus();
+        });
     }
 
     get ieCancel() { return this.#ieCancel; }
