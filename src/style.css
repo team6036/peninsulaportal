@@ -1306,6 +1306,9 @@ article.md.lighter table td {
 
     border-radius: 10px;
 }
+.popup.core > .inner > button:focus {
+    outline: 2px solid var(--v8);
+}
 .popup.core > .inner > button.special {
     --bg: var(--a);
     --fg: var(--v8);
