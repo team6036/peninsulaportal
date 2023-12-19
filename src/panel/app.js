@@ -7393,6 +7393,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.project.meta.created = this.project.meta.modified = util.getTime();
             }
         });
+        this.addHandler("post-enter", async data => {
+            let itm;
+            itm = this.app.menu.findItemWithId("closeproject");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = "CmdOrCtrl+Shift+W";
+            itm = this.app.menu.findItemWithId("close");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = "";
+        });
         this.addHandler("leave", async data => {
             let projectOnly = [
                 "newtab",
@@ -7405,6 +7414,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!(itm instanceof App.Menu.Item)) return;
                 itm.exists = false;
             });
+        });
+        this.addHandler("post-leave", async data => {
+            let itm;
+            itm = this.app.menu.findItemWithId("closeproject");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = null;
+            itm = this.app.menu.findItemWithId("close");
+            if (itm instanceof App.Menu.Item)
+                itm.accelerator = null;
         });
     }
 

@@ -969,7 +969,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.odometry.update(delta);
             this.odometry.size = this.hasProject() ? this.project.size : 0;
             this.odometry.imageSrc = this.hasProject() ? this.project.meta.backgroundImage : null;
-            this.odometry.imageScale = this.hasProject() ? this.project.meta.backgroundScale : 0;
+            this.odometry.autoScale();
             this.panels.forEach(name => this.getPanel(name).update(delta));
             let itmsUsed = new Set();
             this.odometry.renders.forEach(render => {
@@ -1067,7 +1067,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     template[".size"] = globalTemplate["size"];
                     template[".robotW"] = globalTemplate["robotSize"];
                     template[".robotMass"] = globalTemplate["robotMass"];
-                    template[".meta.backgroundScale"] = globalTemplate["imageScale"];
                     template[".meta.backgroundImage"] = globalTemplateImages[name];
                     for (let k in template) {
                         let v = template[k];
