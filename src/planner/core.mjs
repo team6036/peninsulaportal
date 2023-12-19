@@ -232,9 +232,7 @@ Project.Config = class ProjectConfig extends Project.Config {
     #scriptPython;
     #scriptUseDefault;
 
-    #momentOfInertia;
-    #efficiency;
-    #is12MotorMode;
+    #options;
 
     constructor(...a) {
         super();
@@ -243,26 +241,31 @@ Project.Config = class ProjectConfig extends Project.Config {
         this.#scriptPython = "";
         this.#scriptUseDefault = false;
 
-        this.#momentOfInertia = 0;
-        this.#efficiency = 0;
-        this.#is12MotorMode = false;
+        this.#options = {};
 
-        if (a.length <= 0 || ![1, 4, 6].includes(a.length)) a = [null];
+        if (a.length <= 0 || ![1, 4].includes(a.length)) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+            if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.optionsObject];
             else if (util.is(a, "arr")) {
                 a = new Project.Config(...a);
-                a = [a.script, a.scriptPython, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
+                a = [a.script, a.scriptPython, a.scriptUseDefault, a.optionsObject];
             }
             else if (util.is(a, "str")) a = [a, 0, 0, false];
-            else if (util.is(a, "obj")) a = [a.script, a.scriptPython, a.scriptUseDefault, a.momentOfInertia, a.efficiency, a.is12MotorMode];
-            else a = [null, 0, 0, false];
+            else if (util.is(a, "obj")) {
+                // REMOVE WHEN FIXED
+                if ("momentOfInertia" in a || "efficiency" in a || "is12MotorMode" in a) {
+                    a = [a.script, a.scriptPython, a.scriptUseDefault, {
+                        "moment_of_inertia": JSON.stringify(a.momentOfInertia),
+                        "efficiency_percent": JSON.stringify(a.efficiency),
+                        "12_motor_mode": JSON.stringify(a.is12MotorMode),
+                    }];
+                } else a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
+            }
+            else a = [null, 0, 0, null];
         }
-        if (a.length == 4)
-            a = [...a.slice(0, 1), "python3", false, ...a.slice(1)];
 
-        [this.script, this.scriptPython, this.scriptUseDefault, this.momentOfInertia, this.efficiency, this.is12MotorMode] = a;
+        [this.script, this.scriptPython, this.scriptUseDefault, this.options] = a;
     }
 
     get script() { return this.#script; }
@@ -284,34 +287,49 @@ Project.Config = class ProjectConfig extends Project.Config {
         this.change("scriptUseDefault", this.scriptUseDefault, this.#scriptUseDefault=v);
     }
 
-    get momentOfInertia() { return this.#momentOfInertia; }
-    set momentOfInertia(v) {
-        v = Math.max(0, util.ensure(v, "num"));
-        if (this.momentOfInertia == v) return;
-        this.change("momentOfInertia", this.momentOfInertia, this.#momentOfInertia=v);
+    get options() { return Object.keys(this.#options); }
+    get optionsObject() {
+        let options = {};
+        this.options.forEach(k => (options[k] = this.getOption(k)));
+        return options;
     }
-
-    get efficiency() { return this.#efficiency; }
-    set efficiency(v) {
-        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
-        if (this.efficiency == v) return;
-        this.change("efficiency", this.efficiency, this.#efficiency=v);
+    set options(v) {
+        v = util.ensure(v, "obj");
+        this.clearOptions();
+        for (let k in v) this.addOption(k, v[k]);
     }
-
-    get is12MotorMode() { return this.#is12MotorMode; }
-    set is12MotorMode(v) {
-        v = !!v;
-        if (this.is12MotorMode == v) return;
-        this.change("is12MotorMode", this.is12MotorMode, this.#is12MotorMode=v);
+    clearOptions() {
+        let options = this.options;
+        options.forEach(k => this.remOption(k));
+        return options;
+    }
+    hasOption(k) {
+        k = String(k);
+        return k in this.#options;
+    }
+    getOption(k) {
+        if (!this.hasOption(k)) return null;
+        return this.#options[k];
+    }
+    addOption(k, v) {
+        k = String(k);
+        v = String(v);
+        let v0 = this.getOption(k);
+        this.#options[k] = v;
+        this.change("addOption", v0, v);
+    }
+    remOption(k) {
+        k = String(k);
+        let v = this.getOption(k);
+        delete this.#options[k];
+        this.change("remOption", v, null);
     }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
             script: this.script, scriptPython: this.scriptPython, scriptUseDefault: this.scriptUseDefault,
-            momentOfInertia: this.momentOfInertia,
-            efficiency: this.efficiency,
-            is12MotorMode: this.is12MotorMode,
+            options: this.optionsObject,
         });
     }
 };

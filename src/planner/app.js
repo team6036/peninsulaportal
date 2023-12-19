@@ -2618,9 +2618,8 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     #size;
     #robotSize;
     #robotMass;
-    #momentOfInertia;
-    #efficiency;
-    #is12MotorMode;
+    #eOptions;
+    #eOptionsAdd;
     #eScript;
     #eScriptInput;
     #eScriptBtn;
@@ -2693,51 +2692,25 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
 
         this.addItem(new App.ProjectPage.Panel.Header("Script Options"));
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Moment of Inertia", "kg-m"));
-        this.#momentOfInertia = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.momentOfInertia.inputs.forEach(inp => {
-            inp.type = "number";
-            inp.placeholder = "...";
-            inp.min = 0;
-            inp.step = 0.1;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                    if (this.page.hasProject())
-                        this.page.project.config.momentOfInertia = v;
+        this.#eOptions = document.createElement("div");
+        this.addItem(this.eOptions);
+        this.eOptions.classList.add("options");
+        this.#eOptionsAdd = document.createElement("button");
+        this.eOptions.appendChild(this.eOptionsAdd);
+        this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
+        this.eOptionsAdd.addEventListener("click", e => {
+            if (!this.page.hasProject()) return;
+            let options = this.page.project.config.options;
+            let k = "new-key";
+            if (options.includes(k)) {
+                let n = 1;
+                while (true) {
+                    if (!options.includes(k+"-"+n)) break;
+                    n++;
                 }
-                this.page.post("refresh-options");
-            });
-        });
-
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Efficiency", "%"));
-        this.#efficiency = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.efficiency.inputs.forEach(inp => {
-            inp.type = "number";
-            inp.placeholder = "...";
-            inp.min = 0;
-            inp.max = 100;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = Math.min(100, Math.max(0, util.ensure(parseFloat(v), "num")));
-                    if (this.page.hasProject())
-                        this.page.project.config.efficiency = v/100;
-                }
-                this.page.post("refresh-options");
-            });
-        });
-
-        header = this.addItem(new App.ProjectPage.Panel.SubHeader("12 Motor Mode"));
-        this.#is12MotorMode = document.createElement("label");
-        this.is12MotorMode.classList.add("switch");
-        this.is12MotorMode.innerHTML = "<input type='checkbox'><span></span>";
-        header.elem.appendChild(this.is12MotorMode);
-        this.#is12MotorMode = this.is12MotorMode.children[0];
-        this.is12MotorMode.addEventListener("change", e => {
-            let v = this.is12MotorMode.checked;
-            this.page.project.config.is12MotorMode = v;
+                k += "-"+n;
+            }
+            this.page.project.config.addOption(k, "\"\"");
             this.page.post("refresh-options");
         });
 
@@ -2813,9 +2786,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.size.inputs.forEach(inp => (inp.disabled = !has));
             this.robotSize.inputs.forEach(inp => (inp.disabled = !has));
             this.robotMass.inputs.forEach(inp => (inp.disabled = !has));
-            this.momentOfInertia.inputs.forEach(inp => (inp.disabled = !has));
-            this.efficiency.inputs.forEach(inp => (inp.disabled = !has));
-            this.is12MotorMode.disabled = !has;
+            this.eOptionsAdd.disabled = !has;
             this.scriptPython.inputs.forEach(inp => (inp.disabled = !has));
             this.scriptUseDefault.disabled = !has;
         });
@@ -2824,9 +2795,65 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.size.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["wh"[i]]/100 : ""));
             this.robotSize.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["robot"+"WH"[i]]/100 : ""));
             this.robotMass.inputs.forEach(inp => (inp.value = has ? this.page.project.robotMass : ""));
-            this.momentOfInertia.inputs.forEach(inp => (inp.value = has ? this.page.project.config.momentOfInertia : ""));
-            this.efficiency.inputs.forEach(inp => (inp.value = has ? this.page.project.config.efficiency*100 : ""));
-            this.is12MotorMode.checked = has ? this.page.project.config.is12MotorMode : false;
+            Array.from(this.eOptions.querySelectorAll(":scope > .item")).forEach(elem => elem.remove());
+            if (has)
+                this.page.project.config.options.forEach(k => {
+                    let v = this.page.project.config.getOption(k);
+                    let elem = document.createElement("div");
+                    this.eOptions.insertBefore(elem, this.eOptionsAdd);
+                    elem.classList.add("item");
+                    let kinput = document.createElement("input");
+                    elem.appendChild(kinput);
+                    kinput.type = "text";
+                    kinput.placeholder = "Key...";
+                    kinput.autocomplete = "off";
+                    kinput.spellcheck = false;
+                    kinput.value = k;
+                    let separator = document.createElement("div");
+                    elem.appendChild(separator);
+                    separator.classList.add("separator");
+                    separator.textContent = ":";
+                    let vinput = document.createElement("input");
+                    elem.appendChild(vinput);
+                    vinput.type = "text";
+                    vinput.placeholder = "Value...";
+                    vinput.autocomplete = "off";
+                    vinput.spellcheck = false;
+                    vinput.value = v;
+                    let color = "v4";
+                    try {
+                        let v2 = JSON.parse(v);
+                        if (util.is(v2, "str")) color = "cy";
+                        else if (util.is(v2, "num")) color = "cb";
+                        else if (v2 == null) color = "co";
+                        else if (v2 == true || v2 == false) color = ["cr", "cg"][+v2];
+                        else color = "v8";
+                    } catch (e) {}
+                    vinput.style.color = "var(--"+color+")";
+                    let remove = document.createElement("button");
+                    elem.appendChild(remove);
+                    remove.classList.add("remove");
+                    remove.innerHTML = "<ion-icon name='close'></ion-icon>";
+                    kinput.addEventListener("change", e => {
+                        if (!this.page.hasProject()) return;
+                        if (!this.page.project.config.hasOption(k)) return;
+                        this.page.project.config.remOption(k);
+                        this.page.project.config.addOption(kinput.value, v);
+                        this.page.post("refresh-options");
+                    });
+                    vinput.addEventListener("change", e => {
+                        if (!this.page.hasProject()) return;
+                        if (!this.page.project.config.hasOption(k)) return;
+                        this.page.project.config.addOption(k, vinput.value);
+                        this.page.post("refresh-options");
+                    });
+                    remove.addEventListener("click", e => {
+                        if (!this.page.hasProject()) return;
+                        if (!this.page.project.config.hasOption(k)) return;
+                        this.page.project.config.remOption(k);
+                        this.page.post("refresh-options");
+                    });
+                });
             this.eScriptInput.value = has ? this.page.project.config.script : "";
             this.eScriptInput.disabled = !has || this.page.project.config.scriptUseDefault;
             this.eScriptBtn.disabled = !has || this.page.project.config.scriptUseDefault;
@@ -2838,9 +2865,8 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     get size() { return this.#size; }
     get robotSize() { return this.#robotSize; }
     get robotMass() { return this.#robotMass; }
-    get momentOfInertia() { return this.#momentOfInertia; }
-    get efficiency() { return this.#efficiency; }
-    get is12MotorMode() { return this.#is12MotorMode; }
+    get eOptions() { return this.#eOptions; }
+    get eOptionsAdd() { return this.#eOptionsAdd; }
     get eScript() { return this.#eScript; }
     get eScriptInput() { return this.#eScriptInput; }
     get eScriptBtn() { return this.#eScriptBtn; }

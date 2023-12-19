@@ -2280,9 +2280,6 @@ export class AppModal extends App {
 export class Project extends util.Target {
     #id;
 
-    #configChange;
-    #metaChange;
-
     #config;
     #meta;
 
@@ -2291,11 +2288,8 @@ export class Project extends util.Target {
 
         this.#id = null;
 
-        this.#configChange = (c, f, t) => this.change("config."+c, f, t);
-        this.#metaChange = (c, f, t) => this.change("meta."+c, f, t);
-
-        this.#config = new this.constructor.Config();
-        this.#meta = new this.constructor.Meta();
+        this.#config = null;
+        this.#meta = null;
 
         if (a.length <= 0 || a.length > 2) a = [null];
         if (a.length == 1) {
@@ -2323,10 +2317,10 @@ export class Project extends util.Target {
         v = new this.constructor.Config(v);
         if (this.config == v) return;
         if (this.config instanceof this.constructor.Config)
-            this.config.remHandler("change", this.#configChange);
+            this.config.clearLinkedHandlers(this, "change");
         this.change("config", this.config, this.#config=v);
         if (this.config instanceof this.constructor.Config)
-            this.config.addHandler("change", this.#configChange);
+            this.config.addLinkedHandler(this, "change", (c, f, t) => this.change("config."+c, f, t));
     }
 
     get meta() { return this.#meta; }
@@ -2334,10 +2328,10 @@ export class Project extends util.Target {
         v = new this.constructor.Meta(v);
         if (this.meta == v) return;
         if (this.meta instanceof this.constructor.Meta)
-            this.meta.remHandler("change", this.#metaChange);
+            this.meta.clearLinkedHandlers(this, "change");
         this.change("meta", this.meta, this.#meta=v);
         if (this.meta instanceof this.constructor.Meta)
-            this.meta.addHandler("change", this.#metaChange);
+            this.meta.addLinkedHandler(this, "change", (c, f, t) => this.change("meta."+c, f, t));
     }
 
     toJSON() {
