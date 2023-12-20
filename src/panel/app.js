@@ -5493,59 +5493,53 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let axes, xAxis, yAxis, zAxis;
 
         this.#axisScene = new THREE.Group();
-        axes = new THREE.Group();
+        axes = this.axisScene.axes = new THREE.Group();
         this.axisScene.add(axes);
-        xAxis = new THREE.Mesh(
+        xAxis = this.axisScene.xAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
-        this.axisScene.xAxis = xAxis;
-        yAxis = new THREE.Mesh(
+        yAxis = this.axisScene.yAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
-        this.axisScene.yAxis = yAxis;
-        zAxis = new THREE.Mesh(
+        zAxis = this.axisScene.zAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
-        this.axisScene.zAxis = zAxis;
         this.axisScene.planes = [];
 
         this.#axisSceneSized = new THREE.Group();
-        axes = new THREE.Group();
+        axes = this.axisSceneSized.axes = new THREE.Group();
         this.axisSceneSized.add(axes);
-        xAxis = new THREE.Mesh(
+        xAxis = this.axisSceneSized.xAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
-        this.axisSceneSized.xAxis = xAxis;
-        yAxis = new THREE.Mesh(
+        yAxis = this.axisSceneSized.yAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
-        this.axisSceneSized.yAxis = yAxis;
-        zAxis = new THREE.Mesh(
+        zAxis = this.axisSceneSized.zAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
             new THREE.MeshBasicMaterial({ color: 0xffffff }),
         );
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
-        this.axisSceneSized.zAxis = zAxis;
         this.axisSceneSized.planes = [];
 
         this.#field = null;
@@ -5741,8 +5735,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
-                pose.state.offsetX = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).x : 0)/2;
-                pose.state.offsetY = -((this.template in templates) ? new V(util.ensure(templates[this.template], "obj").size).y : 0)/2;
+                [pose.state.offsetX, pose.state.offsetY] = new V(util.ensure(templates[this.template], "obj").size).div(-2).xy;
                 const node = (source instanceof Source) ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.composer = this.composer;
@@ -5763,9 +5756,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.axisSceneSized.xAxis.material.color.set(colorR.toHex(false));
             this.axisSceneSized.yAxis.material.color.set(colorG.toHex(false));
             this.axisSceneSized.zAxis.material.color.set(colorB.toHex(false));
-            let planes = this.axisScene.planes;
+            let fieldSize = new V(util.ensure(templates[this.template], "obj").size).div(100);
+            this.axisSceneSized.axes.position.set(...fieldSize.div(-2).xy, 0);
+            let planes, i;
+            planes = this.axisScene.planes;
             let size = 10;
-            let i = 0;
+            i = 0;
             for (let x = 0; x < size; x++) {
                 for (let y = 0; y < size; y++) {
                     if ((x+y) % 2 == 0) continue;
@@ -5783,9 +5779,49 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     plane.material.color.set(colorV.toHex(false));
                 }
             }
-            planes.slice(i).forEach(plane => {
-                planes.splice(planes.indexOf(plane), 1);
+            planes.slice(i).forEach((plane, j) => {
+                planes.splice(i+j, 1);
                 this.axisScene.remove(plane);
+            });
+            planes = this.axisSceneSized.planes;
+            let w = this.axisSceneSized.w;
+            let h = this.axisSceneSized.h;
+            if (w != fieldSize.x || h != fieldSize.y) {
+                w = fieldSize.x;
+                h = fieldSize.y;
+                planes.forEach((plane, j) => {
+                    planes.splice(j, 1);
+                    this.axisSceneSized.remove(plane);
+                });
+            }
+            i = 0;
+            for (let x = 0; x < w; x++) {
+                for (let y = 0; y < h; y++) {
+                    if ((x+y) % 2 == 0) continue;
+                    if (i >= planes.length) {
+                        let plane = new THREE.Mesh(
+                            new THREE.PlaneGeometry(0, 0),
+                            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                        );
+                        plane.geometry.w = plane.geometry.h = 0;
+                        plane.material.side = THREE.DoubleSide;
+                        planes.push(plane);
+                        this.axisSceneSized.add(plane);
+                    }
+                    let plane = planes[i++];
+                    let pw = Math.min(1, w-x), ph = Math.min(1, h-y);
+                    if (plane.geometry.w != pw || plane.geometry.h != ph) {
+                        plane.geometry = new THREE.PlaneGeometry(pw, ph);
+                        plane.geometry.w = pw;
+                        plane.geometry.h = ph;
+                    }
+                    plane.position.set(x+pw/2-w/2, y+ph/2-h/2, 0);
+                    plane.material.color.set(colorV.toHex(false));
+                }
+            }
+            planes.slice(i).forEach((plane, j) => {
+                planes.splice(i+j, 1);
+                this.axisSceneSized.remove(plane);
             });
 
             if ((util.getTime()-loadTimer > 1000 || loadTemplate != this.template) && (this.template in templateModels) && !(this.template in preloadedFields)) {
