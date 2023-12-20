@@ -808,7 +808,7 @@ const MAIN = async () => {
                 this.#resolver.state++;
             });
             let id = setTimeout(() => {
-                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readyness within 1 second`);
+                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within 1 second`);
                 clear();
                 this.stop();
             }, 1000);
