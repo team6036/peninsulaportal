@@ -5410,11 +5410,6 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
 };
 const preloadedFields = {};
 const preloadedRobots = {};
-class ModelContext extends util.Target {
-    constructor() {
-        super();
-    }
-}
 Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #scene;
     #wpilibGroup;
@@ -5458,10 +5453,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             ["translation", "x"],
             ["translation", "y"],
             ["translation", "z"],
+            ["rotation", "q", "w"],
             ["rotation", "q", "x"],
             ["rotation", "q", "y"],
             ["rotation", "q", "z"],
-            ["rotation", "q", "w"],
         ],
     };
 
@@ -6324,8 +6319,9 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                             (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
                             (this.value[2] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
                         );
-                        let xyzw = this.value.slice(3)
-                        this.theObject.quaternion.copy(new THREE.Quaternion(xyzw[1], xyzw[2], xyzw[3], xyzw[0]));
+                        let xyzw = this.value.slice(3);
+                        xyzw.push(xyzw.shift());
+                        this.theObject.quaternion.copy(new THREE.Quaternion(...xyzw));
                     }
                     if (this.pose.type.startsWith("§")) {
                         let typefs = {
