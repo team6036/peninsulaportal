@@ -458,12 +458,8 @@ export default class App extends core.AppFeature {
                 let prevOverRender = false;
                 let ghostItem = null;
                 let item = {
-                    node: new subcore.Project.Node(
-                        0,
-                        0, true,
-                        0, 0, false,
-                    ),
-                    obstacle: new subcore.Project.Obstacle(0, 100),
+                    node: new subcore.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
+                    obstacle: new subcore.Project.Obstacle({ pos: 0, radius: 100 }),
                 }[this.dragData];
                 this.dragState.addHandler("move", e => {
                     let pos = new V(e.pageX, e.pageY);
@@ -554,16 +550,6 @@ export default class App extends core.AppFeature {
                 chooseState.addHandler("cancel", () => {
                 });
             });
-            this.addHandler("cmd-maxmin", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                this.getPage("PROJECT").maximized = !this.getPage("PROJECT").maximized;
-            });
-            this.addHandler("cmd-resetdivider", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                this.getPage("PROJECT").divPos = 0.75;
-            });
         });
     }
 }
@@ -642,13 +628,18 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.choosing) return;
             if (!this.hasProject()) return;
             this.project.meta.name = this.app.eProjectInfoNameInput.value;
-            this.post("refresh-options");
+            this.editorRefresh();
+        });
+        this.app.addHandler("cmd-maxmin", () => {
+            this.maximized = !this.maximized;
+        });
+        this.app.addHandler("cmd-resetdivider", () => {
+            this.divPos = 0.75;
         });
 
         this.#odometry = new core.Odometry2d();
 
         this.#selected = new Set();
-
         this.#selectedPaths = new Set();
 
         this.#choosing = false;
@@ -663,12 +654,21 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#eDisplay = document.createElement("div");
         this.eMain.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
+
         this.#eBlockage = document.createElement("div");
         this.eDisplay.appendChild(this.eBlockage);
         this.eBlockage.classList.add("blockage");
+
         this.odometry.canvas = document.createElement("canvas");
         this.eDisplay.appendChild(this.odometry.canvas);
         this.odometry.canvas.tabIndex = 1;
+        new ResizeObserver(() => {
+            let r = this.eDisplay.getBoundingClientRect();
+            this.odometry.canvas.width = r.width*this.odometry.quality;
+            this.odometry.canvas.height = r.height*this.odometry.quality;
+            this.odometry.canvas.style.width = r.width+"px";
+            this.odometry.canvas.style.height = r.height+"px";
+        }).observe(this.eDisplay);
         this.odometry.canvas.addEventListener("keydown", e => {
             if (this.choosing) return;
             if (!this.hasProject()) return;
@@ -697,13 +697,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 }
             }
         });
-        new ResizeObserver(() => {
-            let r = this.eDisplay.getBoundingClientRect();
-            this.odometry.canvas.width = r.width*this.odometry.quality;
-            this.odometry.canvas.height = r.height*this.odometry.quality;
-            this.odometry.canvas.style.width = r.width+"px";
-            this.odometry.canvas.style.height = r.height+"px";
-        }).observe(this.eDisplay);
         this.odometry.canvas.addEventListener("contextmenu", e => {
             if (this.choosing) return;
             let itm;
@@ -804,8 +797,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     };
                     const mousemove = e => {
                         this.odometry.canvas.style.cursor = hovered.source.drag(hoveredPart, this.odometry.pageToWorld(e.pageX, e.pageY));
-                        this.post("refresh-selectitem");
-                        this.post("refresh-options");
+                        this.editorRefresh();
                     };
                     document.body.addEventListener("mouseup", mouseup);
                     document.body.addEventListener("mousemove", mousemove);
@@ -835,8 +827,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         itm.pos.iadd(rel);
                     });
                     oldPos.set(newPos);
-                    this.post("refresh-selectitem");
-                    this.post("refresh-options");
+                    this.editorRefresh();
                     this.odometry.canvas.style.cursor = "move";
                 };
                 document.body.addEventListener("mouseup", mouseup);
@@ -915,8 +906,76 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.eDivider.classList.add("this");
         });
 
+        this.addPanel(new App.ProjectPage.ObjectsPanel(this));
+        this.addPanel(new App.ProjectPage.PathsPanel(this));
+        this.addPanel(new App.ProjectPage.OptionsPanel(this));
+
+        this.panel = "objects";
+
+        this.addHandler("change-project", (...a) => {
+            this.editorRefresh();
+        });
+
+        let timer = 0;
+        this.addHandler("update", delta => {
+            this.odometry.update(delta);
+            this.odometry.size = this.hasProject() ? this.project.size : 0;
+            this.odometry.imageSrc = this.hasProject() ? this.project.meta.backgroundImage : null;
+            this.odometry.autoScale();
+
+            this.panels.forEach(name => this.getPanel(name).update(delta));
+
+            let itmsUsed = new Set();
+            this.odometry.renders.forEach(render => {
+                if (render instanceof core.Odometry2d.Robot)
+                    render.size = this.hasProject() ? this.project.robotW : 0;
+                if (!(render instanceof RSelectable)) return;
+                if (!render.ghost && (!this.hasProject() || !this.project.hasItem(render.item)))
+                    render.item = null;
+                if (render.hasItem()) {
+                    itmsUsed.add(render.item.id);
+                    render.selected = this.isSelected(render);
+                } else this.odometry.remRender(render);
+            });
+            if (this.hasProject()) {
+                let need;
+                need = new Set(this.project.items);
+                itmsUsed.forEach(id => need.delete(id));
+                need.forEach(id => this.odometry.addRender(new RSelectable(this.odometry, this.project.getItem(id))));
+            }
+
+            const hovered = this.odometry.hovered;
+            const hoveredPart = this.odometry.hoveredPart;
+            if (!(hovered instanceof core.Odometry2d.Render)) this.odometry.canvas.style.cursor = "crosshair";
+            else if (!(hovered.source instanceof RSelectable)) this.odometry.canvas.style.cursor = "crosshair";
+            else this.odometry.canvas.style.cursor = hovered.source.hover(hoveredPart);
+
+            if (timer > 0) return timer -= delta;
+            timer = 1000;
+            if (!this.hasProject()) return;
+            const canvas = document.createElement("canvas");
+            canvas.width = this.odometry.w;
+            canvas.height = this.odometry.h;
+            canvas.getContext("2d").drawImage(
+                this.odometry.canvas,
+                (this.odometry.canvas.width-this.odometry.w*this.odometry.scale*this.odometry.quality)/2,
+                (this.odometry.canvas.height-this.odometry.h*this.odometry.scale*this.odometry.quality)/2,
+                this.odometry.w*this.odometry.scale*this.odometry.quality,
+                this.odometry.h*this.odometry.scale*this.odometry.quality,
+                0, 0, canvas.width, canvas.height,
+            );
+            this.project.meta.thumb = canvas.toDataURL();
+        });
+
+        this.addHandler("refresh", () => {
+            this.panel = "objects";
+            this.maximized = false;
+            this.divPos = 0.75;
+            this.choosing = false;
+        });
+
         let selectItem = null;
-        this.addHandler("refresh-selectitem", () => {
+        this.addHandler("editor-refresh", () => {
             this.selected.forEach(id => {
                 if (!this.hasProject() || !this.project.hasItem(id)) return;
                 let itm = this.project.getItem(id);
@@ -949,80 +1008,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.odometry.remRender(selectItem);
                 selectItem = null;
             }
-        });
-        this.addHandler("refresh-options", () => {
             this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
             this.app.eProjectInfoBtnName.textContent = this.hasProject() ? this.project.meta.name : "";
             if (this.app.page == this.name) this.app.title = this.hasProject() ? this.project.meta.name : "?";
-        });
-
-        this.addHandler("change-project", (...a) => {
-            this.panels.forEach(name => this.getPanel(name).post("change-project", ...a));
-            this.post("refresh-options");
-        });
-        this.addHandler("refresh-options", () => {
             this.panels.forEach(name => this.getPanel(name).refresh());
-        });
-
-        let timer = 0;
-        this.addHandler("update", delta => {
-            this.odometry.update(delta);
-            this.odometry.size = this.hasProject() ? this.project.size : 0;
-            this.odometry.imageSrc = this.hasProject() ? this.project.meta.backgroundImage : null;
-            this.odometry.autoScale();
-            this.panels.forEach(name => this.getPanel(name).update(delta));
-            let itmsUsed = new Set();
-            this.odometry.renders.forEach(render => {
-                if (render instanceof core.Odometry2d.Robot)
-                    render.size = this.hasProject() ? this.project.robotW : 0;
-                if (!(render instanceof RSelectable)) return;
-                if (!render.ghost && (!this.hasProject() || !this.project.hasItem(render.item)))
-                    render.item = null;
-                if (render.hasItem()) {
-                    itmsUsed.add(render.item.id);
-                    render.selected = this.isSelected(render);
-                } else this.odometry.remRender(render);
-            });
-            if (this.hasProject()) {
-                let need;
-                need = new Set(this.project.items);
-                itmsUsed.forEach(id => need.delete(id));
-                need.forEach(id => this.odometry.addRender(new RSelectable(this.odometry, this.project.getItem(id))));
-            }
-            const hovered = this.odometry.hovered;
-            const hoveredPart = this.odometry.hoveredPart;
-            if (!(hovered instanceof core.Odometry2d.Render)) this.odometry.canvas.style.cursor = "crosshair";
-            else if (!(hovered.source instanceof RSelectable)) this.odometry.canvas.style.cursor = "crosshair";
-            else this.odometry.canvas.style.cursor = hovered.source.hover(hoveredPart);
-            if (timer > 0) return timer -= delta;
-            timer = 1000;
-            if (!this.hasProject()) return;
-            const canvas = document.createElement("canvas");
-            canvas.width = this.odometry.w;
-            canvas.height = this.odometry.h;
-            canvas.getContext("2d").drawImage(
-                this.odometry.canvas,
-                (this.odometry.canvas.width-this.odometry.w*this.odometry.scale*this.odometry.quality)/2,
-                (this.odometry.canvas.height-this.odometry.h*this.odometry.scale*this.odometry.quality)/2,
-                this.odometry.w*this.odometry.scale*this.odometry.quality,
-                this.odometry.h*this.odometry.scale*this.odometry.quality,
-                0, 0, canvas.width, canvas.height,
-            );
-            this.project.meta.thumb = canvas.toDataURL();
-        });
-
-        this.addPanel(new App.ProjectPage.ObjectsPanel(this));
-        this.addPanel(new App.ProjectPage.PathsPanel(this));
-        this.addPanel(new App.ProjectPage.OptionsPanel(this));
-
-        this.panel = "objects";
-
-        this.addHandler("refresh", () => {
-            this.panel = "objects";
-            this.maximized = false;
-            this.divPos = 0.75;
-            this.choosing = false;
-            this.app.dragging = false;
         });
 
         this.addHandler("enter", async data => {
@@ -1036,6 +1025,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 itm.exists = true;
             });
             await this.refresh();
+            await this.editorRefresh();
             this.odometry.canvas.focus();
             const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
             const globalTemplateImages = util.ensure(await window.api.get("template-images"), "obj");
@@ -1057,7 +1047,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.project = new subcore.Project();
                 this.project.meta.created = this.project.meta.modified = util.getTime();
                 this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
-                this.post("refresh-options");
+                this.editorRefresh();
             }
             if (this.hasProject()) {
                 for (let name in globalTemplates) {
@@ -1086,7 +1076,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     }
                     break;
                 }
-                this.post("refresh-options");
+                this.editorRefresh();
             }
         });
         this.addHandler("leave", async data => {
@@ -1125,8 +1115,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (util.is(v, "str")) {
             if (this.hasProject() && this.project.hasItem(v)) {
                 this.#selected.add(v);
-                this.post("refresh-selectitem");
-                this.post("refresh-options");
+                this.editorRefresh();
                 return v;
             }
             return false;
@@ -1138,8 +1127,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     remSelected(v) {
         if (util.is(v, "str")) {
             this.#selected.delete(v);
-            this.post("refresh-selectitem");
-            this.post("refresh-options");
+            this.editorRefresh();
             return v;
         }
         if (v instanceof subcore.Project.Item) return this.remSelected(v.id);
@@ -1167,7 +1155,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (util.is(v, "str")) {
             if (this.hasProject() && this.project.hasPath(v)) {
                 this.#selectedPaths.add(v);
-                this.post("refresh-options");
+                this.editorRefresh();
                 return v;
             }
             return false;
@@ -1178,7 +1166,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     remSelectedPath(v) {
         if (util.is(v, "str")) {
             this.#selectedPaths.delete(v);
-            this.post("refresh-options");
+            this.editorRefresh();
             return v;
         }
         if (v instanceof subcore.Project.Path) return this.remSelectedPath(v.id);
@@ -1188,8 +1176,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     async cut() {
         await this.copy();
         this.selected.filter(id => this.hasProject() && this.project.hasItem(id)).forEach(id => this.project.remItem(id));
-        this.post("refresh-selectitem");
-        this.post("refresh-options");
+        this.editorRefresh();
     }
     async copy() {
         let itms = this.selected.filter(id => this.hasProject() && this.project.hasItem(id)).map(id => this.project.getItem(id));
@@ -1324,6 +1311,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.eDivider.style.display = "";
         }
     }
+
+    async editorRefresh() { await this.post("editor-refresh"); }
 
     get state() {
         return {
@@ -1635,12 +1624,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                     let newCenter = util.ensure(parseFloat(v), "num")*100;
                     let oldCenter = (Math.max(...xyList) + Math.min(...xyList)) / 2;
                     let rel = newCenter - oldCenter;
-                    itms.forEach(itm => {
-                        itm["xy"[i]] += rel;
-                    });
-                    this.page.post("refresh-selectitem");
+                    itms.forEach(itm => (itm["xy"[i]] += rel));
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
 
@@ -1658,8 +1644,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                 if (!(itm instanceof subcore.Project.Node)) return;
                 itm.useHeading = v;
             });
-            this.page.post("refresh-selectitem");
-            this.page.post("refresh-options");
+            this.page.editorRefresh();
         });
 
         this.#robotHeading = this.addItem(new App.ProjectPage.Panel.Input1d());
@@ -1684,9 +1669,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                         if (!(itm instanceof subcore.Project.Node)) return;
                         itm.heading = v;
                     });
-                    this.page.post("refresh-selectitem");
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
         this.#robotHeadingDrag = document.createElement("div");
@@ -1706,8 +1690,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                     if (!(itm instanceof subcore.Project.Node)) return;
                     itm.heading = v;
                 });
-                this.page.post("refresh-selectitem");
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             };
             place(e);
             const mouseup = () => {
@@ -1735,8 +1718,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                 if (!(itm instanceof subcore.Project.Node)) return;
                 itm.useVelocity = v;
             });
-            this.page.post("refresh-selectitem");
-            this.page.post("refresh-options");
+            this.page.editorRefresh();
         });
 
         this.#robotVelocity = this.addItem(new App.ProjectPage.Panel.Input2d());
@@ -1754,9 +1736,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                         if (!(itm instanceof subcore.Project.Node)) return;
                         itm["velocity"+"XY"[i]] = v*100;
                     });
-                    this.page.post("refresh-selectitem");
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
 
@@ -1775,9 +1756,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                         if (!(itm instanceof subcore.Project.Node)) return;
                         itm.velocityRot = v;
                     });
-                    this.page.post("refresh-selectitem");
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
         
@@ -1798,9 +1778,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                         if (!(itm instanceof subcore.Project.Obstacle)) return;
                         itm.radius = v*100;
                     });
-                    this.page.post("refresh-selectitem");
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
 
@@ -1821,14 +1800,11 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.page.selected = this.page.selected;
         });
 
-        this.addHandler("change-project", () => {
+        this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
             this.position.inputs.forEach(inp => (inp.disabled = !has));
             this.remove.disabled = !has;
-        });
-        this.addHandler("refresh", () => {
-            let has = this.page.hasProject();
             let forAny = Array.from(this.elem.querySelectorAll(":scope .forany"));
             let forNode = Array.from(this.elem.querySelectorAll(":scope .fornode"));
             let forObstacle = Array.from(this.elem.querySelectorAll(":scope .forobstacle"));
@@ -2105,14 +2081,11 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             }
         });
 
-        this.addHandler("change-project", () => {
+        this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
             this.eAddBtn.disabled = !has;
             this.checkVisuals();
-        });
-        this.addHandler("refresh", () => {
-            let has = this.page.hasProject();
             this.eActivateBtn.disabled = !this.generating && (!has || this.page.selectedPaths.length <= 0);
             this.eActivateBtn.textContent = this.generating ? "Terminate" : "Generate";
             this.eActivateBtn.classList.remove("on");
@@ -2200,7 +2173,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         v = !!v;
         if (this.generating == v) return true;
         this.#generating = v;
-        this.page.post("refresh-options");
+        this.page.editorRefresh();
         return true;
     }
 
@@ -2284,15 +2257,14 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             this.page.selectedPaths = this.page.selectedPaths;
         };
         const onChange = () => {
-            this.page.post("refresh-selectitem");
-            this.page.post("refresh-options");
+            this.page.editorRefresh();
         };
         btn.addLinkedHandler(this, "trigger", onTrigger);
         btn.addLinkedHandler(this, "edit", onEdit);
         btn.addLinkedHandler(this, "remove", onRemove);
         btn.addLinkedHandler(this, "change", onChange);
         this.ePathsBox.appendChild(btn.elem);
-        this.page.post("refresh-options");
+        this.page.editorRefresh();
         return btn;
     }
     remButton(btn) {
@@ -2306,7 +2278,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         btn.clearLinkedHandlers(this, "change");
         btn.post("rem");
         this.ePathsBox.removeChild(btn.elem);
-        this.page.post("refresh-options");
+        this.page.editorRefresh();
+        return btn;
     }
 
     get visuals() { return Object.keys(this.#visuals); }
@@ -2642,12 +2615,10 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                 let v = inp.value;
                 if (v.length > 0) {
                     v = Math.max(util.ensure(parseFloat(v), "num"));
-                    if (this.page.hasProject()) {
+                    if (this.page.hasProject())
                         this.page.project["wh"[i]] = v*100;
-                        this.page.post("refresh-selectitem");
-                    }
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
 
@@ -2662,12 +2633,10 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                 let v = inp.value;
                 if (v.length > 0) {
                     v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                    if (this.page.hasProject()) {
+                    if (this.page.hasProject())
                         this.page.project["robot"+"WH"[i]] = v*100;
-                        this.page.post("refresh-selectitem");
-                    }
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
 
@@ -2685,7 +2654,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                     if (this.page.hasProject())
                         this.page.project.robotMass = v;
                 }
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
 
@@ -2710,7 +2679,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                 k += "-"+n;
             }
             this.page.project.config.addOption(k, "\"\"");
-            this.page.post("refresh-options");
+            this.page.editorRefresh();
         });
 
         this.addItem(new App.ProjectPage.Panel.SubHeader("Generator Script", ".py"));
@@ -2733,7 +2702,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             let v = this.eScriptInput.value;
             if (this.page.hasProject())
                 this.page.project.config.script = (v.length > 0) ? v : null;
-            this.page.post("refresh-options");
+            this.page.editorRefresh();
         });
         this.eScriptBtn.addEventListener("click", async e => {
             let result = await this.app.fileOpenDialog({
@@ -2750,7 +2719,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
             if (this.page.hasProject())
                 this.page.project.config.script = path;
-            this.page.post("refresh-options");
+            this.page.editorRefresh();
         });
 
         this.addItem(new App.ProjectPage.Panel.SubHeader("Script Python", "shell"));
@@ -2762,7 +2731,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                 let v = inp.value;
                 if (this.page.hasProject())
                     this.page.project.config.scriptPython = v;
-                this.page.post("refresh-options");
+                this.page.editorRefresh();
             });
         });
 
@@ -2776,10 +2745,10 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             let v = this.scriptUseDefault.checked;
             if (this.page.hasProject())
                 this.page.project.config.scriptUseDefault = v;
-            this.page.post("refresh-options");
+            this.page.editorRefresh();
         });
 
-        this.addHandler("change-project", () => {
+        this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
             this.size.inputs.forEach(inp => (inp.disabled = !has));
@@ -2788,9 +2757,6 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.eOptionsAdd.disabled = !has;
             this.scriptPython.inputs.forEach(inp => (inp.disabled = !has));
             this.scriptUseDefault.disabled = !has;
-        });
-        this.addHandler("refresh", () => {
-            let has = this.page.hasProject();
             this.size.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["wh"[i]]/100 : ""));
             this.robotSize.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["robot"+"WH"[i]]/100 : ""));
             this.robotMass.inputs.forEach(inp => (inp.value = has ? this.page.project.robotMass : ""));
@@ -2838,19 +2804,19 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                         if (!this.page.project.config.hasOption(k)) return;
                         this.page.project.config.remOption(k);
                         this.page.project.config.addOption(kinput.value, v);
-                        this.page.post("refresh-options");
+                        this.page.editorRefresh();
                     });
                     vinput.addEventListener("change", e => {
                         if (!this.page.hasProject()) return;
                         if (!this.page.project.config.hasOption(k)) return;
                         this.page.project.config.addOption(k, vinput.value);
-                        this.page.post("refresh-options");
+                        this.page.editorRefresh();
                     });
                     remove.addEventListener("click", e => {
                         if (!this.page.hasProject()) return;
                         if (!this.page.project.config.hasOption(k)) return;
                         this.page.project.config.remOption(k);
-                        this.page.post("refresh-options");
+                        this.page.editorRefresh();
                     });
                 });
             this.eScriptInput.value = has ? this.page.project.config.script : "";

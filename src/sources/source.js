@@ -335,7 +335,6 @@ Source.Field = class SourceField extends util.Target {
 
     get valueLog() { return [...this.#valueLog]; }
     set valueLog(v) {
-        console.log(this.path, this.valueLog.length, v.length);
         this.#valueLog = util.ensure(v, "arr").map(log => {
             log = util.ensure(log, "obj");
             return { ts: util.ensure(log.ts, "num"), v: Source.Field.ensureType(this.type, log.v) };
