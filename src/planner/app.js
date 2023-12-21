@@ -1098,79 +1098,86 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     set selected(v) {
         v = util.ensure(v, "arr");
         this.clearSelected();
-        v.forEach(v => this.addSelected(v));
+        this.addSelected(v);
     }
     clearSelected() {
         let sels = this.selected;
-        sels.forEach(id => this.remSelected(id));
+        this.remSelected(sels);
         return sels;
     }
-    isSelected(v) {
-        if (util.is(v, "str")) return this.#selected.has(v);
-        if (v instanceof subcore.Project.Item) return this.isSelected(v.id);
-        if (v instanceof RSelectable) return this.isSelected(v.item);
-        return false;
+    isSelected(id) {
+        if (id instanceof subcore.Project.Item) return this.isSelected(id.id);
+        if (id instanceof RSelectable) return this.isSelected(id.item);
+        return this.#selected.has(String(id));
     }
-    addSelected(v) {
-        if (util.is(v, "str")) {
+    addSelected(...ids) {
+        let r = util.Target.resultingForEach(ids, id => {
+            if (id instanceof RSelectable) id = id.item;
+            if (id instanceof subcore.Project.Item) id = id.id;
+            if (this.isSelected(id)) return false;
+            id = String(id);
             if (this.hasProject() && this.project.hasItem(v)) {
                 this.#selected.add(v);
-                this.editorRefresh();
-                return v;
+                return id;
             }
             return false;
-        }
-        if (v instanceof subcore.Project.Item) return this.addSelected(v.id);
-        if (v instanceof RSelectable) return this.addSelected(v.item);
-        return false;
+        });
+        this.editorRefresh();
+        return r;
     }
-    remSelected(v) {
-        if (util.is(v, "str")) {
-            this.#selected.delete(v);
+    remSelected(...ids) {
+        let r = util.Target.resultingForEach(ids, id => {
+            if (id instanceof RSelectable) id = id.item;
+            if (id instanceof subcore.Project.Item) id = id.id;
+            if (!this.isSelected(id)) return false;
+            id = String(id);
+            this.#selected.delete(id);
             this.editorRefresh();
-            return v;
-        }
-        if (v instanceof subcore.Project.Item) return this.remSelected(v.id);
-        if (v instanceof RSelectable) return this.remSelected(v.item);
-        return false;
+            return id;
+        });
+        this.editorRefresh();
+        return r;
     }
 
     get selectedPaths() { return [...this.#selectedPaths]; }
     set selectedPaths(v) {
         v = util.ensure(v, "arr");
         this.clearSelectedPaths();
-        v.forEach(v => this.addSelectedPath(v));
+        this.addSelectedPath(v);
     }
     clearSelectedPaths() {
         let pths = this.selectedPaths;
-        pths.forEach(id => this.remSelectedPath(id));
+        this.remSelectedPath(pths);
         return pths;
     }
-    isPathSelected(v) {
-        if (util.is(v, "str")) return this.#selectedPaths.has(v);
-        if (v instanceof subcore.Project.Path) return this.isPathSelected(v.id);
-        return false;
+    isPathSelected(id) {
+        if (id instanceof subcore.Project.Path) return this.isPathSelected(id.id);
+        return this.#selectedPaths.has(String(id));
     }
-    addSelectedPath(v) {
-        if (util.is(v, "str")) {
-            if (this.hasProject() && this.project.hasPath(v)) {
-                this.#selectedPaths.add(v);
-                this.editorRefresh();
-                return v;
+    addSelectedPath(...ids) {
+        let r = util.Target.resultingForEach(ids, id => {
+            if (id instanceof subcore.Project.Path) id = id.id;
+            if (this.isPathSelected(id)) return false;
+            id = String(id);
+            if (this.hasProject() && this.project.hasPath(id)) {
+                this.#selectedPaths.add(id);
+                return id;
             }
             return false;
-        }
-        if (v instanceof subcore.Project.Path) return this.addSelectedPath(v.id);
-        return false;
+        });
+        this.editorRefresh();
+        return r;
     }
-    remSelectedPath(v) {
-        if (util.is(v, "str")) {
-            this.#selectedPaths.delete(v);
-            this.editorRefresh();
-            return v;
-        }
-        if (v instanceof subcore.Project.Path) return this.remSelectedPath(v.id);
-        return false;
+    remSelectedPath(...ids) {
+        let r = util.Target.resultingForEach(ids, id => {
+            if (id instanceof subcore.Project.Path) id = id.id;
+            if (!this.isPathSelected(id)) return false;
+            id = String(id);
+            this.#selectedPaths.delete(id);
+            return id;
+        });
+        this.editorRefresh();
+        return r;
     }
 
     async cut() {
@@ -1240,15 +1247,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     set panels(v) {
         v = util.ensure(v, "arr");
         this.clearPanels();
-        v.forEach(v => this.addPanel(v));
+        this.addPanel(v);
     }
     clearPanels() {
         let panels = this.panels;
-        panels.forEach(panel => this.remPanel(panel));
+        this.remPanel(panels);
         return panels;
     }
     hasPanel(name) {
-        name = String(name);
+        if (name instanceof App.ProjectPage.Panel) return this.hasPanel(name.name) && name.page == this;
         return name in this.#panels;
     }
     getPanel(name) {
@@ -1256,24 +1263,27 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (!this.hasPanel(name)) return null;
         return this.#panels[name];
     }
-    addPanel(panel) {
-        if (!(panel instanceof App.ProjectPage.Panel)) return false;
-        if (panel.page != this) return false;
-        if (this.hasPanel(panel.name)) return false;
-        this.#panels[panel.name] = panel;
-        this.eEditContent.appendChild(panel.elem);
-        this.eEditNav.appendChild(panel.btn);
+    addPanel(...panels) {
+        return util.Target.resultingForEach(panels, panel => {
+            if (!(panel instanceof App.ProjectPage.Panel)) return false;
+            if (panel.page != this) return false;
+            if (this.hasPanel(panel.name)) return false;
+            this.#panels[panel.name] = panel;
+            this.eEditContent.appendChild(panel.elem);
+            this.eEditNav.appendChild(panel.btn);
+            return panel;
+        });
     }
-    remPanel(v) {
-        if (v instanceof App.ProjectPage.Panel) {
-            if (!this.hasPanel(v.name)) return false;
-            if (v.page != this) return false;
-            delete this.#panel[v.name];
-            this.eEditContent.removeChild(v.elem);
-            this.eEditNav.removeChild(v.btn);
-            return v;
-        }
-        return this.remPanel(this.getPanel(v));
+    remPanel(...panels) {
+        return util.Target.resultingForEach(panels, panel => {
+            if (!(panel instanceof App.ProjectPage.Panel)) panel = this.getPanel(panel);
+            if (panel.page != this) return false;
+            if (!this.hasPanel(panel)) return false;
+            delete this.#panel[panel.name];
+            this.eEditContent.removeChild(panel.elem);
+            this.eEditNav.removeChild(panel.btn);
+            return panel;
+        });
     }
     get panel() { return this.#panel; }
     set panel(v) {
@@ -1377,30 +1387,34 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     set items(v) {
         v = util.ensure(v, "arr");
         this.clearItems();
-        v.forEach(v => this.addItem(v));
+        this.addItem(v);
     }
     clearItems() {
         let itms = this.items;
-        itms.forEach(itm => this.remItem(itm));
+        this.remItem(itms);
         return itms;
     }
     hasItem(itm) {
         if (!(itm instanceof App.ProjectPage.Panel.Item) && !(itm instanceof HTMLElement)) return false;
         return this.#items.includes(itm);
     }
-    addItem(itm) {
-        if (!(itm instanceof App.ProjectPage.Panel.Item) && !(itm instanceof HTMLElement)) return false;
-        if (this.hasItem(itm)) return false;
-        this.#items.push(itm);
-        this.elem.appendChild((itm instanceof App.ProjectPage.Panel.Item) ? itm.elem : itm);
-        return itm;
+    addItem(...itms) {
+        return util.Target.resultingForEach(itms, itm => {
+            if (!(itm instanceof App.ProjectPage.Panel.Item) && !(itm instanceof HTMLElement)) return false;
+            if (this.hasItem(itm)) return false;
+            this.#items.push(itm);
+            this.elem.appendChild((itm instanceof App.ProjectPage.Panel.Item) ? itm.elem : itm);
+            return itm;
+        });
     }
-    remItem(itm) {
-        if (!(itm instanceof App.ProjectPage.Panel.Item) && !(itm instanceof HTMLElement)) return false;
-        if (!this.hasItem(itm)) return false;
-        this.#items.splice(this.#items.indexOf(itm), 1);
-        this.elem.removeChild((itm instanceof App.ProjectPage.Panel.Item) ? itm.elem : itm);
-        return itm;
+    remItem(...itms) {
+        return util.Target.resultingForEach(itms, itm => {
+            if (!(itm instanceof App.ProjectPage.Panel.Item) && !(itm instanceof HTMLElement)) return false;
+            if (!this.hasItem(itm)) return false;
+            this.#items.splice(this.#items.indexOf(itm), 1);
+            this.elem.removeChild((itm instanceof App.ProjectPage.Panel.Item) ? itm.elem : itm);
+            return itm;
+        });
     }
 
     get elem() { return this.#elem; }
@@ -2181,105 +2195,111 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     set buttons(v) {
         v = util.ensure(v, "arr");
         this.clearButtons();
-        v.forEach(v => this.addButton(v));
+        this.addButton(v);
     }
     clearButtons() {
         let btns = this.buttons;
-        btns.forEach(btn => this.remButton(btn));
+        this.remButton(btns);
         return btns;
     }
     hasButton(btn) {
         if (!(btn instanceof App.ProjectPage.PathsPanel.Button)) return false;
         return this.#buttons.has(btn) && btn.panel == this;
     }
-    addButton(btn) {
-        if (!(btn instanceof App.ProjectPage.PathsPanel.Button)) return false;
-        if (btn.panel != this) return false;
-        if (this.hasButton(btn)) return false;
-        this.#buttons.add(btn);
-        const onTrigger = e => {
-            this.page.clearSelectedPaths();
-            this.page.addSelectedPath(btn.path);
-        };
-        const onEdit = () => {
-            onTrigger(null);
-            if (this.page.choosing) return;
-            if (!this.page.hasProject()) return;
-            let pths = this.page.selectedPaths;
-            if (pths.length <= 0) return;
-            let id = pths[0];
-            if (!this.page.project.hasPath(id)) return;
-            let pth = this.page.project.getPath(id);
-            this.page.choosing = true;
-            let chooseState = this.page.chooseState;
-            chooseState.path = pth;
-            let nodes = pth.nodes;
-            chooseState.addHandler("choose", (itm, shift) => {
-                if (!(chooseState.path instanceof subcore.Project.Path)) return;
-                let path = chooseState.path;
-                shift = !!shift;
-                if (!(itm instanceof subcore.Project.Node)) return;
-                if (shift) path.remNode(itm);
-                else path.addNode(itm);
-                for (let id in chooseState.temp) this.page.odometry.remRender(chooseState.temp[id]);
-                chooseState.temp = {};
-                let nodes = path.nodes.filter(id => this.page.hasProject() && this.page.project.hasItem(id));
-                for (let i = 0; i < nodes.length; i++) {
-                    let id = nodes[i];
-                    let node = this.page.project.getItem(id);
-                    if (id in chooseState.temp) {
-                        chooseState.temp[id].text += ", "+(i+1);
-                    } else {
-                        chooseState.temp[id] = this.page.odometry.addRender(new RLabel(this.page.odometry, node));
-                        chooseState.temp[id].text = i+1;
+    addButton(...btns) {
+        let r = util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof App.ProjectPage.PathsPanel.Button)) return false;
+            if (btn.panel != this) return false;
+            if (this.hasButton(btn)) return false;
+            this.#buttons.add(btn);
+            const onTrigger = e => {
+                this.page.clearSelectedPaths();
+                this.page.addSelectedPath(btn.path);
+            };
+            const onEdit = () => {
+                onTrigger(null);
+                if (this.page.choosing) return;
+                if (!this.page.hasProject()) return;
+                let pths = this.page.selectedPaths;
+                if (pths.length <= 0) return;
+                let id = pths[0];
+                if (!this.page.project.hasPath(id)) return;
+                let pth = this.page.project.getPath(id);
+                this.page.choosing = true;
+                let chooseState = this.page.chooseState;
+                chooseState.path = pth;
+                let nodes = pth.nodes;
+                chooseState.addHandler("choose", (itm, shift) => {
+                    if (!(chooseState.path instanceof subcore.Project.Path)) return;
+                    let path = chooseState.path;
+                    shift = !!shift;
+                    if (!(itm instanceof subcore.Project.Node)) return;
+                    if (shift) path.remNode(itm);
+                    else path.addNode(itm);
+                    for (let id in chooseState.temp) this.page.odometry.remRender(chooseState.temp[id]);
+                    chooseState.temp = {};
+                    let nodes = path.nodes.filter(id => this.page.hasProject() && this.page.project.hasItem(id));
+                    for (let i = 0; i < nodes.length; i++) {
+                        let id = nodes[i];
+                        let node = this.page.project.getItem(id);
+                        if (id in chooseState.temp) {
+                            chooseState.temp[id].text += ", "+(i+1);
+                        } else {
+                            chooseState.temp[id] = this.page.odometry.addRender(new RLabel(this.page.odometry, node));
+                            chooseState.temp[id].text = i+1;
+                        }
+                        if (i > 0) {
+                            let id2 = nodes[i-1];
+                            let node2 = this.page.project.getItem(id2);
+                            let lid = id+"~"+id2;
+                            while (lid in chooseState.temp) lid += "_";
+                            chooseState.temp[lid] = this.page.odometry.addRender(new RLine(this.page.odometry, node, node2));
+                        }
                     }
-                    if (i > 0) {
-                        let id2 = nodes[i-1];
-                        let node2 = this.page.project.getItem(id2);
-                        let lid = id+"~"+id2;
-                        while (lid in chooseState.temp) lid += "_";
-                        chooseState.temp[lid] = this.page.odometry.addRender(new RLine(this.page.odometry, node, node2));
-                    }
-                }
-            });
-            chooseState.addHandler("done", () => {
-            });
-            chooseState.addHandler("cancel", () => {
-                if (!(chooseState.path instanceof subcore.Project.Path)) return;
-                chooseState.path.nodes = nodes;
-            });
-        };
-        const onRemove = () => {
-            onTrigger(null);
-            if (this.page.choosing) return;
-            if (!this.page.hasProject()) return;
-            this.page.selectedPaths.forEach(id => this.page.project.remPath(id));
-            this.page.selectedPaths = this.page.selectedPaths;
-        };
-        const onChange = () => {
-            this.page.editorRefresh();
-        };
-        btn.addLinkedHandler(this, "trigger", onTrigger);
-        btn.addLinkedHandler(this, "edit", onEdit);
-        btn.addLinkedHandler(this, "remove", onRemove);
-        btn.addLinkedHandler(this, "change", onChange);
-        this.ePathsBox.appendChild(btn.elem);
+                });
+                chooseState.addHandler("done", () => {
+                });
+                chooseState.addHandler("cancel", () => {
+                    if (!(chooseState.path instanceof subcore.Project.Path)) return;
+                    chooseState.path.nodes = nodes;
+                });
+            };
+            const onRemove = () => {
+                onTrigger(null);
+                if (this.page.choosing) return;
+                if (!this.page.hasProject()) return;
+                this.page.selectedPaths.forEach(id => this.page.project.remPath(id));
+                this.page.selectedPaths = this.page.selectedPaths;
+            };
+            const onChange = () => {
+                this.page.editorRefresh();
+            };
+            btn.addLinkedHandler(this, "trigger", onTrigger);
+            btn.addLinkedHandler(this, "edit", onEdit);
+            btn.addLinkedHandler(this, "remove", onRemove);
+            btn.addLinkedHandler(this, "change", onChange);
+            this.ePathsBox.appendChild(btn.elem);
+            return btn;
+        });
         this.page.editorRefresh();
-        return btn;
+        return r;
     }
-    remButton(btn) {
-        if (!(btn instanceof App.ProjectPage.PathsPanel.Button)) return false;
-        if (btn.panel != this) return false;
-        if (!this.hasButton(btn)) return false;
-        this.#buttons.delete(btn);
-        btn.clearLinkedHandlers(this, "trigger");
-        btn.clearLinkedHandlers(this, "edit");
-        btn.clearLinkedHandlers(this, "remove");
-        btn.clearLinkedHandlers(this, "change");
-        btn.post("rem");
-        this.ePathsBox.removeChild(btn.elem);
+    remButton(...btns) {
+        let r = util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof App.ProjectPage.PathsPanel.Button)) return false;
+            if (btn.panel != this) return false;
+            if (!this.hasButton(btn)) return false;
+            this.#buttons.delete(btn);
+            btn.clearLinkedHandlers(this, "trigger");
+            btn.clearLinkedHandlers(this, "edit");
+            btn.clearLinkedHandlers(this, "remove");
+            btn.clearLinkedHandlers(this, "change");
+            btn.post("rem");
+            this.ePathsBox.removeChild(btn.elem);
+            return btn;
+        });
         this.page.editorRefresh();
-        return btn;
+        return r;
     }
 
     get visuals() { return Object.keys(this.#visuals); }
@@ -2409,13 +2429,8 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
         this.check();
     }
     check() {
-        if (this.show) {
-            this.page.odometry.addRender(this.visual);
-            this.page.odometry.addRender(this.item);
-        } else {
-            this.page.odometry.remRender(this.visual);
-            this.page.odometry.remRender(this.item);
-        }
+        if (this.show) this.page.odometry.addRender(this.visual, this.item);
+        else this.page.odometry.remRender(this.visual, this.item);
     }
 
     get visual() { return this.#visual; }

@@ -52,7 +52,8 @@ export function is(o, type) {
                 o &&
                 is(o, "obj") &&
                 is(o.length, "num") && 
-                ((o.length == 0) || (o.length > 0 && (o.length - 1) in o))
+                ((o.length == 0) || (o.length > 0 && (o.length - 1) in o)) &&
+                !(o instanceof Target)
             );
         },
         obj: () => {
@@ -574,6 +575,22 @@ export class Target {
 
     constructor() {
         this.#handlers = new Map();
+    }
+
+    static resultingForEach(input, callback) {
+        input = [input].flatten();
+        if (input.length == 1) {
+            let r = callback(input[0]);
+            if (r == false) return false;
+            return r;
+        }
+        let r = [];
+        input.forEach(input => {
+            let r2 = callback(input);
+            if (r2 == false) return;
+            r.push(r2);
+        });
+        return r;
     }
 
     addLinkedHandler(o, e, f) {
@@ -2321,16 +2338,16 @@ export class Reviver extends Target {
     set rules(v) {
         v = ensure(v, "arr");
         this.clearRules();
-        v.forEach(v => this.addRule(v));
+        this.addRule(v);
     }
     clearRules() {
         let rules = this.rules;
-        rules.forEach(cons => this.remRule(cons));
+        this.remRule(rules);
         return rules;
     }
     hasRule(v) {
         if (is(v, "str")) return v in this.#rules;
-        if (is(v, "func")) return this.hasRule(v.name);
+        if (is(v, "func")) return this.hasRule(v.name) && Object.values(this.#rules).includes(v);
         return false;
     }
     getRule(name) {
@@ -2338,22 +2355,31 @@ export class Reviver extends Target {
         if (!this.hasRule(name)) return null;
         return this.#rules[name];
     }
-    addRule(constructor) {
-        if (!is(constructor, "func")) return false;
-        this.#rules[constructor.name] = constructor;
-        return constructor;
+    addRule(...constructors) {
+        return Target.resultingForEach(constructors, constructor => {
+            if (!is(constructor, "func")) return false;
+            if (!(constructor.prototype instanceof Target || constructor == Target)) return false;
+            this.#rules[constructor.name] = constructor;
+            return constructor;
+        });
     }
-    remRule(constructor) {
-        if (!is(constructor, "func")) return false;
-        delete this.#rules[constructor.name];
-        return constructor;
+    remRule(...constructors) {
+        return Target.resultingForEach(constructors, constructor => {
+            if (!is(constructor, "func")) return false;
+            if (!(constructor.prototype instanceof Target || constructor == Target)) return false;
+            delete this.#rules[constructor.name];
+            return constructor;
+        });
     }
-    addRuleAndAllSub(constructor) {
-        if (!is(constructor, "func")) return false;
-        if (this.hasRule(constructor)) return constructor;
-        this.addRule(constructor);
-        for (let k in constructor) this.addRuleAndAllSub(constructor[k]);
-        return constructor;
+    addRuleAndAllSub(...constructors) {
+        return Target.resultingForEach(constructors, constructor => {
+            if (!is(constructor, "func")) return false;
+            if (!(constructor.prototype instanceof Target || constructor == Target)) return false;
+            if (this.hasRule(constructor)) return constructor;
+            this.addRule(constructor);
+            for (let k in constructor) this.addRuleAndAllSub(constructor[k]);
+            return constructor;
+        });
     }
 
     get f() {
@@ -2382,11 +2408,7 @@ export class Reviver extends Target {
 }
 
 export const REVIVER = new Reviver();
-REVIVER.addRuleAndAllSub(Color);
-REVIVER.addRuleAndAllSub(Range);
-REVIVER.addRuleAndAllSub(V);
-REVIVER.addRuleAndAllSub(V3);
-REVIVER.addRuleAndAllSub(Shape);
+REVIVER.addRuleAndAllSub(Color, Range, V, V3, Shape);
 
 export class FSOperator extends Target {
     #root;

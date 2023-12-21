@@ -15,7 +15,7 @@ export class WorkerClient extends util.Target {
 
         this.script = script;
 
-        this.addHandler("cmd-log", data => console.log("WORKER:"+this.script+" :: ", ...util.ensure(data, "arr")));
+        this.addHandler("cmd-log", data => console.log("WORKER:"+this.script+" ::", ...util.ensure(data, "arr")));
         this.addHandler("cmd-error", e => {
             this.post("error", e);
             this.stop();
