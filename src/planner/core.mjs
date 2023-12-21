@@ -102,46 +102,47 @@ export class Project extends core.Project {
     }
     clearItems() {
         let itms = this.items;
-        itms.forEach(id => this.remItem(id));
+        this.remItem(itms);
         return itms;
     }
-    hasItem(v) {
-        if (util.is(v, "str")) return v in this.#items;
-        if (v instanceof Project.Item) return this.hasItem(v.id);
-        return false;
+    hasItem(id) {
+        if (id instanceof Project.Item) return this.hasItem(id.id);
+        return id in this.#items;
     }
     getItem(id) {
         id = String(id);
         if (!this.hasItem(id)) return null;
         return this.#items[id];
     }
-    addItem(itm) {
-        if (!(itm instanceof Project.Item)) return false;
-        if (this.hasItem(itm)) return false;
-        let id = itm.id;
-        while (id == null || this.hasItem(id))
-            id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
-        this.#items[id] = itm;
-        itm.id = id;
-        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
-        this.change("addItem", null, itm);
-        return itm;
+    addItem(...itms) {
+        return util.Target.resultingForEach(itms, itm => {
+            if (!(itm instanceof Project.Item)) return false;
+            if (this.hasItem(itm)) return false;
+            let id = itm.id;
+            while (id == null || this.hasItem(id))
+                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
+            this.#items[id] = itm;
+            itm.id = id;
+            itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
+            this.change("addItem", null, itm);
+            return itm;
+        });
     }
-    remItem(v) {
-        if (util.is(v, "str")) {
-            let itm = this.getItem(v);
+    remItem(...ids) {
+        return util.Target.resultingForEach(ids, id => {
+            if (id instanceof Project.Item) id = id.id;
+            if (!this.hasItem(id)) return false;
+            let itm = this.getItem(id);
             itm.clearLinkedHandlers(this, "change");
             itm.id = null;
-            delete this.#items[v];
+            delete this.#items[id];
             this.paths.forEach(id => {
                 let pth = this.getPath(id);
                 pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
             });
             this.change("remItem", itm, null);
             return itm;
-        }
-        if (v instanceof Project.Item) return this.remItem(v.id);
-        return false;
+        });
     }
     get paths() { return Object.keys(this.#paths); }
     set paths(v) {
@@ -155,44 +156,44 @@ export class Project extends core.Project {
     }
     clearPaths() {
         let pths = this.paths;
-        pths.forEach(id => this.remPath(id));
+        this.remPath(pths);
         return pths;
     }
-    hasPath(v) {
-        if (util.is(v, "str")) return v in this.#paths;
-        if (v instanceof Project.Path) return this.hasPath(v.id);
-        return false;
+    hasPath(id) {
+        if (id instanceof Project.Path) return this.hasPath(id.id);
+        return id in this.#paths;
     }
     getPath(id) {
         id = String(id);
         if (!this.hasPath(id)) return null;
         return this.#paths[id];
     }
-    addPath(pth) {
-        if (!(pth instanceof Project.Path)) return false;
-        if (this.hasPath(pth)) return false;
-        let id = pth.id;
-        while (id == null || this.hasPath(id))
-            id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
-        this.#paths[id] = pth;
-        pth.id = id;
-        pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
-        pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+id+")."+c, f, t));
-        this.change("addPath", null, pth);
-        return pth;
-    }
-    remPath(v) {
-        if (util.is(v, "str")) {
-            let pth = this.getPath(v);
-            pth.clearLinkedHandlers(this, "change");
+    addPath(...pths) {
+        return util.Target.resultingForEach(pths, pth => {
+            if (!(pth instanceof Project.Path)) return false;
+            if (this.hasPath(pth)) return false;
             let id = pth.id;
+            while (id == null || this.hasPath(id))
+                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
+            this.#paths[id] = pth;
+            pth.id = id;
+            pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
+            pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+id+")."+c, f, t));
+            this.change("addPath", null, pth);
+            return pth;
+        });
+    }
+    remPath(...ids) {
+        return util.Target.resultingForEach(ids, id => {
+            if (id instanceof Project.Path) id = id.id;
+            if (!this.hasPath(id)) return false;
+            let pth = this.getPath(id);
+            pth.clearLinkedHandlers(this, "change");
             pth.id = null;
-            delete this.#paths[v];
+            delete this.#paths[id];
             this.change("remPath", pth, null);
             return pth;
-        }
-        if (v instanceof Project.Path) return this.remPath(v.id);
-        return false;
+        });
     }
 
     get size() { return this.#size; }
@@ -599,36 +600,35 @@ Project.Path = class ProjectPath extends util.Target {
     set nodes(v) {
         v = util.ensure(v, "arr");
         this.clearNodes(v);
-        v.forEach(v => this.addNode(v));
+        this.addNode(v);
     }
     clearNodes() {
         let nodes = this.nodes;
-        nodes.forEach(node => this.remNode(node));
+        this.remNode(nodes);
         return nodes;
     }
     hasNode(node) {
-        if (util.is(node, "str")) return this.#nodes.includes(node);
         if (node instanceof Project.Node) return this.hasNode(node.id);
-        return false;
+        return this.#nodes.includes(String(node));
     }
-    addNode(node) {
-        if (util.is(node, "str")) {
+    addNode(...nodes) {
+        return util.Target.resultingForEach(nodes, node => {
+            if (node instanceof Project.Node) node = node.id;
+            node = String(node);
             this.#nodes.push(node);
             this.change("addNode", null, node);
             return node;
-        }
-        if (node instanceof Project.Node) return this.addNode(node.id);
-        return false;
+        });
     }
-    remNode(node) {
-        if (!this.hasNode(node)) return false;
-        if (util.is(node, "str")) {
+    remNode(...nodes) {
+        return util.Target.resultingForEach(nodes, node => {
+            if (node instanceof Project.Node) node = node.id;
+            if (!this.hasNode(node)) return false;
+            node = String(node);
             this.#nodes.splice(this.#nodes.lastIndexOf(node), 1);
             this.change("remNode", node, null);
             return node;
-        }
-        if (node instanceof Project.Node) return this.remNode(node.id);
-        return false;
+        });
     }
 
     toJSON() {

@@ -60,42 +60,43 @@ export default class StructHelper extends util.Target {
     set patterns(v) {
         v = util.ensure(v, "arr");
         this.clearPatterns();
-        for (let k in v) this.addPattern(v[k]);
+        this.addPattern(v);
     }
     clearPatterns() {
         let patterns = this.patterns;
-        patterns.forEach(name => this.remPattern(name));
+        this.remPattern(patterns);
         return patterns;
     }
     hasPattern(v) {
-        if (util.is(v, "str"))
-            return v in this.#patterns;
         if (v instanceof StructHelper.Pattern)
-            return Object.values(this.#patterns).includes(v) && v.helper == this;
-        return false;
+            return this.hasPattern(v.name) && Object.values(this.#patterns).includes(v) && v.helper == this;
+        return v in this.#patterns;
     }
     getPattern(name) {
         name = String(name);
         if (!this.hasPattern(name)) return null;
         return this.#patterns[name];
     }
-    addPattern(pattern) {
-        if (!(pattern instanceof StructHelper.Pattern)) return false;
-        if (this.hasPattern(pattern.name) || this.hasPattern(pattern)) return false;
-        if (pattern.helper != this) return false;
-        this.#patterns[pattern.name] = pattern;
-        pattern.addLinkedHandler(this, "change", () => this.post("change"));
-        this.post("change");
-        return pattern;
+    addPattern(...patterns) {
+        return util.Target.resultingForEach(patterns, pattern => {
+            if (!(pattern instanceof StructHelper.Pattern)) return false;
+            if (this.hasPattern(pattern.name) || this.hasPattern(pattern)) return false;
+            if (pattern.helper != this) return false;
+            this.#patterns[pattern.name] = pattern;
+            pattern.addLinkedHandler(this, "change", () => this.post("change"));
+            this.post("change");
+            return pattern;
+        });
     }
-    remPattern(name) {
-        name = String(name);
-        if (!this.hasPattern(name)) return false;
-        let pattern = this.getPattern(name);
-        delete this.#patterns[name];
-        pattern.clearLinkedHandlers(this, "change");
-        this.post("change");
-        return pattern;
+    remPattern(...patterns) {
+        return util.Target.resultingForEach(patterns, pattern => {
+            if (!(pattern instanceof StructHelper.Pattern)) pattern = this.getPattern(pattern);
+            if (!this.hasPattern(pattern)) return false;
+            delete this.#patterns[pattern.name];
+            pattern.clearLinkedHandlers(this, "change");
+            this.post("change");
+            return pattern;
+        });
     }
 
     build() { this.patterns.forEach(name => this.getPattern(name).build()); }
@@ -136,30 +137,34 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
     set fields(v) {
         v = util.ensure(v, "arr");
         this.clearFields();
-        v.forEach(v => this.addField(v));
+        this.addField(v);
     }
     clearFields() {
         let fields = this.fields;
-        fields.forEach(field => this.remField(field));
+        this.remField(fields);
         return fields;
     }
     hasField(field) {
         if (!(field instanceof StructHelper.Pattern.Field)) return false;
         return this.#fields.includes(field) && field.pattern == this;
     }
-    addField(field) {
-        if (!(field instanceof StructHelper.Pattern.Field)) return false;
-        if (this.hasField(field)) return false;
-        if (field.pattern != this) return false;
-        this.#fields.push(field);
-        return field;
+    addField(...fields) {
+        return util.Target.resultingForEach(fields, field => {
+            if (!(field instanceof StructHelper.Pattern.Field)) return false;
+            if (this.hasField(field)) return false;
+            if (field.pattern != this) return false;
+            this.#fields.push(field);
+            return field;
+        });
     }
-    remField(field) {
-        if (!(field instanceof StructHelper.Pattern.Field)) return false;
-        if (!this.hasField(field)) return false;
-        if (field.pattern != this) return false;
-        this.#fields.splice(this.#fields.indexOf(field), 1);
-        return field;
+    remField(...fields) {
+        return util.Target.resultingForEach(fields, field => {
+            if (!(field instanceof StructHelper.Pattern.Field)) return false;
+            if (!this.hasField(field)) return false;
+            if (field.pattern != this) return false;
+            this.#fields.splice(this.#fields.indexOf(field), 1);
+            return field;
+        });
     }
     get length() { return this.#length; }
 
@@ -252,6 +257,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
             }
         });
         this.post("change");
+        console.log("built", this.name, this.length);
     }
 
     decode(data) {

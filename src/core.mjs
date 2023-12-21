@@ -839,34 +839,38 @@ export class App extends util.Target {
     set popups(v) {
         v = util.ensure(v, "arr");
         this.clearPopups();
-        v.forEach(v => this.addPopup(v));
+        this.addPopup(v);
     }
     clearPopups() {
         let pops = this.popups;
-        pops.forEach(pop => this.remPopup(pop));
+        this.remPopup(pops);
         return pops;
     }
     hasPopup(pop) {
         if (!(pop instanceof App.PopupBase)) return false;
         return this.#popups.includes(pop);
     }
-    addPopup(pop) {
-        if (!(pop instanceof App.PopupBase)) return false;
-        if (this.hasPopup(pop)) this.remPopup(pop);
-        this.#popups.push(pop);
-        pop.addLinkedHandler(this, "result", () => this.remPopup(pop));
-        pop.doAdd(document.body);
-        window.api.set("closeable", this.popups.length <= 0);
-        return pop;
+    addPopup(...pops) {
+        return util.Target.resultingForEach(pops, pop => {
+            if (!(pop instanceof App.PopupBase)) return false;
+            if (this.hasPopup(pop)) this.remPopup(pop);
+            this.#popups.push(pop);
+            pop.addLinkedHandler(this, "result", () => this.remPopup(pop));
+            pop.doAdd(document.body);
+            window.api.set("closeable", this.popups.length <= 0);
+            return pop;
+        });
     }
-    remPopup(pop) {
-        if (!(pop instanceof App.PopupBase)) return false;
-        if (!this.hasPopup(pop)) return false;
-        this.#popups.splice(this.#popups.indexOf(pop), 1);
-        pop.clearLinkedHandlers(this, "result");
-        pop.doRem(document.body);
-        window.api.set("closeable", this.popups.length <= 0);
-        return pop;
+    remPopup(...pops) {
+        return util.Target.resultingForEach(pops, pop => {
+            if (!(pop instanceof App.PopupBase)) return false;
+            if (!this.hasPopup(pop)) return false;
+            this.#popups.splice(this.#popups.indexOf(pop), 1);
+            pop.clearLinkedHandlers(this, "result");
+            pop.doRem(document.body);
+            window.api.set("closeable", this.popups.length <= 0);
+            return pop;
+        });
     }
     alert(...a) { return this.addPopup(new App.Alert(...a)); }
     error(...a) { return this.addPopup(new App.Error(...a)); }
@@ -1022,14 +1026,16 @@ export class App extends util.Target {
         name = String(name);
         return name in this.#pages;
     }
-    addPage(page) {
-        if (!(page instanceof App.Page)) return false;
-        if (page.app != this) return false;
-        if (this.hasPage(page.name)) return false;
-        this.#pages[page.name] = page;
-        this.eMount.appendChild(page.elem);
-        page.leave(null);
-        return page;
+    addPage(...pages) {
+        return util.Target.resultingForEach(pages, page => {
+            if (!(page instanceof App.Page)) return false;
+            if (page.app != this) return false;
+            if (this.hasPage(page.name)) return false;
+            this.#pages[page.name] = page;
+            this.eMount.appendChild(page.elem);
+            page.leave(null);
+            return page;
+        });
     }
     getPage(name) {
         name = String(name);
@@ -1600,11 +1606,11 @@ App.Menu = class AppMenu extends util.Target {
     set items(v) {
         v = util.ensure(v, "arr");
         this.clearItems();
-        v.forEach(v => this.addItem(v));
+        this.addItem(v);
     }
     clearItems() {
         let itms = this.items;
-        itms.forEach(itm => this.remItem(itm));
+        this.remItem(itms);
         return itms;
     }
     hasItem(itm) {
@@ -1622,8 +1628,8 @@ App.Menu = class AppMenu extends util.Target {
         this.format();
         return itm;
     }
-    addItem(itm) {
-        return this.insertItem(itm, this.items.length);
+    addItem(...itms) {
+        return util.Target.resultingForEach(itms, itm => this.insertItem(itm, this.items.length));
     }
     remItem(itm) {
         if (!(itm instanceof App.Menu.Item)) return false;
@@ -2713,9 +2719,11 @@ export class AppFeature extends App {
 
             await this.post("pre-post-setup");
 
-            this.addPage(new this.constructor.TitlePage(this));
-            this.addPage(new this.constructor.ProjectsPage(this));
-            this.addPage(new this.constructor.ProjectPage(this));
+            this.addPage(
+                new this.constructor.TitlePage(this),
+                new this.constructor.ProjectsPage(this),
+                new this.constructor.ProjectPage(this),
+            );
 
             this.page = "TITLE";
         });
@@ -3136,7 +3144,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         let projects = this.app.projects.map(id => this.app.getProject(id));
         if (projects.length > 0) {
             projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
-            projects.forEach(project => this.addButton(new this.constructor.Button(project)));
+            this.addButton(projects.map(project => new this.constructor.Button(project)));
         } else this.eEmpty.style.display = "block";
     }
 
@@ -3160,38 +3168,42 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     set buttons(v) {
         v = util.ensure(v, "arr");
         this.clearButtons();
-        v.forEach(v => this.addButton(v));
+        this.addButton(v);
     }
     clearButtons() {
         let btns = this.buttons;
-        btns.forEach(btn => this.remButton(btn));
+        this.remButton(btns);
         return btns;
     }
     hasButton(btn) {
         if (!(btn instanceof this.constructor.Button)) return false;
         return this.#buttons.has(btn);
     }
-    addButton(btn) {
-        if (!(btn instanceof this.constructor.Button)) return false;
-        if (this.hasButton(btn)) return false;
-        this.#buttons.add(btn);
-        btn.addLinkedHandler(this, "trigger", e => this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey)));
-        btn.addLinkedHandler(this, "trigger2", e => this.app.setPage("PROJECT", { id: (btn.hasProject() ? btn.project.id : null) }));
-        btn.addLinkedHandler(this, "contextmenu", e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null));
-        this.eContent.appendChild(btn.elemList);
-        this.eContent.appendChild(btn.elemGrid);
-        return btn;
+    addButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof this.constructor.Button)) return false;
+            if (this.hasButton(btn)) return false;
+            this.#buttons.add(btn);
+            btn.addLinkedHandler(this, "trigger", e => this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey)));
+            btn.addLinkedHandler(this, "trigger2", e => this.app.setPage("PROJECT", { id: (btn.hasProject() ? btn.project.id : null) }));
+            btn.addLinkedHandler(this, "contextmenu", e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null));
+            this.eContent.appendChild(btn.elemList);
+            this.eContent.appendChild(btn.elemGrid);
+            return btn;
+        });
     }
-    remButton(btn) {
-        if (!(btn instanceof this.constructor.Button)) return false;
-        if (!this.hasButton(btn)) return false;
-        this.#buttons.delete(btn);
-        btn.clearLinkedHandlers(this, "trigger");
-        btn.clearLinkedHandlers(this, "trigger2");
-        btn.clearLinkedHandlers(this, "contextmenu");
-        this.eContent.removeChild(btn.elemList);
-        this.eContent.removeChild(btn.elemGrid);
-        return btn;
+    remButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof this.constructor.Button)) return false;
+            if (!this.hasButton(btn)) return false;
+            this.#buttons.delete(btn);
+            btn.clearLinkedHandlers(this, "trigger");
+            btn.clearLinkedHandlers(this, "trigger2");
+            btn.clearLinkedHandlers(this, "contextmenu");
+            this.eContent.removeChild(btn.elemList);
+            this.eContent.removeChild(btn.elemGrid);
+            return btn;
+        });
     }
 
     get eTitle() { return this.#eTitle; }
@@ -3900,30 +3912,34 @@ export class Odometry2d extends util.Target {
     set renders(v) {
         v = util.ensure(v, "arr");
         this.clearRenders();
-        v.forEach(v => this.addRender(v));
+        this.addRender(v);
     }
     clearRenders() {
         let renders = this.renders;
-        renders.forEach(render => this.remRender(render));
+        this.remRender(renders);
         return renders;
     }
     hasRender(render) {
         if (!(render instanceof Odometry2d.Render)) return false;
         return this.#renders.has(render) && render.odometry == this;
     }
-    addRender(render) {
-        if (!(render instanceof Odometry2d.Render)) return false;
-        if (render.odometry != this) return false;
-        if (this.hasRender(render)) return false;
-        this.#renders.add(render);
-        return render;
+    addRender(...renders) {
+        return util.Target.resultingForEach(renders, render => {
+            if (!(render instanceof Odometry2d.Render)) return false;
+            if (render.odometry != this) return false;
+            if (this.hasRender(render)) return false;
+            this.#renders.add(render);
+            return render;
+        });
     }
-    remRender(render) {
-        if (!(render instanceof Odometry2d.Render)) return false;
-        if (render.odometry != this) return false;
-        if (!this.hasRender(render)) return false;
-        this.#renders.delete(render);
-        return render;
+    remRender(...renders) {
+        return util.Target.resultingForEach(renders, render => {
+            if (!(render instanceof Odometry2d.Render)) return false;
+            if (render.odometry != this) return false;
+            if (!this.hasRender(render)) return false;
+            this.#renders.delete(render);
+            return render;
+        });
     }
 
     get imageSrc() { return this.#image.src; }

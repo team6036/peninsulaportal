@@ -138,7 +138,7 @@ const MAIN = async () => {
         set tags(v) {
             v = util.ensure(v, "arr");
             this.clearTags();
-            v.forEach(v => this.addTag(v));
+            this.addTag(v);
         }
         clearTags() {
             let tags = this.tags;
@@ -148,13 +148,17 @@ const MAIN = async () => {
         hasTag(tag) {
             return this.#tags.has(tag);
         }
-        addTag(tag) {
-            this.#tags.add(tag);
-            return true;
+        addTag(...tags) {
+            return util.Target.resultingForEach(tags, tag => {
+                this.#tags.add(tag);
+                return tag;
+            });
         }
-        remTag(tag) {
-            this.#tags.delete(tag);
-            return true;
+        remTag(...tags) {
+            return util.Target.resultingForEach(tags, tag => {
+                this.#tags.delete(tag);
+                return tag;
+            });
         }
 
         get parent() { return this.#parent; }
@@ -191,30 +195,34 @@ const MAIN = async () => {
         set processes(v) {
             v = util.ensure(v, "arr");
             this.clearProcesses();
-            v.forEach(v => this.addProcess(v));
+            this.addProcess(v);
         }
         clearProcesses() {
             let processes = this.processes;
-            processes.forEach(process => this.remProcess(process));
+            this.remProcess(processes);
             return processes;
         }
         hasProcess(process) {
             if (!(process instanceof Process)) return false;
             return this.#processes.has(process) && process.parent == this;
         }
-        addProcess(process) {
-            if (!(process instanceof Process)) return false;
-            if (this.hasProcess(process)) return false;
-            this.#processes.add(process);
-            process.parent = this;
-            return process;
+        addProcess(...processes) {
+            return util.Target.resultingForEach(processes, process => {
+                if (!(process instanceof Process)) return false;
+                if (this.hasProcess(process)) return false;
+                this.#processes.add(process);
+                process.parent = this;
+                return process;
+            });
         }
-        remProcess(process) {
-            if (!(process instanceof Process)) return false;
-            if (!this.hasProcess(process)) return false;
-            this.#processes.delete(process);
-            process.parent = null;
-            return process;
+        remProcess(...processes) {
+            return util.Target.resultingForEach(processes, process => {
+                if (!(process instanceof Process)) return false;
+                if (!this.hasProcess(process)) return false;
+                this.#processes.delete(process);
+                process.parent = null;
+                return process;
+            });
         }
 
         getProcessById(id) {
@@ -299,23 +307,27 @@ const MAIN = async () => {
         set tags(v) {
             v = util.ensure(v, "arr");
             this.clearTags();
-            v.forEach(v => this.addTag(v));
+            this.addTag(v);
         }
         clearTags() {
             let tags = this.tags;
-            tags.forEach(tag => this.remTag(tag));
+            this.remTag(tags);
             return tags;
         }
         hasTag(tag) {
             return this.#tags.has(tag);
         }
-        addTag(tag) {
-            this.#tags.add(tag);
-            return true;
+        addTag(...tags) {
+            return util.Target.resultingForEach(tags, tag => {
+                this.#tags.add(tag);
+                return tag;
+            });
         }
-        remTag(tag) {
-            this.#tags.delete(tag);
-            return true;
+        remTag(...tags) {
+            return util.Target.resultingForEach(tags, tag => {
+                this.#tags.delete(tag);
+                return tag;
+            });
         }
 
         get location() { return this.#location; }
@@ -382,28 +394,32 @@ const MAIN = async () => {
         set clients(v) {
             v = util.ensure(v, "arr");
             this.clearClients();
-            v.forEach(v => this.addClient(v));
+            this.addClient(v);
         }
         clearClients() {
             let clients = this.clients;
-            clients.forEach(client => this.remClient(client));
+            this.remClient(clients);
             return clients;
         }
         hasClient(client) {
             if (!(client instanceof Client)) return false;
             return this.#clients.has(client);
         }
-        addClient(client) {
-            if (!(client instanceof Client)) return false;
-            if (this.hasClient(client)) return false;
-            this.#clients.add(client);
-            return client;
+        addClient(...clients) {
+            return util.Target.resultingForEach(clients, client => {
+                if (!(client instanceof Client)) return false;
+                if (this.hasClient(client)) return false;
+                this.#clients.add(client);
+                return client;
+            });
         }
-        remClient(client) {
-            if (!(client instanceof Client)) return false;
-            if (!this.hasClient(client)) return false;
-            this.#clients.delete(client);
-            return client;
+        remClient(...clients) {
+            return util.Target.resultingForEach(clients, client => {
+                if (!(client instanceof Client)) return false;
+                if (!this.hasClient(client)) return false;
+                this.#clients.delete(client);
+                return client;
+            });
         }
 
         getClientById(id) {
@@ -454,23 +470,27 @@ const MAIN = async () => {
         set tags(v) {
             v = util.ensure(v, "arr");
             this.clearTags();
-            v.forEach(v => this.addTag(v));
+            this.addTag(v);
         }
         clearTags() {
             let tags = this.tags;
-            tags.forEach(tag => this.remTag(tag));
+            this.remTag(tags);
             return tags;
         }
         hasTag(tag) {
             return this.#tags.has(tag);
         }
-        addTag(tag) {
-            this.#tags.add(tag);
-            return true;
+        addTag(...tags) {
+            return util.Target.resultingForEach(tags, tag => {
+                this.#tags.add(tag);
+                return tag;
+            });
         }
-        remTag(tag) {
-            this.#tags.delete(tag);
-            return true;
+        remTag(...tags) {
+            return util.Target.resultingForEach(tags, tag => {
+                this.#tags.delete(tag);
+                return tag;
+            });
         }
 
         get client() { return this.#client; }
@@ -567,28 +587,32 @@ const MAIN = async () => {
         set clients(v) {
             v = util.ensure(v, "arr");
             this.clearClients();
-            v.forEach(v => this.addClient(v));
+            this.addClient(v);
         }
         clearClients() {
             let clients = this.clients;
-            clients.forEach(client => this.remClient(client));
+            this.remClient(clients);
             return clients;
         }
         hasClient(client) {
             if (!(client instanceof TbaClient)) return false;
             return this.#clients.has(client);
         }
-        addClient(client) {
-            if (!(client instanceof TbaClient)) return false;
-            if (this.hasClient(client)) return false;
-            this.#clients.add(client);
-            return client;
+        addClient(...clients) {
+            return util.Target.resultingForEach(clients, client => {
+                if (!(client instanceof TbaClient)) return false;
+                if (this.hasClient(client)) return false;
+                this.#clients.add(client);
+                return client;
+            });
         }
-        remClient(client) {
-            if (!(client instanceof TbaClient)) return false;
-            if (!this.hasClient(client)) return false;
-            this.#clients.delete(client);
-            return client;
+        remClient(...clients) {
+            return util.Target.resultingForEach(clients, client => {
+                if (!(client instanceof TbaClient)) return false;
+                if (!this.hasClient(client)) return false;
+                this.#clients.delete(client);
+                return client;
+            });
         }
 
         getClientById(id) {
@@ -806,6 +830,8 @@ const MAIN = async () => {
             this.window.once("ready-to-show", () => {
                 if (!this.hasWindow()) return;
                 this.#resolver.state++;
+                // this.window.show();
+                // this.window.webContents.openDevTools();
             });
             let id = setTimeout(() => {
                 showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within 1 second`);
@@ -1102,7 +1128,7 @@ const MAIN = async () => {
         async clientMake(id, location) {
             let client = await this.manager.clientMake(this.name+":"+id, location);
             client = this.clientManager.addClient(client);
-            client.addTag(this.name);
+            client.addTag(this);
             client.addHandler("msg", async (name, payload, meta) => {
                 name = String(name);
                 meta = util.ensure(meta, "obj");
@@ -1173,7 +1199,7 @@ const MAIN = async () => {
         async tbaClientMake(id) {
             let client = await this.manager.tbaClientMake(this.name+":"+id, location);
             client = this.tbaClientManager.addClient(client);
-            client.addTag(this.name);
+            client.addTag(this);
             return client;
         }
         async tbaClientDestroy(id) {
@@ -2225,12 +2251,12 @@ const MAIN = async () => {
             if (this.hasWindow()) return this.window.manager.loads = v;
             v = util.ensure(v, "arr");
             this.clearLoads();
-            v.forEach(v => this.addLoad(v));
+            this.addLoad(v);
         }
         clearLoads() {
             if (this.hasWindow()) return this.window.manager.clearLoads();
             let loads = this.loads;
-            loads.forEach(load => this.remLoad(load));
+            this.remLoad(loads);
             return loads;
         }
         hasLoad(load) {
@@ -2238,21 +2264,25 @@ const MAIN = async () => {
             load = String(load);
             return this.#loads.has(load);
         }
-        addLoad(load) {
-            if (this.hasWindow()) return this.window.manager.addLoad(load);
-            load = String(load);
-            if (this.hasLoad(load)) return false;
-            this.#loads.add(load);
-            this.change("addLoad", null, load);
-            return true;
+        addLoad(...loads) {
+            if (this.hasWindow()) return this.window.manager.addLoad(...loads);
+            return util.Target.resultingForEach(loads, load => {
+                load = String(load);
+                if (this.hasLoad(load)) return false;
+                this.#loads.add(load);
+                this.change("addLoad", null, load);
+                return load;
+            });
         }
-        remLoad(load) {
-            if (this.hasWindow()) return this.window.manager.remLoad(load);
-            load = String(load);
-            if (!this.hasLoad(load)) return false;
-            this.#loads.delete(load);
-            this.change("remLoad", load, null);
-            return true;
+        remLoad(...loads) {
+            if (this.hasWindow()) return this.window.manager.remLoad(...loads);
+            return util.Target.resultingForEach(loads, load => {
+                load = String(load);
+                if (!this.hasLoad(load)) return false;
+                this.#loads.delete(load);
+                this.change("remLoad", load, null);
+                return load;
+            });
         }
         get isLoading() { return this.hasWindow() ? this.window.manager.isLoading : this.#isLoading; }
         async tryLoad() {

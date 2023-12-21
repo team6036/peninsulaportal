@@ -30,28 +30,32 @@ export default class WPILOGEncoder extends util.Target {
     set records(v) {
         v = util.ensure(v, "arr");
         this.clearRecords();
-        v.forEach(v => this.addRecord(v));
+        this.addRecord(v);
     }
     clearRecords() {
         let records = this.records;
-        records.forEach(record => this.remRecord(record));
+        this.remRecord(records);
         return records;
     }
     hasRecord(record) {
         if (!(record instanceof WPILOGEncoder.Record)) return false;
         return this.#records.has(record);
     }
-    addRecord(record) {
-        if (!(record instanceof WPILOGEncoder.Record)) return false;
-        if (this.hasRecord(record)) return false;
-        this.#records.add(record);
-        return record;
+    addRecord(...records) {
+        return util.Target.resultingForEach(records, record => {
+            if (!(record instanceof WPILOGEncoder.Record)) return false;
+            if (this.hasRecord(record)) return false;
+            this.#records.add(record);
+            return record;
+        });
     }
-    remRecord(record) {
-        if (!(record instanceof WPILOGEncoder.Record)) return false;
-        if (!this.hasRecord(record)) return false;
-        this.#records.delete(record);
-        return record;
+    remRecord(...records) {
+        return util.Target.resultingForEach(records, record => {
+            if (!(record instanceof WPILOGEncoder.Record)) return false;
+            if (!this.hasRecord(record)) return false;
+            this.#records.delete(record);
+            return record;
+        });
     }
 
     build(callback) {

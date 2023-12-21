@@ -23,6 +23,7 @@ export default class Source extends util.Target {
     #tsMax;
 
     #structHelper;
+    #structDecodes;
 
     #playback;
 
@@ -37,7 +38,8 @@ export default class Source extends util.Target {
         this.#tsMin = this.#tsMax = 0;
 
         this.#structHelper = new StructHelper();
-        this.structHelper.addHandler("change", () => this.post("struct"));
+        this.structHelper.addHandler("change", () => this.dequeueStructDecode());
+        this.#structDecodes = [];
 
         this.#playback = new Source.Playback(this);
     }
@@ -65,79 +67,51 @@ export default class Source extends util.Target {
         return this.#fields[path];
     }
     addField(...fields) {
-        fields = fields.flatten();
-        let r;
-        if (fields.length == 1) {
-            let field = fields[0];
-            r = false;
-            if (!(field instanceof Source.Field));
-            else if (field.source != this);
-            else if (this.hasField(field));
-            else {
-                this.#fields[field.path] = field;
-                r = field;
-                if (this.buildTree) {
-                    let path = field.path.split("/").filter(part => part.length > 0);
-                    let node = this.tree;
-                    while (path.length > 0) {
-                        let name = path.shift();
-                        if (!node.hasNode(name))
-                            node.addNode(new Source.Node(node, name));
-                        node = node.getNode(name);
-                    }
-                    node.field = field;
-                    field.node = node;
+        return util.Target.resultingForEach(fields, field => {
+            if (!(field instanceof Source.Field)) return false;
+            if (field.source != this) return false;
+            if (this.hasField(field)) return false;
+            this.#fields[field.path] = field;
+            if (this.buildTree) {
+                let path = field.path.split("/").filter(part => part.length > 0);
+                let node = this.tree;
+                while (path.length > 0) {
+                    let name = path.shift();
+                    if (!node.hasNode(name))
+                        node.addNode(new Source.Node(node, name));
+                    node = node.getNode(name);
                 }
+                node.field = field;
+                field.node = node;
             }
-        } else {
-            r = [];
-            fields.forEach(field => {
-                let r2 = this.addField(field);
-                if (!r2) return;
-                r.push(r2);
-            });
-        }
-        return r;
+            return field;
+        });
     }
     remField(...fields) {
-        fields = fields.flatten();
-        let r;
-        if (fields.length == 1) {
-            let field = fields[0];
-            r = false;
-            if (!(field instanceof Source.Field));
-            else if (field.source != this);
-            else if (!this.hasField(field));
-            else {
-                delete this.#fields[field.path];
-                r = field;
-                if (this.buildTree) {
-                    let path = field.path.split("/").filter(part => part.length > 0);
-                    let node = this.tree;
-                    while (path.length > 0) {
-                        let name = path.shift();
-                        if (!node.hasNode(name)) {
-                            node = null;
-                            break;
-                        }
-                        node = node.getNode(name);
+        return util.Target.resultingForEach(fields, field => {
+            if (!(field instanceof Source.Field)) return false;
+            if (field.source != this) return false;
+            if (!this.hasField(field)) return false;
+            delete this.#fields[field.path];
+            if (this.buildTree) {
+                let path = field.path.split("/").filter(part => part.length > 0);
+                let node = this.tree;
+                while (path.length > 0) {
+                    let name = path.shift();
+                    if (!node.hasNode(name)) {
+                        node = null;
+                        break;
                     }
-                    if (node instanceof Source.Field && node.parent instanceof Source.Field)
-                        node.parent.remNode(node);
-                    if (node instanceof Source.Field)
-                        node.field = null;
-                    field.node = null;
+                    node = node.getNode(name);
                 }
+                if (node instanceof Source.Field && node.parent instanceof Source.Field)
+                    node.parent.remNode(node);
+                if (node instanceof Source.Field)
+                    node.field = null;
+                field.node = null;
             }
-        } else {
-            r = [];
-            fields.forEach(field => {
-                let r2 = this.remField(field);
-                if (!r2) return;
-                r.push(r2);
-            });
-        }
-        return r;
+            return field;
+        });
     }
 
     get tree() { return this.#tree; }
@@ -176,9 +150,48 @@ export default class Source extends util.Target {
         return this;
     }
 
+    queueStructDecode(path, type, array, v, ts) {
+        console.log("queue");
+        this.#structDecodes.push({ path: path, type: type, array: array, v: v, ts: ts });
+    }
+    dequeueStructDecode() {
+        console.log("dequeue");
+        this.#structDecodes = this.#structDecodes.filter(decode => {
+            let { path, type, array, v, ts } = decode;
+            return !this.structDecode(path, type, array, v, ts);
+        });
+    }
+    structDecode(path, type, array, v, ts) {
+        console.log("decode");
+        path = Source.generatePath(path);
+        type = String(type);
+        array = !!array;
+        v = toUint8Array(v);
+        ts = util.ensure(ts, "num");
+        if (!this.structHelper.hasPattern(type)) return false;
+        let pattern = this.structHelper.getPattern(type);
+        if (pattern.length == null) return false;
+        if (array) {
+            let datas = util.ensure(pattern.splitData(v), "arr");
+            datas.forEach((data, i) => {
+                let path2 = path+"/"+i;
+                if (!this.source.hasField(path2)) this.addField(new this.constructor.Field(this, path2, "struct:"+type));
+                this.getField(path2).update(data, ts);
+            });
+        } else {
+            let data = util.ensure(pattern.decode(v), "obj");
+            pattern.fields.forEach(field => {
+                let path2 = path+"/"+field.name;
+                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, field.isStruct ? ("struct:"+field.type) : field.type));
+                this.getField(path2).update(data[field.name], ts);
+            });
+        }
+        return true;
+    }
     createStruct(name, data) {
         name = String(name);
         if (this.structHelper.hasPattern(name)) return false;
+        console.log("create struct", name, util.TEXTDECODER.decode(toUint8Array(data)));
         let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, util.TEXTDECODER.decode(toUint8Array(data))));
         pattern.build();
         return pattern;
@@ -197,11 +210,21 @@ export default class Source extends util.Target {
             tsMin: this.tsMin, tsMax: this.tsMax,
             fields: this.fieldObjects.map(field => field.toSerialized()),
             tree: this.tree.toSerialized(),
+            structDecodes: this.#structDecodes,
         };
     }
     fromSerialized(data) {
         data = util.ensure(data, "obj");
         this.clear();
+        this.#structDecodes = util.ensure(data.structDecodes, "arr").map(decode => {
+            decode = util.ensure(decode, "obj");
+            decode.path = Source.generatePath(decode.path);
+            decode.type = String(decode.type);
+            decode.array = !!decode.array;
+            decode.v = toUint8Array(decode.v);
+            decode.ts = util.ensure(decode.ts, "num");
+            return decode;
+        });
         this.addField(util.ensure(data.fields, "arr").map(data => Source.Field.fromSerialized(this, data)));
         this.createAllStructs();
         this.ts = data.ts;
@@ -337,7 +360,11 @@ Source.Field = class SourceField extends util.Target {
     set valueLog(v) {
         this.#valueLog = util.ensure(v, "arr").map(log => {
             log = util.ensure(log, "obj");
-            return { ts: util.ensure(log.ts, "num"), v: Source.Field.ensureType(this.type, log.v) };
+            return {
+                ts: util.ensure(log.ts, "num"),
+                v: Source.Field.ensureType(this.type, log.v),
+                meta: util.ensure(log.meta, "obj"),
+            };
         }).sort((a, b) => a.ts-b.ts);
     }
 
@@ -369,39 +396,18 @@ Source.Field = class SourceField extends util.Target {
         let start = this.getIndex(tsStart);
         let stop = this.getIndex(tsStop);
         return this.#valueLog.slice(start+1, stop+1).map(log => {
-            let ts = log.ts, v = log.v;
-            return { ts: ts, v: v };
+            let { ts, v, meta } = log;
+            return { ts: ts, v: v, meta: meta };
         });
     }
     update(v, ts=null) {
         v = Source.Field.ensureType(this.type, v);
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
-        this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
+        this.#valueLog.splice(i+1, 0, { ts: ts, v: v, meta: {} });
         if (this.isStruct) {
-            const checkStructFail = () => this.source.addLinkedHandler(this, "struct", checkStruct);
-            const checkStruct = () => {
-                this.source.remLinkedHandler(this, "struct", checkStruct);
-                if (!this.source.structHelper.hasPattern(this.arrayType)) return checkStructFail();
-                let pattern = this.source.structHelper.getPattern(this.arrayType);
-                if (pattern.length == null) return checkStructFail();
-                if (this.isArray) {
-                    let datas = util.ensure(pattern.splitData(v), "arr");
-                    datas.forEach((data, i) => {
-                        let path = this.path+"/"+i;
-                        if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, "struct:"+this.arrayType));
-                        this.source.getField(path).update(data, ts);
-                    });
-                } else {
-                    let data = util.ensure(pattern.decode(v), "obj");
-                    pattern.fields.forEach(field => {
-                        let path = this.path+"/"+field.name;
-                        if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, field.isStruct ? ("struct:"+field.type) : field.type));
-                        this.source.getField(path).update(data[field.name], ts);
-                    });
-                }
-            };
-            checkStruct();
+            if (this.source.structDecode(this.path, this.arrayType, this.isArray, v, ts)) return;
+            this.source.queueStructDecode(this.path, this.arrayType, this.isArray, v, ts);
         } else if (this.isArray) {
             v.forEach((v, i) => {
                 let path = this.path+"/"+i;
@@ -422,10 +428,6 @@ Source.Field = class SourceField extends util.Target {
         data = util.ensure(data, "obj");
         let field = new Source.Field(source, data.path, data.type);
         field.valueLog = data.valueLog;
-        // field.#valueLog = util.ensure(data.valueLog, "arr").map(log => {
-        //     log = util.ensure(log, "obj");
-        //     return { ts: util.ensure(log.ts, "num"), v: Source.Field.ensureType(field.type, log.v) };
-        // }).sort((a, b) => a.ts-b.ts);
         return field;
     }
 };
@@ -498,50 +500,22 @@ Source.Node = class SourceNode extends util.Target {
         return this.#nodes[name];
     }
     addNode(...nodes) {
-        nodes = nodes.flatten();
-        let r;
-        if (nodes.length == 1) {
-            let node = nodes[0];
-            r = false;
-            if (!(node instanceof Source.Node));
-            else if (node.parent != this);
-            else if (this.hasNode(node));
-            else {
-                this.#nodes[node.name] = node;
-                r = node;
-            }
-        } else {
-            r = [];
-            nodes.forEach(node => {
-                let r2 = this.addNode(node);
-                if (!r2) return;
-                r.push(r2);
-            });
-        }
-        return r;
+        return util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof Source.Node)) return false;
+            if (node.parent != this) return false;
+            if (this.hasNode(node)) return false;
+            this.#nodes[node.name] = node;
+            return node;
+        });
     }
     remNode(...nodes) {
-        nodes = nodes.flatten();
-        let r;
-        if (nodes.length == 1) {
-            let node = nodes[0];
-            r = false;
-            if (!(node instanceof Source.Node));
-            else if (node.parent != this);
-            else if (!this.hasNode(node));
-            else {
-                delete this.#nodes[node.name];
-                r = node;
-            }
-        } else {
-            r = [];
-            nodes.forEach(node => {
-                let r2 = this.remNode(node);
-                if (!r2) return;
-                r.push(r2);
-            });
-        }
-        return r;
+        return util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof Source.Node)) return false;
+            if (node.parent != this) return false;
+            if (!this.hasNode(node)) return false;
+            delete this.#nodes[node.name];
+            return node;
+        });
     }
     lookup(path) {
         path = Source.generateArrayPath(path);

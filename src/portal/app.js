@@ -516,60 +516,68 @@ export default class App extends core.App {
     set featureButtons(v) {
         v = util.ensure(v, "arr");
         this.clearFeatureButtons();
-        v.forEach(v => this.addFeatureButton(v));
+        this.addFeatureButton(v);
     }
     clearFeatureButtons() {
         let btns = this.featureButtons;
-        btns.forEach(btn => this.remFeatureButton(btn));
+        this.addFeatureButton(btns);
         return btns;
     }
     hasFeatureButton(btn) {
         if (!(btn instanceof FeatureButton)) return false;
         return this.#featureButtons.has(btn);
     }
-    addFeatureButton(btn) {
-        if (!(btn instanceof FeatureButton)) return false;
-        if (this.hasFeatureButton(btn)) return false;
-        this.#featureButtons.add(btn);
-        if (this.hasENav()) this.eNav.appendChild(btn.elem);
-        return btn;
+    addFeatureButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof FeatureButton)) return false;
+            if (this.hasFeatureButton(btn)) return false;
+            this.#featureButtons.add(btn);
+            if (this.hasENav()) this.eNav.appendChild(btn.elem);
+            return btn;
+        });
     }
-    remFeatureButton(btn) {
-        if (!(btn instanceof FeatureButton)) return false;
-        if (!this.hasFeatureButton(btn)) return false;
-        this.#featureButtons.delete(btn);
-        if (this.hasENav()) this.eNav.removeChild(btn.elem);
-        return btn;
+    remFeatureButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof FeatureButton)) return false;
+            if (!this.hasFeatureButton(btn)) return false;
+            this.#featureButtons.delete(btn);
+            if (this.hasENav()) this.eNav.removeChild(btn.elem);
+            return btn;
+        });
     }
 
     get upperFeatureButtons() { return [...this.#upperFeatureButtons]; }
     set upperFeatureButtons(v) {
         v = util.ensure(v, "arr");
         this.clearUpperFeatureButtons();
-        v.forEach(v => this.addUpperFeatureButton(v));
+        this.addUpperFeatureButton(v);
     }
     clearUpperFeatureButtons() {
         let btns = this.upperFeatureButtons;
-        btns.forEach(btn => this.remUpperFeatureButton(btn));
+        this.remUpperFeatureButton(btns);
         return btns;
     }
     hasUpperFeatureButton(btn) {
         if (!(btn instanceof UpperFeatureButton)) return false;
         return this.#featureButtons.has(btn);
     }
-    addUpperFeatureButton(btn) {
-        if (!(btn instanceof UpperFeatureButton)) return false;
-        if (this.hasUpperFeatureButton(btn)) return false;
-        this.#upperFeatureButtons.add(btn);
-        this.eTitleBar.appendChild(btn.elem);
-        return btn;
+    addUpperFeatureButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof UpperFeatureButton)) return false;
+            if (this.hasUpperFeatureButton(btn)) return false;
+            this.#upperFeatureButtons.add(btn);
+            this.eTitleBar.appendChild(btn.elem);
+            return btn;
+        });
     }
-    remUpperFeatureButton(btn) {
-        if (!(btn instanceof UpperFeatureButton)) return false;
-        if (!this.hasUpperFeatureButton(btn)) return false;
-        this.#upperFeatureButtons.delete(btn);
-        this.eTitleBar.removeChild(btn.elem);
-        return btn;
+    remUpperFeatureButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof UpperFeatureButton)) return false;
+            if (!this.hasUpperFeatureButton(btn)) return false;
+            this.#upperFeatureButtons.delete(btn);
+            this.eTitleBar.removeChild(btn.elem);
+            return btn;
+        });
     }
 
     get eBackground() { return this.#eBackground; }

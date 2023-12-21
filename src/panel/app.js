@@ -159,8 +159,8 @@ function getRepresentation(o) {
         util.is(o, "bool") ||
         util.is(o, "str")
     ) return String(o);
-    if (util.is(o, "arr")) return "["+[...o].map(o => getRepresentation(o)).join(", ")+"]";
     if (o instanceof Uint8Array) return util.TEXTDECODER.decode(o); // return [...o].map(x => x.toString(16).padStart(2, "0")).join("");
+    if (util.is(o, "arr")) return "["+[...o].map(o => getRepresentation(o)).join(", ")+"]";
     if (util.is(o, "obj")) return JSON.stringify(o);
     return String(o);
 }
@@ -380,66 +380,36 @@ class BrowserNode extends util.Target {
         return this.#nodes[name];
     }
     add(...nodes) {
-        nodes = nodes.flatten();
-        let r;
-        if (nodes.length == 1) {
-            let node = nodes[0];
-            r = false;
-            if (!(node instanceof BrowserNode));
-            else if (this.has(node));
-            else {
-                this.#nodes[node.name] = node;
-                node.addLinkedHandler(this, "trigger", (e, path) => {
-                    path = Source.generatePath(path);
-                    if (this.name.length > 0) path = this.name+"/"+path;
-                    this.post("trigger", e, path);
-                });
-                node.addLinkedHandler(this, "drag", path => {
-                    path = Source.generatePath(path);
-                    if (this.name.length > 0) path = this.name+"/"+path;
-                    this.post("drag", path);
-                });
-                this.eContent.appendChild(node.elem);
-                r = node;
-            }
-        } else {
-            let format = this.format;
-            this.format = () => {};
-            r = [];
-            nodes.forEach(node => {
-                let r2 = this.add(node);
-                if (!r2) return;
-                r.push(r2);
+        let r = util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof BrowserNode)) return false;
+            if (this.has(node)) return false;
+            this.#nodes[node.name] = node;
+            node.addLinkedHandler(this, "trigger", (e, path) => {
+                path = Source.generatePath(path);
+                if (this.name.length > 0) path = this.name+"/"+path;
+                this.post("trigger", e, path);
             });
-            this.format = format;
-        }
+            node.addLinkedHandler(this, "drag", path => {
+                path = Source.generatePath(path);
+                if (this.name.length > 0) path = this.name+"/"+path;
+                this.post("drag", path);
+            });
+            this.eContent.appendChild(node.elem);
+            return node;
+        });
         this.format();
         return r;
     }
     rem(...nodes) {
-        nodes = nodes.flatten();
-        let r;
-        if (nodes.length == 1) {
-            let node = nodes[0];
-            r = false;
-            if (!(node instanceof BrowserNode));
-            else if (!this.has(node));
-            else {
-                delete this.#nodes[node.name];
-                node.clearLinkedHandlers(this, "trigger");
-                node.clearLinkedHandlers(this, "drag");
-                this.eContent.removeChild(node.elem);
-                r = node;
-            }
-        } else {
-            r = [];
-            nodes.forEach(node => {
-                let r2 = this.rem(node);
-                if (!r2) return;
-                r.push(r2);
-            });
-        }
-        return r;
+        return util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof BrowserNode)) return false;
+            if (!this.has(node)) return false;
+            delete this.#nodes[node.name];
+            node.clearLinkedHandlers(this, "trigger");
+            node.clearLinkedHandlers(this, "drag");
+            this.eContent.removeChild(node.elem);
+            return node;
+        });
     }
     lookup(path) {
         path = Source.generateArrayPath(path);
@@ -1666,60 +1636,68 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     set tags(v) {
         v = util.ensure(v, "arr");
         this.clearTags();
-        v.forEach(v => this.addTag(v));
+        this.addTag(v);
     }
     clearTags() {
         let tags = this.tags;
-        tags.forEach(tag => this.remTag(tag));
+        this.remTag(tags);
         return tags;
     }
     hasTag(tag) {
         if (!(tag instanceof Panel.AddTab.Tag)) return false;
         return this.#tags.includes(tag);
     }
-    addTag(tag) {
-        if (!(tag instanceof Panel.AddTab.Tag)) return false;
-        if (this.hasTag(tag)) return false;
-        this.#tags.push(tag);
-        this.eSearchTags.appendChild(tag.elem);
-        return tag;
+    addTag(...tags) {
+        return util.Target.resultingForEach(tags, tag => {
+            if (!(tag instanceof Panel.AddTab.Tag)) return false;
+            if (this.hasTag(tag)) return false;
+            this.#tags.push(tag);
+            this.eSearchTags.appendChild(tag.elem);
+            return tag;
+        });
     }
-    remTag(tag) {
-        if (!(tag instanceof Panel.AddTab.Tag)) return false;
-        if (!this.hasTag(tag)) return false;
-        this.#tags.splice(this.#tags.indexOf(tag), 1);
-        this.eSearchTags.removeChild(tag.elem);
-        return tag;
+    remTag(...tags) {
+        return util.Target.resultingForEach(tags, tag => {
+            if (!(tag instanceof Panel.AddTab.Tag)) return false;
+            if (!this.hasTag(tag)) return false;
+            this.#tags.splice(this.#tags.indexOf(tag), 1);
+            this.eSearchTags.removeChild(tag.elem);
+            return tag;
+        });
     }
 
     get items() { return [...this.#items]; }
     set items(v) {
         v = util.ensure(v, "arr");
         this.clearItems();
-        v.forEach(v => this.addItem(v));
+        this.addItem(v);
     }
     clearItems() {
         let itms = this.items;
-        itms.forEach(itm => this.remItem(itm));
+        this.remItem(itms);
         return itms;
     }
     hasItem(itm) {
         if (!(itm instanceof Panel.AddTab.Item)) return false;
         return this.#items.includes(itm);
     }
-    addItem(itm) {
-        if (!(itm instanceof Panel.AddTab.Item)) return false;
-        if (this.hasItem(itm)) return false;
-        this.#items.push(itm);
-        this.eContent.appendChild(itm.elem);
-        return itm;
+    addItem(...itms) {
+        return util.Target.resultingForEach(itms, itm => {
+            if (!(itm instanceof Panel.AddTab.Item)) return false;
+            if (this.hasItem(itm)) return false;
+            this.#items.push(itm);
+            this.eContent.appendChild(itm.elem);
+            return itm;
+        });
     }
-    remItem(itm) {
-        if (!(itm instanceof Panel.AddTab.Item)) return false;
-        if (!this.hasItem(itm)) return false;
-        this.#items.splice(this.#items.indexOf(itm), 1);
-        this.eContent.removeChild(itm.elem);
-        return itm;
+    remItem(...itms) {
+        return util.Target.resultingForEach(itms, itm => {
+            if (!(itm instanceof Panel.AddTab.Item)) return false;
+            if (!this.hasItem(itm)) return false;
+            this.#items.splice(this.#items.indexOf(itm), 1);
+            this.eContent.removeChild(itm.elem);
+            return itm;
+        });
     }
 
     get eSearch() { return this.#eSearch; }
@@ -2952,39 +2930,44 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     set logs(v) {
         v = util.ensure(v, "arr");
         this.clearLogs();
-        v.forEach(v => this.addLog(v));
+        this.addLog(v);
     }
     clearLogs() {
         let logs = this.logs;
-        logs.forEach(log => this.remLog(log));
+        this.remLog(logs);
         return logs;
     }
     hasLog(log) {
         if (!(log instanceof Panel.LoggerTab.Log)) return false;
         return this.#logs.has(log);
     }
-    addLog(log) {
-        if (!(log instanceof Panel.LoggerTab.Log)) return false;
-        if (this.hasLog(log)) return false;
-        this.#logs.add(log);
-        log.addLinkedHandler(this, "download", () => this.post("log-download", log.name));
-        log.addLinkedHandler(this, "trigger", e => this.post("log-trigger", e, log.name, !!(util.ensure(e, "obj").shiftKey)));
-        log.addLinkedHandler(this, "trigger2", e => this.post("log-trigger2", e, log.name));
-        log.addLinkedHandler(this, "contextmenu", e => this.post("log-contextmenu", e, log.name));
-        this.eLogs.appendChild(log.elem);
+    addLog(...logs) {
+        let r = util.Target.resultingForEach(logs, log => {
+            if (!(log instanceof Panel.LoggerTab.Log)) return false;
+            if (this.hasLog(log)) return false;
+            this.#logs.add(log);
+            log.addLinkedHandler(this, "download", () => this.post("log-download", log.name));
+            log.addLinkedHandler(this, "trigger", e => this.post("log-trigger", e, log.name, !!(util.ensure(e, "obj").shiftKey)));
+            log.addLinkedHandler(this, "trigger2", e => this.post("log-trigger2", e, log.name));
+            log.addLinkedHandler(this, "contextmenu", e => this.post("log-contextmenu", e, log.name));
+            this.eLogs.appendChild(log.elem);
+            return log;
+        });
         this.format();
-        return log;
+        return r;
     }
-    remLog(log) {
-        if (!(log instanceof Panel.LoggerTab.Log)) return false;
-        if (!this.hasLog(log)) return false;
-        this.#logs.delete(log);
-        log.clearLinkedHandlers(this, "download");
-        log.clearLinkedHandlers(this, "trigger");
-        log.clearLinkedHandlers(this, "trigger2");
-        log.clearLinkedHandlers(this, "contextmenu");
-        this.eLogs.removeChild(log.elem);
-        return log;
+    remLog(...logs) {
+        return util.Target.resultingForEach(logs, log => {
+            if (!(log instanceof Panel.LoggerTab.Log)) return false;
+            if (!this.hasLog(log)) return false;
+            this.#logs.delete(log);
+            log.clearLinkedHandlers(this, "download");
+            log.clearLinkedHandlers(this, "trigger");
+            log.clearLinkedHandlers(this, "trigger2");
+            log.clearLinkedHandlers(this, "contextmenu");
+            this.eLogs.removeChild(log.elem);
+            return log;
+        });
     }
 
     get loading() { return this.elem.classList.contains("loading_"); }
@@ -3127,34 +3110,38 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
     set actions(v) {
         v = util.ensure(v, "arr");
         this.clearActions();
-        v.forEach(v => this.addAction(v));
+        this.addAction(v);
     }
     clearActions() {
         let actions = this.actions;
-        actions.forEach(action => this.remAction(action));
+        this.remAction(actions);
         return actions;
     }
     hasAction(action) {
         if (!(action instanceof Panel.LogWorksTab.Action)) return false;
         return this.#actions.has(action) && action.tab == this;
     }
-    addAction(action) {
-        if (!(action instanceof Panel.LogWorksTab.Action)) return false;
-        if (action.tab != this) return false;
-        if (this.hasAction(action)) return false;
-        this.#actions.add(action);
-        this.elem.appendChild(action.elem);
-        this.eActions.appendChild(action.eBtn);
-        return action;
+    addAction(...actions) {
+        return util.Target.resultingForEach(actions, action => {
+            if (!(action instanceof Panel.LogWorksTab.Action)) return false;
+            if (action.tab != this) return false;
+            if (this.hasAction(action)) return false;
+            this.#actions.add(action);
+            this.elem.appendChild(action.elem);
+            this.eActions.appendChild(action.eBtn);
+            return action;
+        });
     }
-    remAction(action) {
-        if (!(action instanceof Panel.LogWorksTab.Action)) return false;
-        if (action.tab != this) return false;
-        if (!this.hasAction(action)) return false;
-        this.#actions.delete(action);
-        this.elem.removeChild(action.elem);
-        this.eActions.removeChild(action.eBtn);
-        return action;
+    remAction(...actions) {
+        return util.Target.resultingForEach(actions, action => {
+            if (!(action instanceof Panel.LogWorksTab.Action)) return false;
+            if (action.tab != this) return false;
+            if (!this.hasAction(action)) return false;
+            this.#actions.delete(action);
+            this.elem.removeChild(action.elem);
+            this.eActions.removeChild(action.eBtn);
+            return action;
+        });
     }
 
     get actionPage() { return this.#actionPage; }
@@ -4252,76 +4239,84 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     set lVars(v) {
         v = util.ensure(v, "arr");
         this.clearLVars();
-        v.forEach(v => this.addLVar(v));
+        this.addLVar(v);
     }
     clearLVars() {
         let lVars = this.lVars;
-        lVars.forEach(lVar => this.remLVar(lVar));
+        this.remLVar(lVars);
         return lVars;
     }
     hasLVar(lVar) {
         if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
         return this.#lVars.has(lVar);
     }
-    addLVar(lVar) {
-        if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
-        if (this.hasLVar(lVar)) return false;
-        this.#lVars.add(lVar);
-        lVar.addLinkedHandler(this, "remove", () => this.remLVar(lVar));
-        lVar.addLinkedHandler(this, "change", (c, f, t) => this.change("lVars["+this.lVars.indexOf(lVar)+"]."+c, f, t));
-        if (this.hasEOptionSection("l"))
-            this.getEOptionSection("l").appendChild(lVar.elem);
-        this.change("addLVar", null, lVar);
-        return lVar;
+    addLVar(...lVars) {
+        return util.Target.resultingForEach(lVars, lVar => {
+            if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
+            if (this.hasLVar(lVar)) return false;
+            this.#lVars.add(lVar);
+            lVar.addLinkedHandler(this, "remove", () => this.remLVar(lVar));
+            lVar.addLinkedHandler(this, "change", (c, f, t) => this.change("lVars["+this.lVars.indexOf(lVar)+"]."+c, f, t));
+            if (this.hasEOptionSection("l"))
+                this.getEOptionSection("l").appendChild(lVar.elem);
+            this.change("addLVar", null, lVar);
+            return lVar;
+        });
     }
-    remLVar(lVar) {
-        if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
-        if (!this.hasLVar(lVar)) return false;
-        this.#lVars.delete(lVar);
-        lVar.clearLinkedHandlers(this, "remove");
-        lVar.clearLinkedHandlers(this, "change");
-        if (this.hasEOptionSection("l"))
-            this.getEOptionSection("l").removeChild(lVar.elem);
-        this.change("remLVar", lVar, null);
-        return lVar;
+    remLVar(...lVars) {
+        return util.Target.resultingForEach(lVars, lVar => {
+            if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
+            if (!this.hasLVar(lVar)) return false;
+            this.#lVars.delete(lVar);
+            lVar.clearLinkedHandlers(this, "remove");
+            lVar.clearLinkedHandlers(this, "change");
+            if (this.hasEOptionSection("l"))
+                this.getEOptionSection("l").removeChild(lVar.elem);
+            this.change("remLVar", lVar, null);
+            return lVar;
+        });
     }
     get rVars() { return [...this.#rVars]; }
     set rVars(v) {
         v = util.ensure(v, "arr");
         this.clearRVars();
-        v.forEach(v => this.addRVar(v));
+        this.addRVar(v);
     }
     clearRVars() {
         let rVars = this.rVars;
-        rVars.forEach(rVar => this.remRVar(rVar));
+        this.remRVar(rVars);
         return rVars;
     }
     hasRVar(rVar) {
         if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
         return this.#rVars.has(rVar);
     }
-    addRVar(rVar) {
-        if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
-        if (this.hasRVar(rVar)) return false;
-        this.#rVars.add(rVar);
-        rVar.addLinkedHandler(this, "remove", () => this.remRVar(rVar));
-        rVar.addLinkedHandler(this, "change", (c, f, t) => this.change("rVars["+this.rVars.indexOf(rVar)+"]."+c, f, t));
-        if (this.hasEOptionSection("r"))
-            this.getEOptionSection("r").appendChild(rVar.elem);
-        this.change("addRVar", null, rVar);
-        return rVar;
+    addRVar(...rVars) {
+        return util.Target.resultingForEach(rVars, rVar => {
+            if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
+            if (this.hasRVar(rVar)) return false;
+            this.#rVars.add(rVar);
+            rVar.addLinkedHandler(this, "remove", () => this.remRVar(rVar));
+            rVar.addLinkedHandler(this, "change", (c, f, t) => this.change("rVars["+this.rVars.indexOf(rVar)+"]."+c, f, t));
+            if (this.hasEOptionSection("r"))
+                this.getEOptionSection("r").appendChild(rVar.elem);
+            this.change("addRVar", null, rVar);
+            return rVar;
+        });
     }
-    remRVar(rVar) {
-        if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
-        if (!this.hasRVar(rVar)) return false;
-        let i = this.rVars.indexOf(rVar);
-        this.#rVars.delete(rVar);
-        rVar.clearLinkedHandlers(this, "remove");
-        rVar.clearLinkedHandlers(this, "change");
-        if (this.hasEOptionSection("r"))
-            this.getEOptionSection("r").removeChild(rVar.elem);
-        this.change("remRVar", rVar, null);
-        return rVar;
+    remRVar(...rVars) {
+        return util.Target.resultingForEach(rVars, rVar => {
+            if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
+            if (!this.hasRVar(rVar)) return false;
+            let i = this.rVars.indexOf(rVar);
+            this.#rVars.delete(rVar);
+            rVar.clearLinkedHandlers(this, "remove");
+            rVar.clearLinkedHandlers(this, "change");
+            if (this.hasEOptionSection("r"))
+                this.getEOptionSection("r").removeChild(rVar.elem);
+            this.change("remRVar", rVar, null);
+            return rVar;
+        });
     }
 
     get viewMode() { return this.#viewMode; }
@@ -4655,41 +4650,45 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     set poses(v) {
         v = util.ensure(v, "arr");
         this.clearPoses();
-        v.forEach(v => this.addPose(v));
+        this.addPose(v);
     }
     clearPoses() {
         let poses = this.poses;
-        poses.forEach(pose => this.remPose(pose));
+        this.remPose(poses);
         return poses;
     }
     hasPose(pose) {
         if (!(pose instanceof this.constructor.Pose)) return false;
         return this.#poses.has(pose);
     }
-    addPose(pose) {
-        if (!(pose instanceof this.constructor.Pose)) return false;
-        if (this.hasPose(pose)) return false;
-        this.#poses.add(pose);
-        pose.addLinkedHandler(this, "remove", () => this.remPose(pose));
-        pose.addLinkedHandler(this, "change", (c, f, t) => this.change("poses["+this.poses.indexOf(pose)+"]."+c, f, t));
-        if (this.hasEOptionSection("p"))
-            this.getEOptionSection("p").appendChild(pose.elem);
-        this.change("addPose", null, pose);
-        pose.state.tab = this;
-        return pose;
+    addPose(...poses) {
+        return util.Target.resultingForEach(poses, pose => {
+            if (!(pose instanceof this.constructor.Pose)) return false;
+            if (this.hasPose(pose)) return false;
+            this.#poses.add(pose);
+            pose.addLinkedHandler(this, "remove", () => this.remPose(pose));
+            pose.addLinkedHandler(this, "change", (c, f, t) => this.change("poses["+this.poses.indexOf(pose)+"]."+c, f, t));
+            if (this.hasEOptionSection("p"))
+                this.getEOptionSection("p").appendChild(pose.elem);
+            this.change("addPose", null, pose);
+            pose.state.tab = this;
+            return pose;
+        });
     }
-    remPose(pose) {
-        if (!(pose instanceof this.constructor.Pose)) return false;
-        if (!this.hasPose(pose)) return false;
-        pose.state.tab = null;
-        let i = this.poses.indexOf(pose);
-        this.#poses.delete(pose);
-        pose.clearLinkedHandlers(this, "remove");
-        pose.clearLinkedHandlers(this, "change");
-        if (this.hasEOptionSection("p"))
-            this.getEOptionSection("p").removeChild(pose.elem);
-        this.change("remPose", pose, null);
-        return pose;
+    remPose(...poses) {
+        return util.Target.resultingForEach(poses, pose => {
+            if (!(pose instanceof this.constructor.Pose)) return false;
+            if (!this.hasPose(pose)) return false;
+            pose.state.tab = null;
+            let i = this.poses.indexOf(pose);
+            this.#poses.delete(pose);
+            pose.clearLinkedHandlers(this, "remove");
+            pose.clearLinkedHandlers(this, "change");
+            if (this.hasEOptionSection("p"))
+                this.getEOptionSection("p").removeChild(pose.elem);
+            this.change("remPose", pose, null);
+            return pose;
+        });
     }
 
     get template() { return this.#template; }
@@ -5190,9 +5189,10 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         });
     }
 
-    addPose(pose) {
-        let r = super.addPose(pose);
-        if (r instanceof this.constructor.Pose) {
+    addPose(...poses) {
+        let r = super.addPose(...poses);
+        let r2 = util.is(r, "arr") ? r : [r];
+        r2.forEach(r => {
             const onType = () => {
                 let current = core.Odometry2d.Robot.lookupTypeName(r.type);
                 if (!this.hasApp()) return;
@@ -5210,14 +5210,15 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 this.app.placeContextMenu(rect.left, rect.bottom);
             };
             r.addLinkedHandler(this, "type", onType);
-        }
+        });
         return r;
     }
-    remPose(pose) {
-        let r = super.remPose(pose);
-        if (r instanceof this.constructor.Pose) {
+    remPose(...poses) {
+        let r = super.remPose(...poses);
+        let r2 = util.is(r, "arr") ? r : [r];
+        r2.forEach(r => {
             r.clearLinkedHandlers(this, "type");
-        }
+        });
         return r;
     }
 
@@ -5930,9 +5931,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.isProjection = true;
     }
 
-    addPose(pose) {
-        let r = super.addPose(pose);
-        if (r instanceof this.constructor.Pose) {
+    addPose(...poses) {
+        let r = super.addPose(...poses);
+        let r2 = util.is(r, "arr") ? r : [r];
+        r2.forEach(r => {
             const onType = async () => {
                 let robots = util.ensure(await window.api.get("robots"), "obj");
                 let current = r.type;
@@ -5972,14 +5974,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.app.placeContextMenu(rect.left, rect.bottom);
             };
             r.addLinkedHandler(this, "type", onType);
-        }
+        });
         return r;
     }
-    remPose(pose) {
-        let r = super.remPose(pose);
-        if (r instanceof this.constructor.Pose) {
+    remPose(...poses) {
+        let r = super.remPose(...poses);
+        let r2 = util.is(r, "arr") ? r : [r];
+        r2.forEach(r => {
             r.clearLinkedHandlers(this, "type");
-        }
+        });
         return r;
     }
 
@@ -6673,9 +6676,7 @@ Project.Config = class ProjectConfig extends Project.Config {
 };
 
 const REVIVER = new util.Reviver(util.REVIVER);
-REVIVER.addRuleAndAllSub(Container);
-REVIVER.addRuleAndAllSub(Panel);
-REVIVER.addRuleAndAllSub(Project);
+REVIVER.addRuleAndAllSub(Container, Panel, Project);
 
 export default class App extends core.AppFeature {
     #eBlock;
@@ -7584,93 +7585,67 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return this.#browserNodes.includes(node);
     }
     addBrowserNode(...nodes) {
-        nodes = nodes.flatten();
-        let r;
-        if (nodes.length == 1) {
-            let node = nodes[0];
-            r = false;
-            if (!(node instanceof BrowserNode));
-            else if (this.hasBrowserNode(node));
-            else {
-                this.#browserNodes.push(node);
-                const onDrag = path => {
-                    path = Source.generatePath(path);
-                    let node = this.hasSource() ? this.source.tree.lookup(path) : null;
-                    if (!(node instanceof Source.Node)) return;
-                    this.app.dragData = node;
-                    this.app.dragging = true;
-                };
-                node.addLinkedHandler(this, "drag", onDrag);
-                this.getESideSection("browser").eContent.appendChild(node.elem);
-                r = node;
-            }
-        } else {
-            let formatSide = this.formatSide;
-            this.formatSide = () => {};
-            r = [];
-            nodes.forEach(node => {
-                let r2 = this.addBrowserNode(node);
-                if (!r2) return;
-                r.push(r2);
-            });
-            this.formatSide = formatSide;
-        }
+        let r = util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof BrowserNode)) return false;
+            if (this.hasBrowserNode(node)) return false;
+            this.#browserNodes.push(node);
+            const onDrag = path => {
+                path = Source.generatePath(path);
+                let node = this.hasSource() ? this.source.tree.lookup(path) : null;
+                if (!(node instanceof Source.Node)) return;
+                this.app.dragData = node;
+                this.app.dragging = true;
+            };
+            node.addLinkedHandler(this, "drag", onDrag);
+            this.getESideSection("browser").eContent.appendChild(node.elem);
+            return node;
+        });
         this.formatSide();
         return r;
     }
     remBrowserNode(...nodes) {
-        nodes = nodes.flatten();
-        let r;
-        if (nodes.length == 1) {
-            let node = nodes[0];
-            r = false;
-            if (!(node instanceof BrowserNode));
-            else if (!this.hasBrowserNode(node));
-            else {
-                this.#browserNodes.splice(this.#browserNodes.indexOf(node), 1);
-                node.clearLinkedHandlers(this, "drag");
-                this.getESideSection("browser").eContent.removeChild(node.elem);
-                r = node;
-            }
-        } else {
-            r = [];
-            nodes.forEach(node => {
-                let r2 = this.remBrowserNode(node);
-                if (!r2) return;
-                r.push(r2);
-            });
-        }
-        return r;
+        return util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof BrowserNode)) return false;
+            if (!this.hasBrowserNode(node)) return false;
+            this.#browserNodes.splice(this.#browserNodes.indexOf(node), 1);
+            node.clearLinkedHandlers(this, "drag");
+            this.getESideSection("browser").eContent.removeChild(node.elem);
+            return node;
+        });
     }
 
     get toolButtons() { return [...this.#toolButtons]; }
     set toolButtons(v) {
         v = util.ensure(v, "arr");
         this.clearToolButtons();
-        v.forEach(v => this.addToolButton(v));
+        this.addToolButton(v);
     }
     clearToolButtons() {
         let btns = this.toolButtons;
-        btns.forEach(btn => this.remToolButton(btn));
+        this.remToolButton(btns);
         return btns;
     }
     hasToolButton(btn) {
         if (!(btn instanceof ToolButton)) return false;
         return this.#toolButtons.has(btn);
     }
-    addToolButton(btn) {
-        if (!(btn instanceof ToolButton)) return false;
-        if (this.hasToolButton(btn)) return false;
-        this.#toolButtons.add(btn);
-        this.getESideSection("tools").eContent.appendChild(btn.elem);
-        return btn;
+    addToolButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof ToolButton)) return false;
+            if (this.hasToolButton(btn)) return false;
+            this.#toolButtons.add(btn);
+            this.getESideSection("tools").eContent.appendChild(btn.elem);
+            return btn;
+        });
     }
-    remToolButton(btn) {
-        if (!(btn instanceof ToolButton)) return false;
-        if (!this.hasToolButton(btn)) return false;
-        this.#toolButtons.delete(btn);
-        this.getESideSection("tools").eContent.removeChild(btn.elem);
-        return btn;
+    remToolButton(...btns) {
+        return util.Target.resultingForEach(btns, btn => {
+            if (!(btn instanceof ToolButton)) return false;
+            if (!this.hasToolButton(btn)) return false;
+            this.#toolButtons.delete(btn);
+            this.getESideSection("tools").eContent.removeChild(btn.elem);
+            return btn;
+        });
     }
 
     get widget() { return this.#widget; }
