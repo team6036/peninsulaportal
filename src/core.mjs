@@ -765,6 +765,8 @@ export class App extends util.Target {
         let accent = (this.holiday == null) ? this.accent : util.ensure(util.ensure(await window.api.get("holidays"), "obj")[this.holiday], "obj").accent;
         let style = {};
         let v0 = this.getBase(0), v8 = this.getBase(8);
+        if (!(v0 instanceof util.Color)) v0 = new util.Color(0, 0, 0);
+        if (!(v8 instanceof util.Color)) v8 = new util.Color(255, 255, 255);
         let v0Avg = (v0.r+v0.g+v0.b)/3, v8Avg = (v8.r+v8.g+v8.b)/3;
         let dark = v8Avg > v0Avg;
         for (let i = 0; i <= 9; i++) {
@@ -772,13 +774,17 @@ export class App extends util.Target {
             for (let j = 0; j < 16; j++) {
                 let alpha = j/15;
                 let hex = "0123456789abcdef"[j];
-                if (normal) style["v"+i+"-"+hex] = "rgba("+[...this.getBase(i).rgb, alpha].join(",")+")";
+                let vi = this.getBase(i);
+                if (!(vi instanceof util.Color)) vi = new util.Color(...new Array(3).fill(255*(i/8)));
+                if (normal) style["v"+i+"-"+hex] = "rgba("+[...vi.rgb, alpha].join(",")+")";
                 else style["v-"+hex] = "var(--v4-"+hex+")";
             }
             if (normal) style["v"+i] = "var(--v"+i+"-f)";
             else style["v"] = "var(--v-f)";
         }
         let black = this.getBase(dark ? 1 : 8), white = this.getBase(dark ? 8 : 1);
+        if (!(black instanceof util.Color)) black = new util.Color(0, 0, 0);
+        if (!(white instanceof util.Color)) white = new util.Color(255, 255, 255);
         let colors = {};
         this.colors.forEach(name => (colors[name] = this.getColor(name)));
         colors._ = new util.Color(this.hasColor(accent) ? this.getColor(accent) : this.getBase(4));

@@ -1128,7 +1128,7 @@ export class Color extends Target {
             else if (is(a, "obj")) a = [a.r, a.g, a.b, a.a];
             else if (is(a, "num")) {
                 if (a < 0) a = new Array(3).fill(-a);
-                else if (a < 0xffff) {
+                else if (a <= 0xffff) {
                     let rgba = new Array(4).fill(null).map(_ => {
                         let x = a % 16;
                         a = Math.floor(a / 16);
@@ -1136,7 +1136,7 @@ export class Color extends Target {
                     }).reverse();
                     a = rgba.map(x => x*16+x);
                     a[3] /= 255;
-                } else if (a < 0xffffff) {
+                } else if (a <= 0xffffffff) {
                     let rgba = new Array(4).fill(null).map(_ => {
                         let x = a % 256;
                         a = Math.floor(a / 256);
