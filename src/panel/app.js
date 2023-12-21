@@ -239,9 +239,9 @@ class BrowserNode extends util.Target {
             if (bnode.isOpen)
                 BrowserNode.doubleTraverse(
                     node.nodeObjects,
-                    bnode.nodes,
-                    (...bn) => bnode.addBulk(...bn),
-                    (...bn) => bnode.remBulk(...bn),
+                    bnode.nodeObjects,
+                    (...bn) => bnode.add(...bn),
+                    (...bn) => bnode.rem(...bn),
                 );
             bnode.value = node.hasField() ? node.field.get() : null;
         }
@@ -359,74 +359,97 @@ class BrowserNode extends util.Target {
         this.updateDisplay();
     }
 
+    get nodes() { return Object.keys(this.#nodes); }
+    get nodeObjects() { return Object.values(this.#nodes); }
     get nNodes() {
         let n = 1;
-        this.nodes.forEach(node => (n += node.nNodes));
+        this.nodeObjects.forEach(node => (n += node.nNodes));
         return n;
     }
-    get nodes() { return Object.values(this.#nodes); }
-    lookup(k) {
-        k = util.ensure(k, "arr");
-        let o = this;
-        while (k.length > 0) {
-            o = o.singlelookup(k.shift());
-            if (!o) return null;
+    clear() {
+        let nodes = this.nodeObjects;
+        this.rem(nodes);
+        return nodes;
+    }
+    has(v) {
+        if (v instanceof BrowserNode) return this.has(v.name) && this.nodeObjects.includes(v);
+        return v in this.#nodes;
+    }
+    get(name) {
+        if (!this.has(name)) return null;
+        return this.#nodes[name];
+    }
+    add(...nodes) {
+        nodes = nodes.flatten();
+        let r;
+        if (nodes.length == 1) {
+            let node = nodes[0];
+            r = false;
+            if (!(node instanceof BrowserNode));
+            else if (this.has(node));
+            else {
+                this.#nodes[node.name] = node;
+                node.addLinkedHandler(this, "trigger", (e, path) => {
+                    path = Source.generatePath(path);
+                    if (this.name.length > 0) path = this.name+"/"+path;
+                    this.post("trigger", e, path);
+                });
+                node.addLinkedHandler(this, "drag", path => {
+                    path = Source.generatePath(path);
+                    if (this.name.length > 0) path = this.name+"/"+path;
+                    this.post("drag", path);
+                });
+                this.eContent.appendChild(node.elem);
+                r = node;
+            }
+        } else {
+            let format = this.format;
+            this.format = () => {};
+            r = [];
+            nodes.forEach(node => {
+                let r2 = this.add(node);
+                if (!r2) return;
+                r.push(r2);
+            });
+            this.format = format;
         }
-        return o;
-    }
-    singlelookup(k) {
-        k = String(k);
-        if (k in this.#nodes) return this.#nodes[k];
-        return null;
-    }
-    has(node) {
-        if (!(node instanceof BrowserNode)) return false;
-        return node.name in this.#nodes;
-    }
-    add(node) {
-        let r = this.addBulk(node);
-        return (r.length > 0) ? r[0] : false;
-    }
-    addBulk(...nodes) {
-        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.addBulk(...nodes[0]);
-        let doneNodes = [];
-        nodes.forEach(node => {
-            if (!(node instanceof BrowserNode)) return;
-            if (node.name in this.#nodes) return;
-            this.#nodes[node.name] = node;
-            node.addLinkedHandler(this, "trigger", (e, path) => {
-                path = Source.generatePath(path);
-                if (this.name.length > 0) path = this.name+"/"+path;
-                this.post("trigger", e, path);
-            });
-            node.addLinkedHandler(this, "drag", path => {
-                path = Source.generatePath(path);
-                if (this.name.length > 0) path = this.name+"/"+path;
-                this.post("drag", path);
-            });
-            this.eContent.appendChild(node.elem);
-            doneNodes.push(node);
-        });
         this.format();
-        return doneNodes;
+        return r;
     }
-    rem(node) {
-        let r = this.remBulk(node);
-        return (r.length > 0) ? r[0] : false;
+    rem(...nodes) {
+        nodes = nodes.flatten();
+        let r;
+        if (nodes.length == 1) {
+            let node = nodes[0];
+            r = false;
+            if (!(node instanceof BrowserNode));
+            else if (!this.has(node));
+            else {
+                delete this.#nodes[node.name];
+                node.clearLinkedHandlers(this, "trigger");
+                node.clearLinkedHandlers(this, "drag");
+                this.eContent.removeChild(node.elem);
+                r = node;
+            }
+        } else {
+            r = [];
+            nodes.forEach(node => {
+                let r2 = this.rem(node);
+                if (!r2) return;
+                r.push(r2);
+            });
+        }
+        return r;
     }
-    remBulk(...nodes) {
-        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.addBulk(...nodes[0]);
-        let doneNodes = [];
-        nodes.forEach(node => {
-            if (!(node instanceof BrowserNode)) return;
-            if (!(node.name in this.#nodes)) return;
-            delete this.#nodes[node.name];
-            node.clearLinkedHandlers(this, "trigger");
-            node.clearLinkedHandlers(this, "drag");
-            this.eContent.removeChild(node.elem);
-            doneNodes.push(node);
-        });
-        return doneNodes;
+    lookup(path) {
+        path = Source.generateArrayPath(path);
+        let node = this;
+        while (path.length > 0) {
+            let name = path.shift();
+            if (!node.has(name)) return null;
+            node = node.get(name);
+        }
+        return node;
     }
 
     get showValue() { return this.#showValue; }
@@ -490,7 +513,7 @@ class BrowserNode extends util.Target {
 
     format() {
         this.updateDisplay();
-        this.nodes.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
+        this.nodeObjects.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
             node.elem.style.order = i;
             node.format();
         });
@@ -6269,6 +6292,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
 
         let loadTimer = 0, loadRobot = 0;
 
+        let isGhost = null, isSolid = null, theObject = null;
+
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
@@ -6308,38 +6333,36 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     }, null, err => {});
                 }
                 this.object = this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type];
-                if (this.hasObject()) {
-                    if (this.theObject.isGhost != this.pose.isGhost) {
-                        this.theObject.isGhost = this.pose.isGhost;
-                        if (this.hasObject()) this.theObject.traverse(obj => {
+                if (theObject != this.theObject) {
+                    theObject = this.theObject;
+                    if (theObject instanceof THREE.Object3D)
+                        theObject.traverse(obj => {
                             if (!obj.isMesh) return;
-                            if (obj.material instanceof THREE.Material) {
-                                obj.material.transparent = this.pose.isGhost;
-                                if (this.pose.isGhost) {
-                                    obj.material._opacity = obj.material.opacity;
-                                    obj.material.opacity *= 0.5;
-                                } else {
-                                    if ("_opacity" in obj.material)
-                                        obj.material.opacity = obj.material._opacity;
-                                }
-                            }
+                            if (!(obj.material instanceof THREE.Material)) return;
+                            obj.material._transparent = obj.material.transparent;
+                            obj.material._opacity = obj.material.opacity;
+                            obj.material._color = obj.material.color.clone();
                         });
+                    isGhost = isSolid = null;
+                }
+                if (theObject instanceof THREE.Object3D) {
+                    let changed = false;
+                    if (isGhost != this.pose.isGhost) {
+                        isGhost = this.pose.isGhost;
+                        changed = true;
                     }
-                    if (this.theObject.isSolid != this.pose.isSolid) {
-                        this.theObject.isSolid = this.pose.isSolid;
-                        if (this.hasObject()) this.theObject.traverse(obj => {
+                    if (isSolid != this.pose.isSolid) {
+                        isSolid = this.pose.isSolid;
+                        changed = true;
+                    }
+                    if (changed)
+                        theObject.traverse(obj => {
                             if (!obj.isMesh) return;
-                            if (obj.material instanceof THREE.Material) {
-                                if (this.pose.isSolid) {
-                                    obj.material._color = obj.material.color.clone();
-                                    obj.material.color.set(color.toHex(false));
-                                } else {
-                                    if ("_color" in obj.material)
-                                        obj.material.color.set(obj.material._color);
-                                }
-                            }
+                            if (!(obj.material instanceof THREE.Material)) return;
+                            obj.material.transparent = isGhost ? true : obj.material._transparent;
+                            obj.material.opacity = isGhost ? 0.5*obj.material._opacity : obj.material._opacity;
+                            obj.material.color.set(isSolid ? color.toHex(false) : obj.material._color);
                         });
-                    }
                 }
                 if (this.hasObject()) {
                     if (this.value.length == 3) {
@@ -6388,7 +6411,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     if (!this.composer.passes.includes(pass))
                         this.composer.addPass(pass);
                 }
-            }
+            } else this.object = null;
         });
     }
 
@@ -6488,7 +6511,12 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         }
         this.#object = v;
         if (this.hasObject()) {
-            this.#theObject = Object.values(this.#preloadedObjs).includes(this.object) ? this.object : this.object.clone();
+            this.#theObject = this.object.clone();
+            this.theObject.traverse(obj => {
+                if (!obj.isMesh) return;
+                if (!(obj.material instanceof THREE.Material)) return;
+                obj.material = obj.material.clone();
+            });
             this.group.add(this.theObject);
         }
     }
@@ -7031,62 +7059,6 @@ export default class App extends core.AppFeature {
                 }
                 page.widget.collapse();
             });
-            this.addHandler("cmd-newtab", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (!page.hasActivePanel()) return;
-                const active = page.activeWidget;
-                active.addTab(new Panel.AddTab());
-            });
-            this.addHandler("cmd-nexttab", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (!page.hasActivePanel()) return;
-                const active = page.activeWidget;
-                active.tabIndex++;
-            });
-            this.addHandler("cmd-prevtab", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (!page.hasActivePanel()) return;
-                const active = page.activeWidget;
-                active.tabIndex--;
-            });
-            this.addHandler("cmd-closetab", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (!page.hasActivePanel()) return;
-                const active = page.activeWidget;
-                active.remTab(active.tabs[active.tabIndex]);
-            });
-            this.addHandler("cmd-openclose", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (!page.hasActivePanel()) return;
-                const active = page.activeWidget;
-                if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
-                active.tabs[active.tabIndex].post("openclose");
-            });
-            this.addHandler("cmd-expandcollapse", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (!page.hasActivePanel()) return;
-                const active = page.activeWidget;
-                active.isTitleCollapsed = !active.isTitleCollapsed;
-            });
-            this.addHandler("cmd-resetdivider", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (!page.hasProject()) return;
-                page.project.sidePos = null;
-            });
         });
     }
 
@@ -7146,6 +7118,41 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.eProjectInfoSourceInput.addEventListener("change", e => {
             this.project.config.source = this.app.eProjectInfoSourceInput.value;
         });
+        this.app.addHandler("cmd-newtab", () => {
+            if (!this.hasActivePanel()) return;
+            const active = this.activeWidget;
+            active.addTab(new Panel.AddTab());
+        });
+        this.app.addHandler("cmd-nexttab", () => {
+            if (!this.hasActivePanel()) return;
+            const active = this.activeWidget;
+            active.tabIndex++;
+        });
+        this.app.addHandler("cmd-prevtab", () => {
+            if (!this.hasActivePanel()) return;
+            const active = this.activeWidget;
+            active.tabIndex--;
+        });
+        this.app.addHandler("cmd-closetab", () => {
+            if (!this.hasActivePanel()) return;
+            const active = this.activeWidget;
+            active.remTab(active.tabs[active.tabIndex]);
+        });
+        this.app.addHandler("cmd-openclose", () => {
+            if (!this.hasActivePanel()) return;
+            const active = this.activeWidget;
+            if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
+            active.tabs[active.tabIndex].post("openclose");
+        });
+        this.app.addHandler("cmd-expandcollapse", () => {
+            if (!this.hasActivePanel()) return;
+            const active = this.activeWidget;
+            active.isTitleCollapsed = !active.isTitleCollapsed;
+        });
+        this.app.addHandler("cmd-resetdivider", () => {
+            if (!this.hasProject()) return;
+            this.project.sidePos = null;
+        });
         this.app.addHandler("cmd-source-type", type => {
             if (!this.hasProject()) return;
             type = String(type);
@@ -7185,6 +7192,39 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 })();
                 return;
             }
+        });
+
+        this.eNavProgress.addEventListener("mousedown", e => {
+            if (!this.hasSource()) return;
+            let paused = this.source.playback.paused;
+            e.preventDefault();
+            e.stopPropagation();
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+                if (!this.hasSource()) return;
+                this.source.playback.paused = paused;
+            };
+            const mousemove = e => {
+                if (!this.hasSource()) return;
+                this.source.playback.paused = true;
+                this.source.ts = util.lerp(this.source.tsMin, this.source.tsMax, this.progressHover);
+            };
+            mousemove(e);
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        });
+        this.eNavActionButton.addEventListener("click", e => {
+            if (!this.hasSource()) return;
+            this.source.playback.paused = !this.source.playback.paused;
+        });
+        this.eNavBackButton.addEventListener("click", e => {
+            if (!this.hasSource()) return;
+            this.source.ts = this.source.tsMin;
+        });
+        this.eNavForwardButton.addEventListener("click", e => {
+            if (!this.hasSource()) return;
+            this.source.ts = this.source.tsMax;
         });
 
         this.#browserNodes = [];
@@ -7276,72 +7316,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragging = true;
         });
 
-        this.format();
-
-        this.eNavProgress.addEventListener("mousedown", e => {
-            if (!this.hasSource()) return;
-            let paused = this.source.playback.paused;
-            e.preventDefault();
-            e.stopPropagation();
-            const mouseup = () => {
-                document.body.removeEventListener("mouseup", mouseup);
-                document.body.removeEventListener("mousemove", mousemove);
-                if (!this.hasSource()) return;
-                this.source.playback.paused = paused;
-            };
-            const mousemove = e => {
-                if (!this.hasSource()) return;
-                this.source.playback.paused = true;
-                this.source.ts = util.lerp(this.source.tsMin, this.source.tsMax, this.progressHover);
-            };
-            mousemove(e);
-            document.body.addEventListener("mouseup", mouseup);
-            document.body.addEventListener("mousemove", mousemove);
-        });
-        this.eNavActionButton.addEventListener("click", e => {
-            if (!this.hasSource()) return;
-            this.source.playback.paused = !this.source.playback.paused;
-        });
-        this.eNavBackButton.addEventListener("click", e => {
-            if (!this.hasSource()) return;
-            this.source.ts = this.source.tsMin;
-        });
-        this.eNavForwardButton.addEventListener("click", e => {
-            if (!this.hasSource()) return;
-            this.source.ts = this.source.tsMax;
-        });
-        let timer = 0;
-        this.addHandler("update", async delta => {
-            if (this.hasSource()) {
-                this.navOpen = true;
-                let tMin = this.source.tsMin, tMax = this.source.tsMax;
-                let tNow = this.source.ts;
-                let paused = this.source.playback.paused;
-                this.progress = (tNow - tMin) / (tMax - tMin);
-                if (this.eNavActionButton.children[0] instanceof HTMLElement)
-                    this.eNavActionButton.children[0].setAttribute("name", paused ? "play" : "pause");
-                this.eNavProgressTooltip.textContent = util.formatTime(util.lerp(tMin, tMax, this.progressHover));
-                this.eNavPreInfo.textContent = util.formatTime(tMin);
-                this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);
-            } else this.navOpen = false;
-            if (this.app.page == this.name)
-                this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
-            BrowserNode.doubleTraverse(
-                this.hasSource() ? this.source.tree.nodeObjects : [],
-                this.browserNodes,
-                (...bnodes) => this.addBrowserNodeBulk(...bnodes),
-                (...bnodes) => this.remBrowserNodeBulk(...bnodes),
-            );
-            this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
-            if (timer > 0) return timer -= delta;
-            timer = 1000;
-            if (!this.hasProject()) return;
-            let r = this.eContent.getBoundingClientRect();
-            this.project.meta.thumb = await this.app.capture({
-                x: Math.round(r.left), y: Math.round(r.top),
-                width: Math.round(r.width), height: Math.round(r.height),
-            });
-        });
         this.#eDragBox = document.createElement("div");
         this.eMain.appendChild(this.eDragBox);
         this.eDragBox.classList.add("dragbox");
@@ -7393,10 +7367,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.source = null;
 
+        this.format();
+
         this.addHandler("change-project", () => {
             this.widget = this.hasProject() ? this.project.buildWidget() : null;
         });
-        this.addHandler("update", delta => {
+
+        let timer = 0;
+        this.addHandler("update", async delta => {
+            if (this.app.page == this.name)
+                this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
+            
             if (this.hasProject()) {
                 const constructor = {
                     nt: NTSource,
@@ -7491,6 +7472,37 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!(itm instanceof App.Menu.Item)) return;
                 itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
             });
+
+            if (this.hasSource()) {
+                this.navOpen = true;
+                let tMin = this.source.tsMin, tMax = this.source.tsMax;
+                let tNow = this.source.ts;
+                let paused = this.source.playback.paused;
+                this.progress = (tNow - tMin) / (tMax - tMin);
+                if (this.eNavActionButton.children[0] instanceof HTMLElement)
+                    this.eNavActionButton.children[0].setAttribute("name", paused ? "play" : "pause");
+                this.eNavProgressTooltip.textContent = util.formatTime(util.lerp(tMin, tMax, this.progressHover));
+                this.eNavPreInfo.textContent = util.formatTime(tMin);
+                this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);
+            } else this.navOpen = false;
+            
+            BrowserNode.doubleTraverse(
+                this.hasSource() ? this.source.tree.nodeObjects : [],
+                this.browserNodes,
+                (...bnodes) => this.addBrowserNode(...bnodes),
+                (...bnodes) => this.remBrowserNode(...bnodes),
+            );
+
+            this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
+
+            if (timer > 0) return timer -= delta;
+            timer = 1000;
+            if (!this.hasProject()) return;
+            let r = this.eContent.getBoundingClientRect();
+            this.project.meta.thumb = await this.app.capture({
+                x: Math.round(r.left), y: Math.round(r.top),
+                width: Math.round(r.width), height: Math.round(r.height),
+            });
         });
 
         this.addHandler("refresh", () => {
@@ -7571,47 +7583,64 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (!(node instanceof BrowserNode)) return false;
         return this.#browserNodes.includes(node);
     }
-    addBrowserNode(node) {
-        let r = this.addBrowserNodeBulk(node);
-        return (r.length > 0) ? r[0] : false;
-    }
-    addBrowserNodeBulk(...nodes) {
-        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.addBrowserNodeBulk(...nodes[0]);
-        let doneNodes = [];
-        nodes.forEach(node => {
-            if (!(node instanceof BrowserNode)) return;
-            if (this.hasBrowserNode(node)) return;
-            this.#browserNodes.push(node);
-            const onDrag = path => {
-                path = Source.generatePath(path);
-                let node = this.hasSource() ? this.source.tree.lookup(path) : null;
-                if (!(node instanceof Source.Node)) return;
-                this.app.dragData = node;
-                this.app.dragging = true;
-            };
-            node.addLinkedHandler(this, "drag", onDrag);
-            this.getESideSection("browser").eContent.appendChild(node.elem);
-            doneNodes.push(node);
-        });
+    addBrowserNode(...nodes) {
+        nodes = nodes.flatten();
+        let r;
+        if (nodes.length == 1) {
+            let node = nodes[0];
+            r = false;
+            if (!(node instanceof BrowserNode));
+            else if (this.hasBrowserNode(node));
+            else {
+                this.#browserNodes.push(node);
+                const onDrag = path => {
+                    path = Source.generatePath(path);
+                    let node = this.hasSource() ? this.source.tree.lookup(path) : null;
+                    if (!(node instanceof Source.Node)) return;
+                    this.app.dragData = node;
+                    this.app.dragging = true;
+                };
+                node.addLinkedHandler(this, "drag", onDrag);
+                this.getESideSection("browser").eContent.appendChild(node.elem);
+                r = node;
+            }
+        } else {
+            let formatSide = this.formatSide;
+            this.formatSide = () => {};
+            r = [];
+            nodes.forEach(node => {
+                let r2 = this.addBrowserNode(node);
+                if (!r2) return;
+                r.push(r2);
+            });
+            this.formatSide = formatSide;
+        }
         this.formatSide();
-        return doneNodes;
+        return r;
     }
-    remBrowserNode(node) {
-        let r = this.remBrowserNodeBulk(node);
-        return (r.length > 0) ? r[0] : false;
-    }
-    remBrowserNodeBulk(...nodes) {
-        if (nodes.length == 1 && util.is(nodes[0], "arr")) return this.remBrowserNodeBulk(...nodes[0]);
-        let doneNodes = [];
-        nodes.forEach(node => {
-            if (!(node instanceof BrowserNode)) return;
-            if (!this.hasBrowserNode(node)) return;
-            this.#browserNodes.splice(this.#browserNodes.indexOf(node), 1);
-            node.clearLinkedHandlers(this, "drag");
-            this.getESideSection("browser").eContent.removeChild(node.elem);
-            doneNodes.push(node);
-        });
-        return doneNodes;
+    remBrowserNode(...nodes) {
+        nodes = nodes.flatten();
+        let r;
+        if (nodes.length == 1) {
+            let node = nodes[0];
+            r = false;
+            if (!(node instanceof BrowserNode));
+            else if (!this.hasBrowserNode(node));
+            else {
+                this.#browserNodes.splice(this.#browserNodes.indexOf(node), 1);
+                node.clearLinkedHandlers(this, "drag");
+                this.getESideSection("browser").eContent.removeChild(node.elem);
+                r = node;
+            }
+        } else {
+            r = [];
+            nodes.forEach(node => {
+                let r2 = this.remBrowserNode(node);
+                if (!r2) return;
+                r.push(r2);
+            });
+        }
+        return r;
     }
 
     get toolButtons() { return [...this.#toolButtons]; }
