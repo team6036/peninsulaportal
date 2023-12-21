@@ -3481,7 +3481,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             itm = this.app.menu.findItemWithId("closeproject");
             if (itm instanceof App.Menu.Item)
                 itm.accelerator = null;
-                itm = this.app.menu.findItemWithId("close");
+            itm = this.app.menu.findItemWithId("close");
             if (itm instanceof App.Menu.Item)
                 itm.accelerator = null;
             this.app.markChange("*all");
