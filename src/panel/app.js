@@ -5417,7 +5417,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
     destroy() {
         if (!this.hasTab()) return;
         this.#renders.forEach(render => {
-            this.tab.odometry.remRender(render);
+            this.tab.odometry.render.remRender(render);
         });
         this.#renders = [];
     }
