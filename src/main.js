@@ -1752,13 +1752,20 @@ const MAIN = async () => {
                             if (!project.hasItem(id)) return;
                             let itm = project.getItem(id);
                             if (!(itm instanceof subcore.Project.Node)) return;
-                            dataIn.nodes.push({
+                            let data = {
                                 x: itm.x/100, y: itm.y/100,
                                 vx: itm.useVelocity ? itm.velocityX/100 : null,
                                 vy: itm.useVelocity ? itm.velocityY/100 : null,
                                 vt: itm.useVelocity ? itm.velocityRot : null,
                                 theta: itm.useHeading ? itm.heading : null,
+                            };
+                            itm.options.forEach(k => {
+                                let v = itm.getOption(k);
+                                try { v = JSON.parse(v); }
+                                catch (e) { return; }
+                                data[k] = v;
                             });
+                            dataIn.nodes.push(data);
                         });
                         project.items.forEach(id => {
                             let itm = project.getItem(id);

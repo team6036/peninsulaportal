@@ -1116,8 +1116,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (id instanceof subcore.Project.Item) id = id.id;
             if (this.isSelected(id)) return false;
             id = String(id);
-            if (this.hasProject() && this.project.hasItem(v)) {
-                this.#selected.add(v);
+            if (this.hasProject() && this.project.hasItem(id)) {
+                this.#selected.add(id);
                 return id;
             }
             return false;
@@ -1559,6 +1559,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
     #robotVelocity;
     #robotRotVelocity;
     #radius;
+    #eOptions;
+    #eOptionsAdd;
     #itemControls;
     #remove;
 
@@ -1797,6 +1799,20 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             });
         });
 
+        this.addItem(new App.ProjectPage.Panel.SubHeader("Options")).elem.classList.add("fornode");
+        this.#eOptions = document.createElement("div");
+        this.addItem(this.eOptions);
+        this.eOptions.classList.add("options");
+        this.eOptions.classList.add("fornode");
+        this.#eOptionsAdd = document.createElement("button");
+        this.eOptions.appendChild(this.eOptionsAdd);
+        this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
+        let optionAdd = () => {};
+        this.eOptionsAdd.addEventListener("click", e => {
+            if (!this.page.hasProject()) return;
+            optionAdd();
+        });
+
         this.addItem(new App.ProjectPage.Panel.SubHeader("Controls")).elem.classList.add("forany");
         this.#itemControls = document.createElement("div");
         this.addItem(this.itemControls);
@@ -1945,6 +1961,76 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                 }
                 this.radius.inputs[0].value = same ? sameValue/100 : "";
             } else this.radius.inputs[0].value = "";
+            let node = (allNode && itms.length == 1) ? itms[0] : null;
+            this.eOptionsAdd.disabled = !(node instanceof subcore.Project.Node);
+            optionAdd = () => {
+                if (!(node instanceof subcore.Project.Node)) return;
+                let options = node.options;
+                let k = "new-key";
+                if (options.includes(k)) {
+                    let n = 1;
+                    while (true) {
+                        if (!options.includes(k+"-"+n)) break;
+                        n++;
+                    }
+                    k += "-"+n;
+                }
+                node.addOption(k, "null");
+                this.page.editorRefresh();
+            };
+            Array.from(this.eOptions.querySelectorAll(":scope > .item")).forEach(elem => elem.remove());
+            if (node instanceof subcore.Project.Node)
+                node.options.forEach(k => {
+                    let v = node.getOption(k);
+                    let elem = document.createElement("div");
+                    this.eOptions.insertBefore(elem, this.eOptionsAdd);
+                    elem.classList.add("item");
+                    let kinput = document.createElement("input");
+                    elem.appendChild(kinput);
+                    kinput.type = "text";
+                    kinput.placeholder = "Key...";
+                    kinput.autocomplete = "off";
+                    kinput.spellcheck = false;
+                    kinput.value = k;
+                    let separator = document.createElement("div");
+                    elem.appendChild(separator);
+                    separator.classList.add("separator");
+                    separator.textContent = ":";
+                    let vinput = document.createElement("input");
+                    elem.appendChild(vinput);
+                    vinput.type = "text";
+                    vinput.placeholder = "Value...";
+                    vinput.autocomplete = "off";
+                    vinput.spellcheck = false;
+                    vinput.value = v;
+                    let color = "v4";
+                    try {
+                        let v2 = JSON.parse(v);
+                        if (util.is(v2, "str")) color = "cy";
+                        else if (util.is(v2, "num")) color = "cb";
+                        else if (v2 == null) color = "co";
+                        else if (v2 == true || v2 == false) color = ["cr", "cg"][+v2];
+                        else color = "v8";
+                    } catch (e) {}
+                    vinput.style.color = "var(--"+color+")";
+                    let remove = document.createElement("button");
+                    elem.appendChild(remove);
+                    remove.classList.add("remove");
+                    remove.innerHTML = "<ion-icon name='close'></ion-icon>";
+                    kinput.addEventListener("change", e => {
+                        node.remOption(k);
+                        node.addOption(kinput.value, v);
+                        this.page.editorRefresh();
+                    });
+                    vinput.addEventListener("change", e => {
+                        node.addOption(k, vinput.value);
+                        this.page.editorRefresh();
+                    });
+                    remove.addEventListener("click", e => {
+                        node.remOption(k);
+                        this.page.editorRefresh();
+                    });
+                });
         });
     }
 
@@ -1956,6 +2042,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
     get robotVelocity() { return this.#robotVelocity; }
     get robotRotVelocity() { return this.#robotRotVelocity; }
     get radius() { return this.#radius; }
+    get eOptions() { return this.#eOptions; }
+    get eOptionsAdd() { return this.#eOptionsAdd; }
     get itemControls() { return this.#itemControls; }
     get remove() { return this.#remove; }
 
@@ -2693,7 +2781,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                 }
                 k += "-"+n;
             }
-            this.page.project.config.addOption(k, "\"\"");
+            this.page.project.config.addOption(k, "null");
             this.page.editorRefresh();
         });
 
