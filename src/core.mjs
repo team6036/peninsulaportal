@@ -2339,11 +2339,15 @@ export class Project extends util.Target {
     set meta(v) {
         v = new this.constructor.Meta(v);
         if (this.meta == v) return;
-        if (this.meta instanceof this.constructor.Meta)
+        if (this.meta instanceof this.constructor.Meta) {
             this.meta.clearLinkedHandlers(this, "change");
+            this.meta.clearLinkedHandlers(this, "thumb");
+        }
         this.change("meta", this.meta, this.#meta=v);
-        if (this.meta instanceof this.constructor.Meta)
+        if (this.meta instanceof this.constructor.Meta) {
             this.meta.addLinkedHandler(this, "change", (c, f, t) => this.change("meta."+c, f, t));
+            this.meta.addLinkedHandler(this, "thumb", () => this.post("thumb"));
+        }
     }
 
     toJSON() {
@@ -2415,6 +2419,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.thumb == v) return;
         this.#thumb = v;
+        this.post("thumb");
     }
 
     toJSON() {
@@ -3326,13 +3331,23 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
         this.project = project;
 
+        this.eListIcon.setAttribute("name", "document-outline");
+        this.eGridIcon.setAttribute("name", "document-outline");
+
+        this.addHandler("change-project", (f, t) => {
+            const doThumb = () => {
+                if (!this.hasProject()) return;
+                this.eGridImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
+            };
+            if (f instanceof Project) f.clearLinkedHandlers(this, "thumb");
+            if (t instanceof Project) t.addLinkedHandler(this, "thumb", doThumb);
+            doThumb();
+        });
+
         this.addHandler("update", delta => {
-            this.eListIcon.setAttribute("name", "document-outline");
-            this.eGridIcon.setAttribute("name", "document-outline");
             if (!this.hasProject()) return;
             this.name = this.project.meta.name;
             this.time = this.project.meta.modified;
-            this.eGridImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
         });
     }
 

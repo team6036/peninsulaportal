@@ -935,8 +935,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 delete displayPathRenders[id];
             }
 
-            this.panels.forEach(name => this.getPanel(name).update(delta));
-
             let itms = {};
             if (this.hasProject())
                 this.project.items.forEach(id => (itms[id] = this.project.getItem(id)));
@@ -954,6 +952,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (render.renderObject instanceof core.Odometry2d.Robot)
                     render.renderObject.size = this.project.robotW;
             }
+
+            this.panels.forEach(name => this.getPanel(name).update(delta));
 
             const hovered = this.odometry.hovered;
             const hoveredPart = this.odometry.hoveredPart;
