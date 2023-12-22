@@ -1276,7 +1276,7 @@ App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
             const relativeUrl = String(new URL("..", hrefUrl+"/")).substring(url.length);
             this.#eArticle = await App.createMarkdown(await (await fetch(hrefUrl)).text(), this.signal, "./"+relativeUrl);
             this.eContent.appendChild(this.eArticle);
-        } catch (e) { console.log(e); }
+        } catch (e) { return false; }
         if (!this.hasEArticle()) return false;
         let article = this.eArticle;
         article.classList.add("lighter");
@@ -3727,7 +3727,7 @@ export class Odometry2d extends util.Target {
     #quality;
     #mouse;
 
-    #renders;
+    #render;
 
     #image;
     #imageShow;
@@ -3754,7 +3754,7 @@ export class Odometry2d extends util.Target {
         this.#quality = 1;
         this.#mouse = new V();
 
-        this.#renders = new Set();
+        this.#render = new Odometry2d.Render(this, 0);
 
         this.#image = new Image();
         this.#imageScale = false;
@@ -3781,7 +3781,7 @@ export class Odometry2d extends util.Target {
             
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
-            this.renders.filter(render => render.z == 0).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+            this.render.render(0);
 
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
@@ -3846,7 +3846,7 @@ export class Odometry2d extends util.Target {
 
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
-            this.renders.filter(render => render.z == 1).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+            this.render.render(1);
 
             try {
                 if (this.#imageShow) {
@@ -3864,7 +3864,7 @@ export class Odometry2d extends util.Target {
 
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
-            this.renders.filter(render => render.z == 2).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+            this.render.render(2);
 
             ctx.restore();
 
@@ -3882,7 +3882,7 @@ export class Odometry2d extends util.Target {
 
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
-            this.renders.filter(render => render.z == 3).sort((a, b) => a.z2-b.z2).forEach(render => render.render());
+            this.render.render(3);
         });
     }
 
@@ -3908,39 +3908,7 @@ export class Odometry2d extends util.Target {
     set quality(v) { this.#quality = Math.max(1, util.ensure(v, "int")); }
     get mouse() { return new V(this.#mouse); }
 
-    get renders() { return [...this.#renders]; }
-    set renders(v) {
-        v = util.ensure(v, "arr");
-        this.clearRenders();
-        this.addRender(v);
-    }
-    clearRenders() {
-        let renders = this.renders;
-        this.remRender(renders);
-        return renders;
-    }
-    hasRender(render) {
-        if (!(render instanceof Odometry2d.Render)) return false;
-        return this.#renders.has(render) && render.odometry == this;
-    }
-    addRender(...renders) {
-        return util.Target.resultingForEach(renders, render => {
-            if (!(render instanceof Odometry2d.Render)) return false;
-            if (render.odometry != this) return false;
-            if (this.hasRender(render)) return false;
-            this.#renders.add(render);
-            return render;
-        });
-    }
-    remRender(...renders) {
-        return util.Target.resultingForEach(renders, render => {
-            if (!(render instanceof Odometry2d.Render)) return false;
-            if (render.odometry != this) return false;
-            if (!this.hasRender(render)) return false;
-            this.#renders.delete(render);
-            return render;
-        });
-    }
+    get render() { return this.#render; }
 
     get imageSrc() { return this.#image.src; }
     set imageSrc(v) {
@@ -3970,16 +3938,10 @@ export class Odometry2d extends util.Target {
         return Math.min(((this.canvas.width/this.quality) - 2*this.padding)/this.w, ((this.canvas.height/this.quality) - 2*this.padding)/this.h);
     }
 
-    get hovered() {
-        for (let render of this.renders) {
-            if (render.hovered == null) continue;
-            return render;
-        }
-        return null;
-    }
+    get hovered() { return this.render.theHovered; }
     get hoveredPart() {
         let hovered = this.hovered;
-        if (hovered == null) return;
+        if (!hovered) return null;
         return hovered.hovered;
     }
 
@@ -4043,23 +4005,33 @@ export class Odometry2d extends util.Target {
     update(delta) { this.post("update", delta); }
 }
 Odometry2d.Render = class Odometry2dRender extends util.Target {
-    #odometry;
+    #parent;
     
     #pos;
     #z; #z2;
     #alpha;
+    
+    #rPos;
+    #rAlpha;
+
+    #renders;
 
     #canHover;
 
-    constructor(odometry, pos) {
-        super(odometry);
+    constructor(parent, pos) {
+        super();
 
-        if (!(odometry instanceof Odometry2d)) throw new Error("Odometry is not of class Odometry2d");
-        this.#odometry = odometry;
+        if (!(parent instanceof Odometry2d || parent instanceof Odometry2d.Render)) throw new Error("Odometry is not of class Odometry2d nor of class Odometry2dRender");
+        this.#parent = parent;
 
         this.#pos = new V();
         this.#z = this.#z2 = 0;
         this.#alpha = 1;
+
+        this.#rPos = new V();
+        this.#rAlpha = 1;
+
+        this.#renders = new Set();
 
         this.#canHover = true;
 
@@ -4068,7 +4040,9 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
         this.z2 = 0;
     }
 
-    get odometry() { return this.#odometry; }
+    get parent() { return this.#parent; }
+    hasParent() { return this.parent instanceof Odometry2d.Render; }
+    get odometry() { return this.hasParent() ? this.parent.odometry : this.parent; }
 
     get pos() { return this.#pos; }
     set pos(v) { this.#pos.set(v); }
@@ -4085,13 +4059,67 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     get alpha() { return this.#alpha; }
     set alpha(v) { this.#alpha = Math.min(1, Math.max(0, util.ensure(v, "num"))); }
 
+    get rPos() { return new V(this.#rPos); }
+    get rX() { return this.#rPos.x; }
+    get rY() { return this.#rPos.y; }
+    get rAlpha() { return this.#rAlpha; }
+
+    get renders() { return [...this.#renders]; }
+    set renders(v) {
+        v = util.ensure(v, "arr");
+        this.clearRenders();
+        this.addRender(v);
+    }
+    clearRenders() {
+        let renders = this.renders;
+        this.remRender(renders);
+        return renders;
+    }
+    hasRender(render) {
+        if (!(render instanceof Odometry2d.Render)) return false;
+        return this.#renders.has(render) && render.parent == this;
+    }
+    addRender(...renders) {
+        return util.Target.resultingForEach(renders, render => {
+            if (!(render instanceof Odometry2d.Render)) return false;
+            if (render.parent != this) return false;
+            if (this.hasRender(render)) return false;
+            this.#renders.add(render);
+            return render;
+        });
+    }
+    remRender(...renders) {
+        return util.Target.resultingForEach(renders, render => {
+            if (!(render instanceof Odometry2d.Render)) return false;
+            if (render.parent != this) return false;
+            if (!this.hasRender(render)) return false;
+            this.#renders.delete(render);
+            return render;
+        });
+    }
+
     get canHover() { return this.#canHover; }
     set canHover(v) { this.#canHover = !!v; }
     get hovered() { return null; }
+    get theHovered() {
+        for (let render of this.renders) {
+            let hovered = render.theHovered;
+            if (hovered) return hovered;
+        }
+        let hovered = this.hovered;
+        return hovered ? this : null;
+    }
 
-    render() {
-        this.odometry.ctx.globalAlpha = this.alpha;
+    render(z=null) {
+        this.#rPos = new V(this.hasParent() ? this.parent.rPos : 0).add(this.pos);
+        this.#rAlpha = this.parent.rAlpha * this.alpha;
+        this.odometry.ctx.globalAlpha = this.rAlpha;
         this.post("render");
+        this.renders.filter(render => (z == null || render.z == z)).sort((a, b) => {
+            if (a.z < b.z) return -1;
+            if (a.z > b.z) return +1;
+            return a.z2-b.z2;
+        }).forEach(render => render.render());
     }
 };
 Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
@@ -4120,8 +4148,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         return null;
     }
 
-    constructor(odometry, pos, size, heading, velocity) {
-        super(odometry, pos);
+    constructor(parent, pos, size, heading, velocity) {
+        super(parent, pos);
 
         this.#type = null;
 
@@ -4150,7 +4178,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
                 for (let i = 0; i <= path.length; i++) {
                     let j = i%path.length;
-                    let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
+                    let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
                     if (i > 0) ctx.lineTo(...p.xy);
                     else ctx.moveTo(...p.xy);
                 }
@@ -4164,7 +4192,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
                 for (let i = 0; i <= path.length; i++) {
                     let j = i%path.length;
-                    let p = this.odometry.worldToCanvas(this.pos.add(path[j]));
+                    let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
                     if (i > 0) ctx.lineTo(...p.xy);
                     else ctx.moveTo(...p.xy);
                 }
@@ -4177,8 +4205,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
                 let dir = this.heading;
-                let tail = this.pos.add(V.dir(dir, -this.w/2));
-                let head = this.pos.add(V.dir(dir, +this.w/2));
+                let tail = this.rPos.add(V.dir(dir, -this.w/2));
+                let head = this.rPos.add(V.dir(dir, +this.w/2));
                 ctx.beginPath();
                 ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
                 ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
@@ -4192,7 +4220,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
                 ctx.beginPath();
-                ctx.arc(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
+                ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
                 ctx.fill();
             }
             if (![Odometry2d.Robot.Types.BOX, Odometry2d.Robot.Types.ARROW].includes(this.type)) {
@@ -4202,7 +4230,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
                 ctx.beginPath();
-                ctx.arc(...this.odometry.worldToCanvas(this.pos).xy, 7.5*quality, 0, 2*Math.PI);
+                ctx.arc(...this.odometry.worldToCanvas(this.rPos).xy, 7.5*quality, 0, 2*Math.PI);
                 ctx.fill();
                 if (this.selected) ctx.stroke();
             }
@@ -4212,7 +4240,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
                 let dir = 180+this.velocity.towards();
-                let tail = this.pos;
+                let tail = this.rPos;
                 let head = tail.add(V.dir(dir, this.velocity.dist()));
                 ctx.beginPath();
                 ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
@@ -4228,9 +4256,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
     get hovered() {
         if (!this.canHover) return null;
         let m = this.odometry.pageToWorld(this.odometry.mouse);
-        if (this.showVelocity && this.pos.add(this.velocity).dist(m) < this.odometry.pageLenToWorld(5)) return "velocity";
-        if (this.pos.add(V.dir(this.heading, this.w/2)).dist(m) < this.odometry.pageLenToWorld(5)) return "heading";
-        if (this.pos.dist(m) < this.odometry.pageLenToWorld(7.5)) return "main";
+        if (this.showVelocity && this.rPos.add(this.velocity).dist(m) < this.odometry.pageLenToWorld(5)) return "velocity";
+        if (this.rPos.add(V.dir(this.heading, this.w/2)).dist(m) < this.odometry.pageLenToWorld(5)) return "heading";
+        if (this.rPos.dist(m) < this.odometry.pageLenToWorld(7.5)) return "main";
         return null;
     }
 
@@ -4289,16 +4317,16 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
             ctx.beginPath();
-            ctx.arc(...this.odometry.worldToCanvas(this.pos).xy, this.odometry.worldLenToCanvas(this.radius), 0, 2*Math.PI);
+            ctx.arc(...this.odometry.worldToCanvas(this.rPos).xy, this.odometry.worldLenToCanvas(this.radius), 0, 2*Math.PI);
             ctx.fill();
             if (this.selected) ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(...this.odometry.worldToCanvas(this.pos).xy);
-            ctx.lineTo(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.dir, this.radius))).xy);
+            ctx.moveTo(...this.odometry.worldToCanvas(this.rPos).xy);
+            ctx.lineTo(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.dir, this.radius))).xy);
             ctx.stroke();
             ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "radius") ? "a" : "v8"));
             ctx.beginPath();
-            ctx.arc(...this.odometry.worldToCanvas(this.pos.add(V.dir(this.dir, this.radius))).xy, 5*quality, 0, 2*Math.PI);
+            ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.dir, this.radius))).xy, 5*quality, 0, 2*Math.PI);
             ctx.fill();
         });
     }
@@ -4306,8 +4334,8 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
     get hovered() {
         if (!this.canHover) return null;
         let m = this.odometry.pageToWorld(this.odometry.mouse);
-        if (this.pos.add(V.dir(this.dir, this.radius)).dist(m) < this.odometry.pageLenToWorld(5)) return "radius";
-        if (this.pos.dist(m) < this.radius) return "main";
+        if (this.rPos.add(V.dir(this.dir, this.radius)).dist(m) < this.odometry.pageLenToWorld(5)) return "radius";
+        if (this.rPos.dist(m) < this.radius) return "main";
         return null;
     }
 

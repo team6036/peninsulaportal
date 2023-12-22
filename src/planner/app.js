@@ -289,38 +289,22 @@ class RSelectable extends core.Odometry2d.Render {
         this.#item = null;
         this.#renderObject = null;
 
-        const check = () => {
-            if (!this.hasRenderObject()) return;
-            if (this.odometry.hasRender(this)) {
-                if (this.odometry.hasRender(this.renderObject)) return;
-                this.odometry.addRender(this.renderObject);
-            } else {
-                if (!this.odometry.hasRender(this.renderObject)) return;
-                this.odometry.remRender(this.renderObject);
-            }
-            this.renderObject.alpha = this.ghost ? 0.5 : 1;
-        };
-
         this.addHandler("change-item", () => {
-            if (this.hasRenderObject()) this.renderObject.remHandler("render", check);
-            this.odometry.remRender(this.renderObject);
-            this.#renderObject = null;
+            this.renderObject = null;
             if (!this.hasItem()) return;
             if (this.item instanceof subcore.Project.Node) {
-                this.#renderObject = new core.Odometry2d.Robot(this.odometry);
+                this.renderObject = new core.Odometry2d.Robot(this);
             } else if (this.item instanceof subcore.Project.Obstacle) {
-                this.#renderObject = new core.Odometry2d.Obstacle(this.odometry);
+                this.renderObject = new core.Odometry2d.Obstacle(this);
             }
-            if (this.hasRenderObject()) this.renderObject.addHandler("render", check);
         });
 
         this.addHandler("render", () => {
-            check();
             if (!this.hasItem()) return;
             if (!this.hasRenderObject()) return;
             const render = this.renderObject;
-            render.source = this;
             render.pos = this.item.pos;
+            render.alpha = this.ghost ? 0.5 : 1;
             if (this.item instanceof subcore.Project.Node) {
                 render.velocity = this.item.velocity;
                 render.showVelocity = this.item.useVelocity;
@@ -344,7 +328,17 @@ class RSelectable extends core.Odometry2d.Render {
     }
     hasItem() { return this.item instanceof subcore.Project.Item; }
     get renderObject() { return this.#renderObject; }
-    hasRenderObject() { return this.#renderObject instanceof core.Odometry2d.Render; }
+    set renderObject(v) {
+        v = (v instanceof core.Odometry2d.Render) ? v : null;
+        if (this.renderObject == v) return;
+        if (this.hasRenderObject())
+            this.remRender(this.renderObject);
+        this.#renderObject = v;
+        if (this.hasRenderObject())
+            if (!this.addRender(this.renderObject))
+                this.renderObject = null;
+    }
+    hasRenderObject() { return this.renderObject instanceof core.Odometry2d.Render; }
 
     get selected() { return this.hasRenderObject() ? this.renderObject.selected : false; }
     set selected(v) { if (this.hasRenderObject()) this.renderObject.selected = v; }
@@ -547,10 +541,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (prevOverRender != overRender) {
                     prevOverRender = overRender;
                     if (overRender) {
-                        ghostItem = this.odometry.addRender(new RSelectable(this.odometry, item));
+                        ghostItem = this.odometry.render.addRender(new RSelectable(this.odometry.render, item));
                         ghostItem.ghost = true;
                     } else {
-                        this.odometry.remRender(ghostItem);
+                        this.odometry.render.remRender(ghostItem);
                         ghostItem = null;
                     }
                 }
@@ -567,7 +561,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 else panel.eSpawnDelete.classList.remove("hover");
             });
             const stop = cancel => {
-                this.odometry.remRender(ghostItem);
+                this.odometry.render.remRender(ghostItem);
                 this.app.eDrag.innerHTML = "";
                 if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
                 if (!this.hasPanel("objects")) return;
@@ -733,22 +727,22 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             const hoveredPart = this.odometry.hoveredPart;
             if (this.choosing) {
                 if (!(hovered instanceof core.Odometry2d.Render)) return;
-                if (!(hovered.source instanceof RSelectable)) return;
-                this.chooseState.post("choose", hovered.source.item, !!e.shiftKey);
+                if (!(hovered.parent instanceof RSelectable)) return;
+                this.chooseState.post("choose", hovered.parent.item, !!e.shiftKey);
                 return;
             }
             if (e.button != 0) return;
             e.preventDefault();
             e.stopPropagation();
-            if (!(hovered instanceof core.Odometry2d.Render) || !(hovered.source instanceof RSelectable)) {
+            if (!(hovered instanceof core.Odometry2d.Render && hovered.parent instanceof RSelectable)) {
                 this.clearSelected();
-                let selectItem = this.odometry.addRender(new RSelect(this.odometry));
+                let selectItem = this.odometry.render.addRender(new RSelect(this.odometry.render));
                 selectItem.a = this.odometry.pageToWorld(e.pageX, e.pageY);
                 selectItem.b = selectItem.a;
                 const mouseup = () => {
                     document.body.removeEventListener("mouseup", mouseup);
                     document.body.removeEventListener("mousemove", mousemove);
-                    this.odometry.remRender(selectItem);
+                    this.odometry.render.remRender(selectItem);
                     let a = selectItem.a, b = selectItem.b;
                     let r = new util.Rect(a, b.sub(a)).normalize();
                     if (!this.hasProject()) return;
@@ -770,7 +764,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.odometry.canvas.style.cursor = "";
                     };
                     const mousemove = e => {
-                        this.odometry.canvas.style.cursor = hovered.source.drag(hoveredPart, this.odometry.pageToWorld(e.pageX, e.pageY));
+                        this.odometry.canvas.style.cursor = hovered.parent.drag(hoveredPart, this.odometry.pageToWorld(e.pageX, e.pageY));
                         this.editorRefresh();
                     };
                     document.body.addEventListener("mouseup", mouseup);
@@ -778,12 +772,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     return;
                 }
                 if (e.shiftKey) {
-                    if (this.isSelected(hovered.source.item)) this.remSelected(hovered.source.item);
-                    else this.addSelected(hovered.source.item);
+                    if (this.isSelected(hovered.parent.item)) this.remSelected(hovered.parent.item);
+                    else this.addSelected(hovered.parent.item);
                 } else {
-                    if (!this.isSelected(hovered.source.item)) {
+                    if (!this.isSelected(hovered.parent.item)) {
                         this.clearSelected();
-                        this.addSelected(hovered.source.item);
+                        this.addSelected(hovered.parent.item);
                     }
                 }
                 let oldPos = this.odometry.pageToWorld(e.pageX, e.pageY);
@@ -890,6 +884,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         let displayPathRenders = {};
 
+        let itemRenders = {};
+
         let timer = 0;
         this.addHandler("update", delta => {
             this.odometry.update(delta);
@@ -917,7 +913,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let id = nodes[i];
                 let node = this.project.getItem(id);
                 if (!(id in displayPathRenders))
-                    displayPathRenders[id] = this.odometry.addRender(new RLabel(this.odometry, null));
+                    displayPathRenders[id] = this.odometry.render.addRender(new RLabel(this.odometry.render, null));
                 delete toDelete[id];
                 let label = displayPathRenders[id];
                 label.item = node;
@@ -928,36 +924,35 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let node2 = this.project.getItem(id2);
                 let lid = (i-1)+"~"+i;
                 if (!(lid in displayPathRenders))
-                    displayPathRenders[lid] = this.odometry.addRender(new RLine(this.odometry, null, null));
+                    displayPathRenders[lid] = this.odometry.render.addRender(new RLine(this.odometry.render, null, null));
                 delete toDelete[lid];
                 let line = displayPathRenders[lid];
                 line.itemA = node2;
                 line.itemB = node;
             }
             for (let id in toDelete) {
-                this.odometry.remRender(displayPathRenders[id]);
+                this.odometry.render.remRender(displayPathRenders[id]);
                 delete displayPathRenders[id];
             }
 
             this.panels.forEach(name => this.getPanel(name).update(delta));
 
-            let itmsUsed = new Set();
-            this.odometry.renders.forEach(render => {
-                if (render instanceof core.Odometry2d.Robot)
-                    render.size = this.hasProject() ? this.project.robotW : 0;
-                if (!(render instanceof RSelectable)) return;
-                if (!render.ghost && (!this.hasProject() || !this.project.hasItem(render.item)))
-                    render.item = null;
-                if (render.hasItem()) {
-                    itmsUsed.add(render.item.id);
-                    render.selected = this.isSelected(render);
-                } else this.odometry.remRender(render);
-            });
-            if (this.hasProject()) {
-                let need;
-                need = new Set(this.project.items);
-                itmsUsed.forEach(id => need.delete(id));
-                need.forEach(id => this.odometry.addRender(new RSelectable(this.odometry, this.project.getItem(id))));
+            let itms = {};
+            if (this.hasProject())
+                this.project.items.forEach(id => (itms[id] = this.project.getItem(id)));
+            for (let id in itemRenders) {
+                if (id in itms) continue;
+                this.odometry.render.remRender(itemRenders[id]);
+                delete itemRenders[id];
+            }
+            for (let id in itms) {
+                if (!(id in itemRenders))
+                    itemRenders[id] = this.odometry.render.addRender(new RSelectable(this.odometry.render, null));
+                let render = itemRenders[id];
+                render.item = itms[id];
+                render.selected = this.isSelected(render);
+                if (render.renderObject instanceof core.Odometry2d.Robot)
+                    render.renderObject.size = this.project.robotW;
             }
 
             const hovered = this.odometry.hovered;
@@ -1000,7 +995,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             });
             if (this.selected.length > 1) {
                 if (!(selectItem instanceof RSelect))
-                    selectItem = this.odometry.addRender(new RSelect(this.odometry));
+                    selectItem = this.odometry.render.addRender(new RSelect(this.odometry.render));
                 let maxPos = new V(), minPos = new V();
                 let first = true;
                 this.selected.forEach(id => {
@@ -1021,7 +1016,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 selectItem.a = minPos;
                 selectItem.b = maxPos;
             } else {
-                this.odometry.remRender(selectItem);
+                this.odometry.render.remRender(selectItem);
                 selectItem = null;
             }
             this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
@@ -2475,8 +2470,8 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
 
         this.#show = false;
 
-        this.#visual = new RVisual(this.page.odometry);
-        this.#item = new RVisualItem(this.page.odometry, this.visual);
+        this.#visual = new RVisual(this.page.odometry.render);
+        this.#item = new RVisualItem(this.page.odometry.render, this.visual);
 
         this.#t = 0;
         this.#paused = true;
@@ -2501,8 +2496,8 @@ App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends
         this.check();
     }
     check() {
-        if (this.show) this.page.odometry.addRender(this.visual, this.item);
-        else this.page.odometry.remRender(this.visual, this.item);
+        if (this.show) this.page.odometry.render.addRender(this.visual, this.item);
+        else this.page.odometry.render.remRender(this.visual, this.item);
     }
 
     get visual() { return this.#visual; }

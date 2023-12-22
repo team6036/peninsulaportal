@@ -151,18 +151,15 @@ export default class Source extends util.Target {
     }
 
     queueStructDecode(path, type, array, v, ts) {
-        console.log("queue");
         this.#structDecodes.push({ path: path, type: type, array: array, v: v, ts: ts });
     }
     dequeueStructDecode() {
-        console.log("dequeue");
         this.#structDecodes = this.#structDecodes.filter(decode => {
             let { path, type, array, v, ts } = decode;
             return !this.structDecode(path, type, array, v, ts);
         });
     }
     structDecode(path, type, array, v, ts) {
-        console.log("decode");
         path = Source.generatePath(path);
         type = String(type);
         array = !!array;
@@ -191,7 +188,6 @@ export default class Source extends util.Target {
     createStruct(name, data) {
         name = String(name);
         if (this.structHelper.hasPattern(name)) return false;
-        console.log("create struct", name, util.TEXTDECODER.decode(toUint8Array(data)));
         let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, util.TEXTDECODER.decode(toUint8Array(data))));
         pattern.build();
         return pattern;

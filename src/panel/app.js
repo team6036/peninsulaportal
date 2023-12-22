@@ -5375,8 +5375,8 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             const renders = this.#renders;
             if (this.value.length % 2 == 0) {
                 let l = Math.max(0, (this.value.length/2) - 1);
-                while (renders.length < l) renders.push(this.tab.odometry.addRender(new RLine(this.tab.odometry)));
-                while (renders.length > l) this.tab.odometry.remRender(renders.pop());
+                while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
+                while (renders.length > l) this.tab.odometry.render.remRender(renders.pop());
                 renders.forEach((render, i) => {
                     render.a = [this.value[i*2 + 0], this.value[i*2 + 1]];
                     render.a.imul(this.tab.isMeters ? 100 : 1);
@@ -5427,7 +5427,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         if (this.value.length % 2 == 0) {
             this.#renders = [];
         } else if (this.value.length == 3) {
-            this.#renders = [this.tab.odometry.addRender(new core.Odometry2d.Robot(this.tab.odometry))];
+            this.#renders = [this.tab.odometry.render.addRender(new core.Odometry2d.Robot(this.tab.odometry.render))];
             this.#renders[0].showVelocity = false;
         }
     }
