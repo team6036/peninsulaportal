@@ -257,7 +257,6 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
             }
         });
         this.post("change");
-        console.log("built", this.name, this.length);
     }
 
     decode(data) {
