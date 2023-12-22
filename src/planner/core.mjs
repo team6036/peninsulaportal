@@ -434,6 +434,8 @@ Project.Node = class ProjectNode extends Project.Item {
     #velocityRot;
     #useVelocity;
 
+    #options;
+
     constructor(...a) {
         super();
 
@@ -443,18 +445,20 @@ Project.Node = class ProjectNode extends Project.Item {
         this.#velocityRot = 0;
         this.#useVelocity = true;
 
+        this.#options = {};
+
         this.velocity.addHandler("change", (c, f, t) => this.change("velocity."+c, f, t));
 
-        if (a.length <= 0 || a.length > 6) a = [null];
+        if (a.length <= 0 || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Node) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity];
+            if (a instanceof Project.Node) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.optionsObject];
             else if (a instanceof Project.Item) a = [a.pos, 0];
             else if (util.is(a, "arr")) {
                 a = new Project.Node(...a);
-                a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity];
+                a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.optionsObject];
             }
-            else if (util.is(a, "obj")) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity];
+            else if (util.is(a, "obj")) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
             else a = [a, 0];
         }
         if (a.length == 2)
@@ -465,8 +469,10 @@ Project.Node = class ProjectNode extends Project.Item {
             a = [...a.slice(0, 3), 0, ...a.slice(3)];
         if (a.length == 5)
             a = [...a.slice(0, 2), true, ...a.slice(2)];
+        if (a.length == 6)
+            a = [...a, {}];
         
-        [this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity] = a;
+        [this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity, this.options] = a;
     }
 
     get heading() { return this.#heading; }
@@ -503,12 +509,51 @@ Project.Node = class ProjectNode extends Project.Item {
         this.change("useVelocity", this.useVelocity, this.#useVelocity=v);
     }
 
+    get options() { return Object.keys(this.#options); }
+    get optionsObject() {
+        let options = {};
+        this.options.forEach(k => (options[k] = this.getOption(k)));
+        return options;
+    }
+    set options(v) {
+        v = util.ensure(v, "obj");
+        this.clearOptions();
+        for (let k in v) this.addOption(k, v[k]);
+    }
+    clearOptions() {
+        let options = this.options;
+        options.forEach(k => this.remOption(k));
+        return options;
+    }
+    hasOption(k) {
+        k = String(k);
+        return k in this.#options;
+    }
+    getOption(k) {
+        if (!this.hasOption(k)) return null;
+        return this.#options[k];
+    }
+    addOption(k, v) {
+        k = String(k);
+        v = String(v);
+        let v0 = this.getOption(k);
+        this.#options[k] = v;
+        this.change("addOption", v0, v);
+    }
+    remOption(k) {
+        k = String(k);
+        let v = this.getOption(k);
+        delete this.#options[k];
+        this.change("remOption", v, null);
+    }
+
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
             pos: this.pos,
             heading: this.heading, useHeading: this.useHeading,
             velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
+            options: this.optionsObject,
         });
     }
 }

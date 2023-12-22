@@ -514,6 +514,54 @@
 #PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input[type="text"]:disabled {
     color: var(--cy3);
 }
+#PROJECTPAGE > .main > .edit > .content > .panel > .options {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > .item {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input {
+    flex-basis: 100%;
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input:first-of-type {
+    color: var(--a);
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > .separator {
+    min-width: max-content;
+
+    color: var(--v4);
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > button {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    min-width: max-content;
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > button {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --bgd: var(--a2);
+    --fgd: var(--v4);
+
+    padding: 5px;
+
+    border-radius: 5px;
+}
 #objectspanel > #spawnbox {
     position: relative;
 
@@ -803,54 +851,6 @@
     --fgh: var(--v1);
     --bgd: var(--cr2);
     --fgd: var(--v6);
-}
-#optionspanel > .options {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 5px;
-}
-#optionspanel > .options > .item {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 5px;
-}
-#optionspanel > .options > .item > input {
-    flex-basis: 100%;
-}
-#optionspanel > .options > .item > input:first-of-type {
-    color: var(--a);
-}
-#optionspanel > .options > .item > .separator {
-    min-width: max-content;
-
-    color: var(--v4);
-}
-#optionspanel > .options > .item > button {
-    --bg: transparent;
-    --bgh: var(--v2);
-    --bgd: transparent;
-
-    min-width: max-content;
-}
-#optionspanel > .options > button {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--a2);
-    --fgd: var(--v4);
-
-    padding: 5px;
-
-    border-radius: 5px;
 }
 #optionspanel > #script {
     display: flex;
