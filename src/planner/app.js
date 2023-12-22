@@ -440,116 +440,6 @@ export default class App extends core.AppFeature {
                 };
                 if (name in namefs) namefs[name]();
             });
-
-            const cmdAdd = name => {
-                if (this.dragging) return;
-                name = String(name);
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (page.choosing) return;
-                if (!page.hasProject()) return;
-                this.dragData = name;
-                this.dragging = true;
-                this.eDrag.innerHTML = {
-                    node: "<div class='global item selectable node'><div class='button'></div></div>",
-                    obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
-                }[this.dragData];
-                let prevOverRender = false;
-                let ghostItem = null;
-                let item = {
-                    node: new subcore.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
-                    obstacle: new subcore.Project.Obstacle({ pos: 0, radius: 100 }),
-                }[this.dragData];
-                this.dragState.addHandler("move", e => {
-                    let pos = new V(e.pageX, e.pageY);
-                    let r;
-                    r = page.odometry.canvas.getBoundingClientRect();
-                    let overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
-                    if (prevOverRender != overRender) {
-                        prevOverRender = overRender;
-                        if (overRender) {
-                            ghostItem = page.odometry.addRender(new RSelectable(page.odometry, item));
-                            ghostItem.ghost = true;
-                        } else {
-                            page.odometry.remRender(ghostItem);
-                            ghostItem = null;
-                        }
-                    }
-                    if (this.eDrag.children[0] instanceof HTMLElement)
-                        this.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
-                    if (ghostItem instanceof RSelectable)
-                        if (ghostItem.hasItem())
-                            ghostItem.item.pos.set(page.odometry.pageToWorld(pos));
-                    if (!page.hasPanel("objects")) return;
-                    const panel = page.getPanel("objects");
-                    r = panel.eSpawnDelete.getBoundingClientRect();
-                    let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
-                    if (over) panel.eSpawnDelete.classList.add("hover");
-                    else panel.eSpawnDelete.classList.remove("hover");
-                });
-                const stop = cancel => {
-                    page.odometry.remRender(ghostItem);
-                    this.eDrag.innerHTML = "";
-                    if (!cancel && prevOverRender && page.hasProject()) page.project.addItem(item);
-                    if (!page.hasPanel("objects")) return;
-                    const panel = page.getPanel("objects");
-                    panel.eSpawnBox.classList.remove("delete");
-                };
-                this.dragState.addHandler("submit", () => stop(false));
-                this.dragState.addHandler("cancel", () => stop(true));
-                if (!page.hasPanel("objects")) return;
-                const panel = page.getPanel("objects");
-                panel.eSpawnBox.classList.add("delete");
-            };
-            this.addHandler("cmd-addnode", () => cmdAdd("node"));
-            this.addHandler("cmd-addobstacle", () => cmdAdd("obstacle"));
-            this.addHandler("cmd-addpath", () => {
-                if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
-                if (page.choosing) return;
-                if (!page.hasProject()) return;
-                page.choosing = true;
-                let chooseState = page.chooseState;
-                chooseState.path = new subcore.Project.Path();
-                chooseState.addHandler("choose", (itm, shift) => {
-                    if (!(chooseState.path instanceof subcore.Project.Path)) return;
-                    let path = chooseState.path;
-                    shift = !!shift;
-                    if (!(itm instanceof subcore.Project.Node)) return;
-                    if (shift) path.remNode(itm);
-                    else path.addNode(itm);
-                    for (let id in chooseState.temp) page.odometry.remRender(chooseState.temp[id]);
-                    chooseState.temp = {};
-                    let nodes = path.nodes.filter(id => page.hasProject() && page.project.hasItem(id));
-                    for (let i = 0; i < nodes.length; i++) {
-                        let id = nodes[i];
-                        let node = page.project.getItem(id);
-                        if (id in chooseState.temp) {
-                            chooseState.temp[id].text += ", "+(i+1);
-                        } else {
-                            chooseState.temp[id] = page.odometry.addRender(new RLabel(page.odometry, node));
-                            chooseState.temp[id].text = i+1;
-                        }
-                        if (i > 0) {
-                            let id2 = nodes[i-1];
-                            page.project.getItem(id2);
-                            let lid = id+"~"+id2;
-                            while (lid in chooseState.temp) lid += "_";
-                            chooseState.temp[lid] = page.odometry.addRender(new RLine(page.odometry, node, node2));
-                        }
-                    }
-                });
-                chooseState.addHandler("done", () => {
-                    if (!(chooseState.path instanceof subcore.Project.Path)) return;
-                    let path = chooseState.path;
-                    if (!page.hasProject()) return;
-                    page.project.addPath(path);
-                });
-                chooseState.addHandler("cancel", () => {
-                });
-            });
         });
     }
 }
@@ -629,6 +519,109 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!this.hasProject()) return;
             this.project.meta.name = this.app.eProjectInfoNameInput.value;
             this.editorRefresh();
+        });
+        const cmdAdd = name => {
+            if (this.app.dragging) return;
+            name = String(name);
+            if (this.choosing) return;
+            if (!this.hasProject()) return;
+            this.app.dragData = name;
+            this.app.dragging = true;
+            this.app.eDrag.innerHTML = {
+                node: "<div class='global item selectable node'><div class='button'></div></div>",
+                obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
+            }[this.app.dragData];
+            let prevOverRender = false;
+            let ghostItem = null;
+            let item = {
+                node: new subcore.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
+                obstacle: new subcore.Project.Obstacle({ pos: 0, radius: 100 }),
+            }[this.app.dragData];
+            this.app.dragState.addHandler("move", e => {
+                let pos = new V(e.pageX, e.pageY);
+                let r;
+                r = this.odometry.canvas.getBoundingClientRect();
+                let overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                if (prevOverRender != overRender) {
+                    prevOverRender = overRender;
+                    if (overRender) {
+                        ghostItem = this.odometry.addRender(new RSelectable(this.odometry, item));
+                        ghostItem.ghost = true;
+                    } else {
+                        this.odometry.remRender(ghostItem);
+                        ghostItem = null;
+                    }
+                }
+                if (this.app.eDrag.children[0] instanceof HTMLElement)
+                    this.app.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
+                if (ghostItem instanceof RSelectable)
+                    if (ghostItem.hasItem())
+                        ghostItem.item.pos.set(this.odometry.pageToWorld(pos));
+                if (!this.hasPanel("objects")) return;
+                const panel = this.getPanel("objects");
+                r = panel.eSpawnDelete.getBoundingClientRect();
+                let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                if (over) panel.eSpawnDelete.classList.add("hover");
+                else panel.eSpawnDelete.classList.remove("hover");
+            });
+            const stop = cancel => {
+                this.odometry.remRender(ghostItem);
+                this.app.eDrag.innerHTML = "";
+                if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
+                if (!this.hasPanel("objects")) return;
+                const panel = this.getPanel("objects");
+                panel.eSpawnBox.classList.remove("delete");
+            };
+            this.app.dragState.addHandler("submit", () => stop(false));
+            this.app.dragState.addHandler("cancel", () => stop(true));
+            if (!this.hasPanel("objects")) return;
+            const panel = this.getPanel("objects");
+            panel.eSpawnBox.classList.add("delete");
+        };
+        this.app.addHandler("cmd-addnode", () => cmdAdd("node"));
+        this.app.addHandler("cmd-addobstacle", () => cmdAdd("obstacle"));
+        this.app.addHandler("cmd-addpath", () => {
+            if (this.choosing) return;
+            if (!this.hasProject()) return;
+            this.choosing = true;
+            let chooseState = this.chooseState;
+            chooseState.path = new subcore.Project.Path();
+            chooseState.addHandler("choose", (itm, shift) => {
+                if (!(chooseState.path instanceof subcore.Project.Path)) return;
+                let path = chooseState.path;
+                shift = !!shift;
+                if (!(itm instanceof subcore.Project.Node)) return;
+                if (shift) path.remNode(itm);
+                else path.addNode(itm);
+                for (let id in chooseState.temp) this.odometry.remRender(chooseState.temp[id]);
+                chooseState.temp = {};
+                let nodes = path.nodes.filter(id => this.hasProject() && this.project.hasItem(id));
+                for (let i = 0; i < nodes.length; i++) {
+                    let id = nodes[i];
+                    let node = this.project.getItem(id);
+                    if (id in chooseState.temp) {
+                        chooseState.temp[id].text += ", "+(i+1);
+                    } else {
+                        chooseState.temp[id] = this.odometry.addRender(new RLabel(this.odometry, node));
+                        chooseState.temp[id].text = i+1;
+                    }
+                    if (i > 0) {
+                        let id2 = nodes[i-1];
+                        this.project.getItem(id2);
+                        let lid = id+"~"+id2;
+                        while (lid in chooseState.temp) lid += "_";
+                        chooseState.temp[lid] = this.odometry.addRender(new RLine(this.odometry, node, node2));
+                    }
+                }
+            });
+            chooseState.addHandler("done", () => {
+                if (!(chooseState.path instanceof subcore.Project.Path)) return;
+                let path = chooseState.path;
+                if (!this.hasProject()) return;
+                this.project.addPath(path);
+            });
+            chooseState.addHandler("cancel", () => {
+            });
         });
         this.app.addHandler("cmd-maxmin", () => {
             this.maximized = !this.maximized;
