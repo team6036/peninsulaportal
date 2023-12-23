@@ -1642,13 +1642,12 @@ const MAIN = async () => {
                     await WindowManager.fileWrite([root, "projects", id+".json"], content);
                 },
                 "project-del": async id => {
-                    console.log("project del", id);
                     await kfs["project-affirm"]();
                     id = String(id);
                     const root = await kfs["root-get"]();
                     try {
                         await WindowManager.fileDelete([root, "projects", id+".json"]);
-                    } catch (e) { console.log(e); return false; }
+                    } catch (e) { return false; }
                     return true;
                 },
                 "projects-meta-get": async () => {
