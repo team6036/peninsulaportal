@@ -2348,17 +2348,24 @@ const MAIN = async () => {
                     let superPth = path.dirname(pth);
                     let thePth = path.join(superPth, fileName);
                     let tmpPth = path.join(superPth, fileName+"-tmp");
+                    console.log("- fetch-start: "+url);
                     let resp = await util.timeout(30000, fetch(url));
                     if (resp.status != 200) throw resp.status;
+                    console.log("- fetch-done: "+url);
                     await new Promise((res, rej) => {
+                        console.log("- stream-make: "+tmpPth);
                         const stream = fs.createWriteStream(tmpPth);
                         stream.on("open", () => {
+                            console.log("- stream-open: "+tmpPth);
                             resp.body.pipe(stream);
                             resp.body.on("end", () => res(true));
                             resp.body.on("error", e => rej(e));
                         });
                     });
+                    console.log("- stream-done: "+tmpPth);
+                    console.log("- rename: "+tmpPth+" -> "+thePth);
                     await fs.promises.rename(tmpPth, thePth);
+                    console.log("- renamed: "+tmpPth+" -> "+thePth);
                 };
                 this.log("DB config");
                 this.addLoad("config");
