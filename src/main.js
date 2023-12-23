@@ -3601,6 +3601,8 @@ const MAIN = async () => {
 
     const manager = new WindowManager();
 
+    log("< DATAPATH = "+manager.root+" >");
+
     let initializeResolver = new util.Resolver(false);
     async function whenInitialized() { await initializeResolver.whenTrue(); }
 
