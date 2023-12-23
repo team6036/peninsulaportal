@@ -2477,7 +2477,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 a = [new Panel.GraphTab.Variable(...a).path];
             }
             else if (util.is(a, "obj")) a = [a.path];
-            else a = [[]];
+            else a = [a];
         }
 
         [this.path] = a;
