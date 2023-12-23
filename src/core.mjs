@@ -2775,9 +2775,7 @@ export class AppFeature extends App {
     }
     async loadProjects() {
         await this.post("sync-with-files");
-        let projectIdsContent = await window.api.send("projects-get");
-        let projectIds = JSON.parse(projectIdsContent);
-        projectIds = util.ensure(projectIds, "arr").map(id => String(id));
+        let projectIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
         let projects = [];
         await Promise.all(projectIds.map(async id => {
             let projectContent = await window.api.send("project-get", id);
@@ -2801,40 +2799,18 @@ export class AppFeature extends App {
         await this.post("sync-files-with");
         let changes = new Set(this.changes);
         this.clearChanges();
-        if (changes.has("*") || changes.has("projects")) {
-            let projectIds = this.projects;
-            let projectIdsContent = JSON.stringify(projectIds);
-            await window.api.send("projects-set", projectIdsContent);
-        }
-        if (changes.has("*")) {
-            let projectIds = this.projects;
-            await Promise.all(projectIds.map(async id => {
-                let project = this.getProject(id);
-                let projectContent = JSON.stringify(project);
-                await window.api.send("project-set", id, projectContent);
-            }));
-            await Promise.all(util.ensure(await window.api.send("projects-list"), "arr").map(async dirent => {
-                if (dirent.type != "file") return;
-                let id = dirent.name.split(".")[0];
-                if (this.hasProject(id)) return;
-                // await window.api.send("project-del", id);
-            }));
-        } else {
-            let projectIds = this.projects;
-            await Promise.all(projectIds.map(async id => {
-                if (!changes.has(":"+id)) return;
-                let project = this.getProject(id);
-                project.meta.modified = util.getTime();
-                let projectContent = JSON.stringify(project);
-                await window.api.send("project-set", id, projectContent);
-            }));
-            await Promise.all([...changes].map(async change => {
-                if (!change.startsWith(":")) return;
-                let id = change.substring(1);
-                if (this.hasProject(id)) return;
-                // await window.api.send("project-del", id);
-            }));
-        }
+        let oldIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
+        let newIds = this.projects;
+        await Promise.all(oldIds.map(async id => {
+            if (newIds.includes(id)) return;
+            await window.api.send("project-del", id);
+        }));
+        await Promise.all(newIds.map(async id => {
+            if (!(changes.has("*") || changes.has(":"+id))) return;
+            let project = this.getProject(id);
+            let projectContent = JSON.stringify(project);
+            await window.api.send("project-set", id, projectContent);
+        }));
         await this.post("synced-files-with");
     }
     async saveProjectsClean() {
@@ -2876,7 +2852,6 @@ export class AppFeature extends App {
             this.#projects[id] = proj;
             proj.id = id;
             proj.addLinkedHandler(this, "change", c => this.markChange(":"+id));
-            this.markChange("projects");
             this.markChange(":"+id);
             return proj;
         });
@@ -2890,7 +2865,6 @@ export class AppFeature extends App {
             delete this.#projects[id];
             proj.clearLinkedHandlers(this, "change");
             proj.id = null;
-            this.markChange("projects");
             this.markChange(":"+id);
             return proj;
         });
