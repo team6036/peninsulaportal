@@ -5941,27 +5941,31 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 if (!this.hasApp()) return;
                 let itm;
                 let menu = new core.App.Menu();
-                let customTypes = {
-                    "§node": {
-                        name: "Node",
+                let menuData = {
+                    "§node": "Node",
+                    "§cube": "Cube",
+                    "Arrows": {
+                        "§arrow+x": "Arrow (+X)",
+                        "§arrow-x": "Arrow (-X)",
+                        "§arrow+y": "Arrow (+Y)",
+                        "§arrow-y": "Arrow (-Y)",
+                        "§arrow+z": "Arrow (+Z)",
+                        "§arrow-z": "Arrow (-Z)",
                     },
-                    "§cube": {
-                        name: "Cube",
-                    },
-                    "§arrow": {
-                        name: "Arrow",
-                    },
-                    "§axes": {
-                        name: "Axes",
-                    },
+                    "§axes": "Axes",
                 };
-                for (let k in customTypes) {
-                    let data = customTypes[k];
-                    itm = menu.addItem(new core.App.Menu.Item(data.name, (current == k) ? "checkmark" : ""));
+                const dfs = (menu, k, v) => {
+                    if (util.is(v, "obj")) {
+                        let itm = menu.addItem(new core.App.Menu.Item(k));
+                        for (let k2 in v) dfs(itm.menu, k2, v[k2]);
+                        return;
+                    }
+                    let itm = menu.addItem(new core.App.Menu.Item(v, (current == k) ? "checkmark" : ""));
                     itm.addHandler("trigger", e => {
                         r.type = k;
                     });
-                }
+                };
+                for (let k in menuData) dfs(menu, k, menuData[k]);
                 menu.addItem(new core.App.Menu.Divider());
                 Object.keys(robots).forEach(k => {
                     itm = menu.addItem(new core.App.Menu.Item(k, (current == k) ? "checkmark" : ""));
@@ -6176,7 +6180,12 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             type = {
                 "§node": "Node",
                 "§cube": "Cube",
-                "§arrow": "Arrow",
+                "§arrow+x": "Arrow (+X)",
+                "§arrow-x": "Arrow (-X)",
+                "§arrow+y": "Arrow (+Y)",
+                "§arrow-y": "Arrow (-Y)",
+                "§arrow+z": "Arrow (+Z)",
+                "§arrow-z": "Arrow (-Z)",
                 "§axes": "Axes",
             }[type];
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
@@ -6253,7 +6262,28 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         );
         line.position.set(0, -arrowLength/2, 0);
         arrow.add(line);
-        this.#preloadedObjs["§arrow"] = arrow;
+        for (let i = 0; i < 2; i++) {
+            for (let j = 0; j < 3; j++) {
+                let pobj, obj = arrow.clone();
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                pobj.quaternion.copy(THREE.Quaternion.fromRotationSequence([
+                    [
+                        [{ axis:"z", angle:-90 }],
+                        [{ axis:"z", angle:90 }],
+                    ],
+                    [
+                        [],
+                        [{ axis:"z", angle:180 }],
+                    ],
+                    [
+                        [{ axis:"x", angle:90}],
+                        [{ axis:"x", angle:-90}],
+                    ],
+                ][j][i]));
+                this.#preloadedObjs["§arrow"+"+-"[i]+"xyz"[j]] = obj;
+            }
+        }
         const axes = new THREE.Object3D();
         let length = 1;
         let xAxis, yAxis, zAxis;
@@ -6399,6 +6429,12 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                                     obj.material.color.set(color.toHex(false));
                                 });
                             },
+                            "§arrow+x": () => typefs["§arrow"](),
+                            "§arrow-x": () => typefs["§arrow"](),
+                            "§arrow+y": () => typefs["§arrow"](),
+                            "§arrow-y": () => typefs["§arrow"](),
+                            "§arrow+z": () => typefs["§arrow"](),
+                            "§arrow-z": () => typefs["§arrow"](),
                         };
                         if (this.pose.type in typefs) typefs[this.pose.type]();
                     }
