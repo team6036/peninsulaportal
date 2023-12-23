@@ -2817,7 +2817,7 @@ export class AppFeature extends App {
                 if (dirent.type != "file") return;
                 let id = dirent.name.split(".")[0];
                 if (this.hasProject(id)) return;
-                await window.api.send("project-del", id);
+                // await window.api.send("project-del", id);
             }));
         } else {
             let projectIds = this.projects;
@@ -2832,7 +2832,7 @@ export class AppFeature extends App {
                 if (!change.startsWith(":")) return;
                 let id = change.substring(1);
                 if (this.hasProject(id)) return;
-                await window.api.send("project-del", id);
+                // await window.api.send("project-del", id);
             }));
         }
         await this.post("synced-files-with");
