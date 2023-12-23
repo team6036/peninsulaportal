@@ -827,9 +827,10 @@ const MAIN = async () => {
             };
             (async () => await onHolidayState(await this.get("active-holiday")))();
             this.#window = new electron.BrowserWindow(options);
-            this.window.once("ready-to-show", () => {
+            this.window.once("ready-to-show", async () => {
                 if (!this.hasWindow()) return;
                 this.#resolver.state++;
+                // await util.wait(100);
                 // this.window.show();
                 // this.window.webContents.openDevTools();
             });
@@ -1613,16 +1614,7 @@ const MAIN = async () => {
                 "projects-get": async () => {
                     await kfs["project-affirm"]();
                     const root = await kfs["root-get"]();
-                    let content = null;
-                    try {
-                        content = await WindowManager.fileRead([root, "projects.json"]);
-                    } catch (e) {}
-                    return content;
-                },
-                "projects-set": async content => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    await WindowManager.fileWrite([root, "projects.json"], content);
+                    return util.ensure(await WindowManager.dirList([root, "projects"]), "arr").filter(dirent => dirent.type == "file" && dirent.name.endsWith(".json")).map(dirent => dirent.name).map(name => name.substring(0, name.length-5));
                 },
                 "projects-list": async () => {
                     await kfs["project-affirm"]();
@@ -1650,12 +1642,13 @@ const MAIN = async () => {
                     await WindowManager.fileWrite([root, "projects", id+".json"], content);
                 },
                 "project-del": async id => {
+                    console.log("project del", id);
                     await kfs["project-affirm"]();
                     id = String(id);
                     const root = await kfs["root-get"]();
                     try {
                         await WindowManager.fileDelete([root, "projects", id+".json"]);
-                    } catch (e) { return false; }
+                    } catch (e) { console.log(e); return false; }
                     return true;
                 },
                 "projects-meta-get": async () => {
