@@ -1650,20 +1650,20 @@ const MAIN = async () => {
                     } catch (e) { return false; }
                     return true;
                 },
-                // "projects-meta-get": async () => {
-                //     await kfs["project-affirm"]();
-                //     const root = await kfs["root-get"]();
-                //     let content = null;
-                //     try {
-                //         content = await WindowManager.fileRead([root, "projects", id+".meta.json"]);
-                //     } catch (e) {}
-                //     return content;
-                // },
-                // "projects-meta-set": async content => {
-                //     await kfs["project-affirm"]();
-                //     const root = await kfs["root-get"]();
-                //     await WindowManager.fileWrite([root, "projects", id+".meta.json"], content);
-                // },
+                "projects-meta-get": async () => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    let content = null;
+                    try {
+                        content = await WindowManager.fileRead([root, "projects.json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "projects-meta-set": async content => {
+                    await kfs["project-affirm"]();
+                    const root = await kfs["root-get"]();
+                    await WindowManager.fileWrite([root, "projects.json"], content);
+                },
             };
             if (k in kfs)
                 return await kfs[k](...a);
@@ -2955,8 +2955,6 @@ const MAIN = async () => {
                         },
                         //~/panel/projects.json
                         { type: "file", name: "projects.json" },
-                        //~/panel/projects.meta.json
-                        // { type: "file", name: "projects.meta.json" },
                     ],
                 },
                 //~/planner
@@ -2973,8 +2971,6 @@ const MAIN = async () => {
                         },
                         //~/planner/projects.json
                         { type: "file", name: "projects.json" },
-                        //~/panel/projects.meta.json
-                        // { type: "file", name: "projects.meta.json" },
                         //~/planner/templates.json
                         { type: "file", name: "templates.json" },
                         //~/planner/solver
