@@ -5769,7 +5769,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             let colorR = new util.Color(getComputedStyle(document.body).getPropertyValue("--cr"));
             let colorG = new util.Color(getComputedStyle(document.body).getPropertyValue("--cg"));
             let colorB = new util.Color(getComputedStyle(document.body).getPropertyValue("--cb"));
-            let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v4"));
+            // let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v4"));
+            let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v2"));
             this.scene.fog.color.set(colorV.toHex(false));
             this.axisScene.xAxis.material.color.set(colorR.toHex(false));
             this.axisScene.yAxis.material.color.set(colorG.toHex(false));
@@ -5921,6 +5922,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.renderer.setSize(r.width*this.quality, r.height*this.quality);
             this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
 
+            this.renderer.render(this.scene, this.camera);
+
             this.composer.setSize(r.width*this.quality, r.height*this.quality);
             this.composer.render();
         });
@@ -6036,8 +6039,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#composer = new EffectComposer(this.renderer);
         const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
-        const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
-        this.composer.addPass(outlinePass);
+        // const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
+        // this.composer.addPass(outlinePass);
     }
     get isIsometric() { return !this.isProjection; }
     set isIsometric(v) { this.isProjection = !v; }
@@ -6286,7 +6289,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         let xAxis, yAxis, zAxis;
         xAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xff4444 }),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 }),
         );
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
@@ -6294,14 +6297,14 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         axes.xAxis = xAxis;
         yAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0x44ff44 }),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
         );
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         axes.yAxis = yAxis;
         zAxis = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0x4444ff }),
+            new THREE.MeshBasicMaterial({ color: 0x0000ff }),
         );
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
@@ -6436,6 +6439,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         if (this.pose.type in typefs) typefs[this.pose.type]();
                     }
                 }
+                return
                 let pass = this.#passes[0];
                 pass.visibleEdgeColor.set(color.toHex(false));
                 pass.hiddenEdgeColor.set(util.lerp(color, new util.Color(), 0.5).toHex(false));
@@ -6522,12 +6526,13 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         if (!this.hasTab()) return;
         if (!this.hasPose()) return;
         if (!this.hasThree()) return;
+        this.#passes = [];
         if (this.value.length == 3 || this.value.length == 7) {
             let pass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
             pass.edgeStrength = 10;
             pass.edgeGlow = 0;
             pass.edgeThickness = 5;
-            this.#passes = [pass];
+            // this.#passes = [pass];
         }
         this.#passes.forEach(pass => {
             this.composer.addPass(pass);
