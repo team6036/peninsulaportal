@@ -2307,22 +2307,24 @@ export class Project extends util.Target {
         this.#config = null;
         this.#meta = null;
 
-        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project) a = [a.config, a.meta];
+            if (a instanceof Project) a = [a.id, a.config, a.meta];
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
-                a = [a.config, a.meta];
+                a = [a.id, a.config, a.meta];
             }
             else if (a instanceof this.constructor.Config) a = [a, null];
             else if (a instanceof this.constructor.Meta) a = [null, a];
             else if (util.is(a, "str")) a = [null, a];
-            else if (util.is(a, "obj")) a = [a.config, a.meta];
+            else if (util.is(a, "obj")) a = [a.id, a.config, a.meta];
             else a = [null, null];
         }
+        if (a.length == 2)
+            a = [null, ...a];
 
-        [this.config, this.meta] = a;
+        [this.id, this.config, this.meta] = a;
     }
 
     get id() { return this.#id; }
@@ -2356,6 +2358,7 @@ export class Project extends util.Target {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
+            id: this.id,
             config: this.config, meta: this.meta,
         });
     }
@@ -2775,11 +2778,11 @@ export class AppFeature extends App {
         let projectIdsContent = await window.api.send("projects-get");
         let projectIds = JSON.parse(projectIdsContent);
         projectIds = util.ensure(projectIds, "arr").map(id => String(id));
-        let projects = {};
+        let projects = [];
         await Promise.all(projectIds.map(async id => {
             let projectContent = await window.api.send("project-get", id);
             let project = JSON.parse(projectContent, this.constructor.REVIVER.f);
-            projects[id] = project;
+            projects.push(project);
         }));
         this.projects = projects;
         this.clearChanges();
@@ -2844,47 +2847,53 @@ export class AppFeature extends App {
         return true;
     }
     get projects() { return Object.keys(this.#projects); }
+    get projectObjects() { return Object.values(this.#projects); }
     set projects(v) {
-        v = util.ensure(v, "obj");
+        v = util.ensure(v, "arr");
         this.clearProjects();
-        for (let id in v) this.addProject(id, v[id]);
+        this.addProject(v);
     }
     clearProjects() {
         let projs = this.projects;
-        projs.forEach(id => this.remProject(id));
+        this.remProject(projs);
         return projs;
     }
     hasProject(id) {
-        id = String(id);
+        if ((id instanceof Project) && (id instanceof this.constructor.PROJECTCLASS)) return this.hasProject(id.id);
         return id in this.#projects;
     }
     getProject(id) {
-        id = String(id);
         if (!this.hasProject(id)) return null;
         return this.#projects[id];
     }
-    addProject(id, proj) {
-        id = String(id);
-        if (!((proj instanceof Project) && (proj instanceof this.constructor.PROJECTCLASS))) return false;
-        if (this.hasProject(proj.id)) return false;
-        if (this.hasProject(id)) return false;
-        this.#projects[id] = proj;
-        proj.id = id;
-        proj.addLinkedHandler(this, "change", c => this.markChange(":"+proj.id));
-        this.markChange("projects");
-        this.markChange(":"+id);
-        return proj;
+    addProject(...projs) {
+        return util.Target.resultingForEach(projs, proj => {
+            if (!((proj instanceof Project) && (proj instanceof this.constructor.PROJECTCLASS))) return false;
+            if (this.hasProject(proj)) return false;
+            let id = proj.id;
+            while (id == null || this.hasProject(id))
+                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
+            this.#projects[id] = proj;
+            proj.id = id;
+            proj.addLinkedHandler(this, "change", c => this.markChange(":"+id));
+            this.markChange("projects");
+            this.markChange(":"+id);
+            return proj;
+        });
     }
-    remProject(id) {
-        id = String(id);
-        if (!this.hasProject(id)) return false;
-        let proj = this.getProject(id);
-        delete this.#projects[id];
-        proj.clearLinkedHandlers(this, "change");
-        proj.id = null;
-        this.markChange("projects");
-        this.markChange(":"+id);
-        return proj;
+    remProject(...ids) {
+        return util.Target.resultingForEach(ids, id => {
+            if ((id instanceof Project) && (id instanceof this.constructor.PROJECTCLASS)) id = id.id;
+            id = String(id);
+            if (!this.hasProject(id)) return false;
+            let proj = this.getProject(id);
+            delete this.#projects[id];
+            proj.clearLinkedHandlers(this, "change");
+            proj.id = null;
+            this.markChange("projects");
+            this.markChange(":"+id);
+            return proj;
+        });
     }
 
     get eFeatureStyle() { return this.#eFeatureStyle; }
@@ -3548,13 +3557,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         v = ((v instanceof Project) && (v instanceof this.app.constructor.PROJECTCLASS)) ? v : null;
         if (this.project == v) return;
         if ((v instanceof Project) && (v instanceof this.app.constructor.PROJECTCLASS)) {
-            if (!this.app.hasProject(v.id)) {
-                let id;
-                do {
-                    id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(64*Math.random())]).join("");
-                } while (this.app.hasProject(id));
-                this.app.addProject(id, v);
-            }
+            if (!this.app.hasProject(v)) this.app.addProject(v);
             this.projectId = v.id;
         } else this.projectId = null;
     }

@@ -26,7 +26,7 @@ export class Project extends core.Project {
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
         this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
 
-        if (a.length <= 0 || a.length > 7) a = [null];
+        if (a.length <= 0 || a.length > 8) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project) {
@@ -40,7 +40,7 @@ export class Project extends core.Project {
                     let pth = a.getPath(id);
                     pths[id] = new pth.constructor(pth);
                 });
-                a = [itms, pths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
+                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
             }
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
@@ -54,12 +54,12 @@ export class Project extends core.Project {
                     let pth = a.getPath(id);
                     pths[id] = new pth.constructor(pth);
                 });
-                a = [itms, pths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
+                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
             }
             else if (a instanceof Project.Config) a = [{}, {}, [1000, 1000], [100, 100], 0, a, null];
             else if (a instanceof Project.Meta) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
             else if (util.is(a, "str")) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
-            else if (util.is(a, "obj")) a = [a.items, a.paths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
+            else if (util.is(a, "obj")) a = [a.id, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
             else a = [{}, {}, [1000, 1000], [100, 100], 0, null, null];
         }
         if (a.length == 2)
@@ -72,8 +72,10 @@ export class Project extends core.Project {
             a = [...a.slice(0, 3), [100, 100], 0, ...a.slice(3)];
         if (a.length == 6)
             a = [...a.slice(0, 4), 0, ...a.slice(4)];
+        if (a.length == 7)
+            a = [null, ...a];
 
-        [this.items, this.paths, this.size, this.robotSize, this.robotMass, this.config, this.meta] = a;
+        [this.id, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.config, this.meta] = a;
 
         this.addHandler("change", () => {
             let pathNames = new Set();
@@ -220,6 +222,7 @@ export class Project extends core.Project {
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
+            id: this.id,
             items: this.#items,
             paths: this.#paths,
             size: this.size,
