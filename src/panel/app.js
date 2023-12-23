@@ -6536,18 +6536,18 @@ class Project extends core.Project {
         this.#widgetData = "";
         this.#sidePos = 0.15;
 
-        if (a.length <= 0 || a.length > 4) a = [null];
+        if (a.length <= 0 || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project) a = [a.widgetData, a.sidePos, a.config, a.meta];
+            if (a instanceof Project) a = [a.id, a.widgetData, a.sidePos, a.config, a.meta];
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
-                a = [a.widgetData, a.sidePos, a.config, a.meta];
+                a = [a.id, a.widgetData, a.sidePos, a.config, a.meta];
             }
             else if (a instanceof Project.Config) a = ["", a, null];
             else if (a instanceof Project.Meta) a = ["", null, a];
             else if (util.is(a, "str")) a = ["", null, a];
-            else if (util.is(a, "obj")) a = [a.widgetData, a.sidePos, a.config, a.meta];
+            else if (util.is(a, "obj")) a = [a.id, a.widgetData, a.sidePos, a.config, a.meta];
             else a = ["", null, null];
         }
         if (a.length == 2) {
@@ -6555,9 +6555,9 @@ class Project extends core.Project {
             else a = ["", null, null];
         }
         if (a.length == 3) a = [a[0], 0.15, ...a.slice(1)];
+        if (a.length == 4) a = [null, ...a];
 
-
-        [this.widgetData, this.sidePos, this.config, this.meta] = a;
+        [this.id, this.widgetData, this.sidePos, this.config, this.meta] = a;
     }
 
     get widgetData() { return this.#widgetData; }
@@ -6587,6 +6587,7 @@ class Project extends core.Project {
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
+            id: this.id,
             widgetData: this.widgetData,
             sidePos: this.sidePos,
             config: this.config, meta: this.meta,
