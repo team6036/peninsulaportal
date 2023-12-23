@@ -594,7 +594,7 @@ class LoggerContext extends util.Target {
     }
 
     #hasHost() { return this.#host != null; }
-    #hasClient() { return this.#client instanceof core.Client; }
+    #hasClient() { return !!this.#client; }
 
     get initializing() { return !this.#hasClient(); }
     get initialized() { return !this.initializing; }
@@ -1146,8 +1146,7 @@ class Panel extends Widget {
         v = Math.min(this.#tabs.length-1, Math.max(0, util.ensure(v, "int")));
         this.change("tabIndex", this.tabIndex, this.#tabIndex=v);
         this.#tabs.forEach((tab, i) => (i == this.tabIndex) ? tab.open() : tab.close());
-        if (this.tabs[this.tabIndex] instanceof Panel.Tab)
-            this.tabs[this.tabIndex].eTab.scrollIntoView({ behavior: "smooth" });
+        if (this.tabs[this.tabIndex]) this.tabs[this.tabIndex].eTab.scrollIntoView({ behavior: "smooth" });
         this.format();
     }
     clearTabs() {
@@ -1314,11 +1313,11 @@ Panel.Tab = class PanelTab extends util.Target {
         if (this.parent == v) return;
         this.#parent = v;
     }
-    hasParent() { return this.parent instanceof Panel; }
+    hasParent() { return !!this.parent; }
     get page() { return this.hasParent() ? this.parent.page : null; }
-    hasPage() { return this.page instanceof App.ProjectPage; }
+    hasPage() { return !!this.page; }
     get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
+    hasApp() { return !!this.app; }
 
     get elem() { return this.#elem; }
     get eTab() { return this.#eTab; }
@@ -1904,7 +1903,7 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
         if (this.node == v) return;
         this.#node = v;
     }
-    hasNode() { return this.node instanceof Source.Node; }
+    hasNode() { return !!this.node; }
 };
 Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #path;
@@ -1952,7 +1951,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         });
         this.addHandler("update", delta => {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
-            const node = (source instanceof Source) ? source.tree.lookup(this.path) : null;
+            const node = source ? source.tree.lookup(this.path) : null;
             if (prevNode != node) {
                 prevNode = node;
                 state = {};
@@ -1960,15 +1959,15 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             this.eTabIcon.style.color = "";
             this.eTabName.style.color = "";
             this.iconColor = "";
-            let display = getDisplay((node instanceof Source.Node && node.hasField()) ? node.field.type : null, (node instanceof Source.Node && node.hasField()) ? node.field.get() : null);
+            let display = getDisplay((node && node.hasField()) ? node.field.type : null, (node && node.hasField()) ? node.field.get() : null);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
                 if ("color" in display) this.eTabIcon.style.color = display.color;
                 else this.eTabIcon.style.color = "";
             }
-            this.name = (node instanceof Source.Node) ? (node.name.length > 0) ? node.name : "/" : "?";
-            if ((node instanceof Source.Node) && (!node.hasField() || node.field.isArray || node.field.isStruct || node.nNodes > 1)) {
+            this.name = node ? (node.name.length > 0) ? node.name : "/" : "?";
+            if (node && (!node.hasField() || node.field.isArray || node.field.isStruct || node.nNodes > 1)) {
                 this.eBrowser.classList.add("this");
                 this.eDisplay.classList.remove("this");
                 if (this.isClosed) return;
@@ -2009,7 +2008,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         });
                     },
                 );
-            } else if (node instanceof Source.Node) {
+            } else if (node) {
                 this.eBrowser.classList.remove("this");
                 this.eDisplay.classList.add("this");
                 let value = node.field.get();
@@ -2217,12 +2216,12 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             let columns = ["150px", ...new Array(this.vars.length).fill("250px")];
             this.eHeader.style.gridTemplateColumns = this.eBody.style.gridTemplateColumns = columns.join(" ");
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
-            if (!this.tsOverride) this.tsNow = (source instanceof Source) ? source.ts : 0;
+            if (!this.tsOverride) this.tsNow = source ? source.ts : 0;
             if (document.activeElement != this.eTSInput)
                 this.eTSInput.value = this.tsNow;
             let ts = new Set();
             this.vars.forEach((v, i) => {
-                let node = v.node = (source instanceof Source) ? source.tree.lookup(v.path) : null;
+                let node = v.node = source ? source.tree.lookup(v.path) : null;
                 v.x = i+1;
                 if (!v.hasNode() || !v.node.hasField()) return;
                 let valueLog = node.field.valueLog;
@@ -2545,7 +2544,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         if (this.tab == v) return;
         this.#tab = v;
     }
-    hasTab() { return this.tab instanceof Panel.TableTab; }
+    hasTab() { return !!this.tab; }
 
     get path() { return this.#path; }
     set path(v) {
@@ -2576,7 +2575,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         if (this.node == v) return;
         this.#node = v;
     }
-    hasNode() { return this.node instanceof Source.Node; }
+    hasNode() { return !!this.node; }
 
     get eHeader() { return this.#eHeader; }
     get eSections() { return [...this.#eSections]; }
@@ -2670,7 +2669,7 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
             if (!ready || !document.body.contains(this.eWebView)) return;
             if (document.activeElement != this.eSrcInput)
                 this.eSrcInput.value = this.eWebView.getURL();
-            if (this.eLoadBtn.children[0] instanceof HTMLElement)
+            if (this.eLoadBtn.children[0])
                 this.eLoadBtn.children[0].setAttribute("name", this.eWebView.isLoading() ? "close" : "refresh");
             this.eBackBtn.disabled = !this.eWebView.canGoBack();
             this.eForwardBtn.disabled = !this.eWebView.canGoForward();
@@ -3220,11 +3219,11 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
 
     get tab() { return this.#tab; }
     get parent() { return this.tab.parent; }
-    hasParent() { return this.parent instanceof Panel; }
+    hasParent() { return !!this.parent; }
     get page() { return this.hasParent() ? this.parent.page : null; }
-    hasPage() { return this.page instanceof App.ProjectPage; }
+    hasPage() { return !!this.page; }
     get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
+    hasApp() { return !!this.app; }
 
     get name() { return this.#name; }
 
@@ -3410,7 +3409,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             sum[i] = 1;
                             updateSum();
                             return source;
-                        }))).filter(source => source instanceof WPILOGSource);
+                        }))).filter(source => !!source);
                         const client = new WorkerClient("./merge-worker.js");
                         const sourceData = await new Promise((res, rej) => {
                             client.addHandler("error", e => rej(e));
@@ -3903,7 +3902,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 vars.forEach(v => {
                     if (!v.isShown) return;
                     let node = source.tree.lookup(v.path);
-                    if (!(node instanceof Source.Node)) return;
+                    if (!node) return;
                     if (!node.hasField()) return;
                     if (!node.field.isJustPrimitive) return;
                     let log = node.field.getRange(...graphRange);
@@ -4959,13 +4958,13 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
         this.#tab = v;
         this.create();
     }
-    hasTab() { return this.tab instanceof Panel.OdometryTab; }
+    hasTab() { return !!this.tab; }
     get parent() { return this.hasTab() ? this.tab.parent : null; }
-    hasParent() { return this.parent instanceof Panel; }
+    hasParent() { return !!this.parent; }
     get page() { return this.hasParent() ? this.parent.page : null; }
-    hasPage() { return this.page instanceof App.ProjectPage; }
+    hasPage() { return !!this.page; }
     get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
+    hasApp() { return !!this.app; }
     get pose() { return this.#pose; }
     set pose(v) {
         v = (v instanceof Panel.OdometryTab.Pose) ? v : null;
@@ -4974,7 +4973,7 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
         this.#pose = v;
         this.create();
     }
-    hasPose() { return this.pose instanceof Panel.OdometryTab.Pose; }
+    hasPose() { return !!this.pose; }
 
     destroy() { return; }
     create() { return; }
@@ -5181,7 +5180,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
-                const node = (source instanceof Source) ? source.tree.lookup(pose.path) : null;
+                const node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.update(delta);
             });
@@ -5400,8 +5399,6 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         });
     }
 
-    hasTab() { return this.tab instanceof Panel.Odometry2dTab; }
-    hasPose() { return this.pose instanceof Panel.Odometry2dTab.Pose; }
     get value() { return this.#value; }
     set value(v) {
         v = util.ensure(v, "arr").map(v => util.ensure(v, "num"));
@@ -5760,7 +5757,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.poses.forEach(pose => {
                 pose.state.pose = pose.isShown ? pose : null;
                 [pose.state.offsetX, pose.state.offsetY] = new V(util.ensure(templates[this.template], "obj").size).div(-2).xy;
-                const node = (source instanceof Source) ? source.tree.lookup(pose.path) : null;
+                const node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
@@ -6016,7 +6013,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.wpilibGroup.add(this.#theField);
         }
     }
-    hasField() { return this.field instanceof THREE.Object3D; }
+    hasField() { return !!this.field; }
 
     get isProjection() { return this.#isProjection; }
     set isProjection(v) {
@@ -6368,7 +6365,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                 this.object = this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type];
                 if (theObject != this.theObject) {
                     theObject = this.theObject;
-                    if (theObject instanceof THREE.Object3D)
+                    if (theObject)
                         theObject.traverse(obj => {
                             if (!obj.isMesh) return;
                             if (!(obj.material instanceof THREE.Material)) return;
@@ -6378,7 +6375,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         });
                     isGhost = isSolid = null;
                 }
-                if (theObject instanceof THREE.Object3D) {
+                if (theObject) {
                     let changed = false;
                     if (isGhost != this.pose.isGhost) {
                         isGhost = this.pose.isGhost;
@@ -6463,8 +6460,6 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
     get offsetZ() { return this.offset.z; }
     set offsetZ(v) { this.offset.z = v; }
 
-    hasTab() { return this.tab instanceof Panel.Odometry3dTab; }
-    hasPose() { return this.pose instanceof Panel.Odometry3dTab.Pose; }
     get value() { return this.#value; }
     set value(v) {
         v = util.ensure(v, "arr").map(v => util.ensure(v, "num"));
@@ -6484,7 +6479,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#composer = v;
         this.create();
     }
-    hasComposer() { return this.composer instanceof EffectComposer; }
+    hasComposer() { return !!this.composer; }
     get scene() { return this.#scene; }
     set scene(v) {
         v = (v instanceof THREE.Scene) ? v : null;
@@ -6493,7 +6488,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#scene = v;
         this.create();
     }
-    hasScene() { return this.scene instanceof THREE.Scene; }
+    hasScene() { return !!this.scene; }
     get group() { return this.#group; }
     set group(v) {
         v = (v instanceof THREE.Group) ? v : null;
@@ -6502,7 +6497,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#group = v;
         this.create();
     }
-    hasGroup() { return this.group instanceof THREE.Group; }
+    hasGroup() { return !!this.group; }
     get camera() { return this.#camera; }
     set camera(v) {
         v = (v instanceof THREE.Camera) ? v : null;
@@ -6511,7 +6506,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#camera = v;
         this.create();
     }
-    hasCamera() { return this.camera instanceof THREE.Camera; }
+    hasCamera() { return !!this.camera; }
     hasThree() { return this.hasComposer() && this.hasScene() && this.hasGroup() && this.hasCamera(); }
 
     destroy() {
@@ -6559,7 +6554,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             this.group.add(this.theObject);
         }
     }
-    hasObject() { return this.object instanceof THREE.Object3D; }
+    hasObject() { return !!this.object; }
 };
 
 class Project extends core.Project {
@@ -7179,7 +7174,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-openclose", () => {
             if (!this.hasActivePanel()) return;
             const active = this.activeWidget;
-            if (!(active.tabs[active.tabIndex] instanceof Panel.Tab)) return;
+            if (!active.tabs[active.tabIndex]) return;
             active.tabs[active.tabIndex].post("openclose");
         });
         this.app.addHandler("cmd-expandcollapse", () => {
@@ -7492,7 +7487,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
             let itm;
             itm = this.app.menu.findItemWithId("action");
-            if (itm instanceof App.Menu.Item) {
+            if (itm) {
                 if (this.source instanceof NTSource) {
                     let on = !this.source.connecting && !this.source.connected;
                     itm.enabled = true;
@@ -7507,7 +7502,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             }
             ["nt", "wpilog"].forEach(type => {
                 itm = this.app.menu.findItemWithId("source:"+type);
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
             });
 
@@ -7517,7 +7512,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let tNow = this.source.ts;
                 let paused = this.source.playback.paused;
                 this.progress = (tNow - tMin) / (tMax - tMin);
-                if (this.eNavActionButton.children[0] instanceof HTMLElement)
+                if (this.eNavActionButton.children[0])
                     this.eNavActionButton.children[0].setAttribute("name", paused ? "play" : "pause");
                 this.eNavProgressTooltip.textContent = util.formatTime(util.lerp(tMin, tMax, this.progressHover));
                 this.eNavPreInfo.textContent = util.formatTime(tMin);
@@ -7560,7 +7555,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 itm.exists = true;
             });
             await this.refresh();
@@ -7576,11 +7571,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("post-enter", async data => {
             let itm;
             itm = this.app.menu.findItemWithId("closeproject");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = "CmdOrCtrl+Shift+W";
+            if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
             itm = this.app.menu.findItemWithId("close");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = "";
+            if (itm) itm.accelerator = "";
         });
         this.addHandler("leave", async data => {
             let projectOnly = [
@@ -7591,18 +7584,16 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 itm.exists = false;
             });
         });
         this.addHandler("post-leave", async data => {
             let itm;
             itm = this.app.menu.findItemWithId("closeproject");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = null;
+            if (itm) itm.accelerator = null;
             itm = this.app.menu.findItemWithId("close");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = null;
+            if (itm) itm.accelerator = null;
         });
     }
 
@@ -7629,7 +7620,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             const onDrag = path => {
                 path = Source.generatePath(path);
                 let node = this.hasSource() ? this.source.tree.lookup(path) : null;
-                if (!(node instanceof Source.Node)) return;
+                if (!node) return;
                 this.app.dragData = node;
                 this.app.dragging = true;
             };
@@ -7709,7 +7700,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.project.widgetData = JSON.stringify(this.widget);
         this.formatContent();
     }
-    hasWidget() { return this.widget instanceof Widget; }
+    hasWidget() { return !!this.widget; }
     get activeWidget() { return this.#activeWidget; }
     set activeWidget(v) {
         v = (v instanceof Widget) ? v : null;
@@ -7718,7 +7709,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#activeWidget = v;
         if (this.hasActiveWidget()) this.activeWidget.elem.classList.add("active");
     }
-    hasActiveWidget() { return this.activeWidget instanceof Widget; }
+    hasActiveWidget() { return !!this.activeWidget; }
     hasActiveContainer() { return this.activeWidget instanceof Container; }
     hasActivePanel() { return this.activeWidget instanceof Panel; }
     get source() { return this.#source; }
@@ -7730,7 +7721,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         }
         this.#source = v;
     }
-    hasSource() { return this.source instanceof Source; }
+    hasSource() { return !!this.source; }
     get sourceInfo() {
         if (this.source instanceof NTSource) {
             if (!this.source.connecting && !this.source.connected) return "Disconnected";

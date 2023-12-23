@@ -104,9 +104,9 @@ export default class Source extends util.Target {
                     }
                     node = node.getNode(name);
                 }
-                if (node instanceof Source.Field && node.parent instanceof Source.Field)
+                if (node instanceof Source.Node && node.parent instanceof Source.Node)
                     node.parent.remNode(node);
-                if (node instanceof Source.Field)
+                if (node instanceof Source.Node)
                     node.field = null;
                 field.node = null;
             }
@@ -327,7 +327,8 @@ Source.Field = class SourceField extends util.Target {
         if (this.node == v) return;
         this.#node = v;
     }
-    hasNode() { return this.node instanceof Source.Node; }
+    // hasNode() { return this.node instanceof Source.Node; }
+    hasNode() { return !!this.node; }
 
     get path() { return this.#path; }
 
@@ -460,7 +461,8 @@ Source.Node = class SourceNode extends util.Target {
         if (this.field == v) return;
         this.#field = v;
     }
-    hasField() { return this.field instanceof Source.Field; }
+    // hasField() { return this.field instanceof Source.Field; }
+    hasField() { return !!this.field; }
 
     get name() { return this.#name; }
     get path() {

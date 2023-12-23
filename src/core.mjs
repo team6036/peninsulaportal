@@ -393,7 +393,7 @@ export class App extends util.Target {
             delete window.colors;
         }
         let itm = this.menu.findItemWithId("toggleDevTools");
-        if (!(itm instanceof App.Menu.Item)) return;
+        if (!itm) return;
         itm.enabled = this.devMode;
     }
     get holiday() { return this.#holiday; }
@@ -490,7 +490,7 @@ export class App extends util.Target {
 
         this.addHandler("cmd-menu-click", async id => {
             let itm = this.menu.findItemWithId(id);
-            if (!(itm instanceof App.Menu.Item)) return;
+            if (!itm) return;
             itm.post("trigger", null);
         });
 
@@ -901,51 +901,44 @@ export class App extends util.Target {
         if (!(menu instanceof App.Menu)) return false;
         ["PANEL", "PLANNER"].forEach(name => {
             let itm = menu.findItemWithId("spawn:"+name);
-            if (!(itm instanceof App.Menu.Item)) return;
+            if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
         });
         ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
             let itm = menu.findItemWithId(id);
-            if (!(itm instanceof App.Menu.Item)) return;
+            if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-helpurl", id));
         });
         let itm;
         itm = menu.findItemWithId("about");
-        if (itm instanceof App.Menu.Item)
-            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-about"));
+        if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-about"));
         itm = menu.findItemWithId("settings");
-        if (itm instanceof App.Menu.Item)
-            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", "PRESETS"));
+        if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", "PRESETS"));
         itm = menu.findItemWithId("reload");
-        if (itm instanceof App.Menu.Item)
-            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-reload"));
+        if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-reload"));
         itm = menu.findItemWithId("documentation");
-        if (itm instanceof App.Menu.Item)
-            itm.addLinkedHandler(this, "trigger", e => this.post("cmd-documentation"));
+        if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-documentation"));
         return menu;
     }
     unbindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
         ["PANEL", "PLANNER"].forEach(name => {
             let itm = menu.findItemWithId("spawn:"+name);
-            if (!(itm instanceof App.Menu.Item)) return;
+            if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
         });
         ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
             let itm = menu.findItemWithId(id);
-            if (!(itm instanceof App.Menu.Item)) return;
+            if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
         });
         let itm;
         itm = menu.findItemWithId("about");
-        if (itm instanceof App.Menu.Item)
-            itm.clearLinkedHandlers(this, "trigger");
+        if (itm) itm.clearLinkedHandlers(this, "trigger");
         itm = menu.findItemWithId("settings");
-        if (itm instanceof App.Menu.Item)
-            itm.clearLinkedHandlers(this, "trigger");
+        if (itm) itm.clearLinkedHandlers(this, "trigger");
         itm = menu.findItemWithId("reload");
-        if (itm instanceof App.Menu.Item)
-            itm.clearLinkedHandlers(this, "trigger");
+        if (itm) itm.clearLinkedHandlers(this, "trigger");
         return menu;
     }
     get contextMenu() { return this.#contextMenu; }
@@ -958,7 +951,7 @@ export class App extends util.Target {
         if (this.hasContextMenu())
             document.body.appendChild(this.contextMenu.elem);
     }
-    hasContextMenu() { return this.contextMenu instanceof App.Menu; }
+    hasContextMenu() { return !!this.contextMenu; }
     placeContextMenu(...v) {
         v = new V(...v);
         if (!this.hasContextMenu()) return false;
@@ -1294,7 +1287,7 @@ App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
     }
 
     get eArticle() { return this.#eArticle; }
-    hasEArticle() { return this.eArticle instanceof HTMLElement; }
+    hasEArticle() { return !!this.eArticle; }
 };
 App.CorePopup = class AppCorePopup extends App.PopupBase {
     #eIconBox;
@@ -1648,7 +1641,7 @@ App.Menu = class AppMenu extends util.Target {
     findItemWithId(id) {
         for (let itm of this.items) {
             let foundItm = itm.findItemWithId(id);
-            if (!(foundItm instanceof App.Menu.Item)) continue;
+            if (!foundItm) continue;
             return foundItm;
         }
         return null;
@@ -2499,7 +2492,7 @@ export class AppFeature extends App {
             this.eFileBtn.addEventListener("click", e => {
                 e.stopPropagation();
                 let itm = this.menu.findItemWithId("menu:file");
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 this.contextMenu = itm.menu;
                 let r = this.eFileBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
@@ -2513,7 +2506,7 @@ export class AppFeature extends App {
             this.eEditBtn.addEventListener("click", e => {
                 e.stopPropagation();
                 let itm = this.menu.findItemWithId("menu:edit");
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 this.contextMenu = itm.menu;
                 let r = this.eEditBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
@@ -2527,7 +2520,7 @@ export class AppFeature extends App {
             this.eViewBtn.addEventListener("click", e => {
                 e.stopPropagation();
                 let itm = this.menu.findItemWithId("menu:view");
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 this.contextMenu = itm.menu;
                 let r = this.eViewBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
@@ -2727,7 +2720,7 @@ export class AppFeature extends App {
                 if (name in namefs) namefs[name]();
             });
             let itm = this.menu.findItemWithId("close");
-            if (itm instanceof App.Menu.Item) itm.accelerator = "CmdOrCtrl+Shift+W";
+            if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
 
             await this.post("pre-post-setup");
 
@@ -3152,7 +3145,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eContent.classList.remove("grid");
         if (v == "list") this.eContent.classList.add("list");
         if (v == "grid") this.eContent.classList.add("grid");
-        if (this.eInfoDisplayBtn.children[0] instanceof HTMLElement)
+        if (this.eInfoDisplayBtn.children[0])
             this.eInfoDisplayBtn.children[0].setAttribute("name", (v == "list") ? "grid" : (v == "grid") ? "list" : null);
     }
 
@@ -3326,8 +3319,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
                 if (!this.hasProject()) return;
                 this.eGridImage.style.backgroundImage = "url('"+this.project.meta.thumb+"')";
             };
-            if (f instanceof Project) f.clearLinkedHandlers(this, "thumb");
-            if (t instanceof Project) t.addLinkedHandler(this, "thumb", doThumb);
+            if (f) f.clearLinkedHandlers(this, "thumb");
+            if (t) t.addLinkedHandler(this, "thumb", doThumb);
             doThumb();
         });
 
@@ -3340,10 +3333,11 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
     get project() { return this.#project; }
     set project(v) {
+        v = (v instanceof Project) ? v : null;
         if (this.project == v) return;
         this.change("project", this.project, this.#project=v);
     }
-    hasProject() { return this.#project instanceof Project; }
+    hasProject() { return !!this.project; }
 
     get name() { return this.eListName.textContent; }
     set name(v) { this.eListName.textContent = this.eGridName.textContent = v; }
@@ -3472,17 +3466,15 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 itm.exists = true;
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
             let itm;
             itm = this.app.menu.findItemWithId("closeproject");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = "CmdOrCtrl+W";
+            if (itm) itm.accelerator = "CmdOrCtrl+W";
             itm = this.app.menu.findItemWithId("close");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = "CmdOrCtrl+Shift+W";
+            if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
             await this.post("post-enter", data);
         });
         this.addHandler("leave", async data => {
@@ -3493,17 +3485,15 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 itm.exists = false;
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
             let itm;
             itm = this.app.menu.findItemWithId("closeproject");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = null;
+            if (itm) itm.accelerator = null;
             itm = this.app.menu.findItemWithId("close");
-            if (itm instanceof App.Menu.Item)
-                itm.accelerator = null;
+            if (itm) itm.accelerator = null;
             this.app.markChange("*all");
             await this.app.post("cmd-save");
             this.project = null;
@@ -3898,7 +3888,7 @@ export class Odometry2d extends util.Target {
         this.#ctx = this.hasCanvas() ? this.canvas.getContext("2d") : null;
         this.update(0);
     }
-    hasCanvas() { return this.canvas instanceof HTMLCanvasElement; }
+    hasCanvas() { return !!this.canvas; }
     get ctx() { return this.#ctx; }
     get quality() { return this.#quality; }
     set quality(v) { this.#quality = Math.max(1, util.ensure(v, "int")); }

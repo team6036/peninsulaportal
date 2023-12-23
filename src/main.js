@@ -22,18 +22,12 @@ const MAIN = async () => {
     const log = (...a) => {
         let now = new Date();
         let yr = now.getFullYear();
-        let mon = String(now.getMonth()+1);
-        let d = String(now.getDate());
-        let hr = String(now.getHours());
-        let min = String(now.getMinutes());
-        let s = String(now.getSeconds());
-        let ms = String(now.getMilliseconds());
-        mon = mon.padStart(2, "0");
-        d = d.padStart(2, "0");
-        hr = hr.padStart(2, "0");
-        min = min.padStart(2, "0");
-        s = s.padStart(2, "0");
-        ms = ms.padEnd(3, "0");
+        let mon = String(now.getMonth()+1).padStart(2, "0");
+        let d = String(now.getDate()).padStart(2, "0");
+        let hr = String(now.getHours()).padStart(2, "0");
+        let min = String(now.getMinutes()).padStart(2, "0");
+        let s = String(now.getSeconds()).padStart(2, "0");
+        let ms = String(now.getMilliseconds()).padEnd(3, "0");
         return console.log(`${yr}-${mon}-${d} ${hr}:${min}:${s}.${ms}`, ...a);
     };
 
@@ -171,7 +165,7 @@ const MAIN = async () => {
             if (this.hasParent())
                 this.parent.addProcess(this);
         }
-        hasParent() { return this.parent instanceof ProcessManager; }
+        hasParent() { return !!this.parent; }
 
         get process() { return this.#process; }
 
@@ -732,9 +726,9 @@ const MAIN = async () => {
         get isModal() { return this.name.startsWith("modal:"); }
 
         get window() { return this.#window; }
-        hasWindow() { return (this.window instanceof electron.BrowserWindow) && !this.window.isDestroyed() && !this.window.webContents.isDestroyed(); }
+        hasWindow() { return !!this.window && !this.window.isDestroyed() && !this.window.webContents.isDestroyed(); }
         get menu() { return this.#menu; }
-        hasMenu() { return this.menu instanceof electron.Menu; }
+        hasMenu() { return !!this.menu; }
         get perm() { return this.#perm; }
         set perm(v) { this.#perm = !!v; }
 
@@ -1606,8 +1600,6 @@ const MAIN = async () => {
                     if (!hasDir) await WindowManager.dirMake(root);
                     let hasProjectsContent = await WindowManager.fileHas([root, "projects.json"]);
                     if (!hasProjectsContent) await WindowManager.fileWrite([root, "projects.json"], "");
-                    // let hasProjectsMetaContent = await WindowManager.fileHas([root, "projects.meta.json"]);
-                    // if (!hasProjectsMetaContent) await WindowManager.fileWrite([root, "projects.meta.json"], "");
                     let hasProjectsDir = await WindowManager.dirHas([root, "projects"]);
                     if (!hasProjectsDir) await WindowManager.dirMake([root, "projects"]);
                 },
@@ -2152,7 +2144,7 @@ const MAIN = async () => {
         }
 
         get stream() { return this.#stream; }
-        hasStream() { return this.stream instanceof fs.WriteStream; }
+        hasStream() { return !!this.stream; }
 
         get processManager() { return this.#processManager; }
         get clientManager() { return this.#clientManager; }
@@ -2175,7 +2167,7 @@ const MAIN = async () => {
             return r;
         }
         hasWindow(win) {
-            if (win == null) return this.window instanceof Window;
+            if (win == null) return !!this.window;
             if (!(win instanceof Window)) return false;
             return this.#windows.has(win) && win.manager == this;
         }
@@ -3087,7 +3079,7 @@ const MAIN = async () => {
             let client = this.clientManager.remClient((id instanceof Client) ? id : this.clientManager.getClientById(id));
             return client;
         }
-        async clientHas(id) { return this.hasWindow() ? !!(await this.window.clientHas(id)) : (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(id) instanceof Client); }
+        async clientHas(id) { return this.hasWindow() ? !!(await this.window.clientHas(id)) : (id instanceof Client) ? this.clientManager.clients.includes(id) : (!!this.clientManager.getClientById(id)); }
         async clientGet(id) {
             if (this.hasWindow()) return await this.window.clientGet(id);
             if (!(await this.clientHas(id))) return null;
@@ -3406,7 +3398,7 @@ const MAIN = async () => {
                 return await this.get(k);
             } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
             let win = this.identifyWindow(id);
-            if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
             return await win.get(k);
         }
         async set(k, v) {
@@ -3483,7 +3475,7 @@ const MAIN = async () => {
                 return await this.set(k, v);
             } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             let win = this.identifyWindow(id);
-            if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
             return await win.set(k, v);
         }
         async on(k, ...a) {
@@ -3549,12 +3541,12 @@ const MAIN = async () => {
         async onCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!(win instanceof Window)) {
+            if (!win) {
                 try {
                     return await this.on(k, ...a);
                 } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
             }
-            if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
             return await win.on(k, ...a);
         }
         async send(k, ...a) {
