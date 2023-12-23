@@ -2319,7 +2319,7 @@ const MAIN = async () => {
                 await this.set("fs-version", version);
                 this.log("DB finding host");
                 this.addLoad("find");
-                const host = ((await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co");
+                const host = String(await this.get("db-host"));
                 const theHost = host + "/api";
                 const assetsHost = String(await this.get("assets-host"));
                 const isCompMode = await this.get("val-comp-mode");
@@ -2375,7 +2375,7 @@ const MAIN = async () => {
                 this.remLoad("config");
                 this.log("DB finding next host");
                 this.addLoad("find-next");
-                const nextHost = (await this.get("db-host")) || "https://peninsula-db.jfancode.repl.co";
+                const nextHost = String(await this.get("db-host"));
                 this.remLoad("find-next");
                 if (nextHost != host) {
                     this.log("DB next host and current host mismatch - retrying");
@@ -3347,7 +3347,7 @@ const MAIN = async () => {
                 },
                 "db-host": async () => {
                     let host = (await kfs._fullconfig()).dbHost;
-                    return util.ensure(host, "str") || "https://peninsula-db.jfancode.repl.co";
+                    return util.ensure(host, "str") || "http://143.244.189.117:6036";
                 },
                 "assets-host": async () => {
                     return String((await kfs._fullconfig()).assetsHost);
