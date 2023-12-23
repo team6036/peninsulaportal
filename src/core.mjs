@@ -565,6 +565,10 @@ export class App extends util.Target {
         document.head.appendChild(highlight2);
         highlight2.rel = "stylesheet";
 
+        const qrcode = document.createElement("script");
+        document.head.appendChild(qrcode);
+        qrcode.src = root+"/assets/modules/qrcode.min.js";
+
         const updatePage = () => {
             Array.from(document.querySelectorAll(".loading")).forEach(elem => {
                 if (elem.children.length > 0) return;
