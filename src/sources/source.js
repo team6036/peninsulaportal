@@ -327,7 +327,6 @@ Source.Field = class SourceField extends util.Target {
         if (this.node == v) return;
         this.#node = v;
     }
-    // hasNode() { return this.node instanceof Source.Node; }
     hasNode() { return !!this.node; }
 
     get path() { return this.#path; }
@@ -461,7 +460,6 @@ Source.Node = class SourceNode extends util.Target {
         if (this.field == v) return;
         this.#field = v;
     }
-    // hasField() { return this.field instanceof Source.Field; }
     hasField() { return !!this.field; }
 
     get name() { return this.#name; }

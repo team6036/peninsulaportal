@@ -176,7 +176,6 @@ export default class NTClient {
         if (this.baseAddr == v) return;
         this.#baseAddr = v;
     }
-    // #hasWS() { return this.#ws instanceof WebSocket; }
     #hasWS() { return !!this.#ws; }
     get addr() { return this.#addr; }
 
@@ -232,7 +231,6 @@ export default class NTClient {
 
     unsubscribe(uid) {
         let sub = this.#subscriptions[uid];
-        // if (!(sub instanceof NTSubscription)) return;
         if (!sub) return;
         delete this.#subscriptions[uid];
         if (this.connectionActive)
@@ -249,7 +247,6 @@ export default class NTClient {
         properties = util.ensure(properties, "obj");
 
         let top = (topic in this.#publishedTopics) ? this.#publishedTopics[topic] : (topic in this.#serverTopics) ? this.#serverTopics[topic] : null;
-        // if (top instanceof NTTopic) {
         if (top) {
             for (let k in properties) {
                 let v = properties[k];
@@ -281,7 +278,6 @@ export default class NTClient {
     unpublishTopic(topic) {
         topic = String(topic);
         let top = this.#publishedTopics[topic];
-        // if (!(top instanceof NTTopic)) return;
         if (!top) return;
         delete this.#publishedTopics[topic];
         if (this.connectionActive)
@@ -295,7 +291,6 @@ export default class NTClient {
         topic = String(topic);
         ts = util.ensure(ts, "num");
         let top = this.#publishedTopics[topic];
-        // if (!(top instanceof NTTopic)) return;
         if (!top) return;
         let txData = msgpack.serialize([top.uid, ts, top.getTypeIdx(), v]);
         this.#ws_sendBinary(txData);
@@ -395,14 +390,12 @@ export default class NTClient {
                     },
                     unannounce: () => {
                         let top = this.#serverTopics.get(params.name);
-                        // if (!(top instanceof NTTopic)) return;
                         if (!top) return;
                         delete this.#serverTopics[top.name];
                         this.onTopicUnannounce(top);
                     },
                     properties: () => {
                         let top = this.#serverTopics.get(params.name);
-                        // if (!(top instanceof NTTopic)) return;
                         if (!top) return;
                         for (let k in params.update) {
                             let v = params.update[k];
@@ -424,13 +417,11 @@ export default class NTClient {
                 let v = data[3];
                 if (uid >= 0) {
                     let topic = null;
-                    Object.values(this.#serverTopics).forEach(thisTopic => {
-                        // if (topic instanceof NTTopic) return;
-                        if (topic) return;
-                        if (uid != thisTopic.uid) return;
+                    for (let thisTopic of Object.values(this.#serverTopics)) {
+                        if (uid != thisTopic.uid) continue;
                         topic = thisTopic;
-                    });
-                    // if (!(topic instanceof NTTopic)) return;
+                        break;
+                    }
                     if (!topic) return;
                     this.onNewTopicData(topic, ts, v);
                     return;

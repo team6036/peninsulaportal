@@ -16,7 +16,6 @@ export default class NTSource extends Source {
         this.address = address;
     }
 
-    // #hasClient() { return this.#client instanceof NTClient; }
     #hasClient() { return !!this.#client; }
 
     get address() { return this.#hasClient() ? this.#client.baseAddr : null; }
