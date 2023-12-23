@@ -2321,12 +2321,9 @@ const MAIN = async () => {
                 this.addLoad("find");
                 const host = String(await this.get("db-host"));
                 const theHost = host + "/api";
-                const assetsHost = String(await this.get("assets-host"));
                 const isCompMode = await this.get("val-comp-mode");
                 this.remLoad("find");
-                this.log("DB poll");
-                this.log(`DB ^ host: ${host}`);
-                this.log(`DB ^ assetsHost: ${assetsHost}`);
+                this.log(`DB poll ( host: ${host} )`);
                 if (isCompMode) {
                     this.log(`DB poll - SKIP (COMP MODE)`);
                     this.addLoad("comp-mode");
@@ -2383,6 +2380,8 @@ const MAIN = async () => {
                     return await this.tryLoad(version);
                 }
                 this.log("DB next host and current host match - continuing");
+                const assetsHost = String(await this.get("assets-host"));
+                this.log(`DB poll ( host: ${host}, assetsHost: ${assetsHost} )`);
                 await Promise.all([
                     (async () => {
                         this.log("DB templates.json");
