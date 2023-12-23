@@ -1460,10 +1460,10 @@ export class V extends Target {
     map(f) {
         return new V(f(this.x), f(this.y));
     }
-    abs() { return this.map(v => Math.abs(v)); }
-    floor() { return this.map(v => Math.floor(v)); }
-    ceil() { return this.map(v => Math.ceil(v)); }
-    round() { return this.map(v => Math.round(v)); }
+    abs() { return this.map(Math.abs); }
+    floor() { return this.map(Math.floor); }
+    ceil() { return this.map(Math.ceil); }
+    round() { return this.map(Math.round); }
     
     rotateOrigin(d) {
         d = ensure(d, "num");
@@ -1475,17 +1475,40 @@ export class V extends Target {
     }
     normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V(this); }
 
-    iadd(...a) { return this.set(this.add(...a)); }
-    isub(...a) { return this.set(this.sub(...a)); }
-    imul(...a) { return this.set(this.mul(...a)); }
-    idiv(...a) { return this.set(this.div(...a)); }
-    ipow(...a) { return this.set(this.pow(...a)); }
+    iadd(...a) {
+        a = new V(...a);
+        this.x += a.x; this.y += a.y;
+        return this;
+    }
+    isub(...a) {
+        a = new V(...a);
+        this.x -= a.x; this.y -= a.y;
+        return this;
+    }
+    imul(...a) {
+        a = new V(...a);
+        this.x *= a.x; this.y *= a.y;
+        return this;
+    }
+    idiv(...a) {
+        a = new V(...a);
+        this.x /= a.x; this.y /= a.y;
+        return this;
+    }
+    ipow(...a) {
+        a = new V(...a);
+        this.x **= a.x; this.y **= a.y;
+        return this;
+    }
 
-    imap(f) { return this.set(this.map(f)); }
-    iabs() { return this.set(this.abs()); }
-    ifloor() { return this.set(this.floor()); }
-    iceil() { return this.set(this.ceil()); }
-    iround() { return this.set(this.round()); }
+    imap(f) {
+        this.x = f(this.x); this.y = f(this.y);
+        return this;   
+    }
+    iabs() { return this.imap(Math.abs); }
+    ifloor() { return this.imap(Math.floor); }
+    iceil() { return this.imap(Math.ceil); }
+    iround() { return this.imap(Math.round); }
 
     irotateOrigin(d) { return this.set(this.rotateOrigin(d)); }
     irotate(d, o) { return this.set(this.rotate(d, o)); }

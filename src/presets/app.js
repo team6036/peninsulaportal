@@ -13,8 +13,8 @@ class Action extends util.Target {
     constructor(app, elem) {
         super();
 
-        this.#app = app;
-        this.#elem = elem;
+        this.#app = (app instanceof App) ? app : null;
+        this.#elem = (elem instanceof HTMLButtonElement) ? elem : null;
 
         this.#checkDisabled = true;
 
@@ -60,9 +60,9 @@ class Action extends util.Target {
     }
 
     get app() { return this.#app; }
-    hasApp() { return this.app instanceof App; }
+    hasApp() { return !!this.app; }
     get elem() { return this.#elem; }
-    hasElem() { return this.elem instanceof HTMLButtonElement; }
+    hasElem() { return !!this.elem; }
     get id() { return this.hasElem() ? this.elem.id : null; }
 
     async init() {}

@@ -182,16 +182,16 @@ class Speck extends util.Target {
         this.#sphereGeometry = Speck.sphereGeometryCache[this.r];
         this.#cylinderGeometry = Speck.cylinderGeometryCache[this.r][this.l];
         this.#material = Speck.materials[this.type];
-        if (!(this.#headMesh instanceof THREE.Mesh)) this.#headMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
-        if (!(this.#tailMesh instanceof THREE.Mesh)) this.#tailMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
-        if (!(this.#midMesh instanceof THREE.Mesh)) {
+        if (!this.#headMesh) this.#headMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
+        if (!this.#tailMesh) this.#tailMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
+        if (!this.#midMesh) {
             this.#midMesh = new THREE.Mesh(this.#cylinderGeometry, this.#material);
             this.#midMesh.rotateX(Math.PI/2);
         }
         this.#headMesh.geometry = this.#tailMesh.geometry = this.#sphereGeometry;
         this.#midMesh.geometry = this.#cylinderGeometry;
         this.#headMesh.material = this.#tailMesh.material = this.#midMesh.material = this.#material;
-        if (!(this.#object instanceof THREE.Object3D)) {
+        if (!this.#object) {
             this.#object = new THREE.Object3D();
             this.#object.add(this.#headMesh);
             this.#object.add(this.#tailMesh);
@@ -433,7 +433,7 @@ export default class App extends core.App {
             if (this.hasEDown())
                 this.eDown.addEventListener("click", e => {
                     if (!this.hasEContent()) return;
-                    if (this.eContent.children[0] instanceof HTMLElement)
+                    if (this.eContent.children[0])
                         this.eContent.scrollTo({ top: this.eContent.children[0].offsetTop-100, behavior: "smooth" });
                 });
             if (this.hasEUp())

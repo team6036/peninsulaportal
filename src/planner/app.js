@@ -60,7 +60,7 @@ class RLabel extends core.Odometry2d.Render {
         if (this.item == v) return;
         this.#item = v;
     }
-    hasItem() { return this.item instanceof subcore.Project.Item; }
+    hasItem() { return !!this.item; }
 
     get text() { return this.#text; }
     set text(v) { this.#text = String(v); }
@@ -101,14 +101,14 @@ class RLine extends core.Odometry2d.Render {
         if (this.item == v) return;
         this.#itemA = v;
     }
-    hasItemA() { return this.itemA instanceof subcore.Project.Item; }
+    hasItemA() { return !!this.itemA; }
     get itemB() { return this.#itemB; }
     set itemB(v) {
         v = (v instanceof subcore.Project.Item) ? v : null;
         if (this.item == v) return;
         this.#itemB = v;
     }
-    hasItemB() { return this.itemB instanceof subcore.Project.Item; }
+    hasItemB() { return !!this.itemB; }
 }
 class RVisual extends core.Odometry2d.Render {
     #dt;
@@ -227,7 +227,7 @@ class RVisualItem extends core.Odometry2d.Robot {
         if (this.visual == v) return;
         this.#visual = v;
     }
-    hasVisual() { return this.visual instanceof RVisual; }
+    hasVisual() { return !!this.visual; }
 
     get interp() { return this.#interp; }
     set interp(v) {
@@ -326,7 +326,7 @@ class RSelectable extends core.Odometry2d.Render {
         if (this.item == v) return;
         this.change("item", this.item, this.#item=v);
     }
-    hasItem() { return this.item instanceof subcore.Project.Item; }
+    hasItem() { return !!this.item; }
     get renderObject() { return this.#renderObject; }
     set renderObject(v) {
         v = (v instanceof core.Odometry2d.Render) ? v : null;
@@ -338,7 +338,7 @@ class RSelectable extends core.Odometry2d.Render {
             if (!this.addRender(this.renderObject))
                 this.renderObject = null;
     }
-    hasRenderObject() { return this.renderObject instanceof core.Odometry2d.Render; }
+    hasRenderObject() { return !!this.renderObject; }
 
     get selected() { return this.hasRenderObject() ? this.renderObject.selected : false; }
     set selected(v) { if (this.hasRenderObject()) this.renderObject.selected = v; }
@@ -548,11 +548,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         ghostItem = null;
                     }
                 }
-                if (this.app.eDrag.children[0] instanceof HTMLElement)
+                if (this.app.eDrag.children[0])
                     this.app.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
-                if (ghostItem instanceof RSelectable)
-                    if (ghostItem.hasItem())
-                        ghostItem.item.pos.set(this.odometry.pageToWorld(pos));
+                if (ghostItem && ghostItem.hasItem())
+                    ghostItem.item.pos.set(this.odometry.pageToWorld(pos));
                 if (!this.hasPanel("objects")) return;
                 const panel = this.getPanel("objects");
                 r = panel.eSpawnDelete.getBoundingClientRect();
@@ -863,7 +862,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             };
             const mousemove = e => {
                 let parent = this.eDivider.parentElement;
-                if (!(parent instanceof HTMLDivElement)) return;
+                if (!parent) return;
                 let r = parent.getBoundingClientRect();
                 this.divPos = Math.min(0.9, Math.max(0.1, (e.pageX-r.left) / r.width));
             };
@@ -994,8 +993,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 itm.y = Math.min(this.project.h, Math.max(0, itm.y));
             });
             if (this.selected.length > 1) {
-                if (!(selectItem instanceof RSelect))
-                    selectItem = this.odometry.render.addRender(new RSelect(this.odometry.render));
+                if (!selectItem) selectItem = this.odometry.render.addRender(new RSelect(this.odometry.render));
                 let maxPos = new V(), minPos = new V();
                 let first = true;
                 this.selected.forEach(id => {
@@ -1032,7 +1030,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 itm.exists = true;
             });
             await this.refresh();
@@ -1097,7 +1095,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             ];
             projectOnly.forEach(id => {
                 let itm = this.app.menu.findItemWithId(id);
-                if (!(itm instanceof App.Menu.Item)) return;
+                if (!itm) return;
                 itm.exists = false;
             });
         });
@@ -1219,7 +1217,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (this.displayPath == v) return;
         this.#displayPath = v;
     }
-    hasDisplayPath() { return this.displayPath instanceof subcore.Project.Path; }
+    hasDisplayPath() { return !!this.displayPath; }
 
     async cut() {
         await this.copy();
@@ -1334,7 +1332,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     get eDivider() { return this.#eDivider; }
 
     format() {
-        if (this.eMaxMinBtn.children[0] instanceof HTMLElement)
+        if (this.eMaxMinBtn.children[0])
             this.eMaxMinBtn.children[0].setAttribute("name", this.maximized ? "contract" : "expand");
         if (this.maximized) {
             this.eDisplay.style.width = "100%";
@@ -1990,9 +1988,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                 this.radius.inputs[0].value = same ? sameValue/100 : "";
             } else this.radius.inputs[0].value = "";
             let node = (allNode && itms.length == 1) ? itms[0] : null;
-            this.eOptionsAdd.disabled = !(node instanceof subcore.Project.Node);
+            this.eOptionsAdd.disabled = !node;
             optionAdd = () => {
-                if (!(node instanceof subcore.Project.Node)) return;
+                if (!node) return;
                 let options = node.options;
                 let k = "new-key";
                 if (options.includes(k)) {
@@ -2007,7 +2005,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                 this.page.editorRefresh();
             };
             Array.from(this.eOptions.querySelectorAll(":scope > .item")).forEach(elem => elem.remove());
-            if (node instanceof subcore.Project.Node)
+            if (node)
                 node.options.forEach(k => {
                     let v = node.getOption(k);
                     let elem = document.createElement("div");
@@ -2265,7 +2263,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             let id = visuals[0];
             let visual = this.getVisual(id);
             this.page.progress = visual.item.interp;
-            if (this.page.eNavActionButton.children[0] instanceof HTMLElement)
+            if (this.page.eNavActionButton.children[0])
                 this.page.eNavActionButton.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
             this.page.eNavProgressTooltip.textContent = util.formatTime(visual.totalTime*this.page.progressHover);
             this.page.eNavInfo.textContent = util.formatTime(visual.nowTime) + " / " + util.formatTime(visual.totalTime);
@@ -2602,7 +2600,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
         if (this.path == v) return;
         this.change("path", this.path, this.#path=v);
     }
-    hasPath() { return this.path instanceof subcore.Project.Path; }
+    hasPath() { return !!this.path; }
     get showIndices() { return this.#showIndices; }
     set showIndices(v) {
         v = !!v;
