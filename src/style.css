@@ -598,6 +598,29 @@ article.md.lighter table td {
     opacity: 100%;
     visibility: inherit;
 }
+#mount > #runinfo {
+    z-index: 1000;
+
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+
+    padding: 5px;
+
+    display: none;
+
+    background-color: #0008;
+    color: #fff;
+    border: 1px solid #fff;
+
+    font-family: monospace;
+    font-size: 12px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+#mount.runinfo > #runinfo {
+    display: block;
+}
 
 :has(> .tooltip) {
     position: relative;
