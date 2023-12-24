@@ -140,14 +140,8 @@ export function arrEquals(a1, a2) {
     return true;
 }
 
-export function sin(x) {
-    x = ensure(x, "num");
-    return Math.sin(x * (Math.PI/180));
-}
-export function cos(x) {
-    x = ensure(x, "num");
-    return Math.cos(x * (Math.PI/180));
-}
+export function sin(x) { return Math.sin(x * (Math.PI/180)); }
+export function cos(x) { return Math.cos(x * (Math.PI/180)); }
 
 export function lerp(a, b, p) {
     p = ensure(p, "num");
@@ -1467,7 +1461,7 @@ export class V extends Target {
     
     rotateOrigin(d) {
         d = ensure(d, "num");
-        return V.dir(d, this.x).add(V.dir(d-90, this.y));
+        return new V(this.x*cos(d)+this.y*sin(d), this.x*cos(d+90)+this.y*sin(d+90));
     }
     rotate(d, o) {
         o = new V(o);

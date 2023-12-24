@@ -3932,12 +3932,12 @@ export class Odometry2d extends util.Target {
     }
 
     worldToCanvas(...p) {
-        p = new V(...p);
-        if (!this.hasCanvas()) return p;
+        let [x, y] = new V(...p).xy;
+        if (!this.hasCanvas()) return new V(x, y);
         const scale = this.scale;
-        p.x = (p.x - this.w/2) * (scale*this.quality) + this.canvas.width/2;
-        p.y = (this.h/2 - p.y) * (scale*this.quality) + this.canvas.height/2;
-        return p;
+        x = (x - this.w/2) * (scale*this.quality) + this.canvas.width/2;
+        y = (this.h/2 - y) * (scale*this.quality) + this.canvas.height/2;
+        return new V(x, y);
     }
     worldLenToCanvas(l) {
         l = util.ensure(l, "num");
@@ -3945,12 +3945,12 @@ export class Odometry2d extends util.Target {
         return l*(this.scale*this.quality);
     }
     canvasToWorld(...p) {
-        p = new V(...p);
-        if (!this.hasCanvas()) return p;
+        let [x, y] = new V(...p).xy;
+        if (!this.hasCanvas()) return new V(x, y);
         const scale = this.scale;
-        p.x = (p.x - this.canvas.width/2) / (scale*this.quality) + this.w/2;
-        p.y = this.h/2 - (p.y - this.canvas.height/2) / (scale*this.quality);
-        return p;
+        x = (x - this.canvas.width/2) / (scale*this.quality) + this.w/2;
+        y = this.h/2 - (y - this.canvas.height/2) / (scale*this.quality);
+        return new V(x, y);
     }
     canvasLenToWorld(l) {
         l = util.ensure(l, "num");
@@ -3958,12 +3958,12 @@ export class Odometry2d extends util.Target {
         return l/(this.scale*this.quality);
     }
     canvasToPage(...p) {
-        p = new V(...p);
-        if (!this.hasCanvas()) return p;
+        let [x, y] = new V(...p).xy;
+        if (!this.hasCanvas()) return new V(x, y);
         let r = this.canvas.getBoundingClientRect();
-        p.idiv(this.quality);
-        p.iadd(r.left, r.top);
-        return p;
+        x /= this.quality; y /= this.quality;
+        x += r.left; y += r.top;
+        return new V(x, y);
     }
     canvasLenToPage(l) {
         l = util.ensure(l, "num");
@@ -3971,12 +3971,12 @@ export class Odometry2d extends util.Target {
         return l/this.quality;
     }
     pageToCanvas(...p) {
-        p = new V(...p);
-        if (!this.hasCanvas()) return p;
+        let [x, y] = new V(...p).xy;
+        if (!this.hasCanvas()) return new V(x, y);
         let r = this.canvas.getBoundingClientRect();
-        p.isub(r.left, r.top);
-        p.imul(this.quality);
-        return p;
+        x -= r.left; y -= r.top;
+        x *= this.quality; y *= this.quality;
+        return new V(x, y);
     }
     pageLenToCanvas(l) {
         l = util.ensure(l, "num");
