@@ -2473,9 +2473,7 @@ export class AppFeature extends App {
             const checkMinWidth = async () => {
                 let w = (this.fullscreen || this.ABOUT.os.platform != "darwin") ? 0 : 80;
                 Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)")).forEach(elem => (w += elem.getBoundingClientRect().width));
-                let minSize = new V(await window.api.get("min-size"));
-                minSize.x = w;
-                await window.api.set("min-size", minSize.xy);
+                await window.api.set("min-width", w);
             };
 
             this.#eTitleBtn = document.createElement("button");

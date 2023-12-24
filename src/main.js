@@ -1317,13 +1317,37 @@ const MAIN = async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.getSize();
                 },
+                "width": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getSize()[0];
+                },
+                "height": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getSize()[1];
+                },
                 "min-size": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.getMinimumSize();
                 },
+                "min-width": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getMinimumSize()[0];
+                },
+                "min-height": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getMinimumSize()[1];
+                },
                 "max-size": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.getMaximumSize();
+                },
+                "max-width": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getMaximumSize()[0];
+                },
+                "max-height": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getMaximumSize()[1];
                 },
                 "bounds": async () => {
                     if (!this.hasWindow()) return null;
@@ -1495,14 +1519,50 @@ const MAIN = async () => {
                     this.window.setBounds({ x: Math.floor(cx-v.x/2), y: Math.floor(cy-v.y/2), width: v.x, height: v.y });
                     return true;
                 },
+                "width": async () => {
+                    if (!this.hasWindow()) return false;
+                    v = Math.ceil(util.ensure(v, "num"));
+                    let bounds = this.window.getBounds();
+                    let c = bounds.x+bounds.width/2;
+                    this.window.setBounds({ x: Math.floor(c-v/2), y: bounds.y, width: v, height: bounds.height });
+                    return true;
+                },
+                "height": async () => {
+                    if (!this.hasWindow()) return false;
+                    v = Math.ceil(util.ensure(v, "num"));
+                    let bounds = this.window.getBounds();
+                    let c = bounds.y+bounds.height/2;
+                    this.window.setBounds({ x: bounds.x, y: Math.floor(c-v/2), width: bounds.width, height: v });
+                    return true;
+                },
                 "min-size": async () => {
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(...new V(v).ceil().xy);
                     return true;
                 },
+                "min-width": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMinimumSize(Math.ceil(util.ensure(v, "num")), this.window.getMinimumSize()[1]);
+                    return true;
+                },
+                "min-height": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMinimumSize(this.window.getMinimumSize()[0], Math.ceil(util.ensure(v, "num")));
+                    return true;
+                },
                 "max-size": async () => {
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(...new V(v).ceil().xy);
+                    return true;
+                },
+                "max-width": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMaximumSize(Math.ceil(util.ensure(v, "num")), this.window.getMaximumSize()[1]);
+                    return true;
+                },
+                "max-height": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMaximumSize(this.window.getMaximumSize()[0], Math.ceil(util.ensure(v, "num")));
                     return true;
                 },
                 "bounds": async () => {
