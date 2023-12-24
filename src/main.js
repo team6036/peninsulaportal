@@ -825,7 +825,7 @@ const MAIN = async () => {
             this.window.once("ready-to-show", async () => {
                 if (!this.hasWindow()) return;
                 this.#resolver.state++;
-                return;
+                // return;
                 await util.wait(100);
                 this.window.show();
                 this.window.webContents.openDevTools();
@@ -834,7 +834,7 @@ const MAIN = async () => {
                 showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within 1 second`);
                 clear();
                 this.stop();
-            }, 1000);
+            }, 1000*100);
             const clear = () => {
                 clearInterval(id);
                 ipc.removeListener("ready", ready);
