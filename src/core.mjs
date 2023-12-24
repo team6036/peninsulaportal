@@ -38,6 +38,7 @@ export class App extends util.Target {
     #eLoading;
     #eLoadingTo;
     #eMount;
+    #eRunInfo;
 
     constructor() {
         super();
@@ -130,11 +131,19 @@ export class App extends util.Target {
                         if (this.page != page) this.page = page;
                     }
                     let t0 = null, error = false;
+                    let fps = 0, fpst = 0, fpsn = 0;
                     const update = async () => {
                         window.requestAnimationFrame(update);
                         let t1 = util.getTime();
                         if (t0 == null || error) return t0 = t1;
                         try {
+                            this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
+                            fpst += t1-t0; fpsn++;
+                            if (fpst >= 1000) {
+                                fpst -= 1000;
+                                fps = fpsn;
+                                fpsn = 0;
+                            }
                             this.update(t1-t0);
                         } catch (e) {
                             error = true;
@@ -523,6 +532,18 @@ export class App extends util.Target {
         if (document.body.children[0] instanceof HTMLElement) document.body.insertBefore(this.eMount, document.body.children[0]);
         else document.body.appendChild(this.eMount);
         this.eMount.id = "mount";
+
+        this.#eRunInfo = document.getElementById("runinfo");
+        if (!(this.#eRunInfo instanceof HTMLDivElement)) this.#eRunInfo = document.createElement("div");
+        this.eRunInfo.remove();
+        this.eMount.appendChild(this.eRunInfo);
+        this.eRunInfo.id = "runinfo";
+        document.body.addEventListener("keydown", e => {
+            if (!(e.code == "KeyI" && (e.ctrlKey || e.metaKey))) return;
+            e.stopPropagation();
+            e.preventDefault();
+            this.runInfoShown = !this.runInfoShown;
+        });
 
         this.#eLoading = document.createElement("div");
         document.body.appendChild(this.eLoading);
@@ -1087,6 +1108,16 @@ export class App extends util.Target {
     }
     hasELoadingTo() { return this.eLoadingTo instanceof HTMLElement; }
     get eMount() { return this.#eMount; }
+    get eRunInfo() { return this.#eRunInfo; }
+    get runInfoShown() { return this.eMount.classList.contains("runinfo"); }
+    set runInfoShown(v) {
+        v = !!v;
+        if (this.runInfoShown == v) return;
+        if (v) this.eMount.classList.add("runinfo");
+        else this.eMount.classList.remove("runinfo");
+    }
+    get runInfoHidden() { return !this.runInfoShown; }
+    set runInfoHidden(v) { this.runInfoShown = !v; }
 
     get progress() {
         if (!this.eTitleBar.classList.contains("progress")) return null;
