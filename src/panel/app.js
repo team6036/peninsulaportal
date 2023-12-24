@@ -8,12 +8,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 
-// import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-// import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-// import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
-// import { SAOPass } from "three/addons/postprocessing/SAOPass.js";
-// import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-
 import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
@@ -5439,7 +5433,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #camera;
     #renderer;
     #controls;
-    // #composer;
 
     #axisScene;
     #axisSceneSized;
@@ -5508,8 +5501,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             if (this.controls instanceof PointerLockControls)
                 this.controls.lock();
         });
-
-        // this.#composer = new EffectComposer(this.renderer);
 
         const radius = 0.05;
         const length = 5;
@@ -5761,7 +5752,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 [pose.state.offsetX, pose.state.offsetY] = new V(util.ensure(templates[this.template], "obj").size).div(-2).xy;
                 const node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
-                // pose.state.composer = this.composer;
                 pose.state.scene = this.scene;
                 pose.state.group = this.wpilibGroup;
                 pose.state.camera = this.camera;
@@ -5771,7 +5761,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             let colorR = new util.Color(getComputedStyle(document.body).getPropertyValue("--cr"));
             let colorG = new util.Color(getComputedStyle(document.body).getPropertyValue("--cg"));
             let colorB = new util.Color(getComputedStyle(document.body).getPropertyValue("--cb"));
-            // let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v4"));
             let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v2"));
             this.scene.fog.color.set(colorV.toHex(false));
             this.axisScene.xAxis.material.color.set(colorR.toHex(false));
@@ -5931,9 +5920,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
 
             this.renderer.render(this.scene, this.camera);
-
-            // this.composer.setSize(r.width*this.quality, r.height*this.quality);
-            // this.composer.render();
         });
 
         this.isProjection = true;
@@ -6003,7 +5989,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get camera() { return this.#camera; }
     get renderer() { return this.#renderer; }
     get controls() { return this.#controls; }
-    // get composer() { return this.#composer; }
 
     get axisScene() { return this.#axisScene; }
     get axisSceneSized() { return this.#axisSceneSized; }
@@ -6047,13 +6032,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.controls.connect();
         }
         this.camera.lookAt(0, 0, 0);
-
-        // this.composer.dispose();
-        // this.#composer = new EffectComposer(this.renderer);
-        // const renderPass = new RenderPass(this.scene, this.camera);
-        // this.composer.addPass(renderPass);
-        // const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
-        // this.composer.addPass(outlinePass);
     }
     get isIsometric() { return !this.isProjection; }
     set isIsometric(v) { this.isProjection = !v; }
@@ -6224,14 +6202,12 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
     #offset;
 
     #value;
-    // #composer;
     #scene;
     #group;
     #camera;
 
     #object;
     #theObject;
-    #passes;
 
     #preloadedObjs;
     
@@ -6241,14 +6217,12 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#offset = new util.V3();
 
         this.#value = [];
-        // this.#composer = null;
         this.#scene = null;
         this.#group = null;
         this.#camera = null;
 
         this.#object = null;
         this.#theObject = null;
-        this.#passes = [];
 
         this.#preloadedObjs = {};
         const node = new THREE.Mesh(
@@ -6452,17 +6426,6 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         if (this.pose.type in typefs) typefs[this.pose.type]();
                     }
                 }
-                // let pass = this.#passes[0];
-                // pass.visibleEdgeColor.set(color.toHex(false));
-                // pass.hiddenEdgeColor.set(util.lerp(color, new util.Color(), 0.5).toHex(false));
-                // pass.selectedObjects = this.hasObject() ? [this.theObject] : [];
-                // if (this.pose.type.startsWith("§")) {
-                //     if (this.composer.passes.includes(pass))
-                //         this.composer.removePass(pass);
-                // } else {
-                //     if (!this.composer.passes.includes(pass))
-                //         this.composer.addPass(pass);
-                // }
             } else this.object = null;
         });
     }
@@ -6487,15 +6450,6 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.#value = v;
         this.create();
     }
-    // get composer() { return this.#composer; }
-    // set composer(v) {
-    //     v = (v instanceof EffectComposer) ? v : null;
-    //     if (this.composer == v) return;
-    //     this.destroy();
-    //     this.#composer = v;
-    //     this.create();
-    // }
-    // hasComposer() { return !!this.composer; }
     get scene() { return this.#scene; }
     set scene(v) {
         v = (v instanceof THREE.Scene) ? v : null;
@@ -6523,33 +6477,16 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         this.create();
     }
     hasCamera() { return !!this.camera; }
-    // hasThree() { return this.hasComposer() && this.hasScene() && this.hasGroup() && this.hasCamera(); }
     hasThree() { return this.hasScene() && this.hasGroup() && this.hasCamera(); }
 
     destroy() {
-        // if (!this.hasComposer()) return;
         if (!this.hasThree()) return;
         this.object = null;
-        this.#passes.forEach(pass => {
-            // this.composer.removePass(pass);
-        });
-        this.#passes = [];
     }
     create() {
         if (!this.hasTab()) return;
         if (!this.hasPose()) return;
         if (!this.hasThree()) return;
-        this.#passes = [];
-        if (this.value.length == 3 || this.value.length == 7) {
-            // let pass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
-            // pass.edgeStrength = 10;
-            // pass.edgeGlow = 0;
-            // pass.edgeThickness = 5;
-            // this.#passes = [pass];
-        }
-        this.#passes.forEach(pass => {
-            // this.composer.addPass(pass);
-        });
     }
 
     get object() { return this.#object; }
