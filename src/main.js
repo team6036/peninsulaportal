@@ -63,7 +63,8 @@ const MAIN = async () => {
         return;
     }
 
-    const fetch = require("electron-fetch").default;
+    // const fetch = require("electron-fetch").default;
+    const fetch = (await import("node-fetch")).default;
     const png2icons = require("png2icons");
     const compareVersions = require("compare-versions");
 
@@ -936,6 +937,7 @@ const MAIN = async () => {
             this.addHandler("modal-modify", addModify);
             
             (async () => {
+                this.log("START # 1");
                 await this.whenReady();
                 if (!this.hasWindow()) return;
                 let prevIsDevMode = null;
@@ -960,7 +962,9 @@ const MAIN = async () => {
                 fs.watchFile(path.join(this.rootManager.dataPath, "holidays", "holidays.json"), () => checkHoliday());
                 await checkDevConfig();
                 await checkHoliday();
+                this.log("START # 2");
                 if (!this.hasWindow()) return;
+                this.log("START # 3");
                 let size = this.window.getSize();
                 const finishAndShow = () => {
                     if (!this.hasWindow()) return;
@@ -968,6 +972,7 @@ const MAIN = async () => {
                     this.window.setSize(...size);
                     useQueue = false;
                     checkModify();
+                    this.log("START # 5");
                 };
                 if (!this.canOperate) return finishAndShow();
                 let bounds = util.ensure(await this.on("state-get", "bounds"), "obj");
@@ -975,6 +980,7 @@ const MAIN = async () => {
                 if (("height" in bounds) && (bounds.height < 50)) return finishAndShow();
                 this.window.setBounds(bounds);
                 size = this.window.getSize();
+                this.log("START # 4");
                 finishAndShow();
             })();
 
