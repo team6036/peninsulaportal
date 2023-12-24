@@ -33,13 +33,13 @@ export function is(o, type) {
             return (typeof(o) == "number") && !Number.isNaN(o);
         },
         num: () => {
-            return is(o, "any_num") && Number.isFinite(o);
+            return typefs.any_num() && Number.isFinite(o);
         },
         float: () => {
-            return is(o, "num");
+            return typefs.num();
         },
         int: () => {
-            return is(o, "num") && (o % 1 == 0);
+            return typefs.num() && (o % 1 == 0);
         },
         bool: () => {
             return typeof(o) == "boolean";
@@ -50,7 +50,7 @@ export function is(o, type) {
         arr: () => {
             return Array.isArray(o) || (
                 o &&
-                is(o, "obj") &&
+                typefs.obj() &&
                 is(o.length, "num") && 
                 ((o.length == 0) || (o.length > 0 && (o.length - 1) in o)) &&
                 !(o instanceof Target)
@@ -63,7 +63,7 @@ export function is(o, type) {
             return typeof(o) == "function";
         },
         async_func: () => {
-            return is(o, "func") && o.constructor.name == "AsyncFunction";
+            return typefs.func() && o.constructor.name == "AsyncFunction";
         },
         null: () => {
             return o == null;
@@ -256,7 +256,7 @@ export function formatTime(t) {
     split = split.map((v, i) => {
         v = String(v);
         if (i >= split.length-1) return v;
-        let l = String(Object.values(UNITVALUES)[i+1]).length;
+        let l = String(Object.values(UNITVALUES)[i+1]-1).length;
         if (i > 0) v = v.padStart(l, "0");
         else v = v.padEnd(l, "0");
         return v;
