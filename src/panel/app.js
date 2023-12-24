@@ -3040,24 +3040,32 @@ Panel.LoggerTab.Log = class PanelLoggerTabLog extends util.Target {
 
     get downloaded() { return this.elem.classList.contains("downloaded"); }
     set downloaded(v) {
+        v = !!v;
+        if (this.downloaded == v) return;
         if (v) this.elem.classList.add("downloaded");
         else this.elem.classList.remove("downloaded");
         this.eUseBtn.style.display = v ? "" : "none";
     }
     get deprecated() { return this.elem.classList.contains("deprecated"); }
     set deprecated(v) {
+        v = !!v;
+        if (this.deprecated == v) return;
         if (v) this.elem.classList.add("deprecated");
         else this.elem.classList.remove("deprecated");
         this.eDownloadBtn.style.display = v ? "none" : "";
     }
     get loading() { return this.elem.classList.contains("loading_"); }
     set loading(v) {
+        v = !!v;
+        if (this.loading == v) return;
         if (v) this.elem.classList.add("loading_");
         else this.elem.classList.remove("loading_");
         Array.from(this.eNav.querySelectorAll(":scope > button")).forEach(btn => (btn.disabled = v));
     }
     get selected() { return this.elem.classList.contains("selected"); }
     set selected(v) {
+        v = !!v;
+        if (this.selected == v) return;
         if (v) this.elem.classList.add("selected");
         else this.elem.classList.remove("selected");
     }
@@ -4215,19 +4223,18 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (v <= 0) return 1;
         let factors = [1, 2, 5];
         let pow = Math.round(Math.log10(v));
-        let closest = null, closests = [];
-        for (let i = -1; i <= 1; i++) {
-            factors.forEach(f => {
-                let step = (10 ** (pow+i)) * f;
-                let a = Math.abs(nSteps - Math.round(v / step));
-                if (closest == null || a < closest) {
-                    closest = a;
-                    closests = [];
-                }
-                if (a == closest) closests.push(step);
-            });
-        }
-        return Math.min(...closests);
+        let closestN = null, closestStep = null;
+        factors.forEach(f => {
+            let step = (10 ** (pow-1)) * f;
+            let d = Math.abs(nSteps - Math.round(v / step));
+            if (closestN == null || d < closestN) {
+                closestN = d;
+                closestStep = step;
+            }
+            if (d > closestN) return;
+            if (step < closestStep) closestStep = step;
+        });
+        return closestStep;
     }
 
     get lVars() { return [...this.#lVars]; }

@@ -825,9 +825,10 @@ const MAIN = async () => {
             this.window.once("ready-to-show", async () => {
                 if (!this.hasWindow()) return;
                 this.#resolver.state++;
-                // await util.wait(100);
-                // this.window.show();
-                // this.window.webContents.openDevTools();
+                return;
+                await util.wait(100);
+                this.window.show();
+                this.window.webContents.openDevTools();
             });
             let id = setTimeout(() => {
                 showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within 1 second`);

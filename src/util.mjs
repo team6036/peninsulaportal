@@ -65,35 +65,36 @@ export function is(o, type) {
     return o == type;
 }
 
-const ENSURE_NONE = Symbol("ENSURE_NONE");
-export function ensure(o, type, def=ENSURE_NONE) {
-    if (type == "num" || type == "float") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? o : (def == ENSURE_NONE) ? 0 : def;
-    if (type == "int") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0)) ? o : (def == ENSURE_NONE) ? 0 : def;
-    if (type == "any_num") return ((typeof(o) == "number") && !Number.isNaN(o)) ? o : (def == ENSURE_NONE) ? 0 : def;
+export function ensure(o, type) {
+    let useDef = arguments.length != 3;
+    let def = arguments[2];
+    if (type == "num" || type == "float") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? o : useDef ? 0 : def;
+    if (type == "int") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0)) ? o : useDef ? 0 : def;
+    if (type == "any_num") return ((typeof(o) == "number") && !Number.isNaN(o)) ? o : useDef ? 0 : def;
     let typefs = {
         bool: () => {
             return !!o;
         },
         str: () => {
             if (is(o, "str")) return o;
-            return (def == ENSURE_NONE) ? "" : def;
+            return useDef ? "" : def;
         },
         arr: () => {
             if (is(o, "arr")) return Array.from(o);
-            return (def == ENSURE_NONE) ? [] : def;
+            return useDef ? [] : def;
         },
         obj: () => {
             if (is(o, "obj")) return o;
-            return (def == ENSURE_NONE) ? {} : def;
+            return useDef ? {} : def;
         },
         func: () => {
             if (is(o, "func")) return o;
-            return (def == ENSURE_NONE) ? ()=>{} : def;
+            return useDef ? ()=>{} : def;
         },
         async_func: () => {
             if (is(o, "async_func")) return o;
             if (is(o, "func")) return async () => o();
-            return (def == ENSURE_NONE) ? async()=>{} : def;
+            return useDef ? async()=>{} : def;
         },
         null: () => {
             return null;
@@ -101,7 +102,7 @@ export function ensure(o, type, def=ENSURE_NONE) {
     };
     if (type in typefs) return typefs[type]();
     if (is(o, type)) return o;
-    return (def == ENSURE_NONE) ? null : def;
+    return useDef ? null : def;
 }
 
 export function strictlyIs(o, cls) {
@@ -545,9 +546,11 @@ export const ease = {
 
 export class Target {
     #handlers;
+    #nHandlers;
 
     constructor() {
         this.#handlers = new Map();
+        this.#nHandlers = 0;
     }
 
     static resultingForEach(input, callback) {
@@ -574,6 +577,7 @@ export class Target {
         if (!(e in handlers)) handlers[e] = new Set();
         if (handlers[e].has(f)) return false;
         handlers[e].add(f);
+        this.#nHandlers++;
         return f;
     }
     remLinkedHandler(o, e, f) {
@@ -584,6 +588,7 @@ export class Target {
         if (!(e in handlers)) return false;
         if (!handlers[e].has(e)) return false;
         handlers[e].delete(f);
+        this.#nHandlers--;
         if (handlers[e].size <= 0) delete handlers[e];
         if (Object.keys(handlers[e]).length <= 0) this.#handlers.delete(o);
         return f;
@@ -615,6 +620,7 @@ export class Target {
     getHandlers(e) { return this.getLinkedHandlers(null, e); }
     clearHandlers(e) { return this.clearLinkedHandlers(null, e); }
     async post(e, ...a) {
+        if (this.#nHandlers <= 0) return [];
         e = String(e);
         let fs = [];
         for (let handlers of this.#handlers.values()) {
@@ -1504,7 +1510,7 @@ export class V extends Target {
     static dir(d, m=1) {
         d = ensure(d, "num");
         m = ensure(m, "num");
-        return new V(cos(d), sin(d)).mul(m);
+        return new V(cos(d)*m, sin(d)*m);
     }
 
     toString() { return "<"+this.xy.join(", ")+">" }
