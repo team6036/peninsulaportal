@@ -3757,7 +3757,7 @@ export class Odometry2d extends util.Target {
         this.#render = new Odometry2d.Render(this, 0);
 
         this.#image = new Image();
-        this.#imageScale = false;
+        this.#imageShow = null;
         this.#imageScale = 1;
 
         this.#doRender = true;
@@ -3912,8 +3912,9 @@ export class Odometry2d extends util.Target {
 
     get imageSrc() { return this.#image.src; }
     set imageSrc(v) {
-        if (v == null) return this.#imageShow = false;
-        this.#imageShow = true;
+        if (v == null) return this.#imageShow = null;
+        if (this.#imageShow == v) return;
+        this.#imageShow = v;
         this.#image.src = v;
     }
     get imageScale() { return this.#imageScale; }
