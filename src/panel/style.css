@@ -6,8 +6,8 @@
     align-items: stretch;
     align-content: center;
 }
-.browser .field,
-.browserfield {
+.browser .node,
+.browsernode {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -15,8 +15,8 @@
     align-items: stretch;
     align-content: center;
 }
-.browser .field > button.display,
-.browserfield > button.display {
+.browser .node > button.display,
+.browsernode > button.display {
     --bg: transparent;
     --fg: var(--v7);
     --bgh: var(--v2);
@@ -38,16 +38,16 @@
 
     font-size: 14px;
 }
-.browser .field.hidden > button.display,
-.browserfield.hidden > button.display {
+.browser .node.hidden > button.display,
+.browsernode.hidden > button.display {
     --fg: var(--v5);
     --fgh: var(--v7);
     --fgd: var(--v3);
 
     font-style: italic;
 }
-.browser .field > button.display > .main,
-.browserfield > button.display > .main {
+.browser .node > button.display > .main,
+.browsernode > button.display > .main {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -55,45 +55,45 @@
     align-items: center;
     align-content: center;
 }
-.browser .field > button.display > .main > ion-icon,
-.browserfield > button.display > .main > ion-icon {
+.browser .node > button.display > .main > ion-icon,
+.browsernode > button.display > .main > ion-icon {
     margin-right: 5px;
 
     min-width: 14px;
 }
-.browser .field > button.display > .main > .name,
-.browserfield > button.display > .main > .name {
+.browser .node > button.display > .main > .name,
+.browsernode > button.display > .main > .name {
     min-width: max-content;
 }
-.browser .field > button.display > .main > .name > span,
-.browserfield > button.display > .main > .name > span,
-.browser .field > button.display > .main > .tag,
-.browserfield > button.display > .main > .tag {
+.browser .node > button.display > .main > .name > span,
+.browsernode > button.display > .main > .name > span,
+.browser .node > button.display > .main > .tag,
+.browsernode > button.display > .main > .tag {
     color: var(--v5);
 
     transition: color var(--t);
 }
-.browser .field > button.display:not(:disabled):hover > .main > .name > span,
-.browserfield > button.display:not(:disabled):hover > .main > .name > span,
-.browser .field > button.display:not(:disabled):hover > .main > .tag,
-.browserfield > button.display:not(:disabled):hover > .main > .tag {
+.browser .node > button.display:not(:disabled):hover > .main > .name > span,
+.browsernode > button.display:not(:disabled):hover > .main > .name > span,
+.browser .node > button.display:not(:disabled):hover > .main > .tag,
+.browsernode > button.display:not(:disabled):hover > .main > .tag {
     color: var(--v7);
 }
-.browser .field > button.display:disabled > .main > .name > span,
-.browserfield > button.display:disabled > .main > .name > span,
-.browser .field > button.display:disabled > .main > .tag,
-.browserfield > button.display:disabled > .main > .tag {
+.browser .node > button.display:disabled > .main > .name > span,
+.browsernode > button.display:disabled > .main > .name > span,
+.browser .node > button.display:disabled > .main > .tag,
+.browsernode > button.display:disabled > .main > .tag {
     color: var(--v3);
 }
-.browser .field > button.display > .main > .tag,
-.browserfield > button.display > .main > .tag {
+.browser .node > button.display > .main > .tag,
+.browsernode > button.display > .main > .tag {
     margin-left: 10px;
 
     font-size: 12px;
     font-family: monospace;
 }
-.browser .field > button.display > .value,
-.browserfield > button.display > .value {
+.browser .node > button.display > .value,
+.browsernode > button.display > .value {
     padding-left: 10px;
 
     display: flex;
@@ -104,8 +104,8 @@
     align-content: center;
     gap: 10px;
 }
-.browser .field > button.display > .value > div,
-.browserfield > button.display > .value > div {
+.browser .node > button.display > .value > div,
+.browsernode > button.display > .value > div {
     width: calc(100% - 14px - 20px);
     max-width: calc(100% - 14px - 20px);
     overflow: hidden;
@@ -114,8 +114,8 @@
     text-align: left;
     text-overflow: ellipsis;
 }
-.browser .field > .content,
-.browserfield > .content {
+.browser .node > .content,
+.browsernode > .content {
     position: relative;
 
     margin-left: 20px;
@@ -127,12 +127,12 @@
     align-items: stretch;
     align-content: center;
 }
-.browser .field.this > .content,
-.browserfield.this > .content {
+.browser .node.this > .content,
+.browsernode.this > .content {
     display: flex;
 }
-.browser .field > .content > button.side,
-.browserfield > .content > button.side {
+.browser .node > .content > button.side,
+.browsernode > .content > button.side {
     position: absolute;
     left: 0px;
     top: 0px;
@@ -144,8 +144,8 @@
 
     background-color: transparent;
 }
-.browser .field > .content > button.side::before,
-.browserfield > .content > button.side::before {
+.browser .node > .content > button.side::before,
+.browsernode > .content > button.side::before {
     content: "";
 
     position: absolute;
@@ -159,12 +159,12 @@
 
     transition: background-color var(--t);
 }
-.browser .field > .content > button.side:not(:disabled):hover::before,
-.browserfield > .content > button.side:not(:disabled):hover::before {
+.browser .node > .content > button.side:not(:disabled):hover::before,
+.browsernode > .content > button.side:not(:disabled):hover::before {
     background-color: var(--a);
 }
-.browser .field > .content > button.side:disabled::before,
-.browserfield > .content > button.side:disabled::before {
+.browser .node > .content > button.side:disabled::before,
+.browsernode > .content > button.side:disabled::before {
     background-color: var(--v2-0);
 }
 
@@ -749,7 +749,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display.this {
     visibility: inherit;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser > .field {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser > .node {
     max-width: 100%;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display {

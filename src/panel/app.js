@@ -251,7 +251,7 @@ class BrowserNode extends util.Target {
         this.#showValue = null;
 
         this.#elem = document.createElement("div");
-        this.elem.classList.add("field");
+        this.elem.classList.add("node");
         if (this.isHidden) this.elem.classList.add("hidden");
         this.#eDisplay = document.createElement("button");
         this.elem.appendChild(this.eDisplay);
@@ -1861,7 +1861,7 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
         super();
 
         this.elem.classList.remove("item");
-        this.elem.classList.add("browserfield");
+        this.elem.classList.add("browsernode");
         this.btn.classList.add("display");
         let children = Array.from(this.btn.children);
         children.forEach(child => this.btn.removeChild(child));
