@@ -82,7 +82,7 @@ class RLine extends core.Odometry2d.Render {
             if (this.hasItemA()) a.set(this.itemA.pos);
             if (this.hasItemB()) b.set(this.itemB.pos);
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            if (a.dist(b) < this.odometry.pageLenToWorld((7.5+5)*2)) return;
+            if (a.distSquared(b) < this.odometry.pageLenToWorld((7.5+5)*2)**2) return;
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--cg-8");
             ctx.lineWidth = 5*quality;
             ctx.beginPath();
@@ -149,7 +149,7 @@ class RVisual extends core.Odometry2d.Render {
             let nj, pj, vj, cj;
             for (let i = 0; i < this.#nodes.length; i++) {
                 let ni = this.#nodes[i];
-                if (i > 0 && nj.pos.dist(ni.pos) < 1) continue;
+                if (i > 0 && nj.pos.distSquared(ni.pos) < 1) continue;
                 let pi = this.odometry.worldToCanvas(ni.pos);
                 let vi = ni.velocity.dist();
                 let ci = getColor(vi);
@@ -2167,24 +2167,24 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         });
 
         this.generating = false;
+
+        let buttons = {};
         
         this.addHandler("update", delta => {
-            let pthsUsed = new Set();
-            this.buttons.forEach(btn => {
-                btn.showLines = btn.hasPath() ? !this.hasVisual(btn.path.id) : true;
+            let paths = {};
+            if (this.page.hasProject())
+                this.page.project.paths.forEach(id => (paths[id] = this.page.project.getPath(id)));
+            for (let id in buttons) {
+                if (id in paths) continue;
+                this.remButton(buttons[id]);
+                delete buttons[id];
+            }
+            for (let id in paths) {
+                if (!(id in buttons)) buttons[id] = this.addButton(new App.ProjectPage.PathsPanel.Button(this, null));
+                let btn = buttons[id];
+                btn.path = paths[id];
+                btn.selected = this.page.isPathSelected(btn.path);
                 btn.update(delta);
-                if (!this.page.hasProject() || !this.page.project.hasPath(btn.path))
-                    btn.path = null;
-                if (btn.hasPath()) {
-                    pthsUsed.add(btn.path.id);
-                    btn.selected = this.page.isPathSelected(btn.path);
-                } else this.remButton(btn);
-            });
-            if (this.page.hasProject()) {
-                let need;
-                need = new Set(this.page.project.paths);
-                pthsUsed.forEach(id => need.delete(id));
-                need.forEach(id => this.addButton(new App.ProjectPage.PathsPanel.Button(this, this.page.project.getPath(id))));
             }
         });
 
@@ -2256,10 +2256,11 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     this.remVisual(id);
             });
             if (visuals.length <= 0) {
-                this.page.navOpen = false;
+                this.page.progress = 0;
+                this.page.eNavProgressTooltip.textContent = "0:00.000";
+                this.page.eNavInfo.textContent = "0:00.000 / 0:00.000";
                 return;
             }
-            this.page.navOpen = true;
             let id = visuals[0];
             let visual = this.getVisual(id);
             this.page.progress = visual.item.interp;
