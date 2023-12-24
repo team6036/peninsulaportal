@@ -1317,6 +1317,14 @@ const MAIN = async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.getSize();
                 },
+                "min-size": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getMinimumSize();
+                },
+                "max-size": async () => {
+                    if (!this.hasWindow()) return null;
+                    return this.window.getMaximumSize();
+                },
                 "bounds": async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.getBounds();
@@ -1485,6 +1493,16 @@ const MAIN = async () => {
                     let bounds = this.window.getBounds();
                     let cx = bounds.x+bounds.width/2, cy = bounds.y+bounds.height/2;
                     this.window.setBounds({ x: Math.floor(cx-v.x/2), y: Math.floor(cy-v.y/2), width: v.x, height: v.y });
+                    return true;
+                },
+                "min-size": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMinimumSize(...new V(v).ceil().xy);
+                    return true;
+                },
+                "max-size": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setMaximumSize(...new V(v).ceil().xy);
                     return true;
                 },
                 "bounds": async () => {
