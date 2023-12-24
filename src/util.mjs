@@ -28,19 +28,10 @@ Array.prototype.flatten = function() {
 
 
 export function is(o, type) {
+    if (type == "num" || type == "float") return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o);
+    if (type == "int") return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0);
+    if (type == "any_num") return (typeof(o) == "number") && !Number.isNaN(o);
     let typefs = {
-        any_num: () => {
-            return (typeof(o) == "number") && !Number.isNaN(o);
-        },
-        num: () => {
-            return typefs.any_num() && Number.isFinite(o);
-        },
-        float: () => {
-            return typefs.num();
-        },
-        int: () => {
-            return typefs.num() && (o % 1 == 0);
-        },
         bool: () => {
             return typeof(o) == "boolean";
         },
@@ -76,22 +67,10 @@ export function is(o, type) {
 
 const ENSURE_NONE = Symbol("ENSURE_NONE");
 export function ensure(o, type, def=ENSURE_NONE) {
+    if (type == "num" || type == "float") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? o : (def == ENSURE_NONE) ? 0 : def;
+    if (type == "int") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0)) ? o : (def == ENSURE_NONE) ? 0 : def;
+    if (type == "any_num") return ((typeof(o) == "number") && !Number.isNaN(o)) ? o : (def == ENSURE_NONE) ? 0 : def;
     let typefs = {
-        any_num: () => {
-            if (is(o, "any_num")) return o;
-            return (def == ENSURE_NONE) ? 0 : def;
-        },
-        num: () => {
-            if (is(o, "num")) return o;
-            return (def == ENSURE_NONE) ? 0 : def;
-        },
-        float: () => {
-            return ensure(o, "num", def);
-        },
-        int: () => {
-            if (is(o, "num")) return Math.round(o);
-            return (def == ENSURE_NONE) ? 0 : def;
-        },
         bool: () => {
             return !!o;
         },
@@ -1461,7 +1440,7 @@ export class V extends Target {
     
     rotateOrigin(d) {
         d = ensure(d, "num");
-        return new V(this.x*cos(d)+this.y*sin(d), this.x*cos(d+90)+this.y*sin(d+90));
+        return new V(this.x*cos(d)+this.y*sin(d), this.x*cos(d-90)+this.y*sin(d-90));
     }
     rotate(d, o) {
         o = new V(o);
