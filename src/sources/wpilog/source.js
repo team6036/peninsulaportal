@@ -37,6 +37,7 @@ export default class WPILOGSource extends Source {
             client.addHandler("cmd-finish", data => {
                 this.fromSerialized(data);
                 res(this);
+                client.stop();
             });
             client.start({
                 opt: {},
@@ -52,7 +53,10 @@ export default class WPILOGSource extends Source {
             client.addHandler("error", e => rej(e));
             client.addHandler("stop", data => rej("WORKER TERMINATED"));
             client.addHandler("cmd-progress", progress => source.post("progress", progress));
-            client.addHandler("cmd-finish", data => res(Uint8Array.from(util.ensure(data, "arr"))));
+            client.addHandler("cmd-finish", data => {
+                res(Uint8Array.from(util.ensure(data, "arr")));
+                client.stop();
+            });
             client.start({
                 opt: { prefix: prefix },
                 source: source.toSerialized(),
