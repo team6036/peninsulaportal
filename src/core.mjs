@@ -3947,8 +3947,8 @@ export class Odometry2d extends util.Target {
 
     worldToCanvas(...p) {
         if (!this.hasCanvas()) return new V(...p);
-        let [x, y] = new V(...p).xy;
         const scale = this.scale;
+        let [x, y] = new V(...p).xy;
         x = (x - this.w/2) * (scale*this.quality) + this.canvas.width/2;
         y = (this.h/2 - y) * (scale*this.quality) + this.canvas.height/2;
         return new V(x, y);
@@ -3960,8 +3960,8 @@ export class Odometry2d extends util.Target {
     }
     canvasToWorld(...p) {
         if (!this.hasCanvas()) return new V(...p);
-        let [x, y] = new V(...p).xy;
         const scale = this.scale;
+        let [x, y] = new V(...p).xy;
         x = (x - this.canvas.width/2) / (scale*this.quality) + this.w/2;
         y = this.h/2 - (y - this.canvas.height/2) / (scale*this.quality);
         return new V(x, y);
