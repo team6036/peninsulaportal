@@ -289,6 +289,7 @@ class BrowserNode extends util.Target {
 
         let cancel = 10;
         this.eDisplay.addEventListener("click", e => {
+            e.stopPropagation();
             if (cancel <= 0) return cancel = 10;
             if (this.isJustPrimitive || e.shiftKey) this.showValue = !this.showValue;
             else this.isOpen = !this.isOpen;
@@ -313,6 +314,7 @@ class BrowserNode extends util.Target {
             document.body.addEventListener("mousemove", mousemove);
         });
         this.eSide.addEventListener("click", e => {
+            e.stopPropagation();
             this.isOpen = !this.isOpen;
         });
 
@@ -501,6 +503,7 @@ class ToolButton extends util.Target {
 
         let cancel = 10;
         this.elem.addEventListener("click", e => {
+            e.stopPropagation();
             if (cancel <= 0) return cancel = 10;
             this.post("trigger", e);
         });
@@ -1097,6 +1100,7 @@ class Panel extends Widget {
             this.app.placeContextMenu(r.left, r.bottom);
         });
         this.eAdd.addEventListener("click", e => {
+            e.stopPropagation();
             this.addTab(new Panel.AddTab());
         });
 
@@ -1270,6 +1274,7 @@ Panel.Tab = class PanelTab extends util.Target {
 
         let cancel = 10;
         this.eTab.addEventListener("click", e => {
+            e.stopPropagation();
             if (cancel <= 0) return cancel = 10;
             if (!this.hasParent()) return;
             this.parent.tabIndex = this.parent.tabs.indexOf(this);
@@ -1427,6 +1432,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.refresh();
         });
         this.eSearchClear.addEventListener("click", e => {
+            e.stopPropagation();
             this.searchPart = null;
         });
 
@@ -1820,7 +1826,10 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         this.btn.appendChild(this.eChevron);
         this.eChevron.setAttribute("name", "chevron-forward");
 
-        this.btn.addEventListener("click", e => this.post("trigger", e));
+        this.btn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("trigger", e);
+        });
 
         this.name = name;
         this.icon = icon;
@@ -2071,6 +2080,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             btn.classList.add("icon");
             btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
             btn.addEventListener("click", e => {
+                e.stopPropagation();
                 path.pop();
                 this.path = path.join("/");
             });
@@ -2088,7 +2098,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             btn.classList.add("item");
             btn.classList.add("override");
             btn.textContent = (i > 0) ? path[i-1] : "/";
-            btn.addEventListener("click", e => (this.path = pth.join("/")));
+            btn.addEventListener("click", e => {
+                e.stopPropagation();
+                this.path = pth.join("/");
+            });
         }
     }
 
@@ -2189,6 +2202,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             else this.tsNow = v;
         });
         this.eFollowBtn.addEventListener("click", e => {
+            e.stopPropagation();
             this.tsOverride = !this.tsOverride;
         });
         this.eBody.addEventListener("scroll", e => this.format());
@@ -2567,8 +2581,13 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         let removeBtn = document.createElement("button");
         this.eHeader.appendChild(removeBtn);
         removeBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
-        removeBtn.addEventListener("click", e => this.post("remove"));
-        removeBtn.addEventListener("mousedown", e => e.stopPropagation());
+        removeBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("remove");
+        });
+        removeBtn.addEventListener("mousedown", e => {
+            e.stopPropagation();
+        });
     }
 
     get node() { return this.#node; }
@@ -2647,14 +2666,17 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
         [this.src] = a;
 
         this.eBackBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (!ready) return;
             this.eWebView.goBack();
         });
         this.eForwardBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (!ready) return;
             this.eWebView.goForward();
         });
         this.eLoadBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (!ready) return;
             if (this.eWebView.isLoading()) this.eWebView.stop();
             else this.eWebView.reload();
@@ -2737,6 +2759,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.eLogs.classList.add("logs");
 
         this.eUploadBtn.addEventListener("click", async e => {
+            e.stopPropagation();
             if (LOGGERCONTEXT.disconnected) return;
             let result = await this.app.fileOpenDialog({
                 title: "Choose a WPILOG log file",
@@ -2880,6 +2903,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         });
 
         this.eLogs.addEventListener("click", e => {
+            e.stopPropagation();
             selected.clear();
             lastSelected = null;
             lastAction = null;
@@ -3221,8 +3245,14 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
 
-        this.eBtn.addEventListener("click", e => (this.tab.actionPage = this.name));
-        this.eBackBtn.addEventListener("click", e => (this.tab.actionPage = null));
+        this.eBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.tab.actionPage = this.name;
+        });
+        this.eBackBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.tab.actionPage = null;
+        });
 
         this.#init();
     }
@@ -3321,6 +3351,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eConflictAffixBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
                 state.eConflictAffixBtnName = state.eConflictAffixBtn.children[0];
                 state.eConflictAffixBtn.addEventListener("click", e => {
+                    e.stopPropagation();
                     if (!this.hasApp()) return;
                     let itm;
                     let menu = new core.App.Menu();
@@ -3339,6 +3370,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eConflictCountBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
                 state.eConflictCountBtnName = state.eConflictCountBtn.children[0];
                 state.eConflictCountBtn.addEventListener("click", e => {
+                    e.stopPropagation();
                     if (!this.hasApp()) return;
                     let itm;
                     let menu = new core.App.Menu();
@@ -3395,6 +3427,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 this.eContent.appendChild(state.eSubmit);
                 state.eSubmit.textContent = "Merge";
                 state.eSubmit.addEventListener("click", async e => {
+                    e.stopPropagation();
                     if (!this.hasApp()) return;
                     state.eSubmit.disabled = true;
                     const progress = v => (this.app.progress = v);
@@ -3469,7 +3502,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         let btn = document.createElement("button");
                         elem.appendChild(btn);
                         btn.innerHTML = "<ion-icon name='close'></ion-icon>";
-                        btn.addEventListener("click", e => state.remLog(log));
+                        btn.addEventListener("click", e => {
+                            e.stopPropagation();
+                            state.remLog(log);
+                        });
                     });
                     if (state.logs.length > 0) state.eLogs.classList.remove("empty");
                     else state.eLogs.classList.add("empty");
@@ -3558,6 +3594,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
 
         let cancel = 10;
         this.eOpen.addEventListener("click", e => {
+            e.stopPropagation();
             if (cancel <= 0) return cancel = 10;
             this.optionState = (this.optionState == 0) ? ((this.elem.getBoundingClientRect().height < 500) ? 1 : 0.5) : 0;
         });
@@ -3721,6 +3758,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         eNavButtons[mode] = btn;
                         btn.textContent = util.capitalize(mode);
                         btn.addEventListener("click", e => {
+                            e.stopPropagation();
                             this.viewMode = mode;
                         });
                         let elems = eForModes[mode] = [];
@@ -4519,6 +4557,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             btn.style.setProperty("--bgh", "var(--"+colors.h+")");
             btn.style.setProperty("--bgd", "var(--"+colors.d+")");
             btn.addEventListener("click", e => {
+                e.stopPropagation();
                 this.color = btn.color;
             });
         });
@@ -4534,6 +4573,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             this.post("remove");
         });
         this.eDisplay.addEventListener("click", e => {
+            e.stopPropagation();
             this.isOpen = !this.isOpen;
         });
 
@@ -4666,8 +4706,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                     elem.appendChild(this.eTemplateSelect);
                     this.eTemplateSelect.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
                     this.eTemplateSelect.addEventListener("click", e => {
-                        if (!this.hasApp()) return;
                         e.stopPropagation();
+                        if (!this.hasApp()) return;
                         let itm;
                         let menu = new core.App.Menu();
                         itm = menu.addItem(new core.App.Menu.Item("No Template", (this.template == null) ? "checkmark" : ""));
@@ -4892,6 +4932,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             btn.style.setProperty("--bgh", "var(--"+colors.h+")");
             btn.style.setProperty("--bgd", "var(--"+colors.d+")");
             btn.addEventListener("click", e => {
+                e.stopPropagation();
                 this.color = btn.color;
             });
         });
@@ -4907,6 +4948,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             this.post("remove");
         });
         this.eDisplay.addEventListener("click", e => {
+            e.stopPropagation();
             this.isOpen = !this.isOpen;
         });
 
@@ -5156,22 +5198,34 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
         this.eUnitsMeters.textContent = "Meters";
-        this.eUnitsMeters.addEventListener("click", e => (this.isMeters = true));
+        this.eUnitsMeters.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isMeters = true;
+        });
         this.#eUnitsCentimeters = document.createElement("button");
         eNav.appendChild(this.eUnitsCentimeters);
         this.eUnitsCentimeters.textContent = "Centimeters";
-        this.eUnitsCentimeters.addEventListener("click", e => (this.isCentimeters = true));
+        this.eUnitsCentimeters.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isCentimeters = true;
+        });
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
         eNav.classList.add("nav");
         this.#eUnitsDegrees = document.createElement("button");
         eNav.appendChild(this.eUnitsDegrees);
         this.eUnitsDegrees.textContent = "Degrees";
-        this.eUnitsDegrees.addEventListener("click", e => (this.isDegrees = true));
+        this.eUnitsDegrees.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isDegrees = true;
+        });
         this.#eUnitsRadians = document.createElement("button");
         eNav.appendChild(this.eUnitsRadians);
         this.eUnitsRadians.textContent = "Radians";
-        this.eUnitsRadians.addEventListener("click", e => (this.isRadians = true));
+        this.eUnitsRadians.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isRadians = true;
+        });
 
         this.quality = this.odometry.quality;
 
@@ -5344,13 +5398,19 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.eColorPicker.appendChild(this.eGhostBtn);
         this.eGhostBtn.classList.add("custom");
         this.eGhostBtn.textContent = "Ghost";
-        this.eGhostBtn.addEventListener("click", e => (this.isGhost = !this.isGhost));
+        this.eGhostBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isGhost = !this.isGhost;
+        });
 
         this.#eDisplayType = document.createElement("button");
         this.eContent.appendChild(this.eDisplayType);
         this.eDisplayType.classList.add("display");
         this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eDisplayType.addEventListener("click", e => this.post("type"));
+        this.eDisplayType.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("type");
+        });
 
         if (a.length <= 0 || a.length > 5) a = [null];
         if (a.length == 1) {
@@ -5555,6 +5615,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#controls = new OrbitControls(this.camera, this.renderer.domElement);
 
         this.renderer.domElement.addEventListener("click", e => {
+            e.stopPropagation();
             if (this.controls instanceof PointerLockControls)
                 this.controls.lock();
         });
@@ -5641,11 +5702,17 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eViewProjection = document.createElement("button");
         eNav.appendChild(this.eViewProjection);
         this.eViewProjection.textContent = "Projection";
-        this.eViewProjection.addEventListener("click", e => (this.isProjection = true));
+        this.eViewProjection.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isProjection = true;
+        });
         this.#eViewIsometric = document.createElement("button");
         eNav.appendChild(this.eViewIsometric);
         this.eViewIsometric.textContent = "Isometric";
-        this.eViewIsometric.addEventListener("click", e => (this.isIsometric = true));
+        this.eViewIsometric.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isIsometric = true;
+        });
 
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
@@ -5653,11 +5720,17 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eViewOrbit = document.createElement("button");
         eNav.appendChild(this.eViewOrbit);
         this.eViewOrbit.textContent = "Orbit";
-        this.eViewOrbit.addEventListener("click", e => (this.isOrbit = true));
+        this.eViewOrbit.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isOrbit = true;
+        });
         this.#eViewFree = document.createElement("button");
         eNav.appendChild(this.eViewFree);
         this.eViewFree.textContent = "Free";
-        this.eViewFree.addEventListener("click", e => (this.isFree = true));
+        this.eViewFree.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isFree = true;
+        });
 
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
@@ -5665,11 +5738,17 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
         this.eUnitsMeters.textContent = "Meters";
-        this.eUnitsMeters.addEventListener("click", e => (this.isMeters = true));
+        this.eUnitsMeters.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isMeters = true;
+        });
         this.#eUnitsCentimeters = document.createElement("button");
         eNav.appendChild(this.eUnitsCentimeters);
         this.eUnitsCentimeters.textContent = "Centimeters";
-        this.eUnitsCentimeters.addEventListener("click", e => (this.isCentimeters = true));
+        this.eUnitsCentimeters.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isCentimeters = true;
+        });
 
         eNav = document.createElement("div");
         eOptions.insertBefore(eNav, last);
@@ -5677,11 +5756,17 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#eUnitsDegrees = document.createElement("button");
         eNav.appendChild(this.eUnitsDegrees);
         this.eUnitsDegrees.textContent = "Degrees";
-        this.eUnitsDegrees.addEventListener("click", e => (this.isDegrees = true));
+        this.eUnitsDegrees.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isDegrees = true;
+        });
         this.#eUnitsRadians = document.createElement("button");
         eNav.appendChild(this.eUnitsRadians);
         this.eUnitsRadians.textContent = "Radians";
-        this.eUnitsRadians.addEventListener("click", e => (this.isRadians = true));
+        this.eUnitsRadians.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isRadians = true;
+        });
 
         let infoUnits = [];
         let info = document.createElement("div");
@@ -6168,19 +6253,28 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.eColorPicker.appendChild(this.eGhostBtn);
         this.eGhostBtn.classList.add("custom");
         this.eGhostBtn.textContent = "Ghost";
-        this.eGhostBtn.addEventListener("click", e => (this.isGhost = !this.isGhost));
+        this.eGhostBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isGhost = !this.isGhost;
+        });
 
         this.#eSolidBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eSolidBtn);
         this.eSolidBtn.classList.add("custom");
         this.eSolidBtn.textContent = "Solid";
-        this.eSolidBtn.addEventListener("click", e => (this.isSolid = !this.isSolid));
+        this.eSolidBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isSolid = !this.isSolid;
+        });
 
         this.#eDisplayType = document.createElement("button");
         this.eContent.appendChild(this.eDisplayType);
         this.eDisplayType.classList.add("display");
         this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eDisplayType.addEventListener("click", e => this.post("type"));
+        this.eDisplayType.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("type");
+        });
 
         if (a.length <= 0 || [3, 4, 5].includes(a.length) || a.length > 6) a = [null];
         if (a.length == 1) {
@@ -6838,7 +6932,10 @@ export default class App extends core.AppFeature {
                     "nt": "NetworkTables",
                     "wpilog": "WPILOG",
                 }[name];
-                btn.addEventListener("click", e => this.post("cmd-source-type", name));
+                btn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    this.post("cmd-source-type", name);
+                });
             });
 
             this.#eProjectInfoSourceInput = document.createElement("input");
@@ -6852,7 +6949,10 @@ export default class App extends core.AppFeature {
             eNav.classList.add("nav");
             this.#eProjectInfoActionBtn = document.createElement("button");
             eNav.appendChild(this.eProjectInfoActionBtn);
-            this.eProjectInfoActionBtn.addEventListener("click", e => this.post("cmd-action"));
+            this.eProjectInfoActionBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                this.post("cmd-action");
+            });
 
             this.#eBlock = document.getElementById("block");
 
@@ -7259,15 +7359,18 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             document.body.addEventListener("mousemove", mousemove);
         });
         this.eNavActionButton.addEventListener("click", e => {
+            e.stopPropagation();
             if (!this.hasSource()) return;
             if (this.source.playback.finished) return this.source.ts = this.source.tsMin;
             this.source.playback.paused = !this.source.playback.paused;
         });
         this.eNavBackButton.addEventListener("click", e => {
+            e.stopPropagation();
             if (!this.hasSource()) return;
             this.source.ts = this.source.tsMin;
         });
         this.eNavForwardButton.addEventListener("click", e => {
+            e.stopPropagation();
             if (!this.hasSource()) return;
             this.source.ts = this.source.tsMax;
         });
@@ -7316,6 +7419,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             btn.append(name.toUpperCase());
             if (btn instanceof HTMLButtonElement)
                 btn.addEventListener("click", e => {
+                    e.stopPropagation();
                     s.setIsOpen(!s.getIsOpen());
                 });
             s.eContent = document.createElement("div");

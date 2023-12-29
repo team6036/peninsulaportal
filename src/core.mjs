@@ -226,7 +226,7 @@ export class App extends util.Target {
                     if (elem.classList.contains("back")) {
                         elem.setAttribute("href", "");
                         elem.addEventListener("click", e => {
-                            e.preventDefault();
+                            e.stopPropagation();
                             signal.post("back", e);
                         });
                         return;
@@ -235,7 +235,7 @@ export class App extends util.Target {
                     if (!href.startsWith("./") && !href.startsWith("../")) return;
                     elem.setAttribute("href", "");
                     elem.addEventListener("click", e => {
-                        e.preventDefault();
+                        e.stopPropagation();
                         signal.post("nav", e, String(new URL(href, new URL(pth, url))).substring(url.length));
                     });
                 }
@@ -611,6 +611,7 @@ export class App extends util.Target {
                 update();
                 input.addEventListener("change", e => update());
                 button.addEventListener("click", e => {
+                    e.stopPropagation();
                     input.click();
                 });
             });
@@ -1240,7 +1241,10 @@ App.Popup = class AppPopup extends App.PopupBase {
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
 
-        this.eClose.addEventListener("click", e => this.result(null));
+        this.eClose.addEventListener("click", e => {
+            e.stopPropagation();
+            this.result(null);
+        });
 
         const onKeyDown = e => {
             if (!document.body.contains(this.elem)) return document.body.removeEventListener("keydown", onKeyDown);
@@ -1452,7 +1456,10 @@ App.Alert = class AppAlert extends App.CorePopup {
         this.inner.appendChild(this.eButton);
         this.eButton.classList.add("special");
 
-        this.eButton.addEventListener("click", e => this.result(null));
+        this.eButton.addEventListener("click", e => {
+            e.stopPropagation();
+            this.result(null);
+        });
 
         this.button = button;
     }
@@ -1496,8 +1503,14 @@ App.Confirm = class AppConfirm extends App.CorePopup {
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
 
-        this.eConfirm.addEventListener("click", e => this.result(true));
-        this.eCancel.addEventListener("click", e => this.result(false));
+        this.eConfirm.addEventListener("click", e => {
+            e.stopPropagation();
+            this.result(true);
+        });
+        this.eCancel.addEventListener("click", e => {
+            e.stopPropagation();
+            this.result(false);
+        });
 
         this.confirm = confirm;
         this.cancel = cancel;
@@ -1543,8 +1556,14 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
 
-        this.eConfirm.addEventListener("click", e => this.result(this.value));
-        this.eCancel.addEventListener("click", e => this.result(null));
+        this.eConfirm.addEventListener("click", e => {
+            e.stopPropagation();
+            this.result(this.value);
+        });
+        this.eCancel.addEventListener("click", e => {
+            e.stopPropagation();
+            this.result(null);
+        });
 
         this.value = value;
         this.confirm = confirm;
@@ -1921,6 +1940,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.elem.addEventListener("mouseenter", e => this.fix());
         this.elem.addEventListener("click", e => {
             if (this.disabled) return;
+            e.stopPropagation();
             this.post("trigger", e);
         });
 
@@ -2518,6 +2538,7 @@ export class AppFeature extends App {
             this.eTitleBtn.classList.add("override");
             this.eTitleBtn.innerHTML = "<div class='title introtitle noanimation'></div>";
             this.eTitleBtn.addEventListener("click", e => {
+                e.stopPropagation();
                 this.page = "TITLE";
             });
             this.eTitleBtn.addEventListener("contextmenu", e => {
@@ -2629,18 +2650,27 @@ export class AppFeature extends App {
             this.#eProjectInfoSaveBtn = document.createElement("button");
             eNav.appendChild(this.eProjectInfoSaveBtn);
             this.eProjectInfoSaveBtn.textContent = "Save";
-            this.eProjectInfoSaveBtn.addEventListener("click", e => this.post("cmd-save"));
+            this.eProjectInfoSaveBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                this.post("cmd-save");
+            });
 
             this.#eProjectInfoCopyBtn = document.createElement("button");
             eNav.appendChild(this.eProjectInfoCopyBtn);
             this.eProjectInfoCopyBtn.textContent = "Copy";
-            this.eProjectInfoCopyBtn.addEventListener("click", e => this.post("cmd-savecopy"));
+            this.eProjectInfoCopyBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                this.post("cmd-savecopy");
+            });
 
             this.#eProjectInfoDeleteBtn = document.createElement("button");
             eNav.appendChild(this.eProjectInfoDeleteBtn);
             this.eProjectInfoDeleteBtn.classList.add("off");
             this.eProjectInfoDeleteBtn.textContent = "Delete";
-            this.eProjectInfoDeleteBtn.addEventListener("click", e => this.post("cmd-delete"));
+            this.eProjectInfoDeleteBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                this.post("cmd-delete");
+            });
 
             let space = document.createElement("div");
             this.eTitleBar.appendChild(space);
@@ -2661,6 +2691,7 @@ export class AppFeature extends App {
             this.eProjectsBtn.classList.add("nav");
             this.eProjectsBtn.innerHTML = "<ion-icon name='folder'></ion-icon>";
             this.eProjectsBtn.addEventListener("click", e => {
+                e.stopPropagation();
                 this.page = "PROJECTS";
             });
             new ResizeObserver(checkMinWidth).observe(this.eProjectsBtn);
@@ -2670,6 +2701,7 @@ export class AppFeature extends App {
             this.eCreateBtn.classList.add("nav");
             this.eCreateBtn.innerHTML = "<ion-icon name='add'></ion-icon>";
             this.eCreateBtn.addEventListener("click", e => {
+                e.stopPropagation();
                 this.page = "PROJECT";
             });
             new ResizeObserver(checkMinWidth).observe(this.eCreateBtn);
@@ -2961,12 +2993,14 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
         this.eCreateBtn.classList.add("special");
         this.eCreateBtn.innerHTML = "Create<ion-icon name='add'></ion-icon>";
         this.eCreateBtn.addEventListener("click", e => {
+            e.stopPropagation();
             this.app.page = "PROJECT";
         });
         this.#eProjectsBtn = document.createElement("button");
         this.eNav.appendChild(this.eProjectsBtn);
         this.eProjectsBtn.innerHTML = "Projects<ion-icon name='chevron-forward'></ion-icon>";
         this.eProjectsBtn.addEventListener("click", e => {
+            e.stopPropagation();
             this.app.page = "PROJECTS";
         });
 
@@ -3024,6 +3058,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eSubNav.appendChild(this.eCreateBtn);
         this.eCreateBtn.innerHTML = "Create<ion-icon name='add'></ion-icon>";
         this.eCreateBtn.addEventListener("click", e => {
+            e.stopPropagation();
             this.app.page = "PROJECT";
         });
         this.#eInfo = document.createElement("div");
@@ -3033,6 +3068,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eInfo.appendChild(this.eInfoDisplayBtn);
         this.eInfoDisplayBtn.innerHTML = "<ion-icon></ion-icon>";
         this.eInfoDisplayBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (this.displayMode == "list") return this.displayMode = "grid";
             if (this.displayMode == "grid") return this.displayMode = "list";
         });
@@ -3052,6 +3088,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eSearchBox.appendChild(this.eSearchBtn);
         this.eSearchBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
         this.eSearchBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (this.eSearchInput instanceof HTMLInputElement)
                 this.eSearchInput.value = "";
             this.refresh();
@@ -3070,6 +3107,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.app.addHandler("synced-with-files", () => this.refresh());
 
         this.eContent.addEventListener("click", e => {
+            e.stopPropagation();
             selected.clear();
             lastSelected = null;
             lastAction = null;
@@ -3342,7 +3380,6 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         this.eGridImage.classList.add("image");
 
         const contextMenu = e => {
-            e.preventDefault();
             e.stopPropagation();
             this.post("contextmenu", e);
         };
