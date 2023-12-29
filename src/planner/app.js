@@ -203,16 +203,25 @@ class RVisualItem extends core.Odometry2d.Robot {
             if (!this.hasVisual()) return;
             let p = this.interp;
             let nodes = this.visual.nodes;
-            let i = Math.floor((nodes.length-1)*p);
-            let j = Math.min(i+1, nodes.length-1);
-            let ni = nodes[i], nj = nodes[j];
-            p = ((nodes.length-1)*p) - i;
-            let node = new subcore.Project.Node(
-                util.lerp(ni.pos, nj.pos, p),
-                ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
-                util.lerp(ni.velocity, nj.velocity),
-                0, true,
-            );
+            if (nodes.length <= 0) {
+                this.pos = 0;
+                this.velocity = 0;
+                this.heading = 0;
+                return;
+            }
+            let node;
+            if (nodes.length > 1) {
+                let i = Math.floor((nodes.length-1)*p);
+                let j = Math.min(i+1, nodes.length-1);
+                let ni = nodes[i], nj = nodes[j];
+                p = ((nodes.length-1)*p) - i;
+                node = new subcore.Project.Node(
+                    util.lerp(ni.pos, nj.pos, p),
+                    ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
+                    util.lerp(ni.velocity, nj.velocity),
+                    0, true,
+                );
+            } else node = nodes[0];
             this.pos = node.pos;
             this.velocity = node.velocity;
             this.heading = node.heading * (180/Math.PI);
