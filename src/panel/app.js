@@ -146,14 +146,14 @@ function getDisplay(t, v) {
     };
 }
 
-function getRepresentation(o) {
+function getRepresentation(o, alt=false) {
     if (
         util.is(o, "num") ||
         util.is(o, "bool") ||
         util.is(o, "str")
-    ) return String(o);
-    if (o instanceof Uint8Array) return util.TEXTDECODER.decode(o); // return [...o].map(x => x.toString(16).padStart(2, "0")).join("");
-    if (util.is(o, "arr")) return "["+[...o].map(o => getRepresentation(o)).join(", ")+"]";
+    ) return (alt && util.is(o, "str")) ? `"${o}"` : String(o);
+    if (o instanceof Uint8Array) return alt ? util.TEXTDECODER.decode(o) : [...o].map(x => x.toString(16).padStart(2, "0")).join("");
+    if (util.is(o, "arr")) return (alt ? "" : "[")+[...o].map(o => getRepresentation(o)).join(", ")+(alt ? "" : "]");
     if (util.is(o, "obj")) return JSON.stringify(o);
     return String(o);
 }
@@ -290,14 +290,16 @@ class BrowserNode extends util.Target {
         let cancel = 10;
         this.eDisplay.addEventListener("click", e => {
             if (cancel <= 0) return cancel = 10;
-            if (this.isJustPrimitive) this.showValue = !this.showValue;
+            if (this.isJustPrimitive || e.shiftKey) this.showValue = !this.showValue;
             else this.isOpen = !this.isOpen;
         });
         this.eDisplay.addEventListener("dblclick", e => {
             this.post("trigger", e, [this.name]);
         });
         this.eDisplay.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
             e.preventDefault();
+            e.stopPropagation();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -422,7 +424,6 @@ class BrowserNode extends util.Target {
         this.#showValue = v;
         this.updateDisplay();
     }
-    get canShowValue() { return this.showValue && this.isJustPrimitive; }
 
     get elem() { return this.#elem; }
     get eDisplay() { return this.#eDisplay; }
@@ -456,9 +457,9 @@ class BrowserNode extends util.Target {
             if ("color" in display) this.eIcon.style.color = display.color;
             else this.eIcon.style.color = "";
         }
-        this.eValueBox.style.display = this.canShowValue ? "" : "none";
+        this.eValueBox.style.display = this.showValue ? "" : "none";
         this.eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
-        this.eValue.textContent = getRepresentation(this.value);
+        this.eValue.textContent = getRepresentation(this.value, this.type == "structschema");
     }
 
     get isOpen() { return this.elem.classList.contains("this"); }
@@ -504,7 +505,9 @@ class ToolButton extends util.Target {
             this.post("trigger", e);
         });
         this.elem.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
             e.preventDefault();
+            e.stopPropagation();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -957,7 +960,9 @@ class Container extends Widget {
             this.elem.appendChild(elem);
             elem.classList.add("divider");
             elem.addEventListener("mousedown", e => {
+                if (e.button != 0) return;
                 e.preventDefault();
+                e.stopPropagation();
                 const mouseup = () => {
                     elem.classList.remove("this");
                     document.body.removeEventListener("mouseup", mouseup);
@@ -1270,7 +1275,9 @@ Panel.Tab = class PanelTab extends util.Target {
             this.parent.tabIndex = this.parent.tabs.indexOf(this);
         });
         this.eTab.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
             e.preventDefault();
+            e.stopPropagation();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -2033,7 +2040,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                             let display = getDisplay(node.field.type, value);
                             eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
                             eValue.style.fontSize = (["double", "float", "int"].includes(node.field.arrayType) ? 32 : 16)+"px";
-                            eValue.textContent = getRepresentation(value);
+                            eValue.textContent = getRepresentation(value, node.field.type == "structschema");
                         }
                     };
                 }
@@ -2446,7 +2453,9 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         this.eHeader.classList.add("item");
 
         this.eHeader.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
             e.preventDefault();
+            e.stopPropagation();
             let trigger = 0;
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
@@ -3550,10 +3559,12 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         let cancel = 10;
         this.eOpen.addEventListener("click", e => {
             if (cancel <= 0) return cancel = 10;
-            this.optionState = (this.optionState == 0) ? 0.5 : 0;
+            this.optionState = (this.optionState == 0) ? ((this.elem.getBoundingClientRect().height < 500) ? 1 : 0.5) : 0;
         });
         this.eOpen.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
             e.preventDefault();
+            e.stopPropagation();
             let offset = e.offsetY;
             const mouseup = e => {
                 document.body.removeEventListener("mouseup", mouseup);
@@ -3817,7 +3828,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         const quality = this.quality = 3;
         const padding = 40;
 
-        let mouseX = 0, mouseY = 0, mouseDown = false;
+        let mouseX = 0, mouseY = 0, mouseDown = false, mouseAlt = false;
         this.canvas.addEventListener("mousemove", e => {
             eGraphTooltip.style.left = e.pageX+"px";
             eGraphTooltip.style.top = e.pageY+"px";
@@ -3836,8 +3847,16 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             overlay.appendChild(eGraphTooltip);
         });
         this.canvas.addEventListener("mouseleave", e => eGraphTooltip.remove());
-        this.canvas.addEventListener("mousedown", e => (mouseDown = true));
-        this.canvas.addEventListener("mouseup", e => (mouseDown = false));
+        this.canvas.addEventListener("mousedown", e => {
+            e.preventDefault();
+            e.stopPropagation();
+            mouseDown = true;
+            mouseAlt = e.shiftKey || e.button != 0;
+        });
+        this.canvas.addEventListener("mouseup", e => {
+            mouseDown = false;
+            mouseAlt = false;
+        });
         let scrollX = 0, scrollY = 0;
         this.canvas.addEventListener("wheel", e => {
             scrollX += e.deltaX;
@@ -3868,6 +3887,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         };
         this.addHandler("add", () => document.body.addEventListener("keydown", onKeyDown));
         this.addHandler("rem", () => document.body.removeEventListener("keydown", onKeyDown));
+
+        let t0 = null;
         this.addHandler("update", delta => {
             if (this.isClosed) return;
             
@@ -4000,11 +4021,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let x1 = [padding*quality, ctx.canvas.width-padding*quality][i];
                 let x2 = [(padding-5)*quality, ctx.canvas.width-(padding-5)*quality][i];
                 let x3 = [(padding-10)*quality, ctx.canvas.width-(padding-10)*quality][i];
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
                 ctx.lineWidth = 2*quality;
                 ctx.lineJoin = "miter";
                 ctx.lineCap = "square";
-                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
                 ctx.font = (12*quality)+"px monospace";
                 ctx.textAlign = ["right", "left"][i];
                 ctx.textBaseline = "middle";
@@ -4111,7 +4131,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.font = (12*quality)+"px monospace";
             ctx.textBaseline = "top";
             ctx.textAlign = "left";
-            let range = [Infinity, Infinity], y = padding*quality + 10*quality + 20*quality*nDiscrete;
+            let ranges = [];
             [
                 {
                     value: (this.hasPage() && this.page.hasSource()) ? this.page.source.ts : 0,
@@ -4120,11 +4140,15 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 {
                     value: util.lerp(...graphRange, mouseX),
                     color: "v4-8",
-                    show: !mouseDown,
+                    show: !mouseDown || mouseAlt,
+                },
+                {
+                    value: t0,
+                    color: "v4-8",
+                    show: mouseAlt,
                 },
             ].forEach(data => {
-                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+data.color);
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+data.color);
+                ctx.fillStyle = ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+data.color);
                 let progress = (data.value-graphRange[0]) / (graphRange[1]-graphRange[0]);
                 let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, progress);
                 if ((!("show" in data) || data.show) && progress >= 0 && progress <= 1) {
@@ -4134,31 +4158,57 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ctx.lineTo(x, ctx.canvas.height-padding*quality);
                     ctx.stroke();
                     ctx.setLineDash([]);
-                    let split = util.splitTimeUnits(data.value);
-                    split[0] = Math.round(split[0]);
-                    while (split.length > 2) {
-                        if (split.at(-1) > 0) break;
-                        split.pop();
-                    }
-                    split = split.map((v, i) => {
-                        v = String(v);
-                        if (i >= split.length-1) return v;
-                        let l = String(Object.values(util.UNITVALUES)[i+1]).length;
-                        if (i > 0) v = v.padStart(l, "0");
-                        else v = v.padEnd(l, "0");
-                        return v;
-                    });
-                    let text = split.slice(1).reverse().join(":")+"."+split[0];
+                    let text = util.formatTime(data.value);
                     let newRange = [x, x+ctx.measureText(text).width+10*quality];
                     if (newRange[1] > ctx.canvas.width-padding*quality) newRange = [newRange[0]-(newRange[1]-newRange[0]), newRange[1]-(newRange[1]-newRange[0])];
-                    if (!(newRange[0] > range[1]) && !(newRange[1] < range[0])) y += (12+5)*quality;
-                    range = newRange;
-                    ctx.fillText(text, newRange[0]+5*quality, y);
+                    let rangeY = 0;
+                    while (true) {
+                        let any = false;
+                        while (ranges.length <= rangeY) ranges.push([]);
+                        for (let range of ranges[rangeY]) {
+                            if (newRange[1] < range[0]) continue;
+                            if (newRange[0] > range[1]) continue;
+                            any = true;
+                            break;
+                        }
+                        if (!any) break;
+                        rangeY++;
+                    }
+                    ranges[rangeY].push(newRange);
+                    ctx.fillText(text, newRange[0]+5*quality, padding*quality + 10*quality + 20*quality*nDiscrete + (12+5)*rangeY*quality);
                 }
             });
-            if (mouseDown)
+            if (mouseDown && !mouseAlt)
                 if (this.hasPage() && this.page.hasSource())
                     this.page.source.ts = util.lerp(...graphRange, mouseX);
+            if (mouseAlt) {
+                if (t0 == null)
+                    t0 = util.lerp(...graphRange, mouseX);
+            } else t0 = null;
+            if (mouseAlt) {
+                let t1 = util.lerp(...graphRange, mouseX);
+                let t0Value = Math.min(graphRange[1], Math.max(graphRange[0], t0));
+                let t1Value = Math.min(graphRange[1], Math.max(graphRange[0], t1));
+                let x0 = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (t0Value-graphRange[0])/(graphRange[1]-graphRange[0]));
+                let x1 = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (t1Value-graphRange[0])/(graphRange[1]-graphRange[0]));
+                let y = ctx.canvas.height-padding*quality-10*quality;
+                ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--a");
+                ctx.beginPath();
+                ctx.moveTo(x0, y);
+                ctx.lineTo(x1, y);
+                if (t0 == t0Value) {
+                    ctx.moveTo(x0, y-5*quality);
+                    ctx.lineTo(x0, y+5*quality);
+                }
+                if (t1 == t1Value) {
+                    ctx.moveTo(x1, y-5*quality);
+                    ctx.lineTo(x1, y+5*quality);
+                }
+                ctx.stroke();
+                ctx.textBaseline = "bottom";
+                ctx.textAlign = "center";
+                ctx.fillText("∆ "+util.formatTime(t1-t0), (x0+x1)/2, y-5*quality);
+            }
             let ignoreY = false;
             if (Math.abs(scrollX) > 0) {
                 if (Math.abs(scrollX) > 3) {
@@ -7188,10 +7238,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         this.eNavProgress.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
             if (!this.hasSource()) return;
-            let paused = this.source.playback.paused;
             e.preventDefault();
             e.stopPropagation();
+            let paused = this.source.playback.paused;
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -7342,7 +7393,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eMain.appendChild(this.eDivider);
         this.eDivider.classList.add("divider");
         this.eDivider.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
             e.preventDefault();
+            e.stopPropagation();
             const mouseup = () => {
                 this.eDivider.classList.remove("this");
                 document.body.removeEventListener("mouseup", mouseup);

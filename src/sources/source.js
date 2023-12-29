@@ -119,7 +119,7 @@ export default class Source extends util.Target {
     get buildTree() { return this.#buildTree; }
 
     get ts() { return this.#ts; }
-    set ts(v) { this.#ts = util.ensure(v, "num"); }
+    set ts(v) { this.#ts = Math.min(this.tsMax, Math.max(this.tsMin, util.ensure(v, "num"))); }
     get tsMin() { return this.#tsMin; }
     set tsMin(v) { this.#tsMin = util.ensure(v, "num"); }
     get tsMax() { return this.#tsMax; }

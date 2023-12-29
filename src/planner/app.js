@@ -725,6 +725,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.placeContextMenu(e.pageX, e.pageY);
         });
         this.odometry.canvas.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
+            e.preventDefault();
+            e.stopPropagation();
             const hovered = this.odometry.hovered;
             const hoveredPart = this.odometry.hoveredPart;
             if (this.choosing) {
@@ -733,9 +736,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.chooseState.post("choose", hovered.parent.item, !!e.shiftKey);
                 return;
             }
-            if (e.button != 0) return;
-            e.preventDefault();
-            e.stopPropagation();
             if (!(hovered instanceof core.Odometry2d.Render && hovered.parent instanceof RSelectable)) {
                 this.clearSelected();
                 let selectItem = this.odometry.render.addRender(new RSelect(this.odometry.render));
@@ -854,10 +854,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eMain.insertBefore(this.eDivider, this.eEdit);
         this.eDivider.classList.add("divider");
         this.eDivider.addEventListener("mousedown", e => {
-            e.preventDefault();
-            e.stopPropagation();
             if (this.choosing) return;
             if (e.button != 0) return;
+            e.preventDefault();
+            e.stopPropagation();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
@@ -1608,9 +1608,10 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             eName.classList.add("name");
             eName.textContent = name.split(" ").map(v => util.capitalize(v)).join(" ");
             btn.addEventListener("mousedown", e => {
+                if (this.page.choosing) return;
+                if (e.button != 0) return;
                 e.preventDefault();
                 e.stopPropagation();
-                if (this.page.choosing) return;
                 this.app.post("cmd-add"+name);
             });
         });
@@ -1694,6 +1695,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.robotHeadingDrag.innerHTML = "<div><button></button></div>";
         this.robotHeading.elem.appendChild(this.robotHeadingDrag);
         this.robotHeadingDrag.addEventListener("mousedown", e => {
+            if (this.page.choosing) return;
+            if (e.button != 0) return;
             e.preventDefault();
             e.stopPropagation();
             const place = e => {
@@ -2222,10 +2225,11 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
 
         this.page.eNavProgress.addEventListener("mousedown", e => {
             if (this.page.choosing) return;
+            if (e.button != 0) return;
             if (!visual) return;
-            let paused = visual.playback.paused;
             e.preventDefault();
             e.stopPropagation();
+            let paused = visual.playback.paused;
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
