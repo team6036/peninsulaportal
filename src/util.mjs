@@ -229,7 +229,7 @@ export function formatTime(t) {
     t = Math.abs(t);
     let split = splitTimeUnits(t);
     split[0] = Math.round(split[0]);
-    while (split.length > 3) {
+    while (split.length > 2) {
         if (split.at(-1) > 0) break;
         split.pop();
     }
