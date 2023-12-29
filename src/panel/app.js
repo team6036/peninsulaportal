@@ -1048,10 +1048,9 @@ class Panel extends Widget {
 
         this.elem.classList.add("panel");
         this.elem.addEventListener("click", e => {
-            e.stopPropagation();
             if (!this.hasPage()) return;
             this.page.activeWidget = this;
-        });
+        }, { capture: true });
 
         this.#tabs = [];
         this.#tabIndex = null;
