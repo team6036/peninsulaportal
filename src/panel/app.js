@@ -3633,11 +3633,16 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
 
         this.addHandler("openclose", () => {
             let x = this.optionState;
-            x *= 2;
-            x++;
-            x %= 3;
-            x /= 2;
-            this.optionState = x;
+            if (x > 0) {
+                this.optionState = 0;
+            }
+            // toggle between half height and closed if canvas is tall enough
+            else if (this.canvas.height > 500 * this.quality) {
+                this.optionState = 0.5;
+            }
+            else {
+                this.optionState = 1;
+            }
         });
 
         if (this.constructor.CREATECTX) {
