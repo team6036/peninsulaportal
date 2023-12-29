@@ -476,12 +476,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #odometry;
 
     #selected;
-    #selectedPaths;
+    #selectedPath;
 
     #choosing;
     #chooseState;
 
     #displayPath;
+    #displayPathIndices;
+    #displayPathLines;
 
     #maximized;
     #divPos;
@@ -507,7 +509,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.choosing) return;
             if (this.eDisplay.contains(e.target)) return;
             if (this.eNav.contains(e.target)) return;
-            // this.clearSelectedPaths();
         });
 
         this.app.eProjectInfoNameInput.addEventListener("change", e => {
@@ -607,12 +608,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#odometry = new core.Odometry2d();
 
         this.#selected = new Set();
-        this.#selectedPaths = new Set();
+        this.#selectedPath = null;
 
         this.#choosing = false;
         this.#chooseState = null;
 
         this.#displayPath = null;
+        this.#displayPathIndices = true;
+        this.#displayPathLines = true;
 
         this.#maximized = null;
         this.#divPos = null;
@@ -893,12 +896,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.odometry.autoScale();
 
             this.pruneSelected();
-            this.pruneSelectedPaths();
+            this.selectedPath = (this.hasProject() && this.project.hasPath(this.selectedPath)) ? this.selectedPath : null;
 
-            if (!this.choosing) {
-                let id = this.selectedPaths.length > 0 ? this.selectedPaths[0] : null;
-                this.displayPath = (this.hasProject() && this.project.hasPath(id)) ? this.project.getPath(id) : null;
-            }
+            if (!this.choosing)
+                this.displayPath = (this.hasProject() && this.project.hasPath(this.selectedPath)) ? this.project.getPath(this.selectedPath) : null;
 
             let nodes = this.hasDisplayPath() ? this.displayPath.nodes.filter(id => this.hasProject() && this.project.hasItem(id)) : [];
             let toDelete = {};
@@ -911,23 +912,27 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             for (let i = 0; i < nodes.length; i++) {
                 let id = nodes[i];
                 let node = this.project.getItem(id);
-                if (!(id in displayPathRenders))
-                    displayPathRenders[id] = this.odometry.render.addRender(new RLabel(this.odometry.render, null));
-                delete toDelete[id];
-                let label = displayPathRenders[id];
-                label.item = node;
-                if (label.text.length <= 0) label.text = i+1;
-                else label.text += ", "+(i+1);
+                if (this.displayPathIndices) {
+                    if (!(id in displayPathRenders))
+                        displayPathRenders[id] = this.odometry.render.addRender(new RLabel(this.odometry.render, null));
+                    delete toDelete[id];
+                    let label = displayPathRenders[id];
+                    label.item = node;
+                    if (label.text.length <= 0) label.text = i+1;
+                    else label.text += ", "+(i+1);
+                }
                 if (i <= 0) continue;
                 let id2 = nodes[i-1];
                 let node2 = this.project.getItem(id2);
                 let lid = (i-1)+"~"+i;
-                if (!(lid in displayPathRenders))
-                    displayPathRenders[lid] = this.odometry.render.addRender(new RLine(this.odometry.render, null, null));
-                delete toDelete[lid];
-                let line = displayPathRenders[lid];
-                line.itemA = node2;
-                line.itemB = node;
+                if (this.displayPathLines) {
+                    if (!(lid in displayPathRenders))
+                        displayPathRenders[lid] = this.odometry.render.addRender(new RLine(this.odometry.render, null, null));
+                    delete toDelete[lid];
+                    let line = displayPathRenders[lid];
+                    line.itemA = node2;
+                    line.itemB = node;
+                }
             }
             for (let id in toDelete) {
                 this.odometry.render.remRender(displayPathRenders[id]);
@@ -1151,53 +1156,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.remSelected(id);
         });
     }
-
-    get selectedPaths() { return [...this.#selectedPaths]; }
-    set selectedPaths(v) {
-        v = util.ensure(v, "arr");
-        this.clearSelectedPaths();
-        this.addSelectedPath(v);
-    }
-    clearSelectedPaths() {
-        let pths = this.selectedPaths;
-        this.remSelectedPath(pths);
-        return pths;
-    }
-    isPathSelected(id) {
-        if (id instanceof subcore.Project.Path) return this.isPathSelected(id.id);
-        return this.#selectedPaths.has(String(id));
-    }
-    addSelectedPath(...ids) {
-        let r = util.Target.resultingForEach(ids, id => {
-            if (id instanceof subcore.Project.Path) id = id.id;
-            if (this.isPathSelected(id)) return false;
-            id = String(id);
-            if (this.hasProject() && this.project.hasPath(id)) {
-                this.#selectedPaths.add(id);
-                return id;
-            }
-            return false;
-        });
+    
+    get selectedPath() { return this.#selectedPath; }
+    set selectedPath(v) {
+        if (v instanceof subcore.Project.Path) return this.selectedPath = v.id;
+        v = (v == null) ? null : String(v);
+        if (!(this.hasProject() && this.project.hasPath(v))) v = null;
+        if (this.selectedPath == v) return;
+        this.change("selectedPath", this.selectedPath, this.#selectedPath=v);
         this.editorRefresh();
-        return r;
     }
-    remSelectedPath(...ids) {
-        let r = util.Target.resultingForEach(ids, id => {
-            if (id instanceof subcore.Project.Path) id = id.id;
-            if (!this.isPathSelected(id)) return false;
-            id = String(id);
-            this.#selectedPaths.delete(id);
-            return id;
-        });
-        this.editorRefresh();
-        return r;
-    }
-    pruneSelectedPaths() {
-        this.selectedPaths.forEach(id => {
-            if (this.hasProject() && this.project.hasPath(id)) return;
-            this.remSelectedPath(id);
-        });
-    }
+    hasSelectedPath() { return this.selectedPath != null; }
 
     get choosing() { return this.#choosing; }
     set choosing(v) {
@@ -1218,6 +1187,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#displayPath = v;
     }
     hasDisplayPath() { return !!this.displayPath; }
+    get displayPathIndices() { return this.#displayPathIndices; }
+    set displayPathIndices(v) { this.#displayPathIndices = !!v; }
+    get displayPathLines() { return this.#displayPathLines; }
+    set displayPathLines(v) { this.#displayPathLines = !!v; }
 
     async cut() {
         await this.copy();
@@ -2082,7 +2055,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectPage.Panel {
     #generating;
     #buttons;
-    #visuals;
 
     #eAddBtn;
     #ePathsBox;
@@ -2091,11 +2063,10 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     constructor(page) {
         super(page, "paths", "analytics");
 
-        this.elem.addEventListener("click", e => this.page.clearSelectedPaths());
+        this.elem.addEventListener("click", e => (this.page.selectedPath = null));
 
         this.#generating = null;
         this.#buttons = new Set();
-        this.#visuals = {};
 
         let header = this.addItem(new App.ProjectPage.Panel.Header("Paths"));
         this.#eAddBtn = document.createElement("button");
@@ -2141,34 +2112,31 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 } catch (e) { await this.app.doError("Exec Termination Error", e); }
                 return;
             }
-            const projectId = this.page.projectId;
-            if (!this.app.hasProject(projectId)) return;
-            const project = this.app.getProject(projectId);
-            if (this.page.selectedPaths.length <= 0) return;
-            let id = this.page.selectedPaths[0];
-            if (!project.hasPath(id)) return;
-            let path = project.getPath(id);
+            if (!this.page.hasProject()) return;
+            if (!this.page.project.hasPath(this.page.selectedPath)) return;
+            let path = this.page.project.getPath(this.page.selectedPath);
             this.generating = true;
             this.app.markChange("*all");
             await this.app.post("cmd-save");
             try {
-                await window.api.send("exec", project.id, path.id);
-                await this.checkVisuals();
-                this.visuals.forEach(id => {
-                    let visual = this.getVisual(id);
-                    if (!this.page.isPathSelected(id)) return;
-                    visual.play();
-                });
-                this.generating = false;
-            } catch (e) {
-                this.generating = false;
-                this.app.error("Exec Error", null, e);
-            }
+                await window.api.send("exec", this.page.project.id, path.id);
+            } catch (e) { this.app.error("Exec Error", null, e); }
+            this.generating = false;
         });
 
         this.generating = false;
 
         let buttons = {};
+        let visual = null, visualId = null;
+
+        this.addHandler("revisualize", () => {
+            if (visual) {
+                this.page.odometry.render.remRender(visual.visual);
+                this.page.odometry.render.remRender(visual.item);
+            }
+            visual = null;
+            visualId = null;
+        });
         
         this.addHandler("update", delta => {
             let paths = {};
@@ -2183,17 +2151,69 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 if (!(id in buttons)) buttons[id] = this.addButton(new App.ProjectPage.PathsPanel.Button(this, null));
                 let btn = buttons[id];
                 btn.path = paths[id];
-                btn.selected = this.page.isPathSelected(btn.path);
+                btn.selected = this.page.selectedPath == btn.path.id;
                 btn.update(delta);
             }
+            if (visualId != this.page.selectedPath) {
+                visualId = this.page.selectedPath;
+                if (visual) {
+                    this.page.odometry.render.remRender(visual.visual);
+                    this.page.odometry.render.remRender(visual.item);
+                }
+                visual = this.page.hasSelectedPath() ? { playback: new util.Playback() } : null;
+                if (visual) {
+                    visual.visual = this.page.odometry.render.addRender(new RVisual(this.page.odometry.render));
+                    visual.item = this.page.odometry.render.addRender(new RVisualItem(this.page.odometry.render, visual.visual));
+                    let theVisual = visual, theVisualId = visualId;
+                    (async () => {
+                        let datas = await window.api.send("exec-get", this.page.projectId);
+                        if (!util.is(datas, "obj")) return;
+                        if (!(theVisualId in datas)) return;
+                        let data = datas[theVisualId];
+                        if (!util.is(data, "obj")) return;
+                        theVisual.visual.dt = data.dt*1000;
+                        theVisual.visual.nodes = util.ensure(data.state, "arr").map(node => {
+                            node = util.ensure(node, "obj");
+                            node = new subcore.Project.Node(
+                                new V(node.x, node.y).mul(100),
+                                node.theta, true,
+                                new V(node.vx, node.vy).mul(100),
+                                0, true,
+                            );
+                            return node;
+                        });
+                        theVisual.playback.tsMax = theVisual.visual.dt * theVisual.visual.nodes.length;
+                        theVisual.playback.play();
+                    })();
+                }
+            }
+            if (!visual) {
+                this.page.displayPathLines = true;
+                this.page.eNavActionButton.disabled = this.page.eNavBackButton.disabled = this.page.eNavForwardButton.disabled = true;
+                this.page.progress = 0;
+                if (this.page.eNavActionButton.children[0])
+                    this.page.eNavActionButton.children[0].setAttribute("name", "play");
+                this.page.eNavProgressTooltip.textContent = "Select a Path";
+                this.page.eNavInfo.textContent = "No Path Selected";
+                return;
+            }
+            this.page.displayPathLines = false;
+            this.page.eNavActionButton.disabled = this.page.eNavBackButton.disabled = this.page.eNavForwardButton.disabled = false;
+            visual.playback.update(delta);
+            visual.item.interp = visual.playback.progress;
+            visual.item.size = this.page.hasProject() ? this.page.project.robotW : 0;
+            this.page.progress = visual.playback.progress;
+            if (this.page.eNavActionButton.children[0])
+                this.page.eNavActionButton.children[0].setAttribute("name", visual.playback.finished ? "refresh" : visual.playback.paused ? "play" : "pause");
+            this.page.eNavProgressTooltip.textContent = util.formatTime(visual.playback.tsMax*this.page.progressHover);
+            this.page.eNavInfo.textContent = util.formatTime(visual.playback.ts) + " / " + util.formatTime(visual.playback.tsMax);
         });
 
         this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
             this.eAddBtn.disabled = !has;
-            this.checkVisuals();
-            this.eActivateBtn.disabled = !this.generating && (!has || this.page.selectedPaths.length <= 0);
+            this.eActivateBtn.disabled = !this.generating && (!has || !this.page.hasSelectedPath());
             this.eActivateBtn.textContent = this.generating ? "Terminate" : "Generate";
             this.eActivateBtn.classList.remove("on");
             this.eActivateBtn.classList.remove("off");
@@ -2202,82 +2222,49 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
 
         this.page.eNavProgress.addEventListener("mousedown", e => {
             if (this.page.choosing) return;
-            if (e.button != 0) return;
+            if (!visual) return;
+            let paused = visual.playback.paused;
             e.preventDefault();
             e.stopPropagation();
             const mouseup = () => {
                 document.body.removeEventListener("mouseup", mouseup);
                 document.body.removeEventListener("mousemove", mousemove);
+                if (!visual) return;
+                visual.playback.paused = paused;
             };
             const mousemove = e => {
-                let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
-                if (visuals.length <= 0) return;
-                let id = visuals[0];
-                let visual = this.getVisual(id);
-                visual.nowTime = visual.totalTime*this.page.progressHover;
+                if (!visual) return;
+                visual.playback.paused = true;
+                visual.playback.progress = this.page.progressHover;
             };
             mousemove(e);
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
         });
         this.page.eNavActionButton.addEventListener("click", e => {
-            let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
-            if (visuals.length <= 0) return;
-            let id = visuals[0];
-            let visual = this.getVisual(id);
+            if (!visual) return;
             if (visual.isFinished) {
-                visual.nowTime = 0;
-                visual.play();
-            } else visual.paused = !visual.paused;
+                visual.playback.ts = visual.playback.tsMin;
+                visual.playback.play();
+            } else visual.playback.paused = !visual.playback.paused;
         });
         this.page.eNavBackButton.addEventListener("click", e => {
-            let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
-            if (visuals.length <= 0) return;
-            let id = visuals[0];
-            let visual = this.getVisual(id);
-            visual.nowTime = 0;
+            if (!visual) return;
+            visual.playback.ts = visual.playback.tsMin;
         });
         this.page.eNavForwardButton.addEventListener("click", e => {
-            let visuals = this.visuals.filter(id => this.page.isPathSelected(id));
-            if (visuals.length <= 0) return;
-            let id = visuals[0];
-            let visual = this.getVisual(id);
-            visual.nowTime = visual.totalTime;
-        });
-        
-        this.addHandler("update", delta => {
-            let visuals = [];
-            this.visuals.forEach(id => {
-                let visual = this.getVisual(id);
-                visual.show = this.page.isPathSelected(id);
-                if (visual.show) visuals.push(id);
-                visual.update(delta);
-                if (!this.page.hasProject() || !this.page.project.hasPath(id))
-                    this.remVisual(id);
-            });
-            if (visuals.length <= 0) {
-                this.page.progress = 0;
-                this.page.eNavProgressTooltip.textContent = "0:00.000";
-                this.page.eNavInfo.textContent = "0:00.000 / 0:00.000";
-                return;
-            }
-            let id = visuals[0];
-            let visual = this.getVisual(id);
-            this.page.progress = visual.item.interp;
-            if (this.page.eNavActionButton.children[0])
-                this.page.eNavActionButton.children[0].setAttribute("name", visual.isFinished ? "refresh" : visual.paused ? "play" : "pause");
-            this.page.eNavProgressTooltip.textContent = util.formatTime(visual.totalTime*this.page.progressHover);
-            this.page.eNavInfo.textContent = util.formatTime(visual.nowTime) + " / " + util.formatTime(visual.totalTime);
+            if (!visual) return;
+            visual.playback.ts = visual.playback.tsMax;
         });
     }
 
     get generating() { return this.#generating; }
     set generating(v) {
         v = !!v;
-        if (this.generating == v) return true;
+        if (this.generating == v) return;
         this.#generating = v;
         this.page.editorRefresh();
-        return true;
+        this.revisualize();
     }
 
     get buttons() { return [...this.#buttons]; }
@@ -2302,18 +2289,14 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (this.hasButton(btn)) return false;
             this.#buttons.add(btn);
             const onTrigger = e => {
-                this.page.clearSelectedPaths();
-                this.page.addSelectedPath(btn.path);
+                if (this.page.choosing) return;
+                this.page.selectedPath = btn.path;
             };
             const onEdit = () => {
                 onTrigger(null);
                 if (this.page.choosing) return;
-                if (!this.page.hasProject()) return;
-                let pths = this.page.selectedPaths;
-                if (pths.length <= 0) return;
-                let id = pths[0];
-                if (!this.page.project.hasPath(id)) return;
-                let pth = this.page.project.getPath(id);
+                if (!bth.hasPath()) return;
+                let pth = btn.path;
                 this.page.choosing = true;
                 this.page.displayPath = pth;
                 let nodes = pth.nodes;
@@ -2336,7 +2319,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 onTrigger(null);
                 if (this.page.choosing) return;
                 if (!this.page.hasProject()) return;
-                this.page.selectedPaths.forEach(id => this.page.project.remPath(id));
+                this.page.project.remPath(btn.path);
             };
             const onChange = () => {
                 this.page.editorRefresh();
@@ -2368,171 +2351,16 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         return r;
     }
 
-    get visuals() { return Object.keys(this.#visuals); }
-    set visuals(v) {
-        v = util.ensure(v, "obj");
-        this.clearVisuals();
-        for (let id in v) this.addVisual(id, v[id]);
-    }
-    clearVisuals() {
-        let visuals = this.visuals;
-        visuals.forEach(id => this.remVisual(id));
-        return visuals;
-    }
-    hasVisual(v) {
-        if (util.is(v, "str")) return v in this.#visuals;
-        if (v instanceof App.ProjectPage.PathsPanel.Visual) return this.hasVisual(v.id) && v.panel == this;
-        return false;
-    }
-    getVisual(id) {
-        id = String(id);
-        if (!this.hasVisual(id)) return null;
-        return this.#visuals[id];
-    }
-    addVisual(id, visual) {
-        id = String(id);
-        if (!(visual instanceof App.ProjectPage.PathsPanel.Visual)) return false;
-        if (visual.panel != this || visual.id != null) return false;
-        if (this.hasVisual(id)) return false;
-        this.#visuals[id] = visual;
-        visual.id = id;
-        visual.check();
-        return visual;
-    }
-    remVisual(v) {
-        if (util.is(v, "str")) {
-            if (!this.hasVisual(v)) return false;
-            let visual = this.getVisual(v);
-            delete this.#visuals[v];
-            visual.id = null;
-            visual.show = false;
-            return visual;
-        }
-        if (v instanceof App.ProjectPage.PathsPanel.Visual) return this.remVisual(v.id);
-        return false;
-    }
-
-    async checkVisuals() {
-        this.clearVisuals();
-        if (!this.page.hasProject()) return;
-        try {
-            let projectId = this.page.projectId;
-            let datas = await window.api.send("exec-get", projectId);
-            if (!util.is(datas, "obj")) return;
-            if (this.page.projectId != projectId) return;
-            for (let id in datas) {
-                let data = datas[id];
-                if (!util.is(data, "obj")) continue;
-                let visual = this.addVisual(id, new App.ProjectPage.PathsPanel.Visual(this));
-                visual.visual.dt = data.dt*1000;
-                visual.visual.nodes = util.ensure(data.state, "arr").map(node => {
-                    node = util.ensure(node, "obj");
-                    node = new subcore.Project.Node(
-                        new V(node.x, node.y).mul(100),
-                        node.theta, true,
-                        new V(node.vx, node.vy).mul(100),
-                        0, true,
-                    );
-                    return node;
-                });
-            }
-        } catch (e) {
-            return;
-            this.app.error("Exec Data Get Error", null, e);
-        }
-    };
+    revisualize() { this.post("revisualize"); }
 
     get eAddBtn() { return this.#eAddBtn; }
     get ePathsBox() { return this.#ePathsBox; }
     get eActivateBtn() { return this.#eActivateBtn; }
 };
-App.ProjectPage.PathsPanel.Visual = class AppProjectPagePathsPanelVisual extends util.Target {
-    #panel;
-
-    #id;
-
-    #show;
-
-    #visual;
-    #item;
-
-    #t;
-    #paused;
-
-    constructor(panel) {
-        super();
-
-        if (!(panel instanceof App.ProjectPage.PathsPanel)) throw new Error("Panel is not of class PathsPanel");
-        this.#panel = panel;
-
-        this.#id = null;
-
-        this.#show = false;
-
-        this.#visual = new RVisual(this.page.odometry.render);
-        this.#item = new RVisualItem(this.page.odometry.render, this.visual);
-
-        this.#t = 0;
-        this.#paused = true;
-    }
-
-    get panel() { return this.#panel; }
-    get page() { return this.panel.page; }
-    get app() { return this.page.app; }
-
-    get id() { return this.#id; }
-    set id(v) {
-        v = (v == null) ? null : String(v);
-        if (this.id == v) return;
-        this.#id = v;
-    }
-
-    get show() { return this.#show; }
-    set show(v) {
-        v = !!v;
-        if (this.show == v) return;
-        this.#show = v;
-        this.check();
-    }
-    check() {
-        if (this.show) this.page.odometry.render.addRender(this.visual, this.item);
-        else this.page.odometry.render.remRender(this.visual, this.item);
-    }
-
-    get visual() { return this.#visual; }
-    get item() { return this.#item; }
-
-    get totalTime() { return this.visual.dt * this.visual.nodes.length; }
-    get nowTime() { return this.#t; }
-    set nowTime(v) {
-        v = Math.min(this.totalTime, Math.max(0, util.ensure(v, "num")));
-        if (this.nowTime == v) return;
-        this.#t = v;
-        this.item.interp = this.nowTime / this.totalTime;
-    }
-    get isFinished() { return this.nowTime >= this.totalTime; }
-
-    get paused() { return this.#paused; }
-    set paused(v) {
-        v = !!v;
-        if (this.paused == v) return;
-        this.#paused = v;
-    }
-    get playing() { return !this.paused; }
-    set playing(v) { this.paused = !v; }
-    pause() { return this.paused = true; }
-    play() { return this.playing = true; }
-
-    update(delta) {
-        if (this.show && this.playing) this.nowTime += delta;
-    }
-};
 App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends util.Target {
     #panel;
 
     #path;
-    #showIndices;
-    #showLines;
 
     #elem;
     #eName;
@@ -2546,8 +2374,6 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
         this.#panel = panel;
 
         this.#path = null;
-        this.#showIndices = true;
-        this.#showLines = true;
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -2602,18 +2428,6 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
         this.change("path", this.path, this.#path=v);
     }
     hasPath() { return !!this.path; }
-    get showIndices() { return this.#showIndices; }
-    set showIndices(v) {
-        v = !!v;
-        if (this.showIndices == v) return;
-        this.#showIndices = v;
-    }
-    get showLines() { return this.#showLines; }
-    set showLines(v) {
-        v = !!v;
-        if (this.showLines == v) return;
-        this.#showLines = v;
-    }
 
     get selected() { return this.elem.classList.contains("this"); }
     set selected(v) { v ? this.elem.classList.add("this") : this.elem.classList.remove("this"); }

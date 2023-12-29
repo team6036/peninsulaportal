@@ -41,7 +41,8 @@ export default class Source extends util.Target {
         this.structHelper.addHandler("change", () => this.dequeueStructDecode());
         this.#structDecodes = [];
 
-        this.#playback = new Source.Playback(this);
+        this.#playback = new util.Playback();
+        this.playback.signal = this;
     }
 
     get fields() { return Object.keys(this.#fields); }
@@ -229,39 +230,6 @@ export default class Source extends util.Target {
         return this;
     }
 }
-Source.Playback = class SourcePlayback extends util.Target {
-    #source;
-
-    #paused;
-
-    constructor(source) {
-        super();
-
-        if (!(source instanceof Source)) throw new Error("Source is not of class Source");
-        if (source.playback != null) throw new Error("Source already has a playback");
-
-        this.#source = source;
-
-        this.#paused = false;
-    }
-
-    get source() { return this.#source; }
-
-    get paused() { return this.#paused; }
-    set paused(v) { this.#paused = !!v; }
-    get playing() { return !this.paused; }
-    set playing(v) { this.paused = !v; }
-    pause() { return this.paused = true; }
-    play() { return this.playing = true; }
-
-    get finished() { return this.source.ts >= this.source.tsMax; }
-
-    update(delta) {
-        delta = util.ensure(delta, "num");
-        if (this.paused) return;
-        this.source.ts = Math.min(this.source.tsMax, Math.max(this.source.tsMin, this.source.ts+delta));
-    }
-};
 Source.Field = class SourceField extends util.Target {
     #source;
 

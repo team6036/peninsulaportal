@@ -539,7 +539,7 @@ export class App extends util.Target {
         this.eMount.appendChild(this.eRunInfo);
         this.eRunInfo.id = "runinfo";
         document.body.addEventListener("keydown", e => {
-            if (!(e.code == "KeyI" && (e.ctrlKey || e.metaKey))) return;
+            if (!(e.code == "KeyI" && (e.ctrlKey || e.metaKey) && !e.altKey)) return;
             e.stopPropagation();
             e.preventDefault();
             this.runInfoShown = !this.runInfoShown;
@@ -2466,6 +2466,10 @@ export class AppFeature extends App {
     
     #projects;
 
+    #titlePage;
+    #projectsPage;
+    #projectPage;
+
     #eFeatureStyle;
     #eTitleBtn;
     #eProjectsBtn;
@@ -2692,8 +2696,7 @@ export class AppFeature extends App {
                 await this.saveProjectsClean();
             });
             this.addHandler("cmd-savecopy", async source => {
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
+                const page = this.projectPage;
                 for (let perm in await this.post("cmd-savecopy-block")) {
                     if (perm) continue;
                     return;
@@ -2708,8 +2711,7 @@ export class AppFeature extends App {
             });
             this.addHandler("cmd-delete", async ids => {
                 ids = util.ensure(ids, "arr").map(id => String(id));
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
+                const page = this.projectPage;
                 for (let perm of await this.post("cmd-delete-block")) {
                     if (perm) continue;
                     return;
@@ -2769,7 +2771,7 @@ export class AppFeature extends App {
 
             await this.post("pre-post-setup");
 
-            this.addPage(
+            [this.#titlePage, this.#projectsPage, this.#projectPage] = this.addPage(
                 new this.constructor.TitlePage(this),
                 new this.constructor.ProjectsPage(this),
                 new this.constructor.ProjectPage(this),
@@ -2907,6 +2909,10 @@ export class AppFeature extends App {
             return proj;
         });
     }
+
+    get titlePage() { return this.#titlePage; }
+    get projectsPage() { return this.#projectsPage; }
+    get projectPage() { return this.#projectPage; }
 
     get eFeatureStyle() { return this.#eFeatureStyle; }
     get eTitleBtn() { return this.#eTitleBtn; }
