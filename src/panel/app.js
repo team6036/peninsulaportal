@@ -5859,7 +5859,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let loadTimer = 0, loadTemplate = 0;
 
         this.addHandler("update", delta => {
-            if (this.isClosed) return;
+            if (this.isClosed) {
+                if (this.controls instanceof PointerLockControls)
+                    this.controls.unlock();
+                return;
+            }
 
             if (this.template in templates) eField.classList.add("has");
             else eField.classList.remove("has");
