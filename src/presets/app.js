@@ -56,7 +56,10 @@ class Action extends util.Target {
             },
         };
         if (this.id in idfs) idfs[this.id]();
-        this.elem.addEventListener("click", e => this.click());
+        this.elem.addEventListener("click", e => {
+            e.stopPropagation();
+            this.click();
+        });
     }
 
     get app() { return this.#app; }
@@ -136,6 +139,7 @@ export default class App extends core.App {
                         input.disabled = btn.disabled = false;
                     });
                     btn.addEventListener("click", async e => {
+                        e.stopPropagation();
                         input.disabled = btn.disabled = true;
                         let result = await this.fileOpenDialog({
                             title: "Choose a directory",

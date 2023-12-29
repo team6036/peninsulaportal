@@ -458,6 +458,7 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
                 this.eTemplates.appendChild(btn);
                 btn.textContent = name;
                 btn.addEventListener("click", e => {
+                    e.stopPropagation();
                     this.app.setPage("PROJECT", { template: name });
                 });
             }
@@ -465,6 +466,7 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
             this.eTemplates.appendChild(btn);
             btn.textContent = "Blank Project";
             btn.addEventListener("click", e => {
+                e.stopPropagation();
                 this.app.setPage("PROJECT", { template: null });
             });
         });
@@ -504,12 +506,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     constructor(app) {
         super(app);
-
-        document.body.addEventListener("click", e => {
-            if (this.choosing) return;
-            if (this.eDisplay.contains(e.target)) return;
-            if (this.eNav.contains(e.target)) return;
-        });
 
         this.app.eProjectInfoNameInput.addEventListener("change", e => {
             if (this.choosing) return;
@@ -848,7 +844,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#eEditNav = document.createElement("div");
         this.eEdit.appendChild(this.eEditNav);
         this.eEditNav.classList.add("nav");
-        this.eEditNav.addEventListener("click", e => e.stopPropagation());
+        this.eEditNav.addEventListener("click", e => {
+            e.stopPropagation();
+        });
         
         this.#eDivider = document.createElement("div");
         this.eMain.insertBefore(this.eDivider, this.eEdit);
@@ -1371,6 +1369,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
         this.#eName = document.createElement("div");
         this.btn.appendChild(this.eName);
         this.btn.addEventListener("click", e => {
+            e.stopPropagation();
             this.page.panel = this.name;
         });
 
@@ -1812,6 +1811,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
         let optionAdd = () => {};
         this.eOptionsAdd.addEventListener("click", e => {
+            e.stopPropagation();
             if (!this.page.hasProject()) return;
             optionAdd();
         });
@@ -1827,6 +1827,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.remove.id = "removebtn";
         this.remove.textContent = "Remove";
         this.remove.addEventListener("click", e => {
+            e.stopPropagation();
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             this.page.selected.forEach(id => this.page.project.remItem(id));
@@ -2029,6 +2030,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                         this.page.editorRefresh();
                     });
                     remove.addEventListener("click", e => {
+                        e.stopPropagation();
                         node.remOption(k);
                         this.page.editorRefresh();
                     });
@@ -2066,7 +2068,10 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     constructor(page) {
         super(page, "paths", "analytics");
 
-        this.elem.addEventListener("click", e => (this.page.selectedPath = null));
+        this.elem.addEventListener("click", e => {
+            e.stopPropagation();
+            this.page.selectedPath = null;
+        });
 
         this.#generating = null;
         this.#buttons = new Set();
@@ -2078,6 +2083,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         this.eAddBtn.classList.add("icon");
         this.eAddBtn.innerHTML = "<ion-icon name='add'></ion-icon>";
         this.eAddBtn.addEventListener("click", e => {
+            e.stopPropagation();
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             this.page.choosing = true;
@@ -2246,6 +2252,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             document.body.addEventListener("mousemove", mousemove);
         });
         this.page.eNavActionButton.addEventListener("click", e => {
+            e.stopPropagation();
             if (!visual) return;
             if (visual.isFinished) {
                 visual.playback.ts = visual.playback.tsMin;
@@ -2253,10 +2260,12 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             } else visual.playback.paused = !visual.playback.paused;
         });
         this.page.eNavBackButton.addEventListener("click", e => {
+            e.stopPropagation();
             if (!visual) return;
             visual.playback.ts = visual.playback.tsMin;
         });
         this.page.eNavForwardButton.addEventListener("click", e => {
+            e.stopPropagation();
             if (!visual) return;
             visual.playback.ts = visual.playback.tsMax;
         });
@@ -2524,6 +2533,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         this.eOptions.appendChild(this.eOptionsAdd);
         this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
         this.eOptionsAdd.addEventListener("click", e => {
+            e.stopPropagation();
             if (!this.page.hasProject()) return;
             let options = this.page.project.config.options;
             let k = "new-key";
@@ -2562,6 +2572,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.page.editorRefresh();
         });
         this.eScriptBtn.addEventListener("click", async e => {
+            e.stopPropagation();
             let result = await this.app.fileOpenDialog({
                 title: "Choose a python script",
                 filters: [{
@@ -2670,6 +2681,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
                         this.page.editorRefresh();
                     });
                     remove.addEventListener("click", e => {
+                        e.stopPropagation();
                         if (!this.page.hasProject()) return;
                         if (!this.page.project.config.hasOption(k)) return;
                         this.page.project.config.remOption(k);

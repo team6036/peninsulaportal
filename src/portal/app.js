@@ -432,12 +432,14 @@ export default class App extends core.App {
             this.#eUp = document.querySelector("#PAGE > button");
             if (this.hasEDown())
                 this.eDown.addEventListener("click", e => {
+                    e.stopPropagation();
                     if (!this.hasEContent()) return;
                     if (this.eContent.children[0])
                         this.eContent.scrollTo({ top: this.eContent.children[0].offsetTop-100, behavior: "smooth" });
                 });
             if (this.hasEUp())
                 this.eUp.addEventListener("click", e => {
+                    e.stopPropagation();
                     if (!this.hasEContent()) return;
                     this.eContent.scrollTo({ top: 0, behavior: "smooth" });
                 });
@@ -450,7 +452,10 @@ export default class App extends core.App {
                 });
                 this.#eSettingsBtn = this.eInfo.querySelector(":scope > .nav > button#settings");
                 if (this.hasESettingsBtn())
-                    this.eSettingsBtn.addEventListener("click", e => this.post("cmd-spawn", "PRESETS"));
+                    this.eSettingsBtn.addEventListener("click", e => {
+                        e.stopPropagation();
+                        this.post("cmd-spawn", "PRESETS");
+                    });
                 setInterval(async () => {
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)
