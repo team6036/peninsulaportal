@@ -1852,24 +1852,24 @@ const MAIN = async () => {
                         });
                         let contentIn = JSON.stringify(dataIn, null, "\t");
 
-                        this.log("REMOVE data.in/data.out");
+                        this.log("exec: REMOVE data.in/data.out");
                         if (await WindowManager.fileHas(path.join(root, "data.in")))
                             await WindowManager.fileDelete(path.join(root, "data.in"));
                         if (await WindowManager.fileHas(path.join(root, "data.out")))
                             await WindowManager.fileDelete(path.join(root, "data.out"));
-                        this.log("REMOVE stdout.log/stderr.log");
+                        this.log("exec: REMOVE stdout.log/stderr.log");
                         if (await WindowManager.fileHas(path.join(root, "stdout.log")))
                             await WindowManager.fileDelete(path.join(root, "stdout.log"));
                         if (await WindowManager.fileHas(path.join(root, "stderr.log")))
                             await WindowManager.fileDelete(path.join(root, "stderr.log"));
-                        this.log("CREATE data.in");
+                        this.log("exec: CREATE data.in");
                         await WindowManager.fileWrite(path.join(root, "data.in"), contentIn);
-                        this.log("CREATE stdout.log/stderr.log");
+                        this.log("exec: CREATE stdout.log/stderr.log");
                         await WindowManager.fileWrite(path.join(root, "stdout.log"), "");
                         await WindowManager.fileWrite(path.join(root, "stderr.log"), "");
                         return new Promise((res, rej) => {
                             if (this.processManager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
-                            this.log("SPAWN");
+                            this.log("exec: SPAWN");
                             const process = this.processManager.addProcess(new Process("spawn", project.config.scriptPython, [script], { cwd: root }));
                             process.id = "script";
                             const finish = async () => {
@@ -1931,7 +1931,7 @@ const MAIN = async () => {
                             const resolve = async data => {
                                 if (already) return;
                                 already = true;
-                                this.log("SPAWN exit", data);
+                                this.log("exec: SPAWN exit", data);
                                 await finish();
                                 if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                     const notif = new electron.Notification({
@@ -1945,7 +1945,7 @@ const MAIN = async () => {
                             const reject = async data => {
                                 if (already) return;
                                 already = true;
-                                this.log("SPAWN err", data);
+                                this.log("exec: SPAWN err", data);
                                 await finish();
                                 if (!this.hasWindow() || !this.window.isVisible() || !this.window.isFocused()) {
                                     const notif = new electron.Notification({
@@ -1961,7 +1961,7 @@ const MAIN = async () => {
                         });
                     },
                     "exec-term": async () => {
-                        this.log("SPAWN term");
+                        this.log("exec: SPAWN term");
                         const process = this.processManager.getProcessById("script");
                         if (!(process instanceof Process)) return false;
                         await process.terminate();
@@ -1984,6 +1984,7 @@ const MAIN = async () => {
                         let has = await WindowManager.fileHas(script);
                         if (!has) throw new Error("Script ("+script+") does not exist for project id: "+id);
                         let root = path.dirname(script);
+                        this.log(`exec-get: looking in ${root} for ${project.meta.name}`);
 
                         let hasMainDir = await WindowManager.dirHas(path.join(root, "paths"));
                         if (!hasMainDir) return {};
