@@ -835,11 +835,12 @@ const MAIN = async () => {
                 this.window.show();
                 this.window.webContents.openDevTools();
             });
+            const readiness = 1000 * (TEST?100:1);
             let id = setTimeout(() => {
-                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within 1 second`);
+                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
                 clear();
                 this.stop();
-            }, 1000*(TEST ? 100 : 1));
+            }, readiness);
             const clear = () => {
                 clearInterval(id);
                 ipc.removeListener("ready", ready);
@@ -3740,7 +3741,8 @@ const MAIN = async () => {
         return;
     }
 
-    // showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, hasInfo: true, info: e }).whenModalResult();
+    if (!TEST)
+        showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, hasInfo: true, info: e }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;
