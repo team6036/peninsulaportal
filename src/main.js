@@ -2841,7 +2841,23 @@ const MAIN = async () => {
                 }
 
                 this.addWindow(new Window(this, "PORTAL"));
-                
+
+                let windows = await this.on("state-get", "windows");
+                const dfs = (manager, windows) => {
+                    windows = util.ensure(windows, "obj");
+                    for (let name in windows) {
+                        if (name == "PORTAL") continue;
+                        let window;
+                        try {
+                            window = new Window(manager, name);
+                        } catch (e) { continue; }
+                        if (window.isModal) continue;
+                        manager.addWindow(window);
+                        dfs(window.windowManager, windows[name]);
+                    }
+                };
+                dfs(this, windows);
+
                 try {
                     await this.tryLoad();
                 } catch (e) { showError("WindowManager Start Error", "Load Error", e); }
@@ -2862,6 +2878,18 @@ const MAIN = async () => {
                 showError("WindowManager Stop Error", "'stop' event", e);
                 return true;
             }
+
+            let windows = {};
+            const dfs = (manager, windows) => {
+                manager.windows.forEach(window => {
+                    if (window.isModal) return;
+                    windows[window.name] = {};
+                    dfs(window.windowManager, windows[window.name]);
+                });
+            };
+            dfs(this, windows);
+            await this.on("state-set", "windows", windows);
+
             return await this.clearWindows();
         }
 
@@ -3709,7 +3737,7 @@ const MAIN = async () => {
         try {
             stopped = await manager.stop();
         } catch (e) {
-            stopped = true;
+            stopped = false;
             showError("WindowManager Stop Error", null, e);
         }
         if (!stopped) return beforeQuitResolver.state = false;

@@ -114,15 +114,15 @@ export class App extends util.Target {
                     try {
                         pageState = await window.api.send("state-get", "page-state");
                     } catch (e) { await this.doError("State PageState Get Error", e); }
-                    let pageLazyStates = {};
+                    let pagePersistentStates = {};
                     try {
-                        pageLazyStates = util.ensure(await window.api.send("state-get", "page-lazy-states"), "obj");
-                    } catch (e) { await this.doError("State PageLazyStates Get Error", e); }
-                    for (let name in pageLazyStates) {
+                        pagePersistentStates = util.ensure(await window.api.send("state-get", "page-persistent-states"), "obj");
+                    } catch (e) { await this.doError("State PagePersistentStates Get Error", e); }
+                    for (let name in pagePersistentStates) {
                         if (!this.hasPage(name)) continue;
                         try {
-                            await this.getPage(name).loadLazyState(util.ensure(pageLazyStates[name], "obj"));
-                        } catch (e) { await this.doError("Load LazyState Error ("+name+")", e); }
+                            await this.getPage(name).loadPersistentState(util.ensure(pagePersistentStates[name], "obj"));
+                        } catch (e) { await this.doError("Load PersistentState Error ("+name+")", e); }
                     }
                     if (this.hasPage(page)) {
                         try {
@@ -438,11 +438,11 @@ export class App extends util.Target {
                 try {
                     await window.api.send("state-set", "page-state", this.getPage(this.page).state);
                 } catch (e) { await this.doError("State PageState Set Error", e); }
-                let pageLazyStates = {};
-                this.pages.forEach(name => (pageLazyStates[name] = this.getPage(name).lazyState));
+                let pagePersistentStates = {};
+                this.pages.forEach(name => (pagePersistentStates[name] = this.getPage(name).persistentState));
                 try {
-                    await window.api.send("state-set", "page-lazy-states", pageLazyStates);
-                } catch (e) { await this.doError("State PageLazyStates Set Error", e); }
+                    await window.api.send("state-set", "page-persistent-states", pagePersistentStates);
+                } catch (e) { await this.doError("State PagePersistentStates Set Error", e); }
             }
             return true;
         });
@@ -2156,8 +2156,8 @@ App.Page = class AppPage extends util.Target {
 
     get state() { return {}; }
     async loadState(state) {}
-    get lazyState() { return {}; }
-    async loadLazyState(state) {}
+    get persistentState() { return {}; }
+    async loadPersistentState(state) {}
 
     async enter(data) { await this.post("enter", data); }
     async leave(data) { await this.post("leave", data); }
@@ -2848,6 +2848,7 @@ export class AppFeature extends App {
         await Promise.all(newIds.map(async id => {
             if (!(changes.has("*") || changes.has(":"+id))) return;
             let project = this.getProject(id);
+            if (!changes.has("*")) project.meta.modified = util.getTime();
             let projectContent = JSON.stringify(project);
             await window.api.send("project-set", id, projectContent);
         }));
@@ -3169,6 +3170,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.addHandler("leave", async data => {
             this.app.eProjectsBtn.classList.remove("this");
         });
+
+        this.displayMode = "grid";
     }
 
     async refresh() {
@@ -3265,12 +3268,12 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eSearchInput.value = state.query || "";
         await this.refresh();
     }
-    get lazyState() {
+    get persistentState() {
         return {
             displayMode: this.displayMode,
         };
     }
-    async loadLazyState(state) {
+    async loadPersistentState(state) {
         state = util.ensure(state, "obj");
         this.displayMode = state.displayMode;
     }
