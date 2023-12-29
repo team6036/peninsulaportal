@@ -642,6 +642,7 @@ export class Target {
     }
 }
 
+/*
 export class Unit extends Target {
     #value;
     #unit;
@@ -1109,6 +1110,7 @@ export class Unit extends Target {
     }
     static convert(v, u1, u2) { return new Unit(v, u1).convert(u2).value; }
 }
+*/
 
 export class Color extends Target {
     #r; #g; #b; #a;
@@ -2411,6 +2413,107 @@ export class Reviver extends Target {
 
 export const REVIVER = new Reviver();
 REVIVER.addRuleAndAllSub(Color, Range, V, V3, Shape);
+
+export class Playback extends Target {
+    #ts;
+    #tsMin;
+    #tsMax;
+
+    #paused;
+
+    #restartTimer;
+
+    #signal;
+
+    constructor(...a) {
+        super();
+
+        this.#ts = this.#tsMin = this.#tsMax = 0;
+        this.#paused = false;
+
+        this.#restartTimer = 0;
+
+        this.#signal = null;
+
+        if (a.length <= 0 || a.length > 4) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Playback) a = [a.ts, a.tsMin, a.tsMax, a.paused];
+            else if (is(a, "arr")) {
+                a = new Playback(...a);
+                a = [a.ts, a.tsMin, a.tsMax, a.paused];
+            }
+            else if (is(a, "num")) a = [0, a];
+            else if (is(a, "obj")) a = [a.ts, a.tsMin, a.tsMax, a.paused];
+            else a = [0, 0];
+        }
+        if (a.length == 2) a = [a[0], ...a];
+        if (a.length == 3) a = [...a, false];
+
+        [this.ts, this.tsMin, this.tsMax, this.paused] = a;
+
+        this.addHandler("update", delta => {
+            if (this.paused) return;
+            this.ts += delta;
+            if (this.ts < this.tsMax) return this.#restartTimer = 0;
+            if (this.#restartTimer >= 10) return;
+            this.#restartTimer++;
+        });
+    }
+
+    get ts() { return this.hasSignal() ? this.signal.ts : this.#ts; }
+    set ts(v) {
+        if (this.hasSignal()) return this.signal.ts = v;
+        v = Math.min(this.tsMax, Math.max(this.tsMin, ensure(v, "num")));
+        if (this.ts == v) return;
+        this.change("ts", this.ts, this.#ts=v);
+    }
+    get tsMin() { return this.hasSignal() ? this.signal.tsMin : this.#tsMin; }
+    set tsMin(v) {
+        if (this.hasSignal()) return this.signal.tsMin = v;
+        v = ensure(v, "num");
+        if (this.tsMin == v) return;
+        this.change("tsMin", this.tsMin, this.#tsMin=v);
+        if (this.tsMin > this.tsMax) [this.tsMin, this.tsMax] = [this.tsMax, this.tsMin];
+        this.ts = this.ts;
+    }
+    get tsMax() { return this.hasSignal() ? this.signal.tsMax : this.#tsMax; }
+    set tsMax(v) {
+        if (this.hasSignal()) return this.signal.tsMax = v;
+        v = ensure(v, "num");
+        if (this.tsMax == v) return;
+        this.change("tsMax", this.tsMax, this.#tsMax=v);
+        if (this.tsMin > this.tsMax) [this.tsMin, this.tsMax] = [this.tsMax, this.tsMin];
+        this.ts = this.ts;
+    }
+    get progress() { return (this.ts-this.tsMin) / (this.tsMax-this.tsMin); }
+    set progress(v) {
+        v = Math.min(1, Math.max(0, ensure(v, "num")));
+        this.ts = lerp(this.tsMin, this.tsMax, v);
+    }
+
+    get paused() { return this.#paused; }
+    set paused(v) {
+        v = !!v;
+        if (this.paused == v) return;
+        this.change("paused", this.paused, this.#paused=v);
+    }
+    get playing() { return !this.paused; }
+    set playing(v) { this.paused = !v; }
+    pause() { return this.paused = true; }
+    play() { return this.playing = true; }
+    get finished() { return this.#restartTimer >= 10; }
+
+    get signal() { return this.#signal; }
+    set signal(v) {
+        v = is(v, "obj") ? v : null;
+        if (this.signal == v) return;
+        this.change("signal", this.signal, this.#signal=v);
+    }
+    hasSignal() { return this.signal != null; }
+
+    update(delta) { this.post("update", delta); }
+}
 
 export class FSOperator extends Target {
     #root;

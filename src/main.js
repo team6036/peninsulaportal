@@ -63,8 +63,7 @@ const MAIN = async () => {
         return;
     }
 
-    // const fetch = require("electron-fetch").default;
-    const fetch = (await import("node-fetch")).default;
+    const fetch = require("electron-fetch").default;
     const png2icons = require("png2icons");
     const compareVersions = require("compare-versions");
 
@@ -80,6 +79,12 @@ const MAIN = async () => {
         platform: os.platform(),
         cpus: os.cpus(),
         user: os.userInfo(),
+    };
+
+    const TEST = OS.platform == "linux";
+    const tlog = (...a) => {
+        if (!TEST) return;
+        console.log("-", ...a);
     };
 
     function simplify(s) {
@@ -825,7 +830,7 @@ const MAIN = async () => {
             this.window.once("ready-to-show", async () => {
                 if (!this.hasWindow()) return;
                 this.#resolver.state++;
-                // return;
+                if (!TEST) return;
                 await util.wait(100);
                 this.window.show();
                 this.window.webContents.openDevTools();
@@ -834,7 +839,7 @@ const MAIN = async () => {
                 showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within 1 second`);
                 clear();
                 this.stop();
-            }, 1000*100);
+            }, 1000*(TEST ? 100 : 1));
             const clear = () => {
                 clearInterval(id);
                 ipc.removeListener("ready", ready);
@@ -2417,24 +2422,24 @@ const MAIN = async () => {
                     let superPth = path.dirname(pth);
                     let thePth = path.join(superPth, fileName);
                     let tmpPth = path.join(superPth, fileName+"-tmp");
-                    console.log("- fetch-start: "+url);
+                    tlog("fetch-start: "+url);
                     let resp = await util.timeout(30000, fetch(url));
                     if (resp.status != 200) throw resp.status;
-                    console.log("- fetch-done: "+url);
+                    tlog("fetch-done: "+url);
                     await new Promise((res, rej) => {
-                        console.log("- stream-make: "+tmpPth);
+                        tlog("stream-make: "+tmpPth);
                         const stream = fs.createWriteStream(tmpPth);
                         stream.on("open", () => {
-                            console.log("- stream-open: "+tmpPth);
+                            tlog("tream-open: "+tmpPth);
                             resp.body.pipe(stream);
                             resp.body.on("end", () => res(true));
                             resp.body.on("error", e => rej(e));
                         });
                     });
-                    console.log("- stream-done: "+tmpPth);
-                    console.log("- rename: "+tmpPth+" -> "+thePth);
+                    tlog("stream-done: "+tmpPth);
+                    tlog("rename: "+tmpPth+" -> "+thePth);
                     await fs.promises.rename(tmpPth, thePth);
-                    console.log("- renamed: "+tmpPth+" -> "+thePth);
+                    tlog("renamed: "+tmpPth+" -> "+thePth);
                 };
                 this.log("DB config");
                 this.addLoad("config");

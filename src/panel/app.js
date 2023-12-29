@@ -6729,8 +6729,7 @@ export default class App extends core.AppFeature {
                                     {
                                         id: "source:nt", label: "NetworkTables", type: "radio",
                                         click: () => {
-                                            if (!this.hasPage("PROJECT")) return;
-                                            const page = this.getPage("PROJECT");
+                                            const page = this.projectPage;
                                             if (!page.hasProject()) return;
                                             page.project.config.sourceType = "nt";
                                         },
@@ -6738,8 +6737,7 @@ export default class App extends core.AppFeature {
                                     {
                                         id: "source:wpilog", label: "WPILOG", type: "radio",
                                         click: () => {
-                                            if (!this.hasPage("PROJECT")) return;
-                                            const page = this.getPage("PROJECT");
+                                            const page = this.projectPage;
                                             if (!page.hasProject()) return;
                                             page.project.config.sourceType = "wpilog";
                                         },
@@ -6812,8 +6810,7 @@ export default class App extends core.AppFeature {
                 options = util.ensure(options, "obj");
                 let canSub = ("canSub" in options) ? options.canSub : true;
                 let canTop = ("canTop" in options) ? options.canTop : true;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
+                const page = this.projectPage;
                 pos = new V(pos);
                 let r;
                 r = page.eContent.getBoundingClientRect();
@@ -6920,8 +6917,7 @@ export default class App extends core.AppFeature {
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) {
                     if (!(this.dragData instanceof Panel.BrowserTab)) return false;
-                    if (!this.hasPage("PROJECT")) return false;
-                    const page = this.getPage("PROJECT");
+                    const page = this.projectPage;
                     if (!page.hasSource()) return false;
                     if (!(page.source.tree.lookup(this.dragData.path) instanceof Source.Node)) return false;
                     return true;
@@ -6933,8 +6929,7 @@ export default class App extends core.AppFeature {
                 if (this.dragData instanceof Widget);
                 if (this.dragData instanceof Panel.Tab) {
                     if (!(this.dragData instanceof Panel.BrowserTab)) return null;
-                    if (!this.hasPage("PROJECT")) return null;
-                    const page = this.getPage("PROJECT");
+                    const page = this.projectPage;
                     if (!page.hasSource()) return null;
                     return page.source.tree.lookup(this.dragData.path);
                 }
@@ -6977,8 +6972,7 @@ export default class App extends core.AppFeature {
             });
             this.addHandler("drag-move", e => {
                 if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
+                const page = this.projectPage;
                 if (!isValid(this.dragData)) return;
                 if (!page.hasWidget()) {
                     this.showBlock();
@@ -7014,8 +7008,7 @@ export default class App extends core.AppFeature {
             });
             this.addHandler("drag-submit", e => {
                 if (this.page != "PROJECT") return;
-                if (!this.hasPage("PROJECT")) return;
-                const page = this.getPage("PROJECT");
+                const page = this.projectPage;
                 if (!isValid(this.dragData)) return;
                 this.hideBlock();
                 let canWidget = canGetWidgetFromData();
@@ -7216,6 +7209,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         this.eNavActionButton.addEventListener("click", e => {
             if (!this.hasSource()) return;
+            if (this.source.playback.finished) return this.source.ts = this.source.tsMin;
             this.source.playback.paused = !this.source.playback.paused;
         });
         this.eNavBackButton.addEventListener("click", e => {
@@ -7477,10 +7471,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.navOpen = true;
                 let tMin = this.source.tsMin, tMax = this.source.tsMax;
                 let tNow = this.source.ts;
-                let paused = this.source.playback.paused;
                 this.progress = (tNow - tMin) / (tMax - tMin);
                 if (this.eNavActionButton.children[0])
-                    this.eNavActionButton.children[0].setAttribute("name", paused ? "play" : "pause");
+                    this.eNavActionButton.children[0].setAttribute("name", this.source.playback.finished ? "refresh" : this.source.playback.paused ? "play" : "pause");
                 this.eNavProgressTooltip.textContent = util.formatTime(util.lerp(tMin, tMax, this.progressHover));
                 this.eNavPreInfo.textContent = util.formatTime(tMin);
                 this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);
