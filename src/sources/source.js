@@ -173,7 +173,7 @@ export default class Source extends util.Target {
             let datas = util.ensure(pattern.splitData(v), "arr");
             datas.forEach((data, i) => {
                 let path2 = path+"/"+i;
-                if (!this.source.hasField(path2)) this.addField(new this.constructor.Field(this, path2, "struct:"+type));
+                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, "struct:"+type));
                 this.getField(path2).update(data, ts);
             });
         } else {
