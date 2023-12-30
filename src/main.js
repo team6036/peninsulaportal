@@ -116,7 +116,7 @@ const MAIN = async () => {
             if (!(this.process instanceof cp.ChildProcess)) throw new Error(`Invalid spawn mode '${mode}'`);
             this.process.stdout.on("data", data => this.post("data", data));
             this.process.stderr.on("data", data => {
-                this.post("error", data);
+                this.post("error", util.TEXTDECODER.decode(data));
                 this.terminate();
             });
             this.process.on("exit", code => this.post("exit", code));
