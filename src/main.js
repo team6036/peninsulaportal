@@ -2623,8 +2623,33 @@ const MAIN = async () => {
                         await this.send("theme");
                     })(),
                     ...FEATURES.map(async name => {
+                        let namefs;
                         const subhost = theHost+"/"+name.toLowerCase();
                         const log = (...a) => this.log(`DB [${name}]`, ...a);
+                        namefs = {
+                            PLANNER: async () => {
+                                await Window.affirm(this, name);
+                                log("solver");
+                                this.addLoad(name+":solver");
+                                try {
+                                    if (await WindowManager.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                        await fs.promises.cp(
+                                            path.join(__dirname, name.toLowerCase(), "solver"),
+                                            path.join(Window.getDataPath(this, name), "solver"),
+                                            {
+                                                force: true,
+                                                recursive: true,
+                                            },
+                                        );
+                                    log("solver - success");
+                                } catch (e) {
+                                    log(`solver - error - ${e}`);
+                                    this.addLoad(name+":solver:"+e);
+                                }
+                                this.remLoad(name+":solver");
+                            },
+                        };
+                        if (name in namefs) await namefs[name]();
                         log("search");
                         this.addLoad(name+":search");
                         try {
@@ -2637,43 +2662,18 @@ const MAIN = async () => {
                         }
                         log("search - found");
                         this.remLoad(name+":search");
-                        let namefs = {
+                        namefs = {
                             PLANNER: async () => {
-                                await Window.affirm(this, name);
-                                await Promise.all([
-                                    async () => {
-                                        log("solver");
-                                        this.addLoad(name+":solver");
-                                        try {
-                                            if (await WindowManager.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
-                                                await fs.promises.cp(
-                                                    path.join(__dirname, name.toLowerCase(), "solver"),
-                                                    path.join(Window.getDataPath(this, name), "solver"),
-                                                    {
-                                                        force: true,
-                                                        recursive: true,
-                                                    },
-                                                );
-                                            log("solver - success");
-                                        } catch (e) {
-                                            log(`solver - error - ${e}`);
-                                            this.addLoad(name+":solver:"+e);
-                                        }
-                                        this.remLoad(name+":solver");
-                                    },
-                                    async () => {
-                                        log("templates.json");
-                                        this.addLoad(name+":templates.json");
-                                        try {
-                                            await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
-                                            log("templates.json - success");
-                                        } catch (e) {
-                                            log(`templates.json - error - ${e}`);
-                                            this.addLoad(name+":templates.json:"+e);
-                                        }
-                                        this.remLoad(name+":templates.json");
-                                    },
-                                ].map(f => f()));
+                                log("templates.json");
+                                this.addLoad(name+":templates.json");
+                                try {
+                                    await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
+                                    log("templates.json - success");
+                                } catch (e) {
+                                    log(`templates.json - error - ${e}`);
+                                    this.addLoad(name+":templates.json:"+e);
+                                }
+                                this.remLoad(name+":templates.json");
                             },
                         };
                         if (name in namefs) await namefs[name]();
