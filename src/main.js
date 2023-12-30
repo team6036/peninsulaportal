@@ -1792,6 +1792,8 @@ const MAIN = async () => {
                 },
                 PLANNER: {
                     "exec": async (id, pathId) => {
+                        if (this.processManager.getProcessById("script") instanceof Process) throw new Error("Existing process has not terminated");
+
                         id = String(id);
                         pathId = String(pathId);
 
@@ -1868,7 +1870,6 @@ const MAIN = async () => {
                         await WindowManager.fileWrite(path.join(root, "stdout.log"), "");
                         await WindowManager.fileWrite(path.join(root, "stderr.log"), "");
                         return new Promise((res, rej) => {
-                            if (this.processManager.getProcessById("script") instanceof Process) return rej("Existing process has not terminated");
                             this.log("exec: SPAWN");
                             const process = this.processManager.addProcess(new Process("spawn", project.config.scriptPython, [script], { cwd: root }));
                             process.id = "script";
