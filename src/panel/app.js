@@ -3891,7 +3891,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             mouseDown = false;
             mouseAlt = false;
         });
-        let scrollX = 0, scrollY = 0;
+        let scrollX = 0, scrollY = 0, scrollAxis = null;
         this.canvas.addEventListener("wheel", e => {
             scrollX += e.deltaX;
             scrollY += e.deltaY;
@@ -4243,38 +4243,34 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 ctx.textAlign = "center";
                 ctx.fillText("∆ "+util.formatTime(t1-t0), (x0+x1)/2, y-5*quality);
             }
-            let ignoreY = false;
-            if (Math.abs(scrollX) > 0) {
-                if (Math.abs(scrollX) > 3) {
-                    ignoreY = true;
-                    let q = scrollX * (0.1/50);
-                    let shift = (graphRange[1]-graphRange[0]) * q;
-                    let newGraphRange = [
-                        graphRange[0]+shift,
-                        graphRange[1]+shift,
-                    ];
-                    this.viewMode = "section";
-                    newGraphRange = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
-                    this.change("viewParams.start", this.viewParams.start, this.viewParams.start=newGraphRange[0]);
-                    this.change("viewPrams.stop", this.viewParams.stop, this.viewParams.stop=newGraphRange[1]);
-                }
-                scrollX = 0;
-            }
-            if (Math.abs(scrollY) > 0) {
-                if (!ignoreY && Math.abs(scrollY) > 3) {
-                    let q = scrollY * (0.1/50);
+            let scroll = new V(scrollX, scrollY);
+            let scrollAngle = (((scroll.towards(0, 0)+180)%360)+360)%360;
+            let scrollMag = scroll.dist();
+            if (scrollMag > 3) {
+                if (scrollAxis == null)
+                    scrollAxis = (Math.min(Math.abs(scrollAngle-90), Math.abs(scrollAngle-270)) < 45) ? "y" : "x";
+                if (Math.min(Math.abs(scrollAngle-180), Math.abs(scrollAngle-270)) < 45) scrollMag *= -1;
+                scrollMag *= 0.0005;
+                let newGraphRange = [...graphRange];
+                if (scrollAxis == "x") {
+                    console.log("shifting");
+                    let shift = (newGraphRange[1]-newGraphRange[0]) * scrollMag;
+                    newGraphRange = newGraphRange.map(v => v+shift);
+                } else {
+                    console.log("zooming");
                     let ts = util.lerp(...graphRange, mouseX);
-                    let newGraphRange = [
-                        util.lerp(graphRange[0], ts, q),
-                        util.lerp(graphRange[1], ts, q),
-                    ];
-                    this.viewMode = "section";
-                    newGraphRange = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
-                    this.change("viewParams.start", this.viewParams.start, this.viewParams.start=newGraphRange[0]);
-                    this.change("viewParams.stop", this.viewParams.stop, this.viewParams.stop=newGraphRange[1]);
+                    newGraphRange = newGraphRange.map(v => util.lerp(v, ts, scrollMag));
                 }
-                scrollY = 0;
-            }
+                this.viewMode = "section";
+                if (newGraphRange[1]-newGraphRange[0] <= 0) newGraphRange[1] = newGraphRange[0]+0.001;
+                if (newGraphRange[1]-newGraphRange[0] > maxTime-minTime) newGraphRange[1] = newGraphRange[0]+(maxTime-minTime);
+                if (newGraphRange[0] < minTime) newGraphRange = newGraphRange.map(v => v+(minTime-newGraphRange[0]));
+                if (newGraphRange[1] > maxTime) newGraphRange = newGraphRange.map(v => v+(maxTime-newGraphRange[1]));
+                newGraphRange = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
+                this.change("viewParams.start", this.viewParams.start, this.viewParams.start=newGraphRange[0]);
+                this.change("viewPrams.stop", this.viewParams.stop, this.viewParams.stop=newGraphRange[1]);
+            } else scrollAxis = null;
+            scrollX = scrollY = 0;
         });
 
         if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
