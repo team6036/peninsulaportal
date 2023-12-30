@@ -1089,7 +1089,7 @@
     font-family: monospace;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .entry:hover {
-    background-color: transparent !important;
+    background-color: var(--v1) !important;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav {
     width: 100%;
