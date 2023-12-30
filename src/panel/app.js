@@ -2137,11 +2137,10 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
     #tsNow;
     #tsOverride;
 
-    #eHeader;
-    #eOptions;
+    #eSide;
+    #eSideHeader;
     #eTSInput;
     #eFollowBtn;
-    #eBody;
 
     constructor(...a) {
         super("Table", "table");
@@ -2152,23 +2151,22 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.#ts = [];
         this.#tsNow = 0;
 
-        this.#eHeader = document.createElement("div");
-        this.elem.appendChild(this.eHeader);
-        this.eHeader.classList.add("header");
-        this.#eOptions = document.createElement("div");
-        this.eHeader.appendChild(this.eOptions);
-        this.eOptions.classList.add("options");
+        this.#eSide = document.createElement("div");
+        this.elem.appendChild(this.eSide);
+        this.eSide.classList.add("column");
+        this.eSide.classList.add("side");
+        this.#eSideHeader = document.createElement("div");
+        this.eSide.appendChild(this.eSideHeader);
+        this.eSideHeader.classList.add("header");
+
         this.#eTSInput = document.createElement("input");
-        this.eOptions.appendChild(this.eTSInput);
+        this.eSideHeader.appendChild(this.eTSInput);
         this.eTSInput.type = "number";
         this.eTSInput.placeholder = "Timestamp...";
         this.eTSInput.step = 0.01;
         this.#eFollowBtn = document.createElement("button");
-        this.eOptions.appendChild(this.eFollowBtn);
+        this.eSideHeader.appendChild(this.eFollowBtn);
         this.eFollowBtn.innerHTML = "<ion-icon src='../assets/icons/jump.svg'></ion-icon>";
-        this.#eBody = document.createElement("div");
-        this.elem.appendChild(this.eBody);
-        this.eBody.classList.add("body");
 
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
@@ -2189,7 +2187,6 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
 
         [this.vars, this.tsNow, this.tsOverride] = a;
 
-        this.elem.addEventListener("scroll", e => this.format());
         this.eTSInput.addEventListener("change", e => {
             let v = this.eTSInput.value;
             if (v.length <= 0) return;
@@ -2204,30 +2201,11 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             e.stopPropagation();
             this.tsOverride = !this.tsOverride;
         });
-        this.eBody.addEventListener("scroll", e => this.format());
 
-        let rows = [
-            {
-                elem: this.eOptions,
-                x: 0,
-            },
-        ];
-        this.addHandler("format", () => {
-            let er = this.elem.getBoundingClientRect();
-            let br = this.eBody.getBoundingClientRect();
-            rows.forEach(row => {
-                let rr = row.elem.getBoundingClientRect();
-                let shift = er.left-rr.left;
-                row.x = Math.max(0, Math.min(br.width-rr.width, row.x+shift));
-                row.elem.style.transform = "translateX("+row.x+"px)";
-            });
-            this.vars.forEach(v => v.format());
-        });
+        let entries = [];
         this.addHandler("update", delta => {
             if (!this.tsOverride) this.eFollowBtn.classList.add("this");
             else this.eFollowBtn.classList.remove("this");
-            let columns = ["150px", ...new Array(this.vars.length).fill("250px")];
-            this.eHeader.style.gridTemplateColumns = this.eBody.style.gridTemplateColumns = columns.join(" ");
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             if (!this.tsOverride) this.tsNow = source ? source.ts : 0;
             if (document.activeElement != this.eTSInput)
@@ -2245,36 +2223,28 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 valueLog.forEach(log => ts.add(log.ts));
             });
             this.#ts = ts = [...ts].sort((a, b) => a-b);
-            this.eBody.style.gridTemplateRows = "repeat("+ts.length+", auto)";
             this.vars.forEach(v => v.update(delta));
-            let doFormat = false;
-            while (rows.length-1 < ts.length) {
-                let row = {};
-                row.elem = document.createElement("div");
-                this.eBody.appendChild(row.elem);
-                row.elem.classList.add("item");
-                rows.push(row);
-                row.x = 0;
-                doFormat = true;
+            while (entries.length < ts.length) {
+                let elem = document.createElement("div");
+                this.eSide.appendChild(elem);
+                elem.classList.add("entry");
+                entries.push(elem);
             }
-            while (rows.length-1 > ts.length) {
-                let row = rows.pop();
-                this.eBody.removeChild(row.elem);
-                doFormat = true;
+            while (entries.length > ts.length) {
+                let elem = entries.pop();
+                this.eSide.removeChild(elem);
             }
-            this.format();
             for (let i = 0; i < ts.length; i++) {
-                let row = rows[i+1];
-                row.elem.style.gridRow = (i+1) + "/" + (i+2);
-                row.elem.textContent = ts[i];
+                let elem = entries[i];
+                elem.textContent = ts[i];
                 if (
                     this.tsNow >= ts[i] &&
                     this.tsNow < ((i+1 >= ts.length) ? Infinity : ts[i+1])
                 ) {
-                    if (!row.elem.classList.contains("this"))
-                        row.elem.scrollIntoView();
-                    row.elem.classList.add("this");
-                } else row.elem.classList.remove("this");
+                    if (!elem.classList.contains("this"))
+                        elem.scrollIntoView();
+                    elem.classList.add("this");
+                } else elem.classList.remove("this");
             }
         });
     }
@@ -2301,7 +2271,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         at = Math.min(this.vars.length, Math.max(0, util.ensure(at, "int")));
         this.#vars.splice(at, 0, v);
         v.tab = this;
-        this.eHeader.appendChild(v.eHeader);
+        this.elem.appendChild(v.elem);
         v.addLinkedHandler(this, "remove", () => this.remVar(v));
         v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.vars.indexOf(v)+"]."+c, f, t));
         v.addLinkedHandler(this, "drag", () => {
@@ -2320,8 +2290,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         if (!this.hasVar(v)) return false;
         this.#vars.splice(this.#vars.indexOf(v), 1);
         v.tab = null;
-        this.eHeader.removeChild(v.eHeader);
-        v.eSections.forEach(elem => this.eBody.removeChild(elem));
+        this.elem.removeChild(v.elem);
         v.clearLinkedHandlers(this, "remove");
         v.clearLinkedHandlers(this, "change");
         v.clearLinkedHandlers(this, "drag");
@@ -2359,11 +2328,10 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.change("tsOverride", this.tsOverride, this.#tsOverride=v);
     }
 
-    get eHeader() { return this.#eHeader; }
-    get eOptions() { return this.#eOptions; }
+    get eSide() { return this.#eSide; }
+    get eSideHeader() { return this.#eSideHeader; }
     get eTSInput() { return this.#eTSInput; }
     get eFollowBtn() { return this.#eFollowBtn; }
-    get eBody() { return this.#eBody; }
 
     getHovered(data, pos, options) {
         pos = new V(pos);
@@ -2389,7 +2357,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         for (let i = 0; i <= vars.length; i++) {
             if (vars.length <= 0) break;
             if (i <= 0) {
-                r = vars.at(0).eHeader.getBoundingClientRect();
+                r = vars.at(0).elem.getBoundingClientRect();
                 if (pos.x < r.left+r.width/2) return {
                     r: [[r.left, y], [0, h]],
                     submit: () => {
@@ -2400,7 +2368,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 continue;
             }
             if (i >= vars.length) {
-                r = vars.at(-1).eHeader.getBoundingClientRect();
+                r = vars.at(-1).elem.getBoundingClientRect();
                 if (pos.x >= r.left+r.width/2) return {
                     r: [[r.right, y], [0, h]],
                     submit: () => {
@@ -2410,7 +2378,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 };
                 continue;
             }
-            let rj = vars[i-1].eHeader.getBoundingClientRect(), ri = vars[i].eHeader.getBoundingClientRect();
+            let rj = vars[i-1].elem.getBoundingClientRect(), ri = vars[i].elem.getBoundingClientRect();
             if (pos.x < rj.left+rj.width/2) continue;
             if (pos.x >= ri.left+ri.width/2) continue;
             return {
@@ -2421,7 +2389,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 },
             };
         }
-        r = this.eOptions.getBoundingClientRect();
+        r = this.eSide.getBoundingClientRect();
         return {
             r: [[r.right, y], [0, h]],
             submit: () => {
@@ -2446,10 +2414,8 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
 
     #node;
 
-    #x;
-
+    #elem;
     #eHeader;
-    #eSections;
 
     constructor(...a) {
         super();
@@ -2460,10 +2426,11 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
 
         this.#node = null;
 
-        this.#x = 0;
-
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("column");
         this.#eHeader = document.createElement("div");
-        this.eHeader.classList.add("item");
+        this.elem.appendChild(this.eHeader);
+        this.eHeader.classList.add("header");
 
         this.eHeader.addEventListener("mousedown", e => {
             if (e.button != 0) return;
@@ -2497,17 +2464,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
 
         [this.path] = a;
 
-        let sections = [];
-        this.addHandler("format", () => {
-            let r = this.tab.eBody.getBoundingClientRect();
-            sections.forEach(section => {
-                if (!(section.children[0] instanceof HTMLDivElement)) return;
-                let sr = section.getBoundingClientRect();
-                let scr = section.children[0].getBoundingClientRect();
-                let shift = Math.min(sr.height-scr.height-2, Math.max(0, r.top-sr.top));
-                section.children[0].style.marginTop = shift+"px";
-            });
-        });
+        let entries = [];
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             let valueLog = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.valueLog : [];
@@ -2515,41 +2472,39 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 if (i <= 0) return true;
                 return log.v != valueLog[i-1].v;
             });
-            while (sections.length < valueLog.length) {
-                let section = document.createElement("div");
-                this.tab.eBody.appendChild(section);
-                section.classList.add("section");
-                let content = document.createElement("div");
-                section.appendChild(content);
-                let line = document.createElement("div");
-                section.appendChild(line);
-                line.classList.add("line");
-                sections.push(section);
+            while (entries.length < valueLog.length) {
+                let entry = {};
+                let elem = entry.elem = document.createElement("div");
+                this.elem.appendChild(elem);
+                elem.classList.add("entry");
+                let valueTS = entry.valueTS = document.createElement("div");
+                elem.appendChild(valueTS);
+                valueTS.classList.add("value");
+                valueTS.classList.add("ts");
+                let value = entry.value = document.createElement("div");
+                elem.appendChild(value);
+                value.classList.add("value");
+                entries.push(entry);
             }
-            while (sections.length > valueLog.length) {
-                let section = sections.shift();
-                this.tab.eBody.removeChild(section);
+            while (entries.length > valueLog.length) {
+                let entry = entries.pop();
+                this.elem.removeChild(entry.elem);
             }
             for (let i = 0; i < valueLog.length; i++) {
-                let section = sections[i];
+                let entry = entries[i];
                 let j1 = this.tab.lookupTS(valueLog[i].ts);
+                if (i <= 0) entry.elem.style.marginTop = (j1*30)+"px";
                 let j2 = (i+1 >= valueLog.length) ? this.tab.ts.length : this.tab.lookupTS(valueLog[i+1].ts);
                 let j3 = this.tab.lookupTS(this.tab.tsNow);
                 if (
                     this.tab.tsNow >= valueLog[i].ts &&
                     this.tab.tsNow < ((i+1 >= valueLog.length) ? Infinity : valueLog[i+1].ts)
-                ) section.classList.add("this");
-                else section.classList.remove("this");
-                section.style.gridColumn = (this.x+1) + "/" + (this.x+2);
-                section.style.gridRow = (j1+1) + "/" + (j2+1);
-                if (section.children[0] instanceof HTMLDivElement)
-                    section.children[0].textContent = valueLog[i].v;
-                if (section.children[1] instanceof HTMLDivElement) {
-                    section.children[1].style.top = (30*Math.min(j2-j1, Math.max(0, j3-j1)) - 2)+"px";
-                    section.children[1].textContent = valueLog[i].v;
-                }
+                ) entry.elem.classList.add("this");
+                else entry.elem.classList.remove("this");
+                entry.elem.style.height = entry.elem.style.maxHeight = ((j2-j1)*30)+"px";
+                entry.value.textContent = entry.valueTS.textContent = valueLog[i].v;
+                entry.valueTS.style.top = (Math.max(0, Math.min(j2-j1-1, j3-j1))*30)+"px";
             }
-            this.#eSections = sections;
         });
     }
 
@@ -2597,17 +2552,9 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
     }
     hasNode() { return !!this.node; }
 
+    get elem() { return this.#elem; }
     get eHeader() { return this.#eHeader; }
-    get eSections() { return [...this.#eSections]; }
-    get x() { return this.#x; }
-    set x(v) {
-        v = util.ensure(v, "int");
-        if (this.x == v) return;
-        this.#x = v;
-        this.eHeader.style.gridColumn = (this.x+1) + "/" + (this.x+2);
-    }
 
-    format() { this.post("format"); }
     update(delta) { this.post("update", delta); }
 
     toJSON() {

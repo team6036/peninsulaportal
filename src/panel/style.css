@@ -943,32 +943,45 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table {
     padding: 0px;
 
+    /*
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: flex-start;
     align-content: flex-start;
+    */
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    align-content: flex-start;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body {
-    display: grid;
-    justify-items: stretch;
-    align-items: stretch;
-    justify-content: start;
-    align-content: start;
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column {
+    min-width: 250px;
+    max-width: 250px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    align-content: flex-start;
+
+    background-color: var(--v2);
+    border-right: 2px solid var(--v2);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header {
-    height: 30px;
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header {
+    z-index: 1;
+
+    position: sticky;
+    top: 0px;
+
+    min-width: 100%;
+    max-width: 100%;
+    min-height: 30px;
     max-height: 30px;
-
-    grid-template-rows: auto;
-
-    border-bottom: 2px solid var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .item {
-    grid-row: 1 / 2;
-
     padding: 5px;
 
     display: flex;
@@ -978,14 +991,16 @@
     align-items: center;
     align-content: center;
 
+    background-color: var(--v1);
+    border-bottom: 2px solid var(--v2);
     color: var(--v6);
 
     font-size: 12px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .item > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header > div {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .item > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -993,115 +1008,88 @@
     min-width: max-content;
     padding: 0px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options {
-    z-index: 1;
-
-    grid-row: 1 / 2;
-    grid-column: 1 / 2;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-
-    background-color: var(--v1);
-    border-right: 2px solid var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options > input {
-    flex-basis: 100%;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options > button {
-    --bg: transparent;
-    --bgh: transparent;
-    --bgd: transparent;
-
-    min-width: max-content;
-    aspect-ratio: 1 / 1;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .header > .options > button.this {
-    --bg: var(--cg3);
-    --bgh: var(--cg3);
-    --bgd: var(--cg3);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body {
-    max-height: calc(100% - 30px);
-    overflow: auto;
-
-    background-color: var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .item {
-    z-index: 2;
-
-    grid-column: 1 / 2;
-
-    height: 30px;
-    max-height: 30px;
-    padding: 5px;
-
-    background-color: var(--v1);
-    color: var(--cg);
-    border-right: 2px solid var(--v2);
-
-    text-align: right;
-    font-size: 12px;
-    font-family: monospace;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .item.this {
-    background-color: var(--v1-8);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry {
     position: relative;
 
-    overflow: hidden;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
+    min-width: 100%;
+    max-width: 100%;
 
     background-color: var(--v1);
     color: var(--v8);
-    border-right: 2px solid var(--v2);
     border-bottom: 2px solid var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section:hover {
-    background-color: var(--v1-8);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section.this:hover {
-    background-color: var(--v1-6);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section > div:not(.line) {
-    z-index: 1;
-
-    min-height: 30px;
-    padding: 5px;
 
     font-size: 12px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry:hover,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry.this {
+    background-color: var(--v1-8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry > .value {
+    position: sticky;
+    top: 30px;
+    left: 150px;
+
+    min-width: 100%;
+    max-width: 100%;
+    min-height: 30px;
+    max-height: 30px;
+    padding: 5px;
+
     font-family: monospace;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section > div.line {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry > .value.ts {
     position: absolute;
     top: 0px;
     left: 0px;
 
-    width: 100%;
-    height: 30px;
+    color: var(--v6);
+
+    background-color: var(--v2-8);
+    visibility: hidden;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry.this > .value.ts {
+    visibility: inherit;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side {
+    z-index: 2;
+
+    position: sticky;
+    left: 0px;
+
+    min-width: 150px;
+    max-width: 150px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header {
+    padding: 0px;
+    
+    align-items: stretch;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > input {
+    flex-basis: 100%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > button.this {
+    --bg: var(--cg3);
+    --bgh: var(--cg3);
+    --bgd: var(--cg3);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .entry {
+    min-height: 30px;
     max-height: 30px;
     padding: 5px;
 
-    background-color: var(--v2-8);
-    color: var(--v6);
-    visibility: hidden;
+    color: var(--cg);
 
-    font-size: 12px;
     font-family: monospace;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .body > .section.this > div.line {
-    visibility: inherit;
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .entry:hover {
+    background-color: transparent !important;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav {
     width: 100%;
