@@ -2184,11 +2184,18 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     visual.item = this.page.odometry.render.addRender(new RVisualItem(this.page.odometry.render, visual.visual));
                     let theVisual = visual, theVisualId = visualId;
                     (async () => {
+                        const clear = () => {
+                            if (visual) {
+                                this.page.odometry.render.remRender(visual.visual);
+                                this.page.odometry.render.remRender(visual.item);
+                            }
+                            visual = null;
+                        };
                         let datas = await window.api.send("exec-get", this.page.projectId);
-                        if (!util.is(datas, "obj")) return;
-                        if (!(theVisualId in datas)) return;
+                        if (!util.is(datas, "obj")) return clear();
+                        if (!(theVisualId in datas)) return clear();
                         let data = datas[theVisualId];
-                        if (!util.is(data, "obj")) return;
+                        if (!util.is(data, "obj")) return clear();
                         theVisual.visual.dt = data.dt*1000;
                         theVisual.visual.nodes = util.ensure(data.state, "arr").map(node => {
                             node = util.ensure(node, "obj");
