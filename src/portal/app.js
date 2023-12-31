@@ -538,6 +538,7 @@ export default class App extends core.App {
             if (this.hasFeatureButton(btn)) return false;
             this.#featureButtons.add(btn);
             if (this.hasENav()) this.eNav.appendChild(btn.elem);
+            btn.onAdd();
             return btn;
         });
     }
@@ -545,6 +546,7 @@ export default class App extends core.App {
         return util.Target.resultingForEach(btns, btn => {
             if (!(btn instanceof FeatureButton)) return false;
             if (!this.hasFeatureButton(btn)) return false;
+            btn.onRem();
             this.#featureButtons.delete(btn);
             if (this.hasENav()) this.eNav.removeChild(btn.elem);
             return btn;

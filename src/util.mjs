@@ -640,6 +640,8 @@ export class Target {
         r.push(...(await this.post("change-"+attr, f, t)));
         return r;
     }
+    async onAdd() { return await this.post("add"); }
+    async onRem() { return await this.post("rem"); }
 }
 
 /*

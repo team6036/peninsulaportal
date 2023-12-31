@@ -46,6 +46,7 @@ export default class WPILOGEncoder extends util.Target {
             if (!(record instanceof WPILOGEncoder.Record)) return false;
             if (this.hasRecord(record)) return false;
             this.#records.add(record);
+            record.onAdd();
             return record;
         });
     }
@@ -53,6 +54,7 @@ export default class WPILOGEncoder extends util.Target {
         return util.Target.resultingForEach(records, record => {
             if (!(record instanceof WPILOGEncoder.Record)) return false;
             if (!this.hasRecord(record)) return false;
+            record.onRem();
             this.#records.delete(record);
             return record;
         });

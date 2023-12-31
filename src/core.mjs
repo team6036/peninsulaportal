@@ -880,8 +880,8 @@ export class App extends util.Target {
             if (this.hasPopup(pop)) this.remPopup(pop);
             this.#popups.push(pop);
             pop.addLinkedHandler(this, "result", () => this.remPopup(pop));
-            pop.doAdd(document.body);
             window.api.set("closeable", this.popups.length <= 0);
+            pop.onAdd();
             return pop;
         });
     }
@@ -889,9 +889,9 @@ export class App extends util.Target {
         return util.Target.resultingForEach(pops, pop => {
             if (!(pop instanceof App.PopupBase)) return false;
             if (!this.hasPopup(pop)) return false;
+            pop.onRem();
             this.#popups.splice(this.#popups.indexOf(pop), 1);
             pop.clearLinkedHandlers(this, "result");
-            pop.doRem(document.body);
             window.api.set("closeable", this.popups.length <= 0);
             return pop;
         });
@@ -1051,6 +1051,7 @@ export class App extends util.Target {
             this.#pages[page.name] = page;
             this.eMount.appendChild(page.elem);
             page.leave(null);
+            page.onAdd();
             return page;
         });
     }
@@ -1158,39 +1159,36 @@ App.PopupBase = class AppPopupBase extends util.Target {
         this.#inner = document.createElement("div");
         this.elem.appendChild(this.inner);
         this.inner.classList.add("inner");
+
+        this.addHandler("add", async () => {
+            let id = await window.modal.spawn(this.constructor.NAME, this.generateParams());
+            if (id == null) {
+                document.body.appendChild(this.elem);
+                setTimeout(() => {
+                    this.elem.classList.add("in");
+                }, 0.01*1000);
+            } else {
+                const onChange = () => window.modal.modify(id, this.generateParams());
+                this.addHandler("change", onChange);
+                onChange();
+                const remove = window.modal.onResult((_, id2, r) => {
+                    if (id2 != id) return;
+                    this.result(r);
+                    remove();
+                    this.remHandler("change", onChange);
+                });
+            }
+        });
+        this.addHandler("rem", async () => {
+            if (document.body.contains(this.elem)) {
+                this.elem.classList.remove("in");
+                setTimeout(() => {
+                    document.body.removeChild(this.elem);
+                }, 0.25*1000);
+            }
+        });
     }
 
-    async doAdd(parent) {
-        if (!(parent instanceof HTMLElement)) return false;
-        let id = await window.modal.spawn(this.constructor.NAME, this.generateParams());
-        if (id == null) {
-            parent.appendChild(this.elem);
-            setTimeout(() => {
-                this.elem.classList.add("in");
-            }, 0.01*1000);
-        } else {
-            const onChange = () => window.modal.modify(id, this.generateParams());
-            this.addHandler("change", onChange);
-            onChange();
-            const remove = window.modal.onResult((_, id2, r) => {
-                if (id2 != id) return;
-                this.result(r);
-                remove();
-                this.remHandler("change", onChange);
-            });
-        }
-        return true;
-    }
-    async doRem(parent) {
-        if (!(parent instanceof HTMLElement)) return false;
-        if (parent.contains(this.elem)) {
-            this.elem.classList.remove("in");
-            setTimeout(() => {
-                parent.removeChild(this.elem);
-            }, 0.25*1000);
-        }
-        return true;
-    }
     generateParams() {
         let params = {};
         this.constructor.PARAMS.forEach(param => (params[param] = this[param]));
@@ -1249,7 +1247,8 @@ App.Popup = class AppPopup extends App.PopupBase {
             if (e.code != "Escape") return;
             this.result(null);
         };
-        document.body.addEventListener("keydown", onKeyDown);
+        this.addHandler("add", () => document.body.addEventListener("keydown", onKeyDown));
+        this.addHandler("rem", () => document.body.removeEventListener("keydown", onKeyDown));
     }
 
     get eClose() { return this.#eClose; }
@@ -1665,16 +1664,30 @@ App.Menu = class AppMenu extends util.Target {
         this.#items.splice(at, 0, itm);
         itm.addLinkedHandler(this, "format", () => this.format());
         itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.items.indexOf(itm)+"]."+c, f, t));
-        this.change("addItem", null, itm);
+        this.change("insertItem", null, itm);
         this.format();
+        itm.onAdd();
         return itm;
     }
     addItem(...itms) {
-        return util.Target.resultingForEach(itms, itm => this.insertItem(itm, this.items.length));
+        // return util.Target.resultingForEach(itms, itm => this.insertItem(itm, this.items.length));
+        let r = util.Target.resultingForEach(itms, itm => {
+            if (!(itm instanceof App.Menu.Item)) return false;
+            if (this.hasItem(itm)) return false;
+            this.#items.push(itm);
+            itm.addLinkedHandler(this, "format", () => this.format());
+            itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.items.indexOf(itm)+"]."+c, f, t));
+            this.change("addItem", null, itm);
+            itm.onAdd();
+            return itm;
+        });
+        this.format();
+        return r;
     }
     remItem(itm) {
         if (!(itm instanceof App.Menu.Item)) return false;
         if (!this.hasItem(itm)) return false;
+        itm.onRem();
         this.#items.splice(this.#items.indexOf(itm), 1);
         itm.clearLinkedHandlers(this, "format");
         itm.clearLinkedHandlers(this, "change");
@@ -2918,6 +2931,7 @@ export class AppFeature extends App {
             proj.id = id;
             proj.addLinkedHandler(this, "change", c => this.markChange(":"+id));
             this.markChange(":"+id);
+            proj.onAdd();
             return proj;
         });
     }
@@ -2927,6 +2941,7 @@ export class AppFeature extends App {
             id = String(id);
             if (!this.hasProject(id)) return false;
             let proj = this.getProject(id);
+            proj.onRem();
             delete this.#projects[id];
             proj.clearLinkedHandlers(this, "change");
             proj.id = null;
@@ -3258,6 +3273,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             btn.addLinkedHandler(this, "contextmenu", e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null));
             this.eContent.appendChild(btn.elemList);
             this.eContent.appendChild(btn.elemGrid);
+            btn.onAdd();
             return btn;
         });
     }
@@ -3265,6 +3281,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         return util.Target.resultingForEach(btns, btn => {
             if (!(btn instanceof this.constructor.Button)) return false;
             if (!this.hasButton(btn)) return false;
+            btn.onRem();
             this.#buttons.delete(btn);
             btn.clearLinkedHandlers(this, "trigger");
             btn.clearLinkedHandlers(this, "trigger2");
@@ -3503,11 +3520,6 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.eNavProgress.classList.add("progress");
         this.eNavProgress.innerHTML = "<div class='hover'><div class='tooltip hov nx'></div></div>";
         this.#eNavProgressTooltip = this.eNavProgress.querySelector(":scope > .hover > .tooltip");
-        document.body.addEventListener("mousemove", e => {
-            let r = this.eNavProgress.getBoundingClientRect();
-            let p = (e.pageX-r.left) / r.width;
-            this.progressHover = p;
-        });
         this.#eNavActionButton = document.createElement("button");
         this.eNavPre.appendChild(this.eNavActionButton);
         this.eNavActionButton.innerHTML = "<ion-icon name='play'></ion-icon>";
@@ -3525,6 +3537,14 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
         this.progress = 0;
         this.progressHover = 0;
+
+        const onMouseMove = e => {
+            let r = this.eNavProgress.getBoundingClientRect();
+            let p = (e.pageX-r.left) / r.width;
+            this.progressHover = p;
+        };
+        this.addHandler("add", () => document.body.addEventListener("mousemove", onMouseMove));
+        this.addHandler("rem", () => document.body.removeEventListener("mousemove", onMouseMove));
 
         this.app.addHandler("perm", async () => {
             this.app.markChange("*");
@@ -4155,6 +4175,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
             if (render.parent != this) return false;
             if (this.hasRender(render)) return false;
             this.#renders.add(render);
+            render.onAdd();
             return render;
         });
     }
@@ -4163,6 +4184,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
             if (!(render instanceof Odometry2d.Render)) return false;
             if (render.parent != this) return false;
             if (!this.hasRender(render)) return false;
+            render.onRem();
             this.#renders.delete(render);
             return render;
         });

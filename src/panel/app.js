@@ -392,6 +392,7 @@ class BrowserNode extends util.Target {
                 this.post("drag", path);
             });
             this.eContent.appendChild(node.elem);
+            node.onAdd();
             return node;
         });
         this.format();
@@ -401,6 +402,7 @@ class BrowserNode extends util.Target {
         return util.Target.resultingForEach(nodes, node => {
             if (!(node instanceof BrowserNode)) return false;
             if (!this.has(node)) return false;
+            node.onRem();
             delete this.#nodes[node.name];
             node.clearLinkedHandlers(this, "trigger");
             node.clearLinkedHandlers(this, "drag");
@@ -786,12 +788,8 @@ class Container extends Widget {
 
         new ResizeObserver(() => this.format()).observe(this.elem);
 
-        this.addHandler("add", o => {
-            this.children.forEach(child => child.post("add", o));
-        });
-        this.addHandler("rem", o => {
-            this.children.forEach(child => child.post("rem", o));
-        });
+        this.addHandler("add", () => this.children.forEach(child => child.onAdd()));
+        this.addHandler("rem", () => this.children.forEach(child => child.onRem()));
 
         this.addHandler("update", delta => {
             this.children.forEach(child => child.update(delta));
@@ -879,10 +877,10 @@ class Container extends Widget {
             this.#children.splice(at, 0, child);
         }
         child.addLinkedHandler(this, "change", (c, f, t) => this.change("children["+this.children.indexOf(child)+"]."+c, f, t));
-        child.post("add", this);
         this.change("addChild", null, child);
         this.change("weights", weights, this.weights);
         this.format();
+        child.onAdd();
         return child;
     }
     replaceChild(child, at) {
@@ -902,6 +900,7 @@ class Container extends Widget {
         if (!(child instanceof Widget)) return false;
         if (!this.hasChild(child)) return false;
         if (child.parent != this) return false;
+        child.onRem();
         let at = this.#children.indexOf(child);
         child.parent = null;
         this.elem.removeChild(child.elem);
@@ -914,7 +913,6 @@ class Container extends Widget {
             this.#weights = this.#weights.map(w => w/wSum);
         }
         child.clearLinkedHandlers(this, "change");
-        child.post("rem", this);
         this.change("remChild", child, null);
         this.change("weights", weights, this.weights);
         this.format();
@@ -1071,12 +1069,8 @@ class Panel extends Widget {
 
         this.tabIndex = 0;
 
-        this.addHandler("add", o => {
-            this.tabs.forEach(tab => tab.post("add", o));
-        });
-        this.addHandler("rem", o => {
-            this.tabs.forEach(tab => tab.post("rem", o));
-        });
+        this.addHandler("add", () => this.tabs.forEach(tab => tab.onAdd()));
+        this.addHandler("rem", () => this.tabs.forEach(tab => tab.onRem()));
 
         this.eOptions.addEventListener("click", e => {
             if (!this.hasApp()) return;
@@ -1172,24 +1166,24 @@ class Panel extends Widget {
         this.#tabs.splice(at, 0, tab);
         tab.parent = this;
         tab.addLinkedHandler(this, "change", (c, f, t) => this.change("tabs["+this.tabs.indexOf(tab)+"]."+c, f, t));
-        tab.post("add", this);
         this.change("addTab", null, tab);
         this.eTop.appendChild(tab.eTab);
         this.eContent.appendChild(tab.elem);
         this.tabIndex = this.#tabs.indexOf(tab);
         this.format();
+        tab.onAdd();
         return tab;
     }
     remTab(tab) {
         if (!(tab instanceof Panel.Tab)) return false;
         if (!this.hasTab(tab)) return false;
         if (tab.parent != this) return false;
+        tab.onRem();
         let activeTab = this.tabs[this.tabIndex];
         let at = this.#tabs.indexOf(tab);
         this.#tabs.splice(at, 1);
         tab.parent = null;
         tab.clearLinkedHandlers(this, "change");
-        tab.post("rem", this);
         this.change("remTab", tab, null);
         this.eTop.removeChild(tab.eTab);
         this.eContent.removeChild(tab.elem);
@@ -1691,6 +1685,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.hasItem(itm)) return false;
             this.#items.push(itm);
             this.eContent.appendChild(itm.elem);
+            itm.onAdd();
             return itm;
         });
     }
@@ -1698,6 +1693,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         return util.Target.resultingForEach(itms, itm => {
             if (!(itm instanceof Panel.AddTab.Item)) return false;
             if (!this.hasItem(itm)) return false;
+            itm.onRem();
             this.#items.splice(this.#items.indexOf(itm), 1);
             this.eContent.removeChild(itm.elem);
             return itm;
@@ -2280,7 +2276,8 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.app.dragging = true;
             v.post("remove");
         });
-        this.change("addVar", null, v);
+        this.change("insertVar", null, v);
+        v.onAdd();
         return v;
     }
     addVar(v) { return this.insertVar(v, this.vars.length); }
@@ -2288,6 +2285,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         if (!(v instanceof Panel.TableTab.Variable)) return false;
         if (v.tab != this) return false;
         if (!this.hasVar(v)) return false;
+        v.onRem();
         this.#vars.splice(this.#vars.indexOf(v), 1);
         v.tab = null;
         this.elem.removeChild(v.elem);
@@ -2921,6 +2919,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             log.addLinkedHandler(this, "trigger2", e => this.post("log-trigger2", e, log.name));
             log.addLinkedHandler(this, "contextmenu", e => this.post("log-contextmenu", e, log.name));
             this.eLogs.appendChild(log.elem);
+            log.onAdd();
             return log;
         });
         this.format();
@@ -2930,6 +2929,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         return util.Target.resultingForEach(logs, log => {
             if (!(log instanceof Panel.LoggerTab.Log)) return false;
             if (!this.hasLog(log)) return false;
+            log.onRem();
             this.#logs.delete(log);
             log.clearLinkedHandlers(this, "download");
             log.clearLinkedHandlers(this, "trigger");
@@ -3107,6 +3107,7 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
             this.#actions.add(action);
             this.elem.appendChild(action.elem);
             this.eActions.appendChild(action.eBtn);
+            action.onAdd();
             return action;
         });
     }
@@ -3115,6 +3116,7 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
             if (!(action instanceof Panel.LogWorksTab.Action)) return false;
             if (action.tab != this) return false;
             if (!this.hasAction(action)) return false;
+            action.onRem();
             this.#actions.delete(action);
             this.elem.removeChild(action.elem);
             this.eActions.removeChild(action.eBtn);
@@ -4288,6 +4290,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (this.hasEOptionSection("l"))
                 this.getEOptionSection("l").appendChild(lVar.elem);
             this.change("addLVar", null, lVar);
+            lVar.onAdd();
             return lVar;
         });
     }
@@ -4295,6 +4298,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         return util.Target.resultingForEach(lVars, lVar => {
             if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
             if (!this.hasLVar(lVar)) return false;
+            lVar.onRem();
             this.#lVars.delete(lVar);
             lVar.clearLinkedHandlers(this, "remove");
             lVar.clearLinkedHandlers(this, "change");
@@ -4329,6 +4333,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (this.hasEOptionSection("r"))
                 this.getEOptionSection("r").appendChild(rVar.elem);
             this.change("addRVar", null, rVar);
+            rVar.onAdd();
             return rVar;
         });
     }
@@ -4336,7 +4341,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         return util.Target.resultingForEach(rVars, rVar => {
             if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
             if (!this.hasRVar(rVar)) return false;
-            let i = this.rVars.indexOf(rVar);
+            rVar.onRem();
             this.#rVars.delete(rVar);
             rVar.clearLinkedHandlers(this, "remove");
             rVar.clearLinkedHandlers(this, "change");
@@ -4702,6 +4707,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 this.getEOptionSection("p").appendChild(pose.elem);
             this.change("addPose", null, pose);
             pose.state.tab = this;
+            pose.onAdd();
             return pose;
         });
     }
@@ -4709,6 +4715,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         return util.Target.resultingForEach(poses, pose => {
             if (!(pose instanceof this.constructor.Pose)) return false;
             if (!this.hasPose(pose)) return false;
+            pose.onRem();
             pose.state.tab = null;
             let i = this.poses.indexOf(pose);
             this.#poses.delete(pose);
@@ -7411,17 +7418,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eMain.appendChild(this.eDragBox);
         this.eDragBox.classList.add("dragbox");
         this.eDragBox.innerHTML = "<div></div><div></div>";
-        ["dragenter", "dragover"].forEach(name => document.body.addEventListener(name, e => {
+        const dragIn = e => {
             e.preventDefault();
             e.stopPropagation();
             this.eDragBox.classList.add("this");
-        }));
-        ["dragleave", "drop"].forEach(name => document.body.addEventListener(name, e => {
+        };
+        const dragOut = e => {
             e.preventDefault();
             e.stopPropagation();
             this.eDragBox.classList.remove("this");
-        }));
-        document.body.addEventListener("drop", e => {
+        };
+        const drop = e => {
             let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
             items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
             if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
@@ -7433,6 +7440,16 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.project.config.source = file.path;
             this.update(0);
             this.app.post("cmd-action");
+        };
+        this.addHandler("add", () => {
+            ["dragenter", "dragover"].forEach(name => document.body.addEventListener(name, dragIn));
+            ["dragleave", "drop"].forEach(name => document.body.addEventListener(name, dragOut));
+            document.body.addEventListener("drop", drop);
+        });
+        this.addHandler("rem", () => {
+            ["dragenter", "dragover"].forEach(name => document.body.removeEventListener(name, dragIn));
+            ["dragleave", "drop"].forEach(name => document.body.removeEventListener(name, dragOut));
+            document.body.removeEventListener("drop", drop);
         });
 
         this.#eDivider = document.createElement("div");
@@ -7685,6 +7702,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             };
             node.addLinkedHandler(this, "drag", onDrag);
             this.getESideSection("browser").eContent.appendChild(node.elem);
+            node.onAdd();
             return node;
         });
         this.formatSide();
@@ -7694,6 +7712,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return util.Target.resultingForEach(nodes, node => {
             if (!(node instanceof BrowserNode)) return false;
             if (!this.hasBrowserNode(node)) return false;
+            node.onRem();
             this.#browserNodes.splice(this.#browserNodes.indexOf(node), 1);
             node.clearLinkedHandlers(this, "drag");
             this.getESideSection("browser").eContent.removeChild(node.elem);
@@ -7722,6 +7741,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.hasToolButton(btn)) return false;
             this.#toolButtons.add(btn);
             this.getESideSection("tools").eContent.appendChild(btn.elem);
+            btn.onAdd();
             return btn;
         });
     }
@@ -7729,6 +7749,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return util.Target.resultingForEach(btns, btn => {
             if (!(btn instanceof ToolButton)) return false;
             if (!this.hasToolButton(btn)) return false;
+            btn.onRem();
             this.#toolButtons.delete(btn);
             this.getESideSection("tools").eContent.removeChild(btn.elem);
             return btn;
