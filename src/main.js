@@ -793,7 +793,7 @@ const MAIN = async () => {
                 width: 1250,
                 height: 750,
 
-                show: false,
+                show: false || TEST,
                 resizable: true,
                 maximizable: false,
 
@@ -841,23 +841,25 @@ const MAIN = async () => {
                 this.window.show();
                 this.window.webContents.openDevTools();
             });
-            const readiness = 1000 * (TEST?100:1);
-            let id = setTimeout(() => {
-                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
-                clear();
-                this.stop();
-            }, readiness);
-            const clear = () => {
-                clearInterval(id);
-                ipc.removeListener("ready", ready);
-            };
-            const ready = e => {
-                if (!this.hasWindow()) return;
-                if (e.sender.id != this.window.webContents.id) return;
-                clear();
-                this.#resolver.state++;
-            };
-            ipc.on("ready", ready);
+            if (!TEST) {
+                const readiness = 1000;
+                let id = setTimeout(() => {
+                    showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
+                    clear();
+                    this.stop();
+                }, readiness);
+                const clear = () => {
+                    clearInterval(id);
+                    ipc.removeListener("ready", ready);
+                };
+                const ready = e => {
+                    if (!this.hasWindow()) return;
+                    if (e.sender.id != this.window.webContents.id) return;
+                    clear();
+                    this.#resolver.state++;
+                };
+                ipc.on("ready", ready);
+            }
 
             this.window.on("unresponsive", () => {});
             this.window.webContents.on("did-fail-load", () => { if (this.hasWindow()) this.window.close(); });
@@ -868,20 +870,22 @@ const MAIN = async () => {
                     this.on("open", url);
                 }
             });
-            let any = false;
-            for (let win of this.manager.windows) {
-                if (!win.hasWindow()) continue;
-                if (!win.window.webContents.isDevToolsOpened()) continue;
-                any = true;
-                break;
+            if (!TEST) {
+                let any = false;
+                for (let win of this.manager.windows) {
+                    if (!win.hasWindow()) continue;
+                    if (!win.window.webContents.isDevToolsOpened()) continue;
+                    any = true;
+                    break;
+                }
+                if (this.hasWindow() && any) this.window.webContents.openDevTools();
+                this.window.webContents.on("devtools-opened", () => {
+                    this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.openDevTools());
+                });
+                this.window.webContents.on("devtools-closed", () => {
+                    this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.closeDevTools());
+                });
             }
-            if (this.hasWindow() && any) this.window.webContents.openDevTools();
-            this.window.webContents.on("devtools-opened", () => {
-                this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.openDevTools());
-            });
-            this.window.webContents.on("devtools-closed", () => {
-                this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.closeDevTools());
-            });
 
             this.window.on("enter-full-screen", () => this.send("win-fullscreen", true));
             this.window.on("leave-full-screen", () => this.send("win-fullscreen", false));
@@ -898,8 +902,12 @@ const MAIN = async () => {
                 this.stop();
             });
 
-            if (this.isModal) this.window.loadFile(path.join(__dirname, "modal", this.name.substring(6).toLowerCase(), "index.html"));
-            else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
+            if (TEST) {
+                this.window.loadFile(path.join(__dirname, "barebone-test.html"));
+            } else {
+                if (this.isModal) this.window.loadFile(path.join(__dirname, "modal", this.name.substring(6).toLowerCase(), "index.html"));
+                else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
+            }
 
             namefs = {
                 PORTAL: () => {
@@ -1007,7 +1015,8 @@ const MAIN = async () => {
             }
             this.log(`STOP - perm: ${this.perm}`);
             if (!this.perm) return false;
-            if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
+            if (!TEST)
+                if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
             this.#started = false;
             await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
@@ -2311,6 +2320,8 @@ const MAIN = async () => {
 
         checkMenu() {
             if (this.hasWindow()) return this.window.manager.checkMenu();
+
+            if (TEST) return;
 
             let signal = new util.Target();
             signal.about = false;
