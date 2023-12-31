@@ -159,8 +159,7 @@ export class App extends util.Target {
                     });
                     if (cleanups.length <= 3) return;
                     let pop = this.confirm("Junk Files Found!", "We found some unnecessary files in your application data. Would you like to clean up these files?");
-                    pop.hasInfo = true;
-                    pop.info = cleanups.join("\n");
+                    pop.infos = [cleanups.join("\n")];
                     let r = await pop.whenResult();
                     if (!r) return;
                     await window.api.send("cleanup");
@@ -455,8 +454,7 @@ export class App extends util.Target {
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.title = "Peninsula "+util.capitalize(name);
-            pop.info = this.getAbout().join("\n");
-            pop.hasInfo = true;
+            pop.infos = [this.getAbout().join("\n")];
             let r = await pop.whenResult();
             if (r) return;
             this.post("cmd-documentation");
@@ -1330,7 +1328,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     #eSubIcon;
     #eTitle;
     #eContent;
-    #eInfo;
+    #infos;
 
     static {
         this.PARAMS = [
@@ -1338,7 +1336,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
             "icon", "iconSrc", "iconColor",
             "subIcon", "subIconSrc", "subIconColor",
             "title", "content",
-            "hasInfo", "info",
+            "infos",
         ];
     }
 
@@ -1360,8 +1358,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
         this.#eContent = document.createElement("div");
         this.inner.appendChild(this.eContent);
         this.eContent.classList.add("content");
-        this.#eInfo = document.createElement("pre");
-        this.eInfo.classList.add("info");
+        this.#infos = [];
 
         this.title = title;
         this.content = content;
@@ -1373,7 +1370,6 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     get eSubIcon() { return this.#eSubIcon; }
     get eTitle() { return this.#eTitle; }
     get eContent() { return this.#eContent; }
-    get eInfo() { return this.#eInfo; }
 
     get icon() { return this.eIcon.getAttribute("name"); }
     set icon(v) {
@@ -1423,19 +1419,18 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
         this.change("content", null, this.content);
     }
 
-    get hasInfo() { return this.elem.contains(this.eInfo); }
-    set hasInfo(v) {
-        v = !!v;
-        if (this.hasInfo == v) return;
-        if (v) this.inner.insertBefore(this.eInfo, this.eContent.nextElementSibling);
-        else this.inner.removeChild(this.eInfo);
-        this.change("hasInfo", null, this.hasInfo);
-    }
-    get info() { return this.eInfo.innerHTML; }
-    set info(v) {
-        v = (v instanceof Error) ? util.stringifyError(v) : String(v);
-        this.eInfo.innerHTML = v.replaceAll("<", "&lt").replaceAll(">", "&gt");
-        this.change("info", null, this.info);
+    get infos() { return [...this.#infos]; }
+    set infos(v) {
+        this.#infos = util.ensure(v, "arr").map(v => String(v));
+        Array.from(this.inner.querySelectorAll(":scope > .info")).forEach(elem => elem.remove());
+        let sibling = this.eContent.nextElementSibling;
+        this.infos.forEach(info => {
+            let elem = document.createElement("div");
+            this.inner.insertBefore(elem, sibling);
+            elem.classList.add("info");
+            elem.innerHTML = String(info).replaceAll("<", "&lt").replaceAll(">", "&gt");
+        });
+        this.change("infos", null, this.infos);
     }
 }
 App.Alert = class AppAlert extends App.CorePopup {
@@ -1478,8 +1473,7 @@ App.Error = class AppError extends App.Alert {
 
         this.iconColor = "var(--cr)";
 
-        this.hasInfo = true;
-        this.info = info;
+        this.infos = [info];
     }
 };
 App.Confirm = class AppConfirm extends App.CorePopup {
@@ -2188,6 +2182,8 @@ App.Page = class AppPage extends util.Target {
 export class AppModal extends App {
     #result;
 
+    #iinfos;
+
     #resolver;
 
     #eModalStyle;
@@ -2199,7 +2195,6 @@ export class AppModal extends App {
     #ieSubIcon;
     #ieTitle;
     #ieContent;
-    #ieInfo;
 
     constructor() {
         super();
@@ -2236,7 +2231,6 @@ export class AppModal extends App {
             </div>
             <div class="title"></div>
             <div class="content"></div>
-            <div class="info"></div>
         </div>
     </div>
 </div>
@@ -2248,13 +2242,11 @@ export class AppModal extends App {
             this.#ieSubIcon = document.querySelector(".popup.core > .inner > .icon > ion-icon:last-child");
             this.#ieTitle = document.querySelector(".popup.core > .inner > .title");
             this.#ieContent = document.querySelector(".popup.core > .inner > .content");
-            this.#ieInfo = document.querySelector(".popup.core > .inner > .info");
 
             this.ititle = "";
             this.icontent = "";
             this.iicon = "";
-            this.ihasInfo = false;
-            this.iinfo = "";
+            this.iinfos = [];
 
             await this.post("pre-post-setup");
 
@@ -2292,7 +2284,6 @@ export class AppModal extends App {
     get ieSubIcon() { return this.#ieSubIcon; }
     get ieTitle() { return this.#ieTitle; }
     get ieContent() { return this.#ieContent; }
-    get ieInfo() { return this.#ieInfo; }
 
     get iicon() { return this.ieIcon.getAttribute("name"); }
     set iicon(v) {
@@ -2326,16 +2317,18 @@ export class AppModal extends App {
     get icontent() { return this.eContent.textContent; }
     set icontent(v) { this.ieContent.textContent = v; }
 
-    get ihasInfo() { return this.iinner.contains(this.ieInfo); }
-    set ihasInfo(v) {
-        v = !!v;
-        if (this.ihasInfo == v) return;
-        if (v) this.iinner.insertBefore(this.ieInfo, this.ieContent.nextElementSibling);
-        else this.iinner.removeChild(this.ieInfo);
-        this.resize();
+    get iinfos() { return [...this.#iinfos]; }
+    set iinfos(v) {
+        this.#iinfos = util.ensure(v, "arr").map(v => String(v));
+        Array.from(this.iinner.querySelectorAll(":scope > .info")).forEach(elem => elem.remove());
+        let sibling = this.ieContent.nextElementSibling;
+        this.iinfos.forEach(info => {
+            let elem = document.createElement("div");
+            this.iinner.insertBefore(elem, sibling);
+            elem.classList.add("info");
+            elem.innerHTML = String(info).replaceAll("<", "&lt").replaceAll(">", "&gt");
+        });
     }
-    get iinfo() { return this.ieInfo.innerHTML; }
-    set iinfo(v) { this.ieInfo.innerHTML = String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
 }
 export class Project extends util.Target {
     #id;
@@ -2753,8 +2746,7 @@ export class AppFeature extends App {
                 ids = ids.filter(id => this.hasProject(id));
                 if (ids.length <= 0) return;
                 let pop = this.confirm("Delete Projects", "Are you sure you want to delete these projects?\nThis action is not reversible!");
-                pop.hasInfo = true;
-                pop.info = ids.map(id => this.getProject(id).meta.name).join("\n");
+                pop.infos = [ids.map(id => this.getProject(id).meta.name).join("\n")];
                 let result = await pop.whenResult();
                 if (!result) return;
                 ids.forEach(id => this.remProject(id));
