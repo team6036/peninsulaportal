@@ -322,6 +322,8 @@ label.switch {
     --width: 30px;
     --height: 15px;
     --padding: 2px;
+    --on-text: "ON";
+    --off-text: "OFF";
 
     position: relative;
     min-width: var(--width);
@@ -332,7 +334,7 @@ label.switch {
     display: inline-block;
 }
 label.switch::after {
-    content: "OFF";
+    content: var(--off-text);
 
     position: absolute;
     top: 50%;
@@ -346,12 +348,17 @@ label.switch::after {
     font-size: 8px;
     font-family: Oswald, Arial, Helvetica, sans-serif;
 
+    pointer-events: none;
+
     transition: transform var(--t);
 }
 label.switch:has(input[type="checkbox"]:checked)::after {
-    content: "ON";
+    content: var(--on-text);
 
     transform: translate(0px, -50%);
+}
+label.switch.text::after {
+    display: block;
 }
 label.switch > input[type="checkbox"] {
     width: 0px;
