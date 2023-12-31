@@ -7036,7 +7036,7 @@ export default class App extends core.AppFeature {
                 let canNode = canGetNodeFromData();
                 if (canNode) {
                     let node = getNodeFromData();
-                    this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                    this.eDrag.innerHTML = "<div class='browsernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
                     let btn = this.eDrag.children[0].children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (node.name.length > 0) ? node.name : "/";
@@ -7051,7 +7051,7 @@ export default class App extends core.AppFeature {
                 }
                 if (canTab) {
                     if (this.dragData instanceof Panel.Tab) {
-                        this.eDrag.innerHTML = "<div class='browserfield'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                        this.eDrag.innerHTML = "<div class='browsernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
                         let btn = this.eDrag.children[0].children[0].children[0];
                         let icon = btn.children[0], name = btn.children[1];
                         name.textContent = this.dragData.name;
