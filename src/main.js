@@ -3780,7 +3780,7 @@ const MAIN = async () => {
     }
 
     if (!TEST)
-        showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, hasInfo: true, info: e }).whenModalResult();
+        showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, infos: [e] }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;
