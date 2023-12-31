@@ -212,6 +212,7 @@ const MAIN = async () => {
                 if (this.hasProcess(process)) return false;
                 this.#processes.add(process);
                 process.parent = this;
+                process.onAdd();
                 return process;
             });
         }
@@ -219,6 +220,7 @@ const MAIN = async () => {
             return util.Target.resultingForEach(processes, process => {
                 if (!(process instanceof Process)) return false;
                 if (!this.hasProcess(process)) return false;
+                process.onRem();
                 this.#processes.delete(process);
                 process.parent = null;
                 return process;
@@ -410,6 +412,7 @@ const MAIN = async () => {
                 if (!(client instanceof Client)) return false;
                 if (this.hasClient(client)) return false;
                 this.#clients.add(client);
+                client.onAdd();
                 return client;
             });
         }
@@ -417,6 +420,7 @@ const MAIN = async () => {
             return util.Target.resultingForEach(clients, client => {
                 if (!(client instanceof Client)) return false;
                 if (!this.hasClient(client)) return false;
+                client.onRem();
                 this.#clients.delete(client);
                 return client;
             });
@@ -603,6 +607,7 @@ const MAIN = async () => {
                 if (!(client instanceof TbaClient)) return false;
                 if (this.hasClient(client)) return false;
                 this.#clients.add(client);
+                client.onAdd();
                 return client;
             });
         }
@@ -610,6 +615,7 @@ const MAIN = async () => {
             return util.Target.resultingForEach(clients, client => {
                 if (!(client instanceof TbaClient)) return false;
                 if (!this.hasClient(client)) return false;
+                client.onRem();
                 this.#clients.delete(client);
                 return client;
             });
@@ -2277,6 +2283,7 @@ const MAIN = async () => {
             }
             this.change("addWindow", null, win);
             this.checkMenu();
+            win.onAdd();
             return win;
         }
         async remWindow(win) {
@@ -2295,6 +2302,7 @@ const MAIN = async () => {
                 }
             }
             win.log("REM - already stopped");
+            win.onRem();
             this.#windows.delete(win);
             this.change("remWindow", win, null);
             this.checkMenu();

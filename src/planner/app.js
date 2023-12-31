@@ -1278,6 +1278,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.#panels[panel.name] = panel;
             this.eEditContent.appendChild(panel.elem);
             this.eEditNav.appendChild(panel.btn);
+            panel.onAdd();
             return panel;
         });
     }
@@ -1286,6 +1287,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!(panel instanceof App.ProjectPage.Panel)) panel = this.getPanel(panel);
             if (panel.page != this) return false;
             if (!this.hasPanel(panel)) return false;
+            panel.onRem();
             delete this.#panel[panel.name];
             this.eEditContent.removeChild(panel.elem);
             this.eEditNav.removeChild(panel.btn);
@@ -1412,6 +1414,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
             if (this.hasItem(itm)) return false;
             this.#items.push(itm);
             this.elem.appendChild((itm instanceof App.ProjectPage.Panel.Item) ? itm.elem : itm);
+            if (itm instanceof App.ProjectPage.Panel.Item) itm.onAdd();
             return itm;
         });
     }
@@ -1419,6 +1422,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
         return util.Target.resultingForEach(itms, itm => {
             if (!(itm instanceof App.ProjectPage.Panel.Item) && !(itm instanceof HTMLElement)) return false;
             if (!this.hasItem(itm)) return false;
+            if (itm instanceof App.ProjectPage.Panel.Item) itm.onRem();
             this.#items.splice(this.#items.indexOf(itm), 1);
             this.elem.removeChild((itm instanceof App.ProjectPage.Panel.Item) ? itm.elem : itm);
             return itm;
@@ -2358,6 +2362,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             btn.addLinkedHandler(this, "remove", onRemove);
             btn.addLinkedHandler(this, "change", onChange);
             this.ePathsBox.appendChild(btn.elem);
+            btn.onAdd();
             return btn;
         });
         this.page.editorRefresh();
@@ -2368,6 +2373,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (!(btn instanceof App.ProjectPage.PathsPanel.Button)) return false;
             if (btn.panel != this) return false;
             if (!this.hasButton(btn)) return false;
+            btn.onRem();
             this.#buttons.delete(btn);
             btn.clearLinkedHandlers(this, "trigger");
             btn.clearLinkedHandlers(this, "edit");

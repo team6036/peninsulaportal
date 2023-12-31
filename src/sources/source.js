@@ -85,6 +85,7 @@ export default class Source extends util.Target {
                 node.field = field;
                 field.node = node;
             }
+            field.onAdd();
             return field;
         });
     }
@@ -93,6 +94,7 @@ export default class Source extends util.Target {
             if (!(field instanceof Source.Field)) return false;
             if (field.source != this) return false;
             if (!this.hasField(field)) return false;
+            field.onRem();
             delete this.#fields[field.path];
             if (this.buildTree) {
                 let path = field.path.split("/").filter(part => part.length > 0);

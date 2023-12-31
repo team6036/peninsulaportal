@@ -85,6 +85,7 @@ export default class StructHelper extends util.Target {
             this.#patterns[pattern.name] = pattern;
             pattern.addLinkedHandler(this, "change", () => this.post("change"));
             this.post("change");
+            pattern.onAdd();
             return pattern;
         });
     }
@@ -92,6 +93,7 @@ export default class StructHelper extends util.Target {
         return util.Target.resultingForEach(patterns, pattern => {
             if (!(pattern instanceof StructHelper.Pattern)) pattern = this.getPattern(pattern);
             if (!this.hasPattern(pattern)) return false;
+            pattern.onRem();
             delete this.#patterns[pattern.name];
             pattern.clearLinkedHandlers(this, "change");
             this.post("change");

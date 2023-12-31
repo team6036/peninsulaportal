@@ -127,6 +127,7 @@ export class Project extends core.Project {
             itm.id = id;
             itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
             this.change("addItem", null, itm);
+            itm.onAdd();
             return itm;
         });
     }
@@ -135,6 +136,7 @@ export class Project extends core.Project {
             if (id instanceof Project.Item) id = id.id;
             if (!this.hasItem(id)) return false;
             let itm = this.getItem(id);
+            itm.onRem();
             itm.clearLinkedHandlers(this, "change");
             itm.id = null;
             delete this.#items[id];
@@ -182,6 +184,7 @@ export class Project extends core.Project {
             pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
             pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+id+")."+c, f, t));
             this.change("addPath", null, pth);
+            pth.onAdd();
             return pth;
         });
     }
@@ -190,6 +193,7 @@ export class Project extends core.Project {
             if (id instanceof Project.Path) id = id.id;
             if (!this.hasPath(id)) return false;
             let pth = this.getPath(id);
+            pth.onRem();
             pth.clearLinkedHandlers(this, "change");
             pth.id = null;
             delete this.#paths[id];
