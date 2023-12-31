@@ -948,15 +948,13 @@ const MAIN = async () => {
                 await this.whenReady();
                 if (!this.hasWindow()) return;
                 let prevIsDevMode = null;
-                const checkDevConfig = async () => {
+                let prevHoliday = null;
+                const check = async () => {
                     let isDevMode = !!(await this.get("devmode"));
                     if (prevIsDevMode != isDevMode) {
                         prevIsDevMode = isDevMode;
                         this.send("win-devmode", isDevMode);
                     }
-                };
-                let prevHoliday = null;
-                const checkHoliday = async () => {
                     let holiday = await this.get("active-holiday");
                     holiday = (holiday == null) ? null : String(holiday);
                     await onHolidayState(holiday);
@@ -965,10 +963,11 @@ const MAIN = async () => {
                         this.send("win-holiday", holiday);
                     }
                 };
-                fs.watchFile(path.join(__dirname, ".config"), () => checkDevConfig());
-                fs.watchFile(path.join(this.rootManager.dataPath, "holidays", "holidays.json"), () => checkHoliday());
-                await checkDevConfig();
-                await checkHoliday();
+                fs.watchFile(path.join(__dirname, ".config"), check);
+                fs.watchFile(path.join(__dirname, ".clientconfig"), check);
+                fs.watchFile(path.join(this.rootManager.dataPath, "config.json"), check);
+                fs.watchFile(path.join(this.rootManager.dataPath, "holidays", "holidays.json"), check);
+                await check();
                 this.log("START # 2");
                 if (!this.hasWindow()) return;
                 this.log("START # 3");
@@ -3396,6 +3395,7 @@ const MAIN = async () => {
                 "active-holiday": async () => {
                     let active = (await kfs._fullholidays()).active;
                     let holidays = await kfs.holidays();
+                    if (await this.get("holiday-opt")) return null;
                     return (active in holidays) ? active : null;
                 },
                 "production": async () => {
@@ -3485,6 +3485,9 @@ const MAIN = async () => {
                 "native-theme": async () => {
                     return util.ensure((await kfs._fullclientconfig()).nativeTheme, "str", "system");
                 },
+                "holiday-opt": async () => {
+                    return !!(await kfs._fullclientconfig()).holidayOpt;
+                },
                 "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
                 "cleanup": async () => await this.getCleanup(),
             };
@@ -3509,6 +3512,7 @@ const MAIN = async () => {
                 "comp-mode": async () => await this.get("comp-mode"),
                 "theme": async () => await this.get("theme"),
                 "native-theme": async () => await this.get("native-theme"),
+                "holiday-opt": async () => await this.get("holiday-opt"),
             };
             if (k in kfs) return await kfs[k]();
             throw "§GV No possible \"getValue\" for key: "+k;
@@ -3566,8 +3570,11 @@ const MAIN = async () => {
                     await this.send("theme");
                 },
                 "native-theme": async () => {
-                    await kfs._fullclientconfig("nativeTheme", String(v)),
+                    await kfs._fullclientconfig("nativeTheme", String(v));
                     electron.nativeTheme.themeSource = await this.get("native-theme");
+                },
+                "holiday-opt": async () => {
+                    await kfs._fullclientconfig("holidayOpt", !!v);
                 },
             };
             if (k in kfs) return await kfs[k]();
@@ -3586,6 +3593,7 @@ const MAIN = async () => {
                 "assets-host": async () => await this.set("assets-host", v),
                 "socket-host": async () => await this.set("socket-host", v),
                 "comp-mode": async () => await this.set("comp-mode", v),
+                "holiday-opt": async () => await this.set("holiday-opt", v),
             };
             if (k in kfs) return await kfs[k]();
             throw "§SV No possible \"setValue\" for key: "+k;

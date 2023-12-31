@@ -179,6 +179,7 @@ export default class App extends core.App {
                         "socket-host": "str",
                         "comp-mode": "bool",
                         "holiday": "str",
+                        "holiday-opt": "bool",
                     }[elem.id];
                     let lock = false;
                     const updateValue = async () => {

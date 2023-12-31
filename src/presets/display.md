@@ -63,6 +63,13 @@
     <span>Holiday</span>
     <span class="space"></span>
     <input class="val" id="holiday" placeholder="No holiday" style="background-color:transparent;color:var(--a);text-align:right;">
+    <span style="display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:center;align-items:center;align-content:center;">
+        <label class="switch">
+            <input class="val" id="holiday-opt">
+            <span></span>
+        </label>
+        <span class="tooltip hov sx">Opt out of Holiday Fun</span>
+    </span>
 </p>
 
 Colorsheet  
