@@ -870,7 +870,7 @@ const MAIN = async () => {
                     this.on("open", url);
                 }
             });
-            if (!TEST) {
+            if (!TEST || true) {
                 let any = false;
                 for (let win of this.manager.windows) {
                     if (!win.hasWindow()) continue;
