@@ -47,8 +47,8 @@ export class App extends util.Target {
 
         this.#setupDone = false;
 
-        this.#fullscreen = false;
-        this.#devMode = false;
+        this.#fullscreen = null;
+        this.#devMode = null;
         this.#holiday = null;
 
         this.#popups = [];
@@ -384,7 +384,7 @@ export class App extends util.Target {
         if (this.fullscreen == v) return;
         this.#fullscreen = v;
         document.documentElement.style.setProperty("--fs", (v ? 1 : 0));
-        document.documentElement.style.setProperty("--LEFT", ((v || (!util.is(this.USERAGENT.os, "obj") || (this.USERAGENT.os.platform != "darwin"))) ? 0 : 80)+"px");
+        document.documentElement.style.setProperty("--LEFT", ((v || ((this.USERAGENT.os == "web") || (this.USERAGENT.os.platform != "darwin"))) ? 0 : 80)+"px");
     }
     get devMode() { return this.#devMode; }
     set devMode(v) {

@@ -6123,11 +6123,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     let yP = keys.has("KeyW") || keys.has("ArrowUp");
                     let yN = keys.has("KeyS") || keys.has("ArrowDown");
                     let zP = keys.has("Space");
-                    let zN = keys.has("ShiftRight") || keys.has("ShiftLeft");
+                    let zN = keys.has("ShiftLeft");
                     let x = xP - xN;
                     let y = yP - yN;
                     let z = zP - zN;
-                    velocity.iadd(new util.V3(x, y, z).mul(0.01));
+                    velocity.iadd(new util.V3(x, y, z).mul(keys.has("ShiftRight") ? 0.001 : 0.01));
                     velocity.imul(0.9);
                     velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));
                     this.controls.moveRight(velocity.x);
