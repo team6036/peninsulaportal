@@ -900,7 +900,7 @@ const MAIN = async () => {
                 this.stop();
             });
 
-            if (TEST) {
+            if (TEST && 0) {
                 this.window.loadFile(path.join(__dirname, "barebone-test.html"));
             } else {
                 if (this.isModal) this.window.loadFile(path.join(__dirname, "modal", this.name.substring(6).toLowerCase(), "index.html"));
