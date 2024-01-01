@@ -25,7 +25,7 @@
     --fgd: var(--v4);
 
     max-width: 100%;
-    padding: 10px;
+    padding: 5px;
 
     display: flex;
     flex-direction: column;
@@ -34,7 +34,7 @@
     align-items: stretch;
     align-content: stretch;
 
-    border-radius: 10px;
+    border-radius: 5px;
 
     font-size: 14px;
 }
@@ -1865,7 +1865,7 @@
     --bgh: var(--v2);
     --bgd: transparent;
 
-    padding: 5px;
+    padding: 0px;
 
     justify-content: flex-start;
     gap: 10px;
