@@ -81,7 +81,7 @@ const MAIN = async () => {
         user: os.userInfo(),
     };
 
-    const TEST = OS.platform == "linux";
+    const TEST = OS.platform == "linux" || 1;
     const tlog = (...a) => {
         if (!TEST) return;
         console.log("-", ...a);
@@ -870,22 +870,20 @@ const MAIN = async () => {
                     this.on("open", url);
                 }
             });
-            if (!TEST || true) {
-                let any = false;
-                for (let win of this.manager.windows) {
-                    if (!win.hasWindow()) continue;
-                    if (!win.window.webContents.isDevToolsOpened()) continue;
-                    any = true;
-                    break;
-                }
-                if (this.hasWindow() && any) this.window.webContents.openDevTools();
-                this.window.webContents.on("devtools-opened", () => {
-                    this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.openDevTools());
-                });
-                this.window.webContents.on("devtools-closed", () => {
-                    this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.closeDevTools());
-                });
+            let any = false;
+            for (let win of this.manager.windows) {
+                if (!win.hasWindow()) continue;
+                if (!win.window.webContents.isDevToolsOpened()) continue;
+                any = true;
+                break;
             }
+            if (this.hasWindow() && any) this.window.webContents.openDevTools();
+            this.window.webContents.on("devtools-opened", () => {
+                this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.openDevTools());
+            });
+            this.window.webContents.on("devtools-closed", () => {
+                this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.closeDevTools());
+            });
 
             this.window.on("enter-full-screen", () => this.send("win-fullscreen", true));
             this.window.on("leave-full-screen", () => this.send("win-fullscreen", false));
@@ -2320,8 +2318,6 @@ const MAIN = async () => {
 
         checkMenu() {
             if (this.hasWindow()) return this.window.manager.checkMenu();
-
-            if (TEST) return;
 
             let signal = new util.Target();
             signal.about = false;
