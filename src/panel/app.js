@@ -5540,27 +5540,35 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             if (!this.hasPose()) return;
             const renders = this.#renders;
             this.pose.enable();
-            if (this.value.length % 2 == 0) {
+            if (this.value.length % 3 == 0) {
+                let l = this.value.length / 3;
+                while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new core.Odometry2d.Robot(this.tab.odometry.render)));
+                while (renders.length > l) this.tab.odometry.render.remRender(renders.pop());
+                let color = this.pose.color.substring(2);
+                let colorH = color+5;
+                for (let i = 0; i < l; i++) {
+                    let render = renders[i];
+                    render.color = color;
+                    render.colorH = colorH;
+                    render.alpha = this.pose.isGhost ? 0.5 : 1;
+                    render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
+                    render.pos = convertPos(this.value[3*i+0], this.value[3*i+1]);
+                    render.heading = convertAngle(this.value[3*i+2]);
+                    render.type = this.pose.type;
+                }
+                this.pose.eDisplayType.style.display = "";
+            } else if (this.value.length % 2 == 0) {
                 let l = Math.max(0, (this.value.length/2) - 1);
                 while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
                 while (renders.length > l) this.tab.odometry.render.remRender(renders.pop());
-                renders.forEach((render, i) => {
+                for (let i = 0; i < l; i++) {
+                    let render = renders[i];
                     render.a = convertPos(this.value[i*2+0], this.value[i*2+1]);
                     render.b = convertPos(this.value[i*2+2], this.value[i*2+3]);
                     render.color = this.pose.color;
                     render.alpha = this.pose.isGhost ? 0.5 : 1;
-                });
+                }
                 this.pose.eDisplayType.style.display = "none";
-            } else if (this.value.length == 3) {
-                let render = renders[0];
-                render.color = this.pose.color.substring(2);
-                render.colorH = this.pose.color.substring(2)+5;
-                render.alpha = this.pose.isGhost ? 0.5 : 1;
-                render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
-                render.pos = convertPos(this.value[0], this.value[1]);
-                render.heading = convertAngle(this.value[2]);
-                render.type = this.pose.type;
-                this.pose.eDisplayType.style.display = "";
             } else this.pose.disable();
         });
     }
@@ -5579,20 +5587,13 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
 
     destroy() {
         if (!this.hasTab()) return;
-        this.#renders.forEach(render => {
-            this.tab.odometry.render.remRender(render);
-        });
+        this.#renders.forEach(render => this.tab.odometry.render.remRender(render));
         this.#renders = [];
     }
     create() {
         if (!this.hasTab()) return;
         if (!this.hasPose()) return;
-        if (this.value.length % 2 == 0) {
-            this.#renders = [];
-        } else if (this.value.length == 3) {
-            this.#renders = [this.tab.odometry.render.addRender(new core.Odometry2d.Robot(this.tab.odometry.render))];
-            this.#renders[0].showVelocity = false;
-        }
+        this.#renders = [];
     }
 };
 const preloadedFields = {};
@@ -6010,7 +6011,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
             if (this.theField) {
                 this.theField.scale.x = this.origin.startsWith("blue") ? 1 : -1;
-                this.theField.scale.z = this.origin.endsWith("+") ? 1 : -1;
+                if ([this.axisScene, this.axisSceneSized].includes(this.field)) this.theField.scale.y = this.origin.endsWith("+") ? 1 : -1;
+                else this.theField.scale.z = this.origin.endsWith("+") ? 1 : -1;
             }
             
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
@@ -6601,15 +6603,13 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
 
         let loadTimer = 0, loadRobot = 0;
 
-        let isGhost = null, isSolid = null, theObject = null;
-
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             if (!this.hasThree()) return;
             let color = new util.Color(this.pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.pose.color) : this.pose.color);
             this.pose.enable();
-            if (this.value.length == 3 || this.value.length == 7) {
+            if (this.value.length % 7 == 0 || this.value.length % 3 == 0) {
                 if ((util.getTime()-loadTimer > 1000 || loadRobot != this.pose.type) && !this.pose.type.startsWith("§") && (this.pose.type in robotModels) && !(this.pose.type in preloadedRobots)) {
                     loadTimer = util.getTime();
                     const robot = this.pose.type;
@@ -6642,83 +6642,66 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         preloadedRobots[robot] = obj;
                     }, null, err => {});
                 }
-                this.object = this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type];
-                if (theObject != this.theObject) {
-                    theObject = this.theObject;
-                    if (theObject)
-                        theObject.traverse(obj => {
-                            if (!obj.isMesh) return;
-                            if (!(obj.material instanceof THREE.Material)) return;
-                            obj.material._transparent = obj.material.transparent;
-                            obj.material._opacity = obj.material.opacity;
-                            obj.material._color = obj.material.color.clone();
-                        });
-                    isGhost = isSolid = null;
+                let parentObject = this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type];
+                let type = (this.value.length % 7 == 0) ? 7 : 3;
+                if (!this.hasObject() || this.object._type != type) {
+                    this.object = new THREE.Group();
+                    this.object._type = type;
                 }
-                if (theObject) {
-                    let changed = false;
-                    if (isGhost != this.pose.isGhost) {
-                        isGhost = this.pose.isGhost;
-                        changed = true;
-                    }
-                    if (isSolid != this.pose.isSolid) {
-                        isSolid = this.pose.isSolid;
-                        changed = true;
-                    }
-                    if (changed)
-                        theObject.traverse(obj => {
-                            if (!obj.isMesh) return;
-                            if (!(obj.material instanceof THREE.Material)) return;
-                            obj.material.transparent = isGhost ? true : obj.material._transparent;
-                            obj.material.opacity = isGhost ? 0.5*obj.material._opacity : obj.material._opacity;
-                            obj.material.color.set(isSolid ? color.toHex(false) : obj.material._color);
-                        });
+                let l = parentObject ? (this.value.length / type) : 0;
+                while (this.theObject.children.length < l) {
+                    let theObject = parentObject.clone();
+                    this.theObject.add(theObject);
+                    theObject.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        if (!(obj.material instanceof THREE.Material)) return;
+                        obj.material = obj.material.clone();
+                        obj.material._transparent = obj.material.transparent;
+                        obj.material._opacity = obj.material.opacity;
+                        obj.material._color = obj.material.color.clone();
+                    });
+                    theObject.isGhost = theObject.isSolid = null;
                 }
-                if (this.hasObject()) {
-                    if (this.value.length == 3) {
-                        this.theObject.position.set(
-                            (this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
-                            (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
+                while (this.theObject.children.length > l) {
+                    let theObject = this.theObject.children.at(-1);
+                    this.theObject.remove(theObject);
+                    theObject.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        obj.geometry.dispose();
+                        obj.material.dispose();
+                    });
+                }
+                for (let i = 0; i < l; i++) {
+                    let theObject = this.theObject.children[i];
+                    if (type == 7) {
+                        theObject.position.set(
+                            (this.value[i*type+0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
+                            (this.value[i*type+1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
+                            (this.value[i*type+2] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
+                        );
+                        let xyzw = this.value.slice(i*type+3, i*type+7);
+                        xyzw.push(xyzw.shift());
+                        theObject.quaternion.copy(new THREE.Quaternion(...xyzw));
+                    } else {
+                        theObject.position.set(
+                            (this.value[i*type+0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
+                            (this.value[i*type+1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
                             (this.offsetZ/100),
                         );
-                        this.theObject.rotation.set(0, 0, this.value[2] * (this.tab.isDegrees ? (Math.PI/180) : 1), "XYZ");
-                    } else {
-                        this.theObject.position.set(
-                            (this.value[0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
-                            (this.value[1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
-                            (this.value[2] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
-                        );
-                        let xyzw = this.value.slice(3);
-                        xyzw.push(xyzw.shift());
-                        this.theObject.quaternion.copy(new THREE.Quaternion(...xyzw));
+                        theObject.rotation.set(0, 0, this.value[i*type+2] * (this.tab.isDegrees ? (Math.PI/180) : 1), "XYZ");
                     }
                     if (this.pose.type.startsWith("§")) {
-                        let typefs = {
-                            "§node": () => {
-                                this.theObject.material.color.set(color.toHex(false));
-                            },
-                            "§cube": () => {
-                                this.theObject.material.color.set(color.toHex(false));
-                            },
-                            "§arrow": () => {
-                                this.theObject.traverse(obj => {
-                                    if (!obj.isMesh) return;
-                                    obj.material.color.set(color.toHex(false));
-                                });
-                            },
-                            "§arrow+x": () => typefs["§arrow"](),
-                            "§arrow-x": () => typefs["§arrow"](),
-                            "§arrow+y": () => typefs["§arrow"](),
-                            "§arrow-y": () => typefs["§arrow"](),
-                            "§arrow+z": () => typefs["§arrow"](),
-                            "§arrow-z": () => typefs["§arrow"](),
-                        };
-                        if (this.pose.type in typefs) typefs[this.pose.type]();
+                        if (this.pose.type != "§axes") {
+                            theObject.traverse(obj => {
+                                if (!obj.isMesh) return;
+                                obj.material.color.set(color.toHex(false));
+                            });
+                        }
                     }
                 }
             } else {
-                this.object = null;
                 this.pose.disable();
+                this.object = null;
             }
         });
     }
