@@ -1860,6 +1860,9 @@
     align-items: stretch;
     align-content: center;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item.disabled {
+    opacity: 50%;
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display {
     --bg: transparent;
     --bgh: var(--v2);
@@ -1877,6 +1880,9 @@
 
     text-align: left;
     font-size: 14px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item.disabled > button.display > div {
+    text-decoration: line-through var(--v8-8) 2px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > button {
     --bg: transparent;

@@ -3909,18 +3909,19 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 vars.forEach(v => {
                     if (!v.isShown) return;
                     let node = source.tree.lookup(v.path);
-                    if (!node) return;
-                    if (!node.hasField()) return;
-                    if (!node.field.isJustPrimitive) return;
+                    if (!node) return v.disable();
+                    if (!node.hasField()) return v.disable();
+                    if (!node.field.isJustPrimitive) return v.disable();
                     let log = node.field.getRange(...graphRange);
-                    if (!util.is(log, "arr")) return;
+                    if (!util.is(log, "arr")) return v.disable();
                     let start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
                     if (stop != null) log.push({ ts: graphRange[1], v: stop });
-                    if (log.length <= 0) return;
+                    if (log.length <= 0) return v.disable();
                     logs[v.path] = log;
                     nodes[v.path] = node;
-                    if (!["double", "float", "int"].includes(node.field.type)) return;
+                    if (!["double", "float", "int"].includes(node.field.type)) return v.disable();
+                    v.enable();
                     let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
                     if (range[0] == null || range[1] == null) return range = subrange;
                     range[0] = Math.min(range[0], subrange[0]);
@@ -4592,6 +4593,18 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
 
+    get disabled() { return this.elem.classList.contains("disabled"); }
+    set disabled(v) {
+        v = !!v;
+        if (this.disabled == v) return;
+        if (v) this.elem.classList.add("disabled");
+        else this.elem.classList.remove("disabled");
+    }
+    get enabled() { return !this.enabled; }
+    set enabled(v) { this.disabled = !v; }
+    disable() { return this.disabled = true; }
+    enable() { return this.enabled = true; }
+
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             path: this.path,
@@ -4966,6 +4979,18 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     set isClosed(v) { this.isOpen = !v; }
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
+
+    get disabled() { return this.elem.classList.contains("disabled"); }
+    set disabled(v) {
+        v = !!v;
+        if (this.disabled == v) return;
+        if (v) this.elem.classList.add("disabled");
+        else this.elem.classList.remove("disabled");
+    }
+    get enabled() { return !this.enabled; }
+    set enabled(v) { this.disabled = !v; }
+    disable() { return this.disabled = true; }
+    enable() { return this.enabled = true; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -5514,6 +5539,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             const renders = this.#renders;
+            this.pose.enable();
             if (this.value.length % 2 == 0) {
                 let l = Math.max(0, (this.value.length/2) - 1);
                 while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
@@ -5535,7 +5561,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                 render.heading = convertAngle(this.value[2]);
                 render.type = this.pose.type;
                 this.pose.eDisplayType.style.display = "";
-            }
+            } else this.pose.disable();
         });
     }
 
@@ -6582,6 +6608,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             if (!this.hasPose()) return;
             if (!this.hasThree()) return;
             let color = new util.Color(this.pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.pose.color) : this.pose.color);
+            this.pose.enable();
             if (this.value.length == 3 || this.value.length == 7) {
                 if ((util.getTime()-loadTimer > 1000 || loadRobot != this.pose.type) && !this.pose.type.startsWith("§") && (this.pose.type in robotModels) && !(this.pose.type in preloadedRobots)) {
                     loadTimer = util.getTime();
@@ -6689,7 +6716,10 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         if (this.pose.type in typefs) typefs[this.pose.type]();
                     }
                 }
-            } else this.object = null;
+            } else {
+                this.object = null;
+                this.pose.disable();
+            }
         });
     }
 
