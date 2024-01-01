@@ -5982,6 +5982,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             
             this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
             this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
+            if (this.theField) {
+                this.theField.scale.x = this.origin.startsWith("blue") ? 1 : -1;
+                this.theField.scale.z = this.origin.endsWith("+") ? 1 : -1;
+            }
             
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
@@ -6231,12 +6235,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get axisSceneSized() { return this.#axisSceneSized; }
 
     get field() { return this.#field; }
+    get theField() { return this.#theField; }
     set field(v) {
         v = (v instanceof THREE.Object3D) ? v : null;
         if (this.field == v) return;
         if (this.hasField()) {
-            this.wpilibGroup.remove(this.#theField);
-            this.#theField.traverse(obj => {
+            this.wpilibGroup.remove(this.theField);
+            this.theField.traverse(obj => {
                 if (!obj.isMesh) return;
                 obj.geometry.dispose();
                 obj.material.dispose();
@@ -6247,8 +6252,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         if (this.hasField()) {
             let isBuiltin = [this.axisScene, this.axisSceneSized].includes(this.field);
             this.#theField = isBuiltin ? this.field : this.field.clone();
-            if (!isBuiltin) this.#theField.quaternion.copy(THREE2WPILIB);
-            this.wpilibGroup.add(this.#theField);
+            if (!isBuiltin) this.theField.quaternion.copy(THREE2WPILIB);
+            this.wpilibGroup.add(this.theField);
         }
     }
     hasField() { return !!this.field; }
