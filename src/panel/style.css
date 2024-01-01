@@ -814,7 +814,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search {
     overflow: hidden;
 
-    min-height: 36.5px;
+    min-height: 26.5px;
 
     display: flex;
     flex-direction: row;
@@ -824,10 +824,10 @@
     align-content: center;
 
     background-color: var(--v2-8);
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags {
-    padding: 10px;
+    padding: 5px;
 
     display: flex;
     flex-direction: row;
@@ -838,7 +838,7 @@
     gap: 10px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags:empty {
-    padding: 5px;
+    padding: 2.5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags > .item {
     display: flex;
@@ -856,7 +856,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > input {
     flex-basis: 100%;
 
-    padding: 10px 0px;
+    padding: 5px 0px;
 
     background-color: transparent;
     border-radius: 0px;
@@ -877,7 +877,7 @@
     align-content: center;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .header {
-    padding: 5px 10px;
+    padding: 5px;
 
     color: var(--v4);
 
@@ -905,7 +905,7 @@
     --bgh: var(--v2);
     --bgd: transparent;
 
-    padding: 10px;
+    padding: 5px;
 
     display: flex;
     flex-direction: row;
@@ -915,7 +915,7 @@
     align-content: center;
     gap: 5px;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .item > button > ion-icon {
     display: flex;
