@@ -1679,7 +1679,6 @@ App.Menu = class AppMenu extends util.Target {
         return itm;
     }
     addItem(...itms) {
-        // return util.Target.resultingForEach(itms, itm => this.insertItem(itm, this.items.length));
         let r = util.Target.resultingForEach(itms, itm => {
             if (!(itm instanceof App.Menu.Item)) return false;
             if (this.hasItem(itm)) return false;
@@ -3240,7 +3239,11 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         let projects = this.app.projects.map(id => this.app.getProject(id));
         if (projects.length > 0) {
             projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
-            this.addButton(projects.map(project => new this.constructor.Button(project)));
+            this.addButton(projects.map(itm => {
+                let btn = new this.constructor.Button(itm.item);
+                itm.matches.forEach(match => btn.select(match.indices));
+                return btn;
+            }));
         } else this.eEmpty.style.display = "block";
     }
 
@@ -3341,6 +3344,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     #project;
 
     #time;
+    #indices;
 
     #elemList;
     #eListIcon;
@@ -3357,6 +3361,9 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         super();
 
         this.#project = null;
+
+        this.#time = null;
+        this.#indices = null;
 
         let eNav;
 
@@ -3452,7 +3459,42 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     hasProject() { return !!this.project; }
 
     get name() { return this.eListName.textContent; }
-    set name(v) { this.eListName.textContent = this.eGridName.textContent = v; }
+    set name(v) {
+        this.eListName.textContent = this.eGridName.textContent = v;
+        v = this.name;
+        let indices = this.#indices;
+        if (indices == null) return;
+        let chunks = [];
+        indices.forEach((range, i) => {
+            chunks.push(v.substring((i > 0) ? indices[i-1][1] : 0, range[0]));
+            chunks.push(v.substring(...range));
+        });
+        chunks.push(v.substring((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
+        this.eListName.innerHTML = this.eGridName.innerHTML = "";
+        chunks.forEach((chunk, i) => {
+            let elem1 = document.createElement("span");
+            let elem2 = document.createElement("span");
+            this.eListName.appendChild(elem1);
+            this.eGridName.appendChild(elem2);
+            elem1.textContent = elem2.textContent = chunk;
+            elem1.style.color = elem2.style.color = (i%2 == 0) ? "var(--v5)" : "";
+            elem1.style.fontWeight = elem2.style.fontWeight = (i%2 == 0) ? "" : "bold";
+        });
+    }
+    select(indices) {
+        if (indices != null) {
+            indices = util.ensure(indices, "arr").map(range => util.ensure(range, "arr").map(v => util.ensure(v, "int")));
+            indices = indices.filter(range => range.length == 2).map(range => [range[0], range[1]+1]).sort((a, b) => a[0]-b[0]);
+            let indices2 = [];
+            indices.forEach(range => {
+                if (indices2.length <= 0 || range[0] > indices2.at(-1)[1])
+                    return indices2.push(range);
+                indices2.at(-1)[1] = range[1];
+            });
+            this.#indices = indices2;
+        }
+        this.name = this.name;
+    }
 
     get time() { return this.#time; }
     set time(v) {

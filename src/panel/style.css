@@ -65,22 +65,16 @@
 .browsernode > button.display > .main > .name {
     min-width: max-content;
 }
-.browser .node > button.display > .main > .name > span,
-.browsernode > button.display > .main > .name > span,
 .browser .node > button.display > .main > .tag,
 .browsernode > button.display > .main > .tag {
     color: var(--v5);
 
     transition: color var(--t);
 }
-.browser .node > button.display:not(:disabled):hover > .main > .name > span,
-.browsernode > button.display:not(:disabled):hover > .main > .name > span,
 .browser .node > button.display:not(:disabled):hover > .main > .tag,
 .browsernode > button.display:not(:disabled):hover > .main > .tag {
     color: var(--v7);
 }
-.browser .node > button.display:disabled > .main > .name > span,
-.browsernode > button.display:disabled > .main > .name > span,
 .browser .node > button.display:disabled > .main > .tag,
 .browsernode > button.display:disabled > .main > .tag {
     color: var(--v3);
