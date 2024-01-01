@@ -137,7 +137,7 @@ export class App extends util.Target {
                         let t1 = util.getTime();
                         if (t0 == null || error) return t0 = t1;
                         try {
-                            this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
+                            if (this.eMount.classList.contains("runinfo")) this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
                             fpst += t1-t0; fpsn++;
                             if (fpst >= 1000) {
                                 fpst -= 1000;
