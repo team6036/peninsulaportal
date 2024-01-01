@@ -1,11 +1,13 @@
 const { ipcRenderer, contextBridge } = require("electron");
 
-contextBridge.exposeInMainWorld("ver", {
-    node: () => process.versions.node,
-    chrome: () => process.versions.chrome,
-    electron: () => process.versions.electron,
+contextBridge.exposeInMainWorld("ver", async () => {
+    return {
+        os: await ipcRenderer.invoke("os"),
 
-    os: () => ipcRenderer.invoke("os"),
+        node: process.versions.node,
+        chrome: process.versions.chrome,
+        electron: process.versions.electron,
+    };
 });
 
 contextBridge.exposeInMainWorld("api", {

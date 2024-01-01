@@ -3,7 +3,7 @@ import { V } from "./util.mjs";
 
 
 export class App extends util.Target {
-    #ABOUT;
+    #USERAGENT;
 
     #setupDone;
 
@@ -43,7 +43,7 @@ export class App extends util.Target {
     constructor() {
         super();
 
-        this.#ABOUT = {};
+        this.#USERAGENT = {};
 
         this.#setupDone = false;
 
@@ -80,25 +80,25 @@ export class App extends util.Target {
         });
 
         this.addHandler("start", async () => {
-            let os = util.ensure(await window.ver.os(), "obj");
-            os.platform = util.ensure(os.platform, "str", "?");
-            os.arch = util.ensure(os.arch, "str", "?");
-            os.cpus = util.ensure(os.cpus, "arr").map(cpu => {
-                cpu = util.ensure(cpu, "obj");
-                cpu.model = util.ensure(cpu.model, "str", "?");
-                return cpu;
-            });
+            this.#USERAGENT = util.ensure(await window.ver(), "obj");
             let app;
             try { app = await window.api.get("version"); }
             catch (e) { app = util.stringifyError(e); }
-            this.#ABOUT = {
-                node: String(window.ver.node()),
-                chrome: String(window.ver.chrome()),
-                electron: String(window.ver.electron()),
-                os: os,
-                app: String(app),
-            };
-            this.menu = App.Menu.buildMenu(this.ABOUT.os.platform);
+            this.USERAGENT.app = String(app);
+            if (this.USERAGENT.os != "web") {
+                let os = this.USERAGENT.os = util.ensure(this.USERAGENT.os, "obj");
+                os.platform = util.ensure(os.platform, "str", "?");
+                os.arch = util.ensure(os.arch, "str", "?");
+                os.cpus = util.ensure(os.cpus, "arr").map(cpu => {
+                    cpu = util.ensure(cpu, "obj");
+                    cpu.model = util.ensure(cpu.model, "str", "?");
+                    return cpu;
+                });
+                this.USERAGENT.node = String(this.USERAGENT.node);
+                this.USERAGENT.chrome = String(this.USERAGENT.chrome);
+                this.USERAGENT.electron = String(this.USERAGENT.electron);
+            }
+            this.menu = App.Menu.buildMenu(this.USERAGENT);
             let id = setInterval(() => {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
@@ -177,23 +177,32 @@ export class App extends util.Target {
     start() { this.post("start"); }
     update(delta) { this.post("update", delta); }
 
-    get ABOUT() { return this.#ABOUT; }
+    get USERAGENT() { return this.#USERAGENT; }
 
-    getAbout() {
-        let about = this.ABOUT;
-        let lines = new Array(5).fill("");
-        lines[0] = "NodeJS: "+about.node;
-        lines[1] = "Chrome: "+about.chrome;
-        lines[2] = "Electron: "+about.electron;
-        lines[3] = "OS: "+about.os.platform+" "+about.os.arch;
-        if (about.os.cpus.length > 0) {
-            let models = [...new Set(about.os.cpus.map(obj => obj.model))];
-            lines[3] += " / ";
-            if (models.length > 1) lines[3] += "CPUS: "+models.join(", ");
-            else lines[3] += models[0];
+    getUserAgent() {
+        let userAgent = this.USERAGENT;
+        if (userAgent.os == "web") {
+            return [
+                "BROWSER",
+                "Agent: "+navigator.userAgent,
+                "App: "+userAgent.app,
+            ];
         }
-        lines[4] = "App: "+about.app;
-        return lines;
+        let cpus = "";
+        if (userAgent.os.cpus.length > 0) {
+            cpus += " / ";
+            let models = [...new Set(userAgent.os.cpus.map(obj => obj.model))];
+            if (models.length > 1) cpus += "CPUS: "+models.join(", ");
+            else cpus += models[0];
+        }
+        return [
+            "STANDALONE",
+            "OS: "+userAgent.os.platform+" "+userAgent.os.arch+cpus,
+            "Node: "+userAgent.node,
+            "Chrome: "+userAgent.chrome,
+            "Electron: "+userAgent.electron,
+            "App: "+userAgent.app,
+        ];
     }
 
     static async createMarkdown(text, signal, pth="") {
@@ -375,7 +384,7 @@ export class App extends util.Target {
         if (this.fullscreen == v) return;
         this.#fullscreen = v;
         document.documentElement.style.setProperty("--fs", (v ? 1 : 0));
-        document.documentElement.style.setProperty("--LEFT", ((v || this.ABOUT.os.platform != "darwin") ? 0 : 80)+"px");
+        document.documentElement.style.setProperty("--LEFT", ((v || (!util.is(this.USERAGENT.os, "obj") || (this.USERAGENT.os.platform != "darwin"))) ? 0 : 80)+"px");
     }
     get devMode() { return this.#devMode; }
     set devMode(v) {
@@ -454,7 +463,7 @@ export class App extends util.Target {
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.title = "Peninsula "+util.capitalize(name);
-            pop.infos = [this.getAbout().join("\n")];
+            pop.infos = [this.getUserAgent().join("\n")];
             let r = await pop.whenResult();
             if (r) return;
             this.post("cmd-documentation");
@@ -660,9 +669,9 @@ export class App extends util.Target {
         this.devMode = await window.api.get("devmode");
         this.holiday = await window.api.get("active-holiday");
 
-        document.documentElement.style.setProperty("--WIN32", ((this.ABOUT.os.platform == "win32") ? 1 : 0));
-        document.documentElement.style.setProperty("--DARWIN", ((this.ABOUT.os.platform == "darwin") ? 1 : 0));
-        document.documentElement.style.setProperty("--LINUX", ((this.ABOUT.os.platform == "linux") ? 1 : 0));
+        document.documentElement.style.setProperty("--WIN32", ((util.is(this.USERAGENT.os, "obj") && (this.USERAGENT.os.platform == "win32")) ? 1 : 0));
+        document.documentElement.style.setProperty("--DARWIN", ((util.is(this.USERAGENT.os, "obj") && (this.USERAGENT.os.platform == "darwin")) ? 1 : 0));
+        document.documentElement.style.setProperty("--LINUX", ((util.is(this.USERAGENT.os, "obj") && (this.USERAGENT.os.platform == "linux")) ? 1 : 0));
 
         let themeUpdating = false;
         const themeUpdate = async () => {
@@ -1801,7 +1810,7 @@ App.Menu = class AppMenu extends util.Target {
         return [itm];
     }
     static buildDevToolsItems() { return this.buildRoleItems("toggleDevTools"); }
-    static buildMainMenu() {
+    static buildMainMenu(userAgent) {
         let menu = new App.Menu();
         let itms = [
             ...this.buildAboutItems(),
@@ -1815,7 +1824,7 @@ App.Menu = class AppMenu extends util.Target {
         itms.forEach(itm => menu.addItem(itm));
         return menu;
     }
-    static buildFileMenu() {
+    static buildFileMenu(userAgent) {
         let menu = new App.Menu();
         let itms = [
             ...this.buildReloadItems(),
@@ -1826,7 +1835,7 @@ App.Menu = class AppMenu extends util.Target {
         itms.forEach(itm => menu.addItem(itm));
         return menu;
     }
-    static buildEditMenu() {
+    static buildEditMenu(userAgent) {
         let menu = new App.Menu();
         let itms = [
             ...this.buildUndoRedoItems(),
@@ -1836,7 +1845,7 @@ App.Menu = class AppMenu extends util.Target {
         itms.forEach(itm => menu.addItem(itm));
         return menu;
     }
-    static buildViewMenu() {
+    static buildViewMenu(userAgent) {
         let menu = new App.Menu();
         let itms = [
             ...this.buildFullscreenItems(),
@@ -1844,17 +1853,19 @@ App.Menu = class AppMenu extends util.Target {
         itms.forEach(itm => menu.addItem(itm));
         return menu;
     }
-    static buildWindowMenu(platform) {
+    static buildWindowMenu(userAgent) {
+        userAgent = util.ensure(userAgent, "obj");
         let menu = new App.Menu();
         let itms = [
             ...this.buildWindowItems(),
             ...this.buildDevToolsItems(),
         ];
-        if (platform == "darwin") itms.splice(2, 0, new App.Menu.Divider(), ...this.buildFrontItems(), new App.Menu.Divider());
+        if (util.is(userAgent.os, "obj") && (userAgent.os.platform == "darwin"))
+            itms.splice(2, 0, new App.Menu.Divider(), ...this.buildFrontItems(), new App.Menu.Divider());
         itms.forEach(itm => menu.addItem(itm));
         return menu;
     }
-    static buildHelpMenu() {
+    static buildHelpMenu(userAgent) {
         let menu = new App.Menu();
         let itms = [
             ...this.buildHelpItems(),
@@ -1862,14 +1873,14 @@ App.Menu = class AppMenu extends util.Target {
         itms.forEach(itm => menu.addItem(itm));
         return menu;
     }
-    static buildMenu(platform) {
+    static buildMenu(userAgent) {
         let menu = new App.Menu();
         let menus = [
-            this.buildFileMenu(),
-            this.buildEditMenu(),
-            this.buildViewMenu(),
-            this.buildWindowMenu(platform),
-            this.buildHelpMenu(),
+            this.buildFileMenu(userAgent),
+            this.buildEditMenu(userAgent),
+            this.buildViewMenu(userAgent),
+            this.buildWindowMenu(userAgent),
+            this.buildHelpMenu(userAgent),
         ];
         menus.forEach((submenu, i) => {
             let name = ["file", "edit", "view", "window", "help"][i];
@@ -1881,14 +1892,14 @@ App.Menu = class AppMenu extends util.Target {
         });
         return menu;
     }
-    static buildWholeMenu(name, platform) {
+    static buildWholeMenu(name, userAgent) {
         name = String(name);
         let menu = new App.Menu();
         let itm = new App.Menu.item((name.length > 0) ? name : "Peninsula", "navigate");
         itm.id = "menu:main";
         this.buildMainMenu().items.forEach(subitm => itm.menu.addItem(subitm));
         menu.addItem(itm);
-        this.buildMenu(platform).items.forEach(itm => menu.addItem(itm));
+        this.buildMenu(userAgent).items.forEach(itm => menu.addItem(itm));
         return menu;
     }
 };
@@ -2532,7 +2543,8 @@ export class AppFeature extends App {
             this.eFeatureStyle.href = "../style-feature.css";
 
             const checkMinWidth = async () => {
-                let w = (this.fullscreen || this.ABOUT.os.platform != "darwin") ? 0 : 80;
+                let w = getComputedStyle(document.body).getPropertyValue("--LEFT");
+                w = util.ensure(parseFloat(w.slice(0, w.length-2)), "num");
                 Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)")).forEach(elem => (w += elem.getBoundingClientRect().width));
                 await window.api.set("min-width", w);
             };
