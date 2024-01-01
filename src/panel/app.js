@@ -4671,10 +4671,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 },
                 o: () => {
                     elem.classList.add("options");
-                    let header = document.createElement("div");
-                    elem.appendChild(header);
-                    header.classList.add("header");
-                    header.textContent = "View";
                 },
             };
             if (id in idfs) idfs[id]();
@@ -5140,11 +5136,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 this.robotH = v*(this.isMeters ? 100 : 1);
             }
         });
-        let eNav;
+
+        let eNav, header;
         const eOptions = this.getEOptionSection("o");
-        let last = Array.from(eOptions.children).at(-1);
+
         eNav = document.createElement("div");
-        eOptions.insertBefore(eNav, last);
+        eOptions.appendChild(eNav);
         eNav.classList.add("nav");
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
@@ -5160,8 +5157,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             e.stopPropagation();
             this.isCentimeters = true;
         });
+
         eNav = document.createElement("div");
-        eOptions.insertBefore(eNav, last);
+        eOptions.appendChild(eNav);
         eNav.classList.add("nav");
         this.#eUnitsDegrees = document.createElement("button");
         eNav.appendChild(this.eUnitsDegrees);
@@ -5177,6 +5175,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             e.stopPropagation();
             this.isRadians = true;
         });
+
+        header = document.createElement("div");
+        eOptions.appendChild(header);
+        header.classList.add("header");
+        header.textContent = "Origin";
+
         eNav = document.createElement("div");
         eOptions.appendChild(eNav);
         eNav.classList.add("nav");
@@ -5195,6 +5199,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.origin = "blue-";
         });
         this.eOriginBluePos.style.color = this.eOriginBlueNeg.style.color = "var(--cb)";
+
         eNav = document.createElement("div");
         eOptions.appendChild(eNav);
         eNav.classList.add("nav");
@@ -5583,6 +5588,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #isOrbit;
     #isMeters;
     #isDegrees;
+    #origin;
 
     #eViewProjection;
     #eViewIsometric;
@@ -5592,6 +5598,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #eUnitsCentimeters;
     #eUnitsDegrees;
     #eUnitsRadians;
+    #eOriginBluePos;
+    #eOriginBlueNeg;
+    #eOriginRedPos;
+    #eOriginRedNeg;
     #eCameraPosXInput;
     #eCameraPosYInput;
     #eCameraPosZInput;
@@ -5712,14 +5722,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#isOrbit = null;
         this.#isMeters = null;
         this.#isDegrees = null;
+        this.#origin = "blue+";
 
         const eField = this.getEOptionSection("f");
-        let eNav;
+        let eNav, header;
         const eOptions = this.getEOptionSection("o");
-        let last = Array.from(eOptions.children).at(-1);
 
         eNav = document.createElement("div");
-        eOptions.insertBefore(eNav, last);
+        eOptions.appendChild(eNav);
         eNav.classList.add("nav");
         this.#eViewProjection = document.createElement("button");
         eNav.appendChild(this.eViewProjection);
@@ -5737,7 +5747,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         });
 
         eNav = document.createElement("div");
-        eOptions.insertBefore(eNav, last);
+        eOptions.appendChild(eNav);
         eNav.classList.add("nav");
         this.#eViewOrbit = document.createElement("button");
         eNav.appendChild(this.eViewOrbit);
@@ -5755,7 +5765,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         });
 
         eNav = document.createElement("div");
-        eOptions.insertBefore(eNav, last);
+        eOptions.appendChild(eNav);
         eNav.classList.add("nav");
         this.#eUnitsMeters = document.createElement("button");
         eNav.appendChild(this.eUnitsMeters);
@@ -5773,7 +5783,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         });
 
         eNav = document.createElement("div");
-        eOptions.insertBefore(eNav, last);
+        eOptions.appendChild(eNav);
         eNav.classList.add("nav");
         this.#eUnitsDegrees = document.createElement("button");
         eNav.appendChild(this.eUnitsDegrees);
@@ -5789,6 +5799,54 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             e.stopPropagation();
             this.isRadians = true;
         });
+
+        header = document.createElement("div");
+        eOptions.appendChild(header);
+        header.classList.add("header");
+        header.textContent = "Origin";
+
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eOriginBluePos = document.createElement("button");
+        eNav.appendChild(this.eOriginBluePos);
+        this.eOriginBluePos.textContent = "+Blue";
+        this.eOriginBluePos.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "blue+";
+        });
+        this.#eOriginBlueNeg = document.createElement("button");
+        eNav.appendChild(this.eOriginBlueNeg);
+        this.eOriginBlueNeg.textContent = "-Blue";
+        this.eOriginBlueNeg.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "blue-";
+        });
+        this.eOriginBluePos.style.color = this.eOriginBlueNeg.style.color = "var(--cb)";
+
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eOriginRedPos = document.createElement("button");
+        eNav.appendChild(this.eOriginRedPos);
+        this.eOriginRedPos.textContent = "+Red";
+        this.eOriginRedPos.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "red+";
+        });
+        this.#eOriginRedNeg = document.createElement("button");
+        eNav.appendChild(this.eOriginRedNeg);
+        this.eOriginRedNeg.textContent = "-Red";
+        this.eOriginRedNeg.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "red-";
+        });
+        this.eOriginRedPos.style.color = this.eOriginRedNeg.style.color = "var(--cr)";
+
+        header = document.createElement("div");
+        eOptions.appendChild(header);
+        header.classList.add("header");
+        header.textContent = "View";
 
         let infoUnits = [];
         let info = document.createElement("div");
@@ -5838,24 +5896,24 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             }
         });
 
-        if (a.length <= 0 || [4, 5, 6].includes(a.length) || a.length > 7) a = [null];
+        if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 8) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
+            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.origin, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry3dTab(...a);
-                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
+                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.origin, a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.optionState];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.origin, a.optionState];
             else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 0.5];
-        if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, a[2]];
+        if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, "blue+", a[2]];
 
-        [this.poses, this.template, this.isProjection, this.isOrbit, this.isMeters, this.isDegrees, this.optionState] = a;
+        [this.poses, this.template, this.isProjection, this.isOrbit, this.isMeters, this.isDegrees, this.origin, this.optionState] = a;
 
         let templates = {};
         let templateModels = {};
@@ -5906,6 +5964,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             else this.eUnitsDegrees.classList.remove("this");
             if (this.isRadians) this.eUnitsRadians.classList.add("this");
             else this.eUnitsRadians.classList.remove("this");
+            if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
+            else this.eOriginBluePos.classList.remove("this");
+            if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
+            else this.eOriginBlueNeg.classList.remove("this");
+            if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
+            else this.eOriginRedPos.classList.remove("this");
+            if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
+            else this.eOriginRedNeg.classList.remove("this");
             infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
             if (document.activeElement != this.eCameraPosXInput)
                 this.eCameraPosXInput.value = Math.round((this.camera.position.x * (this.isMeters ? 1 : 100))*10000)/10000;
@@ -5913,6 +5979,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.eCameraPosYInput.value = Math.round((this.camera.position.y * (this.isMeters ? 1 : 100))*10000)/10000;
             if (document.activeElement != this.eCameraPosZInput)
                 this.eCameraPosZInput.value = Math.round((this.camera.position.z * (this.isMeters ? 1 : 100))*10000)/10000;
+            
+            this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
+            this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
             
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
@@ -6234,6 +6303,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
+    get origin() { return this.#origin; }
+    set origin(v) {
+        v = String(v);
+        if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
+        if (this.origin == v) return;
+        this.change("origin", this.origin, this.#origin=v);
+    }
 
     get eViewProjection() { return this.#eViewProjection; }
     get eViewIsometric() { return this.#eViewIsometric; }
@@ -6243,6 +6319,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
     get eUnitsDegrees() { return this.#eUnitsDegrees; }
     get eUnitsRadians() { return this.#eUnitsRadians; }
+    get eOriginBluePos() { return this.#eOriginBluePos; }
+    get eOriginBlueNeg() { return this.#eOriginBlueNeg; }
+    get eOriginRedPos() { return this.#eOriginRedPos; }
+    get eOriginRedNeg() { return this.#eOriginRedNeg; }
     get eCameraPosXInput() { return this.#eCameraPosXInput; }
     get eCameraPosYInput() { return this.#eCameraPosYInput; }
     get eCameraPosZInput() { return this.#eCameraPosZInput; }
@@ -6255,6 +6335,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             isOrbit: this.isOrbit,
             isMeters: this.isMeters,
             isDegrees: this.isDegrees,
+            origin: this.origin,
             optionState: this.optionState,
         });
     }
