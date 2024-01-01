@@ -118,7 +118,7 @@
 .browsernode > .content {
     position: relative;
 
-    margin-left: 20px;
+    margin-left: 15px;
 
     display: none;
     flex-direction: column;
@@ -138,7 +138,7 @@
     top: 0px;
     transform: translateX(-100%);
 
-    width: 20px;
+    width: 15px;
     height: 100%;
     padding: 0px;
 
