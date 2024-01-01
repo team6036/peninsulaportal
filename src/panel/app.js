@@ -5027,6 +5027,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
     #isMeters;
     #isDegrees;
+    #origin;
 
     #eSizeWInput;
     #eSizeHInput;
@@ -5036,6 +5037,10 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #eUnitsCentimeters;
     #eUnitsDegrees;
     #eUnitsRadians;
+    #eOriginBluePos;
+    #eOriginBlueNeg;
+    #eOriginRedPos;
+    #eOriginRedNeg;
 
     static PATTERNS = {
         "Pose2d": [
@@ -5058,6 +5063,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         this.#isMeters = true;
         this.#isDegrees = true;
+        this.#origin = "blue+";
 
         let info;
         const eField = this.getEOptionSection("f");
@@ -5171,29 +5177,65 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             e.stopPropagation();
             this.isRadians = true;
         });
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eOriginBluePos = document.createElement("button");
+        eNav.appendChild(this.eOriginBluePos);
+        this.eOriginBluePos.textContent = "+Blue";
+        this.eOriginBluePos.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "blue+";
+        });
+        this.#eOriginBlueNeg = document.createElement("button");
+        eNav.appendChild(this.eOriginBlueNeg);
+        this.eOriginBlueNeg.textContent = "-Blue";
+        this.eOriginBlueNeg.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "blue-";
+        });
+        this.eOriginBluePos.style.color = this.eOriginBlueNeg.style.color = "var(--cb)";
+        eNav = document.createElement("div");
+        eOptions.appendChild(eNav);
+        eNav.classList.add("nav");
+        this.#eOriginRedPos = document.createElement("button");
+        eNav.appendChild(this.eOriginRedPos);
+        this.eOriginRedPos.textContent = "+Red";
+        this.eOriginRedPos.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "red+";
+        });
+        this.#eOriginRedNeg = document.createElement("button");
+        eNav.appendChild(this.eOriginRedNeg);
+        this.eOriginRedNeg.textContent = "-Red";
+        this.eOriginRedNeg.addEventListener("click", e => {
+            e.stopPropagation();
+            this.origin = "red-";
+        });
+        this.eOriginRedPos.style.color = this.eOriginRedNeg.style.color = "var(--cr)";
 
         this.quality = this.odometry.quality;
 
-        if (a.length <= 0 || [6].includes(a.length) || a.length > 7) a = [null];
+        if (a.length <= 0 || [6, 7].includes(a.length) || a.length > 8) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.optionState];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.origin, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
-                    a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.optionState];
+                    a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.origin, a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.optionState];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.origin, a.optionState];
             else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 1000];
         if (a.length == 3) a = [...a, 100];
         if (a.length == 4) a = [...a, 0.5];
-        if (a.length == 5) a = [...a.slice(0, 4), true, true, a[4]];
+        if (a.length == 5) a = [...a.slice(0, 4), true, true, "blue+", a[4]];
 
-        [this.poses, this.template, this.size, this.robotSize, this.isMeters, this.isDegrees, this.optionState] = a;
+        [this.poses, this.template, this.size, this.robotSize, this.isMeters, this.isDegrees, this.origin, this.optionState] = a;
 
         let templates = {};
         let templateImages = {};
@@ -5221,6 +5263,14 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             else this.eUnitsDegrees.classList.remove("this");
             if (this.isRadians) this.eUnitsRadians.classList.add("this");
             else this.eUnitsRadians.classList.remove("this");
+            if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
+            else this.eOriginBluePos.classList.remove("this");
+            if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
+            else this.eOriginBlueNeg.classList.remove("this");
+            if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
+            else this.eOriginRedPos.classList.remove("this");
+            if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
+            else this.eOriginRedNeg.classList.remove("this");
             infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
 
             if (!finished) return;
@@ -5242,7 +5292,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
     addPose(...poses) {
         let r = super.addPose(...poses);
-        let r2 = util.is(r, "arr") ? r : [r];
+        let r2 = [r].flatten();
         r2.forEach(r => {
             const onType = () => {
                 let current = core.Odometry2d.Robot.lookupTypeName(r.type);
@@ -5266,7 +5316,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     }
     remPose(...poses) {
         let r = super.remPose(...poses);
-        let r2 = util.is(r, "arr") ? r : [r];
+        let r2 = [r].flatten();
         r2.forEach(r => {
             r.clearLinkedHandlers(this, "type");
         });
@@ -5304,6 +5354,13 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
+    get origin() { return this.#origin; }
+    set origin(v) {
+        v = String(v);
+        if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
+        if (this.origin == v) return;
+        this.change("origin", this.origin, this.#origin=v);
+    }
 
     get eSizeWInput() { return this.#eSizeWInput; }
     get eSizeHInput() { return this.#eSizeHInput; }
@@ -5313,6 +5370,10 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
     get eUnitsDegrees() { return this.#eUnitsDegrees; }
     get eUnitsRadians() { return this.#eUnitsRadians; }
+    get eOriginBluePos() { return this.#eOriginBluePos; }
+    get eOriginBlueNeg() { return this.#eOriginBlueNeg; }
+    get eOriginRedPos() { return this.#eOriginRedPos; }
+    get eOriginRedNeg() { return this.#eOriginRedNeg; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -5322,6 +5383,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             robotSize: this.robotSize,
             isMeters: this.isMeters,
             isDegrees: this.isDegrees,
+            origin: this.origin,
             optionState: this.optionState,
         });
     }
@@ -5426,6 +5488,23 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             templates = util.ensure(await window.api.get("templates"), "obj");
         })();
 
+        const convertPos = (...v) => {
+            v = new V(...v);
+            if (!this.hasTab()) return v;
+            if (this.tab.isMeters) v.imul(100);
+            if (!this.tab.origin.startsWith("blue")) v.x = this.tab.odometry.w-v.x;
+            if (!this.tab.origin.endsWith("+")) v.y = this.tab.odometry.h-v.y;
+            return v;
+        };
+        const convertAngle = v => {
+            v = ((util.ensure(v, "num")%360)+360)%360;
+            if (!this.hasTab()) return v;
+            if (this.tab.isRadians) v *= (180/Math.PI);
+            if (!this.tab.origin.startsWith("blue")) v = 180-v;
+            if (!this.tab.origin.endsWith("+")) v = 0-v;
+            return v;
+        };
+
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
@@ -5435,10 +5514,8 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                 while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
                 while (renders.length > l) this.tab.odometry.render.remRender(renders.pop());
                 renders.forEach((render, i) => {
-                    render.a = [this.value[i*2 + 0], this.value[i*2 + 1]];
-                    render.a.imul(this.tab.isMeters ? 100 : 1);
-                    render.b = [this.value[i*2 + 2], this.value[i*2 + 3]];
-                    render.b.imul(this.tab.isMeters ? 100 : 1);
+                    render.a = convertPos(this.value[i*2+0], this.value[i*2+1]);
+                    render.b = convertPos(this.value[i*2+2], this.value[i*2+3]);
                     render.color = this.pose.color;
                     render.alpha = this.pose.isGhost ? 0.5 : 1;
                 });
@@ -5449,8 +5526,8 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                 render.colorH = this.pose.color.substring(2)+5;
                 render.alpha = this.pose.isGhost ? 0.5 : 1;
                 render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
-                render.pos = new V(this.value[0], this.value[1]).mul(this.tab.isMeters ? 100 : 1);
-                render.heading = this.value[2] * (this.tab.isDegrees ? 1 : (180/Math.PI));
+                render.pos = convertPos(this.value[0], this.value[1]);
+                render.heading = convertAngle(this.value[2]);
                 render.type = this.pose.type;
                 this.pose.eDisplayType.style.display = "";
             }
@@ -6018,7 +6095,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     addPose(...poses) {
         let r = super.addPose(...poses);
-        let r2 = util.is(r, "arr") ? r : [r];
+        let r2 = [r].flatten();
         r2.forEach(r => {
             const onType = async () => {
                 let robots = util.ensure(await window.api.get("robots"), "obj");
@@ -6068,7 +6145,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     }
     remPose(...poses) {
         let r = super.remPose(...poses);
-        let r2 = util.is(r, "arr") ? r : [r];
+        let r2 = [r].flatten();
         r2.forEach(r => {
             r.clearLinkedHandlers(this, "type");
         });
