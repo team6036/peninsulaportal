@@ -81,7 +81,7 @@ const MAIN = async () => {
         user: os.userInfo(),
     };
 
-    const TEST = OS.platform == "linux" || 1;
+    const TEST = OS.platform == "linux";
     const tlog = (...a) => {
         if (!TEST) return;
         console.log("-", ...a);
