@@ -265,10 +265,8 @@ class BrowserNode extends util.Target {
         this.eMain.appendChild(this.eName);
         this.eName.classList.add("name");
         this.eName.textContent = this.name;
-        if (this.name.startsWith("struct:") && this.type == "structschema") {
+        if (this.name.startsWith("struct:") && this.type == "structschema")
             this.eName.textContent = this.name.slice(7);
-            // this.eName.innerHTML = "<span>struct:</span>"+this.eName.innerHTML;
-        }
         this.#eTag = document.createElement("div");
         this.eMain.appendChild(this.eTag);
         this.eTag.classList.add("tag");
@@ -1515,11 +1513,25 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             item.item.addHandler("trigger", item.trigger);
             return item.item;
         });
+        const toolItemSelect = itm => {
+            itm.item.selectName(null);
+            itm.matches.forEach(match => itm.item.selectName(match.indices));
+            return itm.item;
+        };
+        const nodeItemSelect = itm => {
+            itm.item.selectName(null);
+            itm.item.selectInfo(null);
+            itm.matches.forEach(match => {
+                if (match.key == "node.path") itm.item.selectName(match.indices);
+                if (match.key == "node.field.type") itm.item.selectInfo(match.indices);
+            });
+            return itm.item;
+        };
         if (this.searchPart == null) {
             this.tags = [];
             this.placeholder = "Search tools, tables, and topics";
+            toolItems = util.search(toolItems, ["name"], this.query).map(toolItemSelect);
             if (this.query.length > 0) {
-                toolItems = util.search(toolItems, ["name"], this.query);
                 let nodeItems = [];
                 if (this.hasPage() && this.page.hasSource()) {
                     let node = this.page.source.tree;
@@ -1543,7 +1555,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     item.item.addHandler("trigger", item.trigger);
                     return item.item;
                 });
-                nodeItems = util.search(nodeItems, ["node.path", "node.field.type"], this.query);
+                nodeItems = util.search(nodeItems, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
                 this.items = [
                     new Panel.AddTab.Header("Tools"),
                     ...toolItems,
@@ -1577,7 +1589,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         } else if (this.searchPart == "tools") {
             this.tags = [new Panel.AddTab.Tag("Tools", "hammer")];
             this.placeholder = "Search tools";
-            toolItems = util.search(toolItems, ["name"], this.query);
+            toolItems = util.search(toolItems, ["name"], this.query).map(toolItemSelect);
             this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddTab.Tag(
@@ -1614,7 +1626,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 item.item.addHandler("trigger", item.trigger);
                 return item.item;
             });
-            items = util.search(items, ["node.path", "node.field.type"], this.query);
+            items = util.search(items, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
             this.items = items;
         }
         this.eSearchInput.focus();
@@ -1796,6 +1808,9 @@ Panel.AddTab.Divider = class PanelAddTabDivider extends Panel.AddTab.Item {
     }
 };
 Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
+    #nameIndices;
+    #infoIndices;
+
     #btn;
     #eIcon;
     #eName;
@@ -1806,6 +1821,9 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         super();
 
         this.elem.classList.add("item");
+
+        this.#nameIndices = null;
+        this.#infoIndices = null;
         
         this.#btn = document.createElement("button");
         this.elem.appendChild(this.btn);
@@ -1852,10 +1870,76 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
     set iconColor(v) { this.eIcon.style.color = v; }
 
     get name() { return this.eName.textContent; }
-    set name(v) { this.eName.textContent = v; }
+    set name(v) {
+        this.eName.textContent = v;
+        v = this.name;
+        let indices = this.#nameIndices;
+        if (indices == null) return;
+        let chunks = [];
+        indices.forEach((range, i) => {
+            chunks.push(v.substring((i > 0) ? indices[i-1][1] : 0, range[0]));
+            chunks.push(v.substring(...range));
+        });
+        chunks.push(v.substring((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
+        this.eName.innerHTML = "";
+        chunks.forEach((chunk, i) => {
+            let elem = document.createElement("span");
+            this.eName.appendChild(elem);
+            elem.textContent = chunk;
+            elem.style.color = (i%2 == 0) ? "var(--v5)" : "";
+            elem.style.fontWeight = (i%2 == 0) ? "" : "bold";
+        });
+    }
 
     get info() { return this.eInfo.textContent; }
-    set info(v) { this.eInfo.textContent = v; }
+    set info(v) {
+        this.eInfo.textContent = v;
+        v = this.info;
+        let indices = this.#infoIndices;
+        if (indices == null) return;
+        let chunks = [];
+        indices.forEach((range, i) => {
+            chunks.push(v.substring((i > 0) ? indices[i-1][1] : 0, range[0]));
+            chunks.push(v.substring(...range));
+        });
+        chunks.push(v.substring((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
+        this.eInfo.innerHTML = "";
+        chunks.forEach((chunk, i) => {
+            let elem = document.createElement("span");
+            this.eInfo.appendChild(elem);
+            elem.textContent = chunk;
+            elem.style.opacity = (i%2 == 0) ? "50%" : "";
+        });
+    }
+
+    selectName(indices) {
+        if (indices != null) {
+            indices = util.ensure(indices, "arr").map(range => util.ensure(range, "arr").map(v => util.ensure(v, "int")));
+            indices = indices.filter(range => range.length == 2).map(range => [range[0], range[1]+1]).sort((a, b) => a[0]-b[0]);
+            let indices2 = [];
+            indices.forEach(range => {
+                if (indices2.length <= 0 || range[0] > indices2.at(-1)[1])
+                    return indices2.push(range);
+                indices2.at(-1)[1] = range[1];
+            });
+            this.#nameIndices = indices2;
+        }
+        this.name = this.name;
+    }
+    selectInfo(indices) {
+        if (indices != null) {
+            indices = util.ensure(indices, "arr").map(range => util.ensure(range, "arr").map(v => util.ensure(v, "int")));
+            indices = indices.filter(range => range.length == 2).map(range => [range[0], range[1]+1]).sort((a, b) => a[0]-b[0]);
+            let indices2 = [];
+            indices.forEach(range => {
+                if (indices2.length <= 0 || range[0] > indices2.at(-1)[1])
+                    return indices2.push(range);
+                indices2.at(-1)[1] = range[1];
+            });
+            this.#infoIndices = indices2;
+        }
+        this.info = this.info;
+    }
 
     get hasChevron() { return this.elem.contains(this.eChevron); }
     set hasChevron(v) {

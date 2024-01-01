@@ -290,13 +290,13 @@ export function search(items, keys, query) {
     items = ensure(items, "arr");
     keys = ensure(keys, "arr");
     query = String(query);
-    if (query.length <= 0) return items;
+    if (query.length <= 0) return items.map(item => { return { item: item, refIndex: 0, matches: [] }; });
     const fuse = new Fuse(items, {
         isCaseSensitive: false,
+        includeMatches: true,
         keys: keys,
     });
-    items = fuse.search(query).map(item => item.item);
-    return items;
+    return fuse.search(query);
 }
 
 export function capitalize(s) {
