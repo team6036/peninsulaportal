@@ -3469,7 +3469,7 @@ const MAIN = async () => {
                 },
                 "db-host": async () => {
                     let host = (await kfs._fullconfig()).dbHost;
-                    return util.ensure(host, "str") || "http://143.244.189.117:6036";
+                    return util.ensure(host, "str") || "https://peninsula-db.jfancode.repl.co";
                 },
                 "assets-host": async () => {
                     return String((await kfs._fullconfig()).assetsHost);
