@@ -47,15 +47,6 @@ const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
 );
 const THREE2WPILIB = WPILIB2THREE.clone().invert();
 
-function compare(s1, s2) {
-    s1 = String(s1).toLowerCase();
-    s2 = String(s2).toLowerCase();
-    if (util.is(parseInt(s1), "int") && util.is(parseInt(s2), "int")) return s1 - s2;
-    if (s1 < s2) return -1;
-    if (s1 > s2) return +1;
-    return 0;
-}
-
 
 export const VERSION = 3;
 
@@ -182,148 +173,49 @@ function getTabDisplay(name) {
     };
 }
 
-
-class BrowserNode extends util.Target {
-    #name;
-    #type;
-    #value;
-    #nodes;
-    #showValue;
-
-    #elem;
-    #eDisplay;
-    #eMain;
-    #eIcon;
-    #eName;
-    #eTag;
-    #eValueBox;
-    #eValue;
-    #eContent;
-    #eSide;
-
-    static doubleTraverse(nodeArr, bnodeArr, addFunc, remFunc) {
-        let nodeMap = {}, bnodeMap = {};
-        util.ensure(nodeArr, "arr").forEach(node => {
-            if (!(node instanceof Source.Node)) return;
-            nodeMap[node.name] = node;
-        });
-        util.ensure(bnodeArr, "arr").forEach(bnode => {
-            if (!(bnode instanceof BrowserNode)) return;
-            bnodeMap[bnode.name] = bnode;
-        });
-        let add = [];
-        for (let name in nodeMap) {
-            let node = nodeMap[name];
-            if (name in bnodeMap) continue;
-            let bnode = bnodeMap[node.name] = new BrowserNode(node.name, node.hasField() ? node.field.type : null);
-            add.push(bnode);
-        }
-        if (util.is(addFunc, "func")) addFunc(...add);
-        let rem = [];
-        for (let name in bnodeMap) {
-            let bnode = bnodeMap[name];
-            if (name in nodeMap) continue;
-            rem.push(bnode);
-        }
-        if (util.is(remFunc, "func")) remFunc(...rem);
-        for (let name in nodeMap) {
-            let node = nodeMap[name];
-            let bnode = bnodeMap[name];
-            if (bnode.isOpen)
-                BrowserNode.doubleTraverse(
-                    node.nodeObjects,
-                    bnode.nodeObjects,
-                    (...bn) => bnode.add(...bn),
-                    (...bn) => bnode.rem(...bn),
-                );
-            bnode.value = node.hasField() ? node.field.get() : null;
-        }
-    };
+core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
+    static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc) {
+        return super.doubleTraverse(
+            util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
+                node.info = node.hasField() ? node.field.type : null;
+                node.value = node.hasField() ? node.field.get() : null;
+                return node;
+            }),
+            enodeArr,
+            addFunc,
+            remFunc,
+        );
+    }
 
     constructor(name, type) {
-        super();
+        super(name, type);
 
-        this.#name = String(name);
-        this.#type = (type == null) ? null : String(type);
-
-        this.#nodes = {};
-
-        this.#showValue = null;
-
-        this.#elem = document.createElement("div");
-        this.elem.classList.add("node");
-        if (this.isHidden) this.elem.classList.add("hidden");
-        this.#eDisplay = document.createElement("button");
-        this.elem.appendChild(this.eDisplay);
-        this.eDisplay.classList.add("display");
-        this.#eMain = document.createElement("div");
-        this.eDisplay.appendChild(this.eMain);
-        this.eMain.classList.add("main");
-        this.#eIcon = document.createElement("ion-icon");
-        this.eMain.appendChild(this.eIcon);
-        this.#eName = document.createElement("div");
-        this.eMain.appendChild(this.eName);
-        this.eName.classList.add("name");
-        this.eName.textContent = this.name;
-        if (this.name.startsWith("struct:") && this.type == "structschema")
-            this.eName.textContent = this.name.slice(7);
-        this.#eTag = document.createElement("div");
-        this.eMain.appendChild(this.eTag);
-        this.eTag.classList.add("tag");
-        this.eTag.textContent = util.ensure(this.clippedType, "str");
-        this.#eValueBox = document.createElement("div");
-        this.eDisplay.appendChild(this.eValueBox);
-        this.eValueBox.classList.add("value");
-        this.eValueBox.innerHTML = "<ion-icon name='return-down-forward'></ion-icon>";
-        this.#eValue = document.createElement("div");
-        this.eValueBox.appendChild(this.eValue);
-        this.#eContent = document.createElement("div");
-        this.elem.appendChild(this.eContent);
-        this.eContent.classList.add("content");
-        this.#eSide = document.createElement("button");
-        this.eContent.appendChild(this.eSide);
-        this.eSide.classList.add("side");
-        this.eSide.classList.add("override");
-
-        let cancel = 10;
-        this.eDisplay.addEventListener("click", e => {
-            e.stopPropagation();
-            if (cancel <= 0) return cancel = 10;
+        this.addHandler("trigger", e => {
+            if (!this.eDisplay.contains(e.target)) return;
             if (this.isJustPrimitive || e.shiftKey) this.showValue = !this.showValue;
             else this.isOpen = !this.isOpen;
         });
-        this.eDisplay.addEventListener("dblclick", e => {
-            this.post("trigger", e, [this.name]);
+        this.addHandler("update-display", () => {
+            this.icon = "";
+            this.eIcon.style.color = "";
+            this.eName.style.color = "";
+            this.eValue.style.color = "";
+            let display = getDisplay(this.type, this.value);
+            if (display != null) {
+                if ("src" in display) this.iconSrc = display.src;
+                else this.icon = display.name;
+                if ("color" in display) this.eIcon.style.color = this.eValue.style.color = display.color;
+                else this.eIcon.style.color = this.eValue.style.color = "";
+            }
+            this.eValue.textContent = getRepresentation(this.value, this.type == "structschema");
         });
-        this.eDisplay.addEventListener("mousedown", e => {
-            if (e.button != 0) return;
-            e.preventDefault();
-            e.stopPropagation();
-            const mouseup = () => {
-                document.body.removeEventListener("mouseup", mouseup);
-                document.body.removeEventListener("mousemove", mousemove);
-            };
-            const mousemove = () => {
-                if (cancel > 0) return cancel--;
-                mouseup();
-                this.post("drag", [this.name]);
-            };
-            document.body.addEventListener("mouseup", mouseup);
-            document.body.addEventListener("mousemove", mousemove);
-        });
-        this.eSide.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isOpen = !this.isOpen;
-        });
-
-        this.showValue = false;
     }
 
-    get name() { return this.#name; }
-    get isHidden() { return this.name.startsWith("."); }
+    get info() { return this.type; }
+    set info(v) {}
 
-    get type() { return this.#type; }
-    hasType() { return this.type != null; }
+    get type() { return super.info; }
+    hasType() { return super.info != null; }
     get isStruct() { return this.hasType() && this.type.startsWith("struct:"); }
     get structType() {
         if (!this.hasType()) return null;
@@ -346,145 +238,13 @@ class BrowserNode extends util.Target {
 
     get value() {
         if (!this.hasType()) return this.isOpen;
-        return this.isArray ? [...util.ensure(this.#value, "arr")] : this.#value;
+        return this.isArray ? [...util.ensure(super.value, "arr")] : super.value;
     }
     set value(v) {
         v = Source.Field.ensureType(this.type, v);
-        this.#value = v;
-        this.updateDisplay();
+        super.value = v;
     }
-
-    get nodes() { return Object.keys(this.#nodes); }
-    get nodeObjects() { return Object.values(this.#nodes); }
-    get nNodes() {
-        let n = 1;
-        this.nodeObjects.forEach(node => (n += node.nNodes));
-        return n;
-    }
-    clear() {
-        let nodes = this.nodeObjects;
-        this.rem(nodes);
-        return nodes;
-    }
-    has(v) {
-        if (v instanceof BrowserNode) return this.has(v.name) && this.nodeObjects.includes(v);
-        return v in this.#nodes;
-    }
-    get(name) {
-        if (!this.has(name)) return null;
-        return this.#nodes[name];
-    }
-    add(...nodes) {
-        let r = util.Target.resultingForEach(nodes, node => {
-            if (!(node instanceof BrowserNode)) return false;
-            if (this.has(node)) return false;
-            this.#nodes[node.name] = node;
-            node.addLinkedHandler(this, "trigger", (e, path) => {
-                path = Source.generatePath(path);
-                if (this.name.length > 0) path = this.name+"/"+path;
-                this.post("trigger", e, path);
-            });
-            node.addLinkedHandler(this, "drag", path => {
-                path = Source.generatePath(path);
-                if (this.name.length > 0) path = this.name+"/"+path;
-                this.post("drag", path);
-            });
-            this.eContent.appendChild(node.elem);
-            node.onAdd();
-            return node;
-        });
-        this.format();
-        return r;
-    }
-    rem(...nodes) {
-        return util.Target.resultingForEach(nodes, node => {
-            if (!(node instanceof BrowserNode)) return false;
-            if (!this.has(node)) return false;
-            node.onRem();
-            delete this.#nodes[node.name];
-            node.clearLinkedHandlers(this, "trigger");
-            node.clearLinkedHandlers(this, "drag");
-            this.eContent.removeChild(node.elem);
-            return node;
-        });
-    }
-    lookup(path) {
-        path = Source.generateArrayPath(path);
-        let node = this;
-        while (path.length > 0) {
-            let name = path.shift();
-            if (!node.has(name)) return null;
-            node = node.get(name);
-        }
-        return node;
-    }
-
-    get showValue() { return this.#showValue; }
-    set showValue(v) {
-        v = !!v;
-        if (this.showValue == v) return;
-        this.#showValue = v;
-        this.updateDisplay();
-    }
-
-    get elem() { return this.#elem; }
-    get eDisplay() { return this.#eDisplay; }
-    get eMain() { return this.#eMain; }
-    get eIcon() { return this.#eIcon; }
-    get eName() { return this.#eName; }
-    get eTag() { return this.#eTag; }
-    get eValueBox() { return this.#eValueBox; }
-    get eValue() { return this.#eValue; }
-    get eContent() { return this.#eContent; }
-    get eSide() { return this.#eSide; }
-
-    get icon() { return this.eIcon.getAttribute("name"); }
-    set icon(v) {
-        this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
-    }
-    get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
-    updateDisplay() {
-        this.icon = "";
-        this.eIcon.style.color = "";
-        this.eName.style.color = "";
-        let display = getDisplay(this.type, this.value);
-        if (display != null) {
-            if ("src" in display) this.iconSrc = display.src;
-            else this.icon = display.name;
-            if ("color" in display) this.eIcon.style.color = display.color;
-            else this.eIcon.style.color = "";
-        }
-        this.eValueBox.style.display = this.showValue ? "" : "none";
-        this.eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
-        this.eValue.textContent = getRepresentation(this.value, this.type == "structschema");
-    }
-
-    get isOpen() { return this.elem.classList.contains("this"); }
-    set isOpen(v) {
-        v = !!v;
-        if (this.isOpen == v) return;
-        if (v) this.elem.classList.add("this");
-        else this.elem.classList.remove("this");
-        this.updateDisplay();
-    }
-    get isClosed() { return !this.isOpen; }
-    set isClosed(v) { this.isOpen = !v; }
-    open() { return this.isOpen = true; }
-    close() { return this.isClosed = true; }
-
-    format() {
-        this.updateDisplay();
-        this.nodeObjects.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
-            node.elem.style.order = i;
-            node.format();
-        });
-    }
-}
+};
 
 class ToolButton extends util.Target {
     #elem;
@@ -1956,7 +1716,7 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
         super();
 
         this.elem.classList.remove("item");
-        this.elem.classList.add("browsernode");
+        this.elem.classList.add("explorernode");
         this.btn.classList.add("display");
         let children = Array.from(this.btn.children);
         children.forEach(child => this.btn.removeChild(child));
@@ -1996,23 +1756,31 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
 Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #path;
 
+    #explorer;
+
     #ePath;
-    #eBrowser;
     #eDisplay;
 
     constructor(...a) {
         super();
 
-        this.elem.classList.add("browser_");
+        this.elem.classList.add("browser");
 
         this.#path = null;
+
+        this.#explorer = new core.Explorer();
+        this.explorer.addHandler("trigger2", (e, path) => (this.path += "/"+path));
+        this.explorer.addHandler("drag", (e, path) => {
+            path = util.generatePath(this.path+"/"+path);
+            if (!this.hasApp() || !this.hasPage()) return;
+            this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(path) : null;
+            this.app.dragging = true;
+        });
 
         this.#ePath = document.createElement("div");
         this.elem.appendChild(this.ePath);
         this.ePath.classList.add("path");
-        this.#eBrowser = document.createElement("div");
-        this.elem.appendChild(this.eBrowser);
-        this.eBrowser.classList.add("browser");
+        this.elem.appendChild(this.explorer.elem);
         this.#eDisplay = document.createElement("div");
         this.elem.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
@@ -2056,48 +1824,20 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             }
             this.name = node ? (node.name.length > 0) ? node.name : "/" : "?";
             if (node && (!node.hasField() || node.field.isArray || node.field.isStruct || node.nNodes > 1)) {
-                this.eBrowser.classList.add("this");
+                this.explorer.elem.classList.add("this");
                 this.eDisplay.classList.remove("this");
                 if (this.isClosed) return;
                 if (!("nodes" in state)) {
                     state.nodes = [];
-                    this.eBrowser.innerHTML = "";
                 }
-                BrowserNode.doubleTraverse(
+                core.Explorer.Node.doubleTraverse(
                     node.nodeObjects,
-                    state.nodes,
-                    (...bnodes) => {
-                        bnodes.forEach(bnode => {
-                            state.nodes.push(bnode);
-                            const onTrigger = (e, path) => {
-                                this.path += "/"+path;
-                            };
-                            const onDrag = path => {
-                                path = Source.generatePath(path);
-                                if (!this.hasApp() || !this.hasPage()) return;
-                                this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(path) : null;
-                                this.app.dragging = true;
-                            };
-                            bnode.addLinkedHandler(this, "trigger", onTrigger);
-                            bnode.addLinkedHandler(this, "drag", onDrag);
-                            this.eBrowser.appendChild(bnode.elem);
-                        });
-                        state.nodes.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
-                            node.elem.style.order = i;
-                            node.format();
-                        });
-                    },
-                    (...bnodes) => {
-                        bnodes.forEach(bnode => {
-                            state.nodes.splice(state.nodes.indexOf(bnode), 1);
-                            bnode.clearLinkedHandlers(this, "trigger");
-                            bnode.clearLinkedHandlers(this, "drag");
-                            this.eBrowser.removeChild(bnode.elem);
-                        });
-                    },
+                    this.explorer.nodeObjects,
+                    (...enodes) => this.explorer.add(...enodes),
+                    (...enodes) => this.explorer.rem(...enodes),
                 );
             } else if (node) {
-                this.eBrowser.classList.remove("this");
+                this.explorer.elem.classList.remove("this");
                 this.eDisplay.classList.add("this");
                 let value = node.field.get();
                 if (this.isClosed) return;
@@ -2134,7 +1874,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 }
                 if (state.update) state.update();
             } else {
-                this.eBrowser.classList.remove("this");
+                this.explorer.elem.classList.remove("this");
                 this.eDisplay.classList.remove("this");
                 this.icon = "document-outline";
                 let path = this.path.split("/").filter(part => part.length > 0);
@@ -2147,7 +1887,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
     get path() { return this.#path; }
     set path(v) {
-        v = Source.generatePath(v);
+        v = util.generatePath(v);
         if (this.path == v) return;
         this.change("path", this.path, this.#path=v);
         this.ePath.innerHTML = "";
@@ -2184,8 +1924,9 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         }
     }
 
+    get explorer() { return this.#explorer; }
+
     get ePath() { return this.#ePath; }
-    get eBrowser() { return this.#eBrowser; }
     get eDisplay() { return this.#eDisplay; }
 
     toJSON() {
@@ -2600,7 +2341,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
 
     get path() { return this.#path; }
     set path(v) {
-        v = Source.generatePath(v);
+        v = util.generatePath(v);
         if (this.path == v) return;
         this.change("path", this.path, this.#path=v);
         let path = this.path.split("/").filter(part => part.length > 0);
@@ -2807,7 +2548,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         });
 
         this.addHandler("format", () => {
-            this.logs.sort((a, b) => compare(a.name, b.name)).forEach((log, i) => {
+            this.logs.sort((a, b) => util.compareStr(a.name, b.name)).forEach((log, i) => {
                 log.elem.style.order = i;
             });
         });
@@ -2841,7 +2582,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             shift = !!shift;
             if (!LOGGERCONTEXT.hasLog(name)) return;
             if (shift && LOGGERCONTEXT.hasLog(lastSelected)) {
-                let logs = LOGGERCONTEXT.logs.sort(compare);
+                let logs = LOGGERCONTEXT.logs.sort(util.compareStr);
                 let i = logs.indexOf(lastSelected);
                 let j = logs.indexOf(name);
                 for (let k = i;; k += (j>i?+1:j<i?-1:0)) {
@@ -4623,7 +4364,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
 
     get path() { return this.#path; }
     set path(v) {
-        v = Source.generatePath(v);
+        v = util.generatePath(v);
         if (this.path == v) return;
         this.change("path", this.path, this.#path=v);
         this.eDisplayName.textContent = this.path;
@@ -5008,7 +4749,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
 
     get path() { return this.#path; }
     set path(v) {
-        v = Source.generatePath(v);
+        v = util.generatePath(v);
         if (this.path == v) return;
         this.change("path", this.path, this.#path=v);
         this.eDisplayName.textContent = this.path;
@@ -7302,7 +7043,7 @@ export default class App extends core.AppFeature {
                 let canNode = canGetNodeFromData();
                 if (canNode) {
                     let node = getNodeFromData();
-                    this.eDrag.innerHTML = "<div class='browsernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                    this.eDrag.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
                     let btn = this.eDrag.children[0].children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (node.name.length > 0) ? node.name : "/";
@@ -7317,7 +7058,7 @@ export default class App extends core.AppFeature {
                 }
                 if (canTab) {
                     if (this.dragData instanceof Panel.Tab) {
-                        this.eDrag.innerHTML = "<div class='browsernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                        this.eDrag.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
                         let btn = this.eDrag.children[0].children[0].children[0];
                         let icon = btn.children[0], name = btn.children[1];
                         name.textContent = this.dragData.name;
@@ -7445,7 +7186,8 @@ App.TitlePage = class AppTitlePage extends App.TitlePage {
     static DESCRIPTION = "The tool for debugging network tables";
 };
 App.ProjectPage = class AppProjectPage extends App.ProjectPage {
-    #browserNodes;
+    #explorer;
+
     #toolButtons;
     #widget;
     #activeWidget;
@@ -7584,7 +7326,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.source.ts = this.source.tsMax;
         });
 
-        this.#browserNodes = [];
+        this.#explorer = new core.Explorer();
+        this.explorer.addHandler("drag", (e, path) => {
+            path = util.generatePath(path);
+            let node = this.hasSource() ? this.source.tree.lookup(path) : null;
+            if (!node) return;
+            this.app.dragData = node;
+            this.app.dragging = true;
+        });
+
         this.#toolButtons = new Set();
         this.#widget = null;
         this.#activeWidget = null;
@@ -7635,7 +7385,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             elem.appendChild(s.eContent);
             s.eContent.classList.add("content");
             let idfs = {
-                browser: () => s.eContent.classList.add("browser"),
+                browser: () => {
+                    s.eContent.remove();
+                    s.eContent = this.explorer.elem;
+                    elem.appendChild(s.eContent);
+                    s.eContent.classList.add("content");
+                },
             };
             if (elem.id in idfs) idfs[elem.id]();
         });
@@ -7855,11 +7610,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);
             } else this.navOpen = false;
             
-            BrowserNode.doubleTraverse(
+            core.Explorer.Node.doubleTraverse(
                 this.hasSource() ? this.source.tree.nodeObjects : [],
-                this.browserNodes,
-                (...bnodes) => this.addBrowserNode(...bnodes),
-                (...bnodes) => this.remBrowserNode(...bnodes),
+                this.explorer.nodeObjects,
+                (...enodes) => this.explorer.add(...enodes),
+                (...enodes) => this.explorer.rem(...enodes),
             );
 
             this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
@@ -7933,52 +7688,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
     }
 
-    get browserNodes() { return [...this.#browserNodes]; }
-    set browserNodes(v) {
-        v = util.ensure(v, "arr");
-        this.clearBrowserNodes();
-        v.forEach(v => this.addBrowserNode(v));
-    }
-    clearBrowserNodes() {
-        let nodes = this.browserNodes;
-        nodes.forEach(node => this.remBrowserNode(node));
-        return nodes;
-    }
-    hasBrowserNode(node) {
-        if (!(node instanceof BrowserNode)) return false;
-        return this.#browserNodes.includes(node);
-    }
-    addBrowserNode(...nodes) {
-        let r = util.Target.resultingForEach(nodes, node => {
-            if (!(node instanceof BrowserNode)) return false;
-            if (this.hasBrowserNode(node)) return false;
-            this.#browserNodes.push(node);
-            const onDrag = path => {
-                path = Source.generatePath(path);
-                let node = this.hasSource() ? this.source.tree.lookup(path) : null;
-                if (!node) return;
-                this.app.dragData = node;
-                this.app.dragging = true;
-            };
-            node.addLinkedHandler(this, "drag", onDrag);
-            this.getESideSection("browser").eContent.appendChild(node.elem);
-            node.onAdd();
-            return node;
-        });
-        this.formatSide();
-        return r;
-    }
-    remBrowserNode(...nodes) {
-        return util.Target.resultingForEach(nodes, node => {
-            if (!(node instanceof BrowserNode)) return false;
-            if (!this.hasBrowserNode(node)) return false;
-            node.onRem();
-            this.#browserNodes.splice(this.#browserNodes.indexOf(node), 1);
-            node.clearLinkedHandlers(this, "drag");
-            this.getESideSection("browser").eContent.removeChild(node.elem);
-            return node;
-        });
-    }
+    get explorer() { return this.#explorer; }
 
     get toolButtons() { return [...this.#toolButtons]; }
     set toolButtons(v) {
@@ -8106,10 +7816,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         let divideAmong = idsOpen.length;
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
-        this.browserNodes.sort((a, b) => compare(a.name, b.name)).forEach((node, i) => {
-            node.elem.style.order = i;
-            node.format();
-        });
+        this.explorer.format();
         return true;
     }
     formatContent() {

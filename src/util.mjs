@@ -305,6 +305,18 @@ export function capitalize(s) {
     return s[0].toUpperCase() + s.substring(1).toLowerCase();
 }
 
+export function generateArrayPath(...path) { return path.flatten().join("/").split("/").filter(part => part.length > 0); }
+export function generatePath(...path) { return generateArrayPath(...path).join("/"); }
+
+export function compareStr(s1, s2) {
+    s1 = String(s1).toLowerCase();
+    s2 = String(s2).toLowerCase();
+    if (is(parseInt(s1), "int") && is(parseInt(s2), "int")) return s1 - s2;
+    if (s1 < s2) return -1;
+    if (s1 > s2) return +1;
+    return 0;
+}
+
 export const ease = {
     // https://easings.net/
 
