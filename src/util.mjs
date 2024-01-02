@@ -69,7 +69,7 @@ export function ensure(o, type) {
     let useDef = arguments.length != 3;
     let def = arguments[2];
     if (type == "num" || type == "float") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? o : useDef ? 0 : def;
-    if (type == "int") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0)) ? o : useDef ? 0 : def;
+    if (type == "int") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? Math.round(o) : useDef ? 0 : def;
     if (type == "any_num") return ((typeof(o) == "number") && !Number.isNaN(o)) ? o : useDef ? 0 : def;
     let typefs = {
         bool: () => {

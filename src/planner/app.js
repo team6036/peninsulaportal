@@ -1079,6 +1079,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     template[".robotW"] = globalTemplate["robotSize"];
                     template[".robotMass"] = globalTemplate["robotMass"];
                     template[".meta.backgroundImage"] = globalTemplateImages[name];
+                    console.log(template);
                     for (let k in template) {
                         let v = template[k];
                         k = String(k).split(".");
@@ -1093,6 +1094,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                             obj = obj[k.shift()];
                         }
                         if (obj == null || k.length != 1) continue;
+                        console.log(obj, k, v);
                         obj[k] = v;
                     }
                     break;
