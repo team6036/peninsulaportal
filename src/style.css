@@ -1480,6 +1480,165 @@ div.contextmenu .item.divider > * {
     display: none;
 }
 
+.explorer {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+.explorer > .node,
+.explorernode {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+.explorer > .node > button.display,
+.explorernode > button.display {
+    --bg: transparent;
+    --fg: var(--v7);
+    --bgh: var(--v2);
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v4);
+
+    max-width: 100%;
+    padding: 7.5px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: stretch;
+
+    border-radius: 5px;
+
+    font-size: 14px;
+}
+.explorer > .node.hidden > button.display,
+.explorernode.hidden > button.display {
+    --fg: var(--v5);
+    --fgh: var(--v7);
+    --fgd: var(--v3);
+
+    font-style: italic;
+}
+.explorer > .node > button.display > .main,
+.explorernode > button.display > .main {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+}
+.explorer > .node > button.display > .main > ion-icon,
+.explorernode > button.display > .main > ion-icon {
+    margin-right: 5px;
+
+    min-width: 14px;
+}
+.explorer > .node > button.display > .main > .name,
+.explorernode > button.display > .main > .name {
+    min-width: max-content;
+}
+.explorer > .node > button.display > .main > .tag,
+.explorernode > button.display > .main > .tag {
+    color: var(--v5);
+
+    transition: color var(--t);
+}
+.explorer > .node > button.display:not(:disabled):hover > .main > .tag,
+.explorernode > button.display:not(:disabled):hover > .main > .tag {
+    color: var(--v7);
+}
+.explorer > .node > button.display:disabled > .main > .tag,
+.explorernode > button.display:disabled > .main > .tag {
+    color: var(--v3);
+}
+.explorer > .node > button.display > .main > .tag,
+.explorernode > button.display > .main > .tag {
+    margin-left: 10px;
+
+    font-size: 12px;
+    font-family: monospace;
+}
+.explorer > .node > button.display > .value,
+.explorernode > button.display > .value {
+    padding-left: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+.explorer > .node > button.display > .value > div,
+.explorernode > button.display > .value > div {
+    width: calc(100% - 14px - 20px);
+    max-width: calc(100% - 14px - 20px);
+    overflow: hidden;
+
+    font-size: 12px;
+    text-align: left;
+    text-overflow: ellipsis;
+}
+.explorer > .node > .explorer,
+.explorernode > .explorer {
+    position: relative;
+
+    margin-left: 15px;
+
+    display: none;
+}
+.explorer > .node.this > .explorer,
+.explorernode.this > .explorer {
+    display: flex;
+}
+.explorer > .node > .explorer > button.side,
+.explorernode > .explorer > button.side {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    transform: translateX(-100%);
+
+    width: 15px;
+    height: 100%;
+    padding: 0px;
+
+    background-color: transparent;
+}
+.explorer > .node > .explorer > button.side::before,
+.explorernode > .explorer > button.side::before {
+    content: "";
+
+    position: absolute;
+    right: 5px;
+    top: 0px;
+
+    width: 1px;
+    height: 100%;
+
+    background-color: var(--v2);
+
+    transition: background-color var(--t);
+}
+.explorer > .node > .explorer > button.side:not(:disabled):hover::before,
+.browsernode > .explorer > button.side:not(:disabled):hover::before {
+    background-color: var(--a);
+}
+.explorer > .node > .explorer > button.side:disabled::before,
+.explorernode > .explorer > button.side:disabled::before {
+    background-color: var(--v2-0);
+}
+
 #drag {
     position: absolute;
     top: 0px;

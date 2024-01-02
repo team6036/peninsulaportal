@@ -59,12 +59,12 @@ export default class Source extends util.Target {
     }
     hasField(v) {
         if (v instanceof Source.Field) return this.hasField(v.path) && v.source == this;
-        v = Source.generatePath(v);
+        v = util.generatePath(v);
         return v in this.#fields;
     }
     getField(path) {
         if (!this.hasField(path)) return null;
-        path = Source.generatePath(path);
+        path = util.generatePath(path);
         return this.#fields[path];
     }
     addField(...fields) {
@@ -131,11 +131,8 @@ export default class Source extends util.Target {
 
     get structHelper() { return this.#structHelper; }
 
-    static generateArrayPath(...path) { return path.flatten().join("/").split("/").filter(part => part.length > 0); }
-    static generatePath(...path) { return this.generateArrayPath(...path).join("/"); }
-
     add(path, type) {
-        path = Source.generatePath(path);
+        path = util.generatePath(path);
         let field = new this.constructor.Field(this, path, type);
         return this.addField(field);
     }
@@ -163,7 +160,7 @@ export default class Source extends util.Target {
         });
     }
     structDecode(path, type, array, v, ts) {
-        path = Source.generatePath(path);
+        path = util.generatePath(path);
         type = String(type);
         array = !!array;
         v = toUint8Array(v);
@@ -217,7 +214,7 @@ export default class Source extends util.Target {
         this.clear();
         this.#structDecodes = util.ensure(data.structDecodes, "arr").map(decode => {
             decode = util.ensure(decode, "obj");
-            decode.path = Source.generatePath(decode.path);
+            decode.path = util.generatePath(decode.path);
             decode.type = String(decode.type);
             decode.array = !!decode.array;
             decode.v = toUint8Array(decode.v);
@@ -280,7 +277,7 @@ Source.Field = class SourceField extends util.Target {
 
         this.#node = null;
 
-        this.#path = Source.generatePath(path);
+        this.#path = util.generatePath(path);
         path = this.path.split("/").filter(part => part.length > 0);
         this.#name = (path.length > 0) ? path.at(-1) : "";
         if (type == null) throw new Error("Type is null");
@@ -484,7 +481,7 @@ Source.Node = class SourceNode extends util.Target {
         });
     }
     lookup(path) {
-        path = Source.generateArrayPath(path);
+        path = util.generateArrayPath(path);
         let node = this;
         while (path.length > 0) {
             let name = path.shift();

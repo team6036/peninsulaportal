@@ -1,167 +1,3 @@
-.browser {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-.browser .node,
-.browsernode {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-.browser .node > button.display,
-.browsernode > button.display {
-    --bg: transparent;
-    --fg: var(--v7);
-    --bgh: var(--v2);
-    --fgh: var(--v8);
-    --bgd: transparent;
-    --fgd: var(--v4);
-
-    max-width: 100%;
-    padding: 7.5px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: stretch;
-
-    border-radius: 5px;
-
-    font-size: 14px;
-}
-.browser .node.hidden > button.display,
-.browsernode.hidden > button.display {
-    --fg: var(--v5);
-    --fgh: var(--v7);
-    --fgd: var(--v3);
-
-    font-style: italic;
-}
-.browser .node > button.display > .main,
-.browsernode > button.display > .main {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-}
-.browser .node > button.display > .main > ion-icon,
-.browsernode > button.display > .main > ion-icon {
-    margin-right: 5px;
-
-    min-width: 14px;
-}
-.browser .node > button.display > .main > .name,
-.browsernode > button.display > .main > .name {
-    min-width: max-content;
-}
-.browser .node > button.display > .main > .tag,
-.browsernode > button.display > .main > .tag {
-    color: var(--v5);
-
-    transition: color var(--t);
-}
-.browser .node > button.display:not(:disabled):hover > .main > .tag,
-.browsernode > button.display:not(:disabled):hover > .main > .tag {
-    color: var(--v7);
-}
-.browser .node > button.display:disabled > .main > .tag,
-.browsernode > button.display:disabled > .main > .tag {
-    color: var(--v3);
-}
-.browser .node > button.display > .main > .tag,
-.browsernode > button.display > .main > .tag {
-    margin-left: 10px;
-
-    font-size: 12px;
-    font-family: monospace;
-}
-.browser .node > button.display > .value,
-.browsernode > button.display > .value {
-    padding-left: 10px;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 10px;
-}
-.browser .node > button.display > .value > div,
-.browsernode > button.display > .value > div {
-    width: calc(100% - 14px - 20px);
-    max-width: calc(100% - 14px - 20px);
-    overflow: hidden;
-
-    font-size: 12px;
-    text-align: left;
-    text-overflow: ellipsis;
-}
-.browser .node > .content,
-.browsernode > .content {
-    position: relative;
-
-    margin-left: 15px;
-
-    display: none;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-.browser .node.this > .content,
-.browsernode.this > .content {
-    display: flex;
-}
-.browser .node > .content > button.side,
-.browsernode > .content > button.side {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    transform: translateX(-100%);
-
-    width: 15px;
-    height: 100%;
-    padding: 0px;
-
-    background-color: transparent;
-}
-.browser .node > .content > button.side::before,
-.browsernode > .content > button.side::before {
-    content: "";
-
-    position: absolute;
-    right: 5px;
-    top: 0px;
-
-    width: 1px;
-    height: 100%;
-
-    background-color: var(--v2);
-
-    transition: background-color var(--t);
-}
-.browser .node > .content > button.side:not(:disabled):hover::before,
-.browsernode > .content > button.side:not(:disabled):hover::before {
-    background-color: var(--a);
-}
-.browser .node > .content > button.side:disabled::before,
-.browsernode > .content > button.side:disabled::before {
-    background-color: var(--v2-0);
-}
-
 #PROJECTPAGE > .main {
     --side: 15%;
 
@@ -669,7 +505,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.this {
     visibility: inherit;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -677,7 +513,7 @@
     align-items: stretch;
     align-content: stretch;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -701,17 +537,17 @@
     font-size: 12px;
     user-select: none;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.back {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.back {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
 
     padding: 0px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > .divider {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > .divider {
     user-select: none;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.item {
     padding: 0px;
 
     background-color: transparent;
@@ -719,14 +555,14 @@
 
     transition: color var(--t);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.item:not(:disabled):hover {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.item:not(:disabled):hover {
     color: var(--v8);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .path > button.item:disabled {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.item:disabled {
     color: var(--v4);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .explorer,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display {
     position: absolute;
     top: 26.5px;
     left: 0px;
@@ -741,14 +577,14 @@
 
     visibility: hidden;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser.this,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .explorer.this,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display.this {
     visibility: inherit;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .browser > .node {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .explorer > .node {
     max-width: 100%;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -756,7 +592,7 @@
     align-items: stretch;
     align-content: stretch;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item {
     position: relative;
 
     height: 100%;
@@ -773,10 +609,10 @@
     background-color: var(--v2-8);
     border-radius: 5px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item > ion-icon {
     color: var(--v1);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item > .type {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item > .type {
     position: absolute;
     top: 10px;
     left: 10px;
@@ -786,7 +622,7 @@
     font-size: 14px;
     font-family: monospace;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser_ > .display > .item > .value {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item > .value {
     max-width: 100%;
     max-height: 100%;
     overflow: auto;

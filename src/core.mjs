@@ -4496,3 +4496,307 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
     get selected() { return this.#selected; }
     set selected(v) { this.#selected = !!v; }
 };
+
+export class Explorer extends util.Target {
+    #nodes;
+
+    #elem;
+
+    constructor() {
+        super();
+
+        this.#nodes = {};
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("explorer");
+    }
+
+    get nodes() { return Object.keys(this.#nodes); }
+    get nodeObjects() { return Object.values(this.#nodes); }
+    get nNodes() {
+        let n = 1;
+        this.nodeObjects.forEach(node => (n += node.explorer.nNodes));
+        return n;
+    }
+    clear() {
+        let nodes = this.nodeObjects;
+        this.rem(nodes);
+        return nodes;
+    }
+    has(v) {
+        if (v instanceof Explorer.Node) return this.has(v.name) && this.nodeObjects.includes(v);
+        return v in this.#nodes;
+    }
+    get(name) {
+        if (!this.has(name)) return null;
+        return this.#nodes[name];
+    }
+    add(...nodes) {
+        let r = util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof Explorer.Node)) return false;
+            if (this.has(node)) return false;
+            this.#nodes[node.name] = node;
+            node.addLinkedHandler(this, "trigger", (e, path) => this.post("trigger", e, path));
+            node.addLinkedHandler(this, "trigger2", (e, path) => this.post("trigger2", e, path));
+            node.addLinkedHandler(this, "drag", (e, path) => this.post("drag", e, path));
+            this.elem.appendChild(node.elem);
+            node.onAdd();
+            return node;
+        });
+        this.format();
+        return r;
+    }
+    rem(...nodes) {
+        return util.Target.resultingForEach(nodes, node => {
+            if (!(node instanceof Explorer.Node)) return false;
+            if (!this.has(node)) return false;
+            node.onRem();
+            delete this.#nodes[node.name];
+            node.clearLinkedHandlers(this, "trigger");
+            node.clearLinkedHandlers(this, "drag");
+            this.elem.removeChild(node.elem);
+            return node;
+        });
+    }
+    lookup(path) {
+        path = util.generateArrayPath(path);
+        let explorer = this;
+        while (path.length > 0) {
+            let name = path.shift();
+            if (!explorer.has(name)) return null;
+            let node = explorer.get(name);
+            if (path.length <= 0) return node;
+            explorer = node.explorer;
+        }
+        return null;
+    }
+
+    get elem() { return this.#elem; }
+
+    format() {
+        this.nodeObjects.sort((a, b) => util.compareStr(a.name, b.name)).forEach((node, i) => {
+            node.elem.style.order = i;
+            node.format();
+        });
+    }
+}
+Explorer.Node = class ExplorerNode extends util.Target {
+    #explorer;
+
+    #name;
+    #info;
+    #value;
+    #showValue;
+
+    #elem;
+    #eDisplay;
+    #eMain;
+    #eIcon;
+    #eName;
+    #eTag;
+    #eValueBox;
+    #eValue;
+    #eSide;
+
+    static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc) {
+        let nodeMap = {}, enodeMap = {};
+        util.ensure(nodeArr, "arr").forEach(node => {
+            if (!node) return;
+            nodeMap[node.name] = node;
+        });
+        util.ensure(enodeArr, "arr").forEach(enode => {
+            if (!(enode instanceof this)) return;
+            enodeMap[enode.name] = enode;
+        });
+        let add = [];
+        for (let name in nodeMap) {
+            let node = nodeMap[name];
+            if (name in enodeMap) continue;
+            let enode = enodeMap[node.name] = new this(node.name, node.info);
+            add.push(enode);
+        }
+        if (util.is(addFunc, "func")) addFunc(...add);
+        let rem = [];
+        for (let name in enodeMap) {
+            let enode = enodeMap[name];
+            if (name in nodeMap) continue;
+            rem.push(enode);
+        }
+        if (util.is(remFunc, "func")) remFunc(...rem);
+        for (let name in nodeMap) {
+            let node = nodeMap[name];
+            let enode = enodeMap[name];
+            if (enode.isOpen)
+                this.doubleTraverse(
+                    node.nodeObjects,
+                    enode.explorer.nodeObjects,
+                    (...en) => enode.explorer.add(...en),
+                    (...en) => enode.explorer.rem(...en),
+                    dumpFunc,
+                );
+            enode.value = node.value;
+            if (util.is(node.dump, "func")) node.dump(enode);
+            if (util.is(dumpFunc, "func")) dumpFunc(node, enode);
+        }
+    }
+
+    constructor(name, info) {
+        super();
+
+        this.#explorer = new Explorer();
+        this.explorer.addHandler("trigger", (e, path) => {
+            path = util.generatePath(path);
+            if (this.name.length > 0) path = this.name+"/"+path;
+            this.post("trigger", e, path);
+        });
+        this.explorer.addHandler("trigger2", (e, path) => {
+            path = util.generatePath(path);
+            if (this.name.length > 0) path = this.name+"/"+path;
+            this.post("trigger2", e, path);
+        });
+        this.explorer.addHandler("drag", (e, path) => {
+            path = util.generatePath(path);
+            if (this.name.length > 0) path = this.name+"/"+path;
+            this.post("drag", e, path);
+        });
+
+        this.#name = String(name);
+        this.#info = (info == null) ? null : String(info);
+        this.#value = null;
+
+        this.#showValue = null;
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("node");
+        if (this.isHidden) this.elem.classList.add("hidden");
+        this.#eDisplay = document.createElement("button");
+        this.elem.appendChild(this.eDisplay);
+        this.eDisplay.classList.add("display");
+        this.#eMain = document.createElement("div");
+        this.eDisplay.appendChild(this.eMain);
+        this.eMain.classList.add("main");
+        this.#eIcon = document.createElement("ion-icon");
+        this.eMain.appendChild(this.eIcon);
+        this.#eName = document.createElement("div");
+        this.eMain.appendChild(this.eName);
+        this.eName.classList.add("name");
+        this.eName.textContent = this.name;
+        this.#eTag = document.createElement("div");
+        this.eMain.appendChild(this.eTag);
+        this.eTag.classList.add("tag");
+        this.eTag.textContent = util.ensure(this.info, "str");
+        this.#eValueBox = document.createElement("div");
+        this.eDisplay.appendChild(this.eValueBox);
+        this.eValueBox.classList.add("value");
+        this.eValueBox.innerHTML = "<ion-icon name='return-down-forward'></ion-icon>";
+        this.#eValue = document.createElement("div");
+        this.eValueBox.appendChild(this.eValue);
+        this.elem.appendChild(this.explorer.elem);
+        this.#eSide = document.createElement("button");
+        this.explorer.elem.appendChild(this.eSide);
+        this.eSide.classList.add("side");
+        this.eSide.classList.add("override");
+
+        let cancel = 10;
+        this.eDisplay.addEventListener("click", e => {
+            e.stopPropagation();
+            if (cancel <= 0) return cancel = 10;
+            this.post("trigger", e, [this.name]);
+        });
+        this.eDisplay.addEventListener("dblclick", e => {
+            this.post("trigger2", e, [this.name]);
+        });
+        this.eDisplay.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+            };
+            const mousemove = () => {
+                if (cancel > 0) return cancel--;
+                mouseup();
+                this.post("drag", e, [this.name]);
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        });
+        this.eSide.addEventListener("click", e => {
+            e.stopPropagation();
+            this.isOpen = !this.isOpen;
+        });
+
+        this.showValue = false;
+    }
+
+    get explorer() { return this.#explorer; }
+
+    get name() { return this.#name; }
+    get isHidden() { return this.name.startsWith("."); }
+
+    get info() { return this.#info; }
+
+    get value() { return this.#value; }
+    set value(v) {
+        this.#value = v;
+        this.updateDisplay();
+    }
+
+    lookup(path) {
+        path = util.generateArrayPath(path);
+        if (path.length <= 0) return this;
+        return this.explorer.lookup(path);
+    }
+
+    get showValue() { return this.#showValue; }
+    set showValue(v) {
+        v = !!v;
+        if (this.showValue == v) return;
+        this.#showValue = v;
+        this.updateDisplay();
+    }
+    get elem() { return this.#elem; }
+    get eDisplay() { return this.#eDisplay; }
+    get eMain() { return this.#eMain; }
+    get eIcon() { return this.#eIcon; }
+    get eName() { return this.#eName; }
+    get eTag() { return this.#eTag; }
+    get eValueBox() { return this.#eValueBox; }
+    get eValue() { return this.#eValue; }
+    get eSide() { return this.#eSide; }
+
+    get icon() { return this.eIcon.getAttribute("name"); }
+    set icon(v) {
+        this.eIcon.removeAttribute("src");
+        this.eIcon.setAttribute("name", v);
+    }
+    get iconSrc() { return this.eIcon.getAttribute("src"); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
+    updateDisplay() {
+        this.eValueBox.style.display = this.showValue ? "" : "none";
+        this.eValue.textContent = this.value;
+        this.post("update-display");
+    }
+
+    get isOpen() { return this.elem.classList.contains("this"); }
+    set isOpen(v) {
+        v = !!v;
+        if (this.isOpen == v) return;
+        if (v) this.elem.classList.add("this");
+        else this.elem.classList.remove("this");
+        this.updateDisplay();
+    }
+    get isClosed() { return !this.isOpen; }
+    set isClosed(v) { this.isOpen = !v; }
+    open() { return this.isOpen = true; }
+    close() { return this.isClosed = true; }
+
+    format() {
+        this.updateDisplay();
+        this.explorer.format();
+    }
+}
