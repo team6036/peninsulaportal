@@ -425,6 +425,7 @@ export class App extends util.Target {
         if (this.setupDone) return false;
 
         const root = "file://"+(await window.api.getAppRoot());
+        const theRoot = "file://"+(await window.api.getRoot());
         const repoRoot = "file://"+(await window.api.getRepoRoot());
 
         window.api.onPerm(async () => {
@@ -523,7 +524,8 @@ export class App extends util.Target {
         this.#eStyle = document.createElement("link");
         document.head.appendChild(this.eStyle);
         this.eStyle.rel = "stylesheet";
-        this.eStyle.href = "./style.css";
+        this.eStyle.href = theRoot+"/style.css";
+        console.log(theRoot);
 
         this.#eDynamicStyle = document.createElement("style");
         document.head.appendChild(this.eDynamicStyle);
@@ -2242,7 +2244,7 @@ export class AppModal extends App {
             this.#eModalStyle = document.createElement("link");
             document.head.appendChild(this.eModalStyle);
             this.eModalStyle.rel = "stylesheet";
-            this.eModalStyle.href = "../style-modal.css";
+            this.eModalStyle.href = "./style-modal.css";
 
             document.body.innerHTML = `
 <div id="mount">
