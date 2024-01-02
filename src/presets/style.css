@@ -115,20 +115,13 @@ button:not(.override) {
     --fgd: var(--v6);
 }
 #PAGE > .content > article p:not(.override) > input {
-    /*
-    padding: 5px;
-    */
-
     background-color: var(--v2-8);
-    /*
-    border-radius: 5px;
-    */
 }
 #PAGE > .content > article > #colorsheet {
     display: inline-grid;
     grid-template-columns: repeat(9, 30px);
 
-    border: 2px solid var(--v8);
+    border: 1px solid var(--v8);
 }
 #PAGE > .content > article label.pick-root {
     min-width: max-content;
@@ -145,9 +138,6 @@ button:not(.override) {
 }
 #PAGE > .content > article label.pick-root > input {
     min-width: 300px;
-    /*
-    padding: 5px;
-    */
 
     background-color: var(--v2-8);
     color: var(--cy);

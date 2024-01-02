@@ -25,7 +25,7 @@
     --fgd: var(--v4);
 
     max-width: 100%;
-    padding: 5px;
+    padding: 7.5px;
 
     display: flex;
     flex-direction: column;
@@ -146,7 +146,7 @@
     right: 5px;
     top: 0px;
 
-    width: 2px;
+    width: 1px;
     height: 100%;
 
     background-color: var(--v2);
@@ -247,8 +247,8 @@
     
     position: relative;
 
-    width: 2px;
-    max-width: 2px;
+    width: 1px;
+    max-width: 1px;
     overflow: visible;
     
     background-color: var(--v2);
@@ -444,15 +444,15 @@
     background-color: var(--v2);
 }
 #PROJECTPAGE > .main > .content .item.container.x > .divider {
-    width: 2px;
-    max-width: 2px;
+    width: 1px;
+    max-width: 1px;
     overflow: visible;
 
     cursor: ew-resize;
 }
 #PROJECTPAGE > .main > .content .item.container.y > .divider {
-    height: 2px;
-    max-height: 2px;
+    height: 1px;
+    max-height: 1px;
     overflow: visible;
 
     cursor: ns-resize;
@@ -551,7 +551,7 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 2px;
+    gap: 1px;
 
     background-color: var(--v2);
 }
@@ -590,7 +590,7 @@
 
     background-color: var(--v1-8);
     color: var(--v4);
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
 
     font-size: 12px;
     user-select: none;
@@ -612,13 +612,13 @@
     left: 0px;
 
     width: 100%;
-    height: 2px;
+    height: 1px;
 
     background-color: var(--a);
 }
 #PROJECTPAGE > .main > .content .item.panel > .top > .item.this {
     background-color: var(--v1);
-    border-bottom: 2px solid var(--v1);
+    border-bottom: 1px solid var(--v1);
 }
 #PROJECTPAGE > .main > .content .item.panel.active > .top > .item.this::before {
     content: "";
@@ -808,7 +808,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search {
     overflow: hidden;
 
-    min-height: 26.5px;
+    min-height: 29px;
 
     display: flex;
     flex-direction: row;
@@ -821,7 +821,7 @@
     border-radius: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags {
-    padding: 5px;
+    padding: 7.5px;
 
     display: flex;
     flex-direction: row;
@@ -832,7 +832,7 @@
     gap: 10px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags:empty {
-    padding: 2.5px;
+    padding: 3.75px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags > .item {
     display: flex;
@@ -881,7 +881,7 @@
     user-select: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .divider {
-    height: 2px;
+    height: 1px;
     margin: 2px 0px;
 
     background-color: var(--v2);
@@ -899,7 +899,7 @@
     --bgh: var(--v2);
     --bgd: transparent;
 
-    padding: 5px;
+    padding: 7.5px;
 
     display: flex;
     flex-direction: row;
@@ -964,7 +964,7 @@
     align-content: flex-start;
 
     background-color: var(--v2);
-    border-right: 2px solid var(--v2);
+    border-right: 1px solid var(--v2);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header {
     z-index: 1;
@@ -986,7 +986,7 @@
     align-content: center;
 
     background-color: var(--v1);
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
     color: var(--v6);
 
     font-size: 12px;
@@ -1010,7 +1010,7 @@
 
     background-color: var(--v1);
     color: var(--v8);
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
 
     font-size: 12px;
 }
@@ -1203,7 +1203,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item {
     position: relative;
 
-    padding: 5px;
+    padding: 7.5px;
     overflow: hidden;
     
     display: flex;
@@ -1249,7 +1249,7 @@
     left: 0%;
     transform: translateY(-50%);
 
-    width: 2px;
+    width: 1px;
     height: 100%;
 
     background-color: var(--a);
@@ -1436,7 +1436,7 @@
     gap: 10px;
 
     color: var(--v8);
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action > .header > button {
     --bg: transparent;
@@ -1464,7 +1464,7 @@
 
     color: var(--v4);
 
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
 
     text-transform: uppercase;
     font-size: 12px;
@@ -1876,7 +1876,7 @@
     font-size: 14px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item.disabled > button.display > div {
-    text-decoration: line-through var(--v8-8) 2px;
+    text-decoration: line-through var(--v8) 1px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > button {
     --bg: transparent;
@@ -1904,7 +1904,7 @@
     top: 0px;
     left: 10px;
 
-    width: 2px;
+    width: 1px;
     height: 100%;
     transform: translateX(-50%);
 
@@ -1928,11 +1928,11 @@
     height: 15px;
     aspect-ratio: 1 / 1;
 
-    border: 2px solid transparent;
+    border: 1px solid transparent;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list > .item > .content > .colorpicker > button.this,
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom).this {
-    border: 2px solid var(--v8);
+    border: 1px solid var(--v8);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav,
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav {
@@ -1958,7 +1958,7 @@
     transform: translateX(-50%);
 
     width: 100%;
-    height: 2px;
+    height: 1px;
 
     background-color: var(--v2);
 }
@@ -2085,7 +2085,7 @@
     position: absolute;
 
     background-color: var(--a-4);
-    border: 2px solid var(--a);
+    border: 1px solid var(--a);
     border-radius: 10px;
     visibility: hidden;
 

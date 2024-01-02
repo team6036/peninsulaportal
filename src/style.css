@@ -321,7 +321,7 @@ label.checkbox:hover > input[type="checkbox"]:checked ~ span > ion-icon {
 label.switch {
     --width: 30px;
     --height: 15px;
-    --padding: 2px;
+    --padding: 1px;
     --on-text: "ON";
     --off-text: "OFF";
 
@@ -451,11 +451,11 @@ article.md h1,
 article.md h2 {
     padding-bottom: 0.3em;
 
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
 }
 article.md.lighter h1,
 article.md.lighter h2 {
-    border-bottom: 2px solid var(--v4);
+    border-bottom: 1px solid var(--v4);
 }
 article.md h3 {
     margin-top: 24px;
@@ -512,11 +512,11 @@ article.md table th,
 article.md table td {
     padding: 5px 15px;
 
-    border: 2px solid var(--v2);
+    border: 1px solid var(--v2);
 }
 article.md.lighter table th,
 article.md.lighter table td {
-    border: 2px solid var(--v4);
+    border: 1px solid var(--v4);
 }
 
 #titlebar {
@@ -544,7 +544,7 @@ article.md.lighter table td {
 
     background-color: var(--v1);
     color: var(--v5);
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
 
     -webkit-app-region: drag;
 }
@@ -788,7 +788,7 @@ article.md.lighter table td {
     --border-hov-c-line: 1;
     --border-hov-c-line-v: 0;
 
-    border: 2px solid;
+    border: 1px solid;
     border-image-slice: 1;
     border-image-source: conic-gradient(
         var(--c) 0deg,
@@ -1337,7 +1337,7 @@ article.md.lighter table td {
     border-radius: 10px;
 }
 .popup.core > .inner > button:focus {
-    outline: 2px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 .popup.core > .inner > button.special {
     --bg: var(--a);
@@ -1461,7 +1461,7 @@ div.contextmenu .item:not(.divider):not(.disabled):hover > div.contextmenu {
 div.contextmenu .item.divider {
     padding: 0px;
 
-    height: 2px;
+    height: 1px;
 }
 div.contextmenu .item.divider::before {
     content: "";
@@ -1472,7 +1472,7 @@ div.contextmenu .item.divider::before {
     transform: translate(-50%, -50%);
 
     width: calc(100% - 20px);
-    height: 2px;
+    height: 1px;
 
     background-color: var(--v4);
 }

@@ -4039,7 +4039,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             let y1 = ctx.canvas.height - padding*quality;
             let y2 = ctx.canvas.height - (padding-5)*quality;
             let y3 = ctx.canvas.height - (padding-10)*quality;
-            ctx.lineWidth = 2*quality;
+            ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
             ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
@@ -4089,7 +4089,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let x2 = [(padding-5)*quality, ctx.canvas.width-(padding-5)*quality][i];
                 let x3 = [(padding-10)*quality, ctx.canvas.width-(padding-10)*quality][i];
                 ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
-                ctx.lineWidth = 2*quality;
+                ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "miter";
                 ctx.lineCap = "square";
                 ctx.font = (12*quality)+"px monospace";
@@ -4149,7 +4149,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         } else ranges.push({ x: x, r: [v, v], v: v });
                     }
                     ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color) : v.color : "#fff";
-                    ctx.lineWidth = 2*quality;
+                    ctx.lineWidth = 1*quality;
                     ctx.lineJoin = "round";
                     ctx.lineCap = "square";
                     ctx.beginPath();
@@ -4190,7 +4190,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 eValue.textContent = foundTooltips[tooltipCycle].value;
             } else eGraphTooltip.classList.remove("this");
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
-            ctx.lineWidth = 2*quality;
+            ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
             ctx.beginPath();
