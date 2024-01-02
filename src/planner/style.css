@@ -443,7 +443,7 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 
     visibility: hidden;
 }
@@ -461,7 +461,7 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 
     color: var(--v8);
 
