@@ -71,7 +71,7 @@
     gap: 10px;
 
     background-color: var(--v2);
-    border-radius: 10px;
+    border-radius: 5px;
     filter: drop-shadow(0px 5px 5px var(--v0-8));
     opacity: 0%;
     visibility: hidden;
@@ -110,7 +110,7 @@
 
     padding: 10px;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #titlebar > #projectinfo > .content > .nav > button.on {
     --bg: var(--cg3);
@@ -219,7 +219,7 @@
 
     padding: 10px 30px;
 
-    border-radius: 10px;
+    border-radius: 5px;
 
     font-size: 16px;
 }
@@ -297,7 +297,7 @@
 
     gap: 10px;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #PROJECTSPAGE > .nav > .info {
     min-width: max-content;
@@ -336,7 +336,7 @@
     align-content: center;
 
     background-color: var(--v8);
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #PROJECTSPAGE > .nav > .search > input {
     flex-basis: 100%;
@@ -500,7 +500,7 @@
 
     background-color: var(--v2-0);
     border: 1px solid var(--v3);
-    border-radius: 10px;
+    border-radius: 5px;
 
     transition: background-color var(--t);
 }

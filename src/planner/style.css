@@ -25,7 +25,7 @@
     width: max-content;
     padding: 10px;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 
 #PROJECTPAGE > .main {
@@ -599,7 +599,7 @@
     align-items: center;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: 5px;
 
     font-size: 30px;
 
@@ -625,7 +625,7 @@
 
     background-color: transparent;
     border: 1px solid var(--v2);
-    border-radius: 10px;
+    border-radius: 5px;
     filter: drop-shadow(0px 0px 0px var(--v1-8));
 
     cursor: grab;
@@ -755,7 +755,7 @@
 
     padding: 10px;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #objectspanel > #itemcontrols > button#removebtn {
     --bg: var(--cr);
@@ -796,7 +796,7 @@
     gap: 10px;
 
     background-color: var(--v2);
-    border-radius: 10px;
+    border-radius: 5px;
     border: 1px solid transparent;
 }
 #pathspanel > #pathsbox > .item.this {
@@ -834,7 +834,7 @@
 #pathspanel > button#activatebtn {
     padding: 10px;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #pathspanel > button#activatebtn.on {
     --bg: var(--cg3);
@@ -860,7 +860,7 @@
     align-items: stretch;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #optionspanel > #script > div.filedialog {
     flex-basis: 100%;

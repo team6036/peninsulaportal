@@ -47,7 +47,7 @@ button:not(.override) {
     align-content: center;
 
     background-color: var(--v2-8);
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #PAGE > .content {
     width: 100%;
@@ -63,7 +63,7 @@ button:not(.override) {
     align-items: center;
     align-content: center;
 
-    border-radius: 10px;
+    border-radius: 5px;
 }
 #PAGE > .content > article {
     width: min(100%, 750px);
