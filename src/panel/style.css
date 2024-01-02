@@ -1203,7 +1203,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item {
     position: relative;
 
-    padding: 10px;
+    padding: 5px;
     overflow: hidden;
     
     display: flex;
@@ -1212,7 +1212,7 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 
     background-color: var(--v2-0);
     color: var(--v5);
@@ -1290,7 +1290,7 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item > .nav > button {
     --bg: transparent;
