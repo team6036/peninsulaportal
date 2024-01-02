@@ -88,7 +88,7 @@
     background-color: var(--v1-8);
 }
 #titlebar > #projectinfo > .content > .divider {
-    height: 2px;
+    height: 1px;
 
     background-color: var(--v3);
 }
@@ -380,7 +380,7 @@
     align-items: stretch;
     align-content: center;
 
-    border-top: 2px solid var(--v2);
+    border-top: 1px solid var(--v2);
 }
 #PROJECTSPAGE > .content.grid {
     display: flex;
@@ -411,7 +411,7 @@
     gap: 10px;
 
     background-color: var(--v2-0);
-    border-bottom: 2px solid var(--v2);
+    border-bottom: 1px solid var(--v2);
 
     transition: background-color var(--t);
 }
@@ -424,7 +424,7 @@
     left: 0%;
     transform: translateY(-50%);
 
-    width: 2px;
+    width: 1px;
     height: 100%;
 
     background-color: var(--a);
@@ -499,7 +499,7 @@
     align-content: center;
 
     background-color: var(--v2-0);
-    border: 2px solid var(--v3);
+    border: 1px solid var(--v3);
     border-radius: 10px;
 
     transition: background-color var(--t);
@@ -511,7 +511,7 @@
     display: flex;
 }
 #PROJECTSPAGE > .content > .item.grid.selected {
-    border: 2px solid var(--a);
+    border: 1px solid var(--a);
 }
 #PROJECTSPAGE > .content > .item.grid > .top {
     display: flex;
@@ -606,7 +606,7 @@
     align-content: center;
     gap: 10px;
 
-    border-top: 2px solid var(--v2);
+    border-top: 1px solid var(--v2);
 }
 #PROJECTPAGE > .nav > .pre,
 #PROJECTPAGE > .nav > .post {

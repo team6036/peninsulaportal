@@ -39,7 +39,7 @@
 #PROJECTPAGE > .main > .divider {
     position: relative;
 
-    width: 2px;
+    width: 1px;
     height: 100%;
 
     background-color: var(--v2);
@@ -123,7 +123,7 @@
     border-radius: 100%;
 }
 .global.item.selectable.this {
-    outline: 2px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 .global.item.selectable > .button {
     padding: 0px;
@@ -171,7 +171,7 @@
     transform: translate(-100%, -50%);
 
     width: calc(var(--dist) - 7.5px - 10px);
-    height: 2px;
+    height: 1px;
 
     background-color: var(--v8);
 
@@ -194,7 +194,7 @@
     transform: translateY(-50%);
 
     width: var(--radius);
-    height: 2px;
+    height: 1px;
 
     background-color: var(--v8);
 }
@@ -624,7 +624,7 @@
     align-content: stretch;
 
     background-color: transparent;
-    border: 2px solid var(--v2);
+    border: 1px solid var(--v2);
     border-radius: 10px;
     filter: drop-shadow(0px 0px 0px var(--v1-8));
 
@@ -680,7 +680,7 @@
     transform: translate(-50%, -50%);
 
     width: 100%;
-    height: 2px;
+    height: 1px;
 
     background-color: var(--v2-8);
 }
@@ -693,7 +693,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
 
-    width: 2px;
+    width: 1px;
     height: 100%;
 
     background-color: var(--v2-8);
@@ -716,7 +716,7 @@
     transform: translateY(-50%);
 
     width: calc(100% - 5px);
-    height: 2px;
+    height: 1px;
 
     background-color: var(--v8);
 }
@@ -797,10 +797,10 @@
 
     background-color: var(--v2);
     border-radius: 10px;
-    border: 2px solid transparent;
+    border: 1px solid transparent;
 }
 #pathspanel > #pathsbox > .item.this {
-    border: 2px solid var(--cg);
+    border: 1px solid var(--cg);
 }
 #pathspanel > #pathsbox > .item > input {
     flex-basis: 100%;

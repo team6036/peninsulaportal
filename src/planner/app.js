@@ -259,7 +259,7 @@ class RSelect extends core.Odometry2d.Render {
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
-            ctx.lineWidth = 2*quality;
+            ctx.lineWidth = 1*quality;
             let a = this.odometry.worldToCanvas(this.a);
             let b = this.odometry.worldToCanvas(this.b);
             ctx.strokeRect(
