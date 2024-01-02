@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+    <head>
+		<meta charset="UTF-8">
+		<script type="module">
+            let params = new URLSearchParams(window.location.search);
+            let name = params.get("name");
+            const App = (await import("./"+name+"/app.js")).default;
+			const app = new App();
+			app.start();
+		</script>
+    </head>
+    <body>
+    </body>
+</html>
