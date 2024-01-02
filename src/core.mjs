@@ -2728,10 +2728,10 @@ export class AppFeature extends App {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
 
             let saving = false;
-            this.addHandler("sync-files-with", () => {
+            this.addHandler("save-projects", () => {
                 saving = true;
             });
-            this.addHandler("synced-files-with", () => {
+            this.addHandler("saved-projects", () => {
                 saving = false;
             });
             this.addHandler("update", delta => {
@@ -2864,7 +2864,7 @@ export class AppFeature extends App {
         return changes;
     }
     async loadProjects() {
-        await this.post("sync-with-files");
+        await this.post("load-projects");
         let projectIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
         let projects = [];
         await Promise.all(projectIds.map(async id => {
@@ -2874,7 +2874,7 @@ export class AppFeature extends App {
         }));
         this.projects = projects;
         this.clearChanges();
-        await this.post("synced-with-files");
+        await this.post("loaded-projects");
     }
     async loadProjectsClean() {
         try {
@@ -2886,7 +2886,7 @@ export class AppFeature extends App {
         return true;
     }
     async saveProjects() {
-        await this.post("sync-files-with");
+        await this.post("save-projects");
         let changes = new Set(this.changes);
         this.clearChanges();
         let oldIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
@@ -2902,7 +2902,7 @@ export class AppFeature extends App {
             let projectContent = JSON.stringify(project);
             await window.api.send("project-set", id, projectContent);
         }));
-        await this.post("synced-files-with");
+        await this.post("saved-projects");
     }
     async saveProjectsClean() {
         try {
@@ -3123,8 +3123,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eContent.appendChild(this.eEmpty);
         this.eEmpty.classList.add("empty");
         this.eEmpty.textContent = "No projects here yet!";
-        this.app.addHandler("synced-files-with", () => this.refresh());
-        this.app.addHandler("synced-with-files", () => this.refresh());
+        this.app.addHandler("saved-projects", () => this.refresh());
+        this.app.addHandler("loaded-projects", () => this.refresh());
 
         this.eContent.addEventListener("click", e => {
             e.stopPropagation();
