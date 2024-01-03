@@ -81,7 +81,7 @@ const MAIN = async () => {
         user: os.userInfo(),
     };
 
-    const TEST = OS.platform == "linux";
+    const TEST = OS.platform != "darwin" && 0;
     const tlog = (...a) => {
         if (!TEST) return;
         console.log("-", ...a);
@@ -806,6 +806,7 @@ const MAIN = async () => {
                 },
             };
             let isModal = this.manager.hasWindow() && this.manager.window.hasWindow();
+            tlog(isModal, this.isModal);
             if (isModal) {
                 options.modal = true;
                 options.parent = this.manager.window.window;
@@ -837,7 +838,8 @@ const MAIN = async () => {
                 if (!this.hasWindow()) return;
                 this.#resolver.state++;
                 if (!TEST) return;
-                await util.wait(100);
+                // return;
+                // await util.wait(100);
                 this.window.show();
                 this.window.webContents.openDevTools();
             });
@@ -859,10 +861,9 @@ const MAIN = async () => {
                     this.#resolver.state++;
                 };
                 ipc.on("ready", ready);
-            }
+            } else this.#resolver.state++;
 
             this.window.on("unresponsive", () => {});
-            this.window.webContents.on("did-fail-load", () => { if (this.hasWindow()) this.window.close(); });
             this.window.webContents.on("will-navigate", (e, url) => {
                 if (!this.hasWindow()) return;
                 if (url != this.window.webContents.getURL()) {
@@ -900,7 +901,7 @@ const MAIN = async () => {
                 this.stop();
             });
 
-            if (TEST && 0) {
+            if (TEST) {
                 this.window.loadFile(path.join(__dirname, "barebone-test.html"));
             } else {
                 if (this.isModal) this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.substring(6).toLowerCase());
@@ -909,6 +910,8 @@ const MAIN = async () => {
 
             namefs = {
                 PORTAL: () => {
+                    tlog(this.#resolver.state);
+                    // return;
                     let resolver = new util.Resolver(false);
                     const checkForShow = async () => {
                         if (!this.hasWindow()) return;
@@ -927,7 +930,6 @@ const MAIN = async () => {
                     checkForShow();
                     this.manager.addHandler("change-addWindow", () => checkForShow());
                     this.manager.addHandler("change-remWindow", () => checkForShow());
-                    this.window.on("show", checkForShow);
                 },
                 PANEL: () => {
                     this.addHandler("client-stream-logs", async () => ["logs"]);
