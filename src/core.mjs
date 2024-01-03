@@ -98,6 +98,7 @@ export class App extends util.Target {
                 this.USERAGENT.chrome = String(this.USERAGENT.chrome);
                 this.USERAGENT.electron = String(this.USERAGENT.electron);
             }
+            this.USERAGENT.isPublic = !!(await window.api.isPublic());
             this.menu = App.Menu.buildMenu(this.USERAGENT);
             let id = setInterval(() => {
                 if (document.readyState != "complete") return;
