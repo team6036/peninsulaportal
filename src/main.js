@@ -860,12 +860,11 @@ const MAIN = async () => {
             ipc.on("ready", ready);
 
             this.window.on("unresponsive", () => {});
-            this.window.webContents.on("will-navigate", (e, url) => {
+            this.window.webContents.on("will-navigate", e => {
+                e.preventDefault();
                 if (!this.hasWindow()) return;
-                if (url != this.window.webContents.getURL()) {
-                    e.preventDefault();
-                    this.on("open", url);
-                }
+                if (e.url != this.window.webContents.getURL())
+                    this.on("open", e.url);
             });
             let any = false;
             for (let win of this.manager.windows) {
@@ -1399,21 +1398,26 @@ const MAIN = async () => {
             let doLog = true;
             let kfs = {
                 "menu": async () => {
-                    const dfs = itms => {
-                        if (!util.is(itms, "arr")) return;
-                        itms.forEach(itm => {
-                            if (!util.is(itm, "obj")) return;
-                            itm.click = () => this.send("menu-click", itm.id);
-                            dfs(itm.submenu);
-                        });
-                    };
-                    dfs(v);
                     this.#menu = null;
                     try {
                         let signal = new util.Target();
                         signal.addHandler("about", () => this.send("about"));
                         signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
                         this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, signal), ...util.ensure(v, "arr")]);
+                        const dfs = menu => {
+                            if (!menu) return;
+                            menu.items.forEach(itm => {
+                                let click = itm.click;
+                                // monkey patching
+                                itm.click = (...a) => {
+                                    click.apply(itm, a);
+                                    if (!itm.id) return;
+                                    this.send("menu-click", itm.id);
+                                };
+                                dfs(itm.submenu);
+                            });
+                        };
+                        dfs(this.#menu);
                     } catch (e) {}
                     this.manager.checkMenu();
                 },
@@ -3460,7 +3464,7 @@ const MAIN = async () => {
                 },
                 "db-host": async () => {
                     let host = (await kfs._fullconfig()).dbHost;
-                    return util.ensure(host, "str") || "https://peninsula-db.jfancode.repl.co";
+                    return util.ensure(host, "str") || "https://d3aafe49-7ccf-4035-a60d-59d10c5c4ee1-00-1h037szede94f.global.replit.dev";
                 },
                 "assets-host": async () => {
                     return String((await kfs._fullconfig()).assetsHost);
