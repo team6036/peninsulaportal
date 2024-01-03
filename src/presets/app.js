@@ -201,14 +201,21 @@ export default class App extends core.App {
                         } else {
                             let value = "";
                             try {
-                                value = String(await window.api.get("val-"+elem.id));
+                                value = await window.api.get("val-"+elem.id);
                             } catch (e) { await this.doError("Input Get Error: "+elem.id, e); }
                             let idfs = {
+                                "db-host": async () => {
+                                    value = (value == null) ? "" : String(value);
+                                },
+                                "socket-host": async () => {
+                                    value = (value == null) ? "" : String(value);
+                                },
                                 "holiday": async () => {
-                                    value = (value == "null") ? "" : value.split(" ").map(v => util.capitalize(v)).join(" ");
+                                    value = (value == null) ? "" : String(value.split(" ").map(v => util.capitalize(v)).join(" "));
                                 },
                             };
                             if (elem.id in idfs) await idfs[elem.id]();
+                            else value = String(value);
                             if (elem.value == value) {
                                 elem.disabled = disabled;
                                 lock = false;
@@ -249,22 +256,28 @@ export default class App extends core.App {
                     if (elem.id in idfs) await idfs[elem.id]();
                     elem.addEventListener("change", async e => {
                         let v = (type == "bool") ? elem.checked : elem.value;
-                        if (type == "bool" || v.length > 0) {
-                            v = util.ensure(v, type);
-                            let idfs = {
-                            };
-                            if (elem.id in idfs) v = await idfs[elem.id](v);
-                            if (lock) return;
-                            lock = true;
-                            const disabled = elem.disabled;
-                            elem.disabled = true;
-                            try {
-                                await window.api.set("val-"+elem.id, v);
-                            } catch (e) { await this.doError("Input Set Error: "+elem.id, e); }
-                            elem.disabled = disabled;
-                            lock = false;
-                            await updateValue();
-                        }
+                        if (["any_num", "num", "float"].includes(type)) v = parseFloat(v);
+                        else if (["int"].includes(type)) v = parseInt(v);
+                        v = util.ensure(v, type);
+                        let idfs = {
+                            "db-host": async () => {
+                                v = (v.length <= 0) ? null : String(v);
+                            },
+                            "socket-host": async () => {
+                                v = (v.length <= 0) ? null : String(v);
+                            },
+                        };
+                        if (elem.id in idfs) v = await idfs[elem.id](v);
+                        if (lock) return;
+                        lock = true;
+                        const disabled = elem.disabled;
+                        elem.disabled = true;
+                        try {
+                            await window.api.set("val-"+elem.id, v);
+                        } catch (e) { await this.doError("Input Set Error: "+elem.id, e); }
+                        elem.disabled = disabled;
+                        lock = false;
+                        await updateValue();
                     });
                     setInterval(async () => {
                         if (document.activeElement == elem) return;

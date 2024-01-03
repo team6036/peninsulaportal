@@ -1,0 +1,11 @@
+{
+	"holidays": {
+		"halloween": {
+			"accent": "o"
+		},
+		"christmas": {
+			"accent": "r"
+		}
+	},
+	"active": null
+}
