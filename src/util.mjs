@@ -598,11 +598,11 @@ export class Target {
         if (!this.#handlers.has(o)) return false;
         let handlers = this.#handlers.get(o);
         if (!(e in handlers)) return false;
-        if (!handlers[e].has(e)) return false;
+        if (!handlers[e].has(f)) return false;
         handlers[e].delete(f);
         this.#nHandlers--;
         if (handlers[e].size <= 0) delete handlers[e];
-        if (Object.keys(handlers[e]).length <= 0) this.#handlers.delete(o);
+        if (Object.keys(handlers).length <= 0) this.#handlers.delete(o);
         return f;
     }
     hasLinkedHandler(o, e, f) {
