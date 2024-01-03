@@ -797,8 +797,14 @@ const MAIN = async () => {
                 resizable: true,
                 maximizable: false,
 
-                titleBarStyle: (OS.platform == "darwin" ? "hidden" : "default"),
-                trafficLightPosition: { x: (40-16)/2, y: (40-16)/2 },
+                titleBarStyle: "hidden",
+                titleBarOverlay: {
+                    height: 40,
+                },
+                trafficLightPosition: {
+                    x: (40-16)/2,
+                    y: (40-16)/2,
+                },
 
                 webPreferences: {
                     preload: path.join(__dirname, "preload.js"),

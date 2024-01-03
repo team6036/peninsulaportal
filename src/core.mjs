@@ -384,7 +384,14 @@ export class App extends util.Target {
         if (this.fullscreen == v) return;
         this.#fullscreen = v;
         document.documentElement.style.setProperty("--fs", (v ? 1 : 0));
-        document.documentElement.style.setProperty("--LEFT", ((v || ((this.USERAGENT.os == "web") || (this.USERAGENT.os.platform != "darwin"))) ? 0 : 80)+"px");
+        let left = 0, right = 0;
+        if (window.navigator.windowControlsOverlay) {
+            let r = window.navigator.windowControlsOverlay.getTitlebarAreaRect();
+            left = r.left;
+            right = window.innerWidth-r.right;
+        }
+        document.documentElement.style.setProperty("--LEFT", (v ? 0 : left)+"px");
+        document.documentElement.style.setProperty("--RIGHT", (v ? 0 : right)+"px");
     }
     get devMode() { return this.#devMode; }
     set devMode(v) {
@@ -2544,8 +2551,11 @@ export class AppFeature extends App {
             this.eFeatureStyle.href = "../style-feature.css";
 
             const checkMinWidth = async () => {
-                let w = getComputedStyle(document.body).getPropertyValue("--LEFT");
-                w = util.ensure(parseFloat(w.slice(0, w.length-2)), "num");
+                let left = getComputedStyle(document.body).getPropertyValue("--LEFT");
+                left = util.ensure(parseFloat(left.slice(0, left.length-2)), "num");
+                let right = getComputedStyle(document.body).getPropertyValue("--RIGHT");
+                right = util.ensure(parseFloat(right.slice(0, right.length-2)), "num");
+                let w = left+right;
                 Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)")).forEach(elem => (w += elem.getBoundingClientRect().width));
                 await window.api.set("min-width", w);
             };

@@ -5,6 +5,7 @@
 
     --TOP: 40px;
     --LEFT: 80px;
+    --RIGHT: 80px;
     --fs: 0;
     
     --t: 0.25s;
@@ -533,6 +534,7 @@ article.md.lighter table td {
     max-height: var(--TOP);
     padding: 0px 10px;
     padding-left: var(--LEFT);
+    padding-right: var(--RIGHT);
     
     display: flex;
     flex-direction: row;
