@@ -1214,44 +1214,39 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         this.clearItems();
         let toolItems = [
             {
-                type: Panel.GraphTab,
-                name: "graph",
-                dname: "Graph", 
+                id: "graph", name: "Graph",
+                tab: Panel.GraphTab,
             },
             {
-                type: Panel.TableTab,
-                name: "table",
-                dname: "Table", 
+                id: "table", name: "Table",
+                tab: Panel.TableTab,
             },
             {
-                type: Panel.Odometry2dTab,
-                name: "odometry2d",
-                dname: "Odometry2d",
+                id: "odometry2d", name: "Odometry2d",
+                tab: Panel.Odometry2dTab,
             },
             {
-                type: Panel.Odometry3dTab,
-                name: "odometry3d",
-                dname: "Odometry3d",
+                id: "odometry3d", name: "Odometry3d",
+                tab: Panel.Odometry3dTab,
             },
             {
-                type: Panel.WebViewTab,
-                name: "webview",
-                dname: "WebView",
+                id: "webview", name: "WebView",
+                tab: Panel.WebViewTab,
             },
             {
-                type: Panel.LoggerTab,
-                name: "logger",
-                dname: "Logger",
+                id: "logger", name: "Logger",
+                tab: Panel.LoggerTab,
+                disabled: true,
             },
             {
-                type: Panel.LogWorksTab,
-                name: "logworks",
-                dname: "LogWorks",
+                id: "logworks", name: "LogWorks",
+                tab: Panel.LogWorksTab,
             },
         ];
-        toolItems = toolItems.map(item => {
-            let display = getTabDisplay(item.name);
-            let itm = new Panel.AddTab.Button(item.dname, "", "");
+        toolItems = toolItems.map(data => {
+            let display = getTabDisplay(data.id);
+            let itm = new Panel.AddTab.Button(data.name, "", "");
+            itm.btn.disabled = !!data.disabled;
             if (display != null) {
                 if ("src" in display) itm.iconSrc = display.src;
                 else itm.icon = display.name;
@@ -1262,8 +1257,9 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 item: itm,
                 trigger: () => {
                     if (!this.hasParent()) return;
+                    if (!!data.disabled) return;
                     let index = this.parent.tabs.indexOf(this);
-                    this.parent.addTab(new item.type(), index);
+                    this.parent.addTab(new data.tab(), index);
                     this.parent.remTab(this);
                 },
             };
@@ -2682,6 +2678,14 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
         this.addHandler("update", delta => {
             if (this.isClosed) return;
+
+            if (!this.hasApp() || this.app.USERAGENT.isPublic) {
+                this.elem.style.opacity = "50%";
+                this.elem.style.pointerEvents = "none";
+            } else {
+                this.elem.style.opacity = "";
+                this.elem.style.pointerEvents = "";
+            }
 
             this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
 
@@ -7400,34 +7404,47 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eContent.classList.add("content");
         new ResizeObserver(() => this.formatContent()).observe(this.eContent);
         
-        this.addToolButton(new ToolButton("Graph", "graph")).addHandler("drag", () => {
-            this.app.dragData = new Panel.GraphTab();
-            this.app.dragging = true;
-        });
-        this.addToolButton(new ToolButton("Table", "table")).addHandler("drag", () => {
-            this.app.dragData = new Panel.TableTab();
-            this.app.dragging = true;
-        });
-        this.addToolButton(new ToolButton("Odom2d", "odometry2d")).addHandler("drag", () => {
-            this.app.dragData = new Panel.Odometry2dTab();
-            this.app.dragging = true;
-        });
-        this.addToolButton(new ToolButton("Odom3d", "odometry3d")).addHandler("drag", () => {
-            this.app.dragData = new Panel.Odometry3dTab();
-            this.app.dragging = true;
-        });
-        this.addToolButton(new ToolButton("WebView", "webview")).addHandler("drag", () => {
-            this.app.dragData = new Panel.WebViewTab();
-            this.app.dragging = true;
-        });
-        this.addToolButton(new ToolButton("Logger", "logger")).addHandler("drag", () => {
-            this.app.dragData = new Panel.LoggerTab();
-            this.app.dragging = true;
-        });
-        this.addToolButton(new ToolButton("LogWorks", "logworks")).addHandler("drag", () => {
-            this.app.dragData = new Panel.LogWorksTab();
-            this.app.dragging = true;
-        });
+        let toolButtons = [
+            {
+                id: "graph", name: "Graph",
+                tab: Panel.GraphTab,
+            },
+            {
+                id: "table", name: "Table",
+                tab: Panel.TableTab,
+            },
+            {
+                id: "odometry2d", name: "Odom2d",
+                tab: Panel.Odometry2dTab,
+            },
+            {
+                id: "odometry3d", name: "Odom3d",
+                tab: Panel.Odometry3dTab,
+            },
+            {
+                id: "webview", name: "WebView",
+                tab: Panel.WebViewTab,
+            },
+            {
+                id: "logger", name: "Logger",
+                tab: Panel.LoggerTab,
+                disabled: this.app.USERAGENT.isPublic,
+            },
+            {
+                id: "logworks", name: "LogWorks",
+                tab: Panel.LogWorksTab,
+            },
+        ];
+        this.addToolButton(toolButtons.map(data => {
+            let btn = new ToolButton(data.name, data.id);
+            btn.elem.disabled = !!data.disabled;
+            btn.addHandler("drag", () => {
+                if (!!data.disabled) return;
+                this.app.dragData = new data.tab();
+                this.app.dragging = true;
+            });
+            return btn;
+        }));
 
         this.#eDragBox = document.createElement("div");
         this.eMain.appendChild(this.eDragBox);

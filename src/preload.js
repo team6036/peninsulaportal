@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld("api", {
     },
     send: (k, ...a) => ipcRenderer.invoke("on", k, ...a),
 
+    isPublic: () => ipcRenderer.invoke("get", "is-public"),
+
     fileHas: path => ipcRenderer.invoke("file-has", path),
     fileRead: path => ipcRenderer.invoke("file-read", path),
     fileReadRaw: path => ipcRenderer.invoke("file-read-raw", path),

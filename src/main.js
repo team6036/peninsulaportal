@@ -2158,6 +2158,7 @@ const MAIN = async () => {
 
         log(...a) { return this.manager.log(`[${this.name}]`, ...a); }
     }
+    const DEFAULTHOST = "https://d3aafe49-7ccf-4035-a60d-59d10c5c4ee1-00-1h037szede94f.global.replit.dev";
     class WindowManager extends util.FSOperator {
         #window;
 
@@ -2713,7 +2714,7 @@ const MAIN = async () => {
                 if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+e.sender.id);
                 return win;
             };
-
+            
             ipc.handle("get-root", async (e, type) => {
                 let win = identify(e);
                 if (type == "app") return __dirname;
@@ -3464,7 +3465,10 @@ const MAIN = async () => {
                 },
                 "db-host": async () => {
                     let host = (await kfs._fullconfig()).dbHost;
-                    return util.ensure(host, "str") || "https://d3aafe49-7ccf-4035-a60d-59d10c5c4ee1-00-1h037szede94f.global.replit.dev";
+                    return util.ensure(host, "str") || DEFAULTHOST;
+                },
+                "is-public": async () => {
+                    return (await kfs["db-host"]()) == DEFAULTHOST;
                 },
                 "assets-host": async () => {
                     return String((await kfs._fullconfig()).assetsHost);

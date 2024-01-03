@@ -34,7 +34,7 @@
 ### External Tooling Tabs
 [WebView Tab →](./tabs/WEBVIEW.md)
 
-[Logger Tab →](./tabs/LOGGER.md)
+[Logger Tab →](./tabs/LOGGER.md) *SEE BOTTOM
 
 [LogWorks Tab →](./tabs/LOGWORKS.md)
 
@@ -59,3 +59,5 @@ Similar to the [Browser](./tabs/BROWSER.md), it lists the current topics and tab
 
 #### Panels
 The entire project consists of movable and draggable panels, each having multiple tabs. To resize them, simply drag the dividers between them. To add a tab, click the <kbd>+</kbd>. To access more features of the Panel, simply click on the <kbd>...</kbd> located in the top-right corner.
+
+> \* The Logger tab requires a database. The public database is hosted on [Repl](https://replit.com/~) and is **PUBLIC**, so the Logger is disabled. If you want to set up a database, contact me

@@ -235,6 +235,11 @@
 
     font-size: 12px;
 }
+#PROJECTPAGE > .main > .side > .section#tools > .content > button.item:disabled {
+    opacity: 50%;
+
+    pointer-events: none;
+}
 #PROJECTPAGE > .main > .side > .section#tools > .content > button.item > ion-icon {
     font-size: 20px;
 }
@@ -748,6 +753,11 @@
     gap: 5px;
 
     border-radius: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .item > button:disabled {
+    opacity: 50%;
+
+    pointer-events: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .item > button > ion-icon {
     display: flex;
