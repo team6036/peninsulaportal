@@ -81,12 +81,6 @@ const MAIN = async () => {
         user: os.userInfo(),
     };
 
-    const TEST = OS.platform != "darwin" && 0;
-    const tlog = (...a) => {
-        if (!TEST) return;
-        console.log("-", ...a);
-    };
-
     function simplify(s) {
         s = String(s);
         if (s.length > 20) s = s.substring(0, 20)+"...";
@@ -793,7 +787,7 @@ const MAIN = async () => {
                 width: 1250,
                 height: 750,
 
-                show: false || TEST,
+                show: false,
                 resizable: true,
                 maximizable: false,
 
@@ -843,31 +837,28 @@ const MAIN = async () => {
             this.window.once("ready-to-show", async () => {
                 if (!this.hasWindow()) return;
                 this.#resolver.state++;
-                if (!TEST) return;
-                // return;
-                // await util.wait(100);
+                return;
+                await util.wait(100);
                 this.window.show();
                 this.window.webContents.openDevTools();
             });
-            if (!TEST) {
-                const readiness = 1000;
-                let id = setTimeout(() => {
-                    showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
-                    clear();
-                    this.stop();
-                }, readiness);
-                const clear = () => {
-                    clearInterval(id);
-                    ipc.removeListener("ready", ready);
-                };
-                const ready = e => {
-                    if (!this.hasWindow()) return;
-                    if (e.sender.id != this.window.webContents.id) return;
-                    clear();
-                    this.#resolver.state++;
-                };
-                ipc.on("ready", ready);
-            } else this.#resolver.state++;
+            const readiness = 1000;
+            let id = setTimeout(() => {
+                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
+                clear();
+                this.stop();
+            }, readiness);
+            const clear = () => {
+                clearInterval(id);
+                ipc.removeListener("ready", ready);
+            };
+            const ready = e => {
+                if (!this.hasWindow()) return;
+                if (e.sender.id != this.window.webContents.id) return;
+                clear();
+                this.#resolver.state++;
+            };
+            ipc.on("ready", ready);
 
             this.window.on("unresponsive", () => {});
             this.window.webContents.on("will-navigate", (e, url) => {
@@ -907,12 +898,8 @@ const MAIN = async () => {
                 this.stop();
             });
 
-            if (TEST) {
-                this.window.loadFile(path.join(__dirname, "barebone-test.html"));
-            } else {
-                if (this.isModal) this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.substring(6).toLowerCase());
-                else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
-            }
+            if (this.isModal) this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.substring(6).toLowerCase());
+            else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
             namefs = {
                 PORTAL: () => {
@@ -1021,8 +1008,7 @@ const MAIN = async () => {
             }
             this.log(`STOP - perm: ${this.perm}`);
             if (!this.perm) return false;
-            if (!TEST)
-                if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
+            if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
             this.#started = false;
             await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
@@ -3802,8 +3788,7 @@ const MAIN = async () => {
         return;
     }
 
-    if (!TEST)
-        showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, infos: [e] }).whenModalResult();
+    showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, infos: [e] }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;
