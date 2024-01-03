@@ -1583,7 +1583,8 @@ const MAIN = async () => {
 
                 "title-bar-overlay": async () => {
                     if (!this.hasWindow()) return false;
-                    this.window.setTitleBarOverlay(v);
+                    if (this.window.setTitleBarOverlay)
+                        this.window.setTitleBarOverlay(v);
                     return true;
                 },
             };
