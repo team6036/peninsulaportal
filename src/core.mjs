@@ -271,7 +271,7 @@ export class App extends util.Target {
         let userAgent = this.USERAGENT;
         if (userAgent.os == "web") {
             return [
-                "BROWSER",
+                "WEB",
                 "Agent: "+navigator.userAgent,
                 "App: "+userAgent.app,
             ];
@@ -284,7 +284,7 @@ export class App extends util.Target {
             else cpus += models[0];
         }
         return [
-            "STANDALONE",
+            "DESKTOP",
             "OS: "+userAgent.os.platform+" "+userAgent.os.arch+cpus,
             "Node: "+userAgent.node,
             "Chrome: "+userAgent.chrome,
