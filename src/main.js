@@ -718,9 +718,10 @@ const MAIN = async () => {
 
         get started() { return this.#started; }
 
-        get ready() { return this.#resolver.state == 2; }
-        async whenReady() { await this.#resolver.when(2); }
-        async whenNotReady() { await this.#resolver.whenNot(2); }
+        get ready() { return this.#resolver.state == 3; }
+        async whenReady() { await this.#resolver.when(3); }
+        async whenPartiallyReady() { await this.#resolver.when(2); }
+        async whenNotReady() { await this.#resolver.whenNot(3); }
 
         get processManager() { return this.#processManager; }
         get clientManager() { return this.#clientManager; }
@@ -902,13 +903,17 @@ const MAIN = async () => {
             namefs = {
                 PORTAL: () => {
                     let resolver = new util.Resolver(false);
+                    let nn = 0;
                     const checkForShow = async () => {
+                        nn++;
+                        let n = nn;
                         if (!this.hasWindow()) return;
                         await this.whenReady();
                         await resolver.whenFalse();
                         resolver.state = true;
                         let nWins = 0;
                         for (let win of this.manager.windows) {
+                            if (win.isModal) continue;
                             if (win.name == "PORTAL") continue;
                             nWins++;
                         }
@@ -948,7 +953,7 @@ const MAIN = async () => {
             
             (async () => {
                 this.log("START # 1");
-                await this.whenReady();
+                await this.whenPartiallyReady();
                 if (!this.hasWindow()) return;
                 let prevIsDevMode = null;
                 let prevHoliday = null;
@@ -977,6 +982,7 @@ const MAIN = async () => {
                 let size = this.window.getSize();
                 const finishAndShow = () => {
                     if (!this.hasWindow()) return;
+                    this.#resolver.state++;
                     this.window.show();
                     this.window.setSize(...size);
                     useQueue = false;
