@@ -868,9 +868,10 @@ export class App extends util.Target {
         }
         styleStr += "}";
         this.eDynamicStyle.innerHTML = styleStr;
+        let compStyle = getComputedStyle(document.body);
         window.api.set("title-bar-overlay", {
-            color: style["v1"],
-            symbolColor: style["v8"],
+            color: compStyle.getPropertyValue("--v1"),
+            symbolColor: compStyle.getPropertyValue("--v8"),
         });
     }
 
