@@ -1,0 +1,20 @@
+{
+	"templates": {
+		"2018": {
+			"size": [1646, 823],
+			"robotSize": 80,
+			"robotMass": 75
+		},
+		"2022": {
+			"size": [1646, 823],
+			"robotSize": 80,
+			"robotMass": 75
+		},
+		"2023": {
+			"size": [1654, 802],
+			"robotSize": 80,
+			"robotMass": 75
+		}
+	},
+	"active": "2023"
+}

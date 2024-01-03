@@ -952,7 +952,6 @@ const MAIN = async () => {
             this.addHandler("modal-modify", addModify);
             
             (async () => {
-                this.log("START # 1");
                 await this.whenPartiallyReady();
                 if (!this.hasWindow()) return;
                 let prevIsDevMode = null;
@@ -976,9 +975,7 @@ const MAIN = async () => {
                 fs.watchFile(path.join(this.rootManager.dataPath, "config.json"), check);
                 fs.watchFile(path.join(this.rootManager.dataPath, "holidays", "holidays.json"), check);
                 await check();
-                this.log("START # 2");
                 if (!this.hasWindow()) return;
-                this.log("START # 3");
                 let size = this.window.getSize();
                 const finishAndShow = () => {
                     if (!this.hasWindow()) return;
@@ -987,7 +984,6 @@ const MAIN = async () => {
                     this.window.setSize(...size);
                     useQueue = false;
                     checkModify();
-                    this.log("START # 5");
                 };
                 if (!this.canOperate) return finishAndShow();
                 let bounds = util.ensure(await this.on("state-get", "bounds"), "obj");
@@ -995,7 +991,6 @@ const MAIN = async () => {
                 if (("height" in bounds) && (bounds.height < 50)) return finishAndShow();
                 this.window.setBounds(bounds);
                 size = this.window.getSize();
-                this.log("START # 4");
                 finishAndShow();
             })();
 
@@ -2164,7 +2159,6 @@ const MAIN = async () => {
 
         log(...a) { return this.manager.log(`[${this.name}]`, ...a); }
     }
-    const DEFAULTHOST = "https://d3aafe49-7ccf-4035-a60d-59d10c5c4ee1-00-1h037szede94f.global.replit.dev";
     class WindowManager extends util.FSOperator {
         #window;
 
@@ -2419,11 +2413,13 @@ const MAIN = async () => {
                 await this.set("fs-version", version);
                 this.log("DB finding host");
                 this.addLoad("find");
-                const host = String(await this.get("db-host"));
+                const host = await this.get("db-host");
+                const doFallback = host == null;
                 const theHost = host + "/api";
                 const isCompMode = await this.get("val-comp-mode");
                 this.remLoad("find");
-                this.log(`DB poll ( host: ${host} )`);
+                if (doFallback) this.log(`DB poll ( host: FALLBACK )`);
+                else this.log(`DB poll ( host: ${host} )`);
                 if (isCompMode) {
                     this.log(`DB poll - SKIP (COMP MODE)`);
                     this.addLoad("comp-mode");
@@ -2431,14 +2427,18 @@ const MAIN = async () => {
                 }
                 this.log(`DB polling`);
                 this.addLoad("poll");
-                try {
-                    let resp = await util.timeout(10000, fetch(theHost));
-                    if (resp.status != 200) throw resp.status;
-                } catch (e) {
-                    this.log(`DB polling - fail`);
-                    this.remLoad("poll");
-                    this.addLoad("poll:"+e);
-                    return false;
+                if (doFallback) {
+                    this.log(`DB polling ( FALLBACK )`);
+                } else {
+                    try {
+                        let resp = await util.timeout(10000, fetch(theHost));
+                        if (resp.status != 200) throw resp.status;
+                    } catch (e) {
+                        this.log(`DB polling - fail`);
+                        this.remLoad("poll");
+                        this.addLoad("poll:"+e);
+                        return false;
+                    }
                 }
                 this.log(`DB polling - success`);
                 this.remLoad("poll");
@@ -2463,7 +2463,15 @@ const MAIN = async () => {
                 this.log("DB config");
                 this.addLoad("config");
                 try {
-                    await fetchAndPipe(theHost+"/config", path.join(this.dataPath, ".config"));
+                    if (doFallback) await fs.promises.cp(
+                        path.join(__dirname, "assets", "fallback", "config.json"),
+                        path.join(this.dataPath, ".config"),
+                        {
+                            recursive: true,
+                            force: true,
+                        },
+                    );
+                    else await fetchAndPipe(theHost+"/config", path.join(this.dataPath, ".config"));
                     this.log("DB config - success");
                 } catch (e) {
                     this.log(`DB config - error - ${e}`);
@@ -2472,7 +2480,7 @@ const MAIN = async () => {
                 this.remLoad("config");
                 this.log("DB finding next host");
                 this.addLoad("find-next");
-                const nextHost = String(await this.get("db-host"));
+                const nextHost = await this.get("db-host");
                 this.remLoad("find-next");
                 if (nextHost != host) {
                     this.log("DB next host and current host mismatch - retrying");
@@ -2487,7 +2495,15 @@ const MAIN = async () => {
                         this.log("DB templates.json");
                         this.addLoad("templates.json");
                         try {
-                            await fetchAndPipe(theHost+"/templates", path.join(this.dataPath, "templates", "templates.json"));
+                            if (doFallback) await fs.promises.cp(
+                                path.join(__dirname, "assets", "fallback", "templates.json"),
+                                path.join(this.dataPath, "templates", "templates.json"),
+                                {
+                                    recursive: true,
+                                    force: true,
+                                },
+                            );
+                            else await fetchAndPipe(theHost+"/templates", path.join(this.dataPath, "templates", "templates.json"));
                             this.log("DB templates.json - success");
                         } catch (e) {
                             this.log(`DB templates.json - error - ${e}`);
@@ -2526,7 +2542,15 @@ const MAIN = async () => {
                         this.log("DB robots.json");
                         this.addLoad("robots.json");
                         try {
-                            await fetchAndPipe(theHost+"/robots", path.join(this.dataPath, "robots", "robots.json"));
+                            if (doFallback) await fs.promises.cp(
+                                path.join(__dirname, "assets", "fallback", "robots.json"),
+                                path.join(this.dataPath, "robots", "robots.json"),
+                                {
+                                    recursive: true,
+                                    force: true,
+                                }
+                            );
+                            else await fetchAndPipe(theHost+"/robots", path.join(this.dataPath, "robots", "robots.json"));
                             this.log("DB robots.json - success");
                         } catch (e) {
                             this.log(`DB robots.json - error - ${e}`);
@@ -2565,7 +2589,15 @@ const MAIN = async () => {
                         this.log("DB holidays.json");
                         this.addLoad("holidays.json");
                         try {
-                            await fetchAndPipe(theHost+"/holidays", path.join(this.dataPath, "holidays", "holidays.json"));
+                            if (doFallback) await fs.promises.cp(
+                                path.join(__dirname, "assets", "fallback", "holidays.json"),
+                                path.join(this.dataPath, "holidays", "holidays.json"),
+                                {
+                                    recursive: true,
+                                    force: true,
+                                },
+                            );
+                            else await fetchAndPipe(theHost+"/holidays", path.join(this.dataPath, "holidays", "holidays.json"));
                             this.log("DB holidays.json - success");
                         } catch (e) {
                             this.log(`DB holidays.json - error - ${e}`);
@@ -2630,7 +2662,15 @@ const MAIN = async () => {
                         this.log("DB themes.json");
                         this.addLoad("themes.json");
                         try {
-                            await fetchAndPipe(theHost+"/themes", path.join(this.dataPath, "themes.json"));
+                            if (doFallback) await fs.promises.cp(
+                                path.join(__dirname, "assets", "fallback", "themes.json"),
+                                path.join(this.dataPath, "themes.json"),
+                                {
+                                    recursive: true,
+                                    force: true,
+                                },
+                            );
+                            else await fetchAndPipe(theHost+"/themes", path.join(this.dataPath, "themes.json"));
                             this.log("DB themes.json - success");
                         } catch (e) {
                             this.log(`DB themes.json - error - ${e}`);
@@ -2670,8 +2710,11 @@ const MAIN = async () => {
                         log("search");
                         this.addLoad(name+":search");
                         try {
-                            let resp = await util.timeout(10000, fetch(subhost));
-                            if (resp.status != 200) throw resp.status;
+                            if (doFallback);
+                            else {
+                                let resp = await util.timeout(10000, fetch(subhost));
+                                if (resp.status != 200) throw resp.status;
+                            }
                         } catch (e) {
                             log(`search - not found - ${e}`);
                             this.remLoad(name+":search");
@@ -2684,7 +2727,15 @@ const MAIN = async () => {
                                 log("templates.json");
                                 this.addLoad(name+":templates.json");
                                 try {
-                                    await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
+                                    if (doFallback) await fs.promises.cp(
+                                        path.join(__dirname, "assets", "fallback", "planner", "templates.json"),
+                                        path.join(Window.getDataPath(this, name), "templates.json"),
+                                        {
+                                            recursive: true,
+                                            force: true,
+                                        },
+                                    );
+                                    else await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
                                     log("templates.json - success");
                                 } catch (e) {
                                     log(`templates.json - error - ${e}`);
@@ -3164,7 +3215,9 @@ const MAIN = async () => {
         }
         static async setFSVersion(pth, version) {
             try {
+                let preVersion = String(await this.getFSVersion(pth));
                 await this.fileWrite([pth, ".version"], String(version));
+                await this.bumpVersion(preVersion);
             } catch (e) {}
         }
         static async canFS(pth, version) {
@@ -3178,6 +3231,10 @@ const MAIN = async () => {
         async getFSVersion() { return this.hasWindow() ? await this.window.manager.getFSVersion() : await WindowManager.getFSVersion(this.dataPath); }
         async setFSVersion(verison) { return this.hasWindow() ? await this.window.manager.setFSVersion(verison) : await WindowManager.setFSVersion(this.dataPath, verison); }
         async canFS(version) { return this.hasWindow() ? await this.window.manager.canFS(version) : await WindowManager.canFS(this.dataPath, version); }
+
+        async bumpVersion(v) {
+            v = String(v);
+        }
 
         modalSpawn(name, params) {
             name = String(name);
@@ -3471,17 +3528,17 @@ const MAIN = async () => {
                 },
                 "db-host": async () => {
                     let host = (await kfs._fullconfig()).dbHost;
-                    return util.ensure(host, "str") || DEFAULTHOST;
+                    return (host == null) ? null : String(host);
                 },
                 "is-public": async () => {
-                    return (await kfs["db-host"]()) == DEFAULTHOST;
+                    return (await kfs["db-host"]()) == null;
                 },
                 "assets-host": async () => {
                     return String((await kfs._fullconfig()).assetsHost);
                 },
                 "socket-host": async () => {
                     let host = (await kfs._fullconfig()).socketHost;
-                    return util.ensure(host, "str") || (await kfs["db-host"]());
+                    return (host == null) ? (await kfs["db-host"]()) : String(host);
                 },
                 "_fullclientconfig": async () => {
                     await this.affirm();
@@ -3566,9 +3623,9 @@ const MAIN = async () => {
                     content = JSON.stringify(data, null, "\t");
                     await this.fileWrite(".config", content);
                 },
-                "db-host": async () => await kfs._fullconfig("dbHost", String(v)),
+                "db-host": async () => await kfs._fullconfig("dbHost", (v == null) ? null : String(v)),
                 "assets-host": async () => await kfs._fullconfig("assetsHost", String(v)),
-                "socket-host": async () => await kfs._fullconfig("socketHost", String(v)),
+                "socket-host": async () => await kfs._fullconfig("socketHost", (v == null) ? null : String(v)),
                 "_fullclientconfig": async (k=null, v=null) => {
                     if (k == null) return;
                     let content = "";
