@@ -1236,7 +1236,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             {
                 id: "logger", name: "Logger",
                 tab: Panel.LoggerTab,
-                disabled: true,
+                disabled: !this.hasApp() || this.app.USERAGENT.isPublic,
             },
             {
                 id: "logworks", name: "LogWorks",
