@@ -806,7 +806,6 @@ const MAIN = async () => {
                 },
             };
             let isModal = this.manager.hasWindow() && this.manager.window.hasWindow();
-            tlog(isModal, this.isModal);
             if (isModal) {
                 options.modal = true;
                 options.parent = this.manager.window.window;
@@ -903,8 +902,6 @@ const MAIN = async () => {
 
             namefs = {
                 PORTAL: () => {
-                    tlog(this.#resolver.state);
-                    // return;
                     let resolver = new util.Resolver(false);
                     const checkForShow = async () => {
                         if (!this.hasWindow()) return;
@@ -2433,24 +2430,17 @@ const MAIN = async () => {
                     let superPth = path.dirname(pth);
                     let thePth = path.join(superPth, fileName);
                     let tmpPth = path.join(superPth, fileName+"-tmp");
-                    tlog("fetch-start: "+url);
                     let resp = await util.timeout(30000, fetch(url));
                     if (resp.status != 200) throw resp.status;
-                    tlog("fetch-done: "+url);
                     await new Promise((res, rej) => {
-                        tlog("stream-make: "+tmpPth);
                         const stream = fs.createWriteStream(tmpPth);
                         stream.on("open", () => {
-                            tlog("tream-open: "+tmpPth);
                             resp.body.pipe(stream);
                             resp.body.on("end", () => res(true));
                             resp.body.on("error", e => rej(e));
                         });
                     });
-                    tlog("stream-done: "+tmpPth);
-                    tlog("rename: "+tmpPth+" -> "+thePth);
                     await fs.promises.rename(tmpPth, thePth);
-                    tlog("renamed: "+tmpPth+" -> "+thePth);
                 };
                 this.log("DB config");
                 this.addLoad("config");
