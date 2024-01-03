@@ -21,6 +21,10 @@
     font-family: Oswald;
     src: url("./assets/Oswald.ttf");
 }
+@font-face {
+    font-family: Roboto;
+    src: url("./assets/Roboto.ttf");
+}
 
 * {
     /*font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";*/
