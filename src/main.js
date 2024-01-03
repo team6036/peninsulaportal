@@ -2489,7 +2489,8 @@ const MAIN = async () => {
                 }
                 this.log("DB next host and current host match - continuing");
                 const assetsHost = String(await this.get("assets-host"));
-                this.log(`DB poll ( host: ${host}, assetsHost: ${assetsHost} )`);
+                if (doFallback) this.log(`DB poll ( assetsHost: ${assetsHost} )`);
+                else this.log(`DB poll ( host: ${host}, assetsHost: ${assetsHost} )`);
                 await Promise.all([
                     (async () => {
                         this.log("DB templates.json");
