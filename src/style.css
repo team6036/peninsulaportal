@@ -530,11 +530,12 @@ article.md.lighter table td {
 
     width: 100%;
     max-width: 100%;
-    height: var(--TOP);
-    max-height: var(--TOP);
+    height: calc(var(--TOP) + 1px);
+    max-height: calc(var(--TOP) + 1px);
     padding: 0px 10px;
     padding-left: var(--LEFT);
     padding-right: var(--RIGHT);
+    margin-bottom: -1px;
     
     display: flex;
     flex-direction: row;
