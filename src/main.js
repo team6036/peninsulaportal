@@ -1580,6 +1580,12 @@ const MAIN = async () => {
                     this.window.setBounds(v);
                     return true;
                 },
+
+                "title-bar-overlay": async () => {
+                    if (!this.hasWindow()) return false;
+                    this.window.setTitleBarOverlay(v);
+                    return true;
+                },
             };
             let r = false;
             if (k in kfs) r = await kfs[k]();
