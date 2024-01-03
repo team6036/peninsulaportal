@@ -868,6 +868,10 @@ export class App extends util.Target {
         }
         styleStr += "}";
         this.eDynamicStyle.innerHTML = styleStr;
+        window.api.set("title-bar-overlay", {
+            color: style["v1"],
+            symbolColor: style["v8"],
+        });
     }
 
     async getPerm() {
