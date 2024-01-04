@@ -2425,11 +2425,11 @@ const MAIN = async () => {
                     this.addLoad("comp-mode");
                     return true;
                 }
-                this.log(`DB polling`);
-                this.addLoad("poll");
                 if (doFallback) {
-                    this.log(`DB polling ( FALLBACK )`);
+                    this.log(`DB no polling ( FALLBACK )`);
                 } else {
+                    this.log(`DB polling`);
+                    this.addLoad("poll");
                     try {
                         let resp = await util.timeout(10000, fetch(theHost));
                         if (resp.status != 200) throw resp.status;
@@ -2439,9 +2439,9 @@ const MAIN = async () => {
                         this.addLoad("poll:"+e);
                         return false;
                     }
+                    this.log(`DB polling - success`);
+                    this.remLoad("poll");
                 }
-                this.log(`DB polling - success`);
-                this.remLoad("poll");
                 const fetchAndPipe = async (url, pth) => {
                     this.log(`DB :: f&p(${url})`);
                     let fileName = path.basename(pth);
