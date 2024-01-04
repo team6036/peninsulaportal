@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
@@ -4031,11 +4032,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 scrollMag *= 0.0005;
                 let newGraphRange = [...graphRange];
                 if (scrollAxis == "x") {
-                    console.log("shifting");
                     let shift = (newGraphRange[1]-newGraphRange[0]) * scrollMag;
                     newGraphRange = newGraphRange.map(v => v+shift);
                 } else {
-                    console.log("zooming");
                     let ts = util.lerp(...graphRange, mouseX);
                     newGraphRange = newGraphRange.map(v => util.lerp(v, ts, scrollMag));
                 }
@@ -5432,7 +5431,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #wpilibGroup;
     #camera;
     #renderer;
+    #cssRenderer;
     #controls;
+    #raycaster;
+    #raycastIntersections;
 
     #axisScene;
     #axisSceneSized;
@@ -5499,13 +5501,26 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
 
         this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
+        this.#cssRenderer = new CSS2DRenderer();
+        this.eContent.appendChild(this.cssRenderer.domElement);
+        this.cssRenderer.domElement.classList.add("css");
         
-        this.#controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.#controls = new OrbitControls(this.camera, this.canvas);
 
-        this.renderer.domElement.addEventListener("click", e => {
+        this.#raycaster = new THREE.Raycaster();
+        this.#raycastIntersections = [];
+
+        this.canvas.addEventListener("click", e => {
             e.stopPropagation();
             if (this.controls instanceof PointerLockControls)
                 this.controls.lock();
+        });
+        this.canvas.addEventListener("mousemove", e => {
+            let r = this.canvas.getBoundingClientRect();
+            let x = (e.pageX - r.left) / r.width, y = (e.pageY - r.top) / r.height;
+            x = (x*2)-1; y = (y*2)-1;
+            this.raycaster.setFromCamera(new THREE.Vector2(x, -y), this.camera);
+            this.#raycastIntersections = this.raycaster.intersectObject(this.scene, true);
         });
 
         const radius = 0.05;
@@ -6016,8 +6031,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
             this.renderer.setSize(r.width*this.quality, r.height*this.quality);
             this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
+            this.cssRenderer.setSize(r.width*this.quality, r.height*this.quality);
+            this.cssRenderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
 
             this.renderer.render(this.scene, this.camera);
+            this.cssRenderer.render(this.scene, this.camera);
         });
 
         this.isProjection = true;
@@ -6086,7 +6104,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get wpilibGroup() { return this.#wpilibGroup; }
     get camera() { return this.#camera; }
     get renderer() { return this.#renderer; }
+    get cssRenderer() { return this.#cssRenderer; }
     get controls() { return this.#controls; }
+    get raycaster() { return this.#raycaster; }
+    get raycastIntersections() { return this.#raycastIntersections; }
 
     get axisScene() { return this.#axisScene; }
     get axisSceneSized() { return this.#axisSceneSized; }
@@ -6127,7 +6148,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         } else if (this.controls instanceof PointerLockControls) {
             this.controls.unlock();
             this.controls.disconnect();
-            this.#controls = new PointerLockControls(this.camera, this.renderer.domElement);
+            this.#controls = new PointerLockControls(this.camera, this.canvas);
             this.controls.connect();
         }
         this.camera.lookAt(0, 0, 0);
@@ -6145,7 +6166,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.controls.unlock();
             this.controls.disconnect();
         }
-        this.#controls = this.isOrbit ? new OrbitControls(this.camera, this.renderer.domElement) :  new PointerLockControls(this.camera, this.renderer.domElement);
+        this.#controls = this.isOrbit ? new OrbitControls(this.camera, this.canvas) :  new PointerLockControls(this.camera, this.canvas);
     }
     get isFree() { return !this.isOrbit; }
     set isFree(v) { this.isOrbit = !v; }
@@ -6431,6 +6452,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         })();
 
         let loadTimer = 0, loadRobot = 0;
+        let modelObject = null;
 
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
@@ -6471,16 +6493,20 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         preloadedRobots[robot] = obj;
                     }, null, err => {});
                 }
-                let parentObject = this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type];
+                let theModelObject = this.pose.type.startsWith("§") ? this.#preloadedObjs[this.pose.type] : preloadedRobots[this.pose.type];
                 let type = (this.value.length % 7 == 0) ? 7 : 3;
-                if (!this.hasObject() || this.object._type != type) {
+                if (!this.hasObject() || this.object._type != type || modelObject != theModelObject) {
                     this.object = new THREE.Group();
                     this.object._type = type;
+                    modelObject = theModelObject;
                 }
-                let l = parentObject ? (this.value.length / type) : 0;
+                let l = modelObject ? (this.value.length / type) : 0;
                 while (this.theObject.children.length < l) {
-                    let theObject = parentObject.clone();
+                    let theObject = modelObject.clone();
                     this.theObject.add(theObject);
+                    let elem = document.createElement("div");
+                    theObject.add(new CSS2DObject(elem));
+                    elem.classList.add("label");
                     theObject.traverse(obj => {
                         if (!obj.isMesh) return;
                         if (!(obj.material instanceof THREE.Material)) return;
@@ -6495,6 +6521,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     let theObject = this.theObject.children.at(-1);
                     this.theObject.remove(theObject);
                     theObject.traverse(obj => {
+                        if (obj instanceof CSS2DObject)
+                            obj.removeFromParent();
                         if (!obj.isMesh) return;
                         obj.geometry.dispose();
                         obj.material.dispose();
@@ -6519,14 +6547,24 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         );
                         theObject.rotation.set(0, 0, this.value[i*type+2] * (this.tab.isDegrees ? (Math.PI/180) : 1), "XYZ");
                     }
-                    if (this.pose.type.startsWith("§")) {
-                        if (this.pose.type != "§axes") {
-                            theObject.traverse(obj => {
-                                if (!obj.isMesh) return;
-                                obj.material.color.set(color.toHex(false));
-                            });
-                        }
-                    }
+                    let hovered = false;
+                    let css2dObjects = [];
+                    theObject.traverse(obj => {
+                        if (obj instanceof CSS2DObject)
+                            css2dObjects.push(obj);
+                        if (this.tab.raycastIntersections[0])
+                            if (obj == this.tab.raycastIntersections[0].object)
+                                hovered = true;
+                        if (!obj.isMesh) return;
+                        if (!this.pose.type.startsWith("§")) return;
+                        if (this.pose.type == "§axes") return;
+                        obj.material.color.set(color.toHex(false));
+                    });
+                    css2dObjects.forEach(obj => {
+                        obj.element.style.color = color.toHex();
+                        obj.element.style.visibility = hovered ? "" : "hidden";
+                        obj.element.textContent = this.pose.path;
+                    });
                 }
             } else {
                 this.pose.disable();
@@ -6602,6 +6640,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         if (this.hasObject()) {
             this.group.remove(this.theObject);
             this.theObject.traverse(obj => {
+                if (obj instanceof CSS2DObject)
+                    obj.removeFromParent();
                 if (!obj.isMesh) return;
                 obj.geometry.dispose();
                 obj.material.dispose();
