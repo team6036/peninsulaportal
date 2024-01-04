@@ -1188,7 +1188,7 @@ export class Color extends Target {
             }
             else a = [0, 0, 0];
         }
-        if (a.length == 3) a = [...a, 255];
+        if (a.length == 3) a = [...a, 1];
 
         [this.r, this.g, this.b, this.a] = a;
     }
@@ -1291,7 +1291,8 @@ export class Color extends Target {
 
     toHex(a=true) {
         const hex = "0123456789abcdef";
-        let vals = (a ? this.rgba : this.rgb).map(v => {
+        let vals = (a ? this.rgba : this.rgb).map((v, i) => {
+            if (i == 3) v *= 255;
             v = Math.round(v);
             return hex[Math.floor(v/16)]+hex[v%16];
         });

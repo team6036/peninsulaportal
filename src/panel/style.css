@@ -1579,6 +1579,25 @@
     top: 0%;
     left: 0%;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css {
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    pointer-events: none;
+
+    font-size: 12px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > * {
+    pointer-events: auto;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label {
+    padding: 15px;
+
+    background-color: var(--v1-a);
+
+    font-size: 3em;
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options {
     position: absolute;
     top: var(--options);
