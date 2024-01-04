@@ -1794,14 +1794,7 @@ const MAIN = async () => {
                         const name = path.basename(pth);
                         let pthDest = path.join(this.dataPath, "logs", name);
                         if (path.resolve(pth) == path.resolve(pthDest)) return true;
-                        await fs.promises.cp(
-                            pth,
-                            pthDest,
-                            {
-                                force: true,
-                                recursive: true,
-                            },
-                        );
+                        await fs.promises.cp(pth, pthDest, { force: true, recursive: true });
                         return true;
                     },
                 },
@@ -1915,10 +1908,7 @@ const MAIN = async () => {
                                         await fs.promises.cp(
                                             path.join(root, "data.in"),
                                             path.join(appRoot, "paths", project.meta.name, pth.name, "data.in"),
-                                            {
-                                                force: true,
-                                                recursive: true,
-                                            },
+                                            { force: true, recursive: true },
                                         );
                                     await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
                                 }
@@ -1928,10 +1918,7 @@ const MAIN = async () => {
                                         await fs.promises.cp(
                                             path.join(root, "data.out"),
                                             path.join(appRoot, "paths", project.meta.name, pth.name, "data.out"),
-                                            {
-                                                force: true,
-                                                recursive: true,
-                                            },
+                                            { force: true, recursive: true },
                                         );
                                     await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
                                 }
@@ -2466,10 +2453,7 @@ const MAIN = async () => {
                     if (doFallback) await fs.promises.cp(
                         path.join(__dirname, "assets", "fallback", "config.json"),
                         path.join(this.dataPath, ".config"),
-                        {
-                            recursive: true,
-                            force: true,
-                        },
+                        { recursive: true, force: true },
                     );
                     else await fetchAndPipe(theHost+"/config", path.join(this.dataPath, ".config"));
                     this.log("DB config - success");
@@ -2499,10 +2483,7 @@ const MAIN = async () => {
                             if (doFallback) await fs.promises.cp(
                                 path.join(__dirname, "assets", "fallback", "templates.json"),
                                 path.join(this.dataPath, "templates", "templates.json"),
-                                {
-                                    recursive: true,
-                                    force: true,
-                                },
+                                { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/templates", path.join(this.dataPath, "templates", "templates.json"));
                             this.log("DB templates.json - success");
@@ -2546,10 +2527,7 @@ const MAIN = async () => {
                             if (doFallback) await fs.promises.cp(
                                 path.join(__dirname, "assets", "fallback", "robots.json"),
                                 path.join(this.dataPath, "robots", "robots.json"),
-                                {
-                                    recursive: true,
-                                    force: true,
-                                }
+                                { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/robots", path.join(this.dataPath, "robots", "robots.json"));
                             this.log("DB robots.json - success");
@@ -2593,10 +2571,7 @@ const MAIN = async () => {
                             if (doFallback) await fs.promises.cp(
                                 path.join(__dirname, "assets", "fallback", "holidays.json"),
                                 path.join(this.dataPath, "holidays", "holidays.json"),
-                                {
-                                    recursive: true,
-                                    force: true,
-                                },
+                                { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/holidays", path.join(this.dataPath, "holidays", "holidays.json"));
                             this.log("DB holidays.json - success");
@@ -2666,10 +2641,7 @@ const MAIN = async () => {
                             if (doFallback) await fs.promises.cp(
                                 path.join(__dirname, "assets", "fallback", "themes.json"),
                                 path.join(this.dataPath, "themes.json"),
-                                {
-                                    recursive: true,
-                                    force: true,
-                                },
+                                { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/themes", path.join(this.dataPath, "themes.json"));
                             this.log("DB themes.json - success");
@@ -2694,10 +2666,7 @@ const MAIN = async () => {
                                         await fs.promises.cp(
                                             path.join(__dirname, name.toLowerCase(), "solver"),
                                             path.join(Window.getDataPath(this, name), "solver"),
-                                            {
-                                                force: true,
-                                                recursive: true,
-                                            },
+                                            { force: true, recursive: true },
                                         );
                                     log("solver - success");
                                 } catch (e) {
@@ -2731,10 +2700,7 @@ const MAIN = async () => {
                                     if (doFallback) await fs.promises.cp(
                                         path.join(__dirname, "assets", "fallback", "planner", "templates.json"),
                                         path.join(Window.getDataPath(this, name), "templates.json"),
-                                        {
-                                            recursive: true,
-                                            force: true,
-                                        },
+                                        { recursive: true, force: true },
                                     );
                                     else await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
                                     log("templates.json - success");
