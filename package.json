@@ -1,36 +1,76 @@
 {
-  "name": "peninsula-app",
-  "productName": "Pensinula App",
-  "version": "2024.0.0",
-  "description": "Toolbox application for 6036",
-  "author": {
-    "name": "Jeffrey Fan",
-    "email": "jeffrey.fanjf@gmail.com"
-  },
-  "main": "main.js",
-  "scripts": {
-    "start": "electron src/main.js",
-    "package": "node package.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/team6036/peninsulaportal.git"
-  },
-  "bugs": "https://github.com/team6036/peninsulaportal/issues",
-  "homepage": "https://github.com/team6036/peninsulaportal",
-  "dependencies": {
-    "compare-versions": "^6.1.0",
-    "electron": "^26.1.0",
-    "electron-fetch": "^1.9.1",
-    "ionicons": "^7.1.2",
-    "png2icons": "^2.0.1",
-    "socket.io-client": "^4.7.2",
-    "socket.io-stream": "^0.9.1",
-    "tba-api-v3client": "^3.3.1",
-    "three": "^0.157.0",
-    "ytdl-core": "^4.11.5"
-  },
-  "devDependencies": {
-    "electron-packager": "^17.1.2"
-  }
+	"name": "peninsula-portal",
+	"productName": "PensinulaPortal",
+	"version": "2024.0.0",
+	"description": "Toolbox application for 6036",
+	"author": {
+		"name": "Jeffrey Fan",
+		"email": "jeffrey.fanjf@gmail.com"
+	},
+	"main": "src/main.js",
+	"scripts": {
+		"start": "electron src/main.js",
+		"package": "electron-builder build"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/team6036/peninsulaportal.git"
+	},
+	"bugs": "https://github.com/team6036/peninsulaportal/issues",
+	"homepage": "https://github.com/team6036/peninsulaportal",
+	"dependencies": {
+		"compare-versions": "^6.1.0",
+		"electron-fetch": "^1.9.1",
+		"ionicons": "^7.1.2",
+		"png2icons": "^2.0.1",
+		"socket.io-client": "^4.7.2",
+		"socket.io-stream": "^0.9.1",
+		"tba-api-v3client": "^3.3.1",
+		"three": "^0.160.0",
+		"ytdl-core": "^4.11.5"
+	},
+	"devDependencies": {
+		"electron": "^28.1.1",
+		"electron-builder": "^24.9.1"
+	},
+	"build": {
+		"appId": "org.peninsularobotics.peninsulaportal",
+		"copyright": "Copyright © 2024 FRC 6036",
+		"npmRebuild": false,
+		"publish": [],
+		"files": [
+			"node_modules/three/**/*",
+			"node_modules/ionicons/**/*",
+			"src/**/*",
+			"docs/**/*",
+			"package.json",
+			"README.md"
+		],
+		"fileAssociations": [],
+		"mac": {
+			"target": "dmg",
+			"icon": "src/assets/app/icon.icns",
+			"notarize": false
+		},
+		"linux": {
+			"target": [
+				"AppImage",
+				"snap",
+				"flatpak",
+				"deb",
+				"rpm",
+				"pacman"
+			],
+			"icon": "src/assets/app/icon.png",
+			"category": "Utility"
+		},
+		"flatpak": {
+			"runtimeVersion": "22.08",
+			"baseVersion": "22.08"
+		},
+		"win": {
+			"target": "nsis",
+			"icon": "src/assets/app/icon.ico"
+		}
+	}
 }

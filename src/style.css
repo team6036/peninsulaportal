@@ -1355,6 +1355,8 @@ article.md.lighter table td {
     --fgd: var(--v6);
 }
 .popup.core > .inner > .info {
+    position: relative;
+
     max-height: 250px;
     padding: 10px;
     overflow: auto;
@@ -1367,6 +1369,19 @@ article.md.lighter table td {
     font-size: 12px;
     word-wrap: break-word;
     white-space: pre-wrap;
+}
+.popup.core > .inner > .info > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    position: absolute;
+    top: 5px;
+    right: 5px;
+
+    padding: 0px;
+
+    aspect-ratio: 1 / 1;
 }
 .popup.core > .inner > input {
     width: 100%;

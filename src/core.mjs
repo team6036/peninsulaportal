@@ -504,9 +504,9 @@ export class App extends util.Target {
             if (window.app == this) delete window.app;
             delete window.colors;
         }
-        let itm = this.menu.findItemWithId("toggleDevTools");
+        let itm = this.menu.findItemWithId("toggledevtools");
         if (!itm) return;
-        itm.enabled = this.devMode;
+        // itm.enabled = this.devMode;
     }
     get holiday() { return this.#holiday; }
     set holiday(v) {
@@ -1539,6 +1539,12 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
             this.inner.insertBefore(elem, sibling);
             elem.classList.add("info");
             elem.innerHTML = String(info).replaceAll("<", "&lt").replaceAll(">", "&gt");
+            let btn = document.createElement("button");
+            elem.appendChild(btn);
+            btn.innerHTML = "<ion-icon name='copy-outline'></ion-icon>";
+            btn.addEventListener("click", e => {
+                navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([info], { type: "text/plain" })})]);
+            });
         });
         this.change("infos", null, this.infos);
     }
@@ -1910,7 +1916,7 @@ App.Menu = class AppMenu extends util.Target {
         });
         return [itm];
     }
-    static buildDevToolsItems() { return this.buildRoleItems("toggleDevTools"); }
+    static buildDevToolsItems() { return this.buildRoleItems("toggledevtools"); }
     static buildMainMenu(userAgent) {
         let menu = new App.Menu();
         let itms = [
@@ -2452,6 +2458,12 @@ export class AppModal extends App {
             this.iinner.insertBefore(elem, sibling);
             elem.classList.add("info");
             elem.innerHTML = String(info).replaceAll("<", "&lt").replaceAll(">", "&gt");
+            let btn = document.createElement("button");
+            elem.appendChild(btn);
+            btn.innerHTML = "<ion-icon name='copy-outline'></ion-icon>";
+            btn.addEventListener("click", e => {
+                navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([info], { type: "text/plain" })})]);
+            });
         });
     }
 }

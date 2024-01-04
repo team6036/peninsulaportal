@@ -4,7 +4,6 @@ import { V } from "../util.mjs";
 import * as core from "../core.mjs";
 
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 
 class FeatureButton extends util.Target {
@@ -277,8 +276,6 @@ export default class App extends core.App {
                 
                 const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
 
-                const controls = new OrbitControls(camera, renderer.domElement);
-
                 const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
                 scene.add(hemLight);
 
@@ -300,9 +297,6 @@ export default class App extends core.App {
                 };
 
                 this.addHandler("update", delta => {
-                    controls.target.set(0, 0, 0);
-                    controls.update();
-
                     let scroll = getScroll();
                     let speed = getSpeed();
 

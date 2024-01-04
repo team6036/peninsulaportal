@@ -48,10 +48,22 @@ const MAIN = async () => {
     const cp = require("child_process");
 
     const electron = require("electron");
-    let showError = context.showError = (name, type, e) => {
+    let showError = context.showError = async (name, type, e) => {
         let message = String(name);
         if (type) message += " - "+String(type);
         electron.dialog.showErrorBox(message, util.stringifyError(e));
+    };
+    let showConfirm = async (name, type, e) => {
+        let message = String(name);
+        if (type) message += " - "+String(type);
+        let i = (await electron.dialog.showMessageBox({
+            message: message,
+            detail: util.stringifyError(e),
+            type: "question",
+            buttons: ["Terminate", "Continue anyway"],
+            cancelId: 1,
+        })).response;
+        return i == 0;
     };
     const app = context.app = electron.app;
     const ipc = electron.ipcMain;
@@ -842,11 +854,14 @@ const MAIN = async () => {
                 this.window.show();
                 this.window.webContents.openDevTools();
             });
-            const readiness = 1000;
-            let id = setTimeout(() => {
-                showError("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
+            const readiness = 2000;
+            let id = setTimeout(async () => {
                 clear();
-                this.stop();
+                let r = await showConfirm("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
+                if (r || !this.hasWindow()) return this.stop();
+                // ew
+                ready({ sender: { id: this.window.webContents.id } });
+                this.window.webContents.openDevTools();
             }, readiness);
             const clear = () => {
                 clearInterval(id);
@@ -2189,13 +2204,13 @@ const MAIN = async () => {
             try {
                 await this.affirm();
             } catch (e) {
-                showError("WindowManager Initialize", "Affirmation Error", e);
+                await showError("WindowManager Initialize", "Affirmation Error", e);
                 return;
             }
             let version = await this.get("base-version");
             if (!(await this.canFS(version))) {
                 let fsVersion = await this.get("fs-version");
-                showError("WindowManager Initialize", "Version Error", "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")");
+                await showError("WindowManager Initialize", "Version Error", "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")");
                 return false;
             }
             // monkey patching
@@ -2382,7 +2397,7 @@ const MAIN = async () => {
                 try {
                     await this.affirm();
                 } catch (e) {
-                    showError("Load", "Affirmation Error", e);
+                    await showError("Load", "Affirmation Error", e);
                     return false;
                 }
                 this.clearLoads();
@@ -2866,14 +2881,14 @@ const MAIN = async () => {
                 try {
                     await this.affirm();
                 } catch (e) {
-                    showError("WindowManager Start Error", "Affirmation Error", e);
+                    await showError("WindowManager Start Error", "Affirmation Error", e);
                     return;
                 }
                 try {
                     await this.post("start");
                 } catch (e) {
-                    showError("WindowManager Start Error", "'start' event", e);
-                    return;
+                    let r = await showConfirm("WindowManager Start Error", "'start' event", e);
+                    if (r) return;
                 }
 
                 this.addWindow(new Window(this, "PORTAL"));
@@ -2894,9 +2909,26 @@ const MAIN = async () => {
                 };
                 dfs(this, windows);
 
+                (async () => {
+                    await util.wait(2000);
+                    const buildTree = async (pth, indent) => {
+                        let dirents = await WindowManager.dirList(pth);
+                        let tree = [];
+                        for (let dirent of dirents) {
+                            if (dirent.name[0] == ".") continue;
+                            if (pth.endsWith("node_modules") && !["three", "ionicons"].includes(dirent.name)) continue;
+                            if (pth.endsWith(path.join(__dirname, "..")) && ["build", "dist", "temp"].includes(dirent.name)) continue;
+                            tree.push(new Array(indent).fill("| ").join("")+dirent.name);
+                            if (dirent.type == "dir") tree.push(...(await buildTree(path.join(pth, dirent.name), indent+1)));
+                        }
+                        return tree;
+                    };
+                    showError("Info", null, (await buildTree(path.join(__dirname, ".."), 0)).join("\n"));
+                });
+
                 try {
                     await this.tryLoad();
-                } catch (e) { showError("WindowManager Start Error", "Load Error", e); }
+                } catch (e) { await showError("WindowManager Start Error", "Load Error", e); }
             })();
 
             return true;
@@ -2911,8 +2943,8 @@ const MAIN = async () => {
             try {
                 await this.post("stop");
             } catch (e) {
-                showError("WindowManager Stop Error", "'stop' event", e);
-                return true;
+                let r = await showConfirm("WindowManager Stop Error", "'stop' event", e);
+                if (r) return false;
             }
 
             let windows = {};
@@ -3792,7 +3824,7 @@ const MAIN = async () => {
             stopped = await manager.stop();
         } catch (e) {
             stopped = false;
-            showError("WindowManager Stop Error", null, e);
+            await showError("WindowManager Stop Error", null, e);
         }
         if (!stopped) return beforeQuitResolver.state = false;
         allowQuit = true;
@@ -3809,7 +3841,7 @@ const MAIN = async () => {
         await whenInitialized();
         try {
             await manager.quit();
-        } catch (e) { showError("WindowManager Quit Error", null, e); }
+        } catch (e) { await showError("WindowManager Quit Error", null, e); }
     });
 
     await app.whenReady();
@@ -3824,18 +3856,19 @@ const MAIN = async () => {
     }
 
     showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, infos: [e] }).whenModalResult();
+    showConfirm = async (name, type, e) => await manager.modalConfirm({ icon: "help-circle", title: name, content: type, infos: [e], confirm: "Terminate", cancel: "Continue anyway" }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;
 
     let t0 = null;
-    let id = setInterval(() => {
+    let id = setInterval(async () => {
         let t1 = util.getTime();
         if (t0 == null) return t1 = t0;
         try {
             manager.update(t1-t0);
         } catch (e) {
-            showError("WindowManager Update Error", null, e);
+            await showError("WindowManager Update Error", null, e);
             clearInterval(id);
             allowQuit = true;
             app.quit();
