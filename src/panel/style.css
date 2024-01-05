@@ -1591,12 +1591,52 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > * {
     pointer-events: auto;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div {
     padding: 15px;
 
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 15px;
+
     background-color: var(--v1-a);
+    color: var(--v8);
+    border: 1px solid var(--v8);
 
     font-size: 3em;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 15px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 15px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > .dir {
+    flex-direction: column;
+    align-items: stretch;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > div > div {
+    flex-basis: 100%;
+
+    font-family: monospace;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > div.dir > div {
+    flex-basis: auto;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options {
     position: absolute;
@@ -1963,7 +2003,7 @@
 }
 #overlay > #graphtooltip {
     position: absolute;
-    padding: 10px;
+    padding: 5px;
 
     display: flex;
     flex-direction: column;
@@ -1971,21 +2011,19 @@
     justify-content: flex-start;
     align-items: flex-start;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 
-    background-color: var(--v2);
-    border-radius: 5px;
-    filter: drop-shadow(0px 5px 5px var(--v0-8));
+    background-color: var(--v1-a);
+    border: 1px solid var(--v8);
     visibility: hidden;
+
+    font-size: 12px;
 }
 #overlay > #graphtooltip.this {
     visibility: inherit;
 }
 #overlay > #graphtooltip > .name {
     color: var(--v8);
-
-    font-size: 14px;
-    font-weight: 550;
 }
 #overlay > #graphtooltip > .content {
     display: flex;
@@ -1994,9 +2032,10 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 
     color: var(--v8);
-
-    font-size: 12px;
+}
+#overlay > #graphtooltip > .content * {
+    font-family: monospace;
 }

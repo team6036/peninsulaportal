@@ -6507,6 +6507,12 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     let elem = document.createElement("div");
                     theObject.add(new CSS2DObject(elem));
                     elem.classList.add("label");
+                    elem.innerHTML = "<div><div class='title'></div><div class='info'><div class='pos'></div><div class='dir'></div></div></div>";
+                    elem.elem = elem.querySelector(":scope > div");
+                    elem.eTitle = elem.querySelector(":scope > div > .title");
+                    elem.eInfo = elem.querySelector(":scope > div > .info");
+                    elem.ePos = elem.querySelector(":scope > div > .info > .pos");
+                    elem.eDir = elem.querySelector(":scope > div > .info > .dir");
                     theObject.traverse(obj => {
                         if (!obj.isMesh) return;
                         if (!(obj.material instanceof THREE.Material)) return;
@@ -6528,24 +6534,32 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         obj.material.dispose();
                     });
                 }
+                let r = this.tab.canvas.getBoundingClientRect();
                 for (let i = 0; i < l; i++) {
                     let theObject = this.theObject.children[i];
+                    let value = this.value.slice(i*type, (i+1)*type);
                     if (type == 7) {
+                        value[0] /= this.tab.isMeters?1:100;
+                        value[1] /= this.tab.isMeters?1:100;
+                        value[2] /= this.tab.isMeters?1:100;
                         theObject.position.set(
-                            (this.value[i*type+0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
-                            (this.value[i*type+1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
-                            (this.value[i*type+2] / (this.tab.isMeters?1:100)) + (this.offsetZ/100),
+                            value[0] + (this.offsetX/100),
+                            value[1] + (this.offsetY/100),
+                            value[2] + (this.offsetZ/100),
                         );
-                        let xyzw = this.value.slice(i*type+3, i*type+7);
+                        let xyzw = value.slice(3);
                         xyzw.push(xyzw.shift());
                         theObject.quaternion.copy(new THREE.Quaternion(...xyzw));
                     } else {
+                        value[0] /= this.tab.isMeters?1:100;
+                        value[1] /= this.tab.isMeters?1:100;
                         theObject.position.set(
-                            (this.value[i*type+0] / (this.tab.isMeters?1:100)) + (this.offsetX/100),
-                            (this.value[i*type+1] / (this.tab.isMeters?1:100)) + (this.offsetY/100),
+                            value[0] + (this.offsetX/100),
+                            value[1] + (this.offsetY/100),
                             (this.offsetZ/100),
                         );
-                        theObject.rotation.set(0, 0, this.value[i*type+2] * (this.tab.isDegrees ? (Math.PI/180) : 1), "XYZ");
+                        value[2] *= this.tab.isDegrees ? 1 : (180/Math.PI);
+                        theObject.rotation.set(0, 0, value[2]*(Math.PI/180), "XYZ");
                     }
                     let hovered = false;
                     let css2dObjects = [];
@@ -6561,9 +6575,22 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         obj.material.color.set(color.toHex(false));
                     });
                     css2dObjects.forEach(obj => {
-                        obj.element.style.color = color.toHex();
+                        let r2 = obj.element.getBoundingClientRect();
+                        let x = 1, y = 1;
+                        if (r2.right > r.right) x *= -1;
+                        if (r2.bottom > r.bottom) y *= -1;
+                        obj.element.elem.style.transform = "translate("+(50*x)+"%, "+(50*y)+"%)";
                         obj.element.style.visibility = hovered ? "" : "hidden";
-                        obj.element.textContent = this.pose.path;
+                        obj.element.eTitle.style.color = color.toHex();
+                        obj.element.eTitle.textContent = this.pose.path;
+                        let posL = (type == 7) ? 3 : 2;
+                        let dirL = (type == 7) ? 4 : 1;
+                        while (obj.element.ePos.children.length < posL) obj.element.ePos.appendChild(document.createElement("div"));
+                        while (obj.element.ePos.children.length > posL) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
+                        while (obj.element.eDir.children.length < dirL) obj.element.eDir.appendChild(document.createElement("div"));
+                        while (obj.element.eDir.children.length > dirL) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
+                        for (let i = 0; i < posL; i++) obj.element.ePos.children[i].textContent = value[i];
+                        for (let i = 0; i < dirL; i++) obj.element.eDir.children[i].textContent = (type == 7 ? "wxyz"[i]+": " : "")+value[i+posL];
                     });
                 }
             } else {
