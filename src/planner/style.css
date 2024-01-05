@@ -22,6 +22,10 @@
     visibility: inherit;
 }
 #PROJECTSPAGE > .nav > .nav > .templates > button {
+    --o: var(--v4);
+    --oh: var(--v8);
+    --od: transparent;
+
     width: max-content;
     padding: 10px;
 
@@ -213,101 +217,6 @@
 
     cursor: inherit;
 }
-#PROJECTPAGE > .main > .display > .nav {
-    z-index: 3;
-    
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-
-    width: 100%;
-    max-width: 100%;
-    padding: 0px 10px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 5px;
-}
-#PROJECTPAGE > .main > .display > .nav > .progress {
-    --progress: 50%;
-
-    position: relative;
-
-    width: 100%;
-    height: 5px;
-
-    background-color: var(--v3);
-}
-#PROJECTPAGE > .main > .display > .nav > .progress::before {
-    content: "";
-
-    position: absolute;
-    top: 50%;
-    left: var(--progress);
-    transform: translate(-50%, -50%);
-
-    width: 0px;
-    aspect-ratio: 1 / 1;
-
-    background-color: var(--cr);
-    border-radius: 100%;
-
-    transition: width var(--t);
-}
-#PROJECTPAGE > .main > .display > .nav > .progress:hover::before {
-    width: 10px;
-}
-#PROJECTPAGE > .main > .display > .nav > .progress::after {
-    content: "";
-
-    position: absolute;
-    top: 50%;
-    left: 0px;
-    transform: translateY(-50%);
-
-    width: var(--progress);
-    height: 100%;
-
-    background-color: var(--cr);
-}
-#PROJECTPAGE > .main > .display > .nav > .nav {
-    width: 100%;
-    max-width: 100%;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 5px;
-}
-#PROJECTPAGE > .main > .display > .nav > .nav > button {
-    --bg: transparent;
-    --fg: var(--v3);
-    --bgh: transparent;
-    --fgh: var(--v8);
-    --bgd: transparent;
-    --fgd: var(--v2);
-
-    padding: 0px;
-    aspect-ratio: 1 / 1;
-
-    font-size: 16px;
-}
-#PROJECTPAGE > .main > .display > .nav > .nav > div {
-    min-width: max-content;
-
-    color: var(--v3);
-
-    font-family: monospace;
-    font-size: 12px;
-}
 #PROJECTPAGE > .main > .display > .choosenav {
     z-index: 3;
 
@@ -335,18 +244,24 @@
 #PROJECTPAGE > .main > .display > .choosenav > button#donebtn {
     --bg: var(--a);
     --fg: var(--v8);
+    --o: var(--a6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--a2);
     --fgd: var(--v4);
+    --od: var(--a4);
 }
 #PROJECTPAGE > .main > .display > .choosenav > button#cancelbtn {
     --bg: var(--cr);
     --fg: var(--v8);
+    --o: var(--cr6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--cr2);
     --fgd: var(--v4);
+    --od: var(--cr4);
 }
 #PROJECTPAGE > .main > .edit {
     --bottom: 85px;
@@ -505,6 +420,16 @@
 #PROJECTPAGE > .main > .edit > .content > .panel > .input > input,
 #PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input {
     flex-basis: 100%;
+
+    border: 1px solid var(--v4);
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .input > input:disabled,
+#PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input:disabled {
+    border: 1px solid transparent;
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .input > input:focus-visible,
+#PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input:focus-visible {
+    border: 1px solid var(--v8);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .input > input[type="text"],
 #PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input[type="text"] {
@@ -534,6 +459,14 @@
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input {
     flex-basis: 100%;
+
+    border: 1px solid var(--v4);
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input:disabled {
+    border: 1px solid transparent;
+}
+#PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input:focus-visible {
+    border: 1px solid var(--v8);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input:first-of-type {
     color: var(--a);
@@ -553,10 +486,13 @@
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > button {
     --bg: var(--a);
     --fg: var(--v8);
+    --o: var(--a6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--a2);
     --fgd: var(--v4);
+    --od: var(--a4);
 
     padding: 5px;
 
@@ -576,10 +512,13 @@
 #objectspanel > #spawnbox > button.delete {
     --bg: var(--cr);
     --fg: var(--v8);
+    --o: var(--cr6);
     --bgh: var(--cr5);
     --fgh: var(--v8);
+    --oh: var(--v8);
     --bgd: var(--cr3);
     --fgd: var(--v6);
+    --od: var(--cr4);
     
     z-index: 1;
 
@@ -603,7 +542,7 @@
 
     font-size: 30px;
 
-    transition: --btn-c-size-v var(--t), transform var(--t), background var(--t), color var(--t);
+    transition: --btn-c-size-v var(--t), transform var(--t), background var(--t), color var(--t), border var(--t);
 }
 #objectspanel >  #spawnbox.delete > button.delete {
     transform: scale(100%);
@@ -624,7 +563,7 @@
     align-content: stretch;
 
     background-color: transparent;
-    border: 1px solid var(--v2);
+    border: 1px solid var(--v4);
     border-radius: 5px;
     filter: drop-shadow(0px 0px 0px var(--v1-8));
 
@@ -669,6 +608,7 @@
 
     background-color: var(--v1);
     border-radius: 100%;
+    border: 1px solid var(--v4);
 }
 #objectspanel > #heading > .dragbox::before {
     content: "";
@@ -751,6 +691,10 @@
     gap: 10px;
 }
 #objectspanel > #itemcontrols > button {
+    --o: var(--v4);
+    --oh: var(--v8);
+    --od: transparent;
+
     flex-basis: 100%;
 
     padding: 10px;
@@ -760,18 +704,24 @@
 #objectspanel > #itemcontrols > button#removebtn {
     --bg: var(--cr);
     --fg: var(--v8);
+    --o: var(--cr6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--cr2);
     --fgd: var(--v6);
+    --od: var(--cr4);
 }
 #pathspanel #pathaddbtn {
     --bg: var(--a);
     --fg: var(--v8);
+    --o: var(--a6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--a2);
     --fgd: var(--v6);
+    --od: var(--a4);
 }
 #pathspanel > #pathsbox {
     flex-basis: 100%;
@@ -832,6 +782,10 @@
     color: var(--v4);
 }
 #pathspanel > button#activatebtn {
+    --o: var(--v4);
+    --oh: var(--v8);
+    --od: transparent;
+    
     padding: 10px;
 
     border-radius: 5px;
@@ -839,18 +793,24 @@
 #pathspanel > button#activatebtn.on {
     --bg: var(--cg3);
     --fg: var(--v8);
+    --o: var(--cg6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--cg2);
     --fgd: var(--v6);
+    --od: var(--cg4);
 }
 #pathspanel > button#activatebtn.off {
     --bg: var(--cr);
     --fg: var(--v8);
+    --o: var(--cr6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--cr2);
     --fgd: var(--v6);
+    --od: var(--cr4);
 }
 #optionspanel > #script {
     display: flex;
