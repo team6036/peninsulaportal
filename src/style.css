@@ -27,8 +27,8 @@
 }
 
 * {
-    font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    /* font-family: REM, Arial, Helvetica, sans-serif; */
+    /* font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; */
+    font-family: REM, Arial, Helvetica, sans-serif;
     box-sizing: border-box;
 }
 
@@ -58,15 +58,17 @@ button {
 button:not(.override) {
     --bg: var(--v2);
     --fg: var(--v7);
-    --o: transparent;
+    --o: var(--v3);
     --bgh: var(--v3);
     --fgh: var(--v8);
-    --oh: transparent;
+    --oh: var(--v5);
     --bgd: var(--v2);
     --fgd: var(--v5);
-    --od: transparent;
+    --od: var(--v3);
     --btn-c-size: 125%;
     --btn-c-size-v: 0%;
+
+    --use-o: 0;
 
     display: flex;
     flex-direction: row;
@@ -84,7 +86,7 @@ button:not(.override):not(.shiny) {
         transparent 500%
     ), var(--bg);
     color: var(--fg);
-    border: 1px solid var(--o);
+    border: calc(1px * var(--use-o)) solid var(--o);
 
     transition: --btn-c-size-v var(--t), background var(--t), color var(--t), border var(--t);
 }
@@ -93,7 +95,7 @@ button:not(.override):not(.shiny):not(.disabled).hover {
     --btn-c-size-v: var(--btn-c-size);
     
     color: var(--fgh);
-    border: 1px solid var(--oh);
+    border: calc(1px * var(--use-o)) solid var(--oh);
 }
 button:not(.override):disabled,
 button:not(.override).disabled {
@@ -107,7 +109,7 @@ button:not(.override).disabled {
         transparent 500%
     ), var(--bgd);
     color: var(--fgd);
-    border: 1px solid var(--od);
+    border: calc(1px * var(--use-o)) solid var(--od);
 }
 button:not(.override).shiny {
     position: relative;
@@ -116,7 +118,7 @@ button:not(.override).shiny {
 
     background-color: var(--bg);
     color: var(--fg);
-    border: 1px solid var(--o);
+    border: calc(1px * var(--use-o)) solid var(--o);
 
     transition: background-color var(--t), color var(--t);
 }
@@ -124,13 +126,13 @@ button:not(.override).shiny:not(:disabled):hover,
 button:not(.override).shiny:not(.disabled).hover {
     background-color: var(--bgh);
     color: var(--fgh);
-    border: 1px solid var(--oh);
+    border: calc(1px * var(--use-o)) solid var(--oh);
 }
 button:not(.override).shiny:disabled,
 button:not(.override).shiny.disabled {
     background-color: var(--bgd);
     color: var(--fgd);
-    border: 1px solid var(--od);
+    border: calc(1px * var(--use-o)) solid var(--od);
 }
 button:not(.override).shiny::after {
     content: "";
@@ -154,6 +156,76 @@ button:not(.override).icon {
     padding: 5px;
 
     border-radius: 100%;
+}
+button:not(.override).normal {
+    --use-o: 1;
+}
+button:not(.override).lightest {
+    --bg: transparent;
+    --o: var(--v2);
+    --bgh: var(--v2-8);
+    --oh: var(--v3);
+    --bgd: transparent;
+    --od: var(--v2-8);
+}
+button:not(.override).light {
+    --bg: var(--v2-8);
+    --o: var(--v2);
+    --bgh: var(--v2);
+    --oh: var(--v3);
+    --bgd: var(--v2-8);
+    --od: var(--v2);
+
+    --use-o: 1;
+}
+button:not(.override).heavy {
+    --bg: var(--v3);
+    --o: var(--v4);
+    --bgh: var(--v4);
+    --oh: var(--v6);
+    --bgd: var(--v3);
+    --od: var(--v4);
+
+    --use-o: 1;
+}
+button:not(.override).special {
+    --bg: var(--a);
+    --fg: var(--v8);
+    --o: var(--a6);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --oh: var(--v8);
+    --bgd: var(--a2);
+    --fgd: var(--v6);
+    --od: var(--a3);
+
+    --use-o: 1;
+}
+button:not(.override).on {
+    --bg: var(--cg3);
+    --fg: var(--v8);
+    --o: var(--cg5);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --oh: var(--v8);
+    --bgd: var(--cg2);
+    --fgd: var(--v6);
+    --od: var(--cg3);
+
+    --use-o: 1;
+}
+button:not(.override).off {
+    --bg: var(--cr);
+    --fg: var(--v8);
+    --o: var(--cr6);
+    --bgh: var(--v8);
+    --fgh: var(--v1);
+    --oh: var(--v8);
+    --bgd: var(--cr2);
+    --fgd: var(--v6);
+    --od: var(--cr3);
+
+    --use-o: 1;
 }
 
 input {
@@ -1127,9 +1199,9 @@ article.md.lighter table td {
     transform: scale(100%);
 }
 .popup:not(.override).custom > .inner > button.close {
-    --bg: var(--v2);
+    --bg: transparent;
     --bgh: var(--v3);
-    --bgd: var(--v2);
+    --bgd: transparent;
 
     position: absolute;
     top: 10px;
@@ -1344,24 +1416,12 @@ article.md.lighter table td {
     font-size: 12px;
 }
 .popup.core > .inner > button {
-    --bg: var(--v3);
-    --bgh: var(--v4);
-    --bgd: var(--v3);
-
     padding: 5px 75px;
 
     border-radius: 5px;
 }
 .popup.core > .inner > button:focus-visible {
     outline: 1px solid var(--v8);
-}
-.popup.core > .inner > button.special {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --bgd: var(--a2);
-    --fgd: var(--v6);
 }
 .popup.core > .inner > .info {
     position: relative;
@@ -1395,13 +1455,13 @@ article.md.lighter table td {
 .popup.core > .inner > input {
     width: 100%;
 
-    border: 1px solid var(--v4);
+    outline: 1px solid var(--v3);
 }
 .popup.core > .inner > input:disabled {
-    border: 1px solid transparent;
+    outline: 1px solid var(--v3-8);
 }
 .popup.core > .inner > input:focus-visible {
-    border: 1px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 .popup.core > .inner > .progress {
     --progress: 0%;
@@ -1444,7 +1504,7 @@ div.contextmenu {
 
     background-color: var(--v2);
     border-radius: 5px;
-    border: 1px solid var(--v4);
+    border: 1px solid var(--v3);
 }
 div.contextmenu .item {
     position: relative;

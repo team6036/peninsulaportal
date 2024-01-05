@@ -70,7 +70,7 @@
 
     background-color: var(--v2);
     border-radius: 5px;
-    border: 1px solid var(--v4);
+    border: 1px solid var(--v3);
     opacity: 0%;
     visibility: hidden;
 
@@ -85,13 +85,13 @@
 #titlebar > #projectinfo > .content > input {
     background-color: var(--v1-8);
 
-    border: 1px solid var(--v4);
+    outline: 1px solid var(--v3);
 }
 #titlebar > #projectinfo > .content > input:disabled {
-    border: 1px solid transparent;
+    outline: 1px solid var(--v3-8);
 }
 #titlebar > #projectinfo > .content > input:focus-visible {
-    border: 1px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 #titlebar > #projectinfo > .content > .divider {
     height: 1px;
@@ -112,48 +112,11 @@
     align-content: center;
 }
 #titlebar > #projectinfo > .content > .nav > button {
-    --bg: transparent;
-    --bgh: var(--v2);
-    --bgd: transparent;
-
     flex-basis: 100%;
 
     padding: 10px;
 
     border-radius: 5px;
-}
-#titlebar > #projectinfo > .content > .nav > button.on {
-    --bg: var(--cg3);
-    --fg: var(--v8);
-    --o: var(--cg6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cg2);
-    --fgd: var(--v6);
-    --od: var(--cg4);
-}
-#titlebar > #projectinfo > .content > .nav > button.off {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --o: var(--cr6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cr2);
-    --fgd: var(--v6);
-    --od: var(--cr4);
-}
-#titlebar > #projectinfo > .content > .nav > button.special {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --o: var(--a6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--a2);
-    --fgd: var(--v6);
-    --od: var(--a4);
 }
 #titlebar > .space {
     flex-basis: 100%;
@@ -234,10 +197,6 @@
     gap: 10px;
 }
 #TITLEPAGE > .nav > button {
-    --o: var(--v4);
-    --oh: var(--v8);
-    --od: transparent;
-
     position: relative;
 
     padding: 10px 30px;
@@ -245,17 +204,6 @@
     border-radius: 5px;
 
     font-size: 16px;
-}
-#TITLEPAGE > .nav > button.special {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --o: var(--a6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--a2);
-    --fgd: var(--v6);
-    --od: var(--a4);
 }
 #TITLEPAGE > .nav > button > ion-icon {
     position: absolute;
@@ -311,16 +259,6 @@
     gap: 10px;
 }
 #PROJECTSPAGE > .nav > .nav > button {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --o: var(--a6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--a2);
-    --fgd: var(--v6);
-    --od: var(--a4);
-
     width: max-content;
     padding: 10px 20px;
 
@@ -366,13 +304,13 @@
 
     background-color: var(--v2-8);
     border-radius: 5px;
-    border: 1px solid var(--v4);
+    outline: 1px solid var(--v3);
 }
 #PROJECTSPAGE > .nav > .search:has(> input:disabled) {
-    border: 1px solid transparent;
+    outline: 1px solid var(--v2);
 }
 #PROJECTSPAGE > .nav > .search:has(> input:focus-visible) {
-    border: 1px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 #PROJECTSPAGE > .nav > .search > input {
     flex-basis: 100%;

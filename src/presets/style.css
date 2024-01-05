@@ -1,8 +1,4 @@
 button:not(.override) {
-    --o: var(--v4);
-    --oh: var(--v8);
-    --od: transparent;
-
     padding: 5px 10px;
 
     display: inline-flex;
@@ -94,49 +90,16 @@ button:not(.override) {
     
     gap: 10px;
 }
-#PAGE > .content > article p:not(.override) > button.special {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --o: var(--a6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--a3);
-    --fgd: var(--v6);
-    --od: var(--a4);
-}
-#PAGE > .content > article p:not(.override) > button.on {
-    --bg: var(--cg3);
-    --fg: var(--v8);
-    --o: var(--cg6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cg2);
-    --fgd: var(--v6);
-    --od: var(--cg4);
-}
-#PAGE > .content > article p:not(.override) > button.off {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --o: var(--cr6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cr3);
-    --fgd: var(--v6);
-    --od: var(--cr4);
-}
 #PAGE > .content > article p:not(.override) > input {
     background-color: var(--v2-8);
 
-    border: 1px solid var(--v4);
+    outline: 1px solid var(--v3);
 }
 #PAGE > .content > article p:not(.override) > input:disabled {
-    border: 1px solid transparent;
+    outline: 1px solid var(--v2);
 }
 #PAGE > .content > article p:not(.override) > input:focus-visible {
-    border: 1px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 #PAGE > .content > article > #colorsheet {
     display: inline-grid;
@@ -156,13 +119,13 @@ button:not(.override) {
     align-content: center;
 
     border-radius: 5px;
-    border: 1px solid var(--v4);
+    outline: 1px solid var(--v3);
 }
 #PAGE > .content > article label.pick-root:has(> input:disabled) {
-    border: 1px solid transparent;
+    outline: 1px solid var(--v2);
 }
 #PAGE > .content > article label.pick-root:has(> input:focus-visible) {
-    border: 1px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 #PAGE > .content > article label.pick-root > input {
     min-width: 300px;

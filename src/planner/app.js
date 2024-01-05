@@ -465,6 +465,7 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
             for (let name in globalTemplates) {
                 let btn = document.createElement("button");
                 this.eTemplates.appendChild(btn);
+                btn.classList.add("normal");
                 btn.textContent = name;
                 btn.addEventListener("click", e => {
                     e.stopPropagation();
@@ -823,11 +824,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eChooseNav.classList.add("choosenav");
         this.#eChooseDoneBtn = document.createElement("button");
         this.eChooseNav.appendChild(this.eChooseDoneBtn);
-        this.eChooseDoneBtn.id = "donebtn";
+        // this.eChooseDoneBtn.id = "donebtn";
+        this.eChooseDoneBtn.classList.add("special");
         this.eChooseDoneBtn.textContent = "Done";
         this.#eChooseCancelBtn = document.createElement("button");
         this.eChooseNav.appendChild(this.eChooseCancelBtn);
-        this.eChooseCancelBtn.id = "cancelbtn";
+        // this.eChooseCancelBtn.id = "cancelbtn";
+        this.eChooseCancelBtn.classList.add("off");
         this.eChooseCancelBtn.textContent = "Cancel";
         this.eChooseDoneBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -1591,6 +1594,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.#eSpawnDelete = document.createElement("button");
         this.eSpawnBox.appendChild(this.eSpawnDelete);
         this.eSpawnDelete.classList.add("delete");
+        this.eSpawnDelete.classList.add("off");
         this.eSpawnDelete.innerHTML = "<ion-icon name='trash'></ion-icon>";
         this.#eSpawns = {};
         ["node", "obstacle"].forEach(name => {
@@ -1821,6 +1825,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.eOptions.classList.add("fornode");
         this.#eOptionsAdd = document.createElement("button");
         this.eOptions.appendChild(this.eOptionsAdd);
+        this.eOptionsAdd.classList.add("special");
         this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
         let optionAdd = () => {};
         this.eOptionsAdd.addEventListener("click", e => {
@@ -1837,7 +1842,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         this.#remove = document.createElement("button");
         this.itemControls.appendChild(this.remove);
-        this.remove.id = "removebtn";
+        // this.remove.id = "removebtn";
+        this.remove.classList.add("off");
         this.remove.textContent = "Remove";
         this.remove.addEventListener("click", e => {
             e.stopPropagation();
@@ -2092,8 +2098,9 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         let header = this.addItem(new App.ProjectPage.Panel.Header("Paths"));
         this.#eAddBtn = document.createElement("button");
         header.elem.appendChild(this.eAddBtn);
-        this.eAddBtn.id = "pathaddbtn";
+        // this.eAddBtn.id = "pathaddbtn";
         this.eAddBtn.classList.add("icon");
+        this.eAddBtn.classList.add("special");
         this.eAddBtn.innerHTML = "<ion-icon name='add'></ion-icon>";
         this.eAddBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -2553,6 +2560,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         this.eOptions.classList.add("options");
         this.#eOptionsAdd = document.createElement("button");
         this.eOptions.appendChild(this.eOptionsAdd);
+        this.eOptionsAdd.classList.add("special");
         this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
         this.eOptionsAdd.addEventListener("click", e => {
             e.stopPropagation();

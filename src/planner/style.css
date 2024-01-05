@@ -22,10 +22,6 @@
     visibility: inherit;
 }
 #PROJECTSPAGE > .nav > .nav > .templates > button {
-    --o: var(--v4);
-    --oh: var(--v8);
-    --od: transparent;
-
     width: max-content;
     padding: 10px;
 
@@ -241,28 +237,6 @@
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .main > .display > .choosenav > button#donebtn {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --o: var(--a6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--a2);
-    --fgd: var(--v4);
-    --od: var(--a4);
-}
-#PROJECTPAGE > .main > .display > .choosenav > button#cancelbtn {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --o: var(--cr6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cr2);
-    --fgd: var(--v4);
-    --od: var(--cr4);
-}
 #PROJECTPAGE > .main > .edit {
     --bottom: 85px;
 
@@ -421,15 +395,15 @@
 #PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input {
     flex-basis: 100%;
 
-    border: 1px solid var(--v4);
+    outline: 1px solid var(--v3);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .input > input:disabled,
 #PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input:disabled {
-    border: 1px solid transparent;
+    outline: 1px solid var(--v2);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .input > input:focus-visible,
 #PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input:focus-visible {
-    border: 1px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .input > input[type="text"],
 #PROJECTPAGE > .main > .edit > .content > .panel > .input.d3 > div > input[type="text"] {
@@ -460,13 +434,13 @@
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input {
     flex-basis: 100%;
 
-    border: 1px solid var(--v4);
+    outline: 1px solid var(--v3);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input:disabled {
-    border: 1px solid transparent;
+    outline: 1px solid var(--v2);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input:focus-visible {
-    border: 1px solid var(--v8);
+    outline: 1px solid var(--v8);
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > .item > input:first-of-type {
     color: var(--a);
@@ -484,16 +458,6 @@
     min-width: max-content;
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .options > button {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --o: var(--a6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--a2);
-    --fgd: var(--v4);
-    --od: var(--a4);
-
     padding: 5px;
 
     border-radius: 5px;
@@ -510,16 +474,6 @@
     gap: 5px;
 }
 #objectspanel > #spawnbox > button.delete {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --o: var(--cr6);
-    --bgh: var(--cr5);
-    --fgh: var(--v8);
-    --oh: var(--v8);
-    --bgd: var(--cr3);
-    --fgd: var(--v6);
-    --od: var(--cr4);
-    
     z-index: 1;
 
     position: absolute;
@@ -563,7 +517,7 @@
     align-content: stretch;
 
     background-color: transparent;
-    border: 1px solid var(--v4);
+    border: 1px solid var(--v3);
     border-radius: 5px;
     filter: drop-shadow(0px 0px 0px var(--v1-8));
 
@@ -608,7 +562,7 @@
 
     background-color: var(--v1);
     border-radius: 100%;
-    border: 1px solid var(--v4);
+    border: 1px solid var(--v3);
 }
 #objectspanel > #heading > .dragbox::before {
     content: "";
@@ -691,37 +645,11 @@
     gap: 10px;
 }
 #objectspanel > #itemcontrols > button {
-    --o: var(--v4);
-    --oh: var(--v8);
-    --od: transparent;
-
     flex-basis: 100%;
 
     padding: 10px;
 
     border-radius: 5px;
-}
-#objectspanel > #itemcontrols > button#removebtn {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --o: var(--cr6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cr2);
-    --fgd: var(--v6);
-    --od: var(--cr4);
-}
-#pathspanel #pathaddbtn {
-    --bg: var(--a);
-    --fg: var(--v8);
-    --o: var(--a6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--a2);
-    --fgd: var(--v6);
-    --od: var(--a4);
 }
 #pathspanel > #pathsbox {
     flex-basis: 100%;
@@ -747,7 +675,7 @@
 
     background-color: var(--v2);
     border-radius: 5px;
-    border: 1px solid var(--v4);
+    border: 1px solid var(--v3);
 }
 #pathspanel > #pathsbox > .item.this {
     border: 1px solid var(--cg);
@@ -782,35 +710,11 @@
     color: var(--v4);
 }
 #pathspanel > button#activatebtn {
-    --o: var(--v4);
-    --oh: var(--v8);
-    --od: transparent;
+    --use-o: 1;
     
     padding: 10px;
 
     border-radius: 5px;
-}
-#pathspanel > button#activatebtn.on {
-    --bg: var(--cg3);
-    --fg: var(--v8);
-    --o: var(--cg6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cg2);
-    --fgd: var(--v6);
-    --od: var(--cg4);
-}
-#pathspanel > button#activatebtn.off {
-    --bg: var(--cr);
-    --fg: var(--v8);
-    --o: var(--cr6);
-    --bgh: var(--v8);
-    --fgh: var(--v1);
-    --oh: var(--v8);
-    --bgd: var(--cr2);
-    --fgd: var(--v6);
-    --od: var(--cr4);
 }
 #optionspanel > #script {
     display: flex;

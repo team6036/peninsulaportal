@@ -24,6 +24,7 @@ export default class App extends core.AppModal {
             this.ieConfirm.classList.add("special");
             this.#ieCancel = document.createElement("button");
             this.iinner.appendChild(this.ieCancel);
+            this.ieCancel.classList.add("heavy");
 
             this.ieInput.addEventListener("keydown", e => {
                 if (e.code != "Enter" && e.code != "Return") return;

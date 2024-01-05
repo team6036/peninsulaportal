@@ -1611,6 +1611,7 @@ App.Confirm = class AppConfirm extends App.CorePopup {
         this.eConfirm.classList.add("special");
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
+        this.eCancel.classList.add("heavy");
 
         this.eConfirm.addEventListener("click", e => {
             e.stopPropagation();
@@ -1664,6 +1665,7 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.eConfirm.classList.add("special");
         this.#eCancel = document.createElement("button");
         this.inner.appendChild(this.eCancel);
+        this.eCancel.classList.add("heavy");
 
         this.eConfirm.addEventListener("click", e => {
             e.stopPropagation();
@@ -3132,6 +3134,7 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
         });
         this.#eProjectsBtn = document.createElement("button");
         this.eNav.appendChild(this.eProjectsBtn);
+        this.eProjectsBtn.classList.add("normal");
         this.eProjectsBtn.innerHTML = "Projects<ion-icon name='chevron-forward'></ion-icon>";
         this.eProjectsBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -3190,6 +3193,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eSubNav.classList.add("nav");
         this.#eCreateBtn = document.createElement("button");
         this.eSubNav.appendChild(this.eCreateBtn);
+        this.eCreateBtn.classList.add("special");
         this.eCreateBtn.innerHTML = "Create<ion-icon name='add'></ion-icon>";
         this.eCreateBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -4397,15 +4401,15 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     #selected;
 
-    static Types = {
+    static TYPES = {
         DEFAULT: Symbol("DEFAULT"),
         NODE: Symbol("NODE"),
         BOX: Symbol("BOX"),
         ARROW: Symbol("ARROW"),
     };
     static lookupTypeName(type) {
-        for (let name in Odometry2d.Robot.Types)
-            if (Odometry2d.Robot.Types[name] == type)
+        for (let name in Odometry2d.Robot.TYPES)
+            if (Odometry2d.Robot.TYPES[name] == type)
                 return name;
         return null;
     }
@@ -4423,7 +4427,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         this.#color = "cb";
         this.#colorH = "cb5";
 
-        this.type = Odometry2d.Robot.Types.DEFAULT;
+        this.type = Odometry2d.Robot.TYPES.DEFAULT;
 
         this.size = size;
         this.heading = heading;
@@ -4431,7 +4435,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            if (![Odometry2d.Robot.Types.NODE, Odometry2d.Robot.Types.ARROW].includes(this.type)) {
+            if (![Odometry2d.Robot.TYPES.NODE, Odometry2d.Robot.TYPES.ARROW].includes(this.type)) {
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+this.color+"-8");
                 ctx.lineWidth = 7.5*quality;
                 ctx.lineJoin = "round";
@@ -4461,7 +4465,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.closePath();
                 ctx.stroke();
             }
-            if (this.type == Odometry2d.Robot.Types.ARROW) {
+            if (this.type == Odometry2d.Robot.TYPES.ARROW) {
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? this.colorH : this.color));
                 ctx.lineWidth = 5*quality;
                 ctx.lineJoin = "round";
@@ -4485,7 +4489,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
                 ctx.fill();
             }
-            if (![Odometry2d.Robot.Types.BOX, Odometry2d.Robot.Types.ARROW].includes(this.type)) {
+            if (![Odometry2d.Robot.TYPES.BOX, Odometry2d.Robot.TYPES.ARROW].includes(this.type)) {
                 ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? this.colorH : this.color));
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
                 ctx.lineWidth = 1*quality;
@@ -4526,8 +4530,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     get type() { return this.#type; }
     set type(v) {
-        if (!Object.values(Odometry2d.Robot.Types)) return;
-        if (Object.keys(Odometry2d.Robot.Types).includes(v)) v = Odometry2d.Robot.Types[v];
+        if (v in Odometry2d.Robot.TYPES) v = Odometry2d.Robot.TYPES[v];
+        if (!Object.values(Odometry2d.Robot.TYPES).includes(v)) v = Odometry2d.Robot.TYPES.DEFAULT;
         this.#type = v;
     }
 
