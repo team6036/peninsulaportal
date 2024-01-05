@@ -27,8 +27,8 @@
 }
 
 * {
-    /*font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";*/
-    font-family: REM, Arial, Helvetica, sans-serif;
+    font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    /* font-family: REM, Arial, Helvetica, sans-serif; */
     box-sizing: border-box;
 }
 
@@ -1442,7 +1442,7 @@ div.contextmenu {
     align-items: stretch;
     align-content: flex-start;
 
-    background-color: var(--v1-a);
+    background-color: var(--v2);
     border-radius: 5px;
     border: 1px solid var(--v4);
 }
@@ -1467,7 +1467,7 @@ div.contextmenu .item {
     user-select: none;
 }
 div.contextmenu .item:not(.divider):not(.disabled):hover {
-    background-color: var(--v2);
+    background-color: var(--v3);
 }
 div.contextmenu .item:not(.divider).disabled {
     color: var(--v6);

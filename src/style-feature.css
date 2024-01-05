@@ -68,7 +68,7 @@
     align-content: center;
     gap: 10px;
 
-    background-color: var(--v1-a);
+    background-color: var(--v2);
     border-radius: 5px;
     border: 1px solid var(--v4);
     opacity: 0%;
