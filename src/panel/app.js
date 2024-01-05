@@ -5139,7 +5139,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
             this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
-            this.odometry.imageScale = (this.template in templates) ? util.ensure(templates[this.template], "obj").imageScale : 0;
+            this.odometry.autoScale();
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
