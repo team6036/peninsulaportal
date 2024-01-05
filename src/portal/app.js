@@ -17,6 +17,7 @@ class FeatureButton extends util.Target {
 
         this.#elem = document.createElement("button");
         this.elem.classList.add("item");
+        this.elem.classList.add("normal");
         this.#eName = document.createElement("div");
         this.elem.appendChild(this.eName);
         this.eName.classList.add("name");

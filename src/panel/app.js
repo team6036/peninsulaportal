@@ -257,6 +257,7 @@ class ToolButton extends util.Target {
 
         this.#elem = document.createElement("button");
         this.elem.classList.add("item");
+        this.elem.classList.add("light");
         this.#eIcon = document.createElement("ion-icon");
         this.elem.appendChild(this.eIcon);
         this.#eName = document.createElement("div");
@@ -2520,6 +2521,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.#eUploadBtn = document.createElement("button");
         this.eStatusBox.appendChild(this.eUploadBtn);
         this.eUploadBtn.classList.add("icon");
+        this.eUploadBtn.classList.add("special");
         this.eUploadBtn.innerHTML = "<ion-icon name='add'></ion-icon>";
         this.#eLogs = document.createElement("div");
         this.elem.appendChild(this.eLogs);
@@ -3002,6 +3004,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
         this.#state = {};
 
         this.#eBtn = document.createElement("button");
+        this.eBtn.classList.add("normal");
         this.#eIcon = document.createElement("ion-icon");
         this.eBtn.appendChild(this.eIcon);
         this.#eName = document.createElement("div");
@@ -3126,6 +3129,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eConflict.innerHTML = "<div>Merge conflicts with</div>";
                 state.eConflictAffixBtn = document.createElement("button");
                 state.eConflict.appendChild(state.eConflictAffixBtn);
+                state.eConflictAffixBtn.classList.add("normal");
                 state.eConflictAffixBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
                 state.eConflictAffixBtnName = state.eConflictAffixBtn.children[0];
                 state.eConflictAffixBtn.addEventListener("click", e => {
@@ -3146,6 +3150,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 });
                 state.eConflictCountBtn = document.createElement("button");
                 state.eConflict.appendChild(state.eConflictCountBtn);
+                state.eConflictCountBtn.classList.add("normal");
                 state.eConflictCountBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
                 state.eConflictCountBtnName = state.eConflictCountBtn.children[0];
                 state.eConflictCountBtn.addEventListener("click", e => {
@@ -3205,6 +3210,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 });
                 state.eSubmit = document.createElement("button");
                 this.eContent.appendChild(state.eSubmit);
+                state.eSubmit.classList.add("special");
                 state.eSubmit.textContent = "Merge";
                 state.eSubmit.addEventListener("click", async e => {
                     e.stopPropagation();
@@ -4460,7 +4466,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
         this.#poses = new Set();
 
-        this.#template = null;
+        this.#template = 0;
 
         let templates = {};
         (async () => {
@@ -5161,13 +5167,13 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 if (!this.hasApp()) return;
                 let itm;
                 let menu = new core.App.Menu();
-                Object.keys(core.Odometry2d.Robot.Types).forEach(k => {
+                for (let k in core.Odometry2d.Robot.TYPES) {
                     let name = String(k).split(" ").map(v => util.capitalize(v)).join(" ");
                     itm = menu.addItem(new core.App.Menu.Item(name, (current == k) ? "checkmark" : ""));
                     itm.addHandler("trigger", e => {
                         r.type = k;
                     });
-                });
+                };
                 this.app.contextMenu = menu;
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
@@ -5298,7 +5304,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         }
         if (a.length == 2) a = [...a, true];
         if (a.length == 3) a = [...a, false];
-        if (a.length == 4) a = [...a, core.Odometry2d.Robot.Types.DEFAULT];
+        if (a.length == 4) a = [...a, core.Odometry2d.Robot.TYPES.DEFAULT];
 
         [this.path, this.color, this.isShown, this.isGhost, this.type] = a;
     }
@@ -5313,8 +5319,8 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     }
     get type() { return this.#type; }
     set type(v) {
-        if (!Object.values(core.Odometry2d.Robot.Types)) return;
-        if (Object.keys(core.Odometry2d.Robot.Types).includes(v)) v = core.Odometry2d.Robot.Types[v];
+        if (v in core.Odometry2d.Robot.TYPES) v = core.Odometry2d.Robot.TYPES[v];
+        if (!Object.values(core.Odometry2d.Robot.TYPES).includes(v)) v = core.Odometry2d.Robot.TYPES.DEFAULT;
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
@@ -5330,7 +5336,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             color: this.color,
             isShown: this.isShown,
             isGhost: this.isGhost,
-            type: this.type,
+            type: core.Odometry2d.Robot.lookupTypeName(this.type),
         });
     }
 };

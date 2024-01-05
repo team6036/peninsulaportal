@@ -11,19 +11,19 @@
 <p>
     <span>Application Data Directory</span>
     <span class="space"></span>
-    <button class="cmd" id="cleanup-app-data-dir">Cleanup</button>
-    <button class="cmd" id="open-app-data-dir">Open<ion-icon name="open-outline"></ion-icon></button>
+    <button class="cmd normal" id="cleanup-app-data-dir">Cleanup</button>
+    <button class="cmd normal" id="open-app-data-dir">Open<ion-icon name="open-outline"></ion-icon></button>
 </p>
 <p>
     <span>Application Log Directory</span>
     <span class="space"></span>
     <button class="cmd off" id="clear-app-log-dir">Clear</button>
-    <button class="cmd" id="open-app-log-dir">Open<ion-icon name="open-outline"></ion-icon></button>
+    <button class="cmd normal" id="open-app-log-dir">Open<ion-icon name="open-outline"></ion-icon></button>
 </p>
 <p>
     <span>Database Host URL</span>
     <span class="space"></span>
-    <button class="cmd" id="poll-db-host">Repoll</button>
+    <button class="cmd normal" id="poll-db-host">Repoll</button>
     <input class="val" id="db-host" placeholder="Host URL" style="min-width:300px;color:var(--cy);">
 </p>
 <p>
@@ -50,13 +50,13 @@
 <p>
     <span>Theme</span>
     <span class="space"></span>
-    <button id="theme"><div></div><ion-icon name="chevron-forward"></ion-icon></button>
+    <button id="theme" class="normal"><div></div><ion-icon name="chevron-forward"></ion-icon></button>
 </p>
 
 <p>
     <span>Native Theme</span>
     <span class="space"></span>
-    <button id="native-theme"><div></div><ion-icon name="chevron-forward"></ion-icon></button>
+    <button id="native-theme" class="normal"><div></div><ion-icon name="chevron-forward"></ion-icon></button>
 </p>
 
 <p>
