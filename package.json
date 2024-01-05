@@ -71,6 +71,26 @@
 		"win": {
 			"target": "nsis",
 			"icon": "src/assets/app/icon.ico"
+		},
+		"dmg": {
+			"backgroundColor": "#ffffff",
+			"iconSize": 75,
+			"window": {
+				"width": 450,
+				"height": 300
+			},
+			"contents": [
+				{
+					"x": 125,
+					"y": 125
+				},
+				{
+					"x": 325,
+					"y": 125,
+					"type": "link",
+					"path": "/Applications"
+				}
+			]
 		}
 	}
 }
