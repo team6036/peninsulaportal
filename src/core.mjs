@@ -620,7 +620,6 @@ export class App extends util.Target {
         document.head.appendChild(this.eStyle);
         this.eStyle.rel = "stylesheet";
         this.eStyle.href = theRoot+"/style.css";
-        console.log(theRoot);
 
         this.#eDynamicStyle = document.createElement("style");
         document.head.appendChild(this.eDynamicStyle);
