@@ -215,8 +215,11 @@
 }
 #PROJECTPAGE > .main > .side > .section#tools > .content > button.item {
     --bg: var(--v2-8);
+    --o: var(--v4);
     --bgh: var(--v2);
+    --oh: var(--v8);
     --bgd: var(--v2-8);
+    --od: var(--v2);
 
     width: 75px;
     max-width: 75px;
@@ -378,7 +381,7 @@
     top: 0px;
     transform: none;
 
-    border-bottom-left-radius: 10px;
+    border-bottom-left-radius: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .top {
     width: 100%;
@@ -652,6 +655,7 @@
     overflow: hidden;
 
     min-height: 29px;
+    padding-left: 7.5px;
 
     display: flex;
     flex-direction: row;
@@ -662,9 +666,10 @@
 
     background-color: var(--v2-8);
     border-radius: 5px;
+    border: 1px solid var(--v4);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags {
-    padding: 7.5px;
+    padding-right: 7.5px;
 
     display: flex;
     flex-direction: row;
@@ -675,7 +680,7 @@
     gap: 10px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags:empty {
-    padding: 3.75px;
+    display: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > .tags > .item {
     display: flex;
@@ -690,10 +695,16 @@
 
     font-size: 12px;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search:has(> input:disabled) {
+    border: 1px solid transparent;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search:has(> input:focus-visible) {
+    border: 1px solid var(--v8);
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .search > input {
     flex-basis: 100%;
 
-    padding: 5px 0px;
+    padding: 7.5px 0px;
 
     background-color: transparent;
     border-radius: 0px;
@@ -965,6 +976,13 @@
 
     background-color: var(--v2-8);
     color: var(--v8);
+    border: 1px solid var(--v4);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav > input:disabled {
+    border: 1px solid transparent;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav > input:focus-visible {
+    border: 1px solid var(--v8);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > webview {
     width: 100%;
@@ -1208,6 +1226,10 @@
     display: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .actions > button {
+    --o: var(--v4);
+    --oh: var(--v8);
+    --od: transparent;
+
     width: 300px;
     max-width: 100%;
     padding: 10px;
@@ -1332,6 +1354,10 @@
     font-size: 14px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict > button {
+    --o: var(--v4);
+    --oh: var(--v8);
+    --od: transparent;
+
     padding: 5px;
 
     gap: 5px;
@@ -1382,7 +1408,7 @@
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.dragbox) {
     width: min(100%, max(50%, 500px));
-    padding: 10px;
+    padding: 7.5px;
 
     display: flex;
     flex-direction: row;
@@ -1390,7 +1416,7 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 
     background-color: var(--v2-8);
     color: var(--v8);
@@ -1479,10 +1505,13 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > button {
     --bg: var(--a);
     --fg: var(--v8);
+    --o: var(--a6);
     --bgh: var(--v8);
     --fgh: var(--v1);
+    --oh: var(--v8);
     --bgd: var(--a2);
     --fgd: var(--v6);
+    --od: var(--a4);
 
     align-self: flex-start;
 
@@ -1520,6 +1549,7 @@
 
     background-color: var(--v1);
     border-radius: 100%;
+    border: 1px solid var(--v4);
 
     transition: top var(--t);
 }
@@ -1529,7 +1559,7 @@
     transition: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.open > .open {
-    z-index: 2;
+    z-index: 3;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .open::before {
     content: "";
@@ -1552,7 +1582,7 @@
     background-color: var(--v2);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .open > ion-icon {
-    z-index: 1;
+    z-index: 2;
 
     position: absolute;
     top: 25%;
@@ -1604,7 +1634,7 @@
 
     background-color: var(--v1-a);
     color: var(--v8);
-    border: 1px solid var(--v8);
+    border: 3px solid var(--v4);
 
     font-size: 3em;
 }
@@ -1639,6 +1669,8 @@
     flex-basis: auto;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options {
+    z-index: 1;
+
     position: absolute;
     top: var(--options);
     left: 0%;
@@ -1679,6 +1711,21 @@
 
     background-color: var(--v2-8);
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.half-open > .options::after,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.drag > .options::after {
+    content: "";
+
+    z-index: -1;
+
+    position: absolute;
+    bottom: 100%;
+    left: 0%;
+
+    width: 100%;
+    height: 1px;
+
+    background: linear-gradient(90deg, var(--v4), var(--v4) calc(50% - 25px), transparent calc(50% - 25px), transparent calc(50% + 25px), var(--v4) calc(50% + 25px), var(--v4));
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.open > .options {
     padding-top: 35px;
 }
@@ -1698,6 +1745,15 @@
     align-items: stretch;
     align-content: center;
     gap: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section input {
+    border: 1px solid var(--v4);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section input:disabled {
+    border: 1px solid transparent;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section input:focus-visible {
+    border: 1px solid var(--v8);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .content > .info {
     position: absolute;
@@ -1947,6 +2003,10 @@
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display,
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button {
+    --o: var(--v4);
+    --oh: var(--v8);
+    --od: transparent;
+
     position: relative;
 
     padding: 5px;
@@ -2014,7 +2074,7 @@
     gap: 5px;
 
     background-color: var(--v1-a);
-    border: 1px solid var(--v8);
+    border: 1px solid var(--v4);
     visibility: hidden;
 
     font-size: 12px;

@@ -58,10 +58,13 @@ button {
 button:not(.override) {
     --bg: var(--v2);
     --fg: var(--v7);
+    --o: transparent;
     --bgh: var(--v3);
     --fgh: var(--v8);
+    --oh: transparent;
     --bgd: var(--v2);
     --fgd: var(--v5);
+    --od: transparent;
     --btn-c-size: 125%;
     --btn-c-size-v: 0%;
 
@@ -81,14 +84,16 @@ button:not(.override):not(.shiny) {
         transparent 500%
     ), var(--bg);
     color: var(--fg);
+    border: 1px solid var(--o);
 
-    transition: --btn-c-size-v var(--t), background var(--t), color var(--t);
+    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), border var(--t);
 }
 button:not(.override):not(.shiny):not(:disabled):hover,
 button:not(.override):not(.shiny):not(.disabled).hover {
     --btn-c-size-v: var(--btn-c-size);
     
     color: var(--fgh);
+    border: 1px solid var(--oh);
 }
 button:not(.override):disabled,
 button:not(.override).disabled {
@@ -102,6 +107,7 @@ button:not(.override).disabled {
         transparent 500%
     ), var(--bgd);
     color: var(--fgd);
+    border: 1px solid var(--od);
 }
 button:not(.override).shiny {
     position: relative;
@@ -110,6 +116,7 @@ button:not(.override).shiny {
 
     background-color: var(--bg);
     color: var(--fg);
+    border: 1px solid var(--o);
 
     transition: background-color var(--t), color var(--t);
 }
@@ -117,11 +124,13 @@ button:not(.override).shiny:not(:disabled):hover,
 button:not(.override).shiny:not(.disabled).hover {
     background-color: var(--bgh);
     color: var(--fgh);
+    border: 1px solid var(--oh);
 }
 button:not(.override).shiny:disabled,
 button:not(.override).shiny.disabled {
     background-color: var(--bgd);
     color: var(--fgd);
+    border: 1px solid var(--od);
 }
 button:not(.override).shiny::after {
     content: "";
@@ -1343,7 +1352,7 @@ article.md.lighter table td {
 
     border-radius: 5px;
 }
-.popup.core > .inner > button:focus {
+.popup.core > .inner > button:focus-visible {
     outline: 1px solid var(--v8);
 }
 .popup.core > .inner > button.special {
@@ -1385,6 +1394,14 @@ article.md.lighter table td {
 }
 .popup.core > .inner > input {
     width: 100%;
+
+    border: 1px solid var(--v4);
+}
+.popup.core > .inner > input:disabled {
+    border: 1px solid transparent;
+}
+.popup.core > .inner > input:focus-visible {
+    border: 1px solid var(--v8);
 }
 .popup.core > .inner > .progress {
     --progress: 0%;
@@ -1416,6 +1433,8 @@ div.contextmenu {
 
     position: absolute;
 
+    padding: 5px 0px;
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -1423,12 +1442,14 @@ div.contextmenu {
     align-items: stretch;
     align-content: flex-start;
 
-    filter: drop-shadow(0px 5px 5px var(--v1-8));
+    background-color: var(--v1-a);
+    border-radius: 5px;
+    border: 1px solid var(--v4);
 }
 div.contextmenu .item {
     position: relative;
 
-    padding: 10px;
+    padding: 5px;
 
     min-width: max-content;
 
@@ -1440,14 +1461,13 @@ div.contextmenu .item {
     align-content: center;
     gap: 0px;
 
-    background-color: var(--v2);
     color: var(--v8);
 
     font-size: 12px;
     user-select: none;
 }
 div.contextmenu .item:not(.divider):not(.disabled):hover {
-    background-color: var(--v3);
+    background-color: var(--v2);
 }
 div.contextmenu .item:not(.divider).disabled {
     color: var(--v6);
@@ -1481,7 +1501,7 @@ div.contextmenu .item:not(.divider):not(.disabled):hover > div.contextmenu {
     visibility: inherit;
 }
 div.contextmenu .item.divider {
-    padding: 0px;
+    padding: 5px 0px;
 
     height: 1px;
 }

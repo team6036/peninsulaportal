@@ -122,6 +122,10 @@ body {
     pointer-events: auto;
 }
 #PAGE > .main > .nav > button.item {
+    --o: var(--v4);
+    --oh: var(--v8);
+    --od: transparent;
+
     width: 100px;
     aspect-ratio: 1 / 1;
 

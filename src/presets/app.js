@@ -303,6 +303,7 @@ export default class App extends core.App {
                         this.contextMenu = menu;
                         let r = eThemeBtn.getBoundingClientRect();
                         this.placeContextMenu(r.left, r.bottom);
+                        menu.elem.style.minWidth = r.width+"px";
                     });
                     setInterval(async () => {
                         if (eThemeBtn.children[0] instanceof HTMLDivElement)
@@ -332,6 +333,7 @@ export default class App extends core.App {
                         this.contextMenu = menu;
                         let r = eNativeThemeBtn.getBoundingClientRect();
                         this.placeContextMenu(r.left, r.bottom);
+                        menu.elem.style.minWidth = r.width+"px";
                     });
                     setInterval(async () => {
                         const nativeThemes = {

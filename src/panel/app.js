@@ -850,6 +850,7 @@ class Panel extends Widget {
             this.app.contextMenu = menu;
             let r = this.eOptions.getBoundingClientRect();
             this.app.placeContextMenu(r.left, r.bottom);
+            menu.elem.style.minWidth = r.width+"px";
         });
         this.eAdd.addEventListener("click", e => {
             e.stopPropagation();
@@ -3141,6 +3142,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     this.app.contextMenu = menu;
                     let r = state.eConflictAffixBtn.getBoundingClientRect();
                     this.app.placeContextMenu(r.left, r.bottom);
+                    menu.elem.style.minWidth = r.width+"px";
                 });
                 state.eConflictCountBtn = document.createElement("button");
                 state.eConflict.appendChild(state.eConflictCountBtn);
@@ -3160,6 +3162,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     this.app.contextMenu = menu;
                     let r = state.eConflictCountBtn.getBoundingClientRect();
                     this.app.placeContextMenu(r.left, r.bottom);
+                    menu.elem.style.minWidth = r.width+"px";
                 });
                 state.ePrefix = document.createElement("div");
                 this.eContent.appendChild(state.ePrefix);
@@ -4508,6 +4511,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         this.app.contextMenu = menu;
                         let r = this.eTemplateSelect.getBoundingClientRect();
                         this.app.placeContextMenu(r.left, r.bottom);
+                        menu.elem.style.minWidth = r.width+"px";
                     });
                 },
                 o: () => {
@@ -5167,6 +5171,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 this.app.contextMenu = menu;
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
+                menu.elem.style.minWidth = rect.width+"px";
             };
             r.addLinkedHandler(this, "type", onType);
         });
@@ -6086,6 +6091,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.app.contextMenu = menu;
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
+                menu.elem.style.minWidth = rect.width+"px";
             };
             r.addLinkedHandler(this, "type", onType);
         });
