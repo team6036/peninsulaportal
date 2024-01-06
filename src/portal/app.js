@@ -473,19 +473,11 @@ export default class App extends core.App {
             btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
 
-            btn = this.addFeatureButton(new FeatureButton("Perception", "eye"));
-            btn.tooltip = "Coming soon!";
-            btn.tooltipColor = "var(--a)";
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PERCEPTION"));
-
             btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PANEL"));
 
             btn = this.addUpperFeatureButton(new UpperFeatureButton("analytics"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
-
-            btn = this.addUpperFeatureButton(new UpperFeatureButton("eye"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PERCEPTION"));
 
             let prevLoads = [];
             let lock = false;
