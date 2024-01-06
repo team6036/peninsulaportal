@@ -444,6 +444,11 @@ Source.Node = class SourceNode extends util.Target {
         this.nodeObjects.forEach(node => (n += node.nNodes));
         return n;
     }
+    get nFields() {
+        let n = +this.hasField();
+        this.nodeObjects.forEach(node => (n += node.nFields));
+        return n;
+    }
     set nodes(v) {
         v = util.ensure(v, "arr");
         this.clearNodes();
