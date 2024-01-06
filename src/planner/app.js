@@ -1072,35 +1072,36 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.project.meta.created = this.project.meta.modified = util.getTime();
                 this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
                 this.editorRefresh();
-            }
-            if (this.hasProject()) {
-                for (let name in globalTemplates) {
-                    if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
-                    const globalTemplate = util.ensure(globalTemplates[name], "obj");
-                    let template = util.ensure(templates[name], "obj");
-                    template[".size"] = globalTemplate["size"];
-                    template[".robotW"] = globalTemplate["robotSize"];
-                    template[".robotMass"] = globalTemplate["robotMass"];
-                    template[".meta.backgroundImage"] = globalTemplateImages[name];
-                    for (let k in template) {
-                        let v = template[k];
-                        k = String(k).split(".");
-                        while (k.length > 0 && k.at(0).length <= 0) k.shift();
-                        while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-                        let obj = this.project;
-                        while (k.length > 1) {
-                            if (!util.is(obj, "obj")) {
-                                obj = null;
-                                break;
+            // }
+                if (this.hasProject()) {
+                    for (let name in globalTemplates) {
+                        if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
+                        const globalTemplate = util.ensure(globalTemplates[name], "obj");
+                        let template = util.ensure(templates[name], "obj");
+                        template[".size"] = globalTemplate["size"];
+                        template[".robotW"] = globalTemplate["robotSize"];
+                        template[".robotMass"] = globalTemplate["robotMass"];
+                        template[".meta.backgroundImage"] = globalTemplateImages[name];
+                        for (let k in template) {
+                            let v = template[k];
+                            k = String(k).split(".");
+                            while (k.length > 0 && k.at(0).length <= 0) k.shift();
+                            while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+                            let obj = this.project;
+                            while (k.length > 1) {
+                                if (!util.is(obj, "obj")) {
+                                    obj = null;
+                                    break;
+                                }
+                                obj = obj[k.shift()];
                             }
-                            obj = obj[k.shift()];
+                            if (obj == null || k.length != 1) continue;
+                            obj[k] = v;
                         }
-                        if (obj == null || k.length != 1) continue;
-                        obj[k] = v;
+                        break;
                     }
-                    break;
+                    this.editorRefresh();
                 }
-                this.editorRefresh();
             }
         });
         this.addHandler("leave", async data => {
