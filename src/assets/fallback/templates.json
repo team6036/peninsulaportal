@@ -14,7 +14,12 @@
 			"size": [1654, 802],
 			"robotSize": 80,
 			"robotMass": 75
+		},
+		"2024": {
+			"size": [1654, 802],
+			"robotSize": 0,
+			"robotMass": 0
 		}
 	},
-	"active": "2023"
+	"active": "2024"
 }
