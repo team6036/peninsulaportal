@@ -7279,6 +7279,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #eNavPreInfo;
     #eSide;
     #eSideMeta;
+    #eSideMetaInfo;
+    #eSideMetaBtn;
+    #eSideMetaTooltip;
     #eSideSections;
     #eContent;
     #eDragBox;
@@ -7432,7 +7435,21 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eSide.classList.add("side");
         this.#eSideMeta = document.createElement("div");
         this.eSide.appendChild(this.eSideMeta);
-        this.eSideMeta.id = "meta";
+        this.eSideMeta.classList.add("meta");
+        this.#eSideMetaInfo = document.createElement("div");
+        this.eSideMeta.appendChild(this.eSideMetaInfo);
+        this.#eSideMetaBtn = document.createElement("button");
+        this.eSideMeta.appendChild(this.eSideMetaBtn);
+        this.eSideMetaBtn.innerHTML = "<ion-icon name='information-circle'></ion-icon>";
+        this.eSideMetaBtn.addEventListener("click", e => {
+            if (this.eSideMetaBtn.classList.contains("active")) this.eSideMetaBtn.classList.remove("active");
+            else this.eSideMetaBtn.classList.add("active");
+        });
+        this.#eSideMetaTooltip = document.createElement("div");
+        this.eSideMetaBtn.appendChild(this.eSideMetaTooltip);
+        this.eSideMetaTooltip.classList.add("tooltip");
+        this.eSideMetaTooltip.classList.add("tog");
+        this.eSideMetaTooltip.classList.add("ney");
         this.#eSideSections = {};
         ["browser", "tools"].forEach(name => {
             let elem = document.createElement("div");
@@ -7637,7 +7654,26 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;
             
-            this.eSideMeta.textContent = this.sourceInfo;
+            this.eSideMetaInfo.textContent = this.sourceInfo;
+            let info = this.sourceMetaInfo;
+            while (this.eSideMetaTooltip.children.length < Math.max(0, info.length*2-1)) {
+                if (this.eSideMetaTooltip.children.length%2 == 1) {
+                    this.eSideMetaTooltip.appendChild(document.createElement("br"));
+                    continue;
+                }
+                this.eSideMetaTooltip.appendChild(document.createElement("span"));
+            }
+            while (this.eSideMetaTooltip.children.length > Math.max(0, info.length*2-1))
+                this.eSideMetaTooltip.lastChild.remove();
+            for (let i = 0; i < Math.max(0, info.length*2-1); i++) {
+                if (i%2 == 1) continue;
+                let line = info[i/2];
+                if (line.includes(":")) {
+                    this.eSideMetaTooltip.children[i].innerHTML = "<span></span><span style='color:var(--a);'></span>";
+                    this.eSideMetaTooltip.children[i].children[0].textContent = line.substring(0, line.indexOf(":")+1);
+                    this.eSideMetaTooltip.children[i].children[1].textContent = line.substring(line.indexOf(":")+1);
+                } else this.eSideMetaTooltip.children[i].textContent = line;
+            }
 
             this.app.eProjectInfoBtnName.textContent = this.hasProject() ? this.project.meta.name : "";
 
@@ -7647,7 +7683,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (document.activeElement != this.app.eProjectInfoSourceInput)
                 this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
 
-            if (this.source instanceof NTSource) {
+            if (!this.hasSource()) {
+                this.app.eProjectInfoNameInput.placeholder = "No source";
+                this.app.eProjectInfoActionBtn.disabled = true;
+                this.app.eProjectInfoActionBtn.classList.remove("on");
+                this.app.eProjectInfoActionBtn.classList.remove("off");
+                this.app.eProjectInfoActionBtn.classList.remove("special");
+                this.app.eProjectInfoActionBtn.textContent = "No source";
+            } else if (this.source instanceof NTSource) {
                 this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
                 this.app.eProjectInfoActionBtn.disabled = false;
                 let on = !this.source.connecting && !this.source.connected;
@@ -7665,18 +7708,21 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.app.eProjectInfoActionBtn.classList.add("special");
                 this.app.eProjectInfoActionBtn.textContent = "Import";
             } else {
-                this.app.eProjectInfoNameInput.placeholder = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+                this.app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.name;
                 this.app.eProjectInfoActionBtn.disabled = true;
                 this.app.eProjectInfoActionBtn.classList.remove("on");
                 this.app.eProjectInfoActionBtn.classList.remove("off");
                 this.app.eProjectInfoActionBtn.classList.remove("special");
-                this.app.eProjectInfoActionBtn.textContent = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+                this.app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.name;
             }
 
             let itm;
             itm = this.app.menu.findItemWithId("action");
             if (itm) {
-                if (this.source instanceof NTSource) {
+                if (!this.hasSource()) {
+                    itm.enabled = false;
+                    itm.label = "No source";
+                } else if (this.source instanceof NTSource) {
                     let on = !this.source.connecting && !this.source.connected;
                     itm.enabled = true;
                     itm.label = on ? "Connect" : "Disconnect";
@@ -7685,7 +7731,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     itm.label = "Import";
                 } else {
                     itm.enabled = false;
-                    itm.label = this.hasSource() ? "Unknown source: "+this.source.constructor.name : "No source";
+                    itm.label = "Unknown source: "+this.source.constructor.name;
                 }
             }
             ["nt", "wpilog"].forEach(type => {
@@ -7869,25 +7915,53 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     }
     hasSource() { return !!this.source; }
     get sourceInfo() {
+        if (!this.hasSource()) return "No source";
         if (this.source instanceof NTSource) {
             if (!this.source.connecting && !this.source.connected) return "Disconnected";
             if (this.source.connecting) return "Connecting to "+this.source.address;
-            const n = this.source.tree.nNodes;
-            return this.source.address+" : "+n+" field"+(n==1?"":"s");
+            return this.source.address;
         }
         if (this.source instanceof WPILOGSource) {
             if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
             if (this.source.importing) return "Importing from "+this.source.file;
-            const n = this.source.tree.nNodes;
-            return this.source.file+" : "+n+" field"+(n==1?"":"s");
+            return this.source.file;
         }
-        if (this.hasSource()) return "Unknown source: "+this.source.constructor.name;
-        return "No source";
+        return "Unknown source: "+this.source.constructor.name;
+    }
+    get sourceMetaInfo() {
+        if (!this.hasSource()) return ["No source"];
+        let r = [];
+        if (this.source instanceof NTSource) {
+            r.push(
+                "NT4",
+                "  IP: "+this.source.address,
+                "  State: "+((!this.source.connecting && !this.source.connected) ? "Disconnected" : (this.source.connecting) ? "Connecting" : "Connected"),
+            );
+        } else if (this.source instanceof WPILOGSource) {
+            r.push(
+                "WPILOG",
+                "  File: "+this.source.file,
+                "  State: "+((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
+            );
+        } else {
+            r.push("UNKNOWN: "+this.source.constructor.name);
+        }
+        const n = this.source.tree.nFields;
+        const tMin = this.source.tsMin, tMax = this.source.tsMax;
+        r.push(
+            "",
+            "  #Fields: "+n,
+            "  Duration: "+((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`),
+        );
+        return r;
     }
 
     get eNavPreInfo() { return this.#eNavPreInfo; }
     get eSide() { return this.#eSide; }
     get eSideMeta() { return this.#eSideMeta; }
+    get eSideMetaInfo() { return this.#eSideMetaInfo; }
+    get eSideMetaBtn() { return this.#eSideMetaBtn; }
+    get eSideMetaTooltip() { return this.#eSideMetaTooltip; }
     get eSideSections() { return Object.keys(this.#eSideSections); }
     hasESideSection(id) { return id in this.#eSideSections; }
     getESideSection(id) { return this.#eSideSections[id]; }

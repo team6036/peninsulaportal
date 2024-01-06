@@ -130,13 +130,48 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .main > .side > #meta {
+#PROJECTPAGE > .main > .side > .meta {
     padding: 5px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
 
     color: var(--v4);
 
     text-align: left;
     font-size: 12px;
+}
+#PROJECTPAGE > .main > .side > .meta > button {
+    --bg: transparent;
+    --fg: var(--v4);
+    --bgh: transparent;
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v3);
+
+    padding: 0px;
+
+    aspect-ratio: 1 / 1;
+}
+#PROJECTPAGE > .main > .side > .meta > button > .tooltip {
+    padding: 10px;
+
+    text-align: left;
+    font-size: 12px;
+    font-family: monospace;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+#PROJECTPAGE > .main > .side > .meta > button > .tooltip * {
+    font-family: monospace;
+}
+#PROJECTPAGE > .main > .side > .meta > button > .tooltip > span:first-of-type {
+    font-weight: 700;
 }
 #PROJECTPAGE > .main > .side > .section {
     --h: 100px;

@@ -620,7 +620,6 @@ article.md.lighter table td {
     padding: 0px 10px;
     padding-left: var(--LEFT);
     padding-right: var(--RIGHT);
-    margin-bottom: -1px;
     
     display: flex;
     flex-direction: row;
@@ -661,14 +660,14 @@ article.md.lighter table td {
 
 #mount {
     position: absolute;
-    top: var(--TOP);
+    top: calc(var(--TOP) + 1px);
     left: 50%;
     transform: translateX(-50%);
     
     width: 100%;
     max-width: 100%;
-    height: calc(100% - var(--TOP));
-    max-height: calc(100% - var(--TOP));
+    height: calc(100% - var(--TOP) - 1px);
+    max-height: calc(100% - var(--TOP) - 1px);
     overflow: hidden;
 
     background-color: var(--v1);
@@ -728,6 +727,7 @@ article.md.lighter table td {
 .tooltip {
     --bg: var(--v2);
     --space: 10px;
+    --size: var(--space);
     --tooltip-size-v: 100%;
 
     --x: 0;
@@ -735,12 +735,12 @@ article.md.lighter table td {
     --ax: 0;
     --ay: 0;
 
-    z-index: 1;
+    z-index: 100;
 
     position: absolute;
     left: calc(50% + (50% * var(--x)));
     top: calc(50% + (50% * var(--y)));
-    transform-origin: calc(50% + (50% * var(--x))) calc(50% - (50% * var(--y)));
+    transform-origin: calc(50% + (50% * var(--x) * (var(--ax) - var(--ay)))) calc(50% + (50% * var(--y) * (var(--ay) - var(--ax))));
     transform:
     translate(
         calc(var(--ay) * (var(--space) * var(--x))),
@@ -773,6 +773,7 @@ article.md.lighter table td {
     padding: 10px 20px;
 
     background-color: var(--bg);
+    border: 1px solid var(--v3);
     color: var(--v8);
     opacity: 100%;
     visibility: inherit;
@@ -786,14 +787,14 @@ article.md.lighter table td {
 
     position: absolute;
     top: calc(
-        (50% + ((var(--ay) - var(--ax)) * ((50% - (var(--ay) * 10px)) * var(--y))))
+        (50% + ((var(--ay) - var(--ax)) * ((50% - (var(--ay) * var(--size))) * var(--y))))
         /*
         if (ax) { 50% - (50% * y) }
         else { 50% + ((50%-10px) * y) }
         */
     );
     left: calc(
-        (50% + ((var(--ax) - var(--ay)) * ((50% - (var(--ax) * 10px)) * var(--x))))
+        (50% + ((var(--ax) - var(--ay)) * ((50% - (var(--ax) * var(--size))) * var(--x))))
         /*
         if (ax) { 50% + ((50%-10px) * x) }
         else { 50% - (50% * x) }
@@ -801,7 +802,7 @@ article.md.lighter table td {
     );
     transform: translate(-50%, -50%) rotate(45deg);
 
-    width: 10px;
+    width: var(--size);
     aspect-ratio: 1 / 1;
 
     background-color: var(--bg);
@@ -809,13 +810,15 @@ article.md.lighter table td {
 
     transition: background-color var(--t);
 }
-.tooltip.hov {
+.tooltip.hov,
+.tooltip.tog {
     --tooltip-size-v: 75%;
 
     opacity: 0%;
     visibility: hidden;
 }
-:hover > .tooltip.hov {
+:hover > .tooltip.hov,
+.active > .tooltip.tog {
     --tooltip-size-v: 100%;
 
     opacity: 100%;
