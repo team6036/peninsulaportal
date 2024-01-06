@@ -978,6 +978,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (timer > 0) return timer -= delta;
             timer = 1000;
             if (!this.hasProject()) return;
+            return;
             const canvas = document.createElement("canvas");
             canvas.width = this.odometry.w;
             canvas.height = this.odometry.h;
