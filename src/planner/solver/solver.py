@@ -21,11 +21,13 @@ w_x = [node['x'] for node in data['nodes']]
 w_y = [node['y'] for node in data['nodes']]
 w_theta = []
 
+ct = 30
+
 config = data['config']
 map_w = config['map_w']
 map_h = config['map_h']
 
-N = 100 * len(w_x) - 100 #control points
+N = ct * len(w_x) - ct #control points
 
 opti = ca.Opti()
 
@@ -47,7 +49,7 @@ way_i = way_i.astype(int)
 i = 0
 for node in data['nodes']:
     if node['vx'] is not None and node['vy'] is not None:
-        override_velo(i * 100, node['vx'], node['vy'], node['vt'])
+        override_velo(i * ct, node['vx'], node['vy'], node['vt'])
     if node['theta'] is not None:
         opti.subject_to(ca.cos(X[way_i[i], 2]) * math.sin(node['theta']) - ca.sin(X[way_i[i], 2]) * math.cos(node['theta']) == 0)
         w_theta.append(node['theta'])
@@ -73,7 +75,7 @@ for i in range(0, len(w_x)):
     opti.subject_to(X[way_i[i], 1] == w_y[i])
 
 dts = []
-initDt = 5.0/100.0
+initDt = 5.0/ct
 
 for i in range(1, len(way_i)):
     from_i = way_i[i - 1]
@@ -102,8 +104,23 @@ def shortest_angle_lerp(a, b, t):
     result = ((b - a) + 180) % 360 - 180
     return a + result * t
 
-for i in range(0, len(w_theta) - 1):
-   w_theta[i+1] = w_theta[i] + ((w_theta[i+1] - w_theta[i]) + 180) % 360 - 180
+
+def wrap_angles_to_least_delta(angles):
+    wrapped_angles = np.zeros_like(angles)
+    wrapped_angles[0] = angles[0]
+
+    for i in range(1, len(angles)):
+        delta = angles[i] - wrapped_angles[i - 1]
+        # Wrap the delta to be within [-π, π] range
+        delta = (delta + np.pi) % (2 * np.pi) - np.pi
+        wrapped_angles[i] = wrapped_angles[i - 1] + delta
+
+    return wrapped_angles
+
+w_theta = wrap_angles_to_least_delta(w_theta)
+
+# for i in range(0, len(w_theta) - 1):
+#    w_theta[i+1] = w_theta[i] + ((w_theta[i+1] - w_theta[i]) + 180) % 360 - 180
 
 
 for j in range(1, len(way_i)):
