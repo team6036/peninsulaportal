@@ -267,7 +267,7 @@ export default class App extends core.App {
                                 v = (v.length <= 0) ? null : String(v);
                             },
                         };
-                        if (elem.id in idfs) v = await idfs[elem.id](v);
+                        if (elem.id in idfs) await idfs[elem.id]();
                         if (lock) return;
                         lock = true;
                         const disabled = elem.disabled;
