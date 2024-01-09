@@ -17,8 +17,8 @@
 		},
 		"2024": {
 			"size": [1654, 802],
-			"robotSize": 0,
-			"robotMass": 0
+			"robotSize": 75,
+			"robotMass": 75
 		}
 	},
 	"active": "2024"
