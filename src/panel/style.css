@@ -1624,6 +1624,12 @@
     left: 0%;
 
     transform-origin: 0% 0%;
+
+    border: 1px solid transparent;
+    outline: none;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > canvas:focus {
+    border: 1px solid var(--v4);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css {
     position: absolute;
