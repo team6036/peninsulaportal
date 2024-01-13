@@ -732,7 +732,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         this.odometry.canvas.addEventListener("mousedown", e => {
             if (e.button != 0) return;
-            e.preventDefault();
+            // e.preventDefault();
             e.stopPropagation();
             const hovered = this.odometry.hovered;
             const hoveredPart = this.odometry.hoveredPart;
@@ -2313,6 +2313,14 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             e.stopPropagation();
             if (!visual) return;
             visual.playback.ts = visual.playback.tsMax;
+        });
+        this.page.addHandler("nav-back", () => {
+            if (!visual) return;
+            visual.playback.ts -= 5*1000;
+        });
+        this.page.addHandler("nav-forward", () => {
+            if (!visual) return;
+            visual.playback.ts += 5*1000;
         });
     }
 

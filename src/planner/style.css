@@ -125,6 +125,12 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+
+    border: 1px solid transparent;
+    outline: none;
+}
+#PROJECTPAGE > .main > .display > canvas:focus {
+    border: 1px solid var(--v4);
 }
 .global.item {
     position: absolute;

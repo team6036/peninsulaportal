@@ -1207,6 +1207,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         this.eContent.classList.add("content");
 
         this.eSearchInput.addEventListener("keydown", e => {
+            e.stopPropagation();
             if (!["Backspace", "Delete"].includes(e.code)) return;
             if (this.eSearchInput.value.length > 0) return;
             this.searchPart = null;
@@ -3427,6 +3428,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         this.eContent.classList.add("content");
         this.#canvas = document.createElement("canvas");
         this.eContent.appendChild(this.canvas);
+        this.canvas.tabIndex = 1;
         if (this.constructor.CREATECTX) this.#ctx = this.canvas.getContext("2d");
         this.#eOpen = document.createElement("div");
         this.elem.appendChild(this.eOpen);
@@ -3763,6 +3765,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         const onKeyDown = e => {
             if (e.code != "Tab") return;
             e.preventDefault();
+            e.stopPropagation();
             tooltipCycle++;
         };
         this.addHandler("add", () => document.body.addEventListener("keydown", onKeyDown));
@@ -5898,15 +5901,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         })();
         
         let keys = new Set();
-        const onKeyDown = e => keys.add(e.code);
-        const onKeyUp = e => keys.delete(e.code);
-        this.addHandler("add", () => {
-            document.body.addEventListener("keydown", onKeyDown);
-            document.body.addEventListener("keyup", onKeyUp);
+        this.canvas.addEventListener("keydown", e => {
+            e.stopPropagation();
+            keys.add(e.code);
         });
-        this.addHandler("rem", () => {
-            document.body.removeEventListener("keydown", onKeyDown);
-            document.body.removeEventListener("keyup", onKeyUp);
+        this.canvas.addEventListener("keyup", e => {
+            e.stopPropagation();
+            keys.delete(e.code);
         });
         let velocity = new util.V3();
 
@@ -7514,6 +7515,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             e.stopPropagation();
             if (!this.hasSource()) return;
             this.source.ts = this.source.tsMax;
+        });
+        this.addHandler("nav-back", () => {
+            if (!this.hasSource()) return;
+            this.source.ts -= 5*1000;
+        });
+        this.addHandler("nav-forward", () => {
+            if (!this.hasSource()) return;
+            this.source.ts += 5*1000;
         });
 
         this.#explorer = new core.Explorer();

@@ -3731,6 +3731,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.eMain.classList.add("main");
         this.#eNav = document.createElement("div");
         this.elem.appendChild(this.eNav);
+        this.eNav.tabIndex = 1;
         this.eNav.classList.add("nav");
         this.#eNavPre = document.createElement("div");
         this.eNav.appendChild(this.eNavPre);
@@ -3766,8 +3767,28 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             let p = (e.pageX-r.left) / r.width;
             this.progressHover = p;
         };
-        this.addHandler("add", () => document.body.addEventListener("mousemove", onMouseMove));
-        this.addHandler("rem", () => document.body.removeEventListener("mousemove", onMouseMove));
+        const onKeyDown = e => {
+            if (e.code == "ArrowLeft") {
+                this.post("nav-back");
+                this.eNav.focus();
+            }
+            if (e.code == "ArrowRight") {
+                this.post("nav-forward");
+                this.eNav.focus();
+            }
+            if (e.code == "Space") {
+                this.eNavActionButton.click();
+                this.eNav.focus();
+            }
+        };
+        this.addHandler("add", () => {
+            document.body.addEventListener("mousemove", onMouseMove);
+            document.body.addEventListener("keydown", onKeyDown);
+        });
+        this.addHandler("rem", () => {
+            document.body.removeEventListener("mousemove", onMouseMove);
+            document.body.removeEventListener("keydown", onKeyDown);
+        });
 
         this.app.addHandler("perm", async () => {
             this.app.markChange("*");
