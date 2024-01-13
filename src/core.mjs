@@ -222,9 +222,9 @@ export class App extends util.Target {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
                 (async () => {
-                    await this.post("pre-setup");
+                    await this.postResult("pre-setup");
                     await this.setup();
-                    await this.post("post-setup");
+                    await this.postResult("post-setup");
                     let page = "";
                     try {
                         page = await window.api.send("state-get", "page");
@@ -826,7 +826,7 @@ export class App extends util.Target {
         this.addHandler("cmd-native-theme", () => themeUpdate());
         await themeUpdate();
 
-        await this.post("setup");
+        await this.postResult("setup");
 
         if (this.hasELoadingTo())
             this.eLoadingTo.style.visibility = "hidden";
@@ -995,7 +995,7 @@ export class App extends util.Target {
 
     async getPerm() {
         if (this.popups.length > 0) return false;
-        for (let perm of await this.post("perm"))
+        for (let perm of await this.postResult("perm"))
             if (!perm) return false;
         return true;
     }
@@ -1812,7 +1812,7 @@ App.Menu = class AppMenu extends util.Target {
         at = Math.min(this.items.length, Math.max(0, util.ensure(at, "int")));
         this.#items.splice(at, 0, itm);
         itm.addLinkedHandler(this, "format", () => this.format());
-        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.items.indexOf(itm)+"]."+c, f, t));
+        itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.#items.indexOf(itm)+"]."+c, f, t));
         this.change("insertItem", null, itm);
         this.format();
         itm.onAdd();
@@ -1824,7 +1824,7 @@ App.Menu = class AppMenu extends util.Target {
             if (this.hasItem(itm)) return false;
             this.#items.push(itm);
             itm.addLinkedHandler(this, "format", () => this.format());
-            itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.items.indexOf(itm)+"]."+c, f, t));
+            itm.addLinkedHandler(this, "change", (c, f, t) => this.change("items["+this.#items.indexOf(itm)+"]."+c, f, t));
             this.change("addItem", null, itm);
             itm.onAdd();
             return itm;
@@ -2336,8 +2336,8 @@ App.Page = class AppPage extends util.Target {
     get persistentState() { return {}; }
     async loadPersistentState(state) {}
 
-    async enter(data) { await this.post("enter", data); }
-    async leave(data) { await this.post("leave", data); }
+    async enter(data) { return await this.postResult("enter", data); }
+    async leave(data) { return await this.postResult("leave", data); }
     async determineSame(data) { return false; }
 
     update(delta) { this.post("update", delta); }
@@ -2411,7 +2411,7 @@ export class AppModal extends App {
             this.iicon = "";
             this.iinfos = [];
 
-            await this.post("pre-post-setup");
+            await this.postResult("pre-post-setup");
 
             await this.resize();
         });
@@ -2898,7 +2898,7 @@ export class AppFeature extends App {
             });
             this.addHandler("cmd-savecopy", async source => {
                 const page = this.projectPage;
-                for (let perm in await this.post("cmd-savecopy-block")) {
+                for (let perm in await this.postResult("cmd-savecopy-block")) {
                     if (perm) continue;
                     return;
                 }
@@ -2908,12 +2908,12 @@ export class AppFeature extends App {
                 if (!(project instanceof Project)) return;
                 project.meta.name += " copy";
                 await this.setPage("PROJECT", { project: project });
-                await this.post("cmd-save");
+                await this.postResult("cmd-save");
             });
             this.addHandler("cmd-delete", async ids => {
                 ids = util.ensure(ids, "arr").map(id => String(id));
                 const page = this.projectPage;
-                for (let perm of await this.post("cmd-delete-block")) {
+                for (let perm of await this.postResult("cmd-delete-block")) {
                     if (perm) continue;
                     return;
                 }
@@ -2926,7 +2926,7 @@ export class AppFeature extends App {
                 let result = await pop.whenResult();
                 if (!result) return;
                 ids.forEach(id => this.remProject(id));
-                await this.post("cmd-save");
+                await this.postResult("cmd-save");
                 this.page = "PROJECTS";
             });
             this.addHandler("cmd-closeproject", () => {
@@ -2969,7 +2969,7 @@ export class AppFeature extends App {
             let itm = this.menu.findItemWithId("close");
             if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
 
-            await this.post("pre-post-setup");
+            await this.postResult("pre-post-setup");
 
             [this.#titlePage, this.#projectsPage, this.#projectPage] = this.addPage(
                 new this.constructor.TitlePage(this),
@@ -3014,7 +3014,7 @@ export class AppFeature extends App {
         return changes;
     }
     async loadProjects() {
-        await this.post("load-projects");
+        await this.postResult("load-projects");
         let projectIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
         let projects = [];
         await Promise.all(projectIds.map(async id => {
@@ -3024,7 +3024,7 @@ export class AppFeature extends App {
         }));
         this.projects = projects;
         this.clearChanges();
-        await this.post("loaded-projects");
+        await this.postResult("loaded-projects");
     }
     async loadProjectsClean() {
         try {
@@ -3036,7 +3036,7 @@ export class AppFeature extends App {
         return true;
     }
     async saveProjects() {
-        await this.post("save-projects");
+        await this.postResult("save-projects");
         let changes = new Set(this.changes);
         this.clearChanges();
         let oldIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
@@ -3052,7 +3052,7 @@ export class AppFeature extends App {
             let projectContent = JSON.stringify(project);
             await window.api.send("project-set", id, projectContent);
         }));
-        await this.post("saved-projects");
+        await this.postResult("saved-projects");
     }
     async saveProjectsClean() {
         try {
@@ -3397,7 +3397,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 return btn;
             }));
         } else this.eEmpty.style.display = "block";
-        await this.post("refresh");
+        await this.postResult("refresh");
     }
 
     get displayMode() {
@@ -3801,7 +3801,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             if (itm) itm.accelerator = "CmdOrCtrl+W";
             itm = this.app.menu.findItemWithId("close");
             if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
-            await this.post("post-enter", data);
+            await this.postResult("post-enter", data);
         });
         this.addHandler("leave", async data => {
             let projectOnly = [
@@ -3823,14 +3823,14 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             this.app.markChange("*all");
             await this.app.post("cmd-save");
             this.project = null;
-            await this.post("post-leave", data);
+            await this.postResult("post-leave", data);
         });
     }
 
     async refresh() {
         await this.app.loadProjectsClean();
         this.app.dragging = false;
-        await this.post("refresh");
+        await this.postResult("refresh");
     }
 
     get projectId() { return this.#projectId; }
@@ -4079,7 +4079,7 @@ export class Odometry2d extends util.Target {
         this.#size = new V();
 
         this.canvas = canvas;
-        this.quality = 3;
+        this.quality = 2;
 
         this.padding = 40;
 
@@ -4090,6 +4090,8 @@ export class Odometry2d extends util.Target {
             if (!this.hasCanvas()) return;
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            const mnx = (ctx.canvas.width - this.w*scale*quality)/2, mxx = (ctx.canvas.width + this.w*scale*quality)/2;
+            const mny = (ctx.canvas.height - this.h*scale*quality)/2, mxy = (ctx.canvas.height + this.h*scale*quality)/2;
             
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
@@ -4104,13 +4106,12 @@ export class Odometry2d extends util.Target {
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
-            let y0 = (ctx.canvas.height - this.h*scale*quality)/2;
-            let y1 = (ctx.canvas.height + this.h*scale*quality)/2;
-            let y2 = (ctx.canvas.height + this.h*scale*quality)/2 + 5*quality;
-            let y3 = (ctx.canvas.height + this.h*scale*quality)/2 + 10*quality;
+            let y0 = mny;
+            let y1 = mxy;
+            let y2 = mxy + 5*quality;
+            let y3 = mxy + 10*quality;
             for (let i = 0; i <= Math.floor(this.w/100); i++) {
-                let x = (i*100) / this.w;
-                x = ctx.canvas.width/2 + util.lerp(-0.5, +0.5, x)*this.w*scale*quality;
+                let x = util.lerp(mnx, mxx, (i*100) / this.w);
                 ctx.strokeStyle = PROPERTYCACHE.get("--v4");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
@@ -4126,13 +4127,12 @@ export class Odometry2d extends util.Target {
             }
             ctx.textAlign = "right";
             ctx.textBaseline = "middle";
-            let x0 = (ctx.canvas.width + this.w*scale*quality)/2;
-            let x1 = (ctx.canvas.width - this.w*scale*quality)/2;
-            let x2 = (ctx.canvas.width - this.w*scale*quality)/2 - 5*quality;
-            let x3 = (ctx.canvas.width - this.w*scale*quality)/2 - 10*quality;
+            let x0 = mxx;
+            let x1 = mnx;
+            let x2 = mnx - 5*quality;
+            let x3 = mnx - 10*quality;
             for (let i = 0; i <= Math.floor(this.h/100); i++) {
-                let y = (i*100) / this.h;
-                y = ctx.canvas.height/2 - util.lerp(-0.5, +0.5, y)*this.h*scale*quality;
+                let y = util.lerp(mxy, mny, (i*100) / this.h);
                 ctx.strokeStyle = PROPERTYCACHE.get("--v4");
                 ctx.beginPath();
                 ctx.moveTo(x1, y);
@@ -4149,11 +4149,7 @@ export class Odometry2d extends util.Target {
 
             ctx.save();
             ctx.beginPath();
-            ctx.rect(
-                (ctx.canvas.width - this.w*scale*quality)/2,
-                (ctx.canvas.height - this.h*scale*quality)/2,
-                ...this.size.mul(scale*quality).xy,
-            );
+            ctx.rect(mnx, mny, mxx-mnx, mxy-mny);
             ctx.clip();
 
             ctx.globalAlpha = 1;
@@ -4187,11 +4183,7 @@ export class Odometry2d extends util.Target {
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
-            ctx.strokeRect(
-                (ctx.canvas.width - this.w*scale*quality)/2,
-                (ctx.canvas.height - this.h*scale*quality)/2,
-                ...this.size.mul(scale*quality).xy,
-            );
+            ctx.strokeRect(mnx, mny, mxx-mnx, mxy-mny);
 
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
@@ -4317,6 +4309,7 @@ export class Odometry2d extends util.Target {
 }
 Odometry2d.Render = class Odometry2dRender extends util.Target {
     #parent;
+    #hasParent;
     
     #pos;
     #z; #z2;
@@ -4334,6 +4327,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
 
         if (!(parent instanceof Odometry2d || parent instanceof Odometry2d.Render)) throw new Error("Odometry is not of class Odometry2d nor of class Odometry2dRender");
         this.#parent = parent;
+        this.#hasParent = this.parent instanceof Odometry2d.Render;
 
         this.#pos = new V();
         this.#z = this.#z2 = 0;
@@ -4352,7 +4346,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     }
 
     get parent() { return this.#parent; }
-    hasParent() { return this.parent instanceof Odometry2d.Render; }
+    hasParent() { return this.#hasParent; }
     get odometry() { return this.hasParent() ? this.parent.odometry : this.parent; }
 
     get pos() { return this.#pos; }
@@ -4425,7 +4419,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
 
     render(z=null) {
         this.#rPos = new V(this.hasParent() ? this.parent.rPos : 0).add(this.pos);
-        this.#rAlpha = this.parent.rAlpha * this.alpha;
+        this.#rAlpha = (this.hasParent() ? this.parent.rAlpha : 1) * this.alpha;
         this.odometry.ctx.globalAlpha = this.rAlpha;
         this.post("render");
         this.renders.filter(render => (z == null || render.z == z)).sort((a, b) => {
@@ -4598,7 +4592,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
     set showVelocity(v) { this.#showVelocity = !!v; }
 
     get heading() { return this.#heading; }
-    set heading(v) { this.#heading = ((util.ensure(v, "num")%360)+360)%360; }
+    set heading(v) { this.#heading = util.clampAngle(v); }
 
     get color() { return this.#color; }
     set color(v) { this.#color = String(v); }
@@ -4656,7 +4650,7 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
     set radius(v) { this.#radius = Math.max(0, util.ensure(v, "num")); }
 
     get dir() { return this.#dir; }
-    set dir(v) { this.#dir = ((util.ensure(v, "num")%360)+360)%360; }
+    set dir(v) { this.#dir = util.clampAngle(v); }
 
     get selected() { return this.#selected; }
     set selected(v) { this.#selected = !!v; }

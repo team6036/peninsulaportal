@@ -119,7 +119,7 @@ const MAIN = async () => {
             this.#parent = null;
 
             this.#process = (mode == "exec") ? cp.exec(...a) : (mode == "execFile") ? cp.execFile(...a) : (mode == "fork") ? cp.fork(...a) : (mode == "spawn") ? cp.spawn(...a) : null;
-            if (!(this.process instanceof cp.ChildProcess)) throw new Error(`Invalid spawn mode '${mode}'`);
+            if (!this.process) throw new Error(`Invalid spawn mode '${mode}'`);
             this.process.stdout.on("data", data => this.post("data", data));
             this.process.stderr.on("data", data => {
                 this.post("error", util.TEXTDECODER.decode(data));
@@ -184,7 +184,7 @@ const MAIN = async () => {
         async terminate() {
             if (this.process.exitCode != null) return false;
             this.process.kill("SIGKILL");
-            await this.post("exit", null);
+            this.post("exit", null);
             return true;
         }
     }
@@ -273,8 +273,8 @@ const MAIN = async () => {
                     socketId: this.socketId,
                 };
                 let results = [];
-                results.push(...(await this.post("msg", name, payload, meta)));
-                results.push(...(await this.post("msg-"+name, payload, meta)));
+                results.push(...(await this.postResult("msg", name, payload, meta)));
+                results.push(...(await this.postResult("msg-"+name, payload, meta)));
                 ack = util.ensure(ack, "func");
                 let r = util.ensure(results[0], "obj");
                 r.success = ("success" in r) ? (!!r.success) : true;
@@ -295,8 +295,8 @@ const MAIN = async () => {
                     socketId: this.socketId,
                 };
                 let results = [];
-                results.push(...(await this.post("stream", name, fname, payload, meta, ssStream)));
-                results.push(...(await this.post("stream-"+name, fname, payload, meta, ssStream)));
+                results.push(...(await this.postResult("stream", name, fname, payload, meta, ssStream)));
+                results.push(...(await this.postResult("stream-"+name, fname, payload, meta, ssStream)));
                 ack = util.ensure(ack, "func");
                 let r = util.ensure(results[0], "obj");
                 r.success = ("success" in r) ? (!!r.success) : true;
@@ -1161,8 +1161,8 @@ const MAIN = async () => {
                 name = String(name);
                 meta = util.ensure(meta, "obj");
                 if (!this.hasWindow()) return { success: false, reason: "No window" };
-                await this.post("client-msg", id, name, payload, meta);
-                await this.post("client-msg-"+name, id, payload, meta);
+                this.post("client-msg", id, name, payload, meta);
+                this.post("client-msg-"+name, id, payload, meta);
                 this.window.webContents.send("client-msg", id, name, payload, meta);
                 return { success: true };
             });
@@ -1172,8 +1172,8 @@ const MAIN = async () => {
                 meta = util.ensure(meta, "obj");
                 await this.affirm();
                 let results = [];
-                results.push(...(await this.post("client-stream", id, name, fname, payload, meta)));
-                results.push(...(await this.post("client-stream-"+name, id, fname, payload, meta)));
+                results.push(...(await this.postResult("client-stream", id, name, fname, payload, meta)));
+                results.push(...(await this.postResult("client-stream-"+name, id, fname, payload, meta)));
                 let pth = (results.length > 0) ? results[0] : [];
                 if (!(await this.dirHas(pth)))
                     await this.dirMake(pth);
@@ -1182,13 +1182,13 @@ const MAIN = async () => {
                 try {
                     await new Promise((res, rej) => {
                         stream.on("open", async () => {
-                            await this.post("client-stream-start", id, name, pth, fname, payload, meta);
-                            await this.post("clietn-stream-start-"+name, id, pth, fname, payload, meta);
+                            this.post("client-stream-start", id, name, pth, fname, payload, meta);
+                            this.post("clietn-stream-start-"+name, id, pth, fname, payload, meta);
                             this.window.webContents.send("client-stream-start", id, name, pth, fname, payload, meta);
                             ssStream.pipe(stream);
                             ssStream.on("end", async () => {
-                                await this.post("client-stream-stop", id, name, pth, fname, payload, meta);
-                                await this.post("client-stream-stop-"+name, id, pth, fname, payload, meta);
+                                this.post("client-stream-stop", id, name, pth, fname, payload, meta);
+                                this.post("client-stream-stop-"+name, id, pth, fname, payload, meta);
                                 this.window.webContents.send("client-stream-stop", id, name, pth, fname, payload, meta);
                                 res();
                             });
@@ -2889,7 +2889,7 @@ const MAIN = async () => {
                     return;
                 }
                 try {
-                    await this.post("start");
+                    await this.postResult("start");
                 } catch (e) {
                     let r = await showConfirm("WindowManager Start Error", "'start' event", e);
                     if (r) return;
@@ -2945,7 +2945,7 @@ const MAIN = async () => {
             await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
             await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
             try {
-                await this.post("stop");
+                await this.postResult("stop");
             } catch (e) {
                 let r = await showConfirm("WindowManager Stop Error", "'stop' event", e);
                 if (r) return false;
