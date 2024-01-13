@@ -2,6 +2,37 @@ import * as util from "./util.mjs";
 import { V } from "./util.mjs";
 
 
+class PropertyCache extends util.Target {
+    #cache;
+    #colorCache;
+
+    constructor() {
+        super();
+
+        this.#cache = {};
+        this.#colorCache = {};
+    }
+
+    get(k) {
+        k = String(k);
+        if (k in this.#cache) return this.#cache[k];
+        this.#cache[k] = getComputedStyle(document.body).getPropertyValue(k);
+        return this.get(k);
+    }
+    getColor(k) {
+        k = String(k);
+        if (k in this.#colorCache) return this.#colorCache[k];
+        this.#colorCache[k] = new util.Color(this.get(k));
+        return this.getColor(k);
+    }
+    clear() {
+        this.#cache = {};
+        this.#colorCache = {};
+    }
+}
+export const PROPERTYCACHE = new PropertyCache();
+
+
 export class App extends util.Target {
     #USERAGENT;
 
@@ -255,9 +286,7 @@ export class App extends util.Target {
             }, 10);
         });
 
-        this.addHandler("update", delta => {
-            this.pages.forEach(name => this.getPage(name).update(delta));
-        });
+        this.addHandler("update", delta => this.pages.forEach(name => this.getPage(name).update(delta)));
     }
 
     get setupDone() { return this.#setupDone; }
@@ -480,6 +509,7 @@ export class App extends util.Target {
         }
         document.documentElement.style.setProperty("--LEFT", (v ? 0 : left)+"px");
         document.documentElement.style.setProperty("--RIGHT", (v ? 0 : right)+"px");
+        PROPERTYCACHE.clear();
     }
     get devMode() { return this.#devMode; }
     set devMode(v) {
@@ -493,8 +523,8 @@ export class App extends util.Target {
                     let out = [new Array(9).fill("%c...").join("")];
                     for (let i = 0; i <= 8; i++) {
                         let rgb;
-                        if (c == "_") rgb = getComputedStyle(document.body).getPropertyValue("--v"+i);
-                        else rgb = getComputedStyle(document.body).getPropertyValue("--c"+c+i);
+                        if (c == "_") rgb = PROPERTYCACHE.get("--v"+i);
+                        else rgb = PROPERTYCACHE.get("--c"+c+i);
                         out.push("padding:10px;background:"+rgb+";");
                     }
                     console.log(...out);
@@ -768,6 +798,7 @@ export class App extends util.Target {
         document.documentElement.style.setProperty("--WIN32", ((util.is(this.USERAGENT.os, "obj") && (this.USERAGENT.os.platform == "win32")) ? 1 : 0));
         document.documentElement.style.setProperty("--DARWIN", ((util.is(this.USERAGENT.os, "obj") && (this.USERAGENT.os.platform == "darwin")) ? 1 : 0));
         document.documentElement.style.setProperty("--LINUX", ((util.is(this.USERAGENT.os, "obj") && (this.USERAGENT.os.platform == "linux")) ? 1 : 0));
+        PROPERTYCACHE.clear();
 
         let themeUpdating = false;
         const themeUpdate = async () => {
@@ -955,10 +986,10 @@ export class App extends util.Target {
         }
         styleStr += "}";
         this.eDynamicStyle.innerHTML = styleStr;
-        let compStyle = getComputedStyle(document.body);
+        PROPERTYCACHE.clear();
         window.api.set("title-bar-overlay", {
-            color: compStyle.getPropertyValue("--v1"),
-            symbolColor: compStyle.getPropertyValue("--v8"),
+            color: PROPERTYCACHE.get("--v1"),
+            symbolColor: PROPERTYCACHE.get("--v8"),
         });
     }
 
@@ -2657,9 +2688,9 @@ export class AppFeature extends App {
             this.eFeatureStyle.href = "../style-feature.css";
 
             const checkMinWidth = async () => {
-                let left = getComputedStyle(document.body).getPropertyValue("--LEFT");
+                let left = PROPERTYCACHE.get("--LEFT");
                 left = util.ensure(parseFloat(left.slice(0, left.length-2)), "num");
-                let right = getComputedStyle(document.body).getPropertyValue("--RIGHT");
+                let right = PROPERTYCACHE.get("--RIGHT");
                 right = util.ensure(parseFloat(right.slice(0, right.length-2)), "num");
                 let w = left+right;
                 Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)")).forEach(elem => (w += elem.getBoundingClientRect().width));
@@ -2843,16 +2874,19 @@ export class AppFeature extends App {
             
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
 
+            const updateSave = () => {
+                this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
+            };
             let saving = false;
             this.addHandler("save-projects", () => {
                 saving = true;
+                updateSave();
             });
             this.addHandler("saved-projects", () => {
                 saving = false;
+                updateSave();
             });
-            this.addHandler("update", delta => {
-                this.eSaveBtn.textContent = saving ? "Saving" : (this.changes.length > 0) ? "Save" : "Saved";
-            });
+            this.addHandler("change-markChange", updateSave);
 
             this.clearChanges();
 
@@ -3061,6 +3095,7 @@ export class AppFeature extends App {
             proj.addLinkedHandler(this, "change", c => this.markChange(":"+id));
             this.markChange(":"+id);
             proj.onAdd();
+            this.change("addProject", null, proj);
             return proj;
         });
     }
@@ -3075,6 +3110,7 @@ export class AppFeature extends App {
             proj.clearLinkedHandlers(this, "change");
             proj.id = null;
             this.markChange(":"+id);
+            this.change("remProject", proj, null);
             return proj;
         });
     }
@@ -3179,8 +3215,6 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
 
         this.#buttons = new Set();
 
-        this.addHandler("update", delta => this.buttons.forEach(btn => btn.update(delta)));
-
         this.#eTitle = document.createElement("div");
         this.elem.appendChild(this.eTitle);
         this.eTitle.classList.add("title");
@@ -3227,8 +3261,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eSearchBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
         this.eSearchBtn.addEventListener("click", e => {
             e.stopPropagation();
-            if (this.eSearchInput instanceof HTMLInputElement)
-                this.eSearchInput.value = "";
+            this.eSearchInput.value = "";
             this.refresh();
         });
         this.#eContent = document.createElement("div");
@@ -3294,6 +3327,18 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eContent.addEventListener("contextmenu", contextMenu);
         
         let selected = new Set(), lastSelected = null, lastAction = null;
+        const updateSelected = () => {
+            [...selected].forEach(id => {
+                if (this.app.hasProject(id)) return;
+                selected.delete(id);
+            });
+            this.buttons.forEach(btn => {
+                btn.selected = btn.hasProject() && selected.has(btn.project.id);
+            });
+        };
+        this.app.addHandler("change-addProject", updateSelected);
+        this.app.addHandler("change-remProject", updateSelected);
+        this.addHandler("refresh", updateSelected);
         this.addHandler("trigger", (_, id, shift) => {
             id = (id == null) ? null : String(id);
             shift = !!shift;
@@ -3317,25 +3362,13 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                     lastAction = +1;
                 }
             }
+            updateSelected();
         });
         this.addHandler("contextmenu", (e, id) => {
+            updateSelected();
             if (selected.size == 1) this.post("trigger", e, [...selected][0]);
             if (selected.size == 0) this.post("trigger", e, id);
             contextMenu(e);
-        });
-
-        this.addHandler("update", delta => {
-            let projects = new Set(this.app.projects);
-            [...selected].forEach(name => {
-                if (projects.has(name)) return;
-                selected.delete(name);
-            });
-            this.buttons.sort((a, b) => b.time-a.time).forEach((btn, i) => {
-                btn.elemList.style.order = i;
-                btn.elemGrid.style.order = i;
-                btn.selected = selected.has(btn.hasProject() ? btn.project.id : null);
-                btn.update(delta);
-            });
         });
 
         this.addHandler("enter", async data => {
@@ -3351,7 +3384,6 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     }
 
     async refresh() {
-        await this.post("refresh");
         this.clearButtons();
         this.eLoading.style.display = "block";
         this.eEmpty.style.display = "none";
@@ -3365,6 +3397,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 return btn;
             }));
         } else this.eEmpty.style.display = "block";
+        await this.post("refresh");
     }
 
     get displayMode() {
@@ -3399,7 +3432,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         return this.#buttons.has(btn);
     }
     addButton(...btns) {
-        return util.Target.resultingForEach(btns, btn => {
+        let r = util.Target.resultingForEach(btns, btn => {
             if (!(btn instanceof this.constructor.Button)) return false;
             if (this.hasButton(btn)) return false;
             this.#buttons.add(btn);
@@ -3409,11 +3442,14 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             this.eContent.appendChild(btn.elemList);
             this.eContent.appendChild(btn.elemGrid);
             btn.onAdd();
+            btn.addLinkedHandler(this, "change", () => this.formatButtons());
             return btn;
         });
+        this.formatButtons();
+        return r;
     }
     remButton(...btns) {
-        return util.Target.resultingForEach(btns, btn => {
+        let r = util.Target.resultingForEach(btns, btn => {
             if (!(btn instanceof this.constructor.Button)) return false;
             if (!this.hasButton(btn)) return false;
             btn.onRem();
@@ -3423,7 +3459,16 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             btn.clearLinkedHandlers(this, "contextmenu");
             this.eContent.removeChild(btn.elemList);
             this.eContent.removeChild(btn.elemGrid);
+            btn.clearLinkedHandlers(this, "change");
             return btn;
+        });
+        this.formatButtons();
+        return r;
+    }
+    formatButtons() {
+        this.buttons.sort((a, b) => b.time-a.time).forEach((btn, i) => {
+            btn.elemList.style.order = i;
+            btn.elemGrid.style.order = i;
         });
     }
 
@@ -3447,7 +3492,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     }
     async loadState(state) {
         state = util.ensure(state, "obj");
-        this.eSearchInput.value = state.query || "";
+        this.eSearchInput.value = util.ensure(state.query, "str");
         await this.refresh();
     }
     get persistentState() {
@@ -3563,7 +3608,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
             doThumb();
         });
 
-        this.addHandler("update", delta => {
+        this.addHandler("change", () => {
             if (!this.hasProject()) return;
             this.name = this.project.meta.name;
             this.time = this.project.meta.modified;
@@ -3574,7 +3619,13 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     set project(v) {
         v = (v instanceof Project) ? v : null;
         if (this.project == v) return;
+        if (this.hasProject()) this.project.clearLinkedHandlers(this, "change");
         this.change("project", this.project, this.#project=v);
+        if (this.hasProject()) {
+            this.project.addLinkedHandler(this, "change", (c, f, t) => this.change("project."+c, f, t));
+            this.name = this.project.meta.name;
+            this.time = this.project.meta.modified;
+        }
     }
     hasProject() { return !!this.project; }
 
@@ -3651,8 +3702,6 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
     get eGridName() { return this.#eGridName; }
     get eGridOptions() { return this.#eGridOptions; }
     get eGridImage() { return this.#eGridImage; }
-
-    update(delta) { this.post("update", delta); }
 };
 AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     #projectId;
@@ -3789,8 +3838,10 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         v = String(v);
         v = this.app.hasProject(v) ? v : null;
         if (this.projectId == v) return;
+        if (this.hasProject()) this.project.clearLinkedHandlers(this, "change");
         let project = this.project;
         this.#projectId = v;
+        if (this.hasProject()) this.project.addLinkedHandler(this, "change", (c, f, t) => this.change("project."+c, f, t));
         this.change("project", project, this.project);
     }
     get project() { return this.app.getProject(this.projectId); }
@@ -3994,7 +4045,6 @@ export class Odometry2d extends util.Target {
 
     #image;
     #imageShow;
-    #imageScale;
 
     #doRender;
 
@@ -4021,7 +4071,6 @@ export class Odometry2d extends util.Target {
 
         this.#image = new Image();
         this.#imageShow = null;
-        this.#imageScale = 1;
 
         this.#doRender = true;
 
@@ -4051,7 +4100,7 @@ export class Odometry2d extends util.Target {
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.fillStyle = PROPERTYCACHE.get("--v4");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
@@ -4062,12 +4111,12 @@ export class Odometry2d extends util.Target {
             for (let i = 0; i <= Math.floor(this.w/100); i++) {
                 let x = (i*100) / this.w;
                 x = ctx.canvas.width/2 + util.lerp(-0.5, +0.5, x)*this.w*scale*quality;
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v4");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
                 ctx.lineTo(x, y2);
                 ctx.stroke();
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x, y0);
                 ctx.lineTo(x, y1);
@@ -4084,12 +4133,12 @@ export class Odometry2d extends util.Target {
             for (let i = 0; i <= Math.floor(this.h/100); i++) {
                 let y = (i*100) / this.h;
                 y = ctx.canvas.height/2 - util.lerp(-0.5, +0.5, y)*this.h*scale*quality;
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v4");
                 ctx.beginPath();
                 ctx.moveTo(x1, y);
                 ctx.lineTo(x2, y);
                 ctx.stroke();
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x0, y);
                 ctx.lineTo(x1, y);
@@ -4113,14 +4162,15 @@ export class Odometry2d extends util.Target {
 
             try {
                 if (this.#imageShow) {
+                    let imageScale = ((this.w/this.#image.width)+(this.h/this.#image.height))/2;
                     ctx.globalAlpha = 0.25;
                     ctx.globalCompositeOperation = "overlay";
                     ctx.drawImage(
                         this.#image,
-                        (ctx.canvas.width - this.#image.width*this.imageScale*scale*quality)/2,
-                        (ctx.canvas.height - this.#image.height*this.imageScale*scale*quality)/2,
-                        this.#image.width*this.imageScale*scale*quality,
-                        this.#image.height*this.imageScale*scale*quality,
+                        (ctx.canvas.width - this.#image.width*imageScale*scale*quality)/2,
+                        (ctx.canvas.height - this.#image.height*imageScale*scale*quality)/2,
+                        this.#image.width*imageScale*scale*quality,
+                        this.#image.height*imageScale*scale*quality,
                     );
                 }
             } catch (e) {}
@@ -4133,7 +4183,7 @@ export class Odometry2d extends util.Target {
 
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.strokeStyle = PROPERTYCACHE.get("--v4");
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
@@ -4180,9 +4230,6 @@ export class Odometry2d extends util.Target {
         this.#imageShow = v;
         this.#image.src = v;
     }
-    get imageScale() { return this.#imageScale; }
-    set imageScale(v) { this.#imageScale = Math.max(0, util.ensure(v, "num")); }
-    autoScale() { return this.imageScale = ((this.w/this.#image.width)+(this.h/this.#image.height))/2; }
 
     get doRender() { return this.#doRender; }
     set doRender(v) { this.#doRender = !!v; }
@@ -4436,7 +4483,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             if (![Odometry2d.Robot.TYPES.NODE, Odometry2d.Robot.TYPES.ARROW].includes(this.type)) {
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+this.color+"-8");
+                ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
                 ctx.lineWidth = 7.5*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
@@ -4450,7 +4497,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 }
                 ctx.closePath();
                 ctx.stroke();
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
@@ -4466,7 +4513,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.stroke();
             }
             if (this.type == Odometry2d.Robot.TYPES.ARROW) {
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? this.colorH : this.color));
+                ctx.strokeStyle = PROPERTYCACHE.get("--"+((this.hovered == "heading") ? this.colorH : this.color));
                 ctx.lineWidth = 5*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
@@ -4481,7 +4528,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(15)))).xy);
                 ctx.stroke();
             } else {
-                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "heading") ? "v8" : "v8-8"));
+                ctx.fillStyle = PROPERTYCACHE.get("--"+((this.hovered == "heading") ? "v8" : "v8-8"));
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
@@ -4490,8 +4537,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.fill();
             }
             if (![Odometry2d.Robot.TYPES.BOX, Odometry2d.Robot.TYPES.ARROW].includes(this.type)) {
-                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? this.colorH : this.color));
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+                ctx.fillStyle = PROPERTYCACHE.get("--"+((this.hovered == "main") ? this.colorH : this.color));
+                ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
@@ -4501,7 +4548,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 if (this.selected) ctx.stroke();
             }
             if (this.showVelocity) {
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
+                ctx.strokeStyle = PROPERTYCACHE.get("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
@@ -4577,8 +4624,8 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "main") ? "cr-8" : "cr-4"));
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            ctx.fillStyle = PROPERTYCACHE.get("--"+((this.hovered == "main") ? "cr-8" : "cr-4"));
+            ctx.strokeStyle = PROPERTYCACHE.get("--v8");
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
@@ -4590,7 +4637,7 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
             ctx.moveTo(...this.odometry.worldToCanvas(this.rPos).xy);
             ctx.lineTo(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.dir, this.radius))).xy);
             ctx.stroke();
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--"+((this.hovered == "radius") ? "a" : "v8"));
+            ctx.fillStyle = PROPERTYCACHE.get("--"+((this.hovered == "radius") ? "a" : "v8"));
             ctx.beginPath();
             ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.dir, this.radius))).xy, 5*quality, 0, 2*Math.PI);
             ctx.fill();
@@ -4702,6 +4749,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
     #explorer;
 
     #name;
+    #isHidden;
     #info;
     #value;
     #showValue;
@@ -4779,6 +4827,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
         });
 
         this.#name = String(name);
+        this.#isHidden = this.name.startsWith(".");
         this.#info = (info == null) ? null : String(info);
         this.#value = null;
 
@@ -4851,7 +4900,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
     get explorer() { return this.#explorer; }
 
     get name() { return this.#name; }
-    get isHidden() { return this.name.startsWith("."); }
+    get isHidden() { return this.#isHidden; }
 
     get info() { return this.#info; }
 

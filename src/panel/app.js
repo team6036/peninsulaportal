@@ -68,7 +68,7 @@ class RLine extends core.Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = this.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.color) : this.color;
+            ctx.strokeStyle = this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color;
             ctx.lineWidth = 7.5*quality;
             ctx.lineJoin = "round";
             ctx.lineCap = "square";
@@ -551,9 +551,7 @@ class Container extends Widget {
         this.addHandler("add", () => this.children.forEach(child => child.onAdd()));
         this.addHandler("rem", () => this.children.forEach(child => child.onRem()));
 
-        this.addHandler("update", delta => {
-            this.children.forEach(child => child.update(delta));
-        });
+        this.addHandler("update", delta => this.children.forEach(child => child.update(delta)));
 
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
@@ -636,7 +634,7 @@ class Container extends Widget {
             this.#weights = this.#weights.map(w => w/wSum);
             this.#children.splice(at, 0, child);
         }
-        child.addLinkedHandler(this, "change", (c, f, t) => this.change("children["+this.children.indexOf(child)+"]."+c, f, t));
+        child.addLinkedHandler(this, "change", (c, f, t) => this.change("children["+this.#children.indexOf(child)+"]."+c, f, t));
         this.change("addChild", null, child);
         this.change("weights", weights, this.weights);
         this.format();
@@ -858,9 +856,7 @@ class Panel extends Widget {
             this.addTab(new Panel.AddTab());
         });
 
-        this.addHandler("update", delta => {
-            this.tabs.forEach(tab => tab.update(delta));
-        });
+        this.addHandler("update", delta => this.tabs.forEach(tab => tab.update(delta)));
 
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
@@ -926,7 +922,7 @@ class Panel extends Widget {
         if (at == null) at = this.#tabs.length;
         this.#tabs.splice(at, 0, tab);
         tab.parent = this;
-        tab.addLinkedHandler(this, "change", (c, f, t) => this.change("tabs["+this.tabs.indexOf(tab)+"]."+c, f, t));
+        tab.addLinkedHandler(this, "change", (c, f, t) => this.change("tabs["+this.#tabs.indexOf(tab)+"]."+c, f, t));
         this.change("addTab", null, tab);
         this.eTop.appendChild(tab.eTab);
         this.eContent.appendChild(tab.elem);
@@ -1191,8 +1187,12 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         });
 
         this.addHandler("update", delta => {
+            if (this.isClosed) return;
             this.items.forEach(itm => itm.update(delta));
         });
+
+        this.addHandler("add", () => this.refresh());
+        this.addHandler("rem", () => this.refresh());
 
         if (a.length <= 0 || a.length > 1) a = [null];
         if (a.length == 1) {
@@ -1212,6 +1212,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     }
 
     refresh() {
+        console.log(this.hasApp(), "refresh");
         this.clearTags();
         this.placeholder = "";
         this.clearItems();
@@ -1723,7 +1724,7 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
         children.forEach(child => this.btn.children[0].appendChild(child));
         this.eInfo.classList.add("tag");
 
-        this.addHandler("update", delta => {
+        const update = () => {
             if (!this.hasNode()) {
                 this.icon = "document-outline";
                 this.name = "?";
@@ -1731,6 +1732,12 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
             }
             this.name = this.node.path;
             if (this.name.length <= 0) this.name = "/";
+            this.info = util.ensure(this.node.hasField() ? this.node.field.clippedType : "", "str");
+        };
+        this.addHandler("change", update);
+
+        this.addHandler("update", delta => {
+            if (!this.hasNode()) return;
             let display = getDisplay(this.node.hasField() ? this.node.field.type : null, this.node.hasField() ? this.node.field.get() : null);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
@@ -1738,7 +1745,6 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
                 if ("color" in display) this.iconColor = display.color;
                 else this.iconColor = "";
             }
-            this.info = util.ensure(this.node.hasField() ? this.node.field.clippedType : "", "str");
         });
 
         this.node = node;
@@ -1748,7 +1754,7 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
     set node(v) {
         v = (v instanceof Source.Node) ? v : null;
         if (this.node == v) return;
-        this.#node = v;
+        this.change("node", this.node, this.#node=v);
     }
     hasNode() { return !!this.node; }
 };
@@ -1798,19 +1804,37 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         [this.path] = a;
 
-        let prevNode = null;
+        let prevNode = 0;
         let state = {};
 
-        this.addHandler("format", () => {
-            util.ensure(state.nodes, "arr").forEach(node => node.format());
-        });
         this.addHandler("update", delta => {
+            if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             const node = source ? source.tree.lookup(this.path) : null;
             if (prevNode != node) {
                 prevNode = node;
                 state = {};
+                this.name = node ? (node.name.length > 0) ? node.name : "/" : "?";
+                if (node) {
+                    if (!node.hasField() || node.field.isArray || node.field.isStruct) {
+                        this.explorer.elem.classList.add("this");
+                        this.eDisplay.classList.remove("this");
+                    } else {
+                        this.explorer.elem.classList.remove("this");
+                        this.eDisplay.classList.add("this");
+                    }
+                } else {
+                    this.explorer.elem.classList.remove("this");
+                    this.eDisplay.classList.remove("this");
+
+                    this.icon = "document-outline";
+                    let path = this.path.split("/").filter(part => part.length > 0);
+                    this.name = (path.length > 0) ? path.at(-1) : "/";
+                    this.eTabName.style.color = "var(--cr)";
+                    this.iconColor = "var(--cr)";
+                }
             }
+            if (!node) return;
             this.eTabIcon.style.color = "";
             this.eTabName.style.color = "";
             this.iconColor = "";
@@ -1821,25 +1845,14 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 if ("color" in display) this.eTabIcon.style.color = display.color;
                 else this.eTabIcon.style.color = "";
             }
-            this.name = node ? (node.name.length > 0) ? node.name : "/" : "?";
-            if (node && (!node.hasField() || node.field.isArray || node.field.isStruct || node.nNodes > 1)) {
-                this.explorer.elem.classList.add("this");
-                this.eDisplay.classList.remove("this");
-                if (this.isClosed) return;
-                if (!("nodes" in state)) {
-                    state.nodes = [];
-                }
+            if (!node.hasField() || node.field.isArray || node.field.isStruct) {
                 core.Explorer.Node.doubleTraverse(
                     node.nodeObjects,
                     this.explorer.nodeObjects,
                     (...enodes) => this.explorer.add(...enodes),
                     (...enodes) => this.explorer.rem(...enodes),
                 );
-            } else if (node) {
-                this.explorer.elem.classList.remove("this");
-                this.eDisplay.classList.add("this");
-                let value = node.field.get();
-                if (this.isClosed) return;
+            } else {
                 if (state.type != node.field.type) {
                     state.type = node.field.type;
                     this.eDisplay.innerHTML = "";
@@ -1872,14 +1885,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     };
                 }
                 if (state.update) state.update();
-            } else {
-                this.explorer.elem.classList.remove("this");
-                this.eDisplay.classList.remove("this");
-                this.icon = "document-outline";
-                let path = this.path.split("/").filter(part => part.length > 0);
-                this.name = (path.length > 0) ? path.at(-1) : "/";
-                this.eTabName.style.color = "var(--cr)";
-                this.iconColor = "var(--cr)";
             }
         });
     }
@@ -2022,24 +2027,27 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.tsOverride = !this.tsOverride;
         });
 
+        const bSearch = (arr, v) => {
+            let l = 0, r = arr.length-1;
+            while (l <= r) {
+                let m = Math.floor((l+r)/2);
+                if (arr[m] == v) return m;
+                if (arr[m] > v) r = m-1;
+                else l = m+1;
+            }
+            return -1;
+        };
+
         let entries = [];
         this.addHandler("update", delta => {
-            if (!this.tsOverride) this.eFollowBtn.classList.add("this");
-            else this.eFollowBtn.classList.remove("this");
+            if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             if (!this.tsOverride) this.tsNow = source ? source.ts : 0;
-            if (document.activeElement != this.eTSInput)
-                this.eTSInput.value = this.tsNow;
             let ts = new Set();
-            this.vars.forEach((v, i) => {
-                let node = v.node = source ? source.tree.lookup(v.path) : null;
-                v.x = i+1;
+            this.vars.forEach(v => {
+                v.node = source ? source.tree.lookup(v.path) : null;
                 if (!v.hasNode() || !v.node.hasField()) return;
-                let valueLog = node.field.valueLog;
-                valueLog = valueLog.filter((log, i) => {
-                    if (i <= 0) return true;
-                    return log.v != valueLog[i-1].v;
-                });
+                let valueLog = v.node.field.valueLog;
                 valueLog.forEach(log => ts.add(log.ts));
             });
             this.#ts = ts = [...ts].sort((a, b) => a-b);
@@ -2093,7 +2101,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         v.tab = this;
         this.elem.appendChild(v.elem);
         v.addLinkedHandler(this, "remove", () => this.remVar(v));
-        v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.vars.indexOf(v)+"]."+c, f, t));
+        v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.#vars.indexOf(v)+"]."+c, f, t));
         v.addLinkedHandler(this, "drag", () => {
             if (!this.hasPage() || !this.page.hasSource() || !this.hasApp()) return;
             this.app.dragData = this.page.source.tree.lookup(v.path);
@@ -2142,12 +2150,15 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         if (this.tsNow == v) return;
         if (this.tsOverride) this.change("tsNow", this.tsNow, this.#tsNow=v);
         else this.#tsNow = v;
+        this.eTSInput.value = this.tsNow;
     }
     get tsOverride() { return this.#tsOverride; }
     set tsOverride(v) {
         v = !!v;
         if (this.tsOverride == v) return;
         this.change("tsOverride", this.tsOverride, this.#tsOverride=v);
+        if (this.tsOverride) this.eFollowBtn.classList.remove("this");
+        else this.eFollowBtn.classList.add("this");
     }
 
     get eSide() { return this.#eSide; }
@@ -2290,10 +2301,6 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             let valueLog = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.valueLog : [];
-            valueLog = valueLog.filter((log, i) => {
-                if (i <= 0) return true;
-                return log.v != valueLog[i-1].v;
-            });
             while (entries.length < valueLog.length) {
                 let entry = {};
                 let elem = entry.elem = document.createElement("div");
@@ -2459,12 +2466,14 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
 
         this.addHandler("update", delta => {
             if (!ready || !document.body.contains(this.eWebView)) return;
-            if (document.activeElement != this.eSrcInput)
-                this.eSrcInput.value = this.eWebView.getURL();
-            if (this.eLoadBtn.children[0])
-                this.eLoadBtn.children[0].setAttribute("name", this.eWebView.isLoading() ? "close" : "refresh");
-            this.eBackBtn.disabled = !this.eWebView.canGoBack();
-            this.eForwardBtn.disabled = !this.eWebView.canGoForward();
+            if (this.isOpen) {
+                if (document.activeElement != this.eSrcInput)
+                    this.eSrcInput.value = this.eWebView.getURL();
+                if (this.eLoadBtn.children[0])
+                    this.eLoadBtn.children[0].setAttribute("name", this.eWebView.isLoading() ? "close" : "refresh");
+                this.eBackBtn.disabled = !this.eWebView.canGoBack();
+                this.eForwardBtn.disabled = !this.eWebView.canGoForward();
+            }
             if (this.eWebView.isLoading()) return;
             if (src == this.src) return;
             src = this.src;
@@ -2901,7 +2910,7 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
 
         this.addAction(new Panel.LogWorksTab.Action(this, "edit"));
         this.addAction(new Panel.LogWorksTab.Action(this, "merge"));
-        this.addAction(new Panel.LogWorksTab.Action(this, "convert"));
+        this.addAction(new Panel.LogWorksTab.Action(this, "export"));
 
         this.actionPage = null;
 
@@ -3001,7 +3010,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
         this.#tab = tab;
 
         this.#name = String(name);
-        this.#state = {};
+        this.#state = new util.Target();
 
         this.#eBtn = document.createElement("button");
         this.eBtn.classList.add("normal");
@@ -3302,8 +3311,8 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.conflictCount = "numerical";
                 state.refresh();
             },
-            convert: () => {
-                this.displayName = this.title = "Convert Logs";
+            export: () => {
+                this.displayName = this.title = "Export Logs";
                 this.iconSrc = "../assets/icons/swap.svg";
             },
         };
@@ -3515,17 +3524,23 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             let idfs = {
                 l: () => {
                     elem.classList.add("list");
-                    this.addHandler("update", delta => {
+                    const update = () => {
                         if (this.lVars.length > 0) elem.classList.remove("empty");
                         else elem.classList.add("empty");
-                    });
+                    };
+                    this.addHandler("change-addLVar", update);
+                    this.addHandler("change-remLVar", update);
+                    update();
                 },
                 r: () => {
                     elem.classList.add("list");
-                    this.addHandler("update", delta => {
+                    const update = () => {
                         if (this.rVars.length > 0) elem.classList.remove("empty");
                         else elem.classList.add("empty");
-                    });
+                    };
+                    this.addHandler("change-addRVar", update);
+                    this.addHandler("change-remRVar", update);
+                    update();
                 },
                 v: () => {
                     elem.classList.add("view");
@@ -3558,15 +3573,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.type = "number";
                                 input.placeholder = "...";
                                 input.min = 0;
-                                this.change("viewParams.time", null, this.viewParams.time=5000);
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
-                                this.addHandler("update", delta => {
-                                    if (document.activeElement == input) return;
-                                    input.value = this.viewParams.time;
-                                });
+                                this.addHandler("change-viewParams.time", () => (input.value = this.viewParams.time));
+                                this.change("viewParams.time", null, this.viewParams.time=5000);
                             },
                             right: () => {
                                 let info = document.createElement("div");
@@ -3580,15 +3592,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.type = "number";
                                 input.placeholder = "...";
                                 input.min = 0;
-                                this.change("viewParams.time", null, this.viewParams.time=5000);
                                 input.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
-                                this.addHandler("update", delta => {
-                                    if (document.activeElement == input) return;
-                                    input.value = this.viewParams.time;
-                                });
+                                this.addHandler("change-viewParams.time", () => (input.value = this.viewParams.time));
+                                this.change("viewParams.time", null, this.viewParams.time=5000);
                             },
                             section: () => {
                                 let info, input;
@@ -3614,8 +3623,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 input.type = "number";
                                 input.placeholder = "Stop";
                                 input.min = 0;
-                                this.change("viewParams.start", null, this.viewParams.start=0);
-                                this.change("viewParams.stop", null, this.viewParams.stop=5000);
                                 startInput.addEventListener("change", e => {
                                     let v = Math.max(0, util.ensure(parseFloat(startInput.value), "num"));
                                     this.change("viewParams.start", this.viewParams.start, this.viewParams.start=v);
@@ -3624,15 +3631,15 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     let v = Math.max(0, util.ensure(parseFloat(stopInput.value), "num"));
                                     this.change("viewParams.stop", this.viewParams.stop, this.viewParams.stop=v);
                                 });
-                                this.addHandler("update", delta => {
-                                    if (document.activeElement != startInput) startInput.value = this.viewParams.start;
-                                    if (document.activeElement != stopInput) stopInput.value = this.viewParams.stop;
-                                });
+                                this.addHandler("change-viewParams.start", () => (startInput.value = this.viewParams.start));
+                                this.addHandler("change-viewParams.stop", () => (stopInput.value = this.viewParams.stop));
+                                this.change("viewParams.start", null, this.viewParams.start=0);
+                                this.change("viewParams.stop", null, this.viewParams.stop=5000);
                             },
                         };
                         if (mode in modefs) modefs[mode]();
                     });
-                    this.addHandler("update", delta => {
+                    const update = () => {
                         for (let mode in eNavButtons) {
                             if (mode == this.viewMode) eNavButtons[mode].classList.add("this");
                             else eNavButtons[mode].classList.remove("this");
@@ -3640,7 +3647,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 elem.style.display = (mode == this.viewMode) ? "" : "none";
                             });
                         }
-                    });
+                    };
+                    this.addHandler("change-viewMode", update);
+                    update();
                 },
             };
             if (id in idfs) idfs[id]();
@@ -3797,7 +3806,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.fillStyle = core.PROPERTYCACHE.get("--v4");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
@@ -3815,13 +3824,13 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     unit = "s";
                 }
                 ctx.fillText(t+unit, x, y3);
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+                ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x, y0);
                 ctx.lineTo(x, y1);
                 ctx.stroke();
             }
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v2");
+            ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
             for (let i = 0; i <= maxNSteps; i++) {
                 let y = i / maxNSteps;
                 y = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y);
@@ -3843,7 +3852,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let x1 = [padding*quality, ctx.canvas.width-padding*quality][i];
                 let x2 = [(padding-5)*quality, ctx.canvas.width-(padding-5)*quality][i];
                 let x3 = [(padding-10)*quality, ctx.canvas.width-(padding-10)*quality][i];
-                ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--v4");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "miter";
                 ctx.lineCap = "square";
@@ -3874,12 +3883,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             let npts = (i+1 >= log.length) ? graphRange[1] : log[i+1].ts;
                             let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             let nx = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
-                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color+(i%2==0?"2":"")) : v.color : "#fff";
+                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color+(i%2==0?"2":"")) : v.color : "#fff";
                             ctx.fillRect(
                                 x, (padding+10+20*nDiscrete)*quality,
                                 Math.max(0, nx-x), 15*quality,
                             );
-                            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v"+(i%2==0?"8":"1"));
+                            ctx.fillStyle = core.PROPERTYCACHE.get("--v"+(i%2==0?"8":"1"));
                             ctx.font = (12*quality)+"px monospace";
                             ctx.textAlign = "left";
                             ctx.textBaseline = "middle";
@@ -3903,7 +3912,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             }
                         } else ranges.push({ x: x, r: [v, v], v: v });
                     }
-                    ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(v.color) : v.color : "#fff";
+                    ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color) : v.color : "#fff";
                     ctx.lineWidth = 1*quality;
                     ctx.lineJoin = "round";
                     ctx.lineCap = "square";
@@ -3944,7 +3953,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 eName.style.color = foundTooltips[tooltipCycle].color;
                 eValue.textContent = foundTooltips[tooltipCycle].value;
             } else eGraphTooltip.classList.remove("this");
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+            ctx.strokeStyle = core.PROPERTYCACHE.get("--v4");
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
@@ -3970,7 +3979,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     show: mouseAlt,
                 },
             ].forEach(data => {
-                ctx.fillStyle = ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--"+data.color);
+                ctx.fillStyle = ctx.strokeStyle = core.PROPERTYCACHE.get("--"+data.color);
                 let progress = (data.value-graphRange[0]) / (graphRange[1]-graphRange[0]);
                 let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, progress);
                 if ((!("show" in data) || data.show) && progress >= 0 && progress <= 1) {
@@ -4014,7 +4023,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let x0 = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (t0Value-graphRange[0])/(graphRange[1]-graphRange[0]));
                 let x1 = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (t1Value-graphRange[0])/(graphRange[1]-graphRange[0]));
                 let y = ctx.canvas.height-padding*quality-10*quality;
-                ctx.strokeStyle = ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--a");
+                ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--a");
                 ctx.beginPath();
                 ctx.moveTo(x0, y);
                 ctx.lineTo(x1, y);
@@ -4386,7 +4395,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
-        let color = this.hasColor() ? this.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.color) : this.color : "#fff";
+        let color = this.hasColor() ? this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color : "#fff";
         this.eShowDisplay.style.setProperty("--bgc", color);
         this.eShowDisplay.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
@@ -4484,10 +4493,13 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             let idfs = {
                 p: () => {
                     elem.classList.add("list");
-                    this.addHandler("update", delta => {
+                    const update = () => {
                         if (this.poses.length > 0) elem.classList.remove("empty");
                         else elem.classList.add("empty");
-                    });
+                    };
+                    this.addHandler("change-addPose", update);
+                    this.addHandler("change-remPose", update);
+                    update();
                 },
                 f: () => {
                     elem.classList.add("field");
@@ -4564,7 +4576,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (!this.hasPose(pose)) return false;
             pose.onRem();
             pose.state.tab = null;
-            let i = this.poses.indexOf(pose);
             this.#poses.delete(pose);
             pose.clearLinkedHandlers(this, "remove");
             pose.clearLinkedHandlers(this, "change");
@@ -4772,7 +4783,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
-        let color = this.hasColor() ? this.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.color) : this.color : "#fff";
+        let color = this.hasColor() ? this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color : "#fff";
         this.eShowDisplay.style.setProperty("--bgc", color);
         this.eShowDisplay.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
@@ -4920,9 +4931,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
         this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
 
-        this.#isMeters = true;
-        this.#isDegrees = true;
-        this.#origin = "blue+";
+        this.#isMeters = null;
+        this.#isDegrees = null;
+        this.#origin = null;
 
         let info;
         const eField = this.getEOptionSection("f");
@@ -5114,38 +5125,30 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             finished = true;
         })();
 
+        const updateSize = () => {
+            this.eSizeWInput.value = this.w/(this.isMeters ? 100 : 1);
+            this.eSizeHInput.value = this.h/(this.isMeters ? 100 : 1);
+            this.eRobotSizeWInput.value = this.robotW/(this.isMeters ? 100 : 1);
+            this.eRobotSizeHInput.value = this.robotH/(this.isMeters ? 100 : 1);
+            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
+        };
+        this.addHandler("change-size.x", updateSize);
+        this.addHandler("change-size.y", updateSize);
+        this.addHandler("change-robotSize.x", updateSize);
+        this.addHandler("change-robotSize.y", updateSize);
+        this.addHandler("change-isMeters", updateSize);
+
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
             if (this.template in templates) eField.classList.add("has");
             else eField.classList.remove("has");
-            if (document.activeElement != this.eSizeWInput) this.eSizeWInput.value = this.w/(this.isMeters ? 100 : 1);
-            if (document.activeElement != this.eSizeHInput) this.eSizeHInput.value = this.h/(this.isMeters ? 100 : 1);
-            if (document.activeElement != this.eRobotSizeWInput) this.eRobotSizeWInput.value = this.robotW/(this.isMeters ? 100 : 1);
-            if (document.activeElement != this.eRobotSizeHInput) this.eRobotSizeHInput.value = this.robotH/(this.isMeters ? 100 : 1);
-            if (this.isMeters) this.eUnitsMeters.classList.add("this");
-            else this.eUnitsMeters.classList.remove("this");
-            if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
-            else this.eUnitsCentimeters.classList.remove("this");
-            if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
-            else this.eUnitsDegrees.classList.remove("this");
-            if (this.isRadians) this.eUnitsRadians.classList.add("this");
-            else this.eUnitsRadians.classList.remove("this");
-            if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
-            else this.eOriginBluePos.classList.remove("this");
-            if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
-            else this.eOriginBlueNeg.classList.remove("this");
-            if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
-            else this.eOriginRedPos.classList.remove("this");
-            if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
-            else this.eOriginRedNeg.classList.remove("this");
-            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
 
             if (!finished) return;
 
             this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
-            this.odometry.autoScale();
+
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
@@ -5212,6 +5215,11 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isMeters == v) return;
         this.change("isMeters", this.isMeters, this.#isMeters=v);
+
+        if (this.isMeters) this.eUnitsMeters.classList.add("this");
+        else this.eUnitsMeters.classList.remove("this");
+        if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
+        else this.eUnitsCentimeters.classList.remove("this");
     }
     get isCentimeters() { return !this.isMeters; }
     set isCentimeters(v) { this.isMeters = !v; }
@@ -5220,6 +5228,11 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isDegrees == v) return;
         this.change("isDegrees", this.isDegrees, this.#isDegrees=v);
+
+        if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
+        else this.eUnitsDegrees.classList.remove("this");
+        if (this.isRadians) this.eUnitsRadians.classList.add("this");
+        else this.eUnitsRadians.classList.remove("this");
     }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
@@ -5229,6 +5242,15 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
         if (this.origin == v) return;
         this.change("origin", this.origin, this.#origin=v);
+
+        if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
+        else this.eOriginBluePos.classList.remove("this");
+        if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
+        else this.eOriginBlueNeg.classList.remove("this");
+        if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
+        else this.eOriginRedPos.classList.remove("this");
+        if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
+        else this.eOriginRedNeg.classList.remove("this");
     }
 
     get eSizeWInput() { return this.#eSizeWInput; }
@@ -5539,6 +5561,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let axes, xAxis, yAxis, zAxis;
 
         this.#axisScene = new THREE.Group();
+        this.axisScene._builtin = true;
         axes = this.axisScene.axes = new THREE.Group();
         this.axisScene.add(axes);
         xAxis = this.axisScene.xAxis = new THREE.Mesh(
@@ -5564,6 +5587,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.axisScene.planes = [];
 
         this.#axisSceneSized = new THREE.Group();
+        this.axisSceneSized._builtin = true;
         axes = this.axisSceneSized.axes = new THREE.Group();
         this.axisSceneSized.add(axes);
         xAxis = this.axisSceneSized.xAxis = new THREE.Mesh(
@@ -5604,7 +5628,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#isOrbit = null;
         this.#isMeters = null;
         this.#isDegrees = null;
-        this.#origin = "blue+";
+        this.#origin = null;
 
         const eField = this.getEOptionSection("f");
         let eNav, header;
@@ -5749,7 +5773,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.eCameraPosXInput.addEventListener("change", e => {
             let v = this.eCameraPosXInput.value;
             if (v.length > 0) {
-                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                v = util.ensure(parseFloat(v), "num");
                 this.camera.position.x = v / (this.isMeters ? 1 : 100);
             }
         });
@@ -5761,7 +5785,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.eCameraPosYInput.addEventListener("change", e => {
             let v = this.eCameraPosYInput.value;
             if (v.length > 0) {
-                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                v = util.ensure(parseFloat(v), "num");
                 this.camera.position.y = v / (this.isMeters ? 1 : 100);
             }
         });
@@ -5773,7 +5797,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.eCameraPosZInput.addEventListener("change", e => {
             let v = this.eCameraPosZInput.value;
             if (v.length > 0) {
-                v = Math.max(0, util.ensure(parseFloat(v), "num"));
+                v = util.ensure(parseFloat(v), "num");
                 this.camera.position.z = v / (this.isMeters ? 1 : 100);
             }
         });
@@ -5819,6 +5843,22 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         });
         let velocity = new util.V3();
 
+        this.addHandler("change-isMeters", () => {
+            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
+        });
+        this.addHandler("change-origin", () => {
+            this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
+            this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
+        });
+        const updateField = () => {
+            if (!this.theField) return;
+            this.theField.scale.x = this.origin.startsWith("blue") ? 1 : -1;
+            if (this.field._builtin) this.theField.scale.y = this.origin.endsWith("+") ? 1 : -1;
+            else this.theField.scale.z = this.origin.endsWith("+") ? 1 : -1;
+        };
+        this.addHandler("change-field", updateField);
+        this.addHandler("change-origin", updateField);
+
         let loadTimer = 0, loadTemplate = 0;
 
         this.addHandler("update", delta => {
@@ -5830,45 +5870,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
             if (this.template in templates) eField.classList.add("has");
             else eField.classList.remove("has");
-            if (this.isProjection) this.eViewProjection.classList.add("this");
-            else this.eViewProjection.classList.remove("this");
-            if (this.isIsometric) this.eViewIsometric.classList.add("this");
-            else this.eViewIsometric.classList.remove("this");
-            if (this.isOrbit) this.eViewOrbit.classList.add("this");
-            else this.eViewOrbit.classList.remove("this");
-            if (this.isFree) this.eViewFree.classList.add("this");
-            else this.eViewFree.classList.remove("this");
-            if (this.isMeters) this.eUnitsMeters.classList.add("this");
-            else this.eUnitsMeters.classList.remove("this");
-            if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
-            else this.eUnitsCentimeters.classList.remove("this");
-            if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
-            else this.eUnitsDegrees.classList.remove("this");
-            if (this.isRadians) this.eUnitsRadians.classList.add("this");
-            else this.eUnitsRadians.classList.remove("this");
-            if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
-            else this.eOriginBluePos.classList.remove("this");
-            if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
-            else this.eOriginBlueNeg.classList.remove("this");
-            if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
-            else this.eOriginRedPos.classList.remove("this");
-            if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
-            else this.eOriginRedNeg.classList.remove("this");
-            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
             if (document.activeElement != this.eCameraPosXInput)
                 this.eCameraPosXInput.value = Math.round((this.camera.position.x * (this.isMeters ? 1 : 100))*10000)/10000;
             if (document.activeElement != this.eCameraPosYInput)
                 this.eCameraPosYInput.value = Math.round((this.camera.position.y * (this.isMeters ? 1 : 100))*10000)/10000;
             if (document.activeElement != this.eCameraPosZInput)
                 this.eCameraPosZInput.value = Math.round((this.camera.position.z * (this.isMeters ? 1 : 100))*10000)/10000;
-            
-            this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
-            this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
-            if (this.theField) {
-                this.theField.scale.x = this.origin.startsWith("blue") ? 1 : -1;
-                if ([this.axisScene, this.axisSceneSized].includes(this.field)) this.theField.scale.y = this.origin.endsWith("+") ? 1 : -1;
-                else this.theField.scale.z = this.origin.endsWith("+") ? 1 : -1;
-            }
             
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
@@ -5882,10 +5889,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.update(delta);
             });
 
-            let colorR = new util.Color(getComputedStyle(document.body).getPropertyValue("--cr"));
-            let colorG = new util.Color(getComputedStyle(document.body).getPropertyValue("--cg"));
-            let colorB = new util.Color(getComputedStyle(document.body).getPropertyValue("--cb"));
-            let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v2"));
+            let colorR = core.PROPERTYCACHE.getColor("--cr");
+            let colorG = core.PROPERTYCACHE.getColor("--cg");
+            let colorB = core.PROPERTYCACHE.getColor("--cb");
+            let colorV = core.PROPERTYCACHE.getColor("--v2");
             this.scene.fog.color.set(colorV.toHex(false));
             this.axisScene.xAxis.material.color.set(colorR.toHex(false));
             this.axisScene.yAxis.material.color.set(colorG.toHex(false));
@@ -5916,24 +5923,24 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     plane.material.color.set(colorV.toHex(false));
                 }
             }
-            planes.slice(i).forEach((plane, j) => {
-                planes.splice(i+j, 1);
+            while (planes.length > i) {
+                let plane = planes.pop();
                 this.axisScene.remove(plane);
                 plane.geometry.dispose();
                 plane.material.dispose();
-            });
+            }
             planes = this.axisSceneSized.planes;
             let w = this.axisSceneSized.w;
             let h = this.axisSceneSized.h;
             if (w != fieldSize.x || h != fieldSize.y) {
                 w = this.axisSceneSized.w = fieldSize.x;
                 h = this.axisSceneSized.h = fieldSize.y;
-                planes.forEach((plane, j) => {
-                    planes.splice(j, 1);
+                while (planes.length > 0) {
+                    let plane = planes.pop();
                     this.axisSceneSized.remove(plane);
                     plane.geometry.dispose();
                     plane.material.dispose();
-                });
+                };
             }
             i = 0;
             for (let x = 0; x < w; x++) {
@@ -5952,6 +5959,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     let plane = planes[i++];
                     let pw = Math.min(1, w-x), ph = Math.min(1, h-y);
                     if (plane.geometry.w != pw || plane.geometry.h != ph) {
+                        plane.geometry.dispose();
                         plane.geometry = new THREE.PlaneGeometry(pw, ph);
                         plane.geometry.w = pw;
                         plane.geometry.h = ph;
@@ -5960,12 +5968,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     plane.material.color.set(colorV.toHex(false));
                 }
             }
-            planes.slice(i).forEach((plane, j) => {
-                planes.splice(i+j, 1);
+            while (planes.length > i) {
+                let plane = planes.pop();
                 this.axisSceneSized.remove(plane);
                 plane.geometry.dispose();
                 plane.material.dispose();
-            });
+            }
 
             if ((util.getTime()-loadTimer > 1000 || loadTemplate != this.template) && (this.template in templateModels) && !(this.template in preloadedFields)) {
                 loadTimer = util.getTime();
@@ -5996,9 +6004,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.field = (this.template in preloadedFields) ? preloadedFields[this.template] : (this.template in templateModels) ? this.axisSceneSized : this.axisScene;
 
             if (this.controls instanceof OrbitControls) {
-                this.controls.target.set(0, 0, 0);
                 this.controls.update();
-                this.eContent.classList.remove("showinfo");
             } else if (this.controls instanceof PointerLockControls) {
                 if (this.controls.isLocked) {
                     let xP = keys.has("KeyD") || keys.has("ArrowRight");
@@ -6016,10 +6022,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     this.controls.moveRight(velocity.x);
                     this.controls.moveForward(velocity.y);
                     this.camera.position.y += velocity.z;
-                    this.eContent.classList.add("showinfo");
                 } else {
                     velocity.imul(0);
-                    this.eContent.classList.remove("showinfo");
                 }
             }
             this.camera.position.x = Math.round(this.camera.position.x*10000)/10000;
@@ -6029,15 +6033,21 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             let r = this.eContent.getBoundingClientRect();
 
             if (this.camera instanceof THREE.PerspectiveCamera) {
-                this.camera.aspect = r.width / r.height;
-                this.camera.updateProjectionMatrix();
+                if (this.camera.aspect != r.width / r.height) {
+                    this.camera.aspect = r.width / r.height;
+                    this.camera.updateProjectionMatrix();
+                }
             } else if (this.camera instanceof THREE.OrthographicCamera) {
                 let size = 15;
                 let aspect = r.width / r.height;
-                this.camera.left = -size/2 * aspect;
-                this.camera.right = +size/2 * aspect;
-                this.camera.top = +size/2;
-                this.camera.bottom = -size/2;
+                let left = -size/2 * aspect;
+                let right = +size/2 * aspect;
+                let top = +size/2;
+                let bottom = -size/2;
+                if (this.camera.left != left) this.camera.left = left;
+                if (this.camera.right != right) this.camera.right = right;
+                if (this.camera.top != top) this.camera.top = top;
+                if (this.camera.bottom != bottom) this.camera.bottom = bottom;
             }
 
             this.renderer.setSize(r.width*this.quality, r.height*this.quality);
@@ -6138,16 +6148,30 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             });
             this.#theField = null;
         }
-        this.#field = v;
+        this.change("field", this.field, this.#field=v);
         if (this.hasField()) {
-            let isBuiltin = [this.axisScene, this.axisSceneSized].includes(this.field);
-            this.#theField = isBuiltin ? this.field : this.field.clone();
-            if (!isBuiltin) this.theField.quaternion.copy(THREE2WPILIB);
+            this.#theField = this.field._builtin ? this.field : this.field.clone();
+            if (!this.field._builtin) this.theField.quaternion.copy(THREE2WPILIB);
             this.wpilibGroup.add(this.theField);
         }
     }
     hasField() { return !!this.field; }
 
+    updateControls() {
+        if (this.controls instanceof OrbitControls) {
+            this.controls.dispose();
+        } else if (this.controls instanceof PointerLockControls) {
+            this.controls.unlock();
+            this.controls.disconnect();
+        }
+        this.#controls = this.isOrbit ? new OrbitControls(this.camera, this.canvas) : new PointerLockControls(this.camera, this.canvas);
+        if (this.controls instanceof OrbitControls) {
+            this.eContent.classList.remove("showinfo");
+        } else if (this.controls instanceof PointerLockControls) {
+            this.controls.addEventListener("lock", () => this.eContent.classList.add("showinfo"));
+            this.controls.addEventListener("unlock", () => this.eContent.classList.remove("showinfo"));
+        }
+    }
     get isProjection() { return this.#isProjection; }
     set isProjection(v) {
         v = !!v;
@@ -6155,15 +6179,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.change("isProjection", this.isProjection, this.#isProjection=v);
         this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
         this.camera.position.set(...(this.isProjection ? [0, 7.5, -7.5] : [10, 10, -10]));
-        if (this.controls instanceof OrbitControls) {
-            this.controls.object = this.camera;
-        } else if (this.controls instanceof PointerLockControls) {
-            this.controls.unlock();
-            this.controls.disconnect();
-            this.#controls = new PointerLockControls(this.camera, this.canvas);
-            this.controls.connect();
-        }
+        this.updateControls();
         this.camera.lookAt(0, 0, 0);
+
+        if (this.isProjection) this.eViewProjection.classList.add("this");
+        else this.eViewProjection.classList.remove("this");
+        if (this.isIsometric) this.eViewIsometric.classList.add("this");
+        else this.eViewIsometric.classList.remove("this");
     }
     get isIsometric() { return !this.isProjection; }
     set isIsometric(v) { this.isProjection = !v; }
@@ -6172,13 +6194,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.#isOrbit == v) return;
         this.change("isOrbit", this.isOrbit, this.#isOrbit=v);
-        if (this.controls instanceof OrbitControls) {
-            this.controls.dispose();
-        } else if (this.controls instanceof PointerLockControls) {
-            this.controls.unlock();
-            this.controls.disconnect();
-        }
-        this.#controls = this.isOrbit ? new OrbitControls(this.camera, this.canvas) :  new PointerLockControls(this.camera, this.canvas);
+
+        if (this.isOrbit) this.eViewOrbit.classList.add("this");
+        else this.eViewOrbit.classList.remove("this");
+        if (this.isFree) this.eViewFree.classList.add("this");
+        else this.eViewFree.classList.remove("this");
+
+        this.updateControls();
     }
     get isFree() { return !this.isOrbit; }
     set isFree(v) { this.isOrbit = !v; }
@@ -6187,6 +6209,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isMeters == v) return;
         this.change("isMeters", this.isMeters, this.#isMeters=v);
+
+        if (this.isMeters) this.eUnitsMeters.classList.add("this");
+        else this.eUnitsMeters.classList.remove("this");
+        if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
+        else this.eUnitsCentimeters.classList.remove("this");
     }
     get isCentimeters() { return !this.isMeters; }
     set isCentimeters(v) { this.isMeters = !v; }
@@ -6195,6 +6222,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isDegrees == v) return;
         this.change("isDegrees", this.isDegrees, this.#isDegrees=v);
+
+        if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
+        else this.eUnitsDegrees.classList.remove("this");
+        if (this.isRadians) this.eUnitsRadians.classList.add("this");
+        else this.eUnitsRadians.classList.remove("this");
     }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
@@ -6204,6 +6236,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
         if (this.origin == v) return;
         this.change("origin", this.origin, this.#origin=v);
+        
+        if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
+        else this.eOriginBluePos.classList.remove("this");
+        if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
+        else this.eOriginBlueNeg.classList.remove("this");
+        if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
+        else this.eOriginRedPos.classList.remove("this");
+        if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
+        else this.eOriginRedNeg.classList.remove("this");
     }
 
     get eViewProjection() { return this.#eViewProjection; }
@@ -6470,7 +6511,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             if (!this.hasThree()) return;
-            let color = new util.Color(this.pose.color.startsWith("--") ? getComputedStyle(document.body).getPropertyValue(this.pose.color) : this.pose.color);
+            let color = new util.Color(this.pose.color.startsWith("--") ? core.PROPERTYCACHE.get(this.pose.color) : this.pose.color);
             this.pose.enable();
             if (this.value.length % 7 == 0 || this.value.length % 3 == 0) {
                 if ((util.getTime()-loadTimer > 1000 || loadRobot != this.pose.type) && !this.pose.type.startsWith("§") && (this.pose.type in robotModels) && !(this.pose.type in preloadedRobots)) {
@@ -6591,8 +6632,9 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         let x = 1, y = 1;
                         if (r2.right > r.right) x *= -1;
                         if (r2.bottom > r.bottom) y *= -1;
-                        obj.element.elem.style.transform = "translate("+(50*x)+"%, "+(50*y)+"%)";
                         obj.element.style.visibility = hovered ? "" : "hidden";
+                        if (!hovered) return;
+                        obj.element.elem.style.transform = "translate("+(50*x)+"%, "+(50*y)+"%)";
                         obj.element.eTitle.style.color = color.toHex();
                         obj.element.eTitle.textContent = this.pose.path;
                         let posL = (type == 7) ? 3 : 2;
@@ -7249,7 +7291,8 @@ export default class App extends core.AppFeature {
     get isBlockShown() { return this.hasEBlock() ? this.eBlock.classList.contains("this") : null; }
     set isBlockShown(v) {
         if (!this.hasEBlock()) return;
-        v ? this.eBlock.classList.add("this") : this.eBlock.classList.remove("this");
+        if (v) this.eBlock.classList.add("this")
+        else this.eBlock.classList.remove("this");
     }
     get isBlockHidden() { return this.hasEBlock() ? !this.isBlockShown : null; }
     set isBlockHidden(v) { return this.isBlockShown = !v; }
@@ -7607,9 +7650,28 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.format();
 
-        this.addHandler("change-project", () => {
-            this.widget = this.hasProject() ? this.project.buildWidget() : null;
+        this.addHandler("change-widget", () => {
+            if (!this.hasWidget()) return;
+            this.widget.collapse();
         });
+        
+        const update = () => {
+            this.widget = this.hasProject() ? this.project.buildWidget() : null;
+
+            this.app.eProjectInfoBtnName.textContent = this.hasProject() ? this.project.meta.name : "";
+            this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
+            this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
+
+            ["nt", "wpilog"].forEach(type => {
+                let itm = this.app.menu.findItemWithId("source:"+type);
+                if (!itm) return;
+                itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
+            });
+        };
+        this.addHandler("change-project", update);
+        this.addHandler("change-project.meta.name", update);
+        this.addHandler("change-project.config.source", update);
+        this.addHandler("change-project.config.sourceType", update);
 
         let timer = 0;
         this.addHandler("update", async delta => {
@@ -7647,77 +7709,52 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 else elem.classList.remove("special");
             });
 
-            if (this.hasWidget()) {
-                this.widget.collapse();
-                if (this.hasWidget()) this.widget.update(delta);
-            } else this.widget = new Panel();
+            if (this.hasWidget()) this.widget.update(delta);
+            else this.widget = new Panel();
             if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;
             
             this.eSideMetaInfo.textContent = this.sourceInfo;
             let info = this.sourceMetaInfo;
-            while (this.eSideMetaTooltip.children.length < Math.max(0, info.length*2-1)) {
+            let l = Math.max(0, info.length*2-1);
+            while (this.eSideMetaTooltip.children.length < l) {
                 if (this.eSideMetaTooltip.children.length%2 == 1) {
                     this.eSideMetaTooltip.appendChild(document.createElement("br"));
                     continue;
                 }
                 this.eSideMetaTooltip.appendChild(document.createElement("span"));
             }
-            while (this.eSideMetaTooltip.children.length > Math.max(0, info.length*2-1))
+            while (this.eSideMetaTooltip.children.length > l)
                 this.eSideMetaTooltip.lastChild.remove();
-            for (let i = 0; i < Math.max(0, info.length*2-1); i++) {
+            for (let i = 0; i < l; i++) {
                 if (i%2 == 1) continue;
                 let line = info[i/2];
                 if (line.includes(":")) {
-                    this.eSideMetaTooltip.children[i].innerHTML = "<span></span><span style='color:var(--a);'></span>";
-                    this.eSideMetaTooltip.children[i].children[0].textContent = line.substring(0, line.indexOf(":")+1);
-                    this.eSideMetaTooltip.children[i].children[1].textContent = line.substring(line.indexOf(":")+1);
+                    line = line.split(":");
+                    while (this.eSideMetaTooltip.children[i].children.length < line.length)
+                        this.eSideMetaTooltip.children[i].appendChild(document.createElement("span"));
+                    while (this.eSideMetaTooltip.children[i].children.length > line.length)
+                        this.eSideMetaTooltip.children[i].lastChild.remove();
+                    line.forEach((part, j) => {
+                        this.eSideMetaTooltip.children[i].children[j].textContent = part + (j > 0 ? "" : ":");
+                        this.eSideMetaTooltip.children[i].children[j].style.color = (j > 0) ? "var(--a)" : "";
+                    });
                 } else this.eSideMetaTooltip.children[i].textContent = line;
             }
-
-            this.app.eProjectInfoBtnName.textContent = this.hasProject() ? this.project.meta.name : "";
-
-            if (document.activeElement != this.app.eProjectInfoNameInput)
-                this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
             
-            if (document.activeElement != this.app.eProjectInfoSourceInput)
-                this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
-
-            if (!this.hasSource()) {
-                this.app.eProjectInfoNameInput.placeholder = "No source";
-                this.app.eProjectInfoActionBtn.disabled = true;
-                this.app.eProjectInfoActionBtn.classList.remove("on");
-                this.app.eProjectInfoActionBtn.classList.remove("off");
-                this.app.eProjectInfoActionBtn.classList.remove("special");
-                this.app.eProjectInfoActionBtn.textContent = "No source";
-            } else if (this.source instanceof NTSource) {
-                this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
-                this.app.eProjectInfoActionBtn.disabled = false;
+            if (!this.hasSource());
+            else if (this.source instanceof NTSource) {
                 let on = !this.source.connecting && !this.source.connected;
                 if (on) this.app.eProjectInfoActionBtn.classList.add("on");
                 else this.app.eProjectInfoActionBtn.classList.remove("on");
                 if (!on) this.app.eProjectInfoActionBtn.classList.add("off");
                 else this.app.eProjectInfoActionBtn.classList.remove("off");
-                this.app.eProjectInfoActionBtn.classList.remove("special");
                 this.app.eProjectInfoActionBtn.textContent = on ? "Connect" : "Disconnect";
             } else if (this.source instanceof WPILOGSource) {
-                this.app.eProjectInfoSourceInput.placeholder = "Path...";
                 this.app.eProjectInfoActionBtn.disabled = this.source.importing;
-                this.app.eProjectInfoActionBtn.classList.remove("on");
-                this.app.eProjectInfoActionBtn.classList.remove("off");
-                this.app.eProjectInfoActionBtn.classList.add("special");
-                this.app.eProjectInfoActionBtn.textContent = "Import";
-            } else {
-                this.app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.name;
-                this.app.eProjectInfoActionBtn.disabled = true;
-                this.app.eProjectInfoActionBtn.classList.remove("on");
-                this.app.eProjectInfoActionBtn.classList.remove("off");
-                this.app.eProjectInfoActionBtn.classList.remove("special");
-                this.app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.name;
             }
 
-            let itm;
-            itm = this.app.menu.findItemWithId("action");
+            let itm = this.app.menu.findItemWithId("action");
             if (itm) {
                 if (!this.hasSource()) {
                     itm.enabled = false;
@@ -7734,11 +7771,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     itm.label = "Unknown source: "+this.source.constructor.name;
                 }
             }
-            ["nt", "wpilog"].forEach(type => {
-                itm = this.app.menu.findItemWithId("source:"+type);
-                if (!itm) return;
-                itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
-            });
 
             if (this.hasSource()) {
                 this.navOpen = true;
@@ -7873,6 +7905,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         v = (v instanceof Widget) ? v : null;
         if (this.widget == v) return;
         if (this.hasWidget()) {
+            this.widget.onRem();
             this.widget.parent = null;
             this.widget.clearLinkedHandlers(this, "change");
             this.eContent.removeChild(this.widget.elem);
@@ -7883,10 +7916,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             const onChange = () => {
                 if (this.hasProject())
                     this.project.widgetData = JSON.stringify(this.widget);
+                this.change("widget", null, this.widget);
             };
             this.widget.addLinkedHandler(this, "change", onChange);
             this.eContent.appendChild(this.widget.elem);
             this.activeWidget = this.widget;
+            this.widget.onAdd();
         }
         if (this.hasProject())
             this.project.widgetData = JSON.stringify(this.widget);
@@ -7912,6 +7947,47 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.source instanceof NTSource) this.source.address = null;
         }
         this.#source = v;
+        if (!this.hasSource()) {
+            this.app.eProjectInfoNameInput.placeholder = "No source";
+            this.app.eProjectInfoActionBtn.disabled = true;
+            this.app.eProjectInfoActionBtn.classList.remove("on");
+            this.app.eProjectInfoActionBtn.classList.remove("off");
+            this.app.eProjectInfoActionBtn.classList.remove("special");
+            this.app.eProjectInfoActionBtn.textContent = "No source";
+        } else if (this.source instanceof NTSource) {
+            this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
+            this.app.eProjectInfoActionBtn.disabled = false;
+            this.app.eProjectInfoActionBtn.classList.remove("special");
+        } else if (this.source instanceof WPILOGSource) {
+            this.app.eProjectInfoSourceInput.placeholder = "Path...";
+            this.app.eProjectInfoActionBtn.classList.remove("on");
+            this.app.eProjectInfoActionBtn.classList.remove("off");
+            this.app.eProjectInfoActionBtn.classList.add("special");
+            this.app.eProjectInfoActionBtn.textContent = "Import";
+        } else {
+            this.app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.name;
+            this.app.eProjectInfoActionBtn.disabled = true;
+            this.app.eProjectInfoActionBtn.classList.remove("on");
+            this.app.eProjectInfoActionBtn.classList.remove("off");
+            this.app.eProjectInfoActionBtn.classList.remove("special");
+            this.app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.name;
+        }
+        let itm = this.app.menu.findItemWithId("action");
+        if (!itm) return;
+        if (!this.hasSource()) {
+            itm.enabled = false;
+            itm.label = "No source";
+        } else if (this.source instanceof NTSource) {
+            let on = !this.source.connecting && !this.source.connected;
+            itm.enabled = true;
+            itm.label = on ? "Connect" : "Disconnect";
+        } else if (this.source instanceof WPILOGSource) {
+            itm.enabled = true;
+            itm.label = "Import";
+        } else {
+            itm.enabled = false;
+            itm.label = "Unknown source: "+this.source.constructor.name;
+        }
     }
     hasSource() { return !!this.source; }
     get sourceInfo() {

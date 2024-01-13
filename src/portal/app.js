@@ -371,9 +371,9 @@ export default class App extends core.App {
                     }
                     first = false;
 
-                    let colorW = new util.Color(getComputedStyle(document.body).getPropertyValue("--v8"));
-                    let colorA = new util.Color(getComputedStyle(document.body).getPropertyValue("--a"));
-                    let colorV = new util.Color(getComputedStyle(document.body).getPropertyValue("--v2"));
+                    let colorW = core.PROPERTYCACHE.getColor("--v8");
+                    let colorA = core.PROPERTYCACHE.getColor("--a");
+                    let colorV = core.PROPERTYCACHE.getColor("--v2");
                     Speck.materials[0].color.set(colorW.toHex(false));
                     Speck.materials[1].color.set(colorA.toHex(false));
                     scene.fog.color.set(colorV.toHex(false));

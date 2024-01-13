@@ -236,7 +236,15 @@ Source.Field = class SourceField extends util.Target {
 
     #path;
     #name;
+    #isHidden;
     #type;
+    #isStruct;
+    #structType;
+    #clippedType;
+    #isArray;
+    #arrayType;
+    #isPrimitive;
+    #isJustPrimitive;
     #valueLog;
 
     static TYPES = [
@@ -280,8 +288,16 @@ Source.Field = class SourceField extends util.Target {
         this.#path = util.generatePath(path);
         path = this.path.split("/").filter(part => part.length > 0);
         this.#name = (path.length > 0) ? path.at(-1) : "";
+        this.#isHidden = this.name.startsWith(".");
         if (type == null) throw new Error("Type is null");
         this.#type = String(type);
+        this.#isStruct = this.type.startsWith("struct:");
+        this.#structType = this.isStruct ? this.type.slice(7) : this.type;
+        this.#clippedType = this.isStruct ? this.structType : this.type;
+        this.#isArray = this.clippedType.endsWith("[]");
+        this.#arrayType = this.isArray ? this.clippedType.slice(0, this.clippedType.length-2) : this.clippedType;
+        this.#isPrimitive = Source.Field.TYPES.includes(this.arrayType);
+        this.#isJustPrimitive = this.isPrimitive && !this.isArray;
 
         this.#valueLog = [];
     }
@@ -299,25 +315,16 @@ Source.Field = class SourceField extends util.Target {
     get path() { return this.#path; }
 
     get name() { return this.#name; }
-    get isHidden() { return this.name.startsWith("."); }
+    get isHidden() { return this.#isHidden; }
 
     get type() { return this.#type; }
-    get isStruct() { return this.type.startsWith("struct:"); }
-    get structType() {
-        if (!this.isStruct) return this.type;
-        return this.type.slice(7);
-    }
-    get clippedType() {
-        if (this.isStruct) return this.structType;
-        return this.type;
-    }
-    get isArray() { return this.clippedType.endsWith("[]"); }
-    get arrayType() {
-        if (!this.isArray) return this.clippedType;
-        return this.clippedType.slice(0, this.clippedType.length-2);
-    }
-    get isPrimitive() { return Source.Field.TYPES.includes(this.arrayType); }
-    get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
+    get isStruct() { return this.#isStruct; }
+    get structType() { return this.#structType; }
+    get clippedType() { return this.#clippedType; }
+    get isArray() { return this.#isArray; }
+    get arrayType() { return this.#arrayType; }
+    get isPrimitive() { return this.#isPrimitive; }
+    get isJustPrimitive() { return this.#isJustPrimitive; }
 
     get valueLog() { return [...this.#valueLog]; }
     set valueLog(v) {
@@ -328,7 +335,8 @@ Source.Field = class SourceField extends util.Target {
                 v: Source.Field.ensureType(this.type, log.v),
                 meta: util.ensure(log.meta, "obj"),
             };
-        }).sort((a, b) => a.ts-b.ts);
+        });
+        this.#valueLog = this.#valueLog.filter((log, i) => (i <= 0 || log.v != this.#valueLog[i-1].v)).sort((a, b) => a.ts-b.ts);
     }
 
     getIndex(ts=null) {
@@ -350,8 +358,7 @@ Source.Field = class SourceField extends util.Target {
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
         if (i < 0 || i >= this.#valueLog.length) return null;
-        let v = this.#valueLog[i].v;
-        return v;
+        return this.#valueLog[i].v;
     }
     getRange(tsStart=null, tsStop=null) {
         tsStart = util.ensure(tsStart, "num");
@@ -367,6 +374,16 @@ Source.Field = class SourceField extends util.Target {
         v = Source.Field.ensureType(this.type, v);
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
+        if (this.isJustPrimitive) {
+            if (i >= 0 && i < this.#valueLog.length)
+                if (this.#valueLog[i].v == v)
+                    return;
+            if (i+2 >= 0 && i+2 < this.#valueLog.length)
+                if (this.#valueLog[i+2].v == v) {
+                    this.#valueLog[i+2].ts = ts;
+                    return;
+                }
+        }
         this.#valueLog.splice(i+1, 0, { ts: ts, v: v, meta: {} });
         if (this.isStruct) {
             if (this.source.structDecode(this.path, this.arrayType, this.isArray, v, ts)) return;
@@ -400,6 +417,7 @@ Source.Node = class SourceNode extends util.Target {
     #field;
 
     #name;
+    #path;
 
     #nodes;
 
@@ -412,6 +430,10 @@ Source.Node = class SourceNode extends util.Target {
         this.#field = null;
 
         this.#name = String(name);
+        let path = (this.parent instanceof Source) ? "" : this.parent.path;
+        if (path.length > 0) path += "/";
+        path += this.name;
+        this.#path = path;
 
         this.#nodes = {};
 
@@ -430,12 +452,7 @@ Source.Node = class SourceNode extends util.Target {
     hasField() { return !!this.field; }
 
     get name() { return this.#name; }
-    get path() {
-        let path = (this.parent instanceof Source) ? "" : this.parent.path;
-        if (path.length > 0) path += "/";
-        path += this.name;
-        return path;
-    }
+    get path() { return this.#path; }
 
     get nodes() { return Object.keys(this.#nodes); }
     get nodeObjects() { return Object.values(this.#nodes); }
@@ -445,7 +462,8 @@ Source.Node = class SourceNode extends util.Target {
         return n;
     }
     get nFields() {
-        let n = +this.hasField();
+        if (this.hasField()) return 1;
+        let n = 0;
         this.nodeObjects.forEach(node => (n += node.nFields));
         return n;
     }

@@ -721,6 +721,8 @@ const MAIN = async () => {
             this.#state = {};
 
             this.log();
+
+            this.addHandler("update", delta => this.windowManager.update(delta));
         }
 
         get manager() { return this.#manager; }
@@ -2157,7 +2159,7 @@ const MAIN = async () => {
             this.window.webContents.send("cache-clear");
         }
 
-        update(delta) { this.windowManager.update(delta); this.post("update", delta); }
+        update(delta) { this.post("update", delta); }
 
         log(...a) { return this.manager.log(`[${this.name}]`, ...a); }
     }
@@ -2194,6 +2196,8 @@ const MAIN = async () => {
 
             this.#loads = new Set();
             this.#isLoading = false;
+
+            this.addHandler("update", delta => this.windows.forEach(win => win.update(delta)));
         }
 
         get window() { return this.#window; }
@@ -3771,10 +3775,7 @@ const MAIN = async () => {
             return true;
         }
 
-        update(delta) {
-            this.post("update", delta);
-            this.windows.forEach(win => win.update(delta));
-        }
+        update(delta) { this.post("update", delta); }
 
         static log(...a) {
             return log(".", ...a);
@@ -3864,18 +3865,18 @@ const MAIN = async () => {
     let t0 = null;
     let id = setInterval(async () => {
         let t1 = util.getTime();
-        if (t0 == null) return t1 = t0;
+        if (t0 == null) return t0 = t1;
         try {
             manager.update(t1-t0);
         } catch (e) {
-            await showError("WindowManager Update Error", null, e);
             clearInterval(id);
+            await showError("WindowManager Update Error", null, e);
             allowQuit = true;
             app.quit();
             return;
         }
         t1 = t0;
-    }, 10);
+    }, 100);
 
 };
 (async () => {

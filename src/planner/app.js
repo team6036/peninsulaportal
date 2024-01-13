@@ -28,7 +28,7 @@ class RLabel extends core.Odometry2d.Render {
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--cg-8");
+            ctx.fillStyle = core.PROPERTYCACHE.get("--cg-8");
             const width = ctx.measureText(this.text).width/quality;
             ctx.beginPath();
             let path = [
@@ -48,7 +48,7 @@ class RLabel extends core.Odometry2d.Render {
                 else ctx.moveTo(...p.xy);
             }
             ctx.fill();
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            ctx.fillStyle = core.PROPERTYCACHE.get("--v8");
             let p = this.odometry.worldToCanvas(this.pos).add(new V(0,15).add(offset).mul(+1,-1).mul(quality));
             ctx.fillText(this.text, ...p.xy);
         });
@@ -83,7 +83,7 @@ class RLine extends core.Odometry2d.Render {
             if (this.hasItemB()) b.set(this.itemB.pos);
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             if (a.distSquared(b) < this.odometry.pageLenToWorld((7.5+5)*2)**2) return;
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--cg-8");
+            ctx.strokeStyle = core.PROPERTYCACHE.get("--cg-8");
             ctx.lineWidth = 5*quality;
             ctx.beginPath();
             ctx.moveTo(...this.odometry.worldToCanvas(a.add(V.dir(a.towards(b), this.odometry.pageLenToWorld(7.5+5)))).xy);
@@ -125,9 +125,9 @@ class RVisual extends core.Odometry2d.Render {
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             const colors = {
-                g: new util.Color(getComputedStyle(document.body).getPropertyValue("--cg")),
-                y: new util.Color(getComputedStyle(document.body).getPropertyValue("--cy")),
-                r: new util.Color(getComputedStyle(document.body).getPropertyValue("--cr")),
+                g: core.PROPERTYCACHE.getColor("--cg"),
+                y: core.PROPERTYCACHE.getColor("--cy"),
+                r: core.PROPERTYCACHE.getColor("--cr"),
             };
             const thresh1 = 0, thresh2 = 500;
             const getColor = v => {
@@ -258,7 +258,7 @@ class RSelect extends core.Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v8");
+            ctx.strokeStyle = core.PROPERTYCACHE.get("--v8");
             ctx.lineWidth = 1*quality;
             let a = this.odometry.worldToCanvas(this.a);
             let b = this.odometry.worldToCanvas(this.b);
@@ -824,12 +824,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eChooseNav.classList.add("choosenav");
         this.#eChooseDoneBtn = document.createElement("button");
         this.eChooseNav.appendChild(this.eChooseDoneBtn);
-        // this.eChooseDoneBtn.id = "donebtn";
         this.eChooseDoneBtn.classList.add("special");
         this.eChooseDoneBtn.textContent = "Done";
         this.#eChooseCancelBtn = document.createElement("button");
         this.eChooseNav.appendChild(this.eChooseCancelBtn);
-        // this.eChooseCancelBtn.id = "cancelbtn";
         this.eChooseCancelBtn.classList.add("off");
         this.eChooseCancelBtn.textContent = "Cancel";
         this.eChooseDoneBtn.addEventListener("click", e => {
@@ -898,15 +896,22 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         let itemRenders = {};
 
+        const updateSelected = () => {
+            this.selected.forEach(id => {
+                if (this.hasProject() && this.project.hasItem(id)) return;
+                this.remSelected(id);
+            });
+            this.selectedPath = (this.hasProject() && this.project.hasPath(this.selectedPath)) ? this.selectedPath : null;
+        };
+        this.addHandler("change-project", updateSelected);
+        this.addHandler("change-project.remItem", updateSelected);
+        this.addHandler("change-project.remPath", updateSelected);
+
         let timer = 0;
         this.addHandler("update", delta => {
             this.odometry.update(delta);
             this.odometry.size = this.hasProject() ? this.project.size : 0;
             this.odometry.imageSrc = this.hasProject() ? this.project.meta.backgroundImage : null;
-            this.odometry.autoScale();
-
-            this.pruneSelected();
-            this.selectedPath = (this.hasProject() && this.project.hasPath(this.selectedPath)) ? this.selectedPath : null;
 
             if (!this.choosing)
                 this.displayPath = (this.hasProject() && this.project.hasPath(this.selectedPath)) ? this.project.getPath(this.selectedPath) : null;
@@ -1161,12 +1166,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         this.editorRefresh();
         return r;
-    }
-    pruneSelected() {
-        this.selected.forEach(id => {
-            if (this.hasProject() && this.project.hasItem(id)) return;
-            this.remSelected(id);
-        });
     }
     
     get selectedPath() { return this.#selectedPath; }
@@ -1844,7 +1843,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         this.#remove = document.createElement("button");
         this.itemControls.appendChild(this.remove);
-        // this.remove.id = "removebtn";
         this.remove.classList.add("off");
         this.remove.textContent = "Remove";
         this.remove.addEventListener("click", e => {
@@ -2100,7 +2098,6 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         let header = this.addItem(new App.ProjectPage.Panel.Header("Paths"));
         this.#eAddBtn = document.createElement("button");
         header.elem.appendChild(this.eAddBtn);
-        // this.eAddBtn.id = "pathaddbtn";
         this.eAddBtn.classList.add("icon");
         this.eAddBtn.classList.add("special");
         this.eAddBtn.innerHTML = "<ion-icon name='add'></ion-icon>";
@@ -2167,9 +2164,10 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             }
             visual = null;
             visualId = null;
+            updateVisual();
         });
-        
-        this.addHandler("update", delta => {
+
+        const updatePaths = () => {
             let paths = {};
             if (this.page.hasProject())
                 this.page.project.paths.forEach(id => (paths[id] = this.page.project.getPath(id)));
@@ -2183,60 +2181,74 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 let btn = buttons[id];
                 btn.path = paths[id];
                 btn.selected = this.page.selectedPath == btn.path.id;
-                btn.update(delta);
             }
-            if (visualId != this.page.selectedPath) {
-                visualId = this.page.selectedPath;
+        };
+        this.page.addHandler("change-project", updatePaths);
+        this.page.addHandler("change-project.addPath", updatePaths);
+        this.page.addHandler("change-project.remPath", updatePaths);
+        this.page.addHandler("change-selectedPath", updatePaths);
+        const updateVisual = () => {
+            if (visualId == this.page.selectedPath) return;
+            visualId = this.page.selectedPath;
+            if (visual) {
+                this.page.odometry.render.remRender(visual.visual);
+                this.page.odometry.render.remRender(visual.item);
+            }
+            visual = this.page.hasSelectedPath() ? { playback: new util.Playback() } : null;
+            if (visual) {
+                visual.visual = this.page.odometry.render.addRender(new RVisual(this.page.odometry.render));
+                visual.item = this.page.odometry.render.addRender(new RVisualItem(this.page.odometry.render, visual.visual));
+                let theVisual = visual, theVisualId = visualId;
+                (async () => {
+                    const clear = () => {
+                        if (visual) {
+                            this.page.odometry.render.remRender(visual.visual);
+                            this.page.odometry.render.remRender(visual.item);
+                        }
+                        visual = null;
+                    };
+                    let datas = await window.api.send("exec-get", this.page.projectId);
+                    if (!util.is(datas, "obj")) return clear();
+                    if (!(theVisualId in datas)) return clear();
+                    let data = datas[theVisualId];
+                    if (!util.is(data, "obj")) return clear();
+                    theVisual.visual.dt = data.dt*1000;
+                    theVisual.visual.nodes = util.ensure(data.state, "arr").map(node => {
+                        node = util.ensure(node, "obj");
+                        node = new subcore.Project.Node(
+                            new V(node.x, node.y).mul(100),
+                            node.theta, true,
+                            new V(node.vx, node.vy).mul(100),
+                            0, true,
+                        );
+                        return node;
+                    });
+                    theVisual.playback.tsMax = theVisual.visual.dt * theVisual.visual.nodes.length;
+                    theVisual.playback.play();
+                })();
+            }
+        };
+        this.page.addHandler("change-selectedPath", updateVisual);
+
+        let boolVisual = null;
+        
+        this.addHandler("update", delta => {
+            if (boolVisual != !!visual) {
+                boolVisual = !!visual;
                 if (visual) {
-                    this.page.odometry.render.remRender(visual.visual);
-                    this.page.odometry.render.remRender(visual.item);
-                }
-                visual = this.page.hasSelectedPath() ? { playback: new util.Playback() } : null;
-                if (visual) {
-                    visual.visual = this.page.odometry.render.addRender(new RVisual(this.page.odometry.render));
-                    visual.item = this.page.odometry.render.addRender(new RVisualItem(this.page.odometry.render, visual.visual));
-                    let theVisual = visual, theVisualId = visualId;
-                    (async () => {
-                        const clear = () => {
-                            if (visual) {
-                                this.page.odometry.render.remRender(visual.visual);
-                                this.page.odometry.render.remRender(visual.item);
-                            }
-                            visual = null;
-                        };
-                        let datas = await window.api.send("exec-get", this.page.projectId);
-                        if (!util.is(datas, "obj")) return clear();
-                        if (!(theVisualId in datas)) return clear();
-                        let data = datas[theVisualId];
-                        if (!util.is(data, "obj")) return clear();
-                        theVisual.visual.dt = data.dt*1000;
-                        theVisual.visual.nodes = util.ensure(data.state, "arr").map(node => {
-                            node = util.ensure(node, "obj");
-                            node = new subcore.Project.Node(
-                                new V(node.x, node.y).mul(100),
-                                node.theta, true,
-                                new V(node.vx, node.vy).mul(100),
-                                0, true,
-                            );
-                            return node;
-                        });
-                        theVisual.playback.tsMax = theVisual.visual.dt * theVisual.visual.nodes.length;
-                        theVisual.playback.play();
-                    })();
+                    this.page.displayPathLines = false;
+                    this.page.eNavActionButton.disabled = this.page.eNavBackButton.disabled = this.page.eNavForwardButton.disabled = false;
+                } else {
+                    this.page.displayPathLines = true;
+                    this.page.eNavActionButton.disabled = this.page.eNavBackButton.disabled = this.page.eNavForwardButton.disabled = true;
+                    this.page.progress = 0;
+                    if (this.page.eNavActionButton.children[0])
+                        this.page.eNavActionButton.children[0].setAttribute("name", "play");
+                    this.page.eNavProgressTooltip.textContent = "Select a Path";
+                    this.page.eNavInfo.textContent = "No Path Selected";
                 }
             }
-            if (!visual) {
-                this.page.displayPathLines = true;
-                this.page.eNavActionButton.disabled = this.page.eNavBackButton.disabled = this.page.eNavForwardButton.disabled = true;
-                this.page.progress = 0;
-                if (this.page.eNavActionButton.children[0])
-                    this.page.eNavActionButton.children[0].setAttribute("name", "play");
-                this.page.eNavProgressTooltip.textContent = "Select a Path";
-                this.page.eNavInfo.textContent = "No Path Selected";
-                return;
-            }
-            this.page.displayPathLines = false;
-            this.page.eNavActionButton.disabled = this.page.eNavBackButton.disabled = this.page.eNavForwardButton.disabled = false;
+            if (!visual) return;
             visual.playback.update(delta);
             visual.item.interp = visual.playback.progress;
             visual.item.size = this.page.hasProject() ? this.page.project.robotW : 0;
@@ -2450,13 +2462,12 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
         this.eName.addEventListener("change", e => {
             if (!this.hasPath()) return;
             this.path.name = this.eName.value;
-            this.post("change");
         });
 
-        this.addHandler("update", delta => {
-            if (document.activeElement != this.eName)
-                this.eName.value = this.hasPath() ? this.path.name : "";
-        });
+        const update = () => {
+            this.eName.value = this.hasPath() ? this.path.name : "";
+        };
+        this.addHandler("change", update);
 
         this.path = path;
     }
@@ -2469,7 +2480,9 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     set path(v) {
         v = (v instanceof subcore.Project.Path) ? v : null;
         if (this.path == v) return;
+        if (this.hasPath()) this.path.clearLinkedHandlers(this, "change");
         this.change("path", this.path, this.#path=v);
+        if (this.hasPath()) this.path.addLinkedHandler(this, "change", (c, f, t) => this.change("path."+c, f, t));
     }
     hasPath() { return !!this.path; }
 
@@ -2480,8 +2493,6 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     get eName() { return this.#eName; }
     get eEdit() { return this.#eEdit; }
     get eRemove() { return this.#eRemove; }
-
-    update(delta) { this.post("update", delta); }
 };
 App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.ProjectPage.Panel {
     #size;
