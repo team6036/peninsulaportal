@@ -61,7 +61,7 @@ export function is(o, type) {
         },
     };
     if (type in typefs) return typefs[type]();
-    if (is(type, "obj")) return o instanceof type;
+    if (is(type, "func")) return o instanceof type;
     return o == type;
 }
 
@@ -167,25 +167,18 @@ export function lerpE(a, b, p) {
     return null;
 }
 
+export function clampAngle(x) { return ((ensure(x, "num")%360)+360)%360; }
+const FULLTURN = 2*Math.PI;
+export function clamAngleRadians(x) { return ((ensure(x, "num")%FULLTURN)+FULLTURN)%FULLTURN; }
+
 export function angleRel(a, b) {
-    a = ((ensure(a, "num")%360)+360)%360;
-    b = ((ensure(b, "num")%360)+360)%360;
-    let r = (((b - a)%360)+360)%360;
+    let r = clampAngle(clampAngle(b) - clampAngle(a));
     if (r > 180) r -= 360;
     return r;
 }
 export function angleRelRadians(a, b) {
-    const fullTurn = 2*Math.PI;
-    a = ensure(a, "num");
-    b = ensure(b, "num");
-    while (a >= fullTurn) a -= fullTurn;
-    while (a < 0) a += fullTurn;
-    while (b >= fullTurn) b -= fullTurn;
-    while (b < 0) b += fullTurn;
-    let r = b - a;
-    while (r >= fullTurn) r -= fullTurn;
-    while (r < 0) r += fullTurn;
-    if (r > fullTurn/2) r -= fullTurn;
+    let r = clamAngleRadians(clamAngleRadians(b) - clamAngleRadians(a));
+    if (r > FULLTURN/2) r -= FULLTURN;
     return r;
 }
 
@@ -631,7 +624,15 @@ export class Target {
     hasHandler(e, f) { return this.hasLinkedHandler(null, e, f); }
     getHandlers(e) { return this.getLinkedHandlers(null, e); }
     clearHandlers(e) { return this.clearLinkedHandlers(null, e); }
-    async post(e, ...a) {
+    post(e, ...a) {
+        if (this.#nHandlers <= 0) return [];
+        e = String(e);
+        for (let handlers of this.#handlers.values()) {
+            if (!(e in handlers)) continue;
+            handlers[e].forEach(f => f(...a));
+        }
+    }
+    async postResult(e, ...a) {
         if (this.#nHandlers <= 0) return [];
         e = String(e);
         let fs = [];
@@ -645,15 +646,14 @@ export class Target {
         }));
         return await Promise.all(fs.map(f => f()));
     }
-    async change(attr, f, t) {
+    change(attr, f, t) {
+        if (this.#nHandlers <= 0) return [];
         attr = String(attr);
-        let r = [];
-        r.push(...(await this.post("change", attr, f, t)));
-        r.push(...(await this.post("change-"+attr, f, t)));
-        return r;
+        this.post("change", attr, f, t);
+        this.post("change-"+attr, f, t);
     }
-    async onAdd() { return await this.post("add"); }
-    async onRem() { return await this.post("rem"); }
+    onAdd() { return this.post("add"); }
+    onRem() { return this.post("rem"); }
 }
 
 /*
@@ -1261,7 +1261,7 @@ export class Color extends Target {
         hsva = ensure(hsva, "arr");
         if (hsva.length != 4) hsva = [0, 0, 0, 1];
         hsva = hsva.map(v => ensure(v, "num"));
-        hsva[0] = ((ensure(hsva[0], "num")%360)+360)%360;
+        hsva[0] = clampAngle(hsva[0]);
         for (let i = 1; i < 4; i++) hsva[i] = Math.min(1, Math.max(0, hsva[i]));
         let h, s, v, a;
         [h, s, v, a] = hsva;
@@ -2208,7 +2208,7 @@ export class Polygon extends Shape {
     set y(v) { this.p.y = v; }
     get d() { return this.#d; }
     set d(v) {
-        v = ((ensure(v, "num")%360)+360)%360;
+        v = clampAngle(v);
         if (this.d == v) return;
         this.change("d", this.d, this.#d=v);
     }

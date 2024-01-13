@@ -484,10 +484,7 @@ Project.Node = class ProjectNode extends Project.Item {
 
     get heading() { return this.#heading; }
     set heading(v) {
-        const fullTurn = 2*Math.PI;
-        v = util.ensure(v, "num");
-        while (v >= fullTurn) v -= fullTurn;
-        while (v < 0) v += fullTurn;
+        v = util.clamAngleRadians(v);
         if (this.heading == v) return;
         this.change("heading", this.heading, this.#heading=v);
     }

@@ -157,10 +157,12 @@ class RVisual extends core.Odometry2d.Render {
                     [nj, pj, vj, cj] = [ni, pi, vi, ci];
                     continue;
                 }
-                let grad = ctx.createLinearGradient(...pj.xy, ...pi.xy);
-                grad.addColorStop(0, cj.toRGBA());
-                grad.addColorStop(1, ci.toRGBA());
-                ctx.strokeStyle = grad;
+                if (pj.distSquared(pi) > 10**2) {
+                    let grad = ctx.createLinearGradient(...pj.xy, ...pi.xy);
+                    grad.addColorStop(0, cj.toRGBA());
+                    grad.addColorStop(1, ci.toRGBA());
+                    ctx.strokeStyle = grad;
+                } else ctx.strokeStyle = ci.toRGBA();
                 ctx.lineWidth = 2*quality;
                 ctx.beginPath();
                 ctx.moveTo(...pj.xy);
@@ -285,25 +287,24 @@ class RSelect extends core.Odometry2d.Render {
     set bY(v) { this.b.y = v; }
 }
 class RSelectable extends core.Odometry2d.Render {
-    #ghost;
-
     #item;
     #renderObject;
 
     constructor(odometry, item) {
         super(odometry);
 
-        this.#ghost = false;
-
         this.#item = null;
         this.#renderObject = null;
 
+
+        let type = null;
         this.addHandler("change-item", () => {
             this.renderObject = null;
             if (!this.hasItem()) return;
-            if (this.item instanceof subcore.Project.Node) {
+            type = (this.item instanceof subcore.Project.Node) ? "node" : (this.item instanceof subcore.Project.Obstacle) ? "obstacle" : null;
+            if (type == "node") {
                 this.renderObject = new core.Odometry2d.Robot(this);
-            } else if (this.item instanceof subcore.Project.Obstacle) {
+            } else if (type == "obstacle") {
                 this.renderObject = new core.Odometry2d.Obstacle(this);
             }
         });
@@ -313,12 +314,11 @@ class RSelectable extends core.Odometry2d.Render {
             if (!this.hasRenderObject()) return;
             const render = this.renderObject;
             render.pos = this.item.pos;
-            render.alpha = this.ghost ? 0.5 : 1;
-            if (this.item instanceof subcore.Project.Node) {
+            if (type == "node") {
                 render.velocity = this.item.velocity;
                 render.showVelocity = this.item.useVelocity;
                 render.heading = this.item.heading * (180/Math.PI);
-            } else if (this.item instanceof subcore.Project.Obstacle) {
+            } else if (type == "obstacle") {
                 render.radius = this.item.radius;
             }
         });
@@ -326,8 +326,8 @@ class RSelectable extends core.Odometry2d.Render {
         this.item = item;
     }
 
-    get ghost() { return this.#ghost; }
-    set ghost(v) { this.#ghost = !!v; }
+    get ghost() { return this.alpha < 0.75; }
+    set ghost(v) { this.alpha = v ? 0.5 : 1; }
 
     get item() { return this.#item; }
     set item(v) {
@@ -502,6 +502,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     #panels;
     #panel;
+    #objectsPanel;
+    #pathsPanel;
+    #optionsPanel;
 
     #eDisplay;
     #eBlockage;
@@ -559,8 +562,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     this.app.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
                 if (ghostItem && ghostItem.hasItem())
                     ghostItem.item.pos.set(this.odometry.pageToWorld(pos));
-                if (!this.hasPanel("objects")) return;
-                const panel = this.getPanel("objects");
+                const panel = this.objectsPanel;
                 r = panel.eSpawnDelete.getBoundingClientRect();
                 let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
                 if (over) panel.eSpawnDelete.classList.add("hover");
@@ -570,14 +572,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.odometry.render.remRender(ghostItem);
                 this.app.eDrag.innerHTML = "";
                 if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
-                if (!this.hasPanel("objects")) return;
-                const panel = this.getPanel("objects");
+                const panel = this.objectsPanel;
                 panel.eSpawnBox.classList.remove("delete");
             };
             this.app.dragState.addHandler("submit", () => stop(false));
             this.app.dragState.addHandler("cancel", () => stop(true));
-            if (!this.hasPanel("objects")) return;
-            const panel = this.getPanel("objects");
+            const panel = this.objectsPanel;
             panel.eSpawnBox.classList.add("delete");
         };
         this.app.addHandler("cmd-addnode", () => cmdAdd("node"));
@@ -882,9 +882,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.eDivider.classList.add("this");
         });
 
-        this.addPanel(new App.ProjectPage.ObjectsPanel(this));
-        this.addPanel(new App.ProjectPage.PathsPanel(this));
-        this.addPanel(new App.ProjectPage.OptionsPanel(this));
+        [this.#objectsPanel, this.#pathsPanel, this.#optionsPanel] = this.addPanel(
+            new App.ProjectPage.ObjectsPanel(this),
+            new App.ProjectPage.PathsPanel(this),
+            new App.ProjectPage.OptionsPanel(this),
+        );
 
         this.panel = "objects";
 
@@ -1305,6 +1307,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#panel = v;
         this.panels.forEach(name => (this.getPanel(name).isShown = (name == this.panel)));
     }
+    get objectsPanel() { return this.#objectsPanel; }
+    get pathsPanel() { return this.#pathsPanel; }
+    get optionsPanel() { return this.#optionsPanel; }
 
     get eDisplay() { return this.#eDisplay; }
     get eBlockage() { return this.#eBlockage; }
@@ -1335,7 +1340,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         }
     }
 
-    async editorRefresh() { await this.post("editor-refresh"); }
+    async editorRefresh() { await this.postResult("editor-refresh"); }
 
     get state() {
         return {
@@ -1358,6 +1363,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     #name;
 
     #page;
+    #app;
     #items;
 
     #elem;
@@ -1372,6 +1378,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
 
         if (!(page instanceof App.ProjectPage)) throw new Error("Page is not of class ProjectPage");
         this.#page = page;
+        this.#app = this.page.app;
         this.#items = [];
 
         this.#elem = document.createElement("div");
@@ -1395,7 +1402,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     get name() { return this.#name; }
 
     get page() { return this.#page; }
-    get app() { return this.page.app; }
+    get app() { return this.#app; }
 
     get items() { return [...this.#items]; }
     set items(v) {
@@ -1694,10 +1701,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             inp.addEventListener("change", e => {
                 let v = inp.value;
                 if (v.length > 0) {
-                    const fullTurn = 2*Math.PI;
-                    v = util.ensure(parseFloat(v), "num");
-                    while (v >= fullTurn) v -= fullTurn;
-                    while (v < 0) v += fullTurn;
+                    v = util.clamAngleRadians(parseFloat(v));
                     let itms = getSelected();
                     itms.forEach(itm => {
                         if (!(itm instanceof subcore.Project.Node)) return;
@@ -2349,7 +2353,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             const onEdit = () => {
                 onTrigger(null);
                 if (this.page.choosing) return;
-                if (!bth.hasPath()) return;
+                if (!btn.hasPath()) return;
                 let pth = btn.path;
                 this.page.choosing = true;
                 this.page.displayPath = pth;
@@ -2415,6 +2419,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
 };
 App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends util.Target {
     #panel;
+    #page;
+    #app;
 
     #path;
 
@@ -2428,6 +2434,8 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
 
         if (!(panel instanceof App.ProjectPage.PathsPanel)) throw new Error("Panel is not of class PathsPanel");
         this.#panel = panel;
+        this.#page = this.panel.page;
+        this.#app = this.page.app;
 
         this.#path = null;
 
@@ -2473,8 +2481,8 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     }
 
     get panel() { return this.#panel; }
-    get page() { return this.panel.page; }
-    get app() { return this.page.app; }
+    get page() { return this.#page; }
+    get app() { return this.#app; }
 
     get path() { return this.#path; }
     set path(v) {

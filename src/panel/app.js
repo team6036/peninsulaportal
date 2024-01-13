@@ -15,6 +15,9 @@ import WPILOGSource from "../sources/wpilog/source.js";
 import { WorkerClient } from "../worker.js";
 
 
+const LOADER = new GLTFLoader();
+
+
 THREE.Quaternion.fromRotationSequence = (...seq) => {
     if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq[0]);
     let q = new THREE.Quaternion();
@@ -30,11 +33,6 @@ THREE.Quaternion.fromRotationSequence = (...seq) => {
     });
     return q;
 };
-
-var originalQuaternion = new THREE.Quaternion(1, 0, 0, 0);
-var rotationQuaternion = new THREE.Quaternion();
-rotationQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-originalQuaternion.multiply(rotationQuaternion);
 
 const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
     {
@@ -497,6 +495,12 @@ class Widget extends util.Target {
     #elem;
 
     #parent;
+    #hasParent;
+    #hasPageParent;
+    #page;
+    #hasPage;
+    #app;
+    #hasApp;
 
     constructor() {
         super();
@@ -504,7 +508,9 @@ class Widget extends util.Target {
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
 
-        this.#parent = null;
+        this.#parent = 0;
+
+        this.parent = null;
     }
 
     get elem() { return this.#elem; }
@@ -514,13 +520,22 @@ class Widget extends util.Target {
         v = (v instanceof Container) ? v : (v instanceof App.ProjectPage) ? v : null;
         if (this.parent == v) return;
         this.#parent = v;
+        this.compute();
     }
-    hasParent() { return this.parent instanceof Container; }
-    hasPageParent() { return this.parent instanceof App.ProjectPage; }
-    get page() { return this.hasPageParent() ? this.parent : this.hasParent() ? this.parent.page : null; }
-    hasPage() { return this.page instanceof App.ProjectPage; }
-    get app() { return this.hasPage() ? this.page.app : null; }
-    hasApp() { return this.app instanceof App; }
+    hasParent() { return this.#hasParent; }
+    hasPageParent() { return this.#hasPageParent; }
+    get page() { return this.#page; }
+    hasPage() { return this.#hasPage; }
+    get app() { return this.#app; }
+    hasApp() { return this.#hasApp; }
+    compute() {
+        this.#hasParent = this.parent instanceof Container;
+        this.#hasPageParent = this.parent instanceof App.ProjectPage;
+        this.#page = this.hasPageParent() ? this.parent : this.hasParent() ? this.parent.page : null;
+        this.#hasPage = this.page instanceof App.ProjectPage;
+        this.#app = this.hasPage() ? this.page.app : null;
+        this.#hasApp = this.app instanceof App;
+    }
 
     contains(v) { return v == this; }
 
@@ -575,6 +590,13 @@ class Container extends Widget {
         this.children = a[0];
         this.weights = a[1];
         this.axis = a[2];
+    }
+
+    compute() {
+        super.compute();
+        try {
+            this.children.forEach(child => child.compute());
+        } catch (e) {}
     }
 
     get children() { return [...this.#children]; }
@@ -887,6 +909,13 @@ class Panel extends Widget {
         if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
     }
 
+    compute() {
+        super.compute();
+        try {
+            this.tabs.forEach(tab => tab.compute());
+        } catch (e) {}
+    }
+
     get tabs() { return [...this.#tabs]; }
     set tabs(v) {
         v = util.ensure(v, "arr");
@@ -996,6 +1025,8 @@ class Panel extends Widget {
 }
 Panel.Tab = class PanelTab extends util.Target {
     #parent;
+    #page;
+    #app;
 
     #elem;
     #eTab;
@@ -1006,7 +1037,7 @@ Panel.Tab = class PanelTab extends util.Target {
     constructor() {
         super();
 
-        this.#parent = null;
+        this.#parent = 0;
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -1060,6 +1091,8 @@ Panel.Tab = class PanelTab extends util.Target {
             if (isOpen != this.isOpen)
                 this.change("isOpen", isOpen, isOpen=this.isOpen);
         }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
+
+        this.parent = null;
     }
 
     get parent() { return this.#parent; }
@@ -1067,12 +1100,17 @@ Panel.Tab = class PanelTab extends util.Target {
         v = (v instanceof Panel) ? v : null;
         if (this.parent == v) return;
         this.#parent = v;
+        this.compute();
     }
     hasParent() { return !!this.parent; }
-    get page() { return this.hasParent() ? this.parent.page : null; }
+    get page() { return this.#page; }
     hasPage() { return !!this.page; }
-    get app() { return this.hasPage() ? this.page.app : null; }
+    get app() { return this.#app; }
     hasApp() { return !!this.app; }
+    compute() {
+        this.#page = this.hasParent() ? this.parent.page : null;
+        this.#app = this.hasPage() ? this.page.app : null;
+    }
 
     get elem() { return this.#elem; }
     get eTab() { return this.#eTab; }
@@ -1833,15 +1871,15 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 }
             }
             if (!node) return;
-            this.eTabIcon.style.color = "";
+            this.iconColor = "";
             this.eTabName.style.color = "";
             this.iconColor = "";
             let display = getDisplay((node && node.hasField()) ? node.field.type : null, (node && node.hasField()) ? node.field.get() : null);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
-                if ("color" in display) this.eTabIcon.style.color = display.color;
-                else this.eTabIcon.style.color = "";
+                if ("color" in display) this.iconColor = display.color;
+                else this.iconColor = "";
             }
             if (this.isClosed) return;
             if (!node.hasField() || node.field.isArray || node.field.isStruct) {
@@ -2925,6 +2963,13 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         [this.actionPage] = a;
     }
 
+    compute() {
+        super.compute();
+        try {
+            this.actions.forEach(action => action.compute());
+        } catch (e) {}
+    }
+
     get actions() { return [...this.#actions]; }
     set actions(v) {
         v = util.ensure(v, "arr");
@@ -2989,6 +3034,9 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
 };
 Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     #tab;
+    #parent;
+    #page;
+    #app;
 
     #name;
     #state;    
@@ -3007,6 +3055,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
 
         if (!(tab instanceof Panel.LogWorksTab)) throw new Error("Tab is not of class LogWorksTab");
         this.#tab = tab;
+        this.compute();
 
         this.#name = String(name);
         this.#state = new util.Target();
@@ -3047,12 +3096,17 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     }
 
     get tab() { return this.#tab; }
-    get parent() { return this.tab.parent; }
+    get parent() { return this.#parent; }
     hasParent() { return !!this.parent; }
-    get page() { return this.hasParent() ? this.parent.page : null; }
+    get page() { return this.#page; }
     hasPage() { return !!this.page; }
-    get app() { return this.hasPage() ? this.page.app : null; }
+    get app() { return this.#app; }
     hasApp() { return !!this.app; }
+    compute() {
+        this.#parent = this.tab.parent;
+        this.#page = this.hasParent() ? this.parent.page : null;
+        this.#app = this.hasPage() ? this.page.app : null;
+    }
 
     get name() { return this.#name; }
 
@@ -3654,8 +3708,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (id in idfs) idfs[id]();
         });
 
-        const quality = this.quality = 3;
+        const quality = this.quality = 2;
         const padding = 40;
+        const qpadding = padding*quality;
 
         let mouseX = 0, mouseY = 0, mouseDown = false, mouseAlt = false;
         this.canvas.addEventListener("mousemove", e => {
@@ -3798,10 +3853,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 o.range = range;
             });
             const timeStep = Panel.GraphTab.findStep(graphRange[1]-graphRange[0], 10);
-            let y0 = padding*quality;
-            let y1 = ctx.canvas.height - padding*quality;
-            let y2 = ctx.canvas.height - (padding-5)*quality;
-            let y3 = ctx.canvas.height - (padding-10)*quality;
+            const mnx = qpadding, mxx = ctx.canvas.width-qpadding;
+            const mny = qpadding, mxy = ctx.canvas.height-qpadding;
+            let y0 = mny, y1 = mxy;
+            let y2 = mxy + 5*quality;
+            let y3 = mxy + 10*quality;
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
@@ -3811,7 +3867,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.textBaseline = "top";
             for (let i = Math.ceil(graphRange[0]/timeStep); i <= Math.floor(graphRange[1]/timeStep); i++) {
                 let x = (i*timeStep - graphRange[0]) / (graphRange[1]-graphRange[0]);
-                x = util.lerp(padding*quality, ctx.canvas.width - padding*quality, x);
+                x = util.lerp(mnx, mxx, x);
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
@@ -3832,14 +3888,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
             for (let i = 0; i <= maxNSteps; i++) {
                 let y = i / maxNSteps;
-                y = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y);
+                y = util.lerp(mny, mxy, 1-y);
                 ctx.beginPath();
-                ctx.moveTo(padding*quality, y);
-                ctx.lineTo(ctx.canvas.width-padding*quality, y);
+                ctx.moveTo(mnx, y);
+                ctx.lineTo(mxx, y);
                 ctx.stroke();
             }
-            let mouseXCanv = util.lerp(padding*quality, ctx.canvas.width-padding*quality, mouseX);
-            let mouseYCanv = util.lerp(padding*quality, ctx.canvas.height-padding*quality, mouseY);
+            let mouseXCanv = util.lerp(mnx, mxx, mouseX);
+            let mouseYCanv = util.lerp(mny, mxy, mouseY);
             let foundTooltips = [];
             let nDiscrete = 0;
             graphVars.forEach((o, i) => {
@@ -3848,9 +3904,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let step = o.step;
                 let logs = o.logs;
                 let nodes = o.nodes;
-                let x1 = [padding*quality, ctx.canvas.width-padding*quality][i];
-                let x2 = [(padding-5)*quality, ctx.canvas.width-(padding-5)*quality][i];
-                let x3 = [(padding-10)*quality, ctx.canvas.width-(padding-10)*quality][i];
+                let x1 = [mnx, mxx][i];
+                let x2 = [mnx - 5*quality, mxx + 5*quality][i];
+                let x3 = [mnx - 10*quality, mxx + 10*quality][i];
                 ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--v4");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "miter";
@@ -3860,7 +3916,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 ctx.textBaseline = "middle";
                 for (let j = range[0]; j <= range[1]; j++) {
                     let y = (j-range[0]) / (range[1]-range[0]);
-                    y = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y);
+                    y = util.lerp(mny, mxy, 1-y);
                     ctx.beginPath();
                     ctx.moveTo(x1, y);
                     ctx.lineTo(x2, y);
@@ -3880,8 +3936,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         log.forEach((p, i) => {
                             let pts = p.ts, pv = p.v;
                             let npts = (i+1 >= log.length) ? graphRange[1] : log[i+1].ts;
-                            let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
-                            let nx = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
+                            let x = util.lerp(mnx, mxx, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
+                            let nx = util.lerp(mnx, mxx, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color+(i%2==0?"2":"")) : v.color : "#fff";
                             ctx.fillRect(
                                 x, (padding+10+20*nDiscrete)*quality,
@@ -3900,7 +3956,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     for (let i = 0; i < log.length; i++) {
                         let p = log[i];
                         let ts = p.ts, v = p.v;
-                        let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (ts-graphRange[0])/(graphRange[1]-graphRange[0]));
+                        let x = util.lerp(mnx, mxx, (ts-graphRange[0])/(graphRange[1]-graphRange[0]));
                         if (ranges.length > 0) {
                             let px = ranges.at(-1).x;
                             let r = ranges.at(-1).r;
@@ -3922,8 +3978,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         let y1 = r[0], y2 = r[1];
                         y1 = (y1-(step*range[0])) / (step*(range[1]-range[0]));
                         y2 = (y2-(step*range[0])) / (step*(range[1]-range[0]));
-                        y1 = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y1);
-                        y2 = util.lerp(padding*quality, ctx.canvas.height-padding*quality, 1-y2);
+                        y1 = util.lerp(mny, mxy, 1-y1);
+                        y2 = util.lerp(mny, mxy, 1-y2);
                         if (i > 0) {
                             ctx.lineTo(x, py);
                             ctx.lineTo(x, (y1+y2)/2);
@@ -3957,7 +4013,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
             ctx.beginPath();
-            ctx.strokeRect(...new V(padding*quality).xy, ...new V(ctx.canvas.width, ctx.canvas.height).sub(2*padding*quality).xy);
+            ctx.strokeRect(mnx, mny, mxx-mnx, mxy-mny);
             ctx.font = (12*quality)+"px monospace";
             ctx.textBaseline = "top";
             ctx.textAlign = "left";
@@ -3980,17 +4036,17 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ].forEach(data => {
                 ctx.fillStyle = ctx.strokeStyle = core.PROPERTYCACHE.get("--"+data.color);
                 let progress = (data.value-graphRange[0]) / (graphRange[1]-graphRange[0]);
-                let x = util.lerp(padding*quality, ctx.canvas.width-padding*quality, progress);
+                let x = util.lerp(mnx, mxx, progress);
                 if ((!("show" in data) || data.show) && progress >= 0 && progress <= 1) {
                     ctx.setLineDash([5*quality, 5*quality]);
                     ctx.beginPath();
-                    ctx.moveTo(x, padding*quality);
-                    ctx.lineTo(x, ctx.canvas.height-padding*quality);
+                    ctx.moveTo(x, mny);
+                    ctx.lineTo(x, mxy);
                     ctx.stroke();
                     ctx.setLineDash([]);
                     let text = util.formatTime(data.value);
                     let newRange = [x, x+ctx.measureText(text).width+10*quality];
-                    if (newRange[1] > ctx.canvas.width-padding*quality) newRange = [newRange[0]-(newRange[1]-newRange[0]), newRange[1]-(newRange[1]-newRange[0])];
+                    if (newRange[1] > mxx) newRange = [newRange[0]-(newRange[1]-newRange[0]), newRange[1]-(newRange[1]-newRange[0])];
                     let rangeY = 0;
                     while (true) {
                         let any = false;
@@ -4005,7 +4061,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         rangeY++;
                     }
                     ranges[rangeY].push(newRange);
-                    ctx.fillText(text, newRange[0]+5*quality, padding*quality + 10*quality + 20*quality*nDiscrete + (12+5)*rangeY*quality);
+                    ctx.fillText(text, newRange[0]+5*quality, mny + 10*quality + 20*quality*nDiscrete + (12+5)*rangeY*quality);
                 }
             });
             if (mouseDown && !mouseAlt)
@@ -4019,9 +4075,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let t1 = util.lerp(...graphRange, mouseX);
                 let t0Value = Math.min(graphRange[1], Math.max(graphRange[0], t0));
                 let t1Value = Math.min(graphRange[1], Math.max(graphRange[0], t1));
-                let x0 = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (t0Value-graphRange[0])/(graphRange[1]-graphRange[0]));
-                let x1 = util.lerp(padding*quality, ctx.canvas.width-padding*quality, (t1Value-graphRange[0])/(graphRange[1]-graphRange[0]));
-                let y = ctx.canvas.height-padding*quality-10*quality;
+                let x0 = util.lerp(mnx, mxx, (t0Value-graphRange[0])/(graphRange[1]-graphRange[0]));
+                let x1 = util.lerp(mnx, mxx, (t1Value-graphRange[0])/(graphRange[1]-graphRange[0]));
+                let y = mxy-10*quality;
                 ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--a");
                 ctx.beginPath();
                 ctx.moveTo(x0, y);
@@ -4040,7 +4096,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 ctx.fillText("∆ "+util.formatTime(t1-t0), (x0+x1)/2, y-5*quality);
             }
             let scroll = new V(scrollX, scrollY);
-            let scrollAngle = (((scroll.towards(0, 0)+180)%360)+360)%360;
+            let scrollAngle = util.clampAngle(scroll.towards(0, 0)+180);
             let scrollMag = scroll.dist();
             if (scrollMag > 3) {
                 if (scrollAxis == null)
@@ -4539,6 +4595,13 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         });
     }
 
+    compute() {
+        super.compute();
+        try {
+            this.poses.forEach(pose => pose.state.compute());
+        } catch (e) {}
+    }
+
     get poses() { return [...this.#poses]; }
     set poses(v) {
         v = util.ensure(v, "arr");
@@ -4850,6 +4913,9 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
 };
 Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Target {
     #tab;
+    #parent;
+    #page;
+    #app;
     #pose;
 
     constructor() {
@@ -4857,6 +4923,8 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
 
         this.#tab = null;
         this.#pose = null;
+
+        this.compute();
     }
 
     get tab() { return this.#tab; }
@@ -4865,15 +4933,21 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
         if (this.tab == v) return;
         this.destroy();
         this.#tab = v;
+        this.compute();
         this.create();
     }
     hasTab() { return !!this.tab; }
-    get parent() { return this.hasTab() ? this.tab.parent : null; }
+    get parent() { return this.#parent; }
     hasParent() { return !!this.parent; }
-    get page() { return this.hasParent() ? this.parent.page : null; }
+    get page() { return this.#page; }
     hasPage() { return !!this.page; }
-    get app() { return this.hasPage() ? this.page.app : null; }
+    get app() { return this.#app; }
     hasApp() { return !!this.app; }
+    compute() {
+        this.#parent = this.hasTab() ? this.tab.parent : null;
+        this.#page = this.hasParent() ? this.parent.page : null;
+        this.#app = this.hasPage() ? this.page.app : null;
+    }
     get pose() { return this.#pose; }
     set pose(v) {
         v = (v instanceof Panel.OdometryTab.Pose) ? v : null;
@@ -5387,7 +5461,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             return v;
         };
         const convertAngle = v => {
-            v = ((util.ensure(v, "num")%360)+360)%360;
+            v = util.clampAngle(v);
             if (!this.hasTab()) return v;
             if (this.tab.isRadians) v *= (180/Math.PI);
             if (!this.tab.origin.startsWith("blue")) v = 180-v;
@@ -5620,8 +5694,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         const light = new THREE.PointLight(0xffffff, 0.5);
         light.position.set(0, 0, 10);
         this.scene.add(light);
-
-        const loader = new GLTFLoader();
 
         this.#isProjection = null;
         this.#isOrbit = null;
@@ -5978,7 +6050,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 loadTimer = util.getTime();
                 const template = this.template;
                 loadTemplate = template;
-                loader.load(templateModels[template], gltf => {
+                LOADER.load(templateModels[template], gltf => {
                     gltf.scene.traverse(obj => {
                         if (!obj.isMesh) return;
                         if (obj.material instanceof THREE.MeshStandardMaterial) {
@@ -6488,8 +6560,6 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
         axes.zAxis = zAxis;
         this.#preloadedObjs["§axes"] = axes;
 
-        const loader = new GLTFLoader();
-
         let robots = {};
         let robotModels = {};
         let finished = false;
@@ -6506,14 +6576,14 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             if (!this.hasThree()) return;
-            let color = new util.Color(this.pose.color.startsWith("--") ? core.PROPERTYCACHE.get(this.pose.color) : this.pose.color);
+            let color = this.pose.color.startsWith("--") ? core.PROPERTYCACHE.getColor(this.pose.color) : new util.Color(this.pose.color);
             this.pose.enable();
             if (this.value.length % 7 == 0 || this.value.length % 3 == 0) {
                 if ((util.getTime()-loadTimer > 1000 || loadRobot != this.pose.type) && !this.pose.type.startsWith("§") && (this.pose.type in robotModels) && !(this.pose.type in preloadedRobots)) {
                     loadTimer = util.getTime();
                     const robot = this.pose.type;
                     loadRobot = robot;
-                    loader.load(robotModels[robot], gltf => {
+                    LOADER.load(robotModels[robot], gltf => {
                         gltf.scene.traverse(obj => {
                             if (!obj.isMesh) return;
                             if (obj.material instanceof THREE.MeshStandardMaterial) {
@@ -6623,14 +6693,14 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         obj.material.color.set(color.toHex(false));
                     });
                     css2dObjects.forEach(obj => {
+                        obj.element.style.visibility = hovered ? "" : "hidden";
+                        if (!hovered) return;
                         let r2 = obj.element.getBoundingClientRect();
                         let x = 1, y = 1;
                         if (r2.right > r.right) x *= -1;
                         if (r2.bottom > r.bottom) y *= -1;
-                        obj.element.style.visibility = hovered ? "" : "hidden";
-                        if (!hovered) return;
                         obj.element.elem.style.transform = "translate("+(50*x)+"%, "+(50*y)+"%)";
-                        obj.element.eTitle.style.color = color.toHex();
+                        obj.element.eTitle.style.color = color.toRGBA();
                         obj.element.eTitle.textContent = this.pose.path;
                         let posL = (type == 7) ? 3 : 2;
                         let dirL = (type == 7) ? 4 : 1;
@@ -7645,10 +7715,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.format();
 
-        this.addHandler("change-widget", () => {
-            if (!this.hasWidget()) return;
-            this.widget.collapse();
-        });
+        let reqCollapse = false;
+        this.addHandler("change-widget", () => (reqCollapse = true));
         
         const update = () => {
             this.widget = this.hasProject() ? this.project.buildWidget() : null;
@@ -7704,8 +7772,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 else elem.classList.remove("special");
             });
 
-            if (this.hasWidget()) this.widget.update(delta);
-            else this.widget = new Panel();
+            if (this.hasWidget()) {
+                this.widget.update(delta);
+                if (reqCollapse) {
+                    reqCollapse = false;
+                    this.widget.collapse();
+                }
+            } else this.widget = new Panel();
             if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;
             
