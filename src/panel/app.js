@@ -498,9 +498,7 @@ class Widget extends util.Target {
     #hasParent;
     #hasPageParent;
     #page;
-    #hasPage;
     #app;
-    #hasApp;
 
     constructor() {
         super();
@@ -525,16 +523,14 @@ class Widget extends util.Target {
     hasParent() { return this.#hasParent; }
     hasPageParent() { return this.#hasPageParent; }
     get page() { return this.#page; }
-    hasPage() { return this.#hasPage; }
+    hasPage() { return !!this.page; }
     get app() { return this.#app; }
-    hasApp() { return this.#hasApp; }
+    hasApp() { return !!this.app; }
     compute() {
         this.#hasParent = this.parent instanceof Container;
         this.#hasPageParent = this.parent instanceof App.ProjectPage;
         this.#page = this.hasPageParent() ? this.parent : this.hasParent() ? this.parent.page : null;
-        this.#hasPage = this.page instanceof App.ProjectPage;
         this.#app = this.hasPage() ? this.page.app : null;
-        this.#hasApp = this.app instanceof App;
     }
 
     contains(v) { return v == this; }
