@@ -382,7 +382,7 @@ export default class App extends core.App {
                     camera.updateProjectionMatrix();
 
                     renderer.setSize(window.innerWidth*quality, window.innerHeight*quality);
-                    renderer.domElement.style.transform = "scale("+(100*(1/quality))+"%)";
+                    renderer.domElement.style.transform = "scale("+(1/quality)+")";
                     renderer.render(scene, camera);
                 });
             }
@@ -401,7 +401,7 @@ export default class App extends core.App {
                     if (this.hasEMain()) {
                         let p = (scroll<0) ? 0 : (scroll>1) ? 1 : scroll;
                         this.eMain.style.zIndex = (p > 0.5) ? -1 : "";
-                        this.eMain.style.transform = "translate(-50%, -50%) scale("+util.lerp(100, 200, p)+"%)";
+                        this.eMain.style.transform = "translate(-50%, -50%) scale("+util.lerp(1, 2, p)+")";
                         this.eMain.style.opacity = util.lerp(100, 0, p)+"%";
                         this.eMain.style.pointerEvents = (p > 0) ? "none" : "";
                         this.eMain.style.visibility = (p >= 1) ? "hidden" : "";

@@ -1212,7 +1212,6 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     }
 
     refresh() {
-        console.log(this.hasApp(), "refresh");
         this.clearTags();
         this.placeholder = "";
         this.clearItems();
@@ -1808,7 +1807,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         let state = {};
 
         this.addHandler("update", delta => {
-            if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             const node = source ? source.tree.lookup(this.path) : null;
             if (prevNode != node) {
@@ -1845,6 +1843,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 if ("color" in display) this.eTabIcon.style.color = display.color;
                 else this.eTabIcon.style.color = "";
             }
+            if (this.isClosed) return;
             if (!node.hasField() || node.field.isArray || node.field.isStruct) {
                 core.Explorer.Node.doubleTraverse(
                     node.nodeObjects,
@@ -3457,7 +3456,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     set quality(v) {
         v = Math.max(0, util.ensure(v, "num"));
         if (util.is(this.quality, "num")) return;
-        this.#quality = v;
+        this.change("quality", this.quality, this.#quality=v);
     }
 
     get eContent() { return this.#eContent; }
@@ -5524,7 +5523,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eInfo.classList.add("info");
         eInfo.innerHTML = "   [W]\n[A][S][D]\n[ Space ] Up\n[ Shift ] Down\n[  Esc  ] Leave Pointer Lock";
 
-        this.quality = 3;
+        this.quality = 2;
 
         this.#scene = new THREE.Scene();
         this.#wpilibGroup = new THREE.Group();
@@ -6040,20 +6039,16 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             } else if (this.camera instanceof THREE.OrthographicCamera) {
                 let size = 15;
                 let aspect = r.width / r.height;
-                let left = -size/2 * aspect;
-                let right = +size/2 * aspect;
-                let top = +size/2;
-                let bottom = -size/2;
-                if (this.camera.left != left) this.camera.left = left;
-                if (this.camera.right != right) this.camera.right = right;
-                if (this.camera.top != top) this.camera.top = top;
-                if (this.camera.bottom != bottom) this.camera.bottom = bottom;
+                this.camera.left = -size/2 * aspect;
+                this.camera.right = +size/2 * aspect;
+                this.camera.top = +size/2;
+                this.camera.bottom = -size/2;
             }
 
             this.renderer.setSize(r.width*this.quality, r.height*this.quality);
-            this.renderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
+            this.renderer.domElement.style.transform = "scale("+(1/this.quality)+")";
             this.cssRenderer.setSize(r.width*this.quality, r.height*this.quality);
-            this.cssRenderer.domElement.style.transform = "scale("+(100*(1/this.quality))+"%) translate(-100%, -100%)";
+            this.cssRenderer.domElement.style.transform = "scale("+(1/this.quality)+")";
 
             this.renderer.render(this.scene, this.camera);
             this.cssRenderer.render(this.scene, this.camera);

@@ -37,16 +37,30 @@
     align-content: center;
 }
 #PROJECTPAGE > .main > .divider {
+    z-index: 100;
+
     position: relative;
+
+    width: 11px;
+    height: 100%;
+    margin: 0px -5px;
+
+    cursor: ew-resize;
+}
+#PROJECTPAGE > .main > .divider::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 
     width: 1px;
     height: 100%;
 
     background-color: var(--v2);
-
-    cursor: ew-resize;
 }
-#PROJECTPAGE > .main > .divider::before {
+#PROJECTPAGE > .main > .divider::after {
     content: "";
 
     position: absolute;
@@ -61,12 +75,12 @@
 
     transition: width var(--t), height var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .main > .divider:hover::before {
+#PROJECTPAGE > .main > .divider:hover::after {
     width: 5px;
 
     background-color: var(--v8);
 }
-#PROJECTPAGE > .main > .divider.this::before {
+#PROJECTPAGE > .main > .divider.this::after {
     height: 100%;
 
     background-color: var(--a);

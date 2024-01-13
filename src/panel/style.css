@@ -83,15 +83,27 @@
     
     position: relative;
 
-    width: 1px;
-    max-width: 1px;
-    overflow: visible;
+    width: 11px;
+    max-width: 11px;
+    height: 100%;
+    margin: 0px -5px;
     
-    background-color: var(--v2);
-
     cursor: ew-resize;
 }
 #PROJECTPAGE > .main > .divider::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 1px;
+    height: 100%;
+
+    background-color: var(--v2);
+}
+#PROJECTPAGE > .main > .divider::after {
     content: "";
 
     position: absolute;
@@ -106,12 +118,12 @@
 
     transition: width var(--t), height var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .main > .divider:hover::before {
+#PROJECTPAGE > .main > .divider:hover::after {
     width: 5px;
 
     background-color: var(--v8);
 }
-#PROJECTPAGE > .main > .divider.this::before {
+#PROJECTPAGE > .main > .divider.this::after {
     height: 100%;
 
     background-color: var(--a);
@@ -314,24 +326,42 @@
     z-index: 1;
     
     position: relative;
-    
+}
+#PROJECTPAGE > .main > .content .item.container > .divider::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
     background-color: var(--v2);
 }
 #PROJECTPAGE > .main > .content .item.container.x > .divider {
-    width: 1px;
-    max-width: 1px;
-    overflow: visible;
+    width: 11px;
+    max-width: 11px;
+    height: 100%;
+    margin: 0px -5px;
 
     cursor: ew-resize;
 }
+#PROJECTPAGE > .main > .content .item.container.x > .divider::before {
+    width: 1px;
+    height: 100%;
+}
 #PROJECTPAGE > .main > .content .item.container.y > .divider {
-    height: 1px;
-    max-height: 1px;
-    overflow: visible;
+    width: 100%;
+    height: 11px;
+    max-height: 11px;
+    margin: -5px 0px;
 
     cursor: ns-resize;
 }
-#PROJECTPAGE > .main > .content .item.container > .divider::before {
+#PROJECTPAGE > .main > .content .item.container.y > .divider::before {
+    width: 100%;
+    height: 1px;
+}
+#PROJECTPAGE > .main > .content .item.container > .divider::after {
     content: "";
 
     position: absolute;
@@ -343,30 +373,30 @@
 
     transition: width var(--t), height var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .main > .content .item.container > .divider:hover::before {
+#PROJECTPAGE > .main > .content .item.container > .divider:hover::after {
     background-color: var(--v8);
 }
-#PROJECTPAGE > .main > .content .item.container > .divider.this::before {
+#PROJECTPAGE > .main > .content .item.container > .divider.this::after {
     background-color: var(--a);
 }
-#PROJECTPAGE > .main > .content .item.container.x > .divider::before {
+#PROJECTPAGE > .main > .content .item.container.x > .divider::after {
     width: 2px;
     height: 20px;
 }
-#PROJECTPAGE > .main > .content .item.container.x > .divider:hover::before {
+#PROJECTPAGE > .main > .content .item.container.x > .divider:hover::after {
     width: 5px;
 }
-#PROJECTPAGE > .main > .content .item.container.x > .divider.this::before {
+#PROJECTPAGE > .main > .content .item.container.x > .divider.this::after {
     height: 100%;
 }
-#PROJECTPAGE > .main > .content .item.container.y > .divider::before {
+#PROJECTPAGE > .main > .content .item.container.y > .divider::after {
     width: 20px;
     height: 2px;
 }
-#PROJECTPAGE > .main > .content .item.container.y > .divider:hover::before {
+#PROJECTPAGE > .main > .content .item.container.y > .divider:hover::after {
     height: 5px;
 }
-#PROJECTPAGE > .main > .content .item.container.y > .divider.this::before {
+#PROJECTPAGE > .main > .content .item.container.y > .divider.this::after {
     width: 100%;
 }
 #PROJECTPAGE > .main > .content .item.panel {
@@ -1592,11 +1622,15 @@
     position: absolute;
     top: 0%;
     left: 0%;
+
+    transform-origin: 0% 0%;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css {
     position: absolute;
     top: 0%;
     left: 0%;
+
+    transform-origin: 0% 0%;
 
     pointer-events: none;
 
