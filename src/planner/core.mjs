@@ -645,7 +645,7 @@ Project.Path = class ProjectPath extends util.Target {
     set name(v) {
         v = (v == null) ? "" : String(v);
         if (this.name == v) return;
-        this.#name = v;
+        this.change("name", this.name, this.#name=v);
     }
 
     get nodes() { return [...this.#nodes]; }

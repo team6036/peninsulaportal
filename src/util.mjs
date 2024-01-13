@@ -1128,9 +1128,18 @@ export class Unit extends Target {
 
 export class Color extends Target {
     #r; #g; #b; #a;
+    #hsv;
+
+    #hex;
+    #hexNoAlpha;
+    #rgba;
+    #rgb;
 
     constructor(...a) {
         super();
+
+        this.#r = this.#g = this.#b = this.#a = null;
+        this.#hsv = null;
 
         if (a.length <= 0 || a.length == 2 || a.length > 4) a = [null];
         if (a.length == 1) {
@@ -1193,28 +1202,34 @@ export class Color extends Target {
         [this.r, this.g, this.b, this.a] = a;
     }
 
+    #uncache() { this.#hsv = this.#hex = this.#hexNoAlpha = this.#rgba = this.#rgb = null; }
+
     get r() { return this.#r; }
     set r(v) {
         v = Math.min(255, Math.max(0, ensure(v, "num")));
         if (this.r == v) return;
+        this.#uncache();
         this.change("r", this.r, this.#r=v);
     }
     get g() { return this.#g; }
     set g(v) {
         v = Math.min(255, Math.max(0, ensure(v, "num")));
         if (this.g == v) return;
+        this.#uncache();
         this.change("g", this.g, this.#g=v);
     }
     get b() { return this.#b; }
     set b(v) {
         v = Math.min(255, Math.max(0, ensure(v, "num")));
         if (this.b == v) return;
+        this.#uncache();
         this.change("b", this.b, this.#b=v);
     }
     get a() { return this.#a; }
     set a(v) {
         v = Math.min(1, Math.max(0, ensure(v, "num")));
         if (this.a == v) return;
+        this.#uncache();
         this.change("a", this.a, this.#a=v);
     }
     get rgb() { return [this.r, this.g, this.b]; }
@@ -1223,21 +1238,24 @@ export class Color extends Target {
     set rgba(v) { [this.r, this.g, this.b, this.a] = new Color(v).rgba; }
 
     get hsva() {
-        let r = this.r/255, g = this.g/255, b = this.b/255;
-        let cMax = Math.max(r, g, b), cMin = Math.min(r, g, b);
-        let delta = cMax - cMin;
-        let h = 0;
-        if (delta > 0) {
-            let rgb = [r, g, b];
-            for (let i = 0; i < 3; i++) {
-                if (cMax != rgb[i]) continue;
-                h = 60 * (((((rgb[(i+1)%3]-rgb[(i+2)%3])/delta + i*2)%6)+6)%6);
-                break;
+        if (this.#hsv == null) {
+            let r = this.r/255, g = this.g/255, b = this.b/255;
+            let cMax = Math.max(r, g, b), cMin = Math.min(r, g, b);
+            let delta = cMax - cMin;
+            let h = 0;
+            if (delta > 0) {
+                let rgb = [r, g, b];
+                for (let i = 0; i < 3; i++) {
+                    if (cMax != rgb[i]) continue;
+                    h = 60 * (((((rgb[(i+1)%3]-rgb[(i+2)%3])/delta + i*2)%6)+6)%6);
+                    break;
+                }
             }
+            let s = (cMax > 0) ? (delta/cMax) : 0;
+            let v = cMax;
+            this.#hsv = [h, s, v];
         }
-        let s = (cMax > 0) ? (delta/cMax) : 0;
-        let v = cMax;
-        return [h, s, v, this.a];
+        return [...this.#hsv, this.a];
     }
     set hsva(hsva) {
         hsva = ensure(hsva, "arr");
@@ -1290,19 +1308,25 @@ export class Color extends Target {
     }
 
     toHex(a=true) {
-        const hex = "0123456789abcdef";
-        let vals = (a ? this.rgba : this.rgb).map((v, i) => {
-            if (i == 3) v *= 255;
-            v = Math.round(v);
-            return hex[Math.floor(v/16)]+hex[v%16];
-        });
-        return "#"+vals.join("");
+        let v = a ? this.#hex : this.#hexNoAlpha;
+        if (v == null) {
+            const hex = "0123456789abcdef";
+            v = "#"+(a ? this.rgba : this.rgb).map((v, i) => {
+                if (i == 3) v *= 255;
+                v = Math.round(v);
+                return hex[Math.floor(v/16)]+hex[v%16];
+            }).join("");
+            a ? (this.#hex=v) : (this.#hexNoAlpha=v);
+        }
+        return v;
     }
     toRGBA() {
-        return "rgba("+this.rgba.join(",")+")";
+        if (this.#rgba == null) this.#rgba = "rgba("+this.rgba.join(",")+")";
+        return this.#rgba;
     }
     toRGB() {
-        return "rgb("+this.rgb.join(",")+")";
+        if (this.#rgb == null) this.#rgb = "rgb("+this.rgb.join(",")+")";
+        return this.#rgb;
     }
 
     toJSON() {
