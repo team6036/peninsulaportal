@@ -2428,13 +2428,16 @@ export class Reviver extends Target {
     get f() {
         return (k, v) =>  {
             if (is(v, "obj")) {
-                if (!("%CUSTOM" in v)) return v;
-                if (!("%OBJ" in v)) return v;
-                if (!("%ARGS" in v)) return v;
-                if (!v["%CUSTOM"]) return v;
-                if (!this.hasRule(v["%OBJ"])) return v;
-                let rule = this.getRule(v["%OBJ"]);
-                return new rule(...ensure(v["%ARGS"], "arr"));
+                if (!("%cstm" in v) && !("%CUSTOM" in v)) return v;
+                let custom = ("%cstm" in v) ? v["%cstm"] : v["%CUSTOM"];
+                if (!("%o" in v) && !("%OBJ" in v)) return v;
+                let o = ("%o" in v) ? v["%o"] : v["%OBJ"];
+                if (!("%a" in v) && !("%ARGS" in v)) return v;
+                let a = ("%a" in v) ? v["%a"] : v["%ARGS"];
+                if (!custom) return v;
+                if (!this.hasRule(o)) return v;
+                let rule = this.getRule(o);
+                return new rule(...ensure(a, "arr"));
             }
             return v;
         };
@@ -2443,9 +2446,9 @@ export class Reviver extends Target {
     static revivable(constructor, ...a) {
         if (!is(constructor, "func")) return null;
         return {
-            "%OBJ": constructor.name,
-            "%CUSTOM": true,
-            "%ARGS": a,
+            "%cstm": true,
+            "%o": constructor.name,
+            "%a": a,
         };
     }
 }
