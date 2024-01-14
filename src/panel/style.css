@@ -157,6 +157,7 @@
 
     text-align: left;
     font-size: 12px;
+    word-break: break-word;
 }
 #PROJECTPAGE > .main > .side > .meta > button {
     --bg: transparent;

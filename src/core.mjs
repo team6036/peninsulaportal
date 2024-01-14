@@ -1279,7 +1279,8 @@ App.PopupBase = class AppPopupBase extends util.Target {
         this.inner.classList.add("inner");
 
         this.addHandler("add", async () => {
-            let id = await window.modal.spawn(this.constructor.NAME, this.generateParams());
+            let agent = window.agent();
+            let id = (!util.is(agent, "obj") || agent.os.platform != "darwin") ? null : await window.modal.spawn(this.constructor.NAME, this.generateParams());
             if (id == null) {
                 document.body.appendChild(this.elem);
                 setTimeout(() => {
@@ -3788,6 +3789,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             this.progressHover = p;
         };
         const onKeyDown = e => {
+            if (e.target != document.body) return;
             if (e.code == "ArrowLeft") {
                 this.post("nav-back");
                 this.eNav.focus();

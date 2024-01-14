@@ -7556,7 +7556,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         let i1 = source.lastIndexOf("/");
                         let i2 = source.lastIndexOf("\\");
                         let i = Math.max(i1, i2);
-                        this.source.file = source.substring(i+1);
+                        this.source.file = source;
+                        this.source.shortFile = source.substring(i+1);
                         this.source.data = await window.api.send("wpilog-read", source);
                         const progress = v => (this.app.progress = v);
                         this.source.addHandler("progress", progress);
@@ -7650,7 +7651,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eSideMetaBtn.innerHTML = "<ion-icon name='information-circle'></ion-icon>";
         this.eSideMetaBtn.addEventListener("click", e => {
             if (this.eSideMetaBtn.classList.contains("active")) this.eSideMetaBtn.classList.remove("active");
-            else this.eSideMetaBtn.classList.add("active");
+            else {
+                this.eSideMetaBtn.classList.add("active");
+                const click = e => {
+                    e.stopPropagation();
+                    document.body.removeEventListener("click", click, true);
+                    this.eSideMetaBtn.click();
+                };
+                document.body.addEventListener("click", click, true);
+            }
         });
         this.#eSideMetaTooltip = document.createElement("div");
         this.eSideMetaBtn.appendChild(this.eSideMetaTooltip);
@@ -7897,7 +7906,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (i%2 == 1) continue;
                 let line = info[i/2];
                 if (line.includes(":")) {
-                    line = line.split(":");
+                    let i = line.indexOf(":")+1;
+                    line = [line.substring(0, i), line.substring(i)];
                     while (this.eSideMetaTooltip.children[i].children.length < line.length)
                         this.eSideMetaTooltip.children[i].appendChild(document.createElement("span"));
                     while (this.eSideMetaTooltip.children[i].children.length > line.length)
@@ -8166,8 +8176,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         }
         if (this.source instanceof WPILOGSource) {
             if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
-            if (this.source.importing) return "Importing from "+this.source.file;
-            return this.source.file;
+            if (this.source.importing) return "Importing from "+this.source.shortFile;
+            return this.source.shortFile;
         }
         return "Unknown source: "+this.source.constructor.name;
     }
@@ -8193,8 +8203,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         const tMin = this.source.tsMin, tMax = this.source.tsMax;
         r.push(
             "",
-            "  #Fields: "+n,
-            "  Duration: "+((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`),
+            "#Fields: "+n,
+            "Duration: "+((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`),
         );
         return r;
     }
