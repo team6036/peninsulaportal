@@ -2925,6 +2925,7 @@ export class AppFeature extends App {
                 if (!((source instanceof Project) && (source instanceof this.constructor.PROJECTCLASS))) return;
                 let project = new this.constructor.PROJECTCLASS(source);
                 if (!(project instanceof Project)) return;
+                project.id = null;
                 project.meta.name += " copy";
                 await this.setPage("PROJECT", { project: project });
                 await this.postResult("cmd-save");
