@@ -299,9 +299,13 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .main > .content > .item {
+#PROJECTPAGE > .main > .content .item.widget {
     --w: 0px;
     --h: 0px;
+}
+#PROJECTPAGE > .main > .content:has(.item.widget.maximized) .item.widget:not(.maximized):not(:has(.item.widget.maximized)),
+#PROJECTPAGE > .main > .content:has(.item.widget.maximized) .divider {
+    display: none;
 }
 #PROJECTPAGE > .main > .content .item.container {
     width: var(--w);
@@ -315,6 +319,12 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+}
+#PROJECTPAGE > .main > .content:has(.item.widget.maximized) .item.container {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
 }
 #PROJECTPAGE > .main > .content .item.container.x {
     flex-direction: row;
@@ -416,6 +426,12 @@
     justify-content: flex-start;
     align-items: center;
     align-content: center;
+}
+#PROJECTPAGE > .main > .content:has(.item.widget.maximized) .item.panel {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
 }
 #PROJECTPAGE > .main > .content .item.panel > button.options {
     --bg: var(--v2);

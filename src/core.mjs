@@ -2129,6 +2129,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
             if (this.role != v) return;
             this.eLabel.textContent = label;
         })();
+        this.#check();
     }
     hasRole() { return this.role != null; }
     get type() { return this.#type; }
@@ -2153,6 +2154,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
             if (this.role != v) return;
             this.eLabel.textContent = label;
         })();
+        this.#check();
     }
     hasLabel() { return this.label != null; }
     get accelerator() { return this.#accelerator; }
@@ -2195,6 +2197,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         });
         this.eAccelerator.textContent = parts.join("");
         this.eAccelerator.style.display = (this.eAccelerator.textContent.length > 0) ? "" : "none";
+        this.#check();
     }
     hasAccelerator() { return this.accelerator != null; }
     get enabled() { return this.#enabled; }
@@ -2204,6 +2207,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.change("enabled", this.enabled, this.#enabled=v);
         if (this.disabled) this.elem.classList.add("disabled");
         else this.elem.classList.remove("disabled");
+        this.#check();
     }
     get disabled() { return !this.enabled; }
     set disabled(v) { this.enabled = !v; }
@@ -2221,6 +2225,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         v = !!v;
         if (this.checked == v) return;
         this.change("checked", this.checked, this.#checked=v);
+        this.#check();
     }
     get unchecked() { return !this.unchecked; }
     set unchecked(v) { this.unchecked = !v; }
@@ -2229,11 +2234,14 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         v = !!v;
         if (this.exists == v) return;
         this.change("exists", this.exists, this.#exists=v);
+        this.#check();
     }
 
     #check() {
         if (this.visible && !this.hasRole()) this.elem.style.display = "";
         else this.elem.style.display = "none";
+        if (this.type == "checkbox") this.icon = this.checked ? "checkmark" : "";
+        else if (this.type == "radio") this.icon = this.checked ? "ellipse" : "ellipse-outline";
         this.post("format");
     }
     
