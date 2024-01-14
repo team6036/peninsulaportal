@@ -505,6 +505,7 @@ class Widget extends util.Target {
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
+        this.elem.classList.add("widget");
 
         this.#parent = 0;
 
@@ -853,13 +854,18 @@ class Panel extends Widget {
             e.stopPropagation();
             let itm;
             let menu = new core.App.Menu();
-            itm = menu.addItem(new core.App.Menu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-expand" : "chevron-collapse"));
+            itm = menu.addItem(new core.App.Menu.Item(this.isTitleCollapsed ? "Expand Title" : "Collapse Title", this.isTitleCollapsed ? "chevron-down" : "chevron-up"));
             itm.accelerator = "Ctrl+Shift+F";
             itm.addHandler("trigger", e => {
                 this.isTitleCollapsed = !this.isTitleCollapsed;
             });
+            itm = menu.addItem(new core.App.Menu.Item(this.isMaximized ? "Minimize" : "Maximize", this.isMaximized ? "contract" : "expand"));
+            itm.accelerator = "Ctrl+Option+F";
+            itm.addHandler("trigger", e => {
+                this.isMaximized = !this.isMaximized;
+            });
             menu.addItem(new core.App.Menu.Divider());
-            itm = menu.addItem(new core.App.Menu.Item("Close Panel", "close"));
+            itm = menu.addItem(new core.App.Menu.Item("Close"));
             itm.addHandler("trigger", e => {
                 if (this.hasPageParent()) return this.parent.widget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
@@ -1010,6 +1016,15 @@ class Panel extends Widget {
     set isTitleExpanded(v) { this.isTitleCollapsed = !v; }
     collapseTitle() { return this.isTitleCollapsed = true; }
     expandTitle() { return this.isTitleExpanded = true; }
+    get isMaximized() { return this.elem.classList.contains("maximized"); }
+    set isMaximized(v) {
+        v = !!v;
+        if (this.isMaximized == v) return;
+        if (v) this.elem.classList.add("maximized");
+        else this.elem.classList.remove("maximized");
+    }
+    get isMinimized() { return !this.isMaximized; }
+    set isMinimized(v) { this.isMaximized = !v; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -7039,7 +7054,8 @@ export default class App extends core.AppFeature {
                     view: () => {
                         let itms = [
                             { id: "openclose", label: "Toggle Options", accelerator: "Ctrl+F" },
-                            { id: "expandcollapse", label: "Toggle Panel Titlebar", accelerator: "Ctrl+Shift+F" },
+                            { id: "expandcollapse", label: "Toggle Titlebar", accelerator: "Ctrl+Shift+F" },
+                            { id: "minmax", label: "Toggle Maximized", accelerator: "Ctrl+Option+F" },
                             { id: "resetdivider", label: "Reset Divider" },
                             "separator",
                         ];
@@ -7433,6 +7449,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!this.hasActivePanel()) return;
             const active = this.activeWidget;
             active.isTitleCollapsed = !active.isTitleCollapsed;
+        });
+        this.app.addHandler("cmd-minmax", () => {
+            if (!this.hasActivePanel()) return;
+            const active = this.activeWidget;
+            active.isMaximized = !active.isMaximized;
         });
         this.app.addHandler("cmd-resetdivider", () => {
             if (!this.hasProject()) return;
