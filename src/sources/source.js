@@ -401,8 +401,8 @@ Source.Field = class SourceField extends util.Target {
     pop(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
-        if (i < 0 || i >= this.#valueLog.length) return;
-        this.#valueLog.splice(i, 1);
+        if (i >= 0 && i < this.#valueLog.length) return;
+            this.#valueLog.splice(i, 1);
         if (this.hasNode())
             this.node.nodeObjects.forEach(node => {
                 if (!node.hasField()) return;

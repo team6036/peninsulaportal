@@ -440,7 +440,7 @@ export default class App extends core.App {
                 });
             this.#eInfo = document.querySelector("#PAGE > .info");
             if (this.hasEInfo()) {
-                this.getUserAgent().forEach(line => {
+                this.getAgent().forEach(line => {
                     let elem = document.createElement("div");
                     this.eInfo.appendChild(elem);
                     elem.textContent = line;

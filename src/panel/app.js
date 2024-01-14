@@ -1302,7 +1302,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             {
                 id: "logger", name: "Logger",
                 tab: Panel.LoggerTab,
-                disabled: !this.hasApp() || this.app.USERAGENT.isPublic,
+                disabled: window.agent().distro,
             },
             {
                 id: "logworks", name: "LogWorks",
@@ -2754,7 +2754,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
-            if (!this.hasApp() || this.app.USERAGENT.isPublic) {
+            if (window.agent().distro) {
                 this.elem.style.opacity = "50%";
                 this.elem.style.pointerEvents = "none";
             } else {
@@ -7731,7 +7731,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             {
                 id: "logger", name: "Logger",
                 tab: Panel.LoggerTab,
-                disabled: this.app.USERAGENT.isPublic,
+                disabled: window.agent().distro,
             },
             {
                 id: "logworks", name: "LogWorks",

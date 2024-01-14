@@ -1,12 +1,18 @@
 const { ipcRenderer, contextBridge } = require("electron");
 
-contextBridge.exposeInMainWorld("ver", async () => {
-    return {
+let AGENT = null;
+contextBridge.exposeInMainWorld("agent", () => AGENT);
+contextBridge.exposeInMainWorld("buildAgent", async () => {
+    return AGENT = {
         os: await ipcRenderer.invoke("os"),
 
         node: process.versions.node,
         chrome: process.versions.chrome,
         electron: process.versions.electron,
+
+        app: await ipcRenderer.invoke("get", "version"),
+
+        distro: await ipcRenderer.invoke("get", "is-public"),
     };
 });
 
