@@ -1609,8 +1609,8 @@ App.Alert = class AppAlert extends App.CorePopup {
 
     get button() { return this.eButton.textContent; }
     set button(v) {
-        this.eButton.textContent = v;
-        this.change("button", null, this.button);
+        [v, this.eButton.textContent] = [this.button, v];
+        this.change("button", v, this.button);
     }
 };
 App.Error = class AppError extends App.Alert {
@@ -1662,16 +1662,18 @@ App.Confirm = class AppConfirm extends App.CorePopup {
 
     get confirm() { return this.eConfirm.textContent; }
     set confirm(v) {
-        this.eConfirm.textContent = v;
-        this.change("confirm", null, this.confirm);
+        [v, this.eConfirm.textContent] = [this.confirm, v];
+        this.change("confirm", v, this.confirm);
     }
     get cancel() { return this.eCancel.textContent; }
     set cancel(v) {
-        this.eCancel.textContent = v;
-        this.change("cancel", null, this.cancel);
+        [v, this.eCancel.textContent] = [this.cancel, v];
+        this.change("cancel", v, this.cancel);
     }
 };
 App.Prompt = class AppPrompt extends App.CorePopup {
+    #type;
+
     #eInput;
     #eConfirm;
     #eCancel;
@@ -1679,13 +1681,15 @@ App.Prompt = class AppPrompt extends App.CorePopup {
     static NAME = "PROMPT";
 
     static {
-        this.PARAMS = [...this.PARAMS, "confirm", "cancel", "value", "placeholder"];
+        this.PARAMS = [...this.PARAMS, "type", "confirm", "cancel", "value", "placeholder"];
     }
 
     constructor(title, content, value="", icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
         super(title, content, icon);
 
         this.elem.classList.add("prompt");
+
+        this.#type = "str";
 
         this.#eInput = document.createElement("input");
         this.inner.appendChild(this.eInput);
@@ -1698,9 +1702,17 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.inner.appendChild(this.eCancel);
         this.eCancel.classList.add("heavy");
 
+        this.eInput.addEventListener("change", e => {
+            this.cast();
+        });
+        this.eInput.addEventListener("keydown", e => {
+            if (e.code != "Enter" && e.code != "Return") return;
+            e.preventDefault();
+            this.eConfirm.click();
+        });
         this.eConfirm.addEventListener("click", e => {
             e.stopPropagation();
-            this.result(this.value);
+            this.result(this.cast());
         });
         this.eCancel.addEventListener("click", e => {
             e.stopPropagation();
@@ -1713,31 +1725,53 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.placeholder = placeholder;
     }
 
+    get type() { return this.#type; }
+    set type(v) {
+        v = String(v);
+        if (this.type == v) return;
+        this.change("type", this.type, this.#type=v);
+        this.eInput.type = ["any_num", "num", "float", "int"].includes(this.type) ? "number" : "text";
+        if (["int"].includes(this.type)) this.eInput.step = 1;
+        else this.eInput.removeAttribute("step");
+        this.cast();
+    }
+
     get eInput() { return this.#eInput; }
     get eCancel() { return this.#eCancel; }
     get eConfirm() { return this.#eConfirm; }
 
     get confirm() { return this.eConfirm.textContent; }
     set confirm(v) {
-        this.eConfirm.textContent = v;
-        this.change("confirm", null, this.confirm);
+        [v, this.eConfirm.textContent] = [this.confirm, v];
+        this.change("confirm", v, this.confirm);
     }
     get cancel() { return this.eCancel.textContent; }
     set cancel(v) {
-        this.eCancel.textContent = v;
-        this.change("cancel", null, this.cancel);
+        [v, this.eCancel.textContent] = [this.cancel, v];
+        this.change("cancel", v, this.cancel);
     }
 
     get value() { return this.eInput.value; }
     set value(v) {
-        this.eInput.value = v;
-        this.change("value", null, this.value);
+        [v, this.eInput.value] = [this.value, v];
+        this.change("value", v, this.value);
+        this.cast();
     }
 
     get placeholder() { return this.eInput.placeholder; }
     set placeholder(v) {
-        this.eInput.placeholder = v;
-        this.change("placeholder", null, this.placeholder);
+        [v, this.eInput.placeholder] = [this.placeholder, v];
+        this.change("placeholder", v, this.placeholder);
+    }
+
+    cast() {
+        let v = this.value;
+        if (["any_num", "num", "float"].includes(this.type)) v = util.ensure(parseFloat(v), this.type);
+        else if (["int"].includes(this.type)) v = util.ensure(parseInt(v), this.type);
+        else v = util.ensure(v, this.type);
+        let vs = String(v);
+        if (this.value != vs) this.value = vs;
+        return v;
     }
 };
 App.Progress = class AppProgress extends App.CorePopup {
@@ -4687,6 +4721,8 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
 
 export class Explorer extends util.Target {
     #nodes;
+    #nodeKeys;
+    #nodeObjects;
 
     #elem;
 
@@ -4694,13 +4730,15 @@ export class Explorer extends util.Target {
         super();
 
         this.#nodes = {};
+        this.#nodeKeys = [];
+        this.#nodeObjects = [];
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("explorer");
     }
 
-    get nodes() { return Object.keys(this.#nodes); }
-    get nodeObjects() { return Object.values(this.#nodes); }
+    get nodes() { return [...this.#nodeKeys]; }
+    get nodeObjects() { return [...this.#nodeObjects]; }
     get nNodes() {
         let n = 1;
         this.nodeObjects.forEach(node => (n += node.explorer.nNodes));
@@ -4724,6 +4762,8 @@ export class Explorer extends util.Target {
             if (!(node instanceof Explorer.Node)) return false;
             if (this.has(node)) return false;
             this.#nodes[node.name] = node;
+            this.#nodeKeys.push(node.name);
+            this.#nodeObjects.push(node);
             node.addLinkedHandler(this, "trigger", (e, path) => this.post("trigger", e, path));
             node.addLinkedHandler(this, "trigger2", (e, path) => this.post("trigger2", e, path));
             node.addLinkedHandler(this, "drag", (e, path) => this.post("drag", e, path));
@@ -4735,16 +4775,20 @@ export class Explorer extends util.Target {
         return r;
     }
     rem(...nodes) {
-        return util.Target.resultingForEach(nodes, node => {
+        let r = util.Target.resultingForEach(nodes, node => {
             if (!(node instanceof Explorer.Node)) return false;
             if (!this.has(node)) return false;
             node.onRem();
             delete this.#nodes[node.name];
+            this.#nodeKeys.splice(this.#nodeKeys.indexOf(node.name), 1);
+            this.#nodeObjects.splice(this.#nodeObjects.indexOf(node), 1);
             node.clearLinkedHandlers(this, "trigger");
             node.clearLinkedHandlers(this, "drag");
             this.elem.removeChild(node.elem);
             return node;
         });
+        this.format();
+        return r;
     }
     lookup(path) {
         path = util.generateArrayPath(path);
@@ -4762,10 +4806,11 @@ export class Explorer extends util.Target {
     get elem() { return this.#elem; }
 
     format() {
-        this.nodeObjects.sort((a, b) => util.compareStr(a.name, b.name)).forEach((node, i) => {
+        this.#nodeObjects.sort((a, b) => util.compareStr(a.name, b.name)).forEach((node, i) => {
             node.elem.style.order = i;
             node.format();
         });
+        this.#nodeKeys = this.#nodeObjects.map(node => node.name);
     }
 }
 Explorer.Node = class ExplorerNode extends util.Target {
@@ -4787,7 +4832,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
     #eValue;
     #eSide;
 
-    static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc) {
+    static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc=null) {
         let nodeMap = {}, enodeMap = {};
         util.ensure(nodeArr, "arr").forEach(node => {
             if (!node) return;

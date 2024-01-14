@@ -194,9 +194,10 @@ export default class Source extends util.Target {
     }
     createAllStructs() {
         this.fieldObjects.forEach(field => {
-            if (field.name.startsWith("struct:") && field.type == "structschema")
-                if (field.valueLog.length > 0)
-                    this.createStruct(field.name.substring(7), field.valueLog[0].v);
+            if (!field.name.startsWith("struct:")) return;
+            if (field.type != "structschema") return;
+            if (field.valueLog.length <= 0) return;
+            this.createStruct(field.name.substring(7), field.valueLog[0].v);
         });
     }
 
@@ -394,7 +395,20 @@ Source.Field = class SourceField extends util.Target {
                 if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, this.arrayType));
                 this.source.getField(path).update(v, ts);
             });
-        } else if (this.name.startsWith("struct:") && this.type == "structschema") this.source.createStruct(this.name.substring(7), v);
+        }
+        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.createStruct(this.name.substring(7), v);
+    }
+    pop(ts=null) {
+        ts = util.ensure(ts, "num", this.source.ts);
+        let i = this.getIndex(ts);
+        if (i < 0 || i >= this.#valueLog.length) return;
+        this.#valueLog.splice(i, 1);
+        if (this.hasNode())
+            this.node.nodeObjects.forEach(node => {
+                if (!node.hasField()) return;
+                node.field.pop(ts);
+            });
+        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.structHelper.remPattern(this.name.substring(7));
     }
 
     toSerialized() {

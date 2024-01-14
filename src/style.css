@@ -35,10 +35,9 @@
 body {
     margin: 0px;
     padding: 0px;
+    overflow: hidden;
 
     background-color: #000;
-
-    overflow: hidden;
 }
 
 ::selection {
@@ -1624,6 +1623,7 @@ div.contextmenu .item.divider > * {
     border-radius: 5px;
 
     font-size: 14px;
+    line-height: 0px;
 }
 .explorer > .node.hidden > button.display,
 .explorernode.hidden > button.display {

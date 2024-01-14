@@ -173,7 +173,9 @@ function getTabDisplay(name) {
 }
 
 core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
-    static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc) {
+    #canShowValue;
+
+    static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc=null) {
         return super.doubleTraverse(
             util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
                 node.info = node.hasField() ? node.field.type : null;
@@ -183,6 +185,7 @@ core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
             enodeArr,
             addFunc,
             remFunc,
+            dumpFunc,
         );
     }
 
@@ -191,7 +194,7 @@ core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
 
         this.addHandler("trigger", e => {
             if (!this.eDisplay.contains(e.target)) return;
-            if (this.isJustPrimitive || e.shiftKey) this.showValue = !this.showValue;
+            if (this.isJustPrimitive || e.shiftKey) this.showValue = this.canShowValue && !this.showValue;
             else this.isOpen = !this.isOpen;
         });
         this.addHandler("update-display", () => {
@@ -208,6 +211,16 @@ core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
             }
             this.eValue.textContent = getRepresentation(this.value, this.type == "structschema");
         });
+
+        this.canShowValue = true;
+    }
+
+    get canShowValue() { return this.#canShowValue; }
+    set canShowValue(v) {
+        v = !!v;
+        if (this.canShowValue == v) return;
+        this.#canShowValue = v;
+        this.showValue &&= this.canShowValue;
     }
 
     get info() { return this.type; }
@@ -2973,6 +2986,8 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         }
 
         [this.actionPage] = a;
+
+        this.addHandler("update", delta => this.actions.forEach(action => action.update(delta)));
     }
 
     compute() {
@@ -3128,6 +3143,62 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
             edit: () => {
                 this.displayName = this.title = "Edit Logs";
                 this.icon = "pencil";
+
+                const explorer = new core.Explorer();
+                this.eContent.appendChild(explorer.elem);
+                explorer.elem.addEventListener("scroll", () => (state.eEditor.scrollTop = explorer.elem.scrollTop));
+
+                state.eEditor = document.createElement("div");
+                this.eContent.appendChild(state.eEditor);
+                state.eEditor.classList.add("editor");
+                state.eEditor.addEventListener("scroll", () => (explorer.elem.scrollTop = state.eEditor.scrollTop));
+
+                let editors = [];
+
+                this.addHandler("update", delta => {
+                    core.Explorer.Node.doubleTraverse(
+                        this.page.hasSource() ? this.page.source.tree.nodeObjects : [],
+                        explorer.nodeObjects,
+                        (...enodes) => explorer.add(...enodes),
+                        (...enodes) => explorer.rem(...enodes),
+                        (node, enode) => {
+                            enode.canShowValue = false;
+                            enode.node = node;
+                        },
+                    );
+                    let nodes = [];
+                    const dfs = explorer => {
+                        explorer.nodeObjects.forEach(enode => {
+                            nodes.push(enode.node);
+                            if (enode.node.hasField() && enode.node.field.isStruct)
+                                enode.isClosed = true;
+                            if (enode.isClosed) return;
+                            dfs(enode.explorer);
+                        });
+                    };
+                    dfs(explorer);
+                    while (editors.length < nodes.length) {
+                        let editor = {};
+                        editors.push(editor);
+                        let elem = editor.elem = document.createElement("div");
+                        state.eEditor.appendChild(elem);
+                        elem.classList.add("item");
+                        editor.node = null;
+                    }
+                    while (editors.length > nodes.length) {
+                        let editor = editors.pop();
+                        state.eEditor.removeChild(editor.elem);
+                    }
+                    for (let i = 0; i < nodes.length; i++) {
+                        let editor = editors[i];
+                        let node = editor.node = nodes[i];
+                        if (!node.hasField() || node.field.isStruct || node.field.isArray || node.field.type == "structschema") {
+                            editor.elem.classList.remove("open");
+                            continue;
+                        }
+                        editor.elem.classList.add("open");
+                    }
+                });
             },
             merge: () => {
                 this.displayName = this.title = "Merge Logs";
@@ -3383,6 +3454,8 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
         };
         if (this.name in namefs) namefs[this.name]();
     }
+
+    update(delta) { this.post("update", delta); }
 
     get icon() { return this.eIcon.getAttribute("name"); }
     set icon(v) {
