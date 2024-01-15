@@ -777,6 +777,29 @@ class Container extends Widget {
                 document.body.addEventListener("mouseup", mouseup);
                 document.body.addEventListener("mousemove", mousemove);
             });
+            elem.addEventListener("contextmenu", e => {
+                let itm;
+                let menu = new core.App.Menu();
+                itm = menu.addItem(new core.App.Menu.Item("Center Divider"));
+                itm.addHandler("trigger", e => {
+                    let i = divider.i;
+                    let mnBound = 0, mxBound = 1;
+                    for (let j = 0; j < i; j++) mnBound += this.#weights[j];
+                    for (let j = this.#weights.length-1; j > i+1; j--) mxBound -= this.#weights[j];
+                    let p = (mxBound+mnBound) / 2;
+                    let weights = this.weights;
+                    this.#weights[i] = p-mnBound;
+                    this.#weights[i+1] = mxBound-p;
+                    this.change("weights", weights, this.weights);
+                    this.format();
+                });
+                itm = menu.addItem(new core.App.Menu.Item("Rotate", "refresh"));
+                itm.addHandler("trigger", e => {
+                    this.axis = (this.axis == "x") ? "y" : "x";
+                });
+                this.app.contextMenu = menu;
+                this.app.placeContextMenu(e.pageX, e.pageY);
+            });
         }
         for (let i = 0; i < this.children.length-1; i++) {
             this.#dividers[i].i = i;
@@ -1328,11 +1351,18 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     this.parent.addTab(new data.tab(), index);
                     this.parent.remTab(this);
                 },
+                drag: () => {
+                    if (!this.hasApp()) return;
+                    if (!!data.disabled) return;
+                    this.app.dragData = new data.tab();
+                    this.app.dragging = true;
+                },
             };
         });
         toolItems = toolItems.map(item => {
             if (item.init) item.init(item.item);
             item.item.addHandler("trigger", item.trigger);
+            item.item.addHandler("drag", item.drag);
             return item.item;
         });
         const toolItemSelect = itm => {
@@ -1367,6 +1397,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 this.parent.addTab(new Panel.BrowserTab(node.path), index);
                                 this.parent.remTab(this);
                             },
+                            drag: () => {
+                                if (!this.hasApp() || !this.hasPage()) return;
+                                this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(node.path) : null;
+                                this.app.dragging = true;
+                            },
                         });
                         node.nodeObjects.forEach(node => dfs(node));
                     };
@@ -1375,6 +1410,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 nodeItems = nodeItems.map(item => {
                     if (item.init) item.init(item.item);
                     item.item.addHandler("trigger", item.trigger);
+                    item.item.addHandler("drag", item.drag);
                     return item.item;
                 });
                 nodeItems = util.search(nodeItems, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
@@ -1438,6 +1474,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 this.parent.addTab(new Panel.BrowserTab(node.path), index);
                                 this.parent.remTab(this);
                             },
+                            drag: () => {
+                                if (!this.hasApp() || !this.hasPage()) return;
+                                this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(node.path) : null;
+                                this.app.dragging = true;
+                            },
                         });
                     node.nodeObjects.forEach(node => dfs(node));
                 };
@@ -1446,6 +1487,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             items = items.map(item => {
                 if (item.init) item.init(item.item);
                 item.item.addHandler("trigger", item.trigger);
+                item.item.addHandler("drag", item.drag);
                 return item.item;
             });
             items = util.search(items, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
@@ -1661,9 +1703,28 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         this.btn.appendChild(this.eChevron);
         this.eChevron.setAttribute("name", "chevron-forward");
 
+        let cancel = 10;
         this.btn.addEventListener("click", e => {
             e.stopPropagation();
+            if (cancel <= 0) return cancel = 10;
             this.post("trigger", e);
+        });
+        this.btn.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const mouseup = e => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+                if (cancel > 0) return;
+                this.post("drag");
+            };
+            const mousemove = e => {
+                if (cancel > 0) return cancel--;
+                mouseup();
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
         });
 
         this.name = name;
@@ -3948,14 +4009,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
-            ctx.fillStyle = core.PROPERTYCACHE.get("--v4");
+            ctx.fillStyle = core.PROPERTYCACHE.get("--v6");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
             for (let i = Math.ceil(graphRange[0]/timeStep); i <= Math.floor(graphRange[1]/timeStep); i++) {
                 let x = (i*timeStep - graphRange[0]) / (graphRange[1]-graphRange[0]);
                 x = util.lerp(mnx, mxx, x);
-                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--v4");
+                ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
                 ctx.lineTo(x, y2);
@@ -3994,7 +4055,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let x1 = [mnx, mxx][i];
                 let x2 = [mnx - 5*quality, mxx + 5*quality][i];
                 let x3 = [mnx - 10*quality, mxx + 10*quality][i];
-                ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--v4");
+                ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--v6");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "miter";
                 ctx.lineCap = "square";
@@ -4095,7 +4156,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 eName.style.color = foundTooltips[tooltipCycle].color;
                 eValue.textContent = foundTooltips[tooltipCycle].value;
             } else eGraphTooltip.classList.remove("this");
-            ctx.strokeStyle = core.PROPERTYCACHE.get("--v4");
+            ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
@@ -5712,6 +5773,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             let r = this.canvas.getBoundingClientRect();
             let x = (e.pageX - r.left) / r.width, y = (e.pageY - r.top) / r.height;
             x = (x*2)-1; y = (y*2)-1;
+            if (this.controls instanceof PointerLockControls && this.controls.isLocked) x = y = 0;
             this.raycaster.setFromCamera(new THREE.Vector2(x, -y), this.camera);
             this.#raycastIntersections = this.raycaster.intersectObject(this.scene, true);
         });
@@ -7906,8 +7968,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (i%2 == 1) continue;
                 let line = info[i/2];
                 if (line.includes(":")) {
-                    let i = line.indexOf(":")+1;
-                    line = [line.substring(0, i), line.substring(i)];
+                    let j = line.indexOf(":");
+                    line = [line.substring(0, j), line.substring(j+1)];
                     while (this.eSideMetaTooltip.children[i].children.length < line.length)
                         this.eSideMetaTooltip.children[i].appendChild(document.createElement("span"));
                     while (this.eSideMetaTooltip.children[i].children.length > line.length)
@@ -7971,7 +8033,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
 
             if (timer > 0) return timer -= delta;
-            timer = 1000;
+            timer = 5000;
             if (!this.hasProject()) return;
             let r = this.eContent.getBoundingClientRect();
             this.project.meta.thumb = await this.app.capture({

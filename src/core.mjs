@@ -4145,7 +4145,7 @@ export class Odometry2d extends util.Target {
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
-            ctx.fillStyle = PROPERTYCACHE.get("--v4");
+            ctx.fillStyle = PROPERTYCACHE.get("--v6");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
@@ -4155,7 +4155,7 @@ export class Odometry2d extends util.Target {
             let y3 = mxy + 10*quality;
             for (let i = 0; i <= Math.floor(this.w/100); i++) {
                 let x = util.lerp(mnx, mxx, (i*100) / this.w);
-                ctx.strokeStyle = PROPERTYCACHE.get("--v4");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
                 ctx.lineTo(x, y2);
@@ -4176,7 +4176,7 @@ export class Odometry2d extends util.Target {
             let x3 = mnx - 10*quality;
             for (let i = 0; i <= Math.floor(this.h/100); i++) {
                 let y = util.lerp(mxy, mny, (i*100) / this.h);
-                ctx.strokeStyle = PROPERTYCACHE.get("--v4");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x1, y);
                 ctx.lineTo(x2, y);
@@ -4222,7 +4222,7 @@ export class Odometry2d extends util.Target {
 
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
-            ctx.strokeStyle = PROPERTYCACHE.get("--v4");
+            ctx.strokeStyle = PROPERTYCACHE.get("--v6");
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";

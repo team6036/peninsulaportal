@@ -153,7 +153,7 @@
     align-content: center;
     gap: 5px;
 
-    color: var(--v4);
+    color: var(--v6);
 
     text-align: left;
     font-size: 12px;
@@ -161,11 +161,11 @@
 }
 #PROJECTPAGE > .main > .side > .meta > button {
     --bg: transparent;
-    --fg: var(--v4);
+    --fg: var(--v6);
     --bgh: transparent;
     --fgh: var(--v8);
     --bgd: transparent;
-    --fgd: var(--v3);
+    --fgd: var(--v4);
 
     padding: 0px;
 
@@ -232,7 +232,7 @@
     color: var(--v8);
 }
 #PROJECTPAGE > .main > .side > .section > button:disabled {
-    color: var(--v4);
+    color: var(--v6);
 }
 #PROJECTPAGE > .main > .side > .section > button > ion-icon {
     transform: rotate(0deg);
@@ -436,7 +436,7 @@
 }
 #PROJECTPAGE > .main > .content .item.panel > button.options {
     --bg: var(--v2);
-    --bgh: var(--v2);
+    --bgh: var(--v3);
     --bgd: var(--v2);
 
     z-index: 1;
@@ -463,7 +463,7 @@
     max-width: 100%;
     height: var(--tab);
     max-height: var(--tab);
-    padding-right: 30px;
+    padding-right: 25px;
     overflow: auto;
 
     display: flex;
@@ -483,15 +483,11 @@
     display: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .top > button {
-    align-self: center;
+    position: sticky;
+    right: 0px;
 
-    width: 20px;
-    min-width: 20px;
-    height: 20px;
-    margin-left: 5px;
-    padding: 0px;
-
-    border-radius: 5px;
+    aspect-ratio: 1 / 1;
+    padding: 5px;
 
     font-size: 12px;
 }
@@ -510,7 +506,7 @@
     gap: 5px;
 
     background-color: var(--v1-8);
-    color: var(--v4);
+    color: var(--v6);
     border-bottom: 1px solid var(--v2);
 
     font-size: 12px;
@@ -519,7 +515,7 @@
     transition: color var(--t);
 }
 #PROJECTPAGE > .main > .content .item.panel > .top > .item:hover {
-    color: var(--v5);
+    color: var(--v7);
 }
 #PROJECTPAGE > .main > .content .item.panel.active > .top > .item {
     color: var(--v7);
@@ -634,7 +630,7 @@
     padding: 0px;
 
     background-color: transparent;
-    color: var(--v6);
+    color: var(--v7);
 
     transition: color var(--t);
 }
@@ -642,7 +638,7 @@
     color: var(--v8);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.item:disabled {
-    color: var(--v4);
+    color: var(--v6);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .explorer,
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display {
@@ -700,7 +696,7 @@
     top: 10px;
     left: 10px;
 
-    color: var(--v4);
+    color: var(--v6);
 
     font-size: 14px;
     font-family: monospace;
@@ -802,7 +798,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add > .content > .header {
     padding: 5px;
 
-    color: var(--v4);
+    color: var(--v6);
 
     font-size: 12px;
     font-weight: 550;
@@ -1075,7 +1071,7 @@
     align-content: center;
     gap: 10px;
 
-    color: var(--v4);
+    color: var(--v6);
 
     font-size: 12px;
 }
@@ -1426,7 +1422,7 @@
     padding: 5px 0px;
     margin-bottom: 5px;
 
-    color: var(--v4);
+    color: var(--v6);
 
     border-bottom: 1px solid var(--v2);
 
@@ -1714,9 +1710,9 @@
 
     background-color: var(--v1-a);
     color: var(--v8);
-    border: 3px solid var(--v3);
+    border: 2px solid var(--v3);
 
-    font-size: 3em;
+    font-size: 2em;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info {
     display: flex;
@@ -1849,7 +1845,7 @@
     left: 50%;
     transform: translateX(-50%);
 
-    color: var(--v3);
+    color: var(--v6);
 
     font-size: 12px;
     font-style: italic;
@@ -1862,7 +1858,7 @@
     left: 50%;
     transform: translateX(-50%);
 
-    color: var(--v3);
+    color: var(--v6);
 
     font-size: 12px;
     font-style: italic;
