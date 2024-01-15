@@ -1090,13 +1090,13 @@
     opacity: 0%;
     visibility: hidden;
 
-    animation: loading-line 1s linear infinite;
-
     transition: opacity var(--t), visibility var(--t);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger.loading_ > .status::before {
     opacity: 100%;
     visibility: inherit;
+
+    animation: loading-line 1s linear infinite;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status > .space {
     flex-basis: 100%;
@@ -1156,13 +1156,13 @@
     opacity: 0%;
     visibility: hidden;
 
-    animation: loading-line 1s linear infinite;
-
     transition: opacity var(--t), visibility var(--t);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item.loading_::before {
     opacity: 100%;
     visibility: inherit;
+
+    animation: loading-line 1s linear infinite;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .logs > .item::after {
     position: absolute;

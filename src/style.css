@@ -1005,11 +1005,11 @@ article.md.lighter table td {
     height: auto;
 
     visibility: hidden;
-
-    animation: introtitle-hat-wiggle 1s infinite;
 }
 .introtitle.special > img.special {
     visibility: inherit;
+
+    animation: introtitle-hat-wiggle 1s infinite;
 }
 @keyframes introtitle-name-shrink {
     0% { max-width: 9em; }
@@ -1625,7 +1625,7 @@ div.contextmenu .item.divider > * {
     border-radius: 5px;
 
     font-size: 14px;
-    line-height: 0px;
+    line-height: 1em;
 }
 .explorer > .node.hidden > button.display,
 .explorernode.hidden > button.display {
@@ -1653,9 +1653,12 @@ div.contextmenu .item.divider > * {
 .explorer > .node > button.display > .main > .name,
 .explorernode > button.display > .main > .name {
     min-width: max-content;
+    min-height: max-content;
 }
 .explorer > .node > button.display > .main > .tag,
 .explorernode > button.display > .main > .tag {
+    min-height: max-content;
+
     color: var(--v5);
 
     transition: color var(--t);
@@ -1679,13 +1682,17 @@ div.contextmenu .item.divider > * {
 .explorernode > button.display > .value {
     padding-left: 10px;
 
-    display: flex;
+    display: none;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: center;
     align-content: center;
     gap: 10px;
+}
+.explorer > .node > button.display > .value.this,
+.explorernode > button.display > .value.this {
+    display: flex;
 }
 .explorer > .node > button.display > .value > div,
 .explorernode > button.display > .value > div {
