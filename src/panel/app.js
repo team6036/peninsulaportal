@@ -197,20 +197,6 @@ core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
             if (this.isJustPrimitive || e.shiftKey) this.showValue = this.canShowValue && !this.showValue;
             else this.isOpen = !this.isOpen;
         });
-        this.addHandler("update-display", () => {
-            this.icon = "";
-            this.eIcon.style.color = "";
-            this.eName.style.color = "";
-            this.eValue.style.color = "";
-            let display = getDisplay(this.type, this.value);
-            if (display != null) {
-                if ("src" in display) this.iconSrc = display.src;
-                else this.icon = display.name;
-                if ("color" in display) this.eIcon.style.color = this.eValue.style.color = display.color;
-                else this.eIcon.style.color = this.eValue.style.color = "";
-            }
-            this.eValue.textContent = getRepresentation(this.value, this.type == "structschema");
-        });
 
         this.canShowValue = true;
     }
@@ -255,6 +241,20 @@ core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
     set value(v) {
         v = Source.Field.ensureType(this.type, v);
         super.value = v;
+    }
+
+    updateDisplay() {
+        let display = getDisplay(this.type, this.value);
+        if (display != null) {
+            if ("src" in display) this.iconSrc = display.src;
+            else this.icon = display.name;
+            let color = util.ensure(display.color, "str");
+            if (this.eIcon.style.color != color) this.eIcon.style.color = this.eValue.style.color = display.color;
+        } else {
+            this.icon = "";
+            this.eIcon.style.color = this.eValue.style.color = "";
+        }
+        if (this.showValue) this.eValue.textContent = getRepresentation(this.value, this.type == "structschema");
     }
 };
 
@@ -312,16 +312,14 @@ class ToolButton extends util.Target {
     get eIcon() { return this.#eIcon; }
     get eName() { return this.#eName; }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -1179,16 +1177,14 @@ Panel.Tab = class PanelTab extends util.Target {
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
 
-    get icon() { return this.eTabIcon.getAttribute("name"); }
+    get icon() { return this.eTabIcon.name; }
     set icon(v) {
         this.eTabIcon.removeAttribute("src");
-        this.eTabIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eTabIcon.name = v;
     }
     get iconSrc() { return this.eTabIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eTabIcon.removeAttribute("name");
-        this.eTabIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eTabIcon.setAttribute("src", v); }
     get iconColor() { return this.eTabIcon.style.color; }
     set iconColor(v) { this.eTabIcon.style.color = v; }
     get hasIcon() { return this.eTab.contains(this.eTabIcon); }
@@ -1614,7 +1610,7 @@ Panel.AddTab.Tag = class PanelAddTabTag extends util.Target {
         this.elem.appendChild(this.eName);
         let chevron = document.createElement("ion-icon");
         this.elem.appendChild(chevron);
-        chevron.setAttribute("name", "chevron-forward");
+        chevron.name = "chevron-forward";
 
         this.name = name;
         this.icon = icon;
@@ -1626,16 +1622,14 @@ Panel.AddTab.Tag = class PanelAddTabTag extends util.Target {
 
     get name() { return this.eName.textContent; }
     set name(v) { this.eName.textContent = v; }
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 };
@@ -1701,7 +1695,7 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         this.eInfo.classList.add("info");
         this.#eChevron = document.createElement("ion-icon");
         this.btn.appendChild(this.eChevron);
-        this.eChevron.setAttribute("name", "chevron-forward");
+        this.eChevron.name = "chevron-forward";
 
         let cancel = 10;
         this.btn.addEventListener("click", e => {
@@ -1739,16 +1733,14 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
     get eInfo() { return this.#eInfo; }
     get eChevron() { return this.#eChevron; }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -1867,6 +1859,9 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
                 else this.icon = display.name;
                 if ("color" in display) this.iconColor = display.color;
                 else this.iconColor = "";
+            } else {
+                this.icon = "";
+                this.iconColor = "";
             }
         });
 
@@ -1945,10 +1940,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         this.explorer.elem.classList.remove("this");
                         this.eDisplay.classList.add("this");
                     }
+                    this.eTabName.style.color = "";
                 } else {
                     this.explorer.elem.classList.remove("this");
                     this.eDisplay.classList.remove("this");
-
                     this.icon = "document-outline";
                     let path = this.path.split("/").filter(part => part.length > 0);
                     this.name = (path.length > 0) ? path.at(-1) : "/";
@@ -1957,15 +1952,15 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 }
             }
             if (!node) return;
-            this.iconColor = "";
-            this.eTabName.style.color = "";
-            this.iconColor = "";
             let display = getDisplay((node && node.hasField()) ? node.field.type : null, (node && node.hasField()) ? node.field.get() : null);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
                 if ("color" in display) this.iconColor = display.color;
                 else this.iconColor = "";
+            } else {
+                this.icon = "";
+                this.iconColor = "";
             }
             if (this.isClosed) return;
             if (!node.hasField() || node.field.isArray || node.field.isStruct) {
@@ -1995,13 +1990,13 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         let value = node.field.get();
                         if (node.field.type == "boolean") {
                             item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
-                            eIcon.setAttribute("name", value ? "checkmark" : "close");
+                            eIcon.name = value ? "checkmark" : "close";
                             let r = item.getBoundingClientRect();
                             eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                         } else {
                             eType.textContent = node.field.type;
                             let display = getDisplay(node.field.type, value);
-                            eValue.style.color = (display == null || !("color" in display)) ? "" : display.color;
+                            eValue.style.color = (display == null) ? "" : util.ensure(display.color, "str");
                             eValue.style.fontSize = (["double", "float", "int"].includes(node.field.arrayType) ? 32 : 16)+"px";
                             eValue.textContent = getRepresentation(value, node.field.type == "structschema");
                         }
@@ -2188,14 +2183,13 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             for (let i = 0; i < ts.length; i++) {
                 let elem = entries[i];
                 elem.textContent = ts[i];
-                if (
+                let v = (
                     this.tsNow >= ts[i] &&
                     this.tsNow < ((i+1 >= ts.length) ? Infinity : ts[i+1])
-                ) {
-                    if (!elem.classList.contains("this"))
-                        elem.scrollIntoView();
-                    elem.classList.add("this");
-                } else elem.classList.remove("this");
+                );
+                if (v == elem.classList.contains("this")) continue;
+                if (v) elem.classList.add("this");
+                else elem.classList.remove("this");
             }
         });
     }
@@ -2448,14 +2442,16 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 if (i <= 0) entry.elem.style.marginTop = (j1*30)+"px";
                 let j2 = (i+1 >= valueLog.length) ? this.tab.ts.length : this.tab.lookupTS(valueLog[i+1].ts);
                 let j3 = this.tab.lookupTS(this.tab.tsNow);
-                if (
-                    this.tab.tsNow >= valueLog[i].ts &&
-                    this.tab.tsNow < ((i+1 >= valueLog.length) ? Infinity : valueLog[i+1].ts)
-                ) entry.elem.classList.add("this");
-                else entry.elem.classList.remove("this");
                 entry.elem.style.height = entry.elem.style.maxHeight = ((j2-j1)*30)+"px";
                 entry.value.textContent = entry.valueTS.textContent = valueLog[i].v;
                 entry.valueTS.style.top = (Math.max(0, Math.min(j2-j1-1, j3-j1))*30)+"px";
+                let v = (
+                    this.tab.tsNow >= valueLog[i].ts &&
+                    this.tab.tsNow < ((i+1 >= valueLog.length) ? Infinity : valueLog[i+1].ts)
+                );
+                if (v == entry.elem.classList.contains("this")) continue;
+                if (v) entry.elem.classList.add("this");
+                else entry.elem.classList.remove("this");
             }
         });
     }
@@ -2593,7 +2589,7 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
                 if (document.activeElement != this.eSrcInput)
                     this.eSrcInput.value = this.eWebView.getURL();
                 if (this.eLoadBtn.children[0])
-                    this.eLoadBtn.children[0].setAttribute("name", this.eWebView.isLoading() ? "close" : "refresh");
+                    this.eLoadBtn.children[0].name = this.eWebView.isLoading() ? "close" : "refresh";
                 this.eBackBtn.disabled = !this.eWebView.canGoBack();
                 this.eForwardBtn.disabled = !this.eWebView.canGoForward();
             }
@@ -2812,25 +2808,30 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
         let logObjects = {};
 
+        let distro = null;
+
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
-            if (window.agent().distro) {
-                this.elem.style.opacity = "50%";
-                this.elem.style.pointerEvents = "none";
-            } else {
-                this.elem.style.opacity = "";
-                this.elem.style.pointerEvents = "";
+            if (distro != window.agent().distro) {
+                distro = window.agent().distro;
+                if (distro) {
+                    this.elem.style.opacity = "50%";
+                    this.elem.style.pointerEvents = "none";
+                } else {
+                    this.elem.style.opacity = "";
+                    this.elem.style.pointerEvents = "";
+                }
             }
 
             this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
 
             this.status = LOGGERCONTEXT.initializing ? "Initializing client" : LOGGERCONTEXT.disconnected ? ("Connecting - "+LOGGERCONTEXT.location) : LOGGERCONTEXT.location;
             if (LOGGERCONTEXT.connected) {
-                eIcon.setAttribute("name", "cloud");
+                eIcon.name = "cloud";
                 this.eStatus.setAttribute("href", LOGGERCONTEXT.location);
             } else {
-                eIcon.setAttribute("name", "cloud-offline");
+                eIcon.name = "cloud-offline";
                 this.eStatus.removeAttribute("href");
             }
             this.loading = LOGGERCONTEXT.isLoading("§uploading");
@@ -2907,6 +2908,8 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
     get loading() { return this.elem.classList.contains("loading_"); }
     set loading(v) {
+        v = !!v;
+        if (this.loading == v) return;
         if (v) this.elem.classList.add("loading_");
         else this.elem.classList.remove("loading_");
     }
@@ -3499,9 +3502,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             state.remLog(log);
                         });
                     });
-                    if (state.logs.length > 0) state.eLogs.classList.remove("empty");
-                    else state.eLogs.classList.add("empty");
-                    state.eSubmit.disabled = state.logs.length <= 0;
+                    let v = state.eSubmit.disabled = state.logs.length <= 0;
+                    if (v == state.eLogs.classList.contains("empty")) return;
+                    if (v) state.eLogs.classList.add("empty");
+                    else state.eLogs.classList.remove("empty");
                 };
 
                 state.conflictAffix = "suffix";
@@ -3518,16 +3522,14 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
 
     update(delta) { this.post("update", delta); }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
 
     get displayName() { return this.eName.textContent; }
     set displayName(v) { this.eName.textContent = v; }
@@ -3537,6 +3539,8 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
 
     get isShown() { return this.elem.classList.contains("this"); }
     set isShown(v) {
+        v = !!v;
+        if (this.isShown == v) return;
         if (v) this.elem.classList.add("this");
         else this.elem.classList.remove("this");
     }
@@ -4633,7 +4637,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     get isOpen() { return this.elem.classList.contains("open"); }
     set isOpen(v) {
         v = !!v;
-        if (this.open == v) return;
+        if (this.isOpen == v) return;
         if (v) this.elem.classList.add("open");
         else this.elem.classList.remove("open");
     }
@@ -5689,6 +5693,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #controls;
     #raycaster;
     #raycastIntersections;
+    #requestRedraw;
 
     #axisScene;
     #axisSceneSized;
@@ -5764,6 +5769,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#raycaster = new THREE.Raycaster();
         this.#raycastIntersections = [];
 
+        this.#requestRedraw = true;
+
         this.canvas.addEventListener("click", e => {
             e.stopPropagation();
             if (this.controls instanceof PointerLockControls)
@@ -5777,6 +5784,16 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.raycaster.setFromCamera(new THREE.Vector2(x, -y), this.camera);
             this.#raycastIntersections = this.raycaster.intersectObject(this.scene, true);
         });
+        const updateScene = () => {
+            let r = this.eContent.getBoundingClientRect();
+            this.renderer.setSize(r.width*this.quality, r.height*this.quality);
+            this.renderer.domElement.style.transform = "scale("+(1/this.quality)+")";
+            this.cssRenderer.setSize(r.width*this.quality, r.height*this.quality);
+            this.cssRenderer.domElement.style.transform = "scale("+(1/this.quality)+")";
+            this.requestRedraw();
+        };
+        new ResizeObserver(updateScene).observe(this.eContent);
+        this.addHandler("change-quality", updateScene);
 
         const radius = 0.05;
         const length = 5;
@@ -6021,6 +6038,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.camera.position.z = v / (this.isMeters ? 1 : 100);
             }
         });
+        let cam = new Array(7).fill(null);
 
         if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 8) a = [null];
         if (a.length == 1) {
@@ -6064,11 +6082,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.addHandler("change-isMeters", () => {
             infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
         });
-        this.addHandler("change-origin", () => {
+        const updateField = () => {
             this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
             this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
-        });
-        const updateField = () => {
             if (!this.theField) return;
             this.theField.scale.x = this.origin.startsWith("blue") ? 1 : -1;
             if (this.field._builtin) this.theField.scale.y = this.origin.endsWith("+") ? 1 : -1;
@@ -6135,6 +6151,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                         plane.material.side = THREE.DoubleSide;
                         planes.push(plane);
                         this.axisScene.add(plane);
+                        this.requestRedraw();
                     }
                     let plane = planes[i++];
                     plane.position.set(0.5+1*(x-size/2), 0.5+1*(y-size/2), 0);
@@ -6146,6 +6163,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.axisScene.remove(plane);
                 plane.geometry.dispose();
                 plane.material.dispose();
+                this.requestRedraw();
             }
             planes = this.axisSceneSized.planes;
             let w = this.axisSceneSized.w;
@@ -6158,6 +6176,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     this.axisSceneSized.remove(plane);
                     plane.geometry.dispose();
                     plane.material.dispose();
+                    this.requestRedraw();
                 };
             }
             i = 0;
@@ -6173,6 +6192,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                         plane.material.side = THREE.DoubleSide;
                         planes.push(plane);
                         this.axisSceneSized.add(plane);
+                        this.requestRedraw();
                     }
                     let plane = planes[i++];
                     let pw = Math.min(1, w-x), ph = Math.min(1, h-y);
@@ -6181,6 +6201,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                         plane.geometry = new THREE.PlaneGeometry(pw, ph);
                         plane.geometry.w = pw;
                         plane.geometry.h = ph;
+                        this.requestRedraw();
                     }
                     plane.position.set(x+pw/2-w/2, y+ph/2-h/2, 0);
                     plane.material.color.set(colorV.toHex(false));
@@ -6191,6 +6212,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.axisSceneSized.remove(plane);
                 plane.geometry.dispose();
                 plane.material.dispose();
+                this.requestRedraw();
             }
 
             if ((util.getTime()-loadTimer > 1000 || loadTemplate != this.template) && (this.template in templateModels) && !(this.template in preloadedFields)) {
@@ -6247,6 +6269,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.camera.position.x = Math.round(this.camera.position.x*10000)/10000;
             this.camera.position.y = Math.round(this.camera.position.y*10000)/10000;
             this.camera.position.z = Math.round(this.camera.position.z*10000)/10000;
+            let cam2 = [
+                this.camera.position.x, this.camera.position.y, this.camera.position.z,
+                this.camera.quaternion.w, this.camera.quaternion.x, this.camera.quaternion.y, this.camera.quaternion.z,
+            ];
+            for (let i = 0; i < 7; i++) {
+                if (cam[i] == cam2[i]) continue;
+                cam[i] = cam2[i];
+                this.requestRedraw();
+            }
 
             let r = this.eContent.getBoundingClientRect();
 
@@ -6264,10 +6295,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.camera.bottom = -size/2;
             }
 
-            this.renderer.setSize(r.width*this.quality, r.height*this.quality);
-            this.renderer.domElement.style.transform = "scale("+(1/this.quality)+")";
-            this.cssRenderer.setSize(r.width*this.quality, r.height*this.quality);
-            this.cssRenderer.domElement.style.transform = "scale("+(1/this.quality)+")";
+            if (!this.#requestRedraw) return;
+            this.#requestRedraw = false;
 
             this.renderer.render(this.scene, this.camera);
             this.cssRenderer.render(this.scene, this.camera);
@@ -6345,6 +6374,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get raycaster() { return this.#raycaster; }
     get raycastIntersections() { return this.#raycastIntersections; }
 
+    requestRedraw() { return this.#requestRedraw = true; }
+
     get axisScene() { return this.#axisScene; }
     get axisSceneSized() { return this.#axisSceneSized; }
 
@@ -6362,12 +6393,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             });
             this.#theField = null;
         }
-        this.change("field", this.field, this.#field=v);
+        [v, this.#field] = [this.#field, v];
         if (this.hasField()) {
             this.#theField = this.field._builtin ? this.field : this.field.clone();
             if (!this.field._builtin) this.theField.quaternion.copy(THREE2WPILIB);
             this.wpilibGroup.add(this.theField);
         }
+        this.change("field", v, this.field);
+        this.requestRedraw();
     }
     hasField() { return !!this.field; }
 
@@ -6389,12 +6422,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get isProjection() { return this.#isProjection; }
     set isProjection(v) {
         v = !!v;
-        if (this.#isProjection == v) return;
+        if (this.isProjection == v) return;
         this.change("isProjection", this.isProjection, this.#isProjection=v);
         this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
         this.camera.position.set(...(this.isProjection ? [0, 7.5, -7.5] : [10, 10, -10]));
         this.updateControls();
         this.camera.lookAt(0, 0, 0);
+        this.requestRedraw();
 
         if (this.isProjection) this.eViewProjection.classList.add("this");
         else this.eViewProjection.classList.remove("this");
@@ -6406,7 +6440,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get isOrbit() { return this.#isOrbit; }
     set isOrbit(v) {
         v = !!v;
-        if (this.#isOrbit == v) return;
+        if (this.isOrbit == v) return;
         this.change("isOrbit", this.isOrbit, this.#isOrbit=v);
 
         if (this.isOrbit) this.eViewOrbit.classList.add("this");
@@ -6428,6 +6462,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         else this.eUnitsMeters.classList.remove("this");
         if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
         else this.eUnitsCentimeters.classList.remove("this");
+
+        this.requestRedraw();
     }
     get isCentimeters() { return !this.isMeters; }
     set isCentimeters(v) { this.isMeters = !v; }
@@ -6441,6 +6477,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         else this.eUnitsDegrees.classList.remove("this");
         if (this.isRadians) this.eUnitsRadians.classList.add("this");
         else this.eUnitsRadians.classList.remove("this");
+
+        this.requestRedraw();
     }
     get isRadians() { return !this.isDegrees; }
     set isRadians(v) { this.isDegrees = !v; }
@@ -6459,6 +6497,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         else this.eOriginRedPos.classList.remove("this");
         if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
         else this.eOriginRedNeg.classList.remove("this");
+
+        this.requestRedraw();
     }
 
     get eViewProjection() { return this.#eViewProjection; }
@@ -6787,6 +6827,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         obj.material._color = obj.material.color.clone();
                     });
                     theObject.isGhost = theObject.isSolid = null;
+                    this.tab.requestRedraw();
                 }
                 while (this.theObject.children.length > l) {
                     let theObject = this.theObject.children.at(-1);
@@ -6798,6 +6839,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         obj.geometry.dispose();
                         obj.material.dispose();
                     });
+                    this.tab.requestRedraw();
                 }
                 let r = this.tab.canvas.getBoundingClientRect();
                 for (let i = 0; i < l; i++) {
@@ -6807,24 +6849,46 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         value[0] /= this.tab.isMeters?1:100;
                         value[1] /= this.tab.isMeters?1:100;
                         value[2] /= this.tab.isMeters?1:100;
-                        theObject.position.set(
-                            value[0] + (this.offsetX/100),
-                            value[1] + (this.offsetY/100),
-                            value[2] + (this.offsetZ/100),
-                        );
-                        let xyzw = value.slice(3);
-                        xyzw.push(xyzw.shift());
-                        theObject.quaternion.copy(new THREE.Quaternion(...xyzw));
+                        value[0] += this.offsetX/100;
+                        value[1] += this.offsetY/100;
+                        value[2] += this.offsetZ/100;
+                        let value2 = [
+                            theObject.position.x, theObject.position.y, theObject.position.z,
+                            theObject.quaternion.w, theObject.quaternion.x, theObject.quaternion.y, theObject.quaternion.z,
+                        ];
+                        let i = 0;
+                        for (; i < type; i++) {
+                            if (value2[i] == value[i]) continue;
+                            this.tab.requestRedraw();
+                            break;
+                        }
+                        if (i < type) {
+                            theObject.position.set(value[0], value[1], value[2]);
+                            theObject.quaternion.set(value[4], value[5], value[6], value[3]);
+                        }
                     } else {
                         value[0] /= this.tab.isMeters?1:100;
                         value[1] /= this.tab.isMeters?1:100;
-                        theObject.position.set(
-                            value[0] + (this.offsetX/100),
-                            value[1] + (this.offsetY/100),
-                            (this.offsetZ/100),
-                        );
-                        value[2] *= this.tab.isDegrees ? 1 : (180/Math.PI);
-                        theObject.rotation.set(0, 0, value[2]*(Math.PI/180), "XYZ");
+                        value[0] += this.offsetX/100;
+                        value[1] += this.offsetY/100;
+                        value[2] *= this.tab.isDegrees ? (Math.PI/180) : 1;
+                        let value2 = [
+                            theObject.position.x, theObject.position.y,
+                            theObject.rotation.z,
+                        ];
+                        let i = 0;
+                        for (; i < type; i++) {
+                            if (value2[i] == value[i]) continue;
+                            this.tab.requestRedraw();
+                            break;
+                        }
+                        if (i < type) {
+                            theObject.position.set(
+                                value[0], value[1],
+                                (this.offsetZ/100),
+                            );
+                            theObject.rotation.set(0, 0, value[2], "XYZ");
+                        }
                     }
                     let hovered = false;
                     let css2dObjects = [];
@@ -6951,6 +7015,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             });
             this.group.add(this.theObject);
         }
+        if (this.hasTab()) this.tab.requestRedraw();
     }
     hasObject() { return !!this.object; }
 };
@@ -7381,28 +7446,31 @@ export default class App extends core.AppFeature {
                 let canNode = canGetNodeFromData();
                 if (canNode) {
                     let node = getNodeFromData();
-                    this.eDrag.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                    this.eDrag.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div class='name'></div></div></button></div>";
                     let btn = this.eDrag.children[0].children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (node.name.length > 0) ? node.name : "/";
                     let display = getDisplay(node.hasField() ? node.field.type : null, node.hasField() ? node.field.get() : null);
                     if (display != null) {
                         if ("src" in display) icon.setAttribute("src", display.src);
-                        else icon.setAttribute("name", display.name);
+                        else icon.name = display.name;
                         if ("color" in display) icon.style.color = display.color;
                         else icon.style.color = "";
+                    } else {
+                        icon.name = "";
+                        icon.style.color = "";
                     }
                     return;
                 }
                 if (canTab) {
                     if (this.dragData instanceof Panel.Tab) {
-                        this.eDrag.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div></div></div></button></div>";
+                        this.eDrag.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div class='name'></div></div></button></div>";
                         let btn = this.eDrag.children[0].children[0].children[0];
                         let icon = btn.children[0], name = btn.children[1];
                         name.textContent = this.dragData.name;
                         if (this.dragData.hasIcon) {
                             if (this.dragData.eTabIcon.hasAttribute("src")) icon.setAttribute("src", this.dragData.eTabIcon.getAttribute("src"));
-                            else icon.setAttribute("name", this.dragData.eTabIcon.getAttribute("name"));
+                            else icon.name = this.dragData.eTabIcon.name;
                             icon.style.cssText = this.dragData.eTabIcon.style.cssText;
                         } else icon.style.display = "none";
                     }
@@ -7504,6 +7572,8 @@ export default class App extends core.AppFeature {
     get isBlockShown() { return this.hasEBlock() ? this.eBlock.classList.contains("this") : null; }
     set isBlockShown(v) {
         if (!this.hasEBlock()) return;
+        v = !!v;
+        if (this.isBlockShown == v) return;
         if (v) this.eBlock.classList.add("this")
         else this.eBlock.classList.remove("this");
     }
@@ -7885,8 +7955,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.format();
 
-        let reqCollapse = false;
-        this.addHandler("change-widget", () => (reqCollapse = true));
+        let requestCollapse = false;
+        this.addHandler("change-widget", () => (requestCollapse = true));
         
         const update = () => {
             this.widget = this.hasProject() ? this.project.buildWidget() : null;
@@ -7944,8 +8014,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
             if (this.hasWidget()) {
                 this.widget.update(delta);
-                if (reqCollapse) {
-                    reqCollapse = false;
+                if (requestCollapse) {
+                    requestCollapse = false;
                     this.widget.collapse();
                 }
             } else this.widget = new Panel();
@@ -8017,7 +8087,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let tNow = this.source.ts;
                 this.progress = (tNow - tMin) / (tMax - tMin);
                 if (this.eNavActionButton.children[0])
-                    this.eNavActionButton.children[0].setAttribute("name", this.source.playback.finished ? "refresh" : this.source.playback.paused ? "play" : "pause");
+                    this.eNavActionButton.children[0].name = this.source.playback.finished ? "refresh" : this.source.playback.paused ? "play" : "pause";
                 this.eNavProgressTooltip.textContent = util.formatTime(util.lerp(tMin, tMax, this.progressHover));
                 this.eNavPreInfo.textContent = util.formatTime(tMin);
                 this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);

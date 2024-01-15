@@ -47,16 +47,14 @@ class FeatureButton extends util.Target {
 
     get name() { return this.eName.textContent; }
     set name(v) { this.eName.textContent = v; }
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
     get tooltip() { return this.eTooltip.textContent; }
     set tooltip(v) {
         this.eTooltip.textContent = v;
@@ -89,16 +87,14 @@ class UpperFeatureButton extends util.Target {
     get elem() { return this.#elem; }
     get eIcon() { return this.#eIcon; }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
 }
 
 class Speck extends util.Target {

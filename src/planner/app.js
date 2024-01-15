@@ -1324,7 +1324,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     format() {
         if (this.eMaxMinBtn.children[0])
-            this.eMaxMinBtn.children[0].setAttribute("name", this.maximized ? "contract" : "expand");
+            this.eMaxMinBtn.children[0].name = this.maximized ? "contract" : "expand";
         if (this.maximized) {
             this.eDisplay.style.width = "100%";
             this.eDisplay.style.maxWidth = "100%";
@@ -1462,16 +1462,14 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     show() { return this.isShown = true; }
     hide() { return this.isHidden = true; }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
     get btnName() { return this.eName.textContent; }
     set btnName(v) { this.eName.textContent = v; }
 
@@ -2247,7 +2245,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     this.page.eNavActionButton.disabled = this.page.eNavBackButton.disabled = this.page.eNavForwardButton.disabled = true;
                     this.page.progress = 0;
                     if (this.page.eNavActionButton.children[0])
-                        this.page.eNavActionButton.children[0].setAttribute("name", "play");
+                        this.page.eNavActionButton.children[0].name = "play";
                     this.page.eNavProgressTooltip.textContent = "Select a Path";
                     this.page.eNavInfo.textContent = "No Path Selected";
                 }
@@ -2258,7 +2256,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             visual.item.size = this.page.hasProject() ? this.page.project.robotW : 0;
             this.page.progress = visual.playback.progress;
             if (this.page.eNavActionButton.children[0])
-                this.page.eNavActionButton.children[0].setAttribute("name", visual.playback.finished ? "refresh" : visual.playback.paused ? "play" : "pause");
+                this.page.eNavActionButton.children[0].name = visual.playback.finished ? "refresh" : visual.playback.paused ? "play" : "pause";
             this.page.eNavProgressTooltip.textContent = util.formatTime(visual.playback.tsMax*this.page.progressHover);
             this.page.eNavInfo.textContent = util.formatTime(visual.playback.ts) + " / " + util.formatTime(visual.playback.tsMax);
         });

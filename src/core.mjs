@@ -72,6 +72,8 @@ export class App extends util.Target {
     constructor() {
         super();
 
+        window.onanimationiteration = console.log;
+
         this.#setupDone = false;
 
         this.#fullscreen = null;
@@ -1489,15 +1491,15 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     get eTitle() { return this.#eTitle; }
     get eContent() { return this.#eContent; }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
         this.change("icon", null, this.icon);
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
     set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
         this.eIcon.setAttribute("src", v);
         this.change("iconSrc", null, this.iconSrc);
     }
@@ -1507,15 +1509,15 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
         this.change("iconColor", null, this.iconColor);
     }
 
-    get subIcon() { return this.eSubIcon.getAttribute("name"); }
+    get subIcon() { return this.eSubIcon.name; }
     set subIcon(v) {
         this.eSubIcon.removeAttribute("src");
-        this.eSubIcon.setAttribute("name", v);
+        if (this.subIcon == v) return;
+        this.eSubIcon.name = v;
         this.change("subIcon", null, this.subIcon);
     }
     get subIconSrc() { return this.eSubIcon.getAttribute("src"); }
     set subIconSrc(v) {
-        this.eSubIcon.removeAttribute("name");
         this.eSubIcon.setAttribute("src", v);
         this.change("subIconSrc", null, this.subIconSrc);
     }
@@ -2103,7 +2105,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.#eSubIcon = document.createElement("ion-icon");
         this.elem.appendChild(this.eSubIcon);
         this.eSubIcon.classList.add("sub");
-        this.eSubIcon.setAttribute("name", "chevron-forward");
+        this.eSubIcon.name = "chevron-forward";
         this.elem.appendChild(this.menu.elem);
 
         this.elem.addEventListener("mouseenter", e => this.fix());
@@ -2275,16 +2277,14 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     get eAccelerator() { return this.#eAccelerator; }
     get eSubIcon() { return this.#eSubIcon; }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
-    get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    get iconSrc() { return this.eIcon.getAttribute("src"); }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -2468,29 +2468,25 @@ export class AppModal extends App {
     get ieTitle() { return this.#ieTitle; }
     get ieContent() { return this.#ieContent; }
 
-    get iicon() { return this.ieIcon.getAttribute("name"); }
+    get iicon() { return this.ieIcon.name; }
     set iicon(v) {
         this.ieIcon.removeAttribute("src");
-        this.ieIcon.setAttribute("name", v);
+        if (this.iicon == v) return;
+        this.ieIcon.name = v;
     }
     get iiconSrc() { return this.ieIcon.getAttribute("src"); }
-    set iiconSrc(v) {
-        this.ieIcon.removeAttribute("name");
-        this.ieIcon.setAttribute("src", v);
-    }
+    set iiconSrc(v) { this.ieIcon.setAttribute("src", v); }
     get iiconColor() { return this.ieIcon.style.color; }
     set iiconColor(v) { this.ieIcon.style.color = v; }
 
-    get isubIcon() { return this.ieSubIcon.getAttribute("name"); }
+    get isubIcon() { return this.ieSubIcon.name; }
     set isubIcon(v) {
         this.ieSubIcon.removeAttribute("src");
-        this.ieSubIcon.setAttribute("name", v);
+        if (this.isubIcon == v) return;
+        this.ieSubIcon.name = v;
     }
     get isubIconSrc() { return this.ieSubIcon.getAttribute("src"); }
-    set isubIconSrc(v) {
-        this.ieSubIcon.removeAttribute("name");
-        this.ieSubIcon.setAttribute("src", v);
-    }
+    set isubIconSrc(v) { this.ieSubIcon.setAttribute("src", v); }
     get isubIconColor() { return this.ieSubIcon.style.color; }
     set isubIconColor(v) { this.ieSubIcon.style.color = v; }
     
@@ -2804,7 +2800,7 @@ export class AppFeature extends App {
 
             this.#eProjectInfoBtnIcon = document.createElement("ion-icon");
             this.eProjectInfoBtn.insertBefore(this.eProjectInfoBtnIcon, Array.from(this.eProjectInfoBtn.children).at(-1));
-            this.eProjectInfoBtnIcon.setAttribute("name", this.constructor.ICON);
+            this.eProjectInfoBtnIcon.name = this.constructor.ICON;
 
             this.#eProjectInfoBtnName = document.createElement("div");
             this.eProjectInfoBtn.insertBefore(this.eProjectInfoBtnName, Array.from(this.eProjectInfoBtn.children).at(-1));
@@ -3434,7 +3430,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         if (v == "list") this.eContent.classList.add("list");
         if (v == "grid") this.eContent.classList.add("grid");
         if (this.eInfoDisplayBtn.children[0])
-            this.eInfoDisplayBtn.children[0].setAttribute("name", (v == "list") ? "grid" : (v == "grid") ? "list" : null);
+            this.eInfoDisplayBtn.children[0].name = (v == "list") ? "grid" : (v == "grid") ? "list" : null;
     }
 
     get buttons() { return [...this.#buttons]; }
@@ -3616,8 +3612,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
         this.project = project;
 
-        this.eListIcon.setAttribute("name", "document-outline");
-        this.eGridIcon.setAttribute("name", "document-outline");
+        this.eListIcon.name = "document-outline";
+        this.eGridIcon.name = "document-outline";
 
         this.addHandler("change-project", (f, t) => {
             const doThumb = () => {
@@ -3789,7 +3785,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             this.progressHover = p;
         };
         const onKeyDown = e => {
-            if (e.target != document.body) return;
+            if (e.target != document.body && e.target != this.eNav) return;
             if (e.code == "ArrowLeft") {
                 this.post("nav-back");
                 this.eNav.focus();
@@ -4083,6 +4079,7 @@ export class Odometry2d extends util.Target {
     #ctx;
     #quality;
     #mouse;
+    #worldMouse;
 
     #render;
 
@@ -4109,6 +4106,8 @@ export class Odometry2d extends util.Target {
         this.#ctx = null;
         this.#quality = 1;
         this.#mouse = new V();
+        this.#worldMouse = new V();
+        this.mouse.addHandler("change", () => this.worldMouse.set(this.pageToWorld(this.mouse)));
 
         this.#render = new Odometry2d.Render(this, 0);
 
@@ -4244,7 +4243,7 @@ export class Odometry2d extends util.Target {
         }
         this.#canvas = v;
         if (this.hasCanvas()) {
-            this.canvas._onMouseMove = e => this.#mouse.set(e.pageX, e.pageY);
+            this.canvas._onMouseMove = e => this.mouse.set(e.pageX, e.pageY);
             this.canvas.addEventListener("mousemove", this.canvas._onMouseMove);
         }
         this.#ctx = this.hasCanvas() ? this.canvas.getContext("2d") : null;
@@ -4253,8 +4252,13 @@ export class Odometry2d extends util.Target {
     hasCanvas() { return !!this.canvas; }
     get ctx() { return this.#ctx; }
     get quality() { return this.#quality; }
-    set quality(v) { this.#quality = Math.max(1, util.ensure(v, "int")); }
-    get mouse() { return new V(this.#mouse); }
+    set quality(v) {
+        v = Math.max(1, util.ensure(v, "int"));
+        if (this.quality == v) return;
+        this.change("quality", this.quality, this.#quality=v);
+    }
+    get mouse() { return this.#mouse; }
+    get worldMouse() { return this.#worldMouse; }
 
     get render() { return this.#render; }
 
@@ -4605,7 +4609,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     get hovered() {
         if (!this.canHover) return null;
-        let m = this.odometry.pageToWorld(this.odometry.mouse);
+        let m = this.odometry.worldMouse;
         if (this.showVelocity && this.rPos.add(this.velocity).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "velocity";
         if (this.rPos.add(V.dir(this.heading, this.w/2)).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "heading";
         if (this.rPos.distSquared(m) < this.odometry.pageLenToWorld(7.5)**2) return "main";
@@ -4683,7 +4687,7 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
 
     get hovered() {
         if (!this.canHover) return null;
-        let m = this.odometry.pageToWorld(this.odometry.mouse);
+        let m = this.odometry.worldMouse;
         if (this.rPos.add(V.dir(this.dir, this.radius)).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "radius";
         if (this.rPos.distSquared(m) < this.radius**2) return "main";
         return null;
@@ -4969,6 +4973,8 @@ Explorer.Node = class ExplorerNode extends util.Target {
         v = !!v;
         if (this.showValue == v) return;
         this.#showValue = v;
+        if (this.showValue) this.eValueBox.classList.add("this");
+        else this.eValueBox.classList.remove("this");
         this.updateDisplay();
     }
     get elem() { return this.#elem; }
@@ -4981,20 +4987,16 @@ Explorer.Node = class ExplorerNode extends util.Target {
     get eValue() { return this.#eValue; }
     get eSide() { return this.#eSide; }
 
-    get icon() { return this.eIcon.getAttribute("name"); }
+    get icon() { return this.eIcon.name; }
     set icon(v) {
         this.eIcon.removeAttribute("src");
-        this.eIcon.setAttribute("name", v);
+        if (this.icon == v) return;
+        this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) {
-        this.eIcon.removeAttribute("name");
-        this.eIcon.setAttribute("src", v);
-    }
+    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
     updateDisplay() {
-        this.eValueBox.style.display = this.showValue ? "" : "none";
-        this.eValue.textContent = this.value;
-        this.post("update-display");
+        if (this.showValue) this.eValue.textContent = this.value;
     }
 
     get isOpen() { return this.elem.classList.contains("this"); }
