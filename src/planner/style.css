@@ -309,13 +309,13 @@
     color: var(--v6);
 }
 #PROJECTPAGE > .main > .edit > .nav > button.this {
-    color: var(--a);
+    color: var(--a5);
 }
 #PROJECTPAGE > .main > .edit > .nav > button.this:not(:disabled):hover {
     color: var(--a6);
 }
 #PROJECTPAGE > .main > .edit > .nav > button.this:disabled {
-    color: var(--a2);
+    color: var(--a4);
 }
 #PROJECTPAGE > .main > .edit > .nav > button > ion-icon {
     font-size: 20px;
