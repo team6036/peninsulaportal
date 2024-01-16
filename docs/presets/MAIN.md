@@ -43,7 +43,7 @@ The url of which is fetched to obtain globalized data for the application, such 
 Repolling the database will pull what it needs from this database, though assets are pulled from a different database.
 
 ### Database Assets URL
-The url of which is fetched to obtain globalized assets for the application, such as 3D models, images, etc. The current structure is based on Github Releases and hence, please check the assets repo at the bottom of this page.
+The url of which is fetched to obtain globalized assets for the application, such as 3D models, images, etc. The current structure is based on Github Releases and hence, please check the [assets repo](https://github.com/12Jeef/peninsulaportal-assets).
 
 ### Competition Mode
 Toggling competition mode on disables polling of database, if constant repolling or rewriting of existing files causes lag.
