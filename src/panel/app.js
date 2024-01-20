@@ -1321,7 +1321,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             {
                 id: "logger", name: "Logger",
                 tab: Panel.LoggerTab,
-                disabled: window.agent().distro,
+                disabled: window.agent().public,
             },
             {
                 id: "logworks", name: "LogWorks",
@@ -1447,7 +1447,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddTab.Tag(
-                util.capitalize(this.searchPart),
+                util.formatText(this.searchPart),
                 { tables: "folder-outline", topics: "document-outline", all: "" }[this.searchPart],
             )];
             if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
@@ -2658,7 +2658,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
         this.eUploadBtn.addEventListener("click", async e => {
             e.stopPropagation();
             if (LOGGERCONTEXT.disconnected) return;
-            let result = await this.app.fileOpenDialog({
+            let result = await App.fileOpenDialog({
                 title: "Choose a WPILOG log file",
                 buttonLabel: "Upload",
                 filters: [{
@@ -2689,7 +2689,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsDownload([name]);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Download Error", name, e);
+                    this.app.error("Log Download Error", "LogName: "+name, e);
             }
         });
         this.addHandler("log-trigger2", (e, name) => {
@@ -2794,7 +2794,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsServerDelete(names);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Delete Error", names.join(", "), e);
+                    this.app.error("Log Delete Error", "Names:", names.join("\n"), e);
             }
         });
 
@@ -2808,14 +2808,14 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
         let logObjects = {};
 
-        let distro = null;
+        let pub = null;
 
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
-            if (distro != window.agent().distro) {
-                distro = window.agent().distro;
-                if (distro) {
+            if (pub != window.agent().public) {
+                pub = window.agent().public;
+                if (pub) {
                     this.elem.style.opacity = "50%";
                     this.elem.style.pointerEvents = "none";
                 } else {
@@ -3468,7 +3468,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         const source = new WPILOGSource();
                         source.fromSerialized(sourceData);
                         progress(null);
-                        const result = util.ensure(await this.app.fileSaveDialog({
+                        const result = util.ensure(await App.fileSaveDialog({
                             title: "Save log to...",
                             buttonLabel: "Save",
                         }), "obj");
@@ -3481,7 +3481,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             await window.api.send("wpilog-write", pth, data);
                         }
                     } catch (e) {
-                        this.app.error("Log Merge Error", e);
+                        this.app.error("Log Merge Error", "", e);
                     }
                     progress(null);
                     state.eSubmit.disabled = false;
@@ -3724,7 +3724,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             elem.id = id;
             this.addEOptionSection(elem);
             elem.classList.add("section");
-            elem.innerHTML = "<div class='header'>"+{ l: "Left Axis", v: "View Window", r: "Right Axis" }[id]+"</div>";
+            let form = new core.Form();
+            elem.appendChild(form.elem);
+            form.side = "center";
+            form.addField(new core.Form.Header({ l: "Left Axis", v: "View Window", r: "Right Axis" }[id]));
             let idfs = {
                 l: () => {
                     elem.classList.add("list");
@@ -3748,91 +3751,81 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 },
                 v: () => {
                     elem.classList.add("view");
-                    let eNav = document.createElement("div");
-                    elem.appendChild(eNav);
-                    eNav.classList.add("nav");
                     const viewModes = ["left", "right", "section", "all"];
-                    let eNavButtons = {};
-                    let eForModes = {};
+                    let fViewMode = form.addField(new core.Form.SelectInput("view-mode", viewModes));
+                    fViewMode.showHeader = false;
+                    fViewMode.addHandler("change-value", () => (this.viewMode = fViewMode.value));
+                    form.addField(new core.Form.Line());
+                    let forms = {};
                     viewModes.forEach(mode => {
-                        let btn = document.createElement("button");
-                        eNav.appendChild(btn);
-                        eNavButtons[mode] = btn;
-                        btn.textContent = util.capitalize(mode);
-                        btn.addEventListener("click", e => {
-                            e.stopPropagation();
-                            this.viewMode = mode;
-                        });
-                        let elems = eForModes[mode] = [];
+                        let form = forms[mode] = new core.Form();
+                        elem.appendChild(form.elem);
                         let modefs = {
                             left: () => {
-                                let info = document.createElement("div");
-                                elem.appendChild(info);
-                                elems.push(info);
-                                info.classList.add("info");
-                                info.innerHTML = "<span>Forwards View Time</span><span class='units'>ms</span>";
-                                let input = document.createElement("input");
-                                elem.appendChild(input);
-                                elems.push(input);
-                                input.type = "number";
-                                input.placeholder = "...";
-                                input.min = 0;
-                                input.addEventListener("change", e => {
-                                    let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
+                                let input = form.addField(new core.Form.Input1d("forwards-view-time"));
+                                this.addHandler("add", () => (input.app = this.app));
+                                this.addHandler("rem", () => (input.app = this.app));
+                                input.types = ["ms", "s", "min"];
+                                input.baseType = "ms";
+                                input.activeType = "s";
+                                input.step = 0.1;
+                                input.inputs.forEach(inp => {
+                                    inp.placeholder = "...";
+                                    inp.min = 0;
+                                });
+                                input.addHandler("change-value", () => {
+                                    let v = Math.max(0, input.value);
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
                                 this.addHandler("change-viewParams.time", () => (input.value = this.viewParams.time));
                                 this.change("viewParams.time", null, this.viewParams.time=5000);
                             },
                             right: () => {
-                                let info = document.createElement("div");
-                                elem.appendChild(info);
-                                elems.push(info);
-                                info.classList.add("info");
-                                info.innerHTML = "<span>Backwards View Time</span><span class='units'>ms</span>";
-                                let input = document.createElement("input");
-                                elem.appendChild(input);
-                                elems.push(input);
-                                input.type = "number";
-                                input.placeholder = "...";
-                                input.min = 0;
-                                input.addEventListener("change", e => {
-                                    let v = Math.max(0, util.ensure(parseFloat(input.value), "num"));
+                                let input = form.addField(new core.Form.Input1d("backwards-view-time"));
+                                this.addHandler("add", () => (input.app = this.app));
+                                this.addHandler("rem", () => (input.app = this.app));
+                                input.types = ["ms", "s", "min"];
+                                input.baseType = "ms";
+                                input.activeType = "s";
+                                input.step = 0.1;
+                                input.inputs.forEach(inp => {
+                                    inp.placeholder = "...";
+                                    inp.min = 0;
+                                });
+                                input.addHandler("change-value", () => {
+                                    let v = Math.max(0, input.value);
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
                                 this.addHandler("change-viewParams.time", () => (input.value = this.viewParams.time));
                                 this.change("viewParams.time", null, this.viewParams.time=5000);
                             },
                             section: () => {
-                                let info, input;
-                                info = document.createElement("div");
-                                elem.appendChild(info);
-                                elems.push(info);
-                                info.classList.add("info");
-                                info.innerHTML = "<span>Range Start</span><span class='units'>ms</span>";
-                                let startInput = input = document.createElement("input");
-                                elem.appendChild(input);
-                                elems.push(input);
-                                input.type = "number";
-                                input.placeholder = "Start";
-                                input.min = 0;
-                                info = document.createElement("div");
-                                elem.appendChild(info);
-                                elems.push(info);
-                                info.classList.add("info");
-                                info.innerHTML = "<span>Range Stop</span><span class='units'>ms</span>";
-                                let stopInput = input = document.createElement("input");
-                                elem.appendChild(input);
-                                elems.push(input);
-                                input.type = "number";
-                                input.placeholder = "Stop";
-                                input.min = 0;
-                                startInput.addEventListener("change", e => {
-                                    let v = Math.max(0, util.ensure(parseFloat(startInput.value), "num"));
+                                let startInput = form.addField(new core.Form.Input1d("range-start"));
+                                this.addHandler("add", () => (startInput.app = this.app));
+                                this.addHandler("rem", () => (startInput.app = this.app));
+                                startInput.types = ["ms", "s", "min"];
+                                startInput.baseType = "ms";
+                                startInput.activeType = "s";
+                                startInput.step = 0.1;
+                                startInput.inputs.forEach(inp => {
+                                    inp.placeholder = "...";
+                                });
+                                startInput.addHandler("change-value", () => {
+                                    let v = Math.max(0, startInput.value);
                                     this.change("viewParams.start", this.viewParams.start, this.viewParams.start=v);
                                 });
-                                stopInput.addEventListener("change", e => {
-                                    let v = Math.max(0, util.ensure(parseFloat(stopInput.value), "num"));
+                                let stopInput = form.addField(new core.Form.Input1d("range-start"));
+                                this.addHandler("add", () => (stopInput.app = this.app));
+                                this.addHandler("rem", () => (stopInput.app = this.app));
+                                stopInput.types = ["ms", "s", "min"];
+                                stopInput.baseType = "ms";
+                                stopInput.activeType = "s";
+                                stopInput.step = 0.1;
+                                stopInput.inputs.forEach(inp => {
+                                    inp.placeholder = "...";
+                                });
+                                stopInput.addHandler("change-value", () => {
+                                    let v = Math.max(0, stopInput.value);
                                     this.change("viewParams.stop", this.viewParams.stop, this.viewParams.stop=v);
                                 });
                                 this.addHandler("change-viewParams.start", () => (startInput.value = this.viewParams.start));
@@ -3844,13 +3837,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         if (mode in modefs) modefs[mode]();
                     });
                     const update = () => {
-                        for (let mode in eNavButtons) {
-                            if (mode == this.viewMode) eNavButtons[mode].classList.add("this");
-                            else eNavButtons[mode].classList.remove("this");
-                            eForModes[mode].forEach(elem => {
-                                elem.style.display = (mode == this.viewMode) ? "" : "none";
-                            });
-                        }
+                        fViewMode.value = this.viewMode;
+                        for (let mode in forms)
+                            forms[mode].isShown = mode == this.viewMode;
                     };
                     this.addHandler("change-viewMode", update);
                     update();
@@ -4416,8 +4405,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     get viewParams() { return this.#viewParams; }
     set viewParams(v) {
         v = util.ensure(v, "obj");
-        for (let k in v) this.#viewParams[k] = v[k];
-        this.change("viewParams", null, this.viewParams);
+        this.#viewParams = {};
+        for (let k in v) {
+            this.#viewParams[k] = v[k];
+            this.change("viewParams."+k, null, this.viewParams[k]);
+        }
     }
 
     getHovered(data, pos, options) {
@@ -4671,7 +4663,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
     #template;
 
-    #eTemplateSelect;
+    #fTemplate;
 
     static PATTERNS = {};
 
@@ -4687,6 +4679,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         let templates = {};
         (async () => {
             templates = util.ensure(await window.api.get("templates"), "obj");
+            this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
             if (this.template != "§null") return;
             this.template = await window.api.get("active-template");
         })();
@@ -4696,7 +4689,10 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             elem.id = id;
             this.addEOptionSection(elem);
             elem.classList.add("section");
-            elem.innerHTML = "<div class='header'>"+{ p: "Poses", f: "Field", o: "Options" }[id]+"</div>";
+            let form = new core.Form();
+            elem.appendChild(form.elem);
+            form.side = "center";
+            form.addField(new core.Form.Header({ p: "Poses", f: "Field", o: "Options" }[id]));
             let idfs = {
                 p: () => {
                     elem.classList.add("list");
@@ -4710,34 +4706,19 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 },
                 f: () => {
                     elem.classList.add("field");
-                    let info = document.createElement("div");
-                    elem.appendChild(info);
-                    info.classList.add("info");
-                    info.innerHTML = "<span>Template</span>";
-                    this.#eTemplateSelect = document.createElement("button");
-                    elem.appendChild(this.eTemplateSelect);
-                    this.eTemplateSelect.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-                    this.eTemplateSelect.addEventListener("click", e => {
-                        e.stopPropagation();
-                        if (!this.hasApp()) return;
-                        let itm;
-                        let menu = new core.App.Menu();
-                        itm = menu.addItem(new core.App.Menu.Item("No Template", (this.template == null) ? "checkmark" : ""));
-                        itm.addHandler("trigger", e => {
-                            this.template = null;
-                        });
-                        menu.addItem(new core.App.Menu.Divider());
-                        for (let name in templates) {
-                            itm = menu.addItem(new core.App.Menu.Item(name, (this.template == name) ? "checkmark" : ""));
-                            itm.addHandler("trigger", e => {
-                                this.template = name;
-                            });
-                        }
-                        this.app.contextMenu = menu;
-                        let r = this.eTemplateSelect.getBoundingClientRect();
-                        this.app.placeContextMenu(r.left, r.bottom);
-                        menu.elem.style.minWidth = r.width+"px";
+                    let form = new core.Form();
+                    elem.appendChild(form.elem);
+                    this.#fTemplate = form.addField(new core.Form.DropdownInput("template", []));
+                    const apply = () => {
+                        this.fTemplate.value = (this.template == null) ? "§null" : this.template;
+                    };
+                    this.fTemplate.addHandler("change-values", apply);
+                    this.addHandler("change-template", apply);
+                    this.fTemplate.addHandler("change-value", () => {
+                        this.template = this.fTemplate.value == "§null" ? null : this.fTemplate.value;
                     });
+                    this.addHandler("add", () => (this.fTemplate.app = this.app));
+                    this.addHandler("rem", () => (this.fTemplate.app = this.app));
                 },
                 o: () => {
                     elem.classList.add("options");
@@ -4805,8 +4786,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         v = (v == null) ? null : String(v);
         if (this.template == v) return;
         this.change("template", this.template, this.#template=v);
-        if (this.eTemplateSelect.children[0] instanceof HTMLDivElement)
-            this.eTemplateSelect.children[0].textContent = (this.template == null) ? "No Template" : this.template;
     }
 
     getValue(node) {
@@ -4880,7 +4859,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         return null;
     }
 
-    get eTemplateSelect() { return this.#eTemplateSelect; }
+    get fTemplate() { return this.#fTemplate; }
 };
 Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     #path;
@@ -5120,22 +5099,17 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #size;
     #robotSize;
 
-    #isMeters;
-    #isDegrees;
+    #lengthUnits;
+    #angleUnits;
     #origin;
 
-    #eSizeWInput;
-    #eSizeHInput;
-    #eRobotSizeWInput;
-    #eRobotSizeHInput;
-    #eUnitsMeters;
-    #eUnitsCentimeters;
-    #eUnitsDegrees;
-    #eUnitsRadians;
-    #eOriginBluePos;
-    #eOriginBlueNeg;
-    #eOriginRedPos;
-    #eOriginRedNeg;
+    #fSize;
+    #fRobotSize;
+    #fUnitsLength1;
+    #fUnitsLength2;
+    #fUnitsAngle;
+    #fOriginBlue;
+    #fOriginRed;
 
     static PATTERNS = {
         "Pose2d": [
@@ -5156,190 +5130,119 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
         this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
 
-        this.#isMeters = null;
-        this.#isDegrees = null;
+        this.#lengthUnits = null;
+        this.#angleUnits = null;
         this.#origin = null;
 
-        let info;
         const eField = this.getEOptionSection("f");
-        let infoUnits = [];
-        info = document.createElement("div");
-        eField.appendChild(info);
-        info.classList.add("info");
-        info.classList.add("nothas");
-        info.innerHTML = "<span>Map Size</span><span class='units'>m</span>";
-        infoUnits.push(info.children[1]);
-        let eSize = document.createElement("div");
-        eField.appendChild(eSize);
-        eSize.classList.add("v");
-        eSize.classList.add("nothas");
-        this.#eSizeWInput = document.createElement("input");
-        eSize.appendChild(this.eSizeWInput);
-        this.eSizeWInput.type = "number";
-        this.eSizeWInput.placeholder = "Width";
-        this.eSizeWInput.min = 0;
-        this.eSizeWInput.step = 0.1;
-        this.eSizeWInput.addEventListener("change", e => {
-            let v = this.eSizeWInput.value;
-            if (v.length > 0) {
-                v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.w = v*(this.isMeters ? 100 : 1);
-            }
+        let fieldForm = new core.Form();
+        eField.appendChild(fieldForm.elem);
+        this.#fSize = fieldForm.addField(new core.Form.Input2d("map-size"));
+        this.addHandler("add", () => (this.fSize.app = this.app));
+        this.addHandler("rem", () => (this.fSize.app = this.app));
+        this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fSize.baseType = "cm";
+        this.fSize.step = 0.1;
+        this.fSize.inputs.forEach((inp, i) => {
+            inp.placeholder = ["Width", "Height"][i];
+            inp.min = 0;
         });
-        this.#eSizeHInput = document.createElement("input");
-        eSize.appendChild(this.eSizeHInput);
-        this.eSizeHInput.type = "number";
-        this.eSizeHInput.placeholder = "Height";
-        this.eSizeHInput.min = 0;
-        this.eSizeHInput.step = 0.1;
-        this.eSizeHInput.addEventListener("change", e => {
-            let v = this.eSizeHInput.value;
-            if (v.length > 0) {
-                v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.h = v*(this.isMeters ? 100 : 1);
-            }
+        this.fSize.addHandler("change-value", () => {
+            this.size.set(this.fSize.value);
         });
-        info = document.createElement("div");
-        eField.appendChild(info);
-        info.classList.add("info");
-        info.classList.add("nothas");
-        info.innerHTML = "<span>Robot Size</span><span class='units'>m</span>";
-        infoUnits.push(info.children[1]);
-        let eRobotSize = document.createElement("div");
-        eField.appendChild(eRobotSize);
-        eRobotSize.classList.add("v");
-        eRobotSize.classList.add("nothas");
-        this.#eRobotSizeWInput = document.createElement("input");
-        eRobotSize.appendChild(this.eRobotSizeWInput);
-        this.eRobotSizeWInput.type = "number";
-        this.eRobotSizeWInput.placeholder = "Width";
-        this.eRobotSizeWInput.min = 0;
-        this.eRobotSizeWInput.step = 0.1;
-        this.eRobotSizeWInput.addEventListener("change", e => {
-            let v = this.eRobotSizeWInput.value;
-            if (v.length > 0) {
-                v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.robotW = v*(this.isMeters ? 100 : 1);
-            }
+        this.#fRobotSize = fieldForm.addField(new core.Form.Input2d("robot-size"));
+        this.addHandler("add", () => (this.fRobotSize.app = this.app));
+        this.addHandler("rem", () => (this.fRobotSize.app = this.app));
+        this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fRobotSize.baseType = "cm";
+        this.fRobotSize.step = 0.1;
+        this.fRobotSize.inputs.forEach((inp, i) => {
+            inp.placeholder = ["Width", "Height"][i];
+            inp.min = 0;
         });
-        this.#eRobotSizeHInput = document.createElement("input");
-        eRobotSize.appendChild(this.eRobotSizeHInput);
-        this.eRobotSizeHInput.type = "number";
-        this.eRobotSizeHInput.placeholder = "Height";
-        this.eRobotSizeHInput.min = 0;
-        this.eRobotSizeHInput.step = 0.1;
-        this.eRobotSizeHInput.addEventListener("change", e => {
-            let v = this.eRobotSizeHInput.value;
-            if (v.length > 0) {
-                v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                this.robotH = v*(this.isMeters ? 100 : 1);
-            }
+        this.fRobotSize.addHandler("change-value", () => {
+            this.robotSize.set(this.fRobotSize.value);
         });
 
-        let eNav, header;
+        this.addHandler("change-template", () => {
+            fieldForm.isShown = this.template == null;
+        });
+
         const eOptions = this.getEOptionSection("o");
+        let optionsForm = new core.Form();
+        eOptions.appendChild(optionsForm.elem);
+        optionsForm.side = "center";
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eUnitsMeters = document.createElement("button");
-        eNav.appendChild(this.eUnitsMeters);
-        this.eUnitsMeters.textContent = "Meters";
-        this.eUnitsMeters.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isMeters = true;
+        this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }]));
+        this.fUnitsLength1.addHandler("change-value", () => {
+            if (!this.fUnitsLength1.hasValue()) return;
+            this.lengthUnits = this.fUnitsLength1.value;
         });
-        this.#eUnitsCentimeters = document.createElement("button");
-        eNav.appendChild(this.eUnitsCentimeters);
-        this.eUnitsCentimeters.textContent = "Centimeters";
-        this.eUnitsCentimeters.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isCentimeters = true;
+        this.#fUnitsLength2 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }]));
+        this.fUnitsLength2.showHeader = false;
+        this.fUnitsLength2.addHandler("change-value", () => {
+            if (!this.fUnitsLength2.hasValue()) return;
+            this.lengthUnits = this.fUnitsLength2.value;
         });
-
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eUnitsDegrees = document.createElement("button");
-        eNav.appendChild(this.eUnitsDegrees);
-        this.eUnitsDegrees.textContent = "Degrees";
-        this.eUnitsDegrees.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isDegrees = true;
-        });
-        this.#eUnitsRadians = document.createElement("button");
-        eNav.appendChild(this.eUnitsRadians);
-        this.eUnitsRadians.textContent = "Radians";
-        this.eUnitsRadians.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isRadians = true;
+        this.addHandler("change-lengthUnits", () => {
+            this.fUnitsLength1.value = this.lengthUnits;
+            this.fUnitsLength2.value = this.lengthUnits;
         });
 
-        header = document.createElement("div");
-        eOptions.appendChild(header);
-        header.classList.add("header");
-        header.textContent = "Origin";
+        this.#fUnitsAngle = optionsForm.addField(new core.Form.SelectInput("angle-units", [{ value: "deg", name: "Degrees" }, { value: "rad", name: "Radians" }, { value: "cycle", name: "Cycles" }]));
+        this.fUnitsAngle.addHandler("change-value", () => {
+            this.angleUnits = this.fUnitsAngle.value;
+        });
+        this.addHandler("change-angleUnits", () => {
+            this.fUnitsAngle.value = this.angleUnits;
+        });
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eOriginBluePos = document.createElement("button");
-        eNav.appendChild(this.eOriginBluePos);
-        this.eOriginBluePos.textContent = "+Blue";
-        this.eOriginBluePos.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "blue+";
+        this.#fOriginBlue = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }]));
+        this.fOriginBlue.addHandler("change-value", () => {
+            if (!this.fOriginBlue.hasValue()) return;
+            this.origin = this.fOriginBlue.value;
         });
-        this.#eOriginBlueNeg = document.createElement("button");
-        eNav.appendChild(this.eOriginBlueNeg);
-        this.eOriginBlueNeg.textContent = "-Blue";
-        this.eOriginBlueNeg.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "blue-";
-        });
-        this.eOriginBluePos.style.color = this.eOriginBlueNeg.style.color = "var(--cb)";
+        const applyBlue = () => Array.from(this.fOriginBlue.eContent.children).forEach(elem => (elem.style.color = "var(--cb)"));
+        this.fOriginBlue.addHandler("apply", applyBlue);
+        applyBlue();
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eOriginRedPos = document.createElement("button");
-        eNav.appendChild(this.eOriginRedPos);
-        this.eOriginRedPos.textContent = "+Red";
-        this.eOriginRedPos.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "red+";
+        this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }]));
+        this.fOriginRed.showHeader = false;
+        this.fOriginRed.addHandler("change-value", () => {
+            if (!this.fOriginRed.hasValue()) return;
+            this.origin = this.fOriginRed.value;
         });
-        this.#eOriginRedNeg = document.createElement("button");
-        eNav.appendChild(this.eOriginRedNeg);
-        this.eOriginRedNeg.textContent = "-Red";
-        this.eOriginRedNeg.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "red-";
+        const applyRed = () => Array.from(this.fOriginRed.eContent.children).forEach(elem => (elem.style.color = "var(--cr)"));
+        this.fOriginRed.addHandler("apply", applyRed);
+        applyRed();
+
+        this.addHandler("change-origin", () => {
+            this.fOriginBlue.value = this.origin;
+            this.fOriginRed.value = this.origin;
         });
-        this.eOriginRedPos.style.color = this.eOriginRedNeg.style.color = "var(--cr)";
 
         this.quality = this.odometry.quality;
 
         if (a.length <= 0 || [6, 7].includes(a.length) || a.length > 8) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.origin, a.optionState];
+            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry2dTab(...a);
-                    a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.origin, a.optionState];
+                    a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.isMeters, a.isDegrees, a.origin, a.optionState];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
             else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 1000];
         if (a.length == 3) a = [...a, 100];
         if (a.length == 4) a = [...a, 0.5];
-        if (a.length == 5) a = [...a.slice(0, 4), true, true, "blue+", a[4]];
+        if (a.length == 5) a = [...a.slice(0, 4), "m", "deg", "blue+", a[4]];
 
-        [this.poses, this.template, this.size, this.robotSize, this.isMeters, this.isDegrees, this.origin, this.optionState] = a;
+        [this.poses, this.template, this.size, this.robotSize, this.lengthUnits, this.angleUnits, this.origin, this.optionState] = a;
 
         let templates = {};
         let templateImages = {};
@@ -5351,23 +5254,19 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         })();
 
         const updateSize = () => {
-            this.eSizeWInput.value = this.w/(this.isMeters ? 100 : 1);
-            this.eSizeHInput.value = this.h/(this.isMeters ? 100 : 1);
-            this.eRobotSizeWInput.value = this.robotW/(this.isMeters ? 100 : 1);
-            this.eRobotSizeHInput.value = this.robotH/(this.isMeters ? 100 : 1);
-            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
+            this.fSize.value = this.size;
+            this.fRobotSize.value = this.robotSize;
+            this.fSize.activeType = this.fRobotSize.activeType = this.lengthUnits;
         };
         this.addHandler("change-size.x", updateSize);
         this.addHandler("change-size.y", updateSize);
         this.addHandler("change-robotSize.x", updateSize);
         this.addHandler("change-robotSize.y", updateSize);
-        this.addHandler("change-isMeters", updateSize);
+        this.addHandler("change-lengthUnits", updateSize);
+        updateSize();
 
         this.addHandler("update", delta => {
             if (this.isClosed) return;
-
-            if (this.template in templates) eField.classList.add("has");
-            else eField.classList.remove("has");
 
             if (!finished) return;
 
@@ -5396,7 +5295,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 let itm;
                 let menu = new core.App.Menu();
                 for (let k in core.Odometry2d.Robot.TYPES) {
-                    let name = String(k).split(" ").map(v => util.capitalize(v)).join(" ");
+                    let name = util.formatText(k);
                     itm = menu.addItem(new core.App.Menu.Item(name, (current == k) ? "checkmark" : ""));
                     itm.addHandler("trigger", e => {
                         r.type = k;
@@ -5435,61 +5334,35 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     get robotH() { return this.robotSize.y; }
     set robotH(v) { this.robotSize.y = v; }
 
-    get isMeters() { return this.#isMeters; }
-    set isMeters(v) {
-        v = !!v;
-        if (this.isMeters == v) return;
-        this.change("isMeters", this.isMeters, this.#isMeters=v);
-
-        if (this.isMeters) this.eUnitsMeters.classList.add("this");
-        else this.eUnitsMeters.classList.remove("this");
-        if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
-        else this.eUnitsCentimeters.classList.remove("this");
+    get lengthUnits() { return this.#lengthUnits; }
+    set lengthUnits(v) {
+        v = String(v);
+        if (!["m", "cm", "mm", "yd", "ft", "in"].includes(v)) v = "m";
+        if (this.lengthUnits == v) return;
+        this.change("lengthUnits", this.lengthUnits, this.#lengthUnits=v);
     }
-    get isCentimeters() { return !this.isMeters; }
-    set isCentimeters(v) { this.isMeters = !v; }
-    get isDegrees() { return this.#isDegrees; }
-    set isDegrees(v) {
-        v = !!v;
-        if (this.isDegrees == v) return;
-        this.change("isDegrees", this.isDegrees, this.#isDegrees=v);
-
-        if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
-        else this.eUnitsDegrees.classList.remove("this");
-        if (this.isRadians) this.eUnitsRadians.classList.add("this");
-        else this.eUnitsRadians.classList.remove("this");
+    get angleUnits() { return this.#angleUnits; }
+    set angleUnits(v) {
+        v = String(v);
+        if (!["deg", "rad", "cycle"].includes(v)) v = "deg";
+        if (this.angleUnits == v) return;
+        this.change("angleUnits", this.angleUnits, this.#angleUnits=v);
     }
-    get isRadians() { return !this.isDegrees; }
-    set isRadians(v) { this.isDegrees = !v; }
     get origin() { return this.#origin; }
     set origin(v) {
         v = String(v);
         if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
         if (this.origin == v) return;
         this.change("origin", this.origin, this.#origin=v);
-
-        if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
-        else this.eOriginBluePos.classList.remove("this");
-        if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
-        else this.eOriginBlueNeg.classList.remove("this");
-        if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
-        else this.eOriginRedPos.classList.remove("this");
-        if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
-        else this.eOriginRedNeg.classList.remove("this");
     }
 
-    get eSizeWInput() { return this.#eSizeWInput; }
-    get eSizeHInput() { return this.#eSizeHInput; }
-    get eRobotSizeWInput() { return this.#eRobotSizeWInput; }
-    get eRobotSizeHInput() { return this.#eRobotSizeHInput; }
-    get eUnitsMeters() { return this.#eUnitsMeters; }
-    get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
-    get eUnitsDegrees() { return this.#eUnitsDegrees; }
-    get eUnitsRadians() { return this.#eUnitsRadians; }
-    get eOriginBluePos() { return this.#eOriginBluePos; }
-    get eOriginBlueNeg() { return this.#eOriginBlueNeg; }
-    get eOriginRedPos() { return this.#eOriginRedPos; }
-    get eOriginRedNeg() { return this.#eOriginRedNeg; }
+    get fSize() { return this.#fSize; }
+    get fRobotSize() { return this.#fRobotSize; }
+    get fUnitsLength1() { return this.#fUnitsLength1; }
+    get fUnitsLength2() { return this.#fUnitsLength2; }
+    get fUnitsAngle() { return this.#fUnitsAngle; }
+    get fOriginBlue() { return this.#fOriginBlue; }
+    get fOriginRed() { return this.#fOriginRed; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -5497,8 +5370,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             template: this.template,
             size: this.size,
             robotSize: this.robotSize,
-            isMeters: this.isMeters,
-            isDegrees: this.isDegrees,
+            lengthUnits: this.lengthUnits,
+            angleUnits: this.angleUnits,
             origin: this.origin,
             optionState: this.optionState,
         });
@@ -5571,7 +5444,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
-            this.eDisplayType.children[0].textContent = String(core.Odometry2d.Robot.lookupTypeName(this.type)).split(" ").map(v => util.capitalize(v)).join(" ");
+            this.eDisplayType.children[0].textContent = util.formatText(core.Odometry2d.Robot.lookupTypeName(this.type));
     }
 
     get eGhostBtn() { return this.#eGhostBtn; }
@@ -5607,7 +5480,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         const convertPos = (...v) => {
             v = new V(...v);
             if (!this.hasTab()) return v;
-            if (this.tab.isMeters) v.imul(100);
+            v = v.map(v => util.Unit.convert(v, this.tab.lengthUnits, "cm"));
             if (!this.tab.origin.startsWith("blue")) v.x = this.tab.odometry.w-v.x;
             if (!this.tab.origin.endsWith("+")) v.y = this.tab.odometry.h-v.y;
             return v;
@@ -5615,7 +5488,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         const convertAngle = v => {
             v = util.clampAngle(v);
             if (!this.hasTab()) return v;
-            if (this.tab.isRadians) v *= (180/Math.PI);
+            v = util.Unit.convert(v, this.tab.angleUnits, "deg");
             if (!this.tab.origin.startsWith("blue")) v = 180-v;
             if (!this.tab.origin.endsWith("+")) v = 0-v;
             return v;
@@ -5703,25 +5576,18 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     #isProjection;
     #isOrbit;
-    #isMeters;
-    #isDegrees;
+    #lengthUnits;
+    #angleUnits;
     #origin;
 
-    #eViewProjection;
-    #eViewIsometric;
-    #eViewOrbit;
-    #eViewFree;
-    #eUnitsMeters;
-    #eUnitsCentimeters;
-    #eUnitsDegrees;
-    #eUnitsRadians;
-    #eOriginBluePos;
-    #eOriginBlueNeg;
-    #eOriginRedPos;
-    #eOriginRedNeg;
-    #eCameraPosXInput;
-    #eCameraPosYInput;
-    #eCameraPosZInput;
+    #fViewType;
+    #fViewMovementType;
+    #fUnitsLength1;
+    #fUnitsLength2;
+    #fUnitsAngle;
+    #fOriginBlue;
+    #fOriginRed;
+    #fCameraPos;
 
     static CREATECTX = false;
 
@@ -5863,201 +5729,129 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         this.#isProjection = null;
         this.#isOrbit = null;
-        this.#isMeters = null;
-        this.#isDegrees = null;
+        this.#lengthUnits = null;
+        this.#angleUnits = null;
         this.#origin = null;
 
         const eField = this.getEOptionSection("f");
-        let eNav, header;
+
         const eOptions = this.getEOptionSection("o");
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eViewProjection = document.createElement("button");
-        eNav.appendChild(this.eViewProjection);
-        this.eViewProjection.textContent = "Projection";
-        this.eViewProjection.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isProjection = true;
+        let optionsForm = new core.Form();
+        eOptions.appendChild(optionsForm.elem);
+        optionsForm.side = "center";
+
+        this.#fViewType = optionsForm.addField(new core.Form.SelectInput("camera-type", [{ value: "proj", name: "Projection" }, { value: "iso", name: "Isometric" }]));
+        this.fViewType.showHeader = false;
+        this.fViewType.addHandler("change-value", () => {
+            this.isProjection = this.fViewType.value == "proj";
         });
-        this.#eViewIsometric = document.createElement("button");
-        eNav.appendChild(this.eViewIsometric);
-        this.eViewIsometric.textContent = "Isometric";
-        this.eViewIsometric.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isIsometric = true;
+        this.addHandler("change-isProjection", () => {
+            this.fViewType.value = this.isProjection ? "proj" : "iso";
         });
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eViewOrbit = document.createElement("button");
-        eNav.appendChild(this.eViewOrbit);
-        this.eViewOrbit.textContent = "Orbit";
-        this.eViewOrbit.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isOrbit = true;
+        this.#fViewMovementType = optionsForm.addField(new core.Form.SelectInput("movement-type", [{ value: "orbit", name: "Orbit" }, { value: "free", name: "Free" }]));
+        this.fViewMovementType.showHeader = false;
+        this.fViewMovementType.addHandler("change-value", () => {
+            this.isOrbit = this.fViewMovementType.value == "orbit";
         });
-        this.#eViewFree = document.createElement("button");
-        eNav.appendChild(this.eViewFree);
-        this.eViewFree.textContent = "Free";
-        this.eViewFree.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isFree = true;
+        this.addHandler("change-isOrbit", () => {
+            this.fViewMovementType.value = this.isOrbit ? "orbit" : "free";
         });
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eUnitsMeters = document.createElement("button");
-        eNav.appendChild(this.eUnitsMeters);
-        this.eUnitsMeters.textContent = "Meters";
-        this.eUnitsMeters.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isMeters = true;
+        this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }]));
+        this.fUnitsLength1.addHandler("change-value", () => {
+            if (!this.fUnitsLength1.hasValue()) return;
+            this.lengthUnits = this.fUnitsLength1.value;
         });
-        this.#eUnitsCentimeters = document.createElement("button");
-        eNav.appendChild(this.eUnitsCentimeters);
-        this.eUnitsCentimeters.textContent = "Centimeters";
-        this.eUnitsCentimeters.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isCentimeters = true;
+        this.#fUnitsLength2 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }]));
+        this.fUnitsLength2.showHeader = false;
+        this.fUnitsLength2.addHandler("change-value", () => {
+            if (!this.fUnitsLength2.hasValue()) return;
+            this.lengthUnits = this.fUnitsLength2.value;
+        });
+        this.addHandler("change-lengthUnits", () => {
+            this.fUnitsLength1.value = this.lengthUnits;
+            this.fUnitsLength2.value = this.lengthUnits;
         });
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eUnitsDegrees = document.createElement("button");
-        eNav.appendChild(this.eUnitsDegrees);
-        this.eUnitsDegrees.textContent = "Degrees";
-        this.eUnitsDegrees.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isDegrees = true;
+        this.#fUnitsAngle = optionsForm.addField(new core.Form.SelectInput("angle-units", [{ value: "deg", name: "Degrees" }, { value: "rad", name: "Radians" }, { value: "cycle", name: "Cycles" }]));
+        this.fUnitsAngle.addHandler("change-value", () => {
+            this.angleUnits = this.fUnitsAngle.value;
         });
-        this.#eUnitsRadians = document.createElement("button");
-        eNav.appendChild(this.eUnitsRadians);
-        this.eUnitsRadians.textContent = "Radians";
-        this.eUnitsRadians.addEventListener("click", e => {
-            e.stopPropagation();
-            this.isRadians = true;
+        this.addHandler("change-angleUnits", () => {
+            this.fUnitsAngle.value = this.angleUnits;
         });
 
-        header = document.createElement("div");
-        eOptions.appendChild(header);
-        header.classList.add("header");
-        header.textContent = "Origin";
+        this.#fOriginBlue = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }]));
+        this.fOriginBlue.addHandler("change-value", () => {
+            if (!this.fOriginBlue.hasValue()) return;
+            this.origin = this.fOriginBlue.value;
+        });
+        const applyBlue = () => Array.from(this.fOriginBlue.eContent.children).forEach(elem => (elem.style.color = "var(--cb)"));
+        this.fOriginBlue.addHandler("apply", applyBlue);
+        applyBlue();
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eOriginBluePos = document.createElement("button");
-        eNav.appendChild(this.eOriginBluePos);
-        this.eOriginBluePos.textContent = "+Blue";
-        this.eOriginBluePos.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "blue+";
+        this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }]));
+        this.fOriginRed.showHeader = false;
+        this.fOriginRed.addHandler("change-value", () => {
+            if (!this.fOriginRed.hasValue()) return;
+            this.origin = this.fOriginRed.value;
         });
-        this.#eOriginBlueNeg = document.createElement("button");
-        eNav.appendChild(this.eOriginBlueNeg);
-        this.eOriginBlueNeg.textContent = "-Blue";
-        this.eOriginBlueNeg.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "blue-";
-        });
-        this.eOriginBluePos.style.color = this.eOriginBlueNeg.style.color = "var(--cb)";
+        const applyRed = () => Array.from(this.fOriginRed.eContent.children).forEach(elem => (elem.style.color = "var(--cr)"));
+        this.fOriginRed.addHandler("apply", applyRed);
+        applyRed();
 
-        eNav = document.createElement("div");
-        eOptions.appendChild(eNav);
-        eNav.classList.add("nav");
-        this.#eOriginRedPos = document.createElement("button");
-        eNav.appendChild(this.eOriginRedPos);
-        this.eOriginRedPos.textContent = "+Red";
-        this.eOriginRedPos.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "red+";
+        this.addHandler("change-origin", () => {
+            this.fOriginBlue.value = this.origin;
+            this.fOriginRed.value = this.origin;
         });
-        this.#eOriginRedNeg = document.createElement("button");
-        eNav.appendChild(this.eOriginRedNeg);
-        this.eOriginRedNeg.textContent = "-Red";
-        this.eOriginRedNeg.addEventListener("click", e => {
-            e.stopPropagation();
-            this.origin = "red-";
-        });
-        this.eOriginRedPos.style.color = this.eOriginRedNeg.style.color = "var(--cr)";
 
-        header = document.createElement("div");
-        eOptions.appendChild(header);
-        header.classList.add("header");
-        header.textContent = "View";
+        optionsForm.addField(new core.Form.Header("View"));
 
-        let infoUnits = [];
-        let info = document.createElement("div");
-        eOptions.appendChild(info);
-        info.classList.add("info");
-        info.classList.add("nothas");
-        info.innerHTML = "<span>Camera Position</span><span class='units'>m</span>";
-        infoUnits.push(info.children[1]);
-        let eCameraPos = document.createElement("div");
-        eOptions.appendChild(eCameraPos);
-        eCameraPos.classList.add("v");
-        eCameraPos.classList.add("nothas");
-        this.#eCameraPosXInput = document.createElement("input");
-        eCameraPos.appendChild(this.eCameraPosXInput);
-        this.eCameraPosXInput.type = "number";
-        this.eCameraPosXInput.placeholder = "X";
-        this.eCameraPosXInput.step = 0.1;
-        this.eCameraPosXInput.addEventListener("change", e => {
-            let v = this.eCameraPosXInput.value;
-            if (v.length > 0) {
-                v = util.ensure(parseFloat(v), "num");
-                this.camera.position.x = v / (this.isMeters ? 1 : 100);
-            }
+        let viewForm = new core.Form();
+        eOptions.appendChild(viewForm.elem);
+
+        this.#fCameraPos = viewForm.addField(new core.Form.Input3d("camera-position"));
+        this.addHandler("add", () => (this.fCameraPos.app = this.app));
+        this.addHandler("rem", () => (this.fCameraPos.app = this.app));
+        this.fCameraPos.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fCameraPos.baseType = "m";
+        this.fCameraPos.step = 0.1;
+        this.fCameraPos.inputs.forEach((inp, i) => {
+            inp.placeholder = "XYZ"[i];
         });
-        this.#eCameraPosYInput = document.createElement("input");
-        eCameraPos.appendChild(this.eCameraPosYInput);
-        this.eCameraPosYInput.type = "number";
-        this.eCameraPosYInput.placeholder = "Y";
-        this.eCameraPosYInput.step = 0.1;
-        this.eCameraPosYInput.addEventListener("change", e => {
-            let v = this.eCameraPosYInput.value;
-            if (v.length > 0) {
-                v = util.ensure(parseFloat(v), "num");
-                this.camera.position.y = v / (this.isMeters ? 1 : 100);
-            }
+        let ignore = false;
+        this.fCameraPos.addHandler("change-value", () => {
+            console.log(this.fCameraPos.value);
+            if (ignore) return ignore = false;
+            this.camera.position.x = this.fCameraPos.x;
+            this.camera.position.y = this.fCameraPos.y;
+            this.camera.position.z = this.fCameraPos.z;
         });
-        this.#eCameraPosZInput = document.createElement("input");
-        eCameraPos.appendChild(this.eCameraPosZInput);
-        this.eCameraPosZInput.type = "number";
-        this.eCameraPosZInput.placeholder = "Z";
-        this.eCameraPosZInput.step = 0.1;
-        this.eCameraPosZInput.addEventListener("change", e => {
-            let v = this.eCameraPosZInput.value;
-            if (v.length > 0) {
-                v = util.ensure(parseFloat(v), "num");
-                this.camera.position.z = v / (this.isMeters ? 1 : 100);
-            }
+        this.addHandler("change-lengthUnits", () => {
+            this.fCameraPos.activeType = this.lengthUnits;
         });
         let cam = new Array(7).fill(null);
 
         if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 8) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.origin, a.optionState];
+            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry3dTab(...a);
-                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.origin, a.optionState];
+                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.isMeters, a.isDegrees, a.origin, a.optionState];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
             else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 0.5];
         if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, "blue+", a[2]];
 
-        [this.poses, this.template, this.isProjection, this.isOrbit, this.isMeters, this.isDegrees, this.origin, this.optionState] = a;
+        [this.poses, this.template, this.isProjection, this.isOrbit, this.lengthUnits, this.angleUnits, this.origin, this.optionState] = a;
 
         let templates = {};
         let templateModels = {};
@@ -6079,8 +5873,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         });
         let velocity = new util.V3();
 
-        this.addHandler("change-isMeters", () => {
-            infoUnits.forEach(elem => (elem.textContent = (this.isMeters ? "m" : "cm")));
+        this.addHandler("change-lengthUnits", () => {
+            this.fCameraPos.activeType = this.lengthUnits;
         });
         const updateField = () => {
             this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
@@ -6101,15 +5895,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     this.controls.unlock();
                 return;
             }
-
-            if (this.template in templates) eField.classList.add("has");
-            else eField.classList.remove("has");
-            if (document.activeElement != this.eCameraPosXInput)
-                this.eCameraPosXInput.value = Math.round((this.camera.position.x * (this.isMeters ? 1 : 100))*10000)/10000;
-            if (document.activeElement != this.eCameraPosYInput)
-                this.eCameraPosYInput.value = Math.round((this.camera.position.y * (this.isMeters ? 1 : 100))*10000)/10000;
-            if (document.activeElement != this.eCameraPosZInput)
-                this.eCameraPosZInput.value = Math.round((this.camera.position.z * (this.isMeters ? 1 : 100))*10000)/10000;
             
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
@@ -6266,14 +6051,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     velocity.imul(0);
                 }
             }
-            this.camera.position.x = Math.round(this.camera.position.x*10000)/10000;
-            this.camera.position.y = Math.round(this.camera.position.y*10000)/10000;
-            this.camera.position.z = Math.round(this.camera.position.z*10000)/10000;
+            this.camera.position.x = Math.round(this.camera.position.x*1000)/1000;
+            this.camera.position.y = Math.round(this.camera.position.y*1000)/1000;
+            this.camera.position.z = Math.round(this.camera.position.z*1000)/1000;
             let cam2 = [
                 this.camera.position.x, this.camera.position.y, this.camera.position.z,
                 this.camera.quaternion.w, this.camera.quaternion.x, this.camera.quaternion.y, this.camera.quaternion.z,
             ];
             for (let i = 0; i < 7; i++) {
+                if (i < 3) this.fCameraPos["xyz"[i]] = cam2[i];
                 if (cam[i] == cam2[i]) continue;
                 cam[i] = cam2[i];
                 this.requestRedraw();
@@ -6429,11 +6215,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.updateControls();
         this.camera.lookAt(0, 0, 0);
         this.requestRedraw();
-
-        if (this.isProjection) this.eViewProjection.classList.add("this");
-        else this.eViewProjection.classList.remove("this");
-        if (this.isIsometric) this.eViewIsometric.classList.add("this");
-        else this.eViewIsometric.classList.remove("this");
     }
     get isIsometric() { return !this.isProjection; }
     set isIsometric(v) { this.isProjection = !v; }
@@ -6442,80 +6223,41 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         v = !!v;
         if (this.isOrbit == v) return;
         this.change("isOrbit", this.isOrbit, this.#isOrbit=v);
-
-        if (this.isOrbit) this.eViewOrbit.classList.add("this");
-        else this.eViewOrbit.classList.remove("this");
-        if (this.isFree) this.eViewFree.classList.add("this");
-        else this.eViewFree.classList.remove("this");
-
         this.updateControls();
     }
     get isFree() { return !this.isOrbit; }
     set isFree(v) { this.isOrbit = !v; }
-    get isMeters() { return this.#isMeters; }
-    set isMeters(v) {
-        v = !!v;
-        if (this.isMeters == v) return;
-        this.change("isMeters", this.isMeters, this.#isMeters=v);
-
-        if (this.isMeters) this.eUnitsMeters.classList.add("this");
-        else this.eUnitsMeters.classList.remove("this");
-        if (this.isCentimeters) this.eUnitsCentimeters.classList.add("this");
-        else this.eUnitsCentimeters.classList.remove("this");
-
-        this.requestRedraw();
+    get lengthUnits() { return this.#lengthUnits; }
+    set lengthUnits(v) {
+        v = String(v);
+        if (!["m", "cm", "mm", "yd", "ft", "in"].includes(v)) v = "m";
+        if (this.lengthUnits == v) return;
+        this.change("lengthUnits", this.lengthUnits, this.#lengthUnits=v);
     }
-    get isCentimeters() { return !this.isMeters; }
-    set isCentimeters(v) { this.isMeters = !v; }
-    get isDegrees() { return this.#isDegrees; }
-    set isDegrees(v) {
-        v = !!v;
-        if (this.isDegrees == v) return;
-        this.change("isDegrees", this.isDegrees, this.#isDegrees=v);
-
-        if (this.isDegrees) this.eUnitsDegrees.classList.add("this");
-        else this.eUnitsDegrees.classList.remove("this");
-        if (this.isRadians) this.eUnitsRadians.classList.add("this");
-        else this.eUnitsRadians.classList.remove("this");
-
-        this.requestRedraw();
+    get angleUnits() { return this.#angleUnits; }
+    set angleUnits(v) {
+        v = String(v);
+        if (!["deg", "rad", "cycle"].includes(v)) v = "deg";
+        if (this.angleUnits == v) return;
+        this.change("angleUnits", this.angleUnits, this.#angleUnits=v);
     }
-    get isRadians() { return !this.isDegrees; }
-    set isRadians(v) { this.isDegrees = !v; }
     get origin() { return this.#origin; }
     set origin(v) {
         v = String(v);
         if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
         if (this.origin == v) return;
         this.change("origin", this.origin, this.#origin=v);
-        
-        if (this.origin == "blue+") this.eOriginBluePos.classList.add("this");
-        else this.eOriginBluePos.classList.remove("this");
-        if (this.origin == "blue-") this.eOriginBlueNeg.classList.add("this");
-        else this.eOriginBlueNeg.classList.remove("this");
-        if (this.origin == "red+") this.eOriginRedPos.classList.add("this");
-        else this.eOriginRedPos.classList.remove("this");
-        if (this.origin == "red-") this.eOriginRedNeg.classList.add("this");
-        else this.eOriginRedNeg.classList.remove("this");
-
         this.requestRedraw();
     }
 
-    get eViewProjection() { return this.#eViewProjection; }
-    get eViewIsometric() { return this.#eViewIsometric; }
-    get eViewOrbit() { return this.#eViewOrbit; }
-    get eViewFree() { return this.#eViewFree; }
-    get eUnitsMeters() { return this.#eUnitsMeters; }
-    get eUnitsCentimeters() { return this.#eUnitsCentimeters; }
-    get eUnitsDegrees() { return this.#eUnitsDegrees; }
-    get eUnitsRadians() { return this.#eUnitsRadians; }
-    get eOriginBluePos() { return this.#eOriginBluePos; }
-    get eOriginBlueNeg() { return this.#eOriginBlueNeg; }
-    get eOriginRedPos() { return this.#eOriginRedPos; }
-    get eOriginRedNeg() { return this.#eOriginRedNeg; }
-    get eCameraPosXInput() { return this.#eCameraPosXInput; }
-    get eCameraPosYInput() { return this.#eCameraPosYInput; }
-    get eCameraPosZInput() { return this.#eCameraPosZInput; }
+    get fViewType() { return this.#fViewType; }
+    get fViewMovementType() { return this.#fViewMovementType; }
+    get fUnitsLength1() { return this.#fUnitsLength1; }
+    get fUnitsLength2() { return this.#fUnitsLength2; }
+    get fUnitsAngle() { return this.#fUnitsAngle; }
+    get fOriginBlue() { return this.#fOriginBlue; }
+    get fOriginRed() { return this.#fOriginRed; }
+    get fCameraPos() { return this.#fCameraPos; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -6523,8 +6265,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             template: this.template,
             isProjection: this.isProjection,
             isOrbit: this.isOrbit,
-            isMeters: this.isMeters,
-            isDegrees: this.isDegrees,
+            lengthUnits: this.lengthUnits,
+            angleUnits: this.angleUnits,
             origin: this.origin,
             optionState: this.optionState,
         });
@@ -6846,9 +6588,9 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     let theObject = this.theObject.children[i];
                     let value = this.value.slice(i*type, (i+1)*type);
                     if (type == 7) {
-                        value[0] /= this.tab.isMeters?1:100;
-                        value[1] /= this.tab.isMeters?1:100;
-                        value[2] /= this.tab.isMeters?1:100;
+                        value[0] = util.Unit.convert(value[0], this.tab.lengthUnits, "m");
+                        value[1] = util.Unit.convert(value[1], this.tab.lengthUnits, "m");
+                        value[2] = util.Unit.convert(value[2], this.tab.lengthUnits, "m");
                         value[0] += this.offsetX/100;
                         value[1] += this.offsetY/100;
                         value[2] += this.offsetZ/100;
@@ -6867,11 +6609,11 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                             theObject.quaternion.set(value[4], value[5], value[6], value[3]);
                         }
                     } else {
-                        value[0] /= this.tab.isMeters?1:100;
-                        value[1] /= this.tab.isMeters?1:100;
+                        value[0] = util.Unit.convert(value[0], this.tab.lengthUnits, "m");
+                        value[1] = util.Unit.convert(value[1], this.tab.lengthUnits, "m");
                         value[0] += this.offsetX/100;
                         value[1] += this.offsetY/100;
-                        value[2] *= this.tab.isDegrees ? (Math.PI/180) : 1;
+                        value[2] = util.Unit.convert(value[2], this.tab.angleUnits, "rad");
                         let value2 = [
                             theObject.position.x, theObject.position.y,
                             theObject.rotation.z,
@@ -7697,7 +7439,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        this.app.error("WPILOG Load Error", this.project.config.source, e);
+                        this.app.error("WPILOG Load Error", "File: "+this.project.config.source, e);
                     }
                     this.app.progress = null;
                     delete this.source.importing;
@@ -7872,7 +7614,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             {
                 id: "logger", name: "Logger",
                 tab: Panel.LoggerTab,
-                disabled: window.agent().distro,
+                disabled: window.agent().public,
             },
             {
                 id: "logworks", name: "LogWorks",
@@ -8106,7 +7848,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             timer = 5000;
             if (!this.hasProject()) return;
             let r = this.eContent.getBoundingClientRect();
-            this.project.meta.thumb = await this.app.capture({
+            this.project.meta.thumb = await App.capture({
                 x: Math.round(r.left), y: Math.round(r.top),
                 width: Math.round(r.width), height: Math.round(r.height),
             });

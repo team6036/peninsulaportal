@@ -96,7 +96,7 @@ button:not(.override) {
     outline: 1px solid var(--v3);
 }
 #PAGE > .content > article p:not(.override) > input:disabled {
-    outline: 1px solid var(--v2);
+    outline: 1px solid transparent;
 }
 #PAGE > .content > article p:not(.override) > input:focus-visible {
     outline: 1px solid var(--v8);
@@ -149,17 +149,26 @@ button:not(.override) {
     bottom: 10px;
     left: 10px;
 
+    padding: 10px;
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-end;
-    align-items: flex-start;
+    align-items: stretch;
     align-content: center;
 
+    background-color: var(--v1-0);
     color: var(--v2);
 
     font-size: 12px;
     font-family: monospace;
+
+    transition: background-color var(--t), color var(--t);
+}
+#PAGE > .content > .info:has(> div:not(.nav):hover) {
+    background-color: var(--v1-8);
+    color: var(--v8);
 }
 #PAGE > .content > .info * {
     font-family: monospace;
@@ -189,6 +198,8 @@ button:not(.override) {
     position: absolute;
     top: 10px;
     left: 10px;
+
+    padding: 10px;
 
     display: flex;
     flex-direction: column;

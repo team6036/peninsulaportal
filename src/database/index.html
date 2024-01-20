@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+    <head>
+		<meta charset="UTF-8">
+		<script type="module">
+			import App from "./app.js";
+			const app = new App();
+			app.start();
+		</script>
+    </head>
+    <body>
+		<div id="mount">
+            <div id="PAGE" class="page this">
+                <div class="side">
+                    <button id="templates">
+                        <ion-icon name="image"></ion-icon>
+                        <div class="tooltip hov ey">Fields</div>
+                    </button>
+                    <button id="robots">
+                        <ion-icon src="../assets/icons/robot.svg"></ion-icon>
+                        <div class="tooltip hov ey">Robots</div>
+                    </button>
+                    <button id="themes">
+                        <ion-icon name="color-palette"></ion-icon>
+                        <div class="tooltip hov ey">Themes</div>
+                    </button>
+                    <div class="section">
+                        <button id="features">
+                            <ion-icon name="apps"></ion-icon>
+                            <div class="tooltip hov ey">Features</div>
+                        </button>
+                        <div class="sub">
+                            <button id="panel">
+                                <ion-icon name="grid"></ion-icon>
+                                <div class="tooltip hov ey">Panel</div>
+                            </button>
+                            <button id="planner">
+                                <ion-icon name="analytics"></ion-icon>
+                                <div class="tooltip hov ey">Planner</div>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="config">
+                        <ion-icon src="../assets/icons/config.svg"></ion-icon>
+                        <div class="tooltip hov ey">Config</div>
+                    </button>
+                </div>
+                <div class="content">
+                    <div id="templates">
+                        <div class="title">Fields</div>
+                        <div id="templates-list">
+                            <div class="item this">
+                                <button>
+                                    <div>2024</div>
+                                    <ion-icon name="chevron-down"></ion-icon>
+                                </button>
+                                <div class="content">
+                                    <div class="content">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+		</div>
+		<div id="titlebar">
+			<button id="titlebtn" class="override logo">
+				<div class="title introtitle noanimation"></div>
+			</button>
+			<div class="space"></div>
+		</div>
+    </body>
+</html>

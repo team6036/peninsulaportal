@@ -254,10 +254,10 @@ Project.Config = class ProjectConfig extends Project.Config {
         if (a.length <= 0 || ![1, 4].includes(a.length)) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.optionsObject];
+            if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
             else if (util.is(a, "arr")) {
                 a = new Project.Config(...a);
-                a = [a.script, a.scriptPython, a.scriptUseDefault, a.optionsObject];
+                a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
             }
             else if (util.is(a, "str")) a = [a, 0, 0, false];
             else if (util.is(a, "obj")) {
@@ -295,49 +295,47 @@ Project.Config = class ProjectConfig extends Project.Config {
         this.change("scriptUseDefault", this.scriptUseDefault, this.#scriptUseDefault=v);
     }
 
-    get options() { return Object.keys(this.#options); }
-    get optionsObject() {
+    get optionKeys() { return Object.keys(this.#options); }
+    get optionValues() { return Object.values(this.#options); }
+    get options() {
         let options = {};
-        this.options.forEach(k => (options[k] = this.getOption(k)));
+        this.optionKeys.forEach(k => (options[k] = this.getOption(k)));
         return options;
     }
     set options(v) {
         v = util.ensure(v, "obj");
         this.clearOptions();
-        for (let k in v) this.addOption(k, v[k]);
+        for (let k in v) this.setOption(k, v[k]);
     }
     clearOptions() {
         let options = this.options;
-        options.forEach(k => this.remOption(k));
+        this.optionKeys.forEach(k => this.delOption(k));
         return options;
     }
-    hasOption(k) {
-        k = String(k);
-        return k in this.#options;
-    }
-    getOption(k) {
-        if (!this.hasOption(k)) return null;
-        return this.#options[k];
-    }
-    addOption(k, v) {
+    hasOption(k) { return String(k) in this.#options; }
+    getOption(k) { return this.hasOption(k) ? this.#options[String(k)] : null; }
+    setOption(k, v) {
         k = String(k);
         v = String(v);
-        let v0 = this.getOption(k);
+        let v2 = this.getOption(k);
+        if (v == v2) return v2;
         this.#options[k] = v;
-        this.change("addOption", v0, v);
+        this.change("setOption", v2, v);
+        return v;
     }
-    remOption(k) {
-        k = String(k);
+    delOption(k) {
         let v = this.getOption(k);
-        delete this.#options[k];
+        if (v == null) return v;
+        delete this.#options[String(k)];
         this.change("remOption", v, null);
+        return v;
     }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
             script: this.script, scriptPython: this.scriptPython, scriptUseDefault: this.scriptUseDefault,
-            options: this.optionsObject,
+            options: this.options,
         });
     }
 };
@@ -459,11 +457,11 @@ Project.Node = class ProjectNode extends Project.Item {
         if (a.length <= 0 || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Node) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.optionsObject];
+            if (a instanceof Project.Node) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
             else if (a instanceof Project.Item) a = [a.pos, 0];
             else if (util.is(a, "arr")) {
                 a = new Project.Node(...a);
-                a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.optionsObject];
+                a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
             }
             else if (util.is(a, "obj")) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
             else a = [a, 0];
@@ -513,42 +511,40 @@ Project.Node = class ProjectNode extends Project.Item {
         this.change("useVelocity", this.useVelocity, this.#useVelocity=v);
     }
 
-    get options() { return Object.keys(this.#options); }
-    get optionsObject() {
+    get optionKeys() { return Object.keys(this.#options); }
+    get optionValues() { return Object.values(this.#options); }
+    get options() {
         let options = {};
-        this.options.forEach(k => (options[k] = this.getOption(k)));
+        this.optionKeys.forEach(k => (options[k] = this.getOption(k)));
         return options;
     }
     set options(v) {
         v = util.ensure(v, "obj");
         this.clearOptions();
-        for (let k in v) this.addOption(k, v[k]);
+        for (let k in v) this.setOption(k, v[k]);
     }
     clearOptions() {
         let options = this.options;
-        options.forEach(k => this.remOption(k));
+        this.optionKeys.forEach(k => this.delOption(k));
         return options;
     }
-    hasOption(k) {
-        k = String(k);
-        return k in this.#options;
-    }
-    getOption(k) {
-        if (!this.hasOption(k)) return null;
-        return this.#options[k];
-    }
-    addOption(k, v) {
+    hasOption(k) { return String(k) in this.#options; }
+    getOption(k) { return this.hasOption(k) ? this.#options[String(k)] : null; }
+    setOption(k, v) {
         k = String(k);
         v = String(v);
-        let v0 = this.getOption(k);
+        let v2 = this.getOption(k);
+        if (v == v2) return v2;
         this.#options[k] = v;
-        this.change("addOption", v0, v);
+        this.change("setOption", v2, v);
+        return v;
     }
-    remOption(k) {
-        k = String(k);
+    delOption(k) {
         let v = this.getOption(k);
-        delete this.#options[k];
+        if (v == null) return v;
+        delete this.#options[String(k)];
         this.change("remOption", v, null);
+        return v;
     }
 
     toJSON() {
@@ -557,7 +553,7 @@ Project.Node = class ProjectNode extends Project.Item {
             pos: this.pos,
             heading: this.heading, useHeading: this.useHeading,
             velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
-            options: this.optionsObject,
+            options: this.options,
         });
     }
 }

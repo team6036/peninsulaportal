@@ -1396,7 +1396,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
         });
 
         this.icon = icon;
-        this.btnName = this.name.split(" ").map(v => util.capitalize(v)).join(" ");
+        this.btnName = util.formatText(this.name);
     }
 
     get name() { return this.#name; }
@@ -1572,18 +1572,13 @@ App.ProjectPage.Panel.Input3d = class AppProjectPagePanelInput3d extends App.Pro
     get inputs() { return [...this.#inputs]; }
 };
 App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.ProjectPage.Panel {
-    #position;
-    #useRobotHeading;
-    #robotHeading;
-    #robotHeadingDrag;
-    #useRobotVelocity;
-    #robotVelocity;
-    #robotRotVelocity;
-    #radius;
-    #eOptions;
-    #eOptionsAdd;
-    #itemControls;
-    #remove;
+    #fPosition;
+    #fRobotHeading;
+    #fRobotVelocity;
+    #fRobotRotVelocity;
+    #fRadius;
+    #fOptions;
+    #fRemove;
 
     #eSpawnBox;
     #eSpawnDelete;
@@ -1628,7 +1623,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let eName = document.createElement("div");
             btn.appendChild(eName);
             eName.classList.add("name");
-            eName.textContent = name.split(" ").map(v => util.capitalize(v)).join(" ");
+            eName.textContent = util.formatText(name);
             btn.addEventListener("mousedown", e => {
                 if (this.page.choosing) return;
                 if (e.button != 0) return;
@@ -1643,212 +1638,156 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             return this.page.selected.filter(id => this.page.project.hasItem(id)).map(id => this.page.project.getItem(id));
         };
 
-        let header;
+        let forAny = [], forNode = [], forObstacle = [];
 
-        this.addItem(new App.ProjectPage.Panel.Header("Item Options")).elem.classList.add("forany");
+        let form = new core.Form();
+        this.addItem(form.elem);
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Position", "m")).elem.classList.add("forany");
-        this.#position = this.addItem(new App.ProjectPage.Panel.Input2d());
-        this.position.elem.classList.add("forany");
-        this.position.inputs.forEach((inp, i) => {
-            inp.type = "number";
+        forAny.push(form.addField(new core.Form.Header("Item Options")));
+
+        this.#fPosition = form.addField(new core.Form.Input2d("position"));
+        forAny.push(this.fPosition);
+        this.fPosition.app = this.app;
+        this.fPosition.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fPosition.baseType = this.fPosition.activeType = "m";
+        this.fPosition.step = 0.1;
+        this.fPosition.inputs.forEach((inp, i) => {
             inp.placeholder = "XY"[i];
-            inp.min = 0;
-            inp.step = 0.1;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    let itms = getSelected();
-                    let xyList = itms.map(itm => itm["xy"[i]]);
-                    let newCenter = util.ensure(parseFloat(v), "num")*100;
-                    let oldCenter = (Math.max(...xyList) + Math.min(...xyList)) / 2;
-                    let rel = newCenter - oldCenter;
-                    itms.forEach(itm => (itm["xy"[i]] += rel));
-                }
-                this.page.editorRefresh();
-            });
         });
-
-        header = this.addItem(new App.ProjectPage.Panel.SubHeader("Robot Heading", "rad"));
-        header.elem.classList.add("fornode");
-        this.#useRobotHeading = document.createElement("label");
-        this.useRobotHeading.classList.add("switch");
-        this.useRobotHeading.innerHTML = "<input type='checkbox'><span></span>";
-        header.elem.appendChild(this.useRobotHeading);
-        this.#useRobotHeading = this.useRobotHeading.children[0];
-        this.useRobotHeading.addEventListener("change", e => {
-            let v = this.useRobotHeading.checked;
+        this.fPosition.addHandler("change-value", () => {
+            if (!this.fPosition.hasValue()) return;
             let itms = getSelected();
+            let xList = itms.map(itm => itm.x);
+            let yList = itms.map(itm => itm.y);
+            let newCenterX = this.fPosition.value.x*100, newCenterY = this.fPosition.value.y*100;
+            let oldCenterX = (Math.max(...xList)+Math.min(...xList))/2, oldCenterY = (Math.max(...yList)+Math.min(...yList))/2;
+            let relX = newCenterX - oldCenterX, relY = newCenterY - oldCenterY;
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) return;
-                itm.useHeading = v;
+                itm.x += relX;
+                itm.y += relY;
             });
             this.page.editorRefresh();
         });
 
-        this.#robotHeading = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.robotHeading.elem.id = "heading";
-        this.robotHeading.elem.classList.add("fornode");
-        this.robotHeading.elem.style.flexDirection = "column";
-        this.robotHeading.inputs.forEach(inp => {
-            inp.type = "number";
-            inp.placeholder = "Angle";
-            inp.min = 0;
-            inp.max = Math.PI*2;
-            inp.style.flexBasis = "auto";
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = util.clamAngleRadians(parseFloat(v));
-                    let itms = getSelected();
-                    itms.forEach(itm => {
-                        if (!(itm instanceof subcore.Project.Node)) return;
-                        itm.heading = v;
-                    });
-                }
-                this.page.editorRefresh();
-            });
-        });
-        this.#robotHeadingDrag = document.createElement("div");
-        this.robotHeadingDrag.classList.add("dragbox");
-        this.robotHeadingDrag.innerHTML = "<div><button></button></div>";
-        this.robotHeading.elem.appendChild(this.robotHeadingDrag);
-        this.robotHeadingDrag.addEventListener("mousedown", e => {
-            if (this.page.choosing) return;
-            if (e.button != 0) return;
-            e.preventDefault();
-            e.stopPropagation();
-            const place = e => {
-                let r = this.robotHeadingDrag.getBoundingClientRect();
-                let center = new V(r.left + r.width/2, r.top + r.height/2).mul(+1, -1);
-                let to = new V(e.pageX, e.pageY).mul(+1, -1);
-                let v = (Math.PI/180)*center.towards(to);
-                let itms = getSelected();
-                itms.forEach(itm => {
-                    if (!(itm instanceof subcore.Project.Node)) return;
-                    itm.heading = v;
-                });
-                this.page.editorRefresh();
-            };
-            place(e);
-            const mouseup = () => {
-                document.body.removeEventListener("mouseup", mouseup);
-                document.body.removeEventListener("mousemove", mousemove);
-            };
-            const mousemove = e => {
-                place(e);
-            };
-            document.body.addEventListener("mouseup", mouseup);
-            document.body.addEventListener("mousemove", mousemove);
-        });
-
-        header = this.addItem(new App.ProjectPage.Panel.SubHeader("Robot Velocity", "m/s"));
-        header.elem.classList.add("fornode");
-        this.#useRobotVelocity = document.createElement("label");
-        this.useRobotVelocity.classList.add("switch");
-        this.useRobotVelocity.innerHTML = "<input type='checkbox'><span></span>";
-        header.elem.appendChild(this.useRobotVelocity);
-        this.#useRobotVelocity = this.useRobotVelocity.children[0];
-        this.useRobotVelocity.addEventListener("change", e => {
-            let v = this.useRobotVelocity.checked;
-            let itms = getSelected();
-            itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) return;
-                itm.useVelocity = v;
-            });
-            this.page.editorRefresh();
-        });
-
-        this.#robotVelocity = this.addItem(new App.ProjectPage.Panel.Input2d());
-        this.robotVelocity.elem.classList.add("fornode");
-        this.robotVelocity.inputs.forEach((inp, i) => {
-            inp.type = "number";
-            inp.placeholder = "XY"[i];
-            inp.step = 0.1;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = util.ensure(parseFloat(v), "num");
-                    let itms = getSelected();
-                    itms.forEach(itm => {
-                        if (!(itm instanceof subcore.Project.Node)) return;
-                        itm["velocity"+"XY"[i]] = v*100;
-                    });
-                }
-                this.page.editorRefresh();
-            });
-        });
-
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Robot Rotational Velocity", "rad/s")).elem.classList.add("fornode");
-        this.#robotRotVelocity = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.robotRotVelocity.elem.classList.add("fornode");
-        this.robotRotVelocity.inputs.forEach(inp => {
-            inp.type = "number";
+        this.#fRobotHeading = form.addField(new core.Form.Input1d("robot-heading"));
+        forNode.push(this.fRobotHeading);
+        this.fRobotHeading.app = this.app;
+        this.fRobotHeading.types = ["rad", "deg", "cycle"];
+        this.fRobotHeading.baseType = "deg";
+        this.fRobotHeading.activeType = "rad";
+        this.fRobotHeading.showToggle = true;
+        this.fRobotHeading.step = 0.1;
+        this.fRobotHeading.inputs.forEach(inp => {
             inp.placeholder = "...";
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                    let itms = getSelected();
-                    itms.forEach(itm => {
-                        if (!(itm instanceof subcore.Project.Node)) return;
-                        itm.velocityRot = v;
-                    });
-                }
-                this.page.editorRefresh();
+        });
+        this.fRobotHeading.addHandler("change-toggleOn", () => {
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof subcore.Project.Node)) return;
+                itm.useHeading = this.fRobotHeading.toggleOn;
             });
+            this.page.editorRefresh();
+        });
+        this.fRobotHeading.addHandler("change-value", () => {
+            if (!this.fRobotHeading.hasValue()) return;
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof subcore.Project.Node)) return;
+                itm.heading = this.fRobotHeading.value * (Math.PI/180);
+            });
+            this.page.editorRefresh();
+        });
+
+        this.#fRobotVelocity = form.addField(new core.Form.Input2d("robot-velocity"));
+        forNode.push(this.fRobotVelocity);
+        this.fRobotVelocity.app = this.app;
+        this.fRobotVelocity.types = ["m/s", "ft/s"];
+        this.fRobotVelocity.baseType = this.fRobotVelocity.activeType = "m/s";
+        this.fRobotVelocity.showToggle = true;
+        this.fRobotVelocity.step = 0.1;
+        this.fRobotVelocity.inputs.forEach((inp, i) => {
+            inp.placeholder = "XY"[i];
+        });
+        this.fRobotVelocity.addHandler("change-toggleOn", () => {
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof subcore.Project.Node)) return;
+                itm.useVelocity = this.fRobotVelocity.toggleOn;
+            });
+            this.page.editorRefresh();
+        });
+        this.fRobotVelocity.addHandler("change-value", () => {
+            if (!this.fRobotVelocity.hasValue()) return;
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof subcore.Project.Node)) return;
+                if (this.fRobotVelocity.hasValue("x")) itm.velocityX = this.fRobotVelocity.x*100;
+                if (this.fRobotVelocity.hasValue("y")) itm.velocityY = this.fRobotVelocity.y*100;
+            });
+            this.page.editorRefresh();
+        });
+
+        this.#fRobotRotVelocity = form.addField(new core.Form.Input1d("robot-rotational-velocity"));
+        forNode.push(this.fRobotRotVelocity);
+        this.fRobotRotVelocity.app = this.app;
+        this.fRobotRotVelocity.types = ["rad/s", "deg/s", "cycle/s"];
+        this.fRobotRotVelocity.baseType = this.fRobotRotVelocity.activeType = "rad/s";
+        this.fRobotRotVelocity.step = 0.1;
+        this.fRobotRotVelocity.inputs.forEach(inp => {
+            inp.placeholder = "...";
+        });
+        this.fRobotRotVelocity.addHandler("change-value", () => {
+            if (!this.fRobotRotVelocity.hasValue()) return;
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof subcore.Project.Node)) return;
+                itm.velocityRot = this.fRobotRotVelocity.value;
+            });
+            this.page.editorRefresh();
+        });
+
+        this.#fOptions = form.addField(new core.Form.JSONInput("options"));
+        this.fOptions.addHandler("set", (k, v0, v1) => {
+            let itms = getSelected().filter(itm => (itm instanceof subcore.Project.Node));
+            if (itms.length != 1) return;
+            let itm = itms[0];
+            itm.setOption(k, v1);
+            this.page.editorRefresh();
+        });
+        this.fOptions.addHandler("del", (k, v) => {
+            let itms = getSelected().filter(itm => (itm instanceof subcore.Project.Node));
+            if (itms.length != 1) return;
+            let itm = itms[0];
+            itm.delOption(k);
+            this.page.editorRefresh();
         });
         
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Radius", "m")).elem.classList.add("forobstacle");
-        this.#radius = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.radius.elem.classList.add("forobstacle");
-        this.radius.inputs.forEach(inp => {
-            inp.type = "number";
+        this.#fRadius = form.addField(new core.Form.Input1d("radius"));
+        forObstacle.push(this.fRadius);
+        this.fRadius.app = this.app;
+        this.fRadius.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fRadius.baseType = this.fRadius.activeType = "m";
+        this.fRadius
+        this.fRadius.step = 0.1;
+        this.fRadius.inputs.forEach(inp => {
             inp.placeholder = "...";
-            inp.min = 0;
-            inp.step = 0.1;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                    let itms = getSelected();
-                    itms.forEach(itm => {
-                        if (!(itm instanceof subcore.Project.Obstacle)) return;
-                        itm.radius = v*100;
-                    });
-                }
-                this.page.editorRefresh();
+        });
+        this.fRadius.addHandler("change-value", () => {
+            if (!this.fRadius.hasValue()) return;
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof subcore.Project.Obstacle)) return;
+                itm.radius = this.fRadius.value*100;
             });
+            this.page.editorRefresh();
         });
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Options")).elem.classList.add("fornode");
-        this.#eOptions = document.createElement("div");
-        this.addItem(this.eOptions);
-        this.eOptions.classList.add("options");
-        this.eOptions.classList.add("fornode");
-        this.#eOptionsAdd = document.createElement("button");
-        this.eOptions.appendChild(this.eOptionsAdd);
-        this.eOptionsAdd.classList.add("special");
-        this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
-        let optionAdd = () => {};
-        this.eOptionsAdd.addEventListener("click", e => {
-            e.stopPropagation();
-            if (!this.page.hasProject()) return;
-            optionAdd();
-        });
+        forAny.push(form.addField(new core.Form.Header("Controls")));
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Controls")).elem.classList.add("forany");
-        this.#itemControls = document.createElement("div");
-        this.addItem(this.itemControls);
-        this.itemControls.id = "itemcontrols";
-        this.itemControls.classList.add("forany");
-
-        this.#remove = document.createElement("button");
-        this.itemControls.appendChild(this.remove);
-        this.remove.classList.add("off");
-        this.remove.textContent = "Remove";
-        this.remove.addEventListener("click", e => {
-            e.stopPropagation();
+        this.#fRemove = form.addField(new core.Form.Button("remove", "Remove", "off"));
+        forAny.push(this.fRemove);
+        this.fRemove.showHeader = false;
+        this.fRemove.addHandler("trigger", e => {
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             this.page.selected.forEach(id => this.page.project.remItem(id));
@@ -1857,220 +1796,90 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
-            this.position.inputs.forEach(inp => (inp.disabled = !has));
-            this.remove.disabled = !has;
-            let forAny = Array.from(this.elem.querySelectorAll(":scope .forany"));
-            let forNode = Array.from(this.elem.querySelectorAll(":scope .fornode"));
-            let forObstacle = Array.from(this.elem.querySelectorAll(":scope .forobstacle"));
             let itms = getSelected();
+            let xList = itms.map(itm => itm.x);
+            let xCenter = (Math.max(...xList)+Math.min(...xList))/2;
+            let yList = itms.map(itm => itm.y);
+            let yCenter = (Math.max(...yList)+Math.min(...yList))/2;
             let allNode = (itms.length > 0), allObstacle = (itms.length > 0);
             itms.forEach(itm => {
                 if (!(itm instanceof subcore.Project.Node)) allNode = false;
                 if (!(itm instanceof subcore.Project.Obstacle)) allObstacle = false;
             });
-            forAny.forEach(elem => (itms.length > 0) ? elem.classList.add("this") : elem.classList.remove("this"));
-            forNode.forEach(elem => (allNode ? elem.classList.add("this") : elem.classList.remove("this")));
-            forObstacle.forEach(elem => (allObstacle ? elem.classList.add("this") : elem.classList.remove("this")));
-            let xList = itms.map(itm => itm.x);
-            let xCenter = (Math.max(...xList) + Math.min(...xList)) / 2;
-            let yList = itms.map(itm => itm.y);
-            let yCenter = (Math.max(...yList) + Math.min(...yList)) / 2;
-            this.position.inputs[0].value = xCenter/100;
-            this.position.inputs[1].value = yCenter/100;
-            this.useRobotHeading.disabled = !has || !allNode;
-            if (allNode) {
-                let same = true, sameValue = null, first = true;
+            forAny.forEach(f => (f.isShown = (itms.length > 0)));
+            forNode.forEach(f => (f.isShown = allNode));
+            forObstacle.forEach(f => (f.isShown = allObstacle));
+            const getSameValue = f => {
+                let sameValue = null, first = true;
                 for (let itm of itms) {
                     if (first) {
                         first = false;
-                        sameValue = itm.useHeading;
+                        sameValue = f(itm);
                         continue;
                     }
-                    if (sameValue == itm.useHeading) continue;
-                    same = false;
-                    break;
+                    if (sameValue == f(itm)) continue;
+                    return null;
                 }
-                this.useRobotHeading.checked = same ? sameValue : false;
-            } else this.useRobotHeading.checked = false;
-            if (allNode) {
-                let same = true, sameValue = null, first = true;
-                for (let itm of itms) {
-                    if (first) {
-                        first = false;
-                        sameValue = itm.heading;
-                        continue;
-                    }
-                    if (sameValue == itm.heading) continue;
-                    same = false;
-                    break;
-                }
-                this.robotHeading.inputs[0].value = same ? sameValue : "";
-                this.robotHeadingDrag.style.setProperty("--dir", (-(180/Math.PI)*(same ? sameValue : 0))+"deg");
-            } else {
-                this.robotHeading.inputs[0].value = "";
-                this.robotHeadingDrag.style.setProperty("--dir", "0deg");
-            }
-            this.useRobotVelocity.disabled = !has || !allNode;
-            if (allNode) {
-                let same = true, sameValue = null, first = true;
-                for (let itm of itms) {
-                    if (first) {
-                        first = false;
-                        sameValue = itm.useVelocity;
-                        continue;
-                    }
-                    if (sameValue == itm.useVelocity) continue;
-                    same = false;
-                    break;
-                }
-                this.useRobotVelocity.checked = same ? sameValue : false;
-            } else this.useRobotVelocity.checked = false;
-            this.robotVelocity.inputs[0].disabled = !has || !allNode || !this.useRobotVelocity.checked;
-            if (allNode) {
-                let same = true, sameValue = null, first = true;
-                for (let itm of itms) {
-                    if (first) {
-                        first = false;
-                        sameValue = itm.velocityX;
-                        continue;
-                    }
-                    if (sameValue == itm.velocityX) continue;
-                    same = false;
-                    break;
-                }
-                this.robotVelocity.inputs[0].value = same ? sameValue/100 : "";
-            } else this.robotVelocity.inputs[0].value = "";
-            this.robotVelocity.inputs[1].disabled = !has || !allNode || !this.useRobotVelocity.checked;
-            if (allNode) {
-                let same = true, sameValue = null, first = true;
-                for (let itm of itms) {
-                    if (first) {
-                        first = false;
-                        sameValue = itm.velocityY;
-                        continue;
-                    }
-                    if (sameValue == itm.velocityY) continue;
-                    same = false;
-                    break;
-                }
-                this.robotVelocity.inputs[1].value = same ? sameValue/100 : "";
-            } else this.robotVelocity.inputs[1].value = "";
-            this.robotRotVelocity.inputs[0].disabled = !has || !allNode || !this.useRobotVelocity.checked;
-            if (allNode) {
-                let same = true, sameValue = null, first = true;
-                for (let itm of itms) {
-                    if (first) {
-                        first = false;
-                        sameValue = itm.velocityRot;
-                        continue;
-                    }
-                    if (sameValue == itm.velocityRot) continue;
-                    same = false;
-                    break;
-                }
-                this.robotRotVelocity.inputs[0].value = same ? sameValue : "";
-            } else this.robotRotVelocity.inputs[0].value = "";
-            this.radius.inputs[0].disabled = !has || !allObstacle;
-            if (allObstacle) {
-                let same = true, sameValue = null, first = true;
-                for (let itm of itms) {
-                    if (first) {
-                        first = false;
-                        sameValue = itm.radius;
-                        continue;
-                    }
-                    if (sameValue == itm.radius) continue;
-                    same = false;
-                    break;
-                }
-                this.radius.inputs[0].value = same ? sameValue/100 : "";
-            } else this.radius.inputs[0].value = "";
-            let node = (allNode && itms.length == 1) ? itms[0] : null;
-            this.eOptionsAdd.disabled = !node;
-            optionAdd = () => {
-                if (!node) return;
-                let options = node.options;
-                let k = "new-key";
-                if (options.includes(k)) {
-                    let n = 1;
-                    while (true) {
-                        if (!options.includes(k+"-"+n)) break;
-                        n++;
-                    }
-                    k += "-"+n;
-                }
-                node.addOption(k, "null");
-                this.page.editorRefresh();
+                return sameValue;
             };
-            Array.from(this.eOptions.querySelectorAll(":scope > .item")).forEach(elem => elem.remove());
-            if (node)
-                node.options.forEach(k => {
-                    let v = node.getOption(k);
-                    let elem = document.createElement("div");
-                    this.eOptions.insertBefore(elem, this.eOptionsAdd);
-                    elem.classList.add("item");
-                    let kinput = document.createElement("input");
-                    elem.appendChild(kinput);
-                    kinput.type = "text";
-                    kinput.placeholder = "Key...";
-                    kinput.autocomplete = "off";
-                    kinput.spellcheck = false;
-                    kinput.value = k;
-                    let separator = document.createElement("div");
-                    elem.appendChild(separator);
-                    separator.classList.add("separator");
-                    separator.textContent = ":";
-                    let vinput = document.createElement("input");
-                    elem.appendChild(vinput);
-                    vinput.type = "text";
-                    vinput.placeholder = "Value...";
-                    vinput.autocomplete = "off";
-                    vinput.spellcheck = false;
-                    vinput.value = v;
-                    let color = "v4";
-                    try {
-                        let v2 = JSON.parse(v);
-                        if (util.is(v2, "str")) color = "cy";
-                        else if (util.is(v2, "num")) color = "cb";
-                        else if (v2 == null) color = "co";
-                        else if (v2 == true || v2 == false) color = ["cr", "cg"][+v2];
-                        else color = "v8";
-                    } catch (e) {}
-                    vinput.style.color = "var(--"+color+")";
-                    let remove = document.createElement("button");
-                    elem.appendChild(remove);
-                    remove.classList.add("remove");
-                    remove.innerHTML = "<ion-icon name='close'></ion-icon>";
-                    kinput.addEventListener("change", e => {
-                        node.remOption(k);
-                        node.addOption(kinput.value, v);
-                        this.page.editorRefresh();
-                    });
-                    vinput.addEventListener("change", e => {
-                        node.addOption(k, vinput.value);
-                        this.page.editorRefresh();
-                    });
-                    remove.addEventListener("click", e => {
-                        e.stopPropagation();
-                        node.remOption(k);
-                        this.page.editorRefresh();
-                    });
+            this.fPosition.disabled = !has;
+            this.fPosition.value = has ? [xCenter/100, yCenter/100] : null;
+
+            this.fRobotHeading.toggleDisabled = !has;
+            if (allNode) {
+                let v = getSameValue(itm => itm.useHeading);
+                this.fRobotHeading.toggleOn = (v == null) ? false : v;
+            } else this.fRobotHeading.toggleOn = false;
+            this.fRobotHeading.disabled = !this.fRobotHeading.toggleOn || !has;
+            if (allNode) {
+                let v = getSameValue(itm => itm.heading);
+                this.fRobotHeading.value = (v == null) ? null : v * (180/Math.PI);
+            } else this.fRobotHeading.value = null;
+
+            this.fRobotVelocity.toggleDisabled = !has;
+            if (allNode) {
+                let v = getSameValue(itm => itm.useVelocity);
+                this.fRobotVelocity.toggleOn = (v == null) ? false : v;
+            } else this.fRobotVelocity.toggleOn = false;
+            this.fRobotVelocity.disabled = !this.fRobotVelocity.toggleOn || !has;
+            if (allNode) {
+                let vx = getSameValue(itm => itm.velocityX);
+                let vy = getSameValue(itm => itm.velocityY);
+                this.fRobotVelocity.x = (vx == null) ? null : vx/100;
+                this.fRobotVelocity.y = (vy == null) ? null : vy/100;
+            } else this.fRobotVelocity.value = null;
+            this.fRobotRotVelocity.disabled = !this.fRobotVelocity.toggleOn || !has;
+            if (allNode) {
+                let v = getSameValue(itm => itm.velocityRot);
+                this.fRobotRotVelocity.value = (v == null) ? null : v;
+            } else this.fRobotRotVelocity.value = null;
+
+            this.fOptions.isShown = has && allNode && itms.length == 1;
+            this.fOptions.disabled = !this.fOptions.isShown;
+            if (this.fOptions.isShown) {
+                this.fOptions.keys.forEach(k => {
+                    if (itms[0].hasOption(k)) return;
+                    this.fOptions.del(k);
                 });
+                itms[0].optionKeys.forEach(k => {
+                    this.fOptions.set(k, itms[0].getOption(k));
+                });
+            } else this.fOptions.map = null;
+
+            if (allObstacle) {
+                let v = getSameValue(itm => itm.radius);
+                this.fRadius.value = (v == null) ? null : v/100;
+            } else this.fRadius.value = null;
         });
     }
 
-    get position() { return this.#position; }
-    get useRobotHeading() { return this.#useRobotHeading; }
-    get robotHeading() { return this.#robotHeading; }
-    get robotHeadingDrag() { return this.#robotHeadingDrag; }
-    get useRobotVelocity() { return this.#useRobotVelocity; }
-    get robotVelocity() { return this.#robotVelocity; }
-    get robotRotVelocity() { return this.#robotRotVelocity; }
-    get radius() { return this.#radius; }
-    get eOptions() { return this.#eOptions; }
-    get eOptionsAdd() { return this.#eOptionsAdd; }
-    get itemControls() { return this.#itemControls; }
-    get remove() { return this.#remove; }
+    get fPosition() { return this.#fPosition; }
+    get fRobotHeading() { return this.#fRobotHeading; }
+    get fRobotVelocity() { return this.#fRobotVelocity; }
+    get fRobotRotVelocity() { return this.#fRobotRotVelocity; }
+    get fRadius() { return this.#fRadius; }
+    get fOptions() { return this.#fOptions; }
+    get fRemove() { return this.#fRemove; }
 
     get eSpawnBox() { return this.#eSpawnBox; }
     get eSpawnDelete() { return this.#eSpawnDelete; }
@@ -2139,7 +1948,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (this.generating) {
                 try {
                     window.api.send("exec-term");
-                } catch (e) { await this.app.doError("Exec Termination Error", e); }
+                } catch (e) { await this.app.doError("Exec Termination Error", "", e); }
                 return;
             }
             if (!this.page.hasProject()) return;
@@ -2150,7 +1959,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             await this.app.post("cmd-save");
             try {
                 await window.api.send("exec", this.page.project.id, path.id);
-            } catch (e) { this.app.error("Exec Error", null, e); }
+            } catch (e) { this.app.error("Exec Error", "", e); }
             this.generating = false;
         });
 
@@ -2509,258 +2318,146 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     get eRemove() { return this.#eRemove; }
 };
 App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.ProjectPage.Panel {
-    #size;
-    #robotSize;
-    #robotMass;
-    #eOptions;
-    #eOptionsAdd;
-    #eScript;
-    #eScriptInput;
-    #eScriptBtn;
-    #scriptPython;
-    #scriptUseDefault;
+    #fSize;
+    #fRobotSize;
+    #fRobotMass;
+    #fOptions;
+    #fScript;
+    #fScriptPython;
+    #fScriptUseDefault;
 
     constructor(page) {
         super(page, "options", "settings-outline");
 
-        let header;
+        let form = new core.Form();
+        this.addItem(form.elem);
 
-        this.addItem(new App.ProjectPage.Panel.Header("Map Options"));
+        form.addField(new core.Form.Header("Map Options"));
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Map Size", "m"));
-        this.#size = this.addItem(new App.ProjectPage.Panel.Input2d());
-        this.size.inputs.forEach((inp, i) => {
-            inp.type = "number";
+        this.#fSize = form.addField(new core.Form.Input2d("map-size"));
+        this.fSize.app = this.app;
+        this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fSize.baseType = this.fSize.activeType = "m";
+        this.fSize.step = 0.1;
+        this.fSize.inputs.forEach((inp, i) => {
             inp.placeholder = ["Width", "Height"][i];
             inp.min = 0;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = Math.max(util.ensure(parseFloat(v), "num"));
-                    if (this.page.hasProject())
-                        this.page.project["wh"[i]] = v*100;
-                }
-                this.page.editorRefresh();
-            });
+        });
+        this.fSize.addHandler("change-value", () => {
+            if (!this.fSize.hasValue()) return;
+            if (this.page.hasProject())
+                this.page.project.size = this.fSize.value.mul(100);
+            this.page.editorRefresh();
         });
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Robot Size", "m"));
-        this.#robotSize = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.robotSize.inputs.forEach((inp, i) => {
-            inp.type = "number";
+        this.#fRobotSize = form.addField(new core.Form.Input1d("robot-size"));
+        this.fRobotSize.app = this.app;
+        this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fRobotSize.baseType = this.fRobotSize.activeType = "m";
+        this.fRobotSize.step = 0.1;
+        this.fRobotSize.inputs.forEach((inp, i) => {
             inp.placeholder = ["...", "Height"][i];
             inp.min = 0;
-            inp.step = 0.1;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                    if (this.page.hasProject())
-                        this.page.project["robot"+"WH"[i]] = v*100;
-                }
-                this.page.editorRefresh();
-            });
+        });
+        this.fRobotSize.addHandler("change-value", () => {
+            if (!this.fRobotSize.hasValue()) return;
+            if (this.page.hasProject())
+                this.page.project.robotSize = this.fRobotSize.value * 100;
+            this.page.editorRefresh();
         });
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Robot Mass", "kg"));
-        this.#robotMass = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.robotMass.inputs.forEach(inp => {
-            inp.type = "number";
+        this.#fRobotMass = form.addField(new core.Form.Input1d("robot-mass"));
+        this.fRobotMass.app = this.app;
+        this.fRobotMass.types = ["kg", "lb"];
+        this.fRobotMass.baseType = this.fRobotMass.activeType = "kg";
+        this.fRobotMass.step = 0.1;
+        this.fRobotMass.inputs.forEach(inp => {
             inp.placeholder = "...";
             inp.min = 0;
-            inp.step = 0.1;
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (v.length > 0) {
-                    v = Math.max(0, util.ensure(parseFloat(v), "num"));
-                    if (this.page.hasProject())
-                        this.page.project.robotMass = v;
-                }
-                this.page.editorRefresh();
-            });
         });
-
-        this.addItem(new App.ProjectPage.Panel.Header("Script Options"));
-
-        this.#eOptions = document.createElement("div");
-        this.addItem(this.eOptions);
-        this.eOptions.classList.add("options");
-        this.#eOptionsAdd = document.createElement("button");
-        this.eOptions.appendChild(this.eOptionsAdd);
-        this.eOptionsAdd.classList.add("special");
-        this.eOptionsAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
-        this.eOptionsAdd.addEventListener("click", e => {
-            e.stopPropagation();
-            if (!this.page.hasProject()) return;
-            let options = this.page.project.config.options;
-            let k = "new-key";
-            if (options.includes(k)) {
-                let n = 1;
-                while (true) {
-                    if (!options.includes(k+"-"+n)) break;
-                    n++;
-                }
-                k += "-"+n;
-            }
-            this.page.project.config.addOption(k, "null");
-            this.page.editorRefresh();
-        });
-
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Generator Script", ".py"));
-        this.#eScript = document.createElement("div");
-        this.addItem(this.eScript);
-        this.eScript.id = "script";
-        this.eScript.appendChild(document.createElement("div"));
-        this.#eScript = this.eScript.children[0];
-        this.eScript.classList.add("filedialog");
-        this.#eScriptInput = document.createElement("input");
-        this.eScript.appendChild(this.eScriptInput);
-        this.eScriptInput.type = "text";
-        this.eScriptInput.placeholder = "File path...";
-        this.eScriptInput.autocomplete = "off";
-        this.eScriptInput.spellcheck = false;
-        this.#eScriptBtn = document.createElement("button");
-        this.eScript.appendChild(this.eScriptBtn);
-        this.eScriptBtn.textContent = "Browse";
-        this.eScriptInput.addEventListener("change", e => {
-            let v = this.eScriptInput.value;
+        this.fRobotMass.addHandler("change-value", () => {
+            if (!this.fRobotMass.hasValue()) return;
             if (this.page.hasProject())
-                this.page.project.config.script = (v.length > 0) ? v : null;
-            this.page.editorRefresh();
-        });
-        this.eScriptBtn.addEventListener("click", async e => {
-            e.stopPropagation();
-            let result = await this.app.fileOpenDialog({
-                title: "Choose a python script",
-                filters: [{
-                    name: "Python",
-                    extensions: ["py"],
-                }],
-                properties: [
-                    "openFile",
-                ],
-            });
-            result = util.ensure(result, "obj");
-            let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
-            if (this.page.hasProject())
-                this.page.project.config.script = path;
+                this.page.project.robotMass = this.fRobotMass.value;
             this.page.editorRefresh();
         });
 
-        this.addItem(new App.ProjectPage.Panel.SubHeader("Script Python", "shell"));
-        this.#scriptPython = this.addItem(new App.ProjectPage.Panel.Input1d());
-        this.scriptPython.inputs.forEach(inp => {
-            inp.type = "text";
+        form.addField(new core.Form.Header("Script Options"));
+
+        this.#fOptions = form.addField(new core.Form.JSONInput("options"));
+        this.fOptions.addHandler("set", (k, v0, v1) => {
+            if (this.page.hasProject())
+                this.page.project.config.setOption(k, v1);
+            this.page.editorRefresh();
+        });
+        this.fOptions.addHandler("del", (k, v) => {
+            if (this.page.hasProject())
+                this.page.project.config.delOption(k);
+            this.page.editorRefresh();
+        });
+
+        this.#fScript = form.addField(new core.Form.DirentInput("generator-script"));
+        this.fScript.dialogTitle = "Choose a python script";
+        this.fScript.dialogFilters = [{ name: "Python", extensions: ["py"] }];
+        this.fScript.type = ".py";
+        this.fScript.eInput.placeholder = "File path...";
+        this.fScript.addHandler("change-value", () => {
+            if (this.page.hasProject())
+                this.page.project.config.script = util.ensure(this.fScript.value, "str");
+            this.page.editorRefresh();
+        });
+
+        this.#fScriptPython = form.addField(new core.Form.TextInput("script-python"));
+        this.fScriptPython.type = "shell";
+        this.fScriptPython.inputs.forEach(inp => {
             inp.placeholder = "Python command";
-            inp.addEventListener("change", e => {
-                let v = inp.value;
-                if (this.page.hasProject())
-                    this.page.project.config.scriptPython = v;
-                this.page.editorRefresh();
-            });
+        });
+        this.fScriptPython.addHandler("change-value", () => {
+            if (this.page.hasProject())
+                this.page.project.config.scriptPython = util.ensure(this.fScriptPython.value, "str");
+            this.page.editorRefresh();
         });
 
-        header = this.addItem(new App.ProjectPage.Panel.SubHeader("Default Generator Script"));
-        this.#scriptUseDefault = document.createElement("label");
-        this.scriptUseDefault.classList.add("switch");
-        this.scriptUseDefault.innerHTML = "<input type='checkbox'><span></span>";
-        header.elem.appendChild(this.scriptUseDefault);
-        this.#scriptUseDefault = this.scriptUseDefault.children[0];
-        this.scriptUseDefault.addEventListener("change", e => {
-            let v = this.scriptUseDefault.checked;
+        this.#fScriptUseDefault = form.addField(new core.Form.BooleanInput("default-generator-script"));
+        this.fScriptUseDefault.addHandler("change-value", () => {
             if (this.page.hasProject())
-                this.page.project.config.scriptUseDefault = v;
+                this.page.project.config.scriptUseDefault = this.fScriptUseDefault.value;
             this.page.editorRefresh();
         });
 
         this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
-            this.size.inputs.forEach(inp => (inp.disabled = !has));
-            this.robotSize.inputs.forEach(inp => (inp.disabled = !has));
-            this.robotMass.inputs.forEach(inp => (inp.disabled = !has));
-            this.eOptionsAdd.disabled = !has;
-            this.scriptPython.inputs.forEach(inp => (inp.disabled = !has));
-            this.scriptUseDefault.disabled = !has;
-            this.size.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["wh"[i]]/100 : ""));
-            this.robotSize.inputs.forEach((inp, i) => (inp.value = has ? this.page.project["robot"+"WH"[i]]/100 : ""));
-            this.robotMass.inputs.forEach(inp => (inp.value = has ? this.page.project.robotMass : ""));
-            Array.from(this.eOptions.querySelectorAll(":scope > .item")).forEach(elem => elem.remove());
-            if (has)
-                this.page.project.config.options.forEach(k => {
-                    let v = this.page.project.config.getOption(k);
-                    let elem = document.createElement("div");
-                    this.eOptions.insertBefore(elem, this.eOptionsAdd);
-                    elem.classList.add("item");
-                    let kinput = document.createElement("input");
-                    elem.appendChild(kinput);
-                    kinput.type = "text";
-                    kinput.placeholder = "Key...";
-                    kinput.autocomplete = "off";
-                    kinput.spellcheck = false;
-                    kinput.value = k;
-                    let separator = document.createElement("div");
-                    elem.appendChild(separator);
-                    separator.classList.add("separator");
-                    separator.textContent = ":";
-                    let vinput = document.createElement("input");
-                    elem.appendChild(vinput);
-                    vinput.type = "text";
-                    vinput.placeholder = "Value...";
-                    vinput.autocomplete = "off";
-                    vinput.spellcheck = false;
-                    vinput.value = v;
-                    let color = "v4";
-                    try {
-                        let v2 = JSON.parse(v);
-                        if (util.is(v2, "str")) color = "cy";
-                        else if (util.is(v2, "num")) color = "cb";
-                        else if (v2 == null) color = "co";
-                        else if (v2 == true || v2 == false) color = ["cr", "cg"][+v2];
-                        else color = "v8";
-                    } catch (e) {}
-                    vinput.style.color = "var(--"+color+")";
-                    let remove = document.createElement("button");
-                    elem.appendChild(remove);
-                    remove.classList.add("remove");
-                    remove.innerHTML = "<ion-icon name='close'></ion-icon>";
-                    kinput.addEventListener("change", e => {
-                        if (!this.page.hasProject()) return;
-                        if (!this.page.project.config.hasOption(k)) return;
-                        this.page.project.config.remOption(k);
-                        this.page.project.config.addOption(kinput.value, v);
-                        this.page.editorRefresh();
-                    });
-                    vinput.addEventListener("change", e => {
-                        if (!this.page.hasProject()) return;
-                        if (!this.page.project.config.hasOption(k)) return;
-                        this.page.project.config.addOption(k, vinput.value);
-                        this.page.editorRefresh();
-                    });
-                    remove.addEventListener("click", e => {
-                        e.stopPropagation();
-                        if (!this.page.hasProject()) return;
-                        if (!this.page.project.config.hasOption(k)) return;
-                        this.page.project.config.remOption(k);
-                        this.page.editorRefresh();
-                    });
+            this.fSize.disabled = !has;
+            this.fSize.value = has ? this.page.project.size.div(100) : null;
+            this.fRobotSize.disabled = !has;
+            this.fRobotSize.value = has ? this.page.project.robotSize.div(100).x : null;
+            this.fRobotMass.disabled = !has;
+            this.fRobotMass.value = has ? this.page.project.robotMass : null;
+            this.fOptions.disabled = !has;
+            if (has) {
+                this.fOptions.keys.forEach(k => {
+                    if (this.page.project.config.hasOption(k)) return;
+                    this.fOptions.del(k);
                 });
-            this.eScriptInput.value = has ? this.page.project.config.script : "";
-            this.eScriptInput.disabled = !has || this.page.project.config.scriptUseDefault;
-            this.eScriptBtn.disabled = !has || this.page.project.config.scriptUseDefault;
-            this.scriptPython.inputs.forEach(inp => (inp.value = has ? this.page.project.config.scriptPython : ""));
-            this.scriptUseDefault.checked = has ? this.page.project.config.scriptUseDefault : false;
+                this.page.project.config.optionKeys.forEach(k => {
+                    this.fOptions.set(k, this.page.project.config.getOption(k));
+                });
+            } else this.fOptions.map = null;
+            this.fScript.disabled = !has;
+            this.fScript.value = has ? this.page.project.config.script : null;
+            this.fScriptPython.disabled = !has;
+            this.fScriptPython.value = has ? this.page.project.config.scriptPython : null;
+            this.fScriptUseDefault.disabled = !has;
+            this.fScriptUseDefault.value = has ? this.page.project.config.scriptUseDefault : null;
         });
     }
 
-    get size() { return this.#size; }
-    get robotSize() { return this.#robotSize; }
-    get robotMass() { return this.#robotMass; }
-    get eOptions() { return this.#eOptions; }
-    get eOptionsAdd() { return this.#eOptionsAdd; }
-    get eScript() { return this.#eScript; }
-    get eScriptInput() { return this.#eScriptInput; }
-    get eScriptBtn() { return this.#eScriptBtn; }
-    get scriptPython() { return this.#scriptPython; }
-    get scriptUseDefault() { return this.#scriptUseDefault; }
+    get fSize() { return this.#fSize; }
+    get fRobotSize() { return this.#fRobotSize; }
+    get fRobotMass() { return this.#fRobotMass; }
+    get fOptions() { return this.#fOptions; }
+    get fScript() { return this.#fScript; }
+    get fScriptPython() { return this.#fScriptPython; }
+    get fScriptUseDefault() { return this.#fScriptUseDefault; }
 }

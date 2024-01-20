@@ -1,0 +1,236 @@
+button:not(.override) {
+    padding: 5px 10px;
+
+    display: inline-flex;
+    gap: 10px;
+
+    border-radius: 5px;
+}
+
+#titlebar {
+    gap: 0px;
+}
+#titlebar > .logo {
+    padding: 10px;
+
+    font-size: 16px;
+
+    background-color: transparent;
+
+    cursor: pointer;
+}
+#titlebar > .space {
+    flex-basis: 100%;
+}
+
+#PAGE {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#PAGE > .side {
+    --top: 0px;
+
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    border-right: 1px solid var(--v2);
+}
+#PAGE > .side::before {
+    content: "";
+
+    position: absolute;
+    top: var(--top);
+    left: 0px;
+
+    width: 2px;
+    height: 55px;
+
+    background-color: var(--a);
+
+    transition: top var(--t);
+}
+#PAGE > .side button {
+    --bg: transparent;
+    --fg: var(--v4);
+    --bgh: transparent;
+    --fgh: var(--v6);
+    --bgd: transparent;
+    --fgd: var(--v3);
+
+    padding: 15px;
+
+    font-size: 25px;
+}
+#PAGE > .side button.this {
+    --fg: var(--v6);
+    --fgh: var(--v8);
+    --fgd: var(--v4);
+}
+#PAGE > .side > .section {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+}
+#PAGE > .side > .section::before {
+    content: "";
+
+    z-index: -1;
+
+    position: absolute;
+    top: 7.5px;
+    left: 7.5px;
+
+    width: calc(100% - 15px);
+    height: calc(100% - 15px);
+    
+    background-color: var(--v2-8);
+    border-radius: 5px;
+    border: 1px solid var(--v2);
+
+    transition: width var(--t), height var(--t), background-color var(--t), border var(--t);
+}
+#PAGE > .side > .section.this::before {
+    background-color: var(--v2);
+    border: 1px solid var(--v3);
+}
+#PAGE > .side > .section > .sub {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    max-height: 0vh;
+    overflow: hidden;
+
+    transition: max-height var(--t);
+}
+#PAGE > .side > .section.this > .sub {
+    max-height: 100vh;
+    overflow: visible;
+}
+#PAGE > .content {
+    position: relative;
+
+    width: calc(100% - 55px);
+    max-width: calc(100% - 55px);
+}
+#PAGE > .content > div {
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    opacity: 0%;
+    visibility: hidden;
+
+    transition: opacity var(--t), visibility var(--t);
+}
+#PAGE > .content > div.this {
+    opacity: 100%;
+    visibility: inherit;
+}
+
+#templates > .title {
+    font-size: 30px;
+
+    color: var(--v8);
+}
+#templates > #templates-list {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+#templates > #templates-list > .item {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v2-8);
+    border-radius: 5px;
+    border: 1px solid var(--v2);
+    
+    transition: background-color var(--t), border var(--t);
+}
+#templates > #templates-list > .item:hover,
+#templates > #templates-list > .item.this {
+    background-color: var(--v2);
+    border: 1px solid var(--v3);
+}
+#templates > #templates-list > .item > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 20px;
+
+    font-size: 20px;
+}
+#templates > #templates-list > .item > button > div {
+    flex-basis: 100%;
+
+    text-align: left;
+}
+#templates > #templates-list > .item > button > ion-icon {
+    transform: scaleY(100%);
+
+    transition: transform var(--t);
+}
+#templates > #templates-list > .item.this > button > ion-icon {
+    transform: scaleY(-100%);
+}
+#templates > #templates-list > .item > .content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    max-height: 0vh;
+    overflow: hidden;
+    padding: 0px 20px 0px 20px;
+
+    transition: max-height var(--t), padding var(--t);
+}
+#templates > #templates-list > .item.this > .content {
+    max-height: 100vh;
+    overflow: visible;
+    padding: 0px 20px 20px 20px;
+}

@@ -72,8 +72,6 @@ export class App extends util.Target {
     constructor() {
         super();
 
-        window.onanimationiteration = console.log;
-
         this.#setupDone = false;
 
         this.#fullscreen = null;
@@ -105,7 +103,7 @@ export class App extends util.Target {
             if (this.setupDone) return;
             try {
                 window.api.sendPerm(true);
-            } catch (e) { await this.doError("Permission Send Error", e); }
+            } catch (e) { await this.doError("Permission Send Error", "", e); }
         });
 
         let today = new Date();
@@ -208,26 +206,26 @@ export class App extends util.Target {
                     let page = "";
                     try {
                         page = await window.api.send("state-get", "page");
-                    } catch (e) { await this.doError("State CurrentPage Get Error", e); }
+                    } catch (e) { await this.doError("State Error", "CurrentPage Get", e); }
                     let pageState = null;
                     try {
                         pageState = await window.api.send("state-get", "page-state");
-                    } catch (e) { await this.doError("State PageState Get Error", e); }
+                    } catch (e) { await this.doError("State Error", "PageState Get", e); }
                     let pagePersistentStates = {};
                     try {
                         pagePersistentStates = util.ensure(await window.api.send("state-get", "page-persistent-states"), "obj");
-                    } catch (e) { await this.doError("State PagePersistentStates Get Error", e); }
+                    } catch (e) { await this.doError("State Error", "PagePersistentStates Get", e); }
+                    if (this.hasPage(page)) {
+                        try {
+                            await this.getPage(page).loadState(util.ensure(pageState, "obj"));
+                        } catch (e) { await this.doError("Load Error", "State, PageName: "+page, e); }
+                        if (this.page != page) this.page = page;
+                    }
                     for (let name in pagePersistentStates) {
                         if (!this.hasPage(name)) continue;
                         try {
                             await this.getPage(name).loadPersistentState(util.ensure(pagePersistentStates[name], "obj"));
-                        } catch (e) { await this.doError("Load PersistentState Error ("+name+")", e); }
-                    }
-                    if (this.hasPage(page)) {
-                        try {
-                            await this.getPage(page).loadState(util.ensure(pageState, "obj"));
-                        } catch (e) { await this.doError("Load State Error ("+page+")", e); }
-                        if (this.page != page) this.page = page;
+                        } catch (e) { await this.doError("Load Error", "PersistentState, PageName: "+name, e); }
                     }
                     let t0 = null, error = false;
                     let fps = 0, fpst = 0, fpsn = 0;
@@ -246,7 +244,7 @@ export class App extends util.Target {
                             this.update(t1-t0);
                         } catch (e) {
                             error = true;
-                            await this.doError("Update Error", e);
+                            await this.doError("Update Error", "", e);
                             error = false;
                             return t0 = null;
                         }
@@ -278,7 +276,7 @@ export class App extends util.Target {
         let agent = window.agent();
         if (agent.os == "web") {
             return [
-                "WEB",
+                "WEB"+(agent.public ? " (public)" : ""),
                 "Agent: "+navigator.userAgent,
                 "App: "+agent.app,
             ];
@@ -291,7 +289,7 @@ export class App extends util.Target {
             else cpus += models[0];
         }
         return [
-            "DESKTOP",
+            "DESKTOP"+(agent.public ? " (public)" : ""),
             "OS: "+agent.os.platform+" "+agent.os.arch+cpus,
             "Node: "+agent.node,
             "Chrome: "+agent.chrome,
@@ -446,7 +444,7 @@ export class App extends util.Target {
             if (name.toUpperCase() == name) {
                 let fName = name;
                 name = load.shift();
-                elem.textContent += "["+util.capitalize(fName)+"] ";
+                elem.textContent += "["+util.formatText(fName)+"] ";
                 let namefs = {
                     PLANNER: () => {
                         let namefs = {
@@ -496,6 +494,7 @@ export class App extends util.Target {
         this.#devMode = v;
         if (v) {
             window.app = this;
+            window.util = util;
             window.colors = () => {
                 "roygbpm_".split("").forEach(c => {
                     let out = [new Array(9).fill("%c...").join("")];
@@ -509,7 +508,8 @@ export class App extends util.Target {
                 });
             };
         } else { 
-            if (window.app == this) delete window.app;
+            delete window.app;
+            delete window.util;
             delete window.colors;
         }
         let itm = this.menu.findItemWithId("toggledevtools");
@@ -535,7 +535,7 @@ export class App extends util.Target {
             let perm = await this.getPerm();
             try {
                 window.api.sendPerm(perm);
-            } catch (e) { await this.doError("Send Permission Error", e); }
+            } catch (e) { await this.doError("Send Permission Error", "", e); }
         });
         window.api.on((_, cmd, ...a) => {
             cmd = String(cmd);
@@ -546,15 +546,15 @@ export class App extends util.Target {
             if (this.hasPage(this.page)) {
                 try {
                     await window.api.send("state-set", "page", this.page);
-                } catch (e) { await this.doError("State CurrentPage Set Error", e); }
+                } catch (e) { await this.doError("State Error", "CurrentPage Set", e); }
                 try {
                     await window.api.send("state-set", "page-state", this.getPage(this.page).state);
-                } catch (e) { await this.doError("State PageState Set Error", e); }
+                } catch (e) { await this.doError("State Error", "PageState Set", e); }
                 let pagePersistentStates = {};
                 this.pages.forEach(name => (pagePersistentStates[name] = this.getPage(name).persistentState));
                 try {
                     await window.api.send("state-set", "page-persistent-states", pagePersistentStates);
-                } catch (e) { await this.doError("State PagePersistentStates Set Error", e); }
+                } catch (e) { await this.doError("State Error", "PagePersistentStates Set", e); }
             }
             return true;
         });
@@ -566,7 +566,7 @@ export class App extends util.Target {
             pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
-            pop.title = "Peninsula "+util.capitalize(name);
+            pop.title = "Peninsula "+util.formatText(name);
             pop.infos = [this.getAgent().join("\n")];
             let r = await pop.whenResult();
             if (r) return;
@@ -581,14 +581,14 @@ export class App extends util.Target {
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
             let isDevMode = await window.api.get("devmode");
-            if (!isDevMode && [].includes(name)) {
-                let pop = this.confirm("Open "+util.capitalize(name), "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs");
+            if (!isDevMode && ["DATABASE"].includes(name)) {
+                let pop = this.confirm("Open "+util.formatText(name), "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs");
                 let result = await pop.whenResult();
                 if (!result) return;
             }
             try {
                 await window.api.send("spawn", name);
-            } catch (e) { await this.doError("Spawn Error: "+name, e); }
+            } catch (e) { await this.doError("Spawn Error", "SpawnName: "+name, e); }
         });
         this.addHandler("cmd-reload", async () => await window.api.send("reload"));
         this.addHandler("cmd-helpurl", async id => {
@@ -729,7 +729,7 @@ export class App extends util.Target {
             Array.from(document.querySelectorAll(".introtitle")).forEach(async elem => {
                 if (elem.children.length <= 0) {
                     elem.innerHTML = "<div><div>p</div><div>eninsula</div></div><div></div>";
-                    elem.children[1].textContent = util.capitalize(await window.api.get("name"));
+                    elem.children[1].textContent = util.formatText(await window.api.get("name"));
                 }
                 let both = 0;
                 if (!(elem.querySelector(".special.back") instanceof HTMLImageElement)) {
@@ -783,7 +783,9 @@ export class App extends util.Target {
         const themeUpdate = async () => {
             if (themeUpdating) return;
             themeUpdating = true;
-            let data = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj");
+            let theme = await window.api.get("theme");
+            theme = util.is(theme, "obj") ? theme : String(theme);
+            let data = util.is(theme, "obj") ? theme : util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj");
             this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
             let darkWanted = !!(await window.api.get("dark-wanted"));
             highlight2.href = root+"/assets/modules/" + (darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css");
@@ -880,7 +882,7 @@ export class App extends util.Target {
     }
     remColor(name) {
         name = String(name);
-        if (this.hasColor(name)) return false;
+        if (!this.hasColor(name)) return false;
         let color = this.getColor(name);
         delete this.#colors[name];
         this.updateDynamicStyle();
@@ -1039,7 +1041,7 @@ export class App extends util.Target {
     }
     bindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
-        ["PANEL", "PLANNER"].forEach(name => {
+        ["PANEL", "PLANNER", "DATABASE"].forEach(name => {
             let itm = menu.findItemWithId("spawn:"+name);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
@@ -1209,7 +1211,7 @@ export class App extends util.Target {
         if (this.title == v) return;
         this.#title = v;
         (async () => {
-            let name = util.capitalize(await window.api.get("name"));
+            let name = util.formatText(await window.api.get("name"));
             this.eTitle.textContent = (v.length > 0) ? (v+" — "+name) : name;
         })();
     }
@@ -1252,9 +1254,9 @@ export class App extends util.Target {
         this.eTitleBar.style.setProperty("--progress", (v*100)+"%");
     }
 
-    async capture(rect) { return await window.api.send("capture", rect); }
-    async fileOpenDialog(options) { return await window.api.send("file-open-dialog", options); }
-    async fileSaveDialog(options) { return await window.api.send("file-save-dialog", options); }
+    static async capture(rect) { return await window.api.send("capture", rect); }
+    static async fileOpenDialog(options) { return await window.api.send("file-open-dialog", options); }
+    static async fileSaveDialog(options) { return await window.api.send("file-save-dialog", options); }
 }
 App.PopupBase = class AppPopupBase extends util.Target {
     #result;
@@ -1594,12 +1596,12 @@ App.Alert = class AppAlert extends App.CorePopup {
     }
 };
 App.Error = class AppError extends App.Alert {
-    constructor(title, content, info) {
+    constructor(title, content, ...infos) {
         super(title, content, "warning");
 
         this.iconColor = "var(--cr)";
 
-        this.infos = [info];
+        this.infos = infos;
     }
 };
 App.Confirm = class AppConfirm extends App.CorePopup {
@@ -1954,8 +1956,8 @@ App.Menu = class AppMenu extends util.Target {
     static buildSpawnItems() {
         let itm = new App.Menu.Item("Features...");
         itm.id = "spawn";
-        ["PANEL", "PLANNER"].forEach((name, i) => {
-            let subitm = new App.Menu.Item(util.capitalize(name));
+        ["PANEL", "PLANNER", "DATABASE"].forEach((name, i) => {
+            let subitm = new App.Menu.Item(util.formatText(name));
             subitm.id = "spawn:"+name;
             subitm.accelerator = "CmdOrCtrl+"+(i+1);
             itm.menu.addItem(subitm);
@@ -2037,7 +2039,7 @@ App.Menu = class AppMenu extends util.Target {
         ];
         menus.forEach((submenu, i) => {
             let name = ["file", "edit", "view", "window", "help"][i];
-            let itm = new App.Menu.Item(util.capitalize(name));
+            let itm = new App.Menu.Item(util.formatText(name));
             itm.id = "menu:"+name;
             if (name == "help") itm.role = "help";
             submenu.items.forEach(subitm => itm.menu.addItem(subitm));
@@ -3047,7 +3049,7 @@ export class AppFeature extends App {
         try {
             await this.loadProjects();
         } catch (e) {
-            await this.doError("Projects Load Error", e);
+            await this.doError("Projects Load Error", "", e);
             return false;
         }
         return true;
@@ -3075,7 +3077,7 @@ export class AppFeature extends App {
         try {
             await this.saveProjects();
         } catch (e) {
-            await this.doError("Projects Save Error", e);
+            await this.doError("Projects Save Error", "", e);
             return false;
         }
         return true;
@@ -3199,7 +3201,7 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
         });
 
         (async () => {
-            const name = util.capitalize(String(await window.api.get("name")));
+            const name = util.formatText(String(await window.api.get("name")));
             this.eTitle.innerHTML = "<span>Peninsula</span><span></span>";
             this.eTitle.children[1].textContent = name;
         })();
@@ -5017,3 +5019,1069 @@ Explorer.Node = class ExplorerNode extends util.Target {
         this.explorer.format();
     }
 }
+
+export class Form extends util.Target {
+    #fields;
+
+    #elem;
+    
+    constructor() {
+        super();
+
+        this.#fields = [];
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("form");
+
+        this.isShown = true;
+    }
+
+    get fields() { return [...this.#fields]; }
+    set fields(v) {
+        v = util.ensure(v, "arr");
+        this.clearFields();
+        this.addField(v);
+    }
+    hasField(field) {
+        if (util.is(field, "str")) return !!this.getField(field);
+        if (!(field instanceof Form.Field)) return false;
+        return this.#fields.includes(field);
+    }
+    getField(name) {
+        for (let field of this.#fields)
+            if (field.name == name)
+                return field;
+        return null;
+    }
+    addField(...fields) {
+        return util.Target.resultingForEach(fields, field => {
+            if (!(field instanceof Form.Field)) return false;
+            if (this.hasField(field)) return false;
+            this.#fields.push(field);
+            this.elem.appendChild(field.elem);
+            return field;
+        });
+    }
+    remField(...fields) {
+        return util.Target.resultingForEach(fields, field => {
+            if (!(field instanceof Form.Field)) field = this.getField(field);
+            if (!this.hasField(field)) return false;
+            this.#fields.splice(this.#fields.indexOf(field), 1);
+            this.elem.removeChild(field.elem);
+            return field;
+        });
+    }
+
+    get elem() { return this.#elem; }
+
+    get side() {
+        if (this.elem.classList.contains("right")) return "right";
+        if (this.elem.classList.contains("center")) return "center";
+        return "left";
+    }
+    set side(v) {
+        v = String(v);
+        this.elem.classList.remove("right");
+        this.elem.classList.remove("center");
+        if (v == "left") return;
+        if (!["right", "center"].includes(v)) return;
+        this.elem.classList.add(v);
+    }
+
+    get isShown() { return this.elem.classList.contains("show"); }
+    set isShown(v) {
+        if (v) this.elem.classList.add("show");
+        else this.elem.classList.remove("show");
+    }
+}
+Form.Field = class FormField extends util.Target {
+    #name;
+
+    #toggleOn;
+
+    #elem;
+    #eHeader;
+    #eName;
+    #eType;
+    #eToggle;
+    #eToggleInput;
+    #eContent;
+
+    constructor(name) {
+        super();
+
+        this.#name = String(name);
+
+        this.#toggleOn = null;
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("item");
+        this.#eHeader = document.createElement("div");
+        this.elem.appendChild(this.eHeader);
+        this.eHeader.classList.add("header");
+        this.#eName = document.createElement("div");
+        this.eHeader.appendChild(this.eName);
+        this.eName.classList.add("name");
+        this.#eType = document.createElement("div");
+        this.eHeader.appendChild(this.eType);
+        this.eType.classList.add("type");
+        this.#eToggle = document.createElement("label");
+        this.eHeader.appendChild(this.eToggle);
+        this.eToggle.classList.add("switch");
+        this.eToggle.innerHTML = "<input type='checkbox'><span><ion-icon name='checkmark'></ion-icon></span>";
+        this.#eToggleInput = this.eToggle.children[0];
+        this.eToggleInput.addEventListener("change", e => (this.toggleOn = this.eToggleInput.checked));
+        this.#eContent = document.createElement("div");
+        this.elem.appendChild(this.eContent);
+        this.eContent.classList.add("content");
+
+        this.addHandler("change-toggleOn", () => (this.eToggleInput.checked = this.toggleOn));
+
+        this.isShown = this.showHeader = this.showContent = true;
+        this.showToggle = false;
+        this.isSwitch = true;
+        this.toggleOn = false;
+        this.isSubHeader = true;
+        this.header = util.formatText(this.name);
+        this.type = "";
+    }
+
+    get name() { return this.#name; }
+
+    get toggleOn() { return this.#toggleOn; }
+    set toggleOn(v) {
+        v = !!v;
+        if (this.toggleOn == v) return;
+        this.change("toggleOn", this.toggleOn, this.#toggleOn=v);
+    }
+    get toggleOff() { return !this.toggleOn; }
+    set toggleOff(v) { this.toggleOn = !v; }
+
+    get elem() { return this.#elem; }
+    get eHeader() { return this.#eHeader; }
+    get eName() { return this.#eName; }
+    get eType() { return this.#eType; }
+    get eToggle() { return this.#eToggle; }
+    get eToggleInput() { return this.#eToggleInput; }
+    get eContent() { return this.#eContent; }
+
+    get isHorizontal() { return this.elem.classList.contains("horizontal"); }
+    set isHorizontal(v) {
+        if (v) this.elem.classList.add("horizontal");
+        else this.elem.classList.remove("horizontal");
+    }
+    get isVertical() { return !this.isHorizontal; }
+    set isVertical(v) { this.isHorizontal = !v; }
+
+    get isShown() { return this.elem.classList.contains("show"); }
+    set isShown(v) {
+        if (v) this.elem.classList.add("show");
+        else this.elem.classList.remove("show");
+    }
+    get isHidden() { return !this.isShown; }
+    set isHidden(v) { this.isShown = !v; }
+    get showHeader() { return this.eHeader.classList.contains("show"); }
+    set showHeader(v) {
+        if (v) this.eHeader.classList.add("show");
+        else this.eHeader.classList.remove("show");
+    }
+    get showToggle() { return this.eToggle.classList.contains("show"); }
+    set showToggle(v) {
+        if (v) this.eToggle.classList.add("show");
+        else this.eToggle.classList.remove("show");
+    }
+    get showContent() { return this.eContent.classList.contains("show"); }
+    set showContent(v) {
+        if (v) this.eContent.classList.add("show");
+        else this.eContent.classList.remove("show");
+    }
+
+    get header() { return this.eName.textContent; }
+    set header(v) { this.eName.textContent = v; }
+    get isSubHeader() { return this.eHeader.classList.contains("sub"); }
+    set isSubHeader(v) {
+        if (v) this.eHeader.classList.add("sub");
+        else this.eHeader.classList.remove("sub");
+    }
+
+    get isSwitch() { return this.eToggle.classList.contains("switch"); }
+    set isSwitch(v) {
+        if (v) {
+            this.eToggle.classList.add("switch");
+            this.eToggle.classList.remove("checkbox");
+        } else {
+            this.eToggle.classList.remove("switch");
+            this.eToggle.classList.add("checkbox");
+        }
+    }
+    get isCheckbox() { return !this.isSwitch; }
+    set isCheckbox(v) { this.isSwitch = !v; }
+
+    get type() { return this.eType.textContent; }
+    set type(v) { this.eType.textContent = v; }
+
+    get toggleDisabled() { return this.eToggleInput.disabled; }
+    set toggleDisabled(v) { this.eToggleInput.disabled = v; }
+};
+Form.Header = class FormHeader extends Form.Field {
+    constructor(name) {
+        super("§");
+
+        this.showContent = false;
+        this.header = name;
+        this.isSubHeader = false;
+    }
+};
+Form.SubHeader = class FormHeader extends Form.Field {
+    constructor(name) {
+        super("§");
+
+        this.showContent = false;
+        this.header = name;
+        this.isSubHeader = true;
+    }
+};
+Form.GenericInput = class FormGenericInput extends Form.Field {
+    #inputs;
+
+    constructor(name, n) {
+        super(name);
+
+        this.#inputs = [];
+
+        this.elem.classList.add("input");
+
+        this.n = n;
+    }
+
+    get n() { return this.#inputs.length; }
+    set n(v) {
+        v = Math.max(0, util.ensure(v, "int"));
+        if (this.n == v) return;
+        this.unhook();
+        this.#inputs.forEach(inp => inp.remove());
+        for (let i = 0; i < v; i++) {
+            let inp = document.createElement("input");
+            this.eContent.appendChild(inp);
+            this.#inputs.push(inp);
+        }
+        this.hook();
+        this.apply();
+    }
+    get inputs() { return [...this.#inputs]; }
+
+    unhook() {}
+    hook() {}
+    apply() {}
+
+    unhookSingle(inp) {
+        if (!(inp instanceof HTMLInputElement)) return false;
+        inp.removeEventListener("change", inp.change);
+        return true;
+    }
+    hookSingle(inp, f) {
+        if (!(inp instanceof HTMLInputElement)) return false;
+        if (!util.is(f, "func")) return false;
+        Object.defineProperty(inp, "change", { value: f, writable: false });
+        inp.addEventListener("change", inp.change);
+        return true;
+    }
+
+    get disabled() {
+        for (let inp of this.#inputs)
+            if (inp.disabled)
+                return true;
+        return false;
+    }
+    set disabled(v) {
+        this.#inputs.forEach(inp => (inp.disabled = !!v));
+    }
+};
+Form.NumberInput = class FormNumberInput extends Form.GenericInput {
+    #app;
+
+    #step;
+
+    #types;
+    #baseType;
+    #activeType;
+
+    #eTypeBtn;
+
+    constructor(name, n) {
+        super(name, n);
+
+        this.#app = null;
+
+        this.#step = 0;
+
+        this.#types = new Set();
+        this.#baseType = null;
+        this.#activeType = null;
+
+        this.step = null;
+
+        this.types = ["#"];
+        this.baseType = "#";
+        this.activeType = "#";
+    }
+
+    get app() { return this.#app; }
+    set app(v) {
+        v = (v instanceof App) ? v : null;
+        if (this.app == v) return;
+        this.#app = v;
+    }
+    hasApp() { return !!this.app; }
+
+    get step() { return this.#step; }
+    set step(v) {
+        v = (v == null) ? null : Math.max(0, util.ensure(v, "num"));
+        if (this.step == v) return;
+        this.#step = v;
+        this.apply();
+    }
+    hasStep() { return this.step != null; }
+
+    get types() { return [...this.#types]; }
+    set types(v) {
+        v = util.ensure(v, "arr");
+        this.clearTypes();
+        this.addType(v);
+    }
+    clearTypes() {
+        let types = this.types;
+        this.remType(types);
+        return types;
+    }
+    hasType(type) { return this.#types.has(String(type)); }
+    addType(...types) {
+        let r = util.Target.resultingForEach(types, type => {
+            type = String(type);
+            this.#types.add(type);
+            return type;
+        });
+        this.applyType();
+        return r;
+    }
+    remType(...types) {
+        let r = util.Target.resultingForEach(types, type => {
+            type = String(type);
+            this.#types.delete(type);
+            return type;
+        });
+        this.applyType();
+        return r;
+    }
+    get baseType() { return this.#baseType; }
+    set baseType(v) {
+        v = String(v);
+        if (this.baseType == v) return;
+        this.#baseType = v;
+        this.apply();
+    }
+    get activeType() { return this.#activeType; }
+    set activeType(v) {
+        v = String(v);
+        if (this.activeType == v) return;
+        this.#activeType = v;
+        this.applyType();
+        this.apply();
+    }
+
+    apply() {
+        super.apply();
+        try {
+            this.inputs.forEach(inp => {
+                inp.type = "number";
+                if (this.hasStep()) inp.step = this.step;
+                else inp.removeAttribute("step");
+            });
+        } catch (e) {}
+    }
+    applyType() {
+        this.eType.innerHTML = "";
+        this.#eTypeBtn = document.createElement("button");
+        this.eType.appendChild(this.eTypeBtn);
+        this.eTypeBtn.classList.add("normal");
+        this.eTypeBtn.textContent = this.activeType;
+        this.eTypeBtn.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            e.stopPropagation();
+            let itm;
+            let menu = new App.Menu();
+            this.types.forEach(type => {
+                itm = menu.addItem(new App.Menu.Item(type, type == this.activeType ? "checkmark" : ""));
+                itm.addHandler("trigger", e => (this.activeType = type));
+            });
+            this.app.contextMenu = menu;
+            let r = this.eTypeBtn.getBoundingClientRect();
+            this.app.placeContextMenu(r.left, r.bottom);
+            menu.elem.style.minWidth = r.width+"px";
+        });
+    }
+    fix(v) { return Math.round(util.ensure(v, "num")*1000000)/1000000; }
+
+    get eTypeBtn() { return this.#eTypeBtn; }
+
+    get typeDisabled() { return this.eTypeBtn.disabled; }
+    set typeDisabled(v) { this.eTypeBtn.disabled = v; }
+};
+Form.Input1d = class FormInput1d extends Form.NumberInput {
+    #value;
+
+    constructor(name, value) {
+        super(name, 1);
+
+        this.#value = 0;
+
+        this.addHandler("change-value", () => this.apply());
+
+        this.value = value;
+
+        this.apply();
+    }
+
+    unhook() {
+        super.unhook();
+        this.inputs.forEach(inp => this.unhookSingle(inp));
+    }
+    hook() {
+        super.hook();
+        this.inputs.forEach(inp => {
+            this.hookSingle(inp, () => {
+                if (inp.value.length <= 0) return this.apply();
+                this.value = util.Unit.convert(parseFloat(inp.value), this.activeType, this.baseType);
+            });
+        });
+    }
+    apply() {
+        super.apply();
+        try {
+            this.inputs.forEach(inp => {
+                inp.value = this.hasValue() ? this.fix(util.Unit.convert(this.value, this.baseType, this.activeType)) : "";
+            });
+        } catch (e) {}
+    }
+
+    get value() { return this.#value; }
+    set value(v) {
+        v = (v == null) ? null : util.ensure(v, "num");
+        if (this.value == v) return;
+        this.change("value", this.value, this.#value=v);
+    }
+    hasValue() { return this.value != null; }
+};
+Form.Input2d = class FormInput2d extends Form.NumberInput {
+    #value;
+    #hasValue;
+
+    constructor(name, value) {
+        super(name, 2);
+
+        this.#value = new V();
+        this.value.addHandler("change", () => {
+            this.apply();
+            this.change("value", null, this.value);
+        });
+        this.#hasValue = new V();
+
+        this.value = value;
+
+        this.apply();
+    }
+
+    unhook() {
+        super.unhook();
+        this.inputs.forEach(inp => this.unhookSingle(inp));
+    }
+    hook() {
+        super.hook();
+        this.inputs.forEach((inp, i) => {
+            this.hookSingle(inp, () => {
+                if (inp.value.length <= 0) return this.apply();
+                this["xy"[i]] = util.Unit.convert(parseFloat(inp.value), this.activeType, this.baseType);
+            });
+        });
+    }
+    apply() {
+        super.apply();
+        try {
+            this.inputs.forEach((inp, i) => {
+                inp.value = this.hasValue("xy"[i]) ? this.fix(util.Unit.convert(this["xy"[i]], this.baseType, this.activeType)) : "";
+            });
+        } catch (e) {}
+    }
+
+    get value() { return this.#value; }
+    set value(v) {
+        if (v != null) this.#value.set(v);
+        this.setHasValue("x", v != null);
+        this.setHasValue("y", v != null);
+    }
+    setHasValue(k, v) {
+        if (!["x", "y"].includes(k)) return false;
+        if (this.#hasValue[k] == +!!v) return true;
+        this.#hasValue[k] = +!!v;
+        this.apply();
+        this.change("value", null, this.value);
+        return true;
+    }
+    hasValue(k) {
+        if (arguments.length == 0) {
+            for (let k of ["x", "y"])
+                if (this.hasValue(k))
+                    return true;
+            return false;
+        }
+        if (!["x", "y"].includes(k)) return false;
+        return !!this.#hasValue[k];
+    }
+    get x() { return this.value.x; }
+    set x(v) {
+        if (v != null) this.value.x = v;
+        this.setHasValue("x", v != null);
+    }
+    get y() { return this.value.y; }
+    set y(v) {
+        if (v != null) this.value.y = v;
+        this.setHasValue("y", v != null);
+    }
+};
+Form.Input3d = class FormInput3d extends Form.NumberInput {
+    #value;
+    #hasValue;
+
+    constructor(name, value) {
+        super(name, 3);
+
+        this.#value = new util.V3();
+        this.value.addHandler("change", () => {
+            this.apply();
+            this.change("value", null, this.value);
+        });
+        this.#hasValue = new util.V3();
+
+        this.value = value;
+
+        this.apply();
+    }
+
+    unhook() {
+        super.unhook();
+        this.inputs.forEach(inp => this.unhookSingle(inp));
+    }
+    hook() {
+        super.hook();
+        this.inputs.forEach((inp, i) => {
+            this.hookSingle(inp, () => {
+                if (inp.value.length <= 0) return this.apply();
+                this["xyz"[i]] = util.Unit.convert(parseFloat(inp.value), this.activeType, this.baseType);
+            });
+        });
+    }
+    apply() {
+        super.apply();
+        try {
+            this.inputs.forEach((inp, i) => {
+                inp.value = this.hasValue("xyz"[i]) ? this.fix(util.Unit.convert(this["xyz"[i]], this.baseType, this.activeType)) : "";
+            });
+        } catch (e) {}
+    }
+
+    get value() { return this.#value; }
+    set value(v) {
+        if (v != null) this.#value.set(v);
+        this.setHasValue("x", v != null);
+        this.setHasValue("y", v != null);
+        this.setHasValue("z", v != null);
+    }
+    setHasValue(k, v) {
+        if (!["x", "y", "z"].includes(k)) return false;
+        this.#hasValue[k] = +!!v;
+        if (this.#hasValue[k] == +!!v) return true;
+        this.apply();
+        this.change("value", null, this.value);
+        return true;
+    }
+    hasValue(k) {
+        if (arguments.length == 0) {
+            for (let k of ["x", "y", "z"])
+                if (this.hasValue(k))
+                    return true;
+            return false;
+        }
+        if (!["x", "y", "z"].includes(k)) return false;
+        return !!this.#hasValue[k];
+    }
+    get x() { return this.value.x; }
+    set x(v) {
+        if (v != null) this.value.x = v;
+        this.setHasValue("x", v != null);
+    }
+    get y() { return this.value.y; }
+    set y(v) {
+        if (v != null) this.value.y = v;
+        this.setHasValue("y", v != null);
+    }
+    get z() { return this.value.z; }
+    set z(v) {
+        if (v != null) this.value.z = v;
+        this.setHasValue("z", v != null);
+    }
+};
+Form.TextInput = class FormTextInput extends Form.GenericInput {
+    #value;
+
+    constructor(name) {
+        super(name, 1);
+
+        this.#value = null;
+        this.addHandler("change-value", () => this.apply());
+
+        this.value = "";
+
+        this.type = "str";
+    }
+
+    unhook() {
+        super.unhook();
+        this.inputs.forEach(inp => this.unhookSingle(inp));
+    }
+    hook() {
+        super.hook();
+        this.inputs.forEach(inp => {
+            this.hookSingle(inp, () => {
+                this.value = inp.value;
+            });
+        });
+    }
+    apply() {
+        super.apply();
+        try {
+            this.inputs.forEach(inp => {
+                inp.type = "text";
+                inp.autocomplete = "off";
+                inp.spellcheck = false;
+                inp.value = this.value;
+            });
+        } catch (e) {}
+    }
+
+    get value() { return this.#value; }
+    set value(v) {
+        v = util.ensure(v, "str");
+        if (this.value == v) return;
+        this.change("value", this.value, this.#value=v);
+    }
+};
+Form.DirentInput = class FormDirentInput extends Form.GenericInput {
+    #value;
+
+    #dialogTitle;
+    #dialogFilters;
+    #dialogProperties;
+
+    #eInput;
+    #eBtn;
+
+    constructor(name, value) {
+        super(name, 0);
+
+        this.elem.classList.add("dirent");
+
+        this.#value = null;
+
+        this.dialogTitle = "Choose a dirent";
+        this.dialogFilters = [];
+        this.dialogProperties = ["openFile"];
+
+        this.elem.classList.add("dirent");
+        this.#eInput = document.createElement("input");
+        this.eContent.appendChild(this.eInput);
+        this.eInput.type = "text";
+        this.eInput.autocomplete = "off";
+        this.eInput.spellcheck = false;
+        this.eInput.addEventListener("change", e => {
+            this.value = this.eInput.value;
+        });
+        this.#eBtn = document.createElement("button");
+        this.eContent.appendChild(this.eBtn);
+        this.eBtn.classList.add("normal");
+        this.eBtn.textContent = "Browse";
+        this.eBtn.addEventListener("click", async e => {
+            e.stopPropagation();
+            let result = await App.fileOpenDialog({
+                title: this.dialogTitle,
+                filters: this.dialogFilters,
+                properties: this.dialogProperties.filter(v => v != "multiSelections"),
+            });
+            result = util.ensure(result, "obj");
+            this.value = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
+        });
+
+        this.addHandler("change-value", () => (this.eInput.value = (this.value == null) ? "" : this.value));
+
+        this.value = value;
+
+        this.type = ".*";
+    }
+
+    get eInput() { return this.#eInput; }
+    get eBtn() { return this.#eBtn; }
+
+    get value() { return this.#value; }
+    set value(v) {
+        v = (v == null) ? null : util.ensure(v, "str");
+        if (this.value == v) return;
+        this.change("value", this.value, this.#value=v);
+    }
+    hasValue() { return this.value != null; }
+
+    get disabled() { return this.eInput.disabled || this.eBtn.disabled; }
+    set disabled(v) { this.eInput.disabled = this.eBtn.disabled = !!v; }
+
+    get dialogTitle() { return this.#dialogTitle; }
+    set dialogTitle(v) { this.#dialogTitle = String(v); }
+    get dialogFilters() { return this.#dialogFilters; }
+    set dialogFilters(v) { this.#dialogFilters = util.ensure(v, "arr"); }
+    get dialogProperties() { return this.#dialogProperties; }
+    set dialogProperties(v) { this.#dialogProperties = util.ensure(v, "arr"); }
+};
+Form.EnumInput = class FormEnumInput extends Form.Field {
+    #values;
+    #value;
+
+    constructor(name, values, value) {
+        super(name, 0);
+
+        this.elem.classList.add("enum");
+
+        this.#values = [];
+        this.#value = null;
+        this.addHandler("change-values", () => (this.value = this.value));
+
+        this.values = values;
+        this.value = value;
+    }
+
+    get values() { return [...this.#values]; }
+    set values(v) {
+        this.#values = util.ensure(v, "arr");
+        this.change("values", null, this.values);
+    }
+    get value() { return this.#value; }
+    set value(v) {
+        v = this.#values.map(data => (util.is(data, "obj") ? data.value : data)).includes(v) ? v : null;
+        if (this.value == v) return;
+        this.change("value", this.value, this.#value=v);
+    }
+    hasValue() { return this.value != null; }
+};
+Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
+    #app;
+
+    #eBtn;
+
+    constructor(name, values, value) {
+        super(name, values, value);
+
+        this.elem.classList.add("dropdown");
+
+        this.#eBtn = document.createElement("button");
+        this.eContent.appendChild(this.eBtn);
+        this.eBtn.classList.add("normal");
+        
+        this.eBtn.addEventListener("click", e => {
+            if (!this.hasApp()) return;
+            e.stopPropagation();
+            let itm;
+            let menu = new App.Menu();
+            this.values.forEach(data => {
+                if (data == null) return menu.addItem(new App.Menu.Divider());
+                itm = menu.addItem(new App.Menu.Item(
+                    util.is(data, "obj") ? data.name : data,
+                    (util.is(data, "obj") ? data.value : data) == this.value ? "checkmark" : "",
+                ));
+                itm.addHandler("trigger", e => (this.value = (util.is(data, "obj") ? data.value : data)));
+            });
+            this.app.contextMenu = menu;
+            let r = this.eBtn.getBoundingClientRect();
+            this.app.placeContextMenu(r.left, r.bottom);
+            menu.elem.style.minWidth = r.width+"px";
+        });
+
+        const apply = () => {
+            this.eBtn.innerHTML = "";
+            this.eBtn.appendChild(document.createElement("div"));
+            this.eBtn.lastChild.textContent = "None";
+            this.eBtn.appendChild(document.createElement("ion-icon"));
+            this.eBtn.lastChild.name = "chevron-forward";
+            for (let data of this.values) {
+                if ((util.is(data, "obj") ? data.value : data) != this.value) continue;
+                this.eBtn.innerHTML = "";
+                this.eBtn.appendChild(document.createElement("div"));
+                this.eBtn.lastChild.textContent = (util.is(data, "obj") ? data.name : data);
+                this.eBtn.appendChild(document.createElement("ion-icon"));
+                this.eBtn.lastChild.name = "chevron-forward";
+                break;
+            }
+        };
+        this.addHandler("change-value", apply);
+        apply();
+    }
+
+    get app() { return this.#app; }
+    set app(v) {
+        v = (v instanceof App) ? v : null;
+        if (this.app == v) return;
+        this.#app = v;
+    }
+    hasApp() { return !!this.app; }
+
+    get eBtn() { return this.#eBtn; }
+
+    get disabled() { return this.eBtn.disabled; }
+    set disabled(v) { this.eBtn.disabled = v; }
+};
+Form.SelectInput = class FormSelectInput extends Form.EnumInput {
+    constructor(name, values, value) {
+        super(name, values, value);
+
+        this.elem.classList.add("select");
+
+        const apply = () => {
+            this.eContent.innerHTML = "";
+            this.values.forEach(data => {
+                if (data == null) return;
+                let btn = document.createElement("button");
+                this.eContent.appendChild(btn);
+                if ((util.is(data, "obj") ? data.value : data) == this.value) btn.classList.add("this");
+                btn.textContent = (util.is(data, "obj") ? data.name : data);
+                btn.addEventListener("click", e => {
+                    this.value = (util.is(data, "obj") ? data.value : data);
+                });
+                btn.style.setProperty("--n", this.values.length);
+            });
+            this.post("apply");
+        };
+        this.addHandler("change-values", apply);
+        this.addHandler("change-value", apply);
+        apply();
+    }
+
+    get disabled() {
+        for (let btn of this.eContent.children)
+            if (btn.disabled)
+                return true;
+        return false;
+    }
+    set disabled(v) {
+        for (let btn of this.eContent.children)
+            btn.disabled = v;
+    }
+};
+Form.BooleanInput = class FormBooleanInput extends Form.Field {
+    constructor(name, value) {
+        super(name);
+
+        this.showToggle = true;
+        this.showContent = false;
+
+        this.addHandler("change-toggleOn", () => this.change("value", !this.value, this.value));
+
+        this.value = value;
+    }
+
+    get value() { return this.toggleOn; }
+    set value(v) { this.toggleOn = v; }
+
+    get disabled() { return this.eToggleInput.disabled; }
+    set disabled(v) { this.eToggleInput.disabled = v; }
+};
+Form.JSONInput = class FormJSONInput extends Form.Field {
+    #map;
+
+    #eAdd;
+
+    constructor(name, map) {
+        super(name);
+        
+        this.elem.classList.add("json");
+
+        this.#map = {};
+
+        this.#eAdd = document.createElement("button");
+        this.eContent.appendChild(this.eAdd);
+        this.eAdd.classList.add("special");
+        this.eAdd.innerHTML = "<ion-icon name='add'></ion-icon>";
+        this.eAdd.addEventListener("click", e => {
+            e.stopPropagation();
+            let keys = this.keys;
+            let k = "new-key";
+            if (keys.includes(k)) {
+                let n = 1;
+                while (true) {
+                    if (!keys.includes(k+"-"+n)) break;
+                    n++;
+                }
+                k += "-"+n;
+            }
+            this.set(k, "null");
+        });
+
+        this.addHandler("change", () => {
+            Array.from(this.eContent.querySelectorAll(":scope > .item")).forEach(elem => elem.remove());
+            this.keys.forEach(k => {
+                let v = this.get(k);
+                let elem = document.createElement("div");
+                this.eContent.insertBefore(elem, this.eAdd);
+                elem.classList.add("item");
+                let kinput = document.createElement("input");
+                elem.appendChild(kinput);
+                kinput.type = "text";
+                kinput.placeholder = "Key...";
+                kinput.autocomplete = "off";
+                kinput.spellcheck = false;
+                kinput.value = k;
+                let separator = document.createElement("div");
+                elem.appendChild(separator);
+                separator.classList.add("separator");
+                separator.textContent = ":";
+                let vinput = document.createElement("input");
+                elem.appendChild(vinput);
+                vinput.type = "text";
+                vinput.placeholder = "Value...";
+                vinput.autocomplete = "off";
+                vinput.spellcheck = false;
+                vinput.value = v;
+                let color = "v4";
+                try {
+                    let v2 = JSON.parse(v);
+                    if (util.is(v2, "str")) color = "cy";
+                    else if (util.is(v2, "num")) color = "cb";
+                    else if (v2 == null) color = "co";
+                    else if (v2 == true || v2 == false) color = ["cr", "cg"][+v2];
+                    else color = "v8";
+                } catch (e) {}
+                vinput.style.color = "var(--"+color+")";
+                let remove = document.createElement("button");
+                elem.appendChild(remove);
+                remove.classList.add("remove");
+                remove.innerHTML = "<ion-icon name='close'></ion-icon>";
+                kinput.addEventListener("change", e => {
+                    this.del(k);
+                    this.set(kinput.value, v);
+                });
+                vinput.addEventListener("change", e => {
+                    this.set(k, vinput.value);
+                });
+                remove.addEventListener("click", e => {
+                    e.stopPropagation();
+                    this.del(k);
+                });
+            });
+        });
+
+        this.map = map;
+    }
+
+    get keys() { return Object.keys(this.#map); }
+    get values() { return Object.values(this.#map); }
+    get map() {
+        let map = {};
+        this.keys.forEach(k => (map[k] = this.get(k)));
+        return map;
+    }
+    set map(v) {
+        v = util.ensure(v, "obj");
+        this.clear();
+        for (let k in v) this.set(k, v[k]);
+    }
+    clear() {
+        let map = this.map;
+        this.keys.forEach(k => this.del(k));
+        return map;
+    }
+    has(k) { return String(k) in this.#map; }
+    get(k) { return this.has(k) ? this.#map[String(k)] : null; }
+    set(k, v) {
+        k = String(k);
+        v = String(v);
+        let v2 = this.get(k);
+        if (v == v2) return v2;
+        this.#map[k] = v;
+        this.post("set", k, v2, v);
+        this.change("map", null, this.keys);
+        return v;
+    }
+    del(k) {
+        let v = this.get(k);
+        if (v == null) return v;
+        delete this.#map[String(k)];
+        this.post("del", k, v);
+        this.change("map", null, this.keys);
+        return v;
+    }
+
+    get disabled() { return this.eAdd.disabled; }
+    set disabled(v) {
+        this.eAdd.disabled = v;
+        Array.from(this.eContent.querySelectorAll("input")).forEach(inp => (inp.disabled = v));
+    }
+
+    get eAdd() { return this.#eAdd; }
+};
+Form.Button = class FormButton extends Form.Field {
+    #eBtn;
+
+    constructor(name, text, type="normal") {
+        super(name);
+
+        this.elem.classList.add("button");
+
+        this.#eBtn = document.createElement("button");
+        this.eContent.appendChild(this.eBtn);
+        this.eBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.post("trigger", e);
+        });
+
+        this.text = text;
+
+        this.btnType = type;
+    }
+
+    get eBtn() { return this.#eBtn; }
+
+    get text() { return this.eBtn.textContent; }
+    set text(v) { this.eBtn.textContent = v; }
+
+    get btnType() {
+        for (let name of ["normal", "special", "on", "off"])
+            if (this.eBtn.classList.contains(name))
+                return name;
+        return null;
+    }
+    set btnType(v) {
+        ["normal", "special", "on", "off"].forEach(name => {
+            if (name == v) this.eBtn.classList.add(name);
+            else this.eBtn.classList.remove(name);
+        });
+    }
+
+    get disabled() { return this.eBtn.disabled; }
+    set disabled(v) { this.eBtn.disabled = v; }
+};
+Form.Line = class FormLine extends Form.Field {
+    constructor(color="var(--v2)") {
+        super("§");
+
+        this.elem.classList.add("line");
+
+        this.color = color;
+    }
+
+    get color() { return this.elem.style.backgroundColor; }
+    set color(v) { this.elem.style.backgroundColor = v; }
+};

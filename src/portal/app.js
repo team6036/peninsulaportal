@@ -436,11 +436,16 @@ export default class App extends core.App {
                 });
             this.#eInfo = document.querySelector("#PAGE > .info");
             if (this.hasEInfo()) {
-                this.getAgent().forEach(line => {
-                    let elem = document.createElement("div");
-                    this.eInfo.appendChild(elem);
-                    elem.textContent = line;
-                });
+                const putAgent = () => {
+                    Array.from(this.eInfo.querySelectorAll(":scope > div:not(.nav)")).forEach(elem => elem.remove());
+                    this.getAgent().forEach(line => {
+                        let elem = document.createElement("div");
+                        this.eInfo.appendChild(elem);
+                        elem.textContent = line;
+                    });
+                }
+                putAgent();
+                window.onBuildAgent(putAgent);
                 this.#eSettingsBtn = this.eInfo.querySelector(":scope > .nav > button#settings");
                 if (this.hasESettingsBtn())
                     this.eSettingsBtn.addEventListener("click", e => {
@@ -465,15 +470,18 @@ export default class App extends core.App {
 
             btn = this.addFeatureButton(new FeatureButton("Panel", "grid"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PANEL"));
-
-            btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
-
             btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PANEL"));
 
+            btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
             btn = this.addUpperFeatureButton(new UpperFeatureButton("analytics"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
+
+            btn = this.addFeatureButton(new FeatureButton("Database", "server"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "DATABASE"));
+            btn = this.addUpperFeatureButton(new UpperFeatureButton("server"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "DATABASE"));
 
             let prevLoads = [];
             let lock = false;

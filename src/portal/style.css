@@ -203,20 +203,27 @@ body {
 }
 #PAGE > .info {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: 10px;
+    left: 10px;
+
+    padding: 10px;
 
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-end;
-    align-items: flex-start;
+    align-items: stretch;
     align-content: center;
 
     color: var(--v2);
 
     font-size: 12px;
     font-family: monospace;
+
+    transition: color var(--t);
+}
+#PAGE > .info:has(> div:not(.nav):hover) {
+    color: var(--v8);
 }
 #PAGE > .info * {
     font-family: monospace;
