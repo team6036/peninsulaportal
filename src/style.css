@@ -489,6 +489,9 @@ label.switch > input[type="checkbox"]:checked + span {
 label.switch > input[type="checkbox"]:checked + span::before {
     transform: translateX(calc(var(--width) - var(--height)));
 }
+label.switch > span > ion-icon {
+    display: none;
+}
 
 article.md {
     color: var(--v7);
@@ -1751,6 +1754,253 @@ div.contextmenu .item.divider > * {
 .explorer > .node > .explorer > button.side:disabled::before,
 .explorernode > .explorer > button.side:disabled::before {
     background-color: var(--v2-0);
+}
+
+.form {
+    padding: 10px;
+
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    font-size: 14px;
+}
+.form.show {
+    display: flex;
+}
+.form > .item {
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+.form > .item.show {
+    display: flex;
+}
+.form > .item.horizontal {
+    flex-direction: row;
+}
+.form > .item > .header {
+    display: none;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    user-select: none;
+}
+.form.center > .item:not(.horizontal) > .header {
+    justify-content: center;
+
+    text-align: center;
+}
+.form.right > .item:not(.horizontal) > .header {
+    flex-direction: row-reverse;
+
+    text-align: right;
+}
+.form > .item > .header.show {
+    display: flex;
+}
+.form > .item.horizontal > .header {
+    flex-basis: 100%;
+}
+.form > .item > .header > .name {
+    color: var(--v8);
+
+    font-weight: 550;
+}
+.form > .item > .header.sub > .name {
+    font-weight: 400;
+}
+.form > .item:not(.horizontal) > .header > .name {
+    flex-basis: 100%;
+}
+.form > .item > .header > .type {
+
+    color: var(--v6);
+
+    font-style: italic;
+}
+.form > .item > .header > .type:empty {
+    display: none;
+}
+.form > .item > .header > .type > button {
+    padding: 0px 5px;
+
+    border-radius: 5px;
+}
+.form > .item > .header > label:not(.show) {
+    display: none !important;
+}
+.form > .item > .content:not(.show) {
+    display: none !important;
+}
+.form > .item.input > .content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+.form > .item.input > .content > input {
+    --o: var(--v3);
+    --of: var(--v8);
+    --od: var(--v2);
+
+    flex-basis: 100%;
+
+    border: 1px solid var(--o);
+}
+.form > .item.input > .content > input:focus-visible {
+    border: 1px solid var(--of);
+}
+.form > .item.input > .content > input:disabled {
+    border: 1px solid var(--od);
+}
+.form > .item.input > .content > input[type="text"] {
+    color: var(--cy);
+}
+.form > .item.input > .content > input[type="text"]:disabled {
+    color: var(--cy2);
+}
+.form > .item.dirent > .content > button {
+    border-radius: 5px;
+}
+.form > .item.enum > .content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+.form.center > .item.enum > .content {
+    justify-content: center;
+}
+.form.right > .item.enum > .content {
+    justify-content: flex-end;
+}
+.form > .item.enum.dropdown > .content > button {
+    flex-basis: 100%;
+
+    padding: 5px;
+
+    border-radius: 5px;
+}
+.form > .item.enum.dropdown > .content > button > div {
+    flex-basis: 100%;
+}
+.form > .item.enum.select > .content > button {
+    --n: 0;
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    min-width: calc(75% / var(--n));
+    max-width: calc(75% / var(--n));
+    padding: 2px;
+
+    border-radius: 5px;
+
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 550;
+}
+.form > .item.enum.select > .content > button.this {
+    --bg: var(--v8);
+    --fg: var(--v1);
+    --bgh: var(--v8);
+    --fgh: var(--v4);
+    --bgd: var(--v6);
+    --fgd: var(--v1);
+}
+.form > .item.json > .content {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+.form > .item.json > .content > .item {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+.form > .item.json > .content > .item > input {
+    flex-basis: 100%;
+
+    outline: 1px solid var(--v3);
+}
+.form > .item.json > .content > .item > input:disabled {
+    outline: 1px solid var(--v2);
+}
+.form > .item.json > .content > .item > input:focus-visible {
+    outline: 1px solid var(--v8);
+}
+.form > .item.json > .content > .item > input:first-of-type {
+    color: var(--a);
+}
+.form > .item.json > .content > .item > .separator {
+    min-width: max-content;
+
+    color: var(--v4);
+}
+.form > .item.json > .content > .item > button {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    min-width: max-content;
+    padding: 5px;
+
+    border-radius: 5px;
+}
+.form > .item.json > .content > button {
+    padding: 5px;
+
+    border-radius: 5px;
+}
+.form > .item.button > .content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+.form > .item.button > .content > button {
+    flex-basis: 100%;
+
+    padding: 5px;
+
+    border-radius: 5px;
+}
+.form > .item.line {
+    margin: 5px 0px;
+    height: 1px;
+}
+.form > .item.line * {
+    display: none;
 }
 
 #drag {

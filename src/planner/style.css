@@ -359,6 +359,9 @@
 #PROJECTPAGE > .main > .edit > .content > .panel.this {
     visibility: inherit;
 }
+#PROJECTPAGE > .main > .edit > .content > .panel > .form {
+    padding: 0px;
+}
 #PROJECTPAGE > .main > .edit > .content > .panel > .header {
     align-self: stretch;
 
@@ -381,8 +384,6 @@
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .header.sub {
     font-weight: 400;
-
-    user-select: none;
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .header > span:first-child {
     flex-basis: 100%;
@@ -571,6 +572,7 @@
 #objectspanel .forobstacle:not(.this) {
     display: none !important;
 }
+/*
 #objectspanel > #heading > .dragbox {
     --dir: 0deg;
 
@@ -653,6 +655,7 @@
 
     border-radius: 100%;
 }
+*/
 #objectspanel > #itemcontrols {
     align-self: stretch;
 

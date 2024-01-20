@@ -1808,14 +1808,16 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section input {
-    outline: 1px solid var(--v3);
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .form {
+    padding: 0px;
+
+    gap: 5px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section input:disabled {
-    outline: 1px solid var(--v2);
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .form > .item > .header {
+    font-size: 12px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section input:focus-visible {
-    outline: 1px solid var(--v8);
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .form > .item > .header > .name {
+    text-transform: uppercase;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .content > .info {
     position: absolute;
@@ -1837,9 +1839,8 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list {
     position: relative;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list.empty::before {
-    content: "Drag some topics here";
-
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list.empty::before,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list.empty::before {
     position: absolute;
     top: 20px;
     left: 50%;
@@ -1849,27 +1850,12 @@
 
     font-size: 12px;
     font-style: italic;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.list.empty::before {
+    content: "Drag some topics here";
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list.empty::before {
     content: "Drag some poses here";
-
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-
-    color: var(--v6);
-
-    font-size: 12px;
-    font-style: italic;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .header {
-    color: var(--v8);
-
-    text-align: center;
-    text-transform: uppercase;
-    font-size: 12px;
-    font-weight: 550;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item {
     display: flex;
@@ -1959,97 +1945,6 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button:not(.custom).this {
     border: 1px solid var(--v8);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-    gap: 5px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav {
-    position: relative;
-
-    margin-bottom: 10px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav::before {
-    content: "";
-
-    position: absolute;
-    bottom: -7.5px;
-    left: 50%;
-    transform: translateX(-50%);
-
-    width: 100%;
-    height: 1px;
-
-    background-color: var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
-    --bg: transparent;
-    --bgh: var(--v2);
-    --bgd: transparent;
-
-    padding: 2px;
-
-    border-radius: 5px;
-
-    text-transform: uppercase;
-    font-size: 12px;
-    font-weight: 550;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button {
-    width: 20%;
-    max-width: 20%;
-    min-width: 20%;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button {
-    width: 30%;
-    max-width: 30%;
-    min-width: 30%;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .nav > button.this,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .nav > button.this {
-    --bg: var(--v8);
-    --fg: var(--v1);
-    --bgh: var(--v8);
-    --fgh: var(--v4);
-    --bgd: var(--v6);
-    --fgd: var(--v1);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span:not(.units),
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span:not(.units),
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span:not(.units) {
-    flex-basis: 100%;
-    
-    color: var(--v8);
-
-    text-align: left;
-    text-transform: uppercase;
-    font-size: 12px;
-    font-weight: 550;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.graph > .options > .section.view > .info > span.units,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .info > span.units,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .info > span.units {
-    color: var(--v6);
-
-    font-size: 12px;
-    font-style: italic;
-}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > .colorpicker > button.custom {
     --bg: transparent;
     --fg: var(--cr);
@@ -2063,8 +1958,7 @@
     --fgh: var(--cg5);
     --fgd: var(--cg2);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display {
     --use-o: 1;
 
     position: relative;
@@ -2073,29 +1967,11 @@
 
     border-radius: 5px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display > ion-icon,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > button > ion-icon {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.list > .item > .content > button.display > ion-icon {
     position: absolute;
     top: 50%;
     right: 5px;
     transform: translateY(-50%);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field.has > .nothas {
-    display: none !important;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: stretch;
-    align-content: center;
-    gap: 10px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.field > .v > input,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .options > .section.options > .v > input {
-    flex-basis: 100%;
 }
 #overlay {
     position: absolute;

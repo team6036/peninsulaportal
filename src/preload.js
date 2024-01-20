@@ -2,8 +2,8 @@ const { ipcRenderer, contextBridge } = require("electron");
 
 let AGENT = null;
 contextBridge.exposeInMainWorld("agent", () => AGENT);
-contextBridge.exposeInMainWorld("buildAgent", async () => {
-    return AGENT = {
+const buildAgent = async () => {
+    AGENT = {
         os: await ipcRenderer.invoke("os"),
 
         node: process.versions.node,
@@ -12,8 +12,18 @@ contextBridge.exposeInMainWorld("buildAgent", async () => {
 
         app: await ipcRenderer.invoke("get", "version"),
 
-        distro: await ipcRenderer.invoke("get", "is-public"),
+        public: ((await ipcRenderer.invoke("get", "db-host")) == null),
     };
+    handlers.forEach(f => f());
+    return AGENT;
+};
+let handlers = new Set();
+contextBridge.exposeInMainWorld("buildAgent", buildAgent);
+ipcRenderer.on("build-agent", () => buildAgent());
+buildAgent();
+contextBridge.exposeInMainWorld("onBuildAgent", f => {
+    handlers.add(f);
+    return () => handlers.delete(f);
 });
 
 contextBridge.exposeInMainWorld("api", {
@@ -37,8 +47,6 @@ contextBridge.exposeInMainWorld("api", {
         return () => ipcRenderer.removeListener("send", f);
     },
     send: (k, ...a) => ipcRenderer.invoke("on", k, ...a),
-
-    isPublic: () => ipcRenderer.invoke("get", "is-public"),
 
     fileHas: path => ipcRenderer.invoke("file-has", path),
     fileRead: path => ipcRenderer.invoke("file-read", path),

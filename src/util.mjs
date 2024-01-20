@@ -1,3 +1,26 @@
+let math = null;
+if (typeof(window) != "undefined") {
+    try {
+        math = (await import("../node_modules/mathjs/lib/browser/math.js")).default;
+    } catch (e) {
+        console.log("MATHJS IMPORT TRY 1 ERR", e);
+        try {
+            // THIS IS SO BAD - FIND ME A SOLUTION NOW
+            const script = document.createElement("script");
+            document.head.appendChild(script);
+            await new Promise(async (res, rej) => {
+                script.addEventListener("load", () => res());
+                script.addEventListener("error", e => rej(e));
+                script.src = new URL("node_modules/mathjs/lib/browser/math.js", "file://"+String(await window.api.getAppRoot()));
+            });
+            math = window.math;
+            delete window.math;
+        } catch (e) {
+            console.log("MATHJS IMPORT TRY 2 ERR", e);
+        }
+    }
+}
+
 export const EPSILON = 0.000001;
 
 export const NUMBERS = "0123456789";
@@ -292,10 +315,18 @@ export function search(items, keys, query) {
     return fuse.search(query);
 }
 
-export function capitalize(s) {
+export function formatText(s) {
     s = String(s);
     if (s.length <= 0) return s;
-    return s[0].toUpperCase() + s.substring(1).toLowerCase();
+    return s.split("").map((c, i) => {
+        if (!ALPHABETALL.includes(c)) {
+            if ("-_/ \\|,.".includes(c)) return " ";
+            return c;
+        }
+        if (i <= 0 || !ALPHABETALL.includes(s[i-1]))
+            return c.toUpperCase();
+        return c.toLowerCase();
+    }).join("");
 }
 
 export function generateArrayPath(...path) { return path.flatten().join("/").split("/").filter(part => part.length > 0); }
@@ -656,401 +687,10 @@ export class Target {
     onRem() { return this.post("rem"); }
 }
 
-/*
 export class Unit extends Target {
     #value;
     #unit;
 
-    static UNITS = {
-        LENGTH: {
-            mm: "mm",
-            millimeter: "mm",
-            millimeters: "mm",
-            cm: "cm",
-            centimeter: "cm",
-            centimeters: "cm",
-            m: "m",
-            meter: "m",
-            meters: "m",
-            km: "km",
-            kilometer: "km",
-            kilometers: "km",
-
-            in: "in",
-            inch: "in",
-            inches: "in",
-            ft: "ft",
-            foot: "ft",
-            feet: "ft",
-            yd: "yd",
-            yard: "yd",
-            yards: "yd",
-            mi: "mi",
-            mile: "mi",
-            miles: "mi",
-        },
-        WEIGHT: {
-            mg: "mg",
-            milligram: "mg",
-            milligrams: "mg",
-            g: "g",
-            gram: "g",
-            grams: "g",
-            kg: "kg",
-            kilogram: "kg",
-            kilograms: "kg",
-
-            oz: "oz",
-            ounce: "oz",
-            ounces: "oz",
-            lb: "lb",
-            pound: "lb",
-            pounds: "lb",
-
-            uston: "uston",
-            iton: "iton",
-            mton: "mton",
-        },
-        AREA: {
-            cm2: "cm2",
-            sqcm: "cm2",
-            sqcentimeter: "cm2",
-            sqcentimeters: "cm2",
-            m2: "m2",
-            sqm: "m2",
-            sqmeter: "m2",
-            sqmeters: "m2",
-            km2: "km2",
-            sqkm: "km2",
-            sqkilometer: "km2",
-            sqkilometers: "km2",
-
-            in2: "in2",
-            sqin: "in2",
-            sqinch: "in2",
-            sqinches: "in2",
-            ft2: "ft2",
-            sqft: "ft2",
-            sqfoot: "ft2",
-            sqfeet: "ft2",
-            yd2: "yd2",
-            sqyd: "yd2",
-            sqyard: "yd2",
-            sqyards: "yd2",
-            mi2: "mi2",
-            sqmi: "mi2",
-            sqmile: "mi2",
-            sqmiles: "mi2",
-
-            acre: "acre",
-            hectare: "hectare",
-        },
-        VOLUME: {
-            cm3: "cm3",
-            cucm: "cm3",
-            cucentimeter: "cm3",
-            cucentimeters: "cm3",
-            m3: "m3",
-            cum: "m3",
-            cumeter: "m3",
-            cumeters: "m3",
-            km2: "km3",
-            cukm: "km3",
-            cukilometer: "km3",
-            cukilometers: "km3",
-
-            in3: "in3",
-            cuin: "in3",
-            cuinch: "in3",
-            cuinches: "in3",
-            ft3: "ft3",
-            cuft: "ft3",
-            cufoot: "ft3",
-            cufeet: "ft3",
-            yd3: "yd3",
-            cuyd: "yd3",
-            cuyard: "yd3",
-            cuyards: "yd3",
-            mi3: "mi3",
-            cumi: "mi3",
-            cumile: "mi3",
-            cumiles: "mi3",
-
-            ml: "ml",
-            milliliter: "ml",
-            milliliters: "ml",
-            l: "l",
-            liter: "l",
-            liters: "l",
-
-            floz: "floz",
-            flounce: "floz",
-            flounces: "floz",
-            cup: "cup",
-            cups: "cup",
-            pt: "pt",
-            pint: "pt",
-            pints: "pt",
-            qt: "qt",
-            quart: "qt",
-            quarts: "qt",
-            gal: "gal",
-            gallon: "gal",
-            gallons: "gal",
-        },
-        TEMPERATURE: {
-            c: "c",
-            celsius: "c",
-            f: "f",
-            fahrenheit: "f",
-            k: "k",
-            kelvin: "k",
-            kelvins: "k",
-        },
-        TIME: {
-            ms: "ms",
-            millisecond: "ms",
-            milliseconds: "ms",
-            s: "s",
-            second: "s",
-            seconds: "s",
-            min: "min",
-            minute: "min",
-            minutes: "min",
-            hr: "hr",
-            hour: "hr",
-            hours: "hr",
-            d: "d",
-            day: "d",
-            days: "d",
-            wk: "wk",
-            week: "wk",
-            weeks: "wk",
-            yr: "yr",
-            year: "yr",
-            years: "yr",
-        },
-    };
-    static CONVERSIONS = {
-        LENGTH: {
-            mm: {
-                cm: v => v/(10**1),
-                m: v => v/(10**3),
-                km: v => v/(10**6),
-            },
-            cm: {
-                mm: 10**1,
-                m: v => v/(10**2),
-                km: v => v/(10**5),
-            },
-            m: {
-                mm: 10**3,
-                cm: 10**2,
-                km: v => v/(10**3),
-            },
-            km: {
-                mm: 10**6,
-                cm: 10**5,
-                m: 10**3,
-            },
-
-            in: {
-                cm: 2.54,
-
-                ft: v => v/(12),
-                yd: v => v/(12*3),
-                mi: v => v/(12*3*1760),
-            },
-            ft: {
-                m: 0.3048,
-
-                in: 12,
-                yd: v => v/(3),
-                mi: v => v/(3*1760),
-            },
-            yd: {
-                m: 0.9144,
-
-                in: 12*3,
-                ft: 3,
-                mi: v => v/(1760),
-            },
-            mi: {
-                km: 1.60934,
-
-                in: 12*3*1760,
-                ft: 3*1760,
-                yd: 1760,
-            },
-        },
-        WEIGHT: {
-            mg: {
-                g: v => v/(10**3),
-                kg: v => v/(10**6),
-
-                mton: v => v/(10**9),
-            },
-            g: {
-                mg: 10**3,
-                kg: v => v/(10**3),
-
-                mton: v => v/(10**6),
-            },
-            kg: {
-                lb: 2.205,
-
-                mg: 10**6,
-                g: 10**3,
-
-                mton: v => v/(10**3),
-            },
-
-            oz: {
-                g: 28.3495,
-
-                lb: v => v/(16),
-                uston: v => v/(16*2000),
-                iton: v => v/(16*2240),
-            },
-            lb: {
-                oz: 16,
-                uston: v => v/(2000),
-                iton: v => v/(2240),
-            },
-
-            uston: {
-                mton: 0.907185,
-
-                oz: 16*2000,
-                lb: 2000,
-            },
-            iton: {
-                mton: 1.01605,
-
-                oz: 16*2240,
-                lb: 2240,
-            },
-            mton: {
-                mg: 10**9,
-                g: 10**6,
-                kg: 10**3,
-            },
-        },
-        AREA: {
-            cm2: {
-                m2: v => v/(10**(2*2)),
-                km2: v => v/(10**(5*2)),
-                
-                hectare: v => v/(10**(5*2) * 100),
-            },
-            m2: {
-                ft2: 10.764,
-                yd2: 1.196,
-
-                cm2: 10**(2*2),
-                km2: v => v/(10**(3*2)),
-
-                hectare: v => v/(10**(3*2) * 100),
-            },
-            km2: {
-                cm2: 10**(5*2),
-                m2: 10**(3*2),
-                
-                hectare: v => v/(100),
-            },
-
-            in2: {
-                cm2: 6.4516,
-
-                ft2: v => v/((12)**2),
-                yd2: v => v/((12*3)**2),
-                mi2: v => v/((12*3*1760)**2),
-                
-                acre: v => v/((12*3*1760)**2 * 640),
-            },
-            ft2: {
-                in2: (12)**2,
-                yd2: v => v/((3)**2),
-                mi2: v => v/((3*1760)**2),
-
-                acre: v => v/((3*1760)**2 * 640),
-            },
-            yd2: {
-                in2: (12*3)**2,
-                ft2: (3)**2,
-                mi2: v => v/((1760)**2),
-
-                acre: v => v/((1760)**2 * 640),
-            },
-            mi2: {
-                km2: 2.58999,
-
-                in2: (12*3*1760)**2,
-                ft2: (3*1760)**2,
-                yd2: (1760)**2,
-
-                acre: 640,
-            },
-
-            acre: {
-                in2: (12*3*1760)**2 * 640,
-                ft2: (3*1760)**2 * 640,
-                yd2: (1760)**2 * 640,
-                mi2: 640,
-            },
-            hectare: {
-                acre: 2.471,
-            },
-        },
-    };
-    static TOMETRIC = {
-        AREA: {
-            cm2: 0.0001,
-            m2: 1,
-            km2: 1000000,
-
-            in2: 0.00064516,
-            ft2: 0.092903,
-            yd2: 0.836127,
-            mi2: 2590000,
-
-            acre: 4046.86,
-            hectare: 10000,
-        },
-        VOLUME: {
-            cm3: 0.000001,
-            m3: 1,
-            km3: 1000000000,
-            
-            in3: 0.000016387,
-            ft3: 0.0283168,
-            yd3: 0.764555,
-            mi3: 4168000000,
-
-            ml: 0.000001,
-            l: 0.001,
-            floz: 0.000029574,
-            cup: 0.00024,
-            pt: 0.000473176,
-            qt: 0.000946353,
-            gal: 0.00378541,
-        },
-        TEMPERATURE: {
-            c: 1,
-            f: v => (v-32)*5/9,
-            k: v => v-273.15,
-        },
-        TIME: {
-            ms: 0.001,
-            s: 1,
-            min: 60,
-            hr: 60*60,
-            d: 60*60*24,
-            wk: 60*60*24*7,
-            yr: 60*60*24*365,
-        },
-    };
-    
     constructor(...a) {
         super();
 
@@ -1066,8 +706,8 @@ export class Unit extends Target {
                 a = [a.value, a.unit];
             }
             else if (is(a, "obj")) a = [a.value, a.unit];
-            else if (is(a, "num")) a = [a, "number"];
-            else a = [0, "number"];
+            else if (is(a, "num")) a = [a, "#"];
+            else a = [0, "#"];
         }
         
         [this.value, this.unit] = a;
@@ -1082,49 +722,24 @@ export class Unit extends Target {
     get unit() { return this.#unit; }
     set unit(v) {
         v = String(v).toLowerCase();
-        let found = null;
-        for (let type in Unit.UNITS) {
-            for (let name in Unit.UNITS[type]) {
-                if (name != v) continue;
-                found = Unit.UNITS[type][name];
-            }
-        }
-        if (found == null) found = "number";
-        if (this.unit == found) return;
+        if (this.unit == v) return;
         this.change("unit", this.unit, this.#unit=v);
     }
 
     convert(to) {
         to = String(to).toLowerCase();
-        let found = null;
-        for (let type in Unit.UNITS) {
-            for (let name in Unit.UNITS[type]) {
-                if (name != to) continue;
-                found = Unit.UNITS[type][name];
-            }
-        }
-        if (found == null) found = "number";
-        if (found == "number") return new Unit(this.value, "number");
-        if (this.type == "number") return new Unit(this.value, found);
-        let u1 = this.unit, u2 = found;
-        let t1 = Unit.getType(this.unit), t2 = Unit.getType(found);
-        if (t1 != t2) throw new Error("Cannot convert "+u1+" ("+t1+") to "+u2+" ("+t2+")");
-        let v = this.value;
-        v *= Unit.TOMETRIC[t1][u1];
-        v /= Unit.TOMETRIC[t2][u2];
-        return new Unit(v, u2);
+        if (this.unit == "#" || to == "#" || !math) return new Unit(this.value, to);
+        return new Unit(math.unit(this.value, this.unit).toNumber(to), to);
     }
 
-    static getType(unit) {
-        unit = String(unit).toLowerCase();
-        for (let type in Unit.UNITS)
-            if (unit in Unit.UNITS[type])
-                return type;
-        return null;
+    static convert(v, u1, u2) {
+        v = ensure(v, "num");
+        u1 = String(u1).toLowerCase();
+        u2 = String(u2).toLowerCase();
+        if (u1 == "#" || u2 == "#" || !math) return v;
+        return math.unit(v, u1).toNumber(u2);
     }
-    static convert(v, u1, u2) { return new Unit(v, u1).convert(u2).value; }
 }
-*/
 
 export class Color extends Target {
     #r; #g; #b; #a;

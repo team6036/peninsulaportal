@@ -82,7 +82,7 @@ class Action extends util.Target {
     async action() {
         try {
             await window.api.send("cmd-"+this.id);
-        } catch (e) { await this.app.doError("Action Error: "+this.id, e); }
+        } catch (e) { await this.app.doError("Action Error", "ActionId: "+this.id, e); }
     }
 }
 
@@ -130,18 +130,18 @@ export default class App extends core.App {
                         input.disabled = btn.disabled = true;
                         try {
                             await window.api.send("feature", name, "set", "root", input.value);
-                        } catch (e) { await this.doError("Feature Root Set Error: "+name, e); }
+                        } catch (e) { await this.doError("Feature Root Set Error", "FeatureName: "+name, e); }
                         let value = "";
                         try {
                             value = await window.api.send("feature", name, "get", "root");
-                        } catch (e) { await this.doError("Feature Root Get Root: "+name, e); }
+                        } catch (e) { await this.doError("Feature Root Get Root", "FeatureName: "+name, e); }
                         input.value = value;
                         input.disabled = btn.disabled = false;
                     });
                     btn.addEventListener("click", async e => {
                         e.stopPropagation();
                         input.disabled = btn.disabled = true;
-                        let result = await this.fileOpenDialog({
+                        let result = await App.fileOpenDialog({
                             title: "Choose a directory",
                             properties: [
                                 "openDirectory",
@@ -153,18 +153,18 @@ export default class App extends core.App {
                         let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
                         try {
                             await window.api.send("feature", name, "set", "root", path);
-                        } catch (e) { await this.doError("Feature Root Set Error: "+name, e); }
+                        } catch (e) { await this.doError("Feature Root Set Error", "FeatureName: "+name, e); }
                         let value = "";
                         try {
                             value = await window.api.send("feature", name, "get", "root");
-                        } catch (e) { await this.doError("Feature Root Get Error: "+name, e); }
+                        } catch (e) { await this.doError("Feature Root Get Error", "FeatureName: "+name, e); }
                         input.value = value;
                         input.disabled = btn.disabled = false;
                     });
                     let value = "";
                     try {
                         value = await window.api.send("feature", name, "get", "root");
-                    } catch (e) { await this.doError("Feature Root Get Error: "+name, e); }
+                    } catch (e) { await this.doError("Feature Root Get Error", "FeatureName: "+name, e); }
                     input.value = value;
                 });
                 Array.from(document.querySelectorAll("#PAGE > .content > article button.cmd")).forEach(async elem => {
@@ -191,7 +191,7 @@ export default class App extends core.App {
                             let checked = false;
                             try {
                                 checked = !!(await window.api.get("val-"+elem.id));
-                            } catch (e) { await this.doError("Input Boolean Get Error: "+elem.id, e); }
+                            } catch (e) { await this.doError("Input Boolean Get Error", "InputId: "+elem.id, e); }
                             if (elem.checked == checked) {
                                 elem.disabled = disabled;
                                 lock = false;
@@ -202,7 +202,7 @@ export default class App extends core.App {
                             let value = "";
                             try {
                                 value = await window.api.get("val-"+elem.id);
-                            } catch (e) { await this.doError("Input Get Error: "+elem.id, e); }
+                            } catch (e) { await this.doError("Input Get Error", "InputId: "+elem.id, e); }
                             let idfs = {
                                 "db-host": async () => {
                                     value = (value == null) ? "" : String(value);
@@ -211,7 +211,7 @@ export default class App extends core.App {
                                     value = (value == null) ? "" : String(value);
                                 },
                                 "holiday": async () => {
-                                    value = (value == null) ? "" : String(value.split(" ").map(v => util.capitalize(v)).join(" "));
+                                    value = (value == null) ? "" : util.formatText(value);
                                 },
                             };
                             if (elem.id in idfs) await idfs[elem.id]();
@@ -274,7 +274,7 @@ export default class App extends core.App {
                         elem.disabled = true;
                         try {
                             await window.api.set("val-"+elem.id, v);
-                        } catch (e) { await this.doError("Input Set Error: "+elem.id, e); }
+                        } catch (e) { await this.doError("Input Set Error", "InputId: "+elem.id, e); }
                         elem.disabled = disabled;
                         lock = false;
                         await updateValue();
@@ -297,7 +297,7 @@ export default class App extends core.App {
                             itm.addHandler("trigger", async e => {
                                 try {
                                     await window.api.set("theme", id);
-                                } catch (e) { await this.doError("Theme Set Error: "+id, e); }
+                                } catch (e) { await this.doError("Theme Set Error", "ThemeId: "+id, e); }
                             });
                         }
                         this.contextMenu = menu;
@@ -306,8 +306,11 @@ export default class App extends core.App {
                         menu.elem.style.minWidth = r.width+"px";
                     });
                     setInterval(async () => {
-                        if (eThemeBtn.children[0] instanceof HTMLDivElement)
-                            eThemeBtn.children[0].textContent = util.ensure(util.ensure(await window.api.get("themes"), "obj")[await window.api.get("theme")], "obj").name;
+                        if (eThemeBtn.children[0] instanceof HTMLDivElement) {
+                            let theme = await window.api.get("theme");
+                            theme = util.is(theme, "obj") ? theme : String(theme);
+                            eThemeBtn.children[0].textContent = util.is(theme, "obj") ? "Custom" : util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj").name;
+                        }
                     }, 250);
                 }
                 const eNativeThemeBtn = document.getElementById("native-theme");
@@ -327,7 +330,7 @@ export default class App extends core.App {
                             itm.addHandler("trigger", async e => {
                                 try {
                                     window.api.set("native-theme", id);
-                                } catch (e) { await this.doError("Native Theme Set Error: "+id, e); }
+                                } catch (e) { await this.doError("Native Theme Set Error", "NativeThemeId: "+id, e); }
                             });
                         }
                         this.contextMenu = menu;
@@ -349,11 +352,16 @@ export default class App extends core.App {
 
             this.#eInfo = document.querySelector("#PAGE > .content > .info");
             if (this.hasEInfo()) {
-                this.getAgent().forEach(line => {
-                    let elem = document.createElement("div");
-                    this.eInfo.appendChild(elem);
-                    elem.textContent = line;
-                });
+                const putAgent = () => {
+                    Array.from(this.eInfo.querySelectorAll(":scope > div:not(.nav)")).forEach(elem => elem.remove());
+                    this.getAgent().forEach(line => {
+                        let elem = document.createElement("div");
+                        this.eInfo.appendChild(elem);
+                        elem.textContent = line;
+                    });
+                };
+                putAgent();
+                window.onBuildAgent(putAgent);
                 setInterval(async () => {
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)

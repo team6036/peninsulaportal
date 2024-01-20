@@ -99,7 +99,7 @@ const MAIN = async () => {
         return s;
     }
 
-    const FEATURES = ["PORTAL", "PANEL", "PLANNER", "PRESETS"];
+    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
     class Process extends util.Target {
@@ -643,10 +643,10 @@ const MAIN = async () => {
         name = String(name);
         return [
             {
-                label: (name.length > 0) ? util.capitalize(name) : "Portal",
+                label: (name.length > 0) ? util.formatText(name) : "Portal",
                 submenu: [
                     {
-                        label: (name.length > 0) ? ("About Peninsula "+util.capitalize(name)) : "About Peninsula",
+                        label: (name.length > 0) ? ("About Peninsula "+util.formatText(name)) : "About Peninsula",
                         enabled: !!("about" in signal ? signal.about : true),
                         click: () => signal.post("about"),
                     },
@@ -1844,7 +1844,7 @@ const MAIN = async () => {
                         dataIn.config.map_h = project.h / 100;
                         dataIn.config.side_length = project.robotW / 100;
                         dataIn.config.mass = project.robotMass;
-                        project.config.options.forEach(k => {
+                        project.config.optionKeys.forEach(k => {
                             let v = project.config.getOption(k);
                             try { v = JSON.parse(v); }
                             catch (e) { return; }
@@ -1861,7 +1861,7 @@ const MAIN = async () => {
                                 vt: itm.useVelocity ? itm.velocityRot : null,
                                 theta: itm.useHeading ? itm.heading : null,
                             };
-                            itm.options.forEach(k => {
+                            itm.optionKeys.forEach(k => {
                                 let v = itm.getOption(k);
                                 try { v = JSON.parse(v); }
                                 catch (e) { return; }
@@ -2142,21 +2142,30 @@ const MAIN = async () => {
             return true;
         }
         cacheSet(k, v) {
+            this.windowManager.cacheSet(k, v);
             if (!this.started) return false;
             k = String(k);
             if (!this.hasWindow()) return false;
             this.window.webContents.send("cache-set", k, v);
         }
         cacheDel(k) {
+            this.windowManager.cacheDel(k);
             if (!this.started) return false;
             k = String(k);
             if (!this.hasWindow()) return false;
             this.window.webContents.send("cache-del", k);
         }
         cacheClear() {
+            this.windowManager.cacheClear();
             if (!this.started) return false;
             if (!this.hasWindow()) return false;
             this.window.webContents.send("cache-clear");
+        }
+        buildAgent() {
+            this.windowManager.buildAgent();
+            if (!this.started) return false;
+            if (!this.hasWindow()) return false;
+            this.window.webContents.send("build-agent");
         }
 
         update(delta) { this.post("update", delta); }
@@ -2243,6 +2252,11 @@ const MAIN = async () => {
                                 label: "Planner",
                                 accelerator: "CmdOrCtrl+2",
                                 click: () => this.on("spawn", "PLANNER"),
+                            },
+                            {
+                                label: "Database",
+                                accelerator: "CmdOrCtrl+3",
+                                click: () => this.on("spawn", "DATABASE"),
                             },
                         ],
                     },
@@ -2748,9 +2762,18 @@ const MAIN = async () => {
 
             this.log("START");
 
-            ipc.handle("os", async () => {
-                return OS;
-            });
+            const decorate = f => {
+                return async (...a) => {
+                    try {
+                        return await f(...a);
+                    } catch (e) {
+                        console.error(e);
+                        throw util.stringifyError(e);
+                    }
+                };
+            };
+
+            ipc.handle("os", decorate(() => OS));
 
             const identify = e => {
                 let win = this.identifyWindow(e.sender.id);
@@ -2758,7 +2781,7 @@ const MAIN = async () => {
                 return win;
             };
             
-            ipc.handle("get-root", async (e, type) => {
+            ipc.handle("get-root", decorate(async (e, type) => {
                 let win = identify(e);
                 if (type == "app") return __dirname;
                 if (type == "window") {
@@ -2767,119 +2790,117 @@ const MAIN = async () => {
                 }
                 if (type == "repo") return path.join(__dirname, "..");
                 return null;
-            });
+            }));
 
-            ipc.handle("get", async (e, k) => await this.getCallback(e.sender.id, k));
-            ipc.handle("set", async (e, k, v) => await this.setCallback(e.sender.id, k, v));
+            ipc.handle("get", decorate(async (e, k) => await this.getCallback(e.sender.id, k)));
+            ipc.handle("set", decorate(async (e, k, v) => await this.setCallback(e.sender.id, k, v)));
 
-            ipc.handle("on", async (e, k, ...a) => {
-                return await this.onCallback(e.sender.id, k, ...a);
-            });
+            ipc.handle("on", decorate(async (e, k, ...a) => await this.onCallback(e.sender.id, k, ...a)));
 
-            ipc.handle("file-has", async (e, pth) => {
+            ipc.handle("file-has", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.fileHas(pth);
-            });
-            ipc.handle("file-read", async (e, pth) => {
+            }));
+            ipc.handle("file-read", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.fileRead(pth);
-            });
-            ipc.handle("file-read-raw", async (e, pth) => {
+            }));
+            ipc.handle("file-read-raw", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.fileReadRaw(pth);
-            });
-            ipc.handle("file-write", async (e, pth, content) => {
+            }));
+            ipc.handle("file-write", decorate(async (e, pth, content) => {
                 let win = identify(e);
                 return await win.fileWrite(pth, content);
-            });
-            ipc.handle("file-write-raw", async (e, pth, content) => {
+            }));
+            ipc.handle("file-write-raw", decorate(async (e, pth, content) => {
                 let win = identify(e);
                 return await win.fileWriteRaw(pth, content);
-            });
-            ipc.handle("file-append", async (e, pth, content) => {
+            }));
+            ipc.handle("file-append", decorate(async (e, pth, content) => {
                 let win = identify(e);
                 return await win.fileAppend(pth, content);
-            });
-            ipc.handle("file-delete", async (e, pth) => {
+            }));
+            ipc.handle("file-delete", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.fileDelete(pth);
-            });
+            }));
 
-            ipc.handle("dir-has", async (e, pth) => {
+            ipc.handle("dir-has", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.dirHas(pth);
-            });
-            ipc.handle("dir-list", async (e, pth) => {
+            }));
+            ipc.handle("dir-list", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.dirList(pth);
-            });
-            ipc.handle("dir-make", async (e, pth) => {
+            }));
+            ipc.handle("dir-make", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.dirMake(pth);
-            });
-            ipc.handle("dir-delete", async (e, pth) => {
+            }));
+            ipc.handle("dir-delete", decorate(async (e, pth) => {
                 let win = identify(e);
                 return await win.dirDelete(pth);
-            });
+            }));
 
-            ipc.handle("modal-result", async (e, r) => {
+            ipc.handle("modal-result", decorate(async (e, r) => {
                 let win = identify(e);
                 return win.modalResult(r);
-            });
-            ipc.handle("modal-spawn", async (e, name, params) => {
+            }));
+            ipc.handle("modal-spawn", decorate(async (e, name, params) => {
                 let win = identify(e);
                 return win.modalSpawn(name, params);
-            });
-            ipc.handle("modal-modify", async (e, id, params) => {
+            }));
+            ipc.handle("modal-modify", decorate(async (e, id, params) => {
                 let win = identify(e);
                 return win.modalModify(id, params);
-            });
+            }));
 
-            ipc.handle("client-make", async (e, id, location) => {
+            ipc.handle("client-make", decorate(async (e, id, location) => {
                 let win = identify(e);
                 return await win.clientMake(id, location);
-            });
-            ipc.handle("client-destroy", async (e, id) => {
+            }));
+            ipc.handle("client-destroy", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.clientDestroy(id);
-            });
-            ipc.handle("client-has", async (e, id) => {
+            }));
+            ipc.handle("client-has", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.clientHas(id);
-            });
-            ipc.handle("client-conn", async (e, id) => {
+            }));
+            ipc.handle("client-conn", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.clientConn(id);
-            });
-            ipc.handle("client-disconn", async (e, id) => {
+            }));
+            ipc.handle("client-disconn", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.clientDisconn(id);
-            });
-            ipc.handle("client-emit", async (e, id, name, payload) => {
+            }));
+            ipc.handle("client-emit", decorate(async (e, id, name, payload) => {
                 let win = identify(e);
                 return await win.clientEmit(id, name, payload);
-            });
-            ipc.handle("client-stream", async (e, id, pth, name, payload) => {
+            }));
+            ipc.handle("client-stream", decorate(async (e, id, pth, name, payload) => {
                 let win = identify(e);
                 return await win.clientStream(id, pth, name, payload);
-            });
+            }));
 
-            ipc.handle("tba-client-make", async (e, id) => {
+            ipc.handle("tba-client-make", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.tbaClientMake(id);
-            });
-            ipc.handle("tba-client-destroy", async (e, id) => {
+            }));
+            ipc.handle("tba-client-destroy", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.tbaClientDestroy(id);
-            });
-            ipc.handle("tba-client-has", async (e, id) => {
+            }));
+            ipc.handle("tba-client-has", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.tbaClientHas(id);
-            });
-            ipc.handle("tba-client-invoke", async (e, id, invoke, ...a) => {
+            }));
+            ipc.handle("tba-client-invoke", decorate(async (e, id, invoke, ...a) => {
                 let win = identify(e);
                 return await win.tbaClientInvoke(id, invoke, ...a);
-            });
+            }));
 
             (async () => {
                 try {
@@ -3533,9 +3554,6 @@ const MAIN = async () => {
                     let host = (await kfs._fullconfig()).dbHost;
                     return (host == null) ? null : String(host);
                 },
-                "is-public": async () => {
-                    return (await kfs["db-host"]()) == null;
-                },
                 "assets-host": async () => {
                     return String((await kfs._fullconfig()).assetsHost);
                 },
@@ -3560,7 +3578,9 @@ const MAIN = async () => {
                     return !!(await kfs._fullclientconfig()).isCompMode;
                 },
                 "theme": async () => {
-                    return util.ensure((await kfs._fullclientconfig()).theme, "str", await kfs["active-theme"]());
+                    let theme = (await kfs._fullclientconfig()).theme;
+                    if (util.is(theme, "obj")) return theme;
+                    return util.ensure(theme, "str", await kfs["active-theme"]());
                 },
                 "native-theme": async () => {
                     return util.ensure((await kfs._fullclientconfig()).nativeTheme, "str", "system");
@@ -3646,7 +3666,7 @@ const MAIN = async () => {
                 },
                 "comp-mode": async () => await kfs._fullclientconfig("isCompMode", !!v),
                 "theme": async () => {
-                    await kfs._fullclientconfig("theme", String(v));
+                    await kfs._fullclientconfig("theme", util.is(v, "obj") ? v : String(v));
                     await this.send("theme");
                 },
                 "native-theme": async () => {
@@ -3681,11 +3701,15 @@ const MAIN = async () => {
         async setCallback(id, k, v) {
             if (this.hasWindow()) return await this.window.manager.setCallback(id, k, v);
             try {
-                return await this.set(k, v);
+                let r = await this.set(k, v);
+                this.rootManager.buildAgent();
+                return r;
             } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
             let win = this.identifyWindow(id);
             if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
-            return await win.set(k, v);
+            let r = await win.set(k, v);
+            this.rootManager.buildAgent();
+            return r;
         }
         async on(k, ...a) {
             if (this.hasWindow()) return await this.window.manager.on(k, ...a);
@@ -3763,15 +3787,19 @@ const MAIN = async () => {
             return true;
         }
         cacheSet(k, v) {
-            this.windows.map(win => win.cacheSet(k, v))
+            this.windows.map(win => win.cacheSet(k, v));
             return true;
         }
         cacheDel(k) {
-            this.windows.map(win => win.cacheDel(k))
+            this.windows.map(win => win.cacheDel(k));
             return true;
         }
         cacheClear() {
-            this.windows.map(win => win.cacheClear())
+            this.windows.map(win => win.cacheClear());
+            return true;
+        }
+        buildAgent() {
+            this.windows.map(win => win.buildAgent());
             return true;
         }
 
