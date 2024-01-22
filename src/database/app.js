@@ -41,7 +41,7 @@ class Field extends util.Target {
         if (!(app instanceof App)) throw new Error("App is not of class App");
         this.#app = app;
 
-        this.#name = String(name);
+        this.#name = null;
 
         this.#size = new V();
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
@@ -53,9 +53,21 @@ class Field extends util.Target {
         this.elem.classList.add("item");
         this.#eBtn = document.createElement("button");
         this.eBtn.innerHTML = "<div class='active'></div><input><div class='space'></div><ion-icon name='chevron-down'></ion-icon>";
+        this.eBtn.draggable = true;
+        this.eBtn.addEventListener("dragstart", e => {
+            e.dataTransfer.dropEffect = "move";
+            e.dataTransfer.setData("text/plain", this.name);
+            this.close();
+            setTimeout(() => (this.elem.style.display = "none"), 10);
+        });
+        this.eBtn.addEventListener("dragend", e => {
+            this.elem.style.display = "";
+        });
         this.#eActive = this.eBtn.children[0];
         this.#eNameInput = this.eBtn.children[1];
-        this.eNameInput.value = this.name;
+        this.eNameInput.addEventListener("change", e => {
+            this.name = this.eNameInput.value;
+        });
         this.elem.appendChild(this.eBtn);
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
@@ -123,15 +135,27 @@ class Field extends util.Target {
         update();
 
         this.eBtn.addEventListener("click", e => {
-            if (this.elem.classList.contains("this")) this.elem.classList.remove("this");
-            else this.elem.classList.add("this");
-            this.eNameInput.disabled = !this.elem.classList.contains("this");
+            this.isOpen = !this.isOpen;
+        });
+        this.eBtn.addEventListener("contextmenu", e => {
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item(this.isOpen ? "Close" : "Open"));
+            itm.addHandler("trigger", e => {
+                this.isOpen = !this.isOpen;
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Delete"));
+            itm.addHandler("trigger", e => {
+                this.name = null;
+            });
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
         });
         this.eNameInput.addEventListener("click", e => {
             e.stopPropagation();
         });
-        this.eBtn.click();
-        this.eBtn.click();
+        this.open();
+        this.close();
 
         let apply;
 
@@ -205,6 +229,8 @@ class Field extends util.Target {
             } catch (e) { v = null; }
             this.change("options."+k, v, "§null");
         });
+
+        this.name = name;
         
         this.size = size;
         this.robotSize = robotSize;
@@ -219,6 +245,12 @@ class Field extends util.Target {
     get app() { return this.#app; }
 
     get name() { return this.#name; }
+    set name(v) {
+        v = (v == null) ? null : String(v);
+        if (this.name == v) return;
+        this.change("name", this.name, this.#name=v);
+        this.eNameInput.value = this.name;
+    }
 
     get size() { return this.#size; }
     set size(v) { this.size.set(v); }
@@ -268,6 +300,17 @@ class Field extends util.Target {
     get eDisplayPrev() { return this.#eDisplayPrev; }
     get eDisplayNav() { return this.#eDisplayNav; }
 
+    get isOpen() { return this.elem.classList.contains("this"); }
+    set isOpen(v) {
+        if (v) this.elem.classList.add("this");
+        else this.elem.classList.remove("this");
+        this.eNameInput.disabled = !this.isOpen;
+    }
+    get isClosed() { return !this.isOpen; }
+    set isClosed(v) { this.isOpen = !v; }
+    open() { return this.isOpen = true; }
+    close() { return this.isClosed = true; }
+
     get active() { return this.eActive.classList.contains("this"); }
     set active(v) {
         v = !!v;
@@ -281,8 +324,12 @@ class Field extends util.Target {
 }
 
 export default class App extends core.App {
+    #state;
+
     constructor() {
         super();
+
+        this.#state = {};
 
         this.addHandler("pre-setup", () => {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
@@ -303,14 +350,116 @@ export default class App extends core.App {
                     templates: () => {
                         if (!(elem instanceof HTMLDivElement)) return;
                         const eList = elem.querySelector(":scope > .list");
+                        const eAdd = elem.querySelector(":scope > .title > button");
                         if (!(eList instanceof HTMLDivElement)) return;
+                        if (!(eAdd instanceof HTMLButtonElement)) return;
+                        elem.draggable = false;
+                        const getAt = e => {
+                            let state = util.ensure(this.state.templates, "obj");
+                            let order = util.ensure(state.order, "arr");
+                            const moveId = e.dataTransfer.getData("text/plain");
+                            let last = order.length > 1 ? order.at(-1) == moveId ? order.at(-2) : order.at(-1) : null;
+                            for (let i = 0; i < order.length; i++) {
+                                let id = order[i];
+                                if (id == moveId) continue;
+                                if (!fields[id]) return;
+                                let field = fields[id];
+                                let r = field.eBtn.getBoundingClientRect();
+                                if (e.pageY < r.top+r.height/2) return i;
+                                if (id != last) continue;
+                                if (e.pageY >= r.top+r.height/2)
+                                    return i+1;
+                            }
+                            return 0;
+                        }
+                        let line = null;
+                        elem.addEventListener("dragover", e => {
+                            e.preventDefault();
+                            for (let id in fields)
+                                fields[id].close();
+                            const at = getAt(e);
+                            if (line == null) {
+                                line = document.createElement("div");
+                                eList.appendChild(line);
+                                line.classList.add("line");
+                            }
+                            line.style.order = 2*at;
+                        });
+                        elem.addEventListener("drop", e => {
+                            e.preventDefault();
+                            let state = util.ensure(this.state.templates, "obj");
+                            let order = util.ensure(state.order, "arr");
+                            const moveId = e.dataTransfer.getData("text/plain");
+                            const at = getAt(e);
+                            console.log(at);
+                            order.splice(order.indexOf(moveId), 1);
+                            order.splice(at, 0, moveId);
+                            state.order = order;
+                            this.state.templates = state;
+                            organize();
+                            line.remove();
+                            line = null;
+                        });
+                        elem.addEventListener("dragend", e => {
+                            line.remove();
+                            line = null;
+                        });
                         let fields = {};
                         this.addHandler("update", delta => {
                             for (let id in fields)
                                 fields[id].update(delta);
                         });
+                        const organize = () => {
+                            let state = util.ensure(this.state.templates, "obj");
+                            let order = util.ensure(state.order, "arr");
+                            order = order.filter(id => (id in fields));
+                            for (let id in fields) {
+                                if (order.includes(id)) continue;
+                                order.push(id);
+                            }
+                            order.forEach((id, i) => {
+                                fields[id].elem.style.order = 2*i+1;
+                            });
+                            state.order = order;
+                            this.state.templates = state;
+                        };
+                        this.addHandler("load", organize);
+                        let host = null;
+                        const PUT = async (k, v) => {
+                            try {
+                                let resp = await fetch(host, {
+                                    method: "PUT",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        attr: k,
+                                        value: v,
+                                    }),
+                                });
+                                if (resp.status != 200) throw resp.status;
+                                return true;
+                            } catch (e) { this.doError("Template Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
+                            return false;
+                        };
+                        const DELETE = async k => {
+                            try {
+                                let resp = await fetch(host, {
+                                    method: "DELETE",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        attr: k,
+                                    }),
+                                });
+                                if (resp.status != 200) throw resp.status;
+                                return true;
+                            } catch (e) { this.doError("Template Update Error", "Delete "+k, e); }
+                            return false;
+                        };
                         this.addHandler("refresh-templates", async () => {
-                            const host = String(await window.api.get("socket-host")) + "/api/templates";
+                            host = String(await window.api.get("socket-host")) + "/api/templates";
                             let data = null;
                             try {
                                 let resp = await fetch(host);
@@ -337,61 +486,25 @@ export default class App extends core.App {
                                     eList.appendChild(field.elem);
                                     field.addLinkedHandler(this, "change", async (c, f, t) => {
                                         if (field.ignore) return;
+                                        if (c == "name") {
+                                            if (field.active) await PUT("active", t);
+                                            await DELETE("templates."+f);
+                                            if (t != null) await PUT("templates."+t, templates[f]);
+                                            return this.refreshTemplates();
+                                        }
                                         if (c == "active") {
                                             t = t ? id : null;
-                                            try {
-                                                let resp = await fetch(host, {
-                                                    method: "PUT",
-                                                    headers: {
-                                                        "Content-Type": "application/json",
-                                                    },
-                                                    body: JSON.stringify({
-                                                        attr: "active",
-                                                        value: t,
-                                                    }),
-                                                });
-                                                if (resp.status != 200) throw resp.status;
-                                            } catch (e) {
-                                                this.doError("Template Update Error", "Put active = "+JSON.stringify(t), e);
-                                            }
+                                            await PUT("active", t);
                                             return this.refreshTemplates();
                                         }
                                         if (c.endsWith(".x")) c = c.substring(0, c.length-2)+".0";
                                         if (c.endsWith(".y")) c = c.substring(0, c.length-2)+".1";
                                         if (util.is(t, "num")) t = Math.round(t*1000000)/1000000;
-                                        try {
-                                            let resp = await fetch(host, {
-                                                method: "DELETE",
-                                                headers: {
-                                                    "Content-Type": "application/json",
-                                                },
-                                                body: JSON.stringify({
-                                                    attr: "templates."+id+"."+c,
-                                                }),
-                                            });
-                                            if (resp.status != 200) throw resp.status;
-                                        } catch (e) {
-                                            this.doError("Template Update Error", "Delete templates."+id+"."+c, e);
+                                        if (!(await DELETE("templates."+id+"."+c)))
                                             return this.refreshTemplates();
-                                        }
-                                        if (c.startsWith("options.") && t != "§null") {
-                                            try {
-                                                let resp = await fetch(host, {
-                                                    method: "PUT",
-                                                    headers: {
-                                                        "Content-Type": "application/json",
-                                                    },
-                                                    body: JSON.stringify({
-                                                        attr: "templates."+id+"."+c,
-                                                        value: t,
-                                                    }),
-                                                });
-                                                if (resp.status != 200) throw resp.status;
-                                            } catch (e) {
-                                                this.doError("Template Update Error", "Put templates."+id+"."+c+" = "+JSON.stringify(t), e);
+                                        if (c.startsWith("options.") && t != "§null")
+                                            if (!(await PUT("templates."+id+"."+c, t)))
                                                 return this.refreshTemplates();
-                                            }
-                                        }
                                         this.refreshTemplates();
                                     });
                                 }
@@ -405,9 +518,28 @@ export default class App extends core.App {
                                 delete field.ignore;
                                 field.odometry2d.imageSrc = templateImages[id];
                                 field.odometry3d.template = id;
+                                organize();
                             }
                         });
                         btn.addEventListener("click", activate);
+                        eAdd.addEventListener("click", async e => {
+                            e.stopPropagation();
+                            let state = util.ensure(this.state.templates, "obj");
+                            let order = util.ensure(state.order, "arr");
+                            let id = String(new Date().getFullYear());
+                            if (order.includes(id)) {
+                                let n = 1;
+                                while (order.includes(id+"-"+n)) n++;
+                                id += "-"+n;
+                            }
+                            host = String(await window.api.get("socket-host")) + "/api/templates";
+                            await PUT("templates."+id, {
+                                size: [1654, 821],
+                                robotSize: 75,
+                                robotMass: 75
+                            });
+                            this.refreshTemplates();
+                        });
                     },
                     features: () => {
                         btn.addEventListener("click", e => {
@@ -457,4 +589,10 @@ export default class App extends core.App {
     refreshFeatures() { this.post("refresh-features"); }
     refreshFeature(name) { this.post("refresh-feature", name); }
     refreshConfig() { this.post("refresh-config"); }
+
+    get state() { return this.#state; }
+    async loadState(state) {
+        this.#state = util.ensure(state, "obj");
+        this.post("load");
+    }
 }
