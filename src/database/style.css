@@ -160,9 +160,20 @@ button:not(.override) {
 }
 
 #templates > .title {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
     font-size: 30px;
 
     color: var(--v8);
+}
+#templates > .title > div {
+    flex-basis: 100%;
 }
 #templates > .list {
     display: flex;
@@ -172,6 +183,13 @@ button:not(.override) {
     align-items: stretch;
     align-content: center;
     gap: 10px;
+}
+#templates > .list > .line {
+    height: 5px;
+    margin: 5px;
+
+    background-color: var(--a);
+    border-radius: 10px;
 }
 #templates > .list > .item {
     display: flex;
@@ -198,6 +216,7 @@ button:not(.override) {
     --bgd: transparent;
 
     padding: 20px;
+    margin: 1px;
 
     font-size: 20px;
 }

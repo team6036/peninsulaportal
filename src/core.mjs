@@ -240,6 +240,13 @@ export class App extends util.Target {
                     await this.postResult("pre-setup");
                     await this.setup();
                     await this.postResult("post-setup");
+                    let appState = null;
+                    try {
+                        appState = await window.api.send("state-get", "app-state");
+                    } catch (e) { await this.doError("State Error", "AppState Get", e); }
+                    try {
+                        await this.loadState(appState);
+                    } catch (e) { await this.doError("Load Error", "AppState", e); }
                     let page = "";
                     try {
                         page = await window.api.send("state-get", "page");
@@ -580,6 +587,9 @@ export class App extends util.Target {
             this.post("cmd-"+cmd, ...a);
         });
         this.addHandler("perm", async () => {
+            try {
+                await window.api.send("state-set", "app-state", this.state);
+            } catch (e) { await this.doError("State Error", "AppState Set", e); }
             if (this.hasPage(this.page)) {
                 try {
                     await window.api.send("state-set", "page", this.page);
@@ -587,12 +597,12 @@ export class App extends util.Target {
                 try {
                     await window.api.send("state-set", "page-state", this.getPage(this.page).state);
                 } catch (e) { await this.doError("State Error", "PageState Set", e); }
-                let pagePersistentStates = {};
-                this.pages.forEach(name => (pagePersistentStates[name] = this.getPage(name).persistentState));
-                try {
-                    await window.api.send("state-set", "page-persistent-states", pagePersistentStates);
-                } catch (e) { await this.doError("State Error", "PagePersistentStates Set", e); }
             }
+            let pagePersistentStates = {};
+            this.pages.forEach(name => (pagePersistentStates[name] = this.getPage(name).persistentState));
+            try {
+                await window.api.send("state-set", "page-persistent-states", pagePersistentStates);
+            } catch (e) { await this.doError("State Error", "PagePersistentStates Set", e); }
             return true;
         });
         this.addHandler("cmd-about", async () => {
@@ -1294,6 +1304,9 @@ export class App extends util.Target {
     static async capture(rect) { return await window.api.send("capture", rect); }
     static async fileOpenDialog(options) { return await window.api.send("file-open-dialog", options); }
     static async fileSaveDialog(options) { return await window.api.send("file-save-dialog", options); }
+
+    get state() { return {}; }
+    async loadState(state) {}
 }
 App.PopupBase = class AppPopupBase extends util.Target {
     #result;
