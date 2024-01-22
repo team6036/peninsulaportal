@@ -1674,75 +1674,13 @@
     position: absolute;
     top: 0%;
     left: 0%;
-
-    transform-origin: 0% 0%;
-
-    border: 1px solid transparent;
-    outline: none;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > canvas:focus {
-    border: 1px solid var(--v4);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .overlay {
     position: absolute;
     top: 0%;
     left: 0%;
 
-    transform-origin: 0% 0%;
-
     pointer-events: none;
-
-    font-size: 12px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > * {
-    pointer-events: auto;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div {
-    padding: 15px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 15px;
-
-    background-color: var(--v1-a);
-    color: var(--v8);
-    border: 2px solid var(--v3);
-
-    font-size: 2em;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 15px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > div {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-    gap: 15px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > .dir {
-    flex-direction: column;
-    align-items: stretch;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > div > div {
-    flex-basis: 100%;
-
-    font-family: monospace;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .content > .css > .label > div > .info > div.dir > div {
-    flex-basis: auto;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options {
     z-index: 1;

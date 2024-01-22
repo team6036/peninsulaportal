@@ -164,7 +164,7 @@ button:not(.override) {
 
     color: var(--v8);
 }
-#templates > #templates-list {
+#templates > .list {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -173,7 +173,7 @@ button:not(.override) {
     align-content: center;
     gap: 10px;
 }
-#templates > #templates-list > .item {
+#templates > .list > .item {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -187,12 +187,12 @@ button:not(.override) {
     
     transition: background-color var(--t), border var(--t);
 }
-#templates > #templates-list > .item:hover,
-#templates > #templates-list > .item.this {
+#templates > .list > .item:hover,
+#templates > .list > .item.this {
     background-color: var(--v2);
     border: 1px solid var(--v3);
 }
-#templates > #templates-list > .item > button {
+#templates > .list > .item > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -201,20 +201,41 @@ button:not(.override) {
 
     font-size: 20px;
 }
-#templates > #templates-list > .item > button > div {
-    flex-basis: 100%;
+#templates > .list > .item > button > .active {
+    width: 20px;
+    aspect-ratio: 1 / 1;
 
-    text-align: left;
+    border-radius: 100%;
+
+    background-color: var(--v4);
+    
+    transition: background-color;
 }
-#templates > #templates-list > .item > button > ion-icon {
+#templates > .list > .item > button > .active.this {
+    background-color: var(--a);
+}
+#templates > .list > .item > button > input {
+    padding: 0px;
+
+    font-size: 20px;
+
+    background-color: transparent;
+}
+#templates > .list > .item > button > input:disabled {
+    pointer-events: none;
+}
+#templates > .list > .item > button > .space {
+    flex-basis: 100%;
+}
+#templates > .list > .item > button > ion-icon {
     transform: scaleY(100%);
 
     transition: transform var(--t);
 }
-#templates > #templates-list > .item.this > button > ion-icon {
+#templates > .list > .item.this > button > ion-icon {
     transform: scaleY(-100%);
 }
-#templates > #templates-list > .item > .content {
+#templates > .list > .item > .content {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -229,8 +250,131 @@ button:not(.override) {
 
     transition: max-height var(--t), padding var(--t);
 }
-#templates > #templates-list > .item.this > .content {
+#templates > .list > .item.this > .content {
     max-height: 100vh;
     overflow: visible;
     padding: 0px 20px 20px 20px;
+}
+#templates > .list > .item > .content > .display {
+    --i: 0;
+
+    flex-basis: 100%;
+
+    position: relative;
+
+    min-height: 500px;
+    overflow: hidden;
+
+    background-color: var(--v1-8);
+    border-radius: 5px;
+    border: 1px solid var(--v2);
+
+    transition: border var(--t);
+}
+#templates > .list > .item > .content > .display:hover {
+    border: 1px solid var(--v4);
+}
+#templates > .list > .item > .content > .display > button {
+    z-index: 1;
+
+    --bg: var(--v1-8);
+    --fg: var(--v6);
+    --o: var(--v2);
+    --bgh: var(--v1);
+    --fgh: var(--v8);
+    --oh: var(--v4);
+    --bgd: var(--v1-0);
+    --fgd: var(--v6-0);
+    --od: var(--v2-0);
+
+    --use-o: 1;
+
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+
+    padding: 5px;
+    aspect-ratio: 1 / 2;
+
+    font-size: 30px;
+}
+#templates > .list > .item > .content > .display > button.next {
+    right: 0px;
+
+    padding-left: 10px;
+
+    border-radius: 100px 0px 0px 100px;
+    border-right: none;
+}
+#templates > .list > .item > .content > .display > button.prev {
+    left: 0px;
+
+    padding-right: 10px;
+
+    border-radius: 0px 100px 100px 0px;
+    border-left: none;
+}
+#templates > .list > .item > .content > .display > .nav {
+    z-index: 1;
+
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    padding: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+
+    background-color: var(--v1-8);
+    border-radius: 100px;
+    border: 1px solid var(--v2);
+
+    transition: background-color var(--t), border var(--t);
+}
+#templates > .list > .item > .content > .display > .nav:hover {
+    background-color: var(--v1);
+    border: 1px solid var(--v4);
+}
+#templates > .list > .item > .content > .display > .nav > button {
+    width: 10px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--v6-8);
+    border-radius: 100%;
+
+    transition: background-color var(--t);
+}
+#templates > .list > .item > .content > .display > .nav:hover > button {
+    background-color: var(--v6);
+}
+#templates > .list > .item > .content > .display > .nav > button.this {
+    background-color: var(--v8-8);
+}
+#templates > .list > .item > .content > .display > .nav:hover > button.this {
+    background-color: var(--v8);
+}
+#templates > .list > .item > .content > .display > .odom {
+    --di: 0;
+
+    position: absolute;
+    top: 0px;
+    left: calc(100% * (var(--di) - var(--i)));
+
+    width: calc(100% - 40px);
+    height: calc(100% - 80px);
+    margin: 20px;
+    margin-bottom: 60px;
+
+    background-color: transparent;
+
+    transition: left var(--t);
+}
+#templates > .list > .item > .content > .display > .odom > canvas {
+    border: none !important;
 }

@@ -611,8 +611,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.divPos = 0.75;
         });
 
-        this.#odometry = new core.Odometry2d();
-
         this.#selected = new Set();
         this.#selectedPath = null;
 
@@ -637,16 +635,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eDisplay.appendChild(this.eBlockage);
         this.eBlockage.classList.add("blockage");
 
-        this.odometry.canvas = document.createElement("canvas");
-        this.eDisplay.appendChild(this.odometry.canvas);
+        this.#odometry = new core.Odometry2d(this.eDisplay);
         this.odometry.canvas.tabIndex = 1;
-        new ResizeObserver(() => {
-            let r = this.eDisplay.getBoundingClientRect();
-            this.odometry.canvas.width = r.width*this.odometry.quality;
-            this.odometry.canvas.height = r.height*this.odometry.quality;
-            this.odometry.canvas.style.width = r.width+"px";
-            this.odometry.canvas.style.height = r.height+"px";
-        }).observe(this.eDisplay);
         this.odometry.canvas.addEventListener("keydown", e => {
             if (this.choosing) return;
             if (!this.hasProject()) return;
@@ -1521,55 +1511,6 @@ App.ProjectPage.Panel.SubHeader = class AppProjectPagePanelSubHeader extends App
 
         this.elem.classList.add("sub");
     }
-};
-App.ProjectPage.Panel.Input1d = class AppProjectPagePanelInput1d extends App.ProjectPage.Panel.Item {
-    #inputs;
-
-    constructor() {
-        super();
-
-        this.elem.classList.add("input");
-        this.elem.classList.add("d1");
-
-        this.#inputs = [document.createElement("input")];
-        this.inputs.forEach(inp => this.elem.appendChild(inp));
-    }
-
-    get inputs() { return [...this.#inputs]; }
-};
-App.ProjectPage.Panel.Input2d = class AppProjectPagePanelInput2d extends App.ProjectPage.Panel.Item {
-    #inputs;
-
-    constructor() {
-        super();
-
-        this.elem.classList.add("input");
-        this.elem.classList.add("d2");
-
-        this.#inputs = [document.createElement("input"), document.createElement("input")];
-        this.inputs.forEach(inp => this.elem.appendChild(inp));
-    }
-
-    get inputs() { return [...this.#inputs]; }
-};
-App.ProjectPage.Panel.Input3d = class AppProjectPagePanelInput3d extends App.ProjectPage.Panel.Item {
-    #inputs;
-
-    constructor() {
-        super();
-
-        this.elem.classList.add("input");
-        this.elem.classList.add("d3");
-
-        this.#inputs = [document.createElement("input"), document.createElement("input"), document.createElement("input")];
-
-        this.elem.innerHTML = "<div></div>";
-        this.elem.children[0].appendChild(this.inputs[0]);
-        this.elem.children[0].appendChild(this.inputs[1]);
-        this.elem.appendChild(this.inputs[2]);
-    }
-
-    get inputs() { return [...this.#inputs]; }
 };
 App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.ProjectPage.Panel {
     #fPosition;

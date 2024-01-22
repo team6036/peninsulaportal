@@ -2,6 +2,14 @@
 <html>
     <head>
 		<meta charset="UTF-8">
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../../node_modules/three/build/three.module.min.js",
+					"three/addons/": "../assets/modules/three-addons/"
+				}
+			}
+		</script>
 		<script type="module">
 			import App from "./app.js";
 			const app = new App();
@@ -48,18 +56,7 @@
                 <div class="content">
                     <div id="templates">
                         <div class="title">Fields</div>
-                        <div id="templates-list">
-                            <div class="item this">
-                                <button>
-                                    <div>2024</div>
-                                    <ion-icon name="chevron-down"></ion-icon>
-                                </button>
-                                <div class="content">
-                                    <div class="content">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="list"></div>
                     </div>
                 </div>
             </div>

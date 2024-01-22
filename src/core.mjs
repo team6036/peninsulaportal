@@ -1,6 +1,43 @@
 import * as util from "./util.mjs";
 import { V } from "./util.mjs";
 
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+
+
+const LOADER = new GLTFLoader();
+
+THREE.Quaternion.fromRotationSequence = (...seq) => {
+    if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq[0]);
+    let q = new THREE.Quaternion();
+    seq.forEach(rot => {
+        if (!(util.is(rot, "obj"))) return;
+        if (!("axis" in rot) || !("angle" in rot)) return;
+        let axis = rot.axis, angle = rot.angle;
+        if (!util.is(axis, "str") || !util.is(angle, "num")) return;
+        axis = axis.toLowerCase();
+        if (!["x","y","z"].includes(axis)) return;
+        let vec = new THREE.Vector3(+(axis=="x"), +(axis=="y"), +(axis=="z"));
+        q.multiply(new THREE.Quaternion().setFromAxisAngle(vec, (Math.PI/180)*angle));
+    });
+    return q;
+};
+
+const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
+    {
+        axis: "x",
+        angle: 90,
+    },
+    {
+        axis: "y",
+        angle: 180,
+    },
+);
+const THREE2WPILIB = WPILIB2THREE.clone().invert();
+
 
 class PropertyCache extends util.Target {
     #cache;
@@ -4076,11 +4113,75 @@ export class Client extends util.Target {
     }
 }
 
-export class Odometry2d extends util.Target {
+export class Odometry extends util.Target {
+    #elem;
     #canvas;
-    #ctx;
+    #overlay;
     #quality;
     #mouse;
+
+    #doRender;
+
+    #size;
+
+    constructor(elem) {
+        super();
+
+        if (!(elem instanceof HTMLDivElement)) elem = document.createElement("div");
+        this.#elem = elem;
+        this.elem.classList.add("odom");
+        this.#canvas = elem.querySelector(":scope > canvas") || document.createElement("canvas");
+        this.elem.appendChild(this.canvas);
+        this.canvas.tabIndex = 1;
+        this.#overlay = elem.querySelector(":scope > .overlay") || document.createElement("div");
+        this.elem.appendChild(this.overlay);
+        this.overlay.classList.add("overlay");
+        this.#quality = 0;
+        this.#mouse = new V();
+
+        this.#doRender = true;
+
+        this.#size = new V();
+
+        this.canvas.addEventListener("mousemove", e => this.mouse.set(e.pageX, e.pageY));
+
+        this.quality = 2;
+
+        this.size = 1000;
+
+        this.addHandler("update", delta => {
+            if (!this.doRender) return;
+            this.rend();
+        });
+    }
+
+    rend() { this.post("render"); }
+
+    get elem() { return this.#elem; }
+    get canvas() { return this.#canvas; }
+    get overlay() { return this.#overlay; }
+    get quality() { return this.#quality; }
+    set quality(v) {
+        v = Math.max(1, util.ensure(v, "int"));
+        if (this.quality == v) return;
+        this.change("quality", this.quality, this.#quality=v);
+    }
+    get mouse() { return this.#mouse; }
+
+    get doRender() { return this.#doRender; }
+    set doRender(v) { this.#doRender = !!v; }
+
+    get size() { return this.#size; }
+    set size(v) { this.#size.set(v); }
+    get w() { return this.size.x; }
+    set w(v) { this.size.x = v; }
+    get h() { return this.size.y; }
+    set h(v) { this.size.y = v; }
+
+    update(delta) { this.post("update", delta); }
+}
+export class Odometry2d extends Odometry {
+    #ctx;
     #worldMouse;
 
     #render;
@@ -4088,11 +4189,7 @@ export class Odometry2d extends util.Target {
     #image;
     #imageShow;
 
-    #doRender;
-
     #padding;
-
-    #size;
 
     static BEFOREGRID = 0;
     static AFTERGRID = 1;
@@ -4101,13 +4198,19 @@ export class Odometry2d extends util.Target {
     static BEFOREBORDER = 2;
     static AFTERBORDER = 3;
 
-    constructor(canvas) {
-        super();
+    constructor(elem) {
+        super(elem);
 
-        this.#canvas = null;
-        this.#ctx = null;
-        this.#quality = 1;
-        this.#mouse = new V();
+        new ResizeObserver(() => {
+            let r = this.elem.getBoundingClientRect();
+            this.canvas.width = r.width * this.quality;
+            this.canvas.height = r.height * this.quality;
+            this.canvas.style.width = r.width+"px";
+            this.canvas.style.height = r.height+"px";
+            this.update(0);
+        }).observe(this.elem);
+
+        this.#ctx = this.canvas.getContext("2d");
         this.#worldMouse = new V();
         this.mouse.addHandler("change", () => this.worldMouse.set(this.pageToWorld(this.mouse)));
 
@@ -4116,22 +4219,11 @@ export class Odometry2d extends util.Target {
         this.#image = new Image();
         this.#imageShow = null;
 
-        this.#doRender = true;
-
         this.#padding = 0;
-
-        this.#size = new V();
-
-        this.canvas = canvas;
-        this.quality = 2;
 
         this.padding = 40;
 
-        this.size = 1000;
-
-        this.addHandler("update", delta => {
-            if (!this.doRender) return;
-            if (!this.hasCanvas()) return;
+        this.addHandler("render", () => {
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             const mnx = (ctx.canvas.width - this.w*scale*quality)/2, mxx = (ctx.canvas.width + this.w*scale*quality)/2;
@@ -4235,31 +4327,7 @@ export class Odometry2d extends util.Target {
         });
     }
 
-    get canvas() { return this.#canvas; }
-    set canvas(v) {
-        v = (v instanceof HTMLCanvasElement) ? v : null;
-        if (this.canvas == v) return;
-        if (this.hasCanvas()) {
-            this.canvas.removeEventListener("mousemove", this.canvas._onMouseMove);
-            delete this.canvas._onMouseMove;
-        }
-        this.#canvas = v;
-        if (this.hasCanvas()) {
-            this.canvas._onMouseMove = e => this.mouse.set(e.pageX, e.pageY);
-            this.canvas.addEventListener("mousemove", this.canvas._onMouseMove);
-        }
-        this.#ctx = this.hasCanvas() ? this.canvas.getContext("2d") : null;
-        this.update(0);
-    }
-    hasCanvas() { return !!this.canvas; }
     get ctx() { return this.#ctx; }
-    get quality() { return this.#quality; }
-    set quality(v) {
-        v = Math.max(1, util.ensure(v, "int"));
-        if (this.quality == v) return;
-        this.change("quality", this.quality, this.#quality=v);
-    }
-    get mouse() { return this.#mouse; }
     get worldMouse() { return this.#worldMouse; }
 
     get render() { return this.#render; }
@@ -4272,21 +4340,10 @@ export class Odometry2d extends util.Target {
         this.#image.src = v;
     }
 
-    get doRender() { return this.#doRender; }
-    set doRender(v) { this.#doRender = !!v; }
-
     get padding() { return this.#padding; }
     set padding(v) { this.#padding = Math.max(0, util.ensure(v, "num")); }
 
-    get size() { return this.#size; }
-    set size(v) { this.#size.set(v); }
-    get w() { return this.size.x; }
-    set w(v) { this.size.x = v; }
-    get h() { return this.size.y; }
-    set h(v) { this.size.y = v; }
-
     get scale() {
-        if (!this.hasCanvas()) return;
         return Math.min(((this.canvas.width/this.quality) - 2*this.padding)/this.w, ((this.canvas.height/this.quality) - 2*this.padding)/this.h);
     }
 
@@ -4298,7 +4355,6 @@ export class Odometry2d extends util.Target {
     }
 
     worldToCanvas(...p) {
-        if (!this.hasCanvas()) return new V(...p);
         const scale = this.scale;
         let [x, y] = new V(...p).xy;
         x = (x - this.w/2) * (scale*this.quality) + this.canvas.width/2;
@@ -4307,11 +4363,9 @@ export class Odometry2d extends util.Target {
     }
     worldLenToCanvas(l) {
         l = util.ensure(l, "num");
-        if (!this.hasCanvas()) return l;
         return l*(this.scale*this.quality);
     }
     canvasToWorld(...p) {
-        if (!this.hasCanvas()) return new V(...p);
         const scale = this.scale;
         let [x, y] = new V(...p).xy;
         x = (x - this.canvas.width/2) / (scale*this.quality) + this.w/2;
@@ -4320,11 +4374,9 @@ export class Odometry2d extends util.Target {
     }
     canvasLenToWorld(l) {
         l = util.ensure(l, "num");
-        if (!this.hasCanvas()) return l;
         return l/(this.scale*this.quality);
     }
     canvasToPage(...p) {
-        if (!this.hasCanvas()) return new V(...p);
         let [x, y] = new V(...p).xy;
         let r = this.canvas.getBoundingClientRect();
         x /= this.quality; y /= this.quality;
@@ -4333,12 +4385,10 @@ export class Odometry2d extends util.Target {
     }
     canvasLenToPage(l) {
         l = util.ensure(l, "num");
-        if (!this.hasCanvas()) return l;
         return l/this.quality;
     }
     pageToCanvas(...p) {
         let [x, y] = new V(...p).xy;
-        if (!this.hasCanvas()) return new V(x, y);
         let r = this.canvas.getBoundingClientRect();
         x -= r.left; y -= r.top;
         x *= this.quality; y *= this.quality;
@@ -4346,15 +4396,12 @@ export class Odometry2d extends util.Target {
     }
     pageLenToCanvas(l) {
         l = util.ensure(l, "num");
-        if (!this.hasCanvas()) return l;
         return l*this.quality;
     }
     worldToPage(...p) { return this.canvasToPage(this.worldToCanvas(...p)); }
     worldLenToPage(l) { return this.canvasLenToPage(this.worldLenToCanvas(l)); }
     pageToWorld(...p) { return this.canvasToWorld(this.pageToCanvas(...p)); }
     pageLenToWorld(l) { return this.canvasLenToWorld(this.pageLenToCanvas(l)); }
-
-    update(delta) { this.post("update", delta); }
 }
 Odometry2d.Render = class Odometry2dRender extends util.Target {
     #parent;
@@ -4374,7 +4421,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     constructor(parent, pos) {
         super();
 
-        if (!(parent instanceof Odometry2d || parent instanceof Odometry2d.Render)) throw new Error("Odometry is not of class Odometry2d nor of class Odometry2dRender");
+        if (!(parent instanceof Odometry2d || parent instanceof Odometry2d.Render)) throw new Error("Parent is not of class Odometry2d nor of class Odometry2dRender");
         this.#parent = parent;
         this.#hasParent = this.parent instanceof Odometry2d.Render;
 
@@ -4703,6 +4750,878 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
 
     get selected() { return this.#selected; }
     set selected(v) { this.#selected = !!v; }
+};
+export class Odometry3d extends Odometry {
+    static loadedFields = {};
+    static loadingFields = {};
+    static loadedRobots = {};
+    static loadingRobots = {};
+
+    static templatesLoad = 0;
+    static templates = {};
+    static templateModels = {};
+    static robotsLoad = 0;
+    static robots = {};
+    static robotModels = {};
+
+    #renders;
+
+    #scene;
+    #wpilibGroup;
+    #camera;
+
+    #renderer;
+    #cssRenderer;
+
+    #controls;
+
+    #raycaster;
+    #raycastIntersections;
+
+    #requestRedraw;
+
+    #axisScene;
+    #axisSceneSized;
+
+    #template;
+
+    #field;
+    #theField;
+
+    #isProjection;
+    #isOrbit;
+    #origin;
+    
+    static async loadField(name) {
+        name = String(name);
+        let templatesLoad = this.templatesLoad;
+        let templates = {};
+        let templateModels = {};
+        if (templatesLoad < 2) {
+            if (templatesLoad < 1) this.templatesLoad = 1;
+            templates = this.templates = util.ensure(await window.api.get("templates"), "obj");
+            templateModels = this.templateModels = util.ensure(await window.api.get("template-models"), "obj");
+            if (templatesLoad < 1) this.templatesLoad = 2;
+        } else {
+            templates = this.templates;
+            templateModels = this.templateModels;
+        }
+        if (!(name in templates)) return null;
+        if (!(name in templateModels)) return null;
+        if (this.loadedFields[name]) return this.loadedFields[name];
+        let t0 = util.ensure(this.loadingFields[name], "num");
+        let t1 = util.getTime();
+        if (t1-t0 < 1000) return null;
+        this.loadingFields[name] = t1;
+        return new Promise((res, rej) => {
+            LOADER.load(templateModels[name], gltf => {
+                gltf.scene.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    if (obj.material instanceof THREE.MeshStandardMaterial) {
+                        obj.material.metalness = 0;
+                        obj.material.roughness = 1;
+                    }
+                });
+                let obj, pobj;
+                obj = gltf.scene;
+                let bbox = new THREE.Box3().setFromObject(obj);
+                obj.position.set(
+                    obj.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
+                    obj.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
+                    obj.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
+                );
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                this.loadedFields[name] = obj;
+                res(this.loadedFields[name]);
+            }, null, err => res(null));
+        });
+    }
+    static async loadRobot(name) {
+        name = String(name);
+        let robotsLoad = this.robotsLoad;
+        let robots = {};
+        let robotModels = {};
+        if (robotsLoad < 2) {
+            if (robotsLoad < 1) this.robotsLoad = 1;
+            robots = this.robots = util.ensure(await window.api.get("robots"), "obj");
+            robotModels = this.robotModels = util.ensure(await window.api.get("robot-models"), "obj");
+            if (robotsLoad < 1) this.robotsLoad = 2;
+        } else {
+            robots = this.robots;
+            robotModels = this.robotModels;
+        }
+        if (!(name in robots)) return null;
+        if (!(name in robotModels)) return null;
+        if (this.loadedRobots[name]) return this.loadedRobots[name];
+        let t0 = util.ensure(this.loadingRobots[name], "num");
+        let t1 = util.getTime();
+        if (t1-t0 < 1000) return null;
+        this.loadingRobots[name] = t1;
+        return await new Promise((res, rej) => {
+            LOADER.load(robotModels[name], gltf => {
+                gltf.scene.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    if (obj.material instanceof THREE.MeshStandardMaterial) {
+                        obj.material.metalness = 0;
+                        obj.material.roughness = 1;
+                    }
+                });
+                let obj, pobj, bbox;
+                obj = gltf.scene;
+                bbox = new THREE.Box3().setFromObject(obj);
+                obj.position.set(
+                    obj.position.x - (bbox.max.x+bbox.min.x)/2,
+                    obj.position.y - (bbox.max.y+bbox.min.y)/2,
+                    obj.position.z - (bbox.max.z+bbox.min.z)/2,
+                );
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[name], "obj").rotations));
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                bbox = new THREE.Box3().setFromObject(obj);
+                obj.position.setZ((bbox.max.z-bbox.min.z)/2);
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                this.loadedRobots[name] = obj;
+                res(this.loadedRobots[name]);
+            }, null, err => res(null));
+        });
+    }
+
+    constructor(elem) {
+        super(elem);
+
+        this.#renders = new Set();
+
+        this.#scene = new THREE.Scene();
+        this.#wpilibGroup = new THREE.Group();
+        this.scene.add(this.wpilibGroup);
+        this.wpilibGroup.quaternion.copy(WPILIB2THREE);
+        this.scene.fog = new THREE.Fog(0x000000, 20, 25);
+        this.#camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        let cam = new Array(7).fill(null);
+
+        this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
+        this.#cssRenderer = new CSS2DRenderer({ element: this.overlay });
+        
+        this.#controls = null;
+
+        this.#raycaster = new THREE.Raycaster();
+        this.#raycastIntersections = [];
+
+        this.#requestRedraw = true;
+        
+        this.canvas.addEventListener("click", e => {
+            e.stopPropagation();
+            if (this.controls instanceof PointerLockControls)
+                this.controls.lock();
+        });
+        this.elem.addEventListener("mousemove", e => {
+            let r = this.elem.getBoundingClientRect();
+            let x = (e.pageX - r.left) / r.width, y = (e.pageY - r.top) / r.height;
+            x = (x*2)-1; y = (y*2)-1;
+            if (this.controls instanceof PointerLockControls && this.controls.isLocked) x = y = 0;
+            this.raycaster.setFromCamera(new THREE.Vector2(x, -y), this.camera);
+            this.#raycastIntersections = this.raycaster.intersectObject(this.scene, true);
+        });
+        const updateScene = () => {
+            let r = this.elem.getBoundingClientRect();
+            this.renderer.setSize(r.width*this.quality, r.height*this.quality);
+            this.renderer.domElement.style.transform = "scale("+(1/this.quality)+")";
+            this.cssRenderer.setSize(r.width*this.quality, r.height*this.quality);
+            this.cssRenderer.domElement.style.transform = "scale("+(1/this.quality)+")";
+            this.requestRedraw();
+        };
+        new ResizeObserver(updateScene).observe(this.elem);
+        this.addHandler("change-quality", updateScene);
+
+        const radius = 0.05;
+        const length = 5;
+        let axes, xAxis, yAxis, zAxis;
+
+        this.#axisScene = new THREE.Group();
+        this.axisScene._builtin = true;
+        axes = this.axisScene.axes = new THREE.Group();
+        this.axisScene.add(axes);
+        xAxis = this.axisScene.xAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        xAxis.position.set(length/2, 0, 0);
+        xAxis.rotateZ(Math.PI/2);
+        axes.add(xAxis);
+        yAxis = this.axisScene.yAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        yAxis.position.set(0, length/2, 0);
+        axes.add(yAxis);
+        zAxis = this.axisScene.zAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        zAxis.position.set(0, 0, length/2);
+        zAxis.rotateX(Math.PI/2);
+        axes.add(zAxis);
+        this.axisScene.planes = [];
+
+        this.#axisSceneSized = new THREE.Group();
+        this.axisSceneSized._builtin = true;
+        axes = this.axisSceneSized.axes = new THREE.Group();
+        this.axisSceneSized.add(axes);
+        xAxis = this.axisSceneSized.xAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        xAxis.position.set(length/2, 0, 0);
+        xAxis.rotateZ(Math.PI/2);
+        axes.add(xAxis);
+        yAxis = this.axisSceneSized.yAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        yAxis.position.set(0, length/2, 0);
+        axes.add(yAxis);
+        zAxis = this.axisSceneSized.zAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        zAxis.position.set(0, 0, length/2);
+        zAxis.rotateX(Math.PI/2);
+        axes.add(zAxis);
+        this.axisSceneSized.planes = [];
+
+        this.#template = null;
+
+        this.#field = null;
+        this.#theField = null;
+
+        const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
+        this.scene.add(hemLight);
+
+        const light = new THREE.PointLight(0xffffff, 0.5);
+        light.position.set(0, 0, 10);
+        this.scene.add(light);
+
+        this.#isProjection = null;
+        this.#isOrbit = null;
+        this.#origin = null;
+
+        let keys = new Set();
+        this.canvas.addEventListener("keydown", e => {
+            e.stopPropagation();
+            keys.add(e.code);
+        });
+        this.canvas.addEventListener("keyup", e => {
+            e.stopPropagation();
+            keys.delete(e.code);
+        });
+        let velocity = new util.V3();
+
+        const updateField = () => {
+            this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
+            this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
+            if (!this.theField) return;
+            this.theField.scale.x = this.origin.startsWith("blue") ? 1 : -1;
+            if (this.field._builtin) this.theField.scale.y = this.origin.endsWith("+") ? 1 : -1;
+            else this.theField.scale.z = this.origin.endsWith("+") ? 1 : -1;
+        };
+        this.addHandler("change-field", updateField);
+        this.addHandler("change-origin", updateField);
+
+        let fieldLock = false;
+
+        this.addHandler("render", delta => {
+
+            this.renders.forEach(render => {
+                [render.offsetX, render.offsetY] = this.size.div(-2).xy;
+                render.update(delta);
+            });
+
+            let colorR = PROPERTYCACHE.getColor("--cr");
+            let colorG = PROPERTYCACHE.getColor("--cg");
+            let colorB = PROPERTYCACHE.getColor("--cb");
+            let colorV = PROPERTYCACHE.getColor("--v2");
+            this.scene.fog.color.set(colorV.toHex(false));
+            this.axisScene.xAxis.material.color.set(colorR.toHex(false));
+            this.axisScene.yAxis.material.color.set(colorG.toHex(false));
+            this.axisScene.zAxis.material.color.set(colorB.toHex(false));
+            this.axisSceneSized.xAxis.material.color.set(colorR.toHex(false));
+            this.axisSceneSized.yAxis.material.color.set(colorG.toHex(false));
+            this.axisSceneSized.zAxis.material.color.set(colorB.toHex(false));
+            this.axisSceneSized.axes.position.set(...this.size.div(-2).xy, 0);
+            let planes, i;
+            planes = this.axisScene.planes;
+            let size = 10;
+            i = 0;
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    if ((x+y) % 2 == 0) continue;
+                    if (i >= planes.length) {
+                        let plane = new THREE.Mesh(
+                            new THREE.PlaneGeometry(1, 1),
+                            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                        );
+                        plane.material.side = THREE.DoubleSide;
+                        planes.push(plane);
+                        this.axisScene.add(plane);
+                        this.requestRedraw();
+                    }
+                    let plane = planes[i++];
+                    plane.position.set(0.5+1*(x-size/2), 0.5+1*(y-size/2), 0);
+                    plane.material.color.set(colorV.toHex(false));
+                }
+            }
+            while (planes.length > i) {
+                let plane = planes.pop();
+                this.axisScene.remove(plane);
+                plane.geometry.dispose();
+                plane.material.dispose();
+                this.requestRedraw();
+            }
+            planes = this.axisSceneSized.planes;
+            let w = this.axisSceneSized.w;
+            let h = this.axisSceneSized.h;
+            if (w != this.w/100 || h != this.h/100) {
+                w = this.axisSceneSized.w = this.w/100;
+                h = this.axisSceneSized.h = this.h/100;
+                while (planes.length > 0) {
+                    let plane = planes.pop();
+                    this.axisSceneSized.remove(plane);
+                    plane.geometry.dispose();
+                    plane.material.dispose();
+                };
+                this.requestRedraw();
+            }
+            i = 0;
+            for (let x = 0; x < w; x++) {
+                for (let y = 0; y < h; y++) {
+                    if ((x+y) % 2 == 0) continue;
+                    if (i >= planes.length) {
+                        let plane = new THREE.Mesh(
+                            new THREE.PlaneGeometry(0, 0),
+                            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                        );
+                        plane.geometry.w = plane.geometry.h = 0;
+                        plane.material.side = THREE.DoubleSide;
+                        planes.push(plane);
+                        this.axisSceneSized.add(plane);
+                        this.requestRedraw();
+                    }
+                    let plane = planes[i++];
+                    let pw = Math.min(1, w-x), ph = Math.min(1, h-y);
+                    if (plane.geometry.w != pw || plane.geometry.h != ph) {
+                        plane.geometry.dispose();
+                        plane.geometry = new THREE.PlaneGeometry(pw, ph);
+                        plane.geometry.w = pw;
+                        plane.geometry.h = ph;
+                        this.requestRedraw();
+                    }
+                    plane.position.set(x+pw/2-w/2, y+ph/2-h/2, 0);
+                    plane.material.color.set(colorV.toHex(false));
+                }
+            }
+            while (planes.length > i) {
+                let plane = planes.pop();
+                this.axisSceneSized.remove(plane);
+                plane.geometry.dispose();
+                plane.material.dispose();
+                this.requestRedraw();
+            }
+
+            if (!fieldLock)
+                (async () => {
+                    fieldLock = true;
+                    this.field = (await Odometry3d.loadField(this.template)) || (this.hasTemplate() ? this.axisSceneSized : this.axisScene);
+                    fieldLock = false;
+                })();
+
+            if (this.controls instanceof OrbitControls) {
+                this.controls.update();
+            } else if (this.controls instanceof PointerLockControls) {
+                if (this.controls.isLocked) {
+                    let xP = keys.has("KeyD") || keys.has("ArrowRight");
+                    let xN = keys.has("KeyA") || keys.has("ArrowLeft");
+                    let yP = keys.has("KeyW") || keys.has("ArrowUp");
+                    let yN = keys.has("KeyS") || keys.has("ArrowDown");
+                    let zP = keys.has("Space");
+                    let zN = keys.has("ShiftLeft");
+                    let x = xP - xN;
+                    let y = yP - yN;
+                    let z = zP - zN;
+                    velocity.iadd(new util.V3(x, y, z).mul(keys.has("ShiftRight") ? 0.001 : 0.01));
+                    velocity.imul(0.9);
+                    velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));
+                    this.controls.moveRight(velocity.x);
+                    this.controls.moveForward(velocity.y);
+                    this.camera.position.y += velocity.z;
+                } else {
+                    velocity.imul(0);
+                }
+            }
+            this.camera.position.x = Math.round(this.camera.position.x*1000)/1000;
+            this.camera.position.y = Math.round(this.camera.position.y*1000)/1000;
+            this.camera.position.z = Math.round(this.camera.position.z*1000)/1000;
+            let cam2 = [
+                this.camera.position.x, this.camera.position.y, this.camera.position.z,
+                this.camera.quaternion.w, this.camera.quaternion.x, this.camera.quaternion.y, this.camera.quaternion.z,
+            ];
+            for (let i = 0; i < 7; i++) {
+                if (cam[i] == cam2[i]) continue;
+                cam[i] = cam2[i];
+                this.requestRedraw();
+            }
+
+            let r = this.canvas.getBoundingClientRect();
+
+            if (this.camera instanceof THREE.PerspectiveCamera) {
+                if (this.camera.aspect != r.width / r.height) {
+                    this.camera.aspect = r.width / r.height;
+                    this.camera.updateProjectionMatrix();
+                }
+            } else if (this.camera instanceof THREE.OrthographicCamera) {
+                let size = 15;
+                let aspect = r.width / r.height;
+                this.camera.left = -size/2 * aspect;
+                this.camera.right = +size/2 * aspect;
+                this.camera.top = +size/2;
+                this.camera.bottom = -size/2;
+            }
+
+            if (!this.#requestRedraw) return;
+            this.#requestRedraw = false;
+
+            this.renderer.render(this.scene, this.camera);
+            this.cssRenderer.render(this.scene, this.camera);
+        });
+
+        this.isProjection = true;
+        this.isOrbit = true;
+        this.origin = "blue+";
+    }
+
+    get renders() { return [...this.#renders]; }
+    set renders(v) {
+        v = util.ensure(v, "arr");
+        this.clearRenders();
+        this.addRender(v);
+    }
+    clearRenders() {
+        let renders = this.renders;
+        this.remRender(renders);
+        return renders;
+    }
+    hasRender(render) {
+        if (!(render instanceof Odometry3d.Render)) return false;
+        return this.#renders.has(render) && render.odometry == this;
+    }
+    addRender(...renders) {
+        return util.Target.resultingForEach(renders, render => {
+            if (!(render instanceof Odometry3d.Render)) return false;
+            if (render.odometry != this) return false;
+            if (this.hasRender(render)) return false;
+            this.#renders.add(render);
+            render.onAdd();
+            return render;
+        });
+    }
+    remRender(...renders) {
+        return util.Target.resultingForEach(renders, render => {
+            if (!(render instanceof Odometry3d.Render)) return false;
+            if (render.odometry != this) return false;
+            if (!this.hasRender(render)) return false;
+            render.onRem();
+            this.#renders.delete(render);
+            return render;
+        });
+    }
+
+    get scene() { return this.#scene; }
+    get wpilibGroup() { return this.#wpilibGroup; }
+    get camera() { return this.#camera; }
+    get renderer() { return this.#renderer; }
+    get cssRenderer() { return this.#cssRenderer; }
+    get controls() { return this.#controls; }
+    get raycaster() { return this.#raycaster; }
+    get raycastIntersections() { return this.#raycastIntersections; }
+
+    requestRedraw() { return this.#requestRedraw = true; }
+
+    get axisScene() { return this.#axisScene; }
+    get axisSceneSized() { return this.#axisSceneSized; }
+
+    get template() { return this.#template; }
+    set template(v) {
+        v = (v == null) ? null : String(v);
+        if (this.template == v) return;
+        this.change("template", this.template, this.#template=v);
+    }
+    hasTemplate() { return this.template != null; }
+
+    get field() { return this.#field; }
+    get theField() { return this.#theField; }
+    set field(v) {
+        v = (v instanceof THREE.Object3D) ? v : null;
+        if (this.field == v) return;
+        if (this.hasField()) {
+            this.wpilibGroup.remove(this.theField);
+            this.theField.traverse(obj => {
+                if (!obj.isMesh) return;
+                obj.geometry.dispose();
+                obj.material.dispose();
+            });
+            this.#theField = null;
+        }
+        [v, this.#field] = [this.#field, v];
+        if (this.hasField()) {
+            this.#theField = this.field._builtin ? this.field : this.field.clone();
+            if (!this.field._builtin) this.theField.quaternion.copy(THREE2WPILIB);
+            this.wpilibGroup.add(this.theField);
+        }
+        this.change("field", v, this.field);
+        this.requestRedraw();
+    }
+    hasField() { return !!this.field; }
+
+    updateControls() {
+        if (this.controls instanceof OrbitControls) {
+            this.controls.dispose();
+        } else if (this.controls instanceof PointerLockControls) {
+            this.controls.unlock();
+            this.controls.disconnect();
+        }
+        this.#controls = this.isOrbit ? new OrbitControls(this.camera, this.canvas) : new PointerLockControls(this.camera, this.canvas);
+        if (this.controls instanceof OrbitControls) {
+            this.elem.classList.remove("showinfo");
+        } else if (this.controls instanceof PointerLockControls) {
+            this.controls.addEventListener("lock", () => this.elem.classList.add("showinfo"));
+            this.controls.addEventListener("unlock", () => this.elem.classList.remove("showinfo"));
+        }
+    }
+    get isProjection() { return this.#isProjection; }
+    set isProjection(v) {
+        v = !!v;
+        if (this.isProjection == v) return;
+        this.change("isProjection", this.isProjection, this.#isProjection=v);
+        this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
+        this.camera.position.set(...(this.isProjection ? [0, 7.5, -7.5] : [10, 10, -10]));
+        this.updateControls();
+        this.camera.lookAt(0, 0, 0);
+        this.requestRedraw();
+    }
+    get isIsometric() { return !this.isProjection; }
+    set isIsometric(v) { this.isProjection = !v; }
+    get isOrbit() { return this.#isOrbit; }
+    set isOrbit(v) {
+        v = !!v;
+        if (this.isOrbit == v) return;
+        this.change("isOrbit", this.isOrbit, this.#isOrbit=v);
+        this.updateControls();
+    }
+    get isFree() { return !this.isOrbit; }
+    set isFree(v) { this.isOrbit = !v; }
+    get origin() { return this.#origin; }
+    set origin(v) {
+        v = String(v);
+        if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
+        if (this.origin == v) return;
+        this.change("origin", this.origin, this.#origin=v);
+        this.requestRedraw();
+    }
+};
+Odometry3d.Render = class Odometry3dRender extends util.Target {
+    #odometry;
+    
+    #pos;
+    #offset;
+    #q;
+
+    #name;
+    #color;
+
+    #robot;
+
+    #object;
+    #theObject;
+
+    #loadedObjects;
+    
+    constructor(odometry, pos, name, robot) {
+        super();
+
+        if (!(odometry instanceof Odometry3d)) throw new Error("Odometry is not of class Odometry3d");
+        this.#odometry = odometry;
+
+        this.#pos = new util.V3();
+        this.pos.addHandler("change", (c, f, t) => this.change("pos."+c, f, t));
+        this.#offset = new util.V3();
+        this.pos.addHandler("change", (c, f, t) => this.change("offset."+c, f, t));
+        // ew this is gross for a V4
+        this.#q = [new V(), new V()];
+        this.#q[0].addHandler("change", (c, f, t) => this.change("q["+("xy".indexOf(c)+0)+"]", f, t));
+        this.#q[1].addHandler("change", (c, f, t) => this.change("q["+("xy".indexOf(c)+2)+"]", f, t));
+        this.addHandler("change", (c, f, t) => {
+            this.odometry.requestRedraw();
+        });
+
+        this.#name = "";
+        this.#color = "";
+
+        this.#robot = null;
+
+        this.#object = null;
+        this.#theObject = null;
+
+        this.#loadedObjects = {};
+        const node = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        this.#loadedObjects["§node"] = node;
+        const cube = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        this.#loadedObjects["§cube"] = cube;
+        const radius = 0.05, arrowLength = 0.25, arrowRadius = 0.1;
+        const arrow = new THREE.Object3D();
+        const tip = new THREE.Mesh(
+            new THREE.ConeGeometry(arrowRadius, arrowLength, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        tip.position.set(0, (1-arrowLength)/2, 0);
+        arrow.add(tip);
+        const line = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, 1-arrowLength, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        );
+        line.position.set(0, -arrowLength/2, 0);
+        arrow.add(line);
+        for (let i = 0; i < 2; i++) {
+            for (let j = 0; j < 3; j++) {
+                let pobj, obj = arrow.clone();
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                pobj.quaternion.copy(THREE.Quaternion.fromRotationSequence([
+                    [
+                        [{ axis:"z", angle:-90 }],
+                        [{ axis:"z", angle:90 }],
+                    ],
+                    [
+                        [],
+                        [{ axis:"z", angle:180 }],
+                    ],
+                    [
+                        [{ axis:"x", angle:90}],
+                        [{ axis:"x", angle:-90}],
+                    ],
+                ][j][i]));
+                this.#loadedObjects["§arrow"+"+-"[i]+"xyz"[j]] = obj;
+            }
+        }
+        const axes = new THREE.Object3D();
+        let length = 1;
+        let xAxis, yAxis, zAxis;
+        xAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+        );
+        xAxis.position.set(length/2, 0, 0);
+        xAxis.rotateZ(Math.PI/2);
+        axes.add(xAxis);
+        axes.xAxis = xAxis;
+        yAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
+        );
+        yAxis.position.set(0, length/2, 0);
+        axes.add(yAxis);
+        axes.yAxis = yAxis;
+        zAxis = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, length, 8),
+            new THREE.MeshBasicMaterial({ color: 0x0000ff }),
+        );
+        zAxis.position.set(0, 0, length/2);
+        zAxis.rotateX(Math.PI/2);
+        axes.add(zAxis);
+        axes.zAxis = zAxis;
+        this.#loadedObjects["§axes"] = axes;
+
+        let robotLock = false;
+        let modelObject = null, theModelObject = null;
+
+        this.addHandler("rem", () => (this.object = null));
+
+        this.addHandler("update", delta => {
+            let color = (this.hasColor() && this.color.startsWith("--")) ? PROPERTYCACHE.getColor(this.color) : new util.Color(this.color);
+            if (!robotLock)
+                (async () => {
+                    robotLock = true;
+                    theModelObject = (this.hasRobot() && this.robot.startsWith("§")) ? this.#loadedObjects[this.robot] : (await Odometry3d.loadRobot(this.robot));
+                    robotLock = false;
+                })();
+            if (modelObject != theModelObject) {
+                modelObject = theModelObject;
+                this.object = modelObject;
+                if (this.hasObject()) {
+                    let elem = document.createElement("div");
+                    this.theObject.add(new CSS2DObject(elem));
+                    elem.classList.add("label");
+                    elem.innerHTML = "<div><div class='title'></div><div class='info'><div class='pos'></div><div class='dir'></div></div></div>";
+                    elem.elem = elem.querySelector(":scope > div");
+                    elem.eTitle = elem.querySelector(":scope > div > .title");
+                    elem.eInfo = elem.querySelector(":scope > div > .info");
+                    elem.ePos = elem.querySelector(":scope > div > .info > .pos");
+                    elem.eDir = elem.querySelector(":scope > div > .info > .dir");
+                    this.theObject.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        if (!(obj.material instanceof THREE.Material)) return;
+                        let oldMaterial;
+                        [oldMaterial, obj.material] = [obj.material, obj.material.clone()];
+                        oldMaterial.dispose();
+                        obj.material._transparent = obj.material.transparent;
+                        obj.material._opacity = obj.material.opacity;
+                        obj.material._color = obj.material.color.clone();
+                    });
+                    this.theObject.isGhost = this.theObject.isSolid = null;
+                    this.odometry.requestRedraw();
+                }
+            }
+            if (!this.hasObject()) return;
+            let r = this.odometry.canvas.getBoundingClientRect();
+            this.theObject.position.set(
+                this.x + this.offsetX/100,
+                this.y + this.offsetY/100,
+                this.z + this.offsetZ/100,
+            );
+            this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
+            let hovered = false;
+            let css2dObjects = [];
+            this.theObject.traverse(obj => {
+                if (obj instanceof CSS2DObject)
+                    css2dObjects.push(obj);
+                if (this.odometry.raycastIntersections[0])
+                    if (obj == this.odometry.raycastIntersections[0].object)
+                        hovered = true;
+                if (!obj.isMesh) return;
+                if (!this.hasRobot()) return;
+                if (!this.robot.startsWith("§")) return;
+                if (this.robot == "§axes") return;
+                obj.material.color.set(color.toHex(false));
+            });
+            css2dObjects.forEach(obj => {
+                obj.element.style.visibility = hovered ? "" : "hidden";
+                if (!hovered) return;
+                let r2 = obj.element.getBoundingClientRect();
+                let x = 1, y = 1;
+                if (r2.right > r.right) x *= -1;
+                if (r2.bottom > r.bottom) y *= -1;
+                obj.element.elem.style.transform = "translate("+(50*x)+"%, "+(50*y)+"%)";
+                obj.element.eTitle.style.color = color.toRGBA();
+                obj.element.eTitle.textContent = this.name;
+                while (obj.element.ePos.children.length < 3) obj.element.ePos.appendChild(document.createElement("div"));
+                while (obj.element.ePos.children.length > 3) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
+                while (obj.element.eDir.children.length < 4) obj.element.eDir.appendChild(document.createElement("div"));
+                while (obj.element.eDir.children.length > 4) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
+                for (let i = 0; i < 3; i++) obj.element.ePos.children[i].textContent = this.pos["xyz"[i]];
+                for (let i = 0; i < 4; i++) obj.element.eDir.children[i].textContent = "wxyz"[i]+": "+this.q[i];
+            });
+        });
+
+        this.pos = pos;
+
+        this.name = name;
+
+        this.robot = robot;
+    }
+
+    get odometry() { return this.#odometry; }
+
+    get pos() { return this.#pos; }
+    set pos(v) { this.#pos.set(v); }
+    get x() { return this.pos.x; }
+    set x(v) { this.pos.x = v; }
+    get y() { return this.pos.y; }
+    set y(v) { this.pos.y = v; }
+    get z() { return this.pos.z; }
+    set z(v) { this.pos.z = v; }
+
+    get offset() { return this.#offset; }
+    set offset(v) { this.#offset.set(v); }
+    get offsetX() { return this.offset.x; }
+    set offsetX(v) { this.offset.x = v; }
+    get offsetY() { return this.offset.y; }
+    set offsetY(v) { this.offset.y = v; }
+    get offsetZ() { return this.offset.z; }
+    set offsetZ(v) { this.offset.z = v; }
+
+    get q() { return [...this.#q[0].xy, ...this.#q[1].xy]; }
+    set q(v) {
+        v = util.ensure(v, "arr");
+        if (v.length != 4) v = [0, 0, 0, 0];
+        this.#q[0].set(v.slice(0, 2));
+        this.#q[1].set(v.slice(2, 4));
+    }
+    get qw() { return this.#q[0].x; }
+    set qw(v) { this.#q[0].x = v; }
+    get qx() { return this.#q[0].y; }
+    set qx(v) { this.#q[0].y = v; }
+    get qy() { return this.#q[1].x; }
+    set qy(v) { this.#q[1].x = v; }
+    get qz() { return this.#q[1].y; }
+    set qz(v) { this.#q[1].y = v; }
+    
+    get name() { return this.#name; }
+    set name(v) { this.#name = String(v); }
+    get color() { return this.#color; }
+    set color(v) {
+        v = (v == null) ? null : String(v);
+        if (this.color == v) return;
+        this.change("color", this.color, this.#color=v);
+    }
+    hasColor() { return this.color != null; }
+
+    get robot() { return this.#robot; }
+    set robot(v) {
+        v = (v == null) ? null : String(v);
+        if (this.robot == v) return;
+        this.change("robot", this.robot, this.#robot=v);
+    }
+    hasRobot() { return this.robot != null; }
+
+    get object() { return this.#object; }
+    get theObject() { return this.#theObject; }
+    set object(v) {
+        v = (v instanceof THREE.Object3D) ? v : null;
+        if (this.object == v) return;
+        if (this.hasObject()) {
+            this.odometry.wpilibGroup.remove(this.theObject);
+            this.theObject.traverse(obj => {
+                if (obj instanceof CSS2DObject)
+                    obj.removeFromParent();
+                if (!obj.isMesh) return;
+                obj.geometry.dispose();
+                obj.material.dispose();
+            });
+            this.#theObject = null;
+        }
+        this.#object = v;
+        if (this.hasObject()) {
+            this.#theObject = this.object.clone();
+            this.theObject.traverse(obj => {
+                if (!obj.isMesh) return;
+                if (!(obj.material instanceof THREE.Material)) return;
+                obj.material = obj.material.clone();
+            });
+            this.odometry.wpilibGroup.add(this.theObject);
+        }
+        this.odometry.requestRedraw();
+    }
+    hasObject() { return !!this.object; }
+
+    update(delta) { this.post("update", delta); }
 };
 
 export class Explorer extends util.Target {
@@ -5410,9 +6329,12 @@ Form.NumberInput = class FormNumberInput extends Form.GenericInput {
             e.stopPropagation();
             let itm;
             let menu = new App.Menu();
-            this.types.forEach(type => {
-                itm = menu.addItem(new App.Menu.Item(type, type == this.activeType ? "checkmark" : ""));
-                itm.addHandler("trigger", e => (this.activeType = type));
+            this.types.forEach(data => {
+                itm = menu.addItem(new App.Menu.Item(
+                    util.is(data, "obj") ? data.name : data,
+                    (util.is(data, "obj") ? data.value : data) == this.activeType ? "checkmark" : "",
+                ));
+                itm.addHandler("trigger", e => (this.activeType = (util.is(data, "obj") ? data.value : data)));
             });
             this.app.contextMenu = menu;
             let r = this.eTypeBtn.getBoundingClientRect();
@@ -5480,7 +6402,8 @@ Form.Input2d = class FormInput2d extends Form.NumberInput {
         super(name, 2);
 
         this.#value = new V();
-        this.value.addHandler("change", () => {
+        this.value.addHandler("change", (c, f, t) => {
+            this.setHasValue(c, true);
             this.apply();
             this.change("value", null, this.value);
         });
@@ -5556,7 +6479,8 @@ Form.Input3d = class FormInput3d extends Form.NumberInput {
         super(name, 3);
 
         this.#value = new util.V3();
-        this.value.addHandler("change", () => {
+        this.value.addHandler("change", (c, f, t) => {
+            this.setHasValue(c, true);
             this.apply();
             this.change("value", null, this.value);
         });

@@ -2,6 +2,14 @@
 <html>
     <head>
 		<meta charset="UTF-8">
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../../node_modules/three/build/three.module.min.js",
+					"three/addons/": "../assets/modules/three-addons/"
+				}
+			}
+		</script>
 		<script type="module">
             let params = new URLSearchParams(window.location.search);
             let name = params.get("name");
