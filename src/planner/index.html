@@ -2,6 +2,14 @@
 <html>
     <head>
 		<meta charset="UTF-8">
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../../node_modules/three/build/three.module.min.js",
+					"three/addons/": "../assets/modules/three-addons/"
+				}
+			}
+		</script>
 		<script type="module">
 			import App from "./app.js";
 			const app = new App();

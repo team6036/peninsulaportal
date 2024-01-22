@@ -236,6 +236,16 @@ input {
     border: none;
 }
 input:not(.override) {
+    --bg: var(--v1);
+    --fg: var(--v8);
+    --o: var(--v3);
+    --bgf: var(--v1);
+    --fgf: var(--v8);
+    --of: var(--v8);
+    --bgd: var(--v2);
+    --fgd: var(--v6);
+    --od: var(--v2);
+
     padding: 5px;
 
     background-color: var(--v1);
@@ -1587,6 +1597,86 @@ div.contextmenu .item.divider::before {
 }
 div.contextmenu .item.divider > * {
     display: none;
+}
+
+.odom {
+    position: relative;
+
+    background-color: var(--v1);
+}
+.odom > canvas {
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    transform-origin: 0% 0%;
+
+    border: 1px solid transparent;
+    outline: none;
+}
+.odom > canvas:focus {
+    border: 1px solid var(--v4);
+}
+.odom > .overlay {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+
+    transform-origin: 0% 0%;
+
+    pointer-events: none;
+
+    font-size: 12px;
+}
+.odom > .overlay > * {
+    pointer-events: auto;
+}
+.odom > .overlay > .label > div {
+    padding: 15px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 15px;
+
+    background-color: var(--v1-a);
+    color: var(--v8);
+    border: 2px solid var(--v3);
+
+    font-size: 2em;
+}
+.odom > .overlay > .label > div > .info {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 15px;
+}
+.odom > .overlay > .label > div > .info > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 15px;
+}
+.odom > .overlay > .label > div > .info > .dir {
+    flex-direction: column;
+    align-items: stretch;
+}
+.odom > .overlay > .label > div > .info > div > div {
+    flex-basis: 100%;
+
+    font-family: monospace;
+}
+.odom > .overlay > .label > div > .info > div.dir > div {
+    flex-basis: auto;
 }
 
 .explorer {

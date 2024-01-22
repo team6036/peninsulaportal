@@ -2066,9 +2066,7 @@ const MAIN = async () => {
                         this.cacheSet("clear-app-log-dir-progress", 1);
                     },
                     "cmd-poll-db-host": async () => {
-                        (async () => {
-                            await this.manager.tryLoad();
-                        })();
+                        this.on("try-load");
                     },
                     "feature": async (name, cmd, k, ...a) => {
                         let cmdfs = {
@@ -3767,6 +3765,7 @@ const MAIN = async () => {
                 },
                 "open": async url => await electron.shell.openExternal(url),
                 "cleanup": async () => await this.cleanup(),
+                "try-load": async () => await this.tryLoad(),
             };
             if (k in kfs) return await kfs[k](...a);
             throw "§O No possible \"on\" for key: "+k;
