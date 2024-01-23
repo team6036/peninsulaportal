@@ -7,27 +7,287 @@ import * as core from "../core.mjs";
 const FEATURES = ["PANEL", "PLANNER"];
 
 
-class Field extends util.Target {
+class Collection extends util.Target {
     #app;
-
+    #elem;
     #name;
 
-    #size;
-    #robotSize;
-    #robotMass;
+    #host;
+    #ignore;
 
-    #fSize;
-    #fRobotSize;
-    #fRobotMass;
-    #fOptions;
+    #items;
 
-    #odometry2d;
-    #odometry3d;
+    constructor(app, elem, name, host) {
+        super();
+
+        if (!(app instanceof App)) throw new Error("App is not of class App");
+        this.#app = app;
+        this.#elem = (elem instanceof HTMLDivElement) ? elem : document.createElement("div");
+        this.elem.classList.add("collection");
+        let line = document.createElement("div");
+        line.classList.add("line");
+        const getAt = e => {
+            let order = this.order;
+            order = order.filter(id => this.hasItem(id));
+            const moveId = e.dataTransfer.getData("text/plain");
+            if (order.length > 0 && order.at(-1) == moveId) order.pop();
+            for (let i = 0; i < order.length; i++) {
+                let id = order[i];
+                if (id == moveId) continue;
+                if (!this.hasItem(id)) return;
+                let item = this.getItem(id);
+                let r = item.eBtn.getBoundingClientRect();
+                if (e.pageY < r.top+r.height/2) return i;
+                if (i+1 < order.length) continue;
+                if (e.pageY >= r.top+r.height/2)
+                    return i+1;
+            }
+            return 0;
+        };
+        this.elem.addEventListener("dragover", e => {
+            e.preventDefault();
+            this.items.forEach(id => this.getItem(id).close());
+            const at = getAt(e);
+            this.elem.appendChild(line);
+            line.style.order = 2*at;
+        });
+        this.elem.addEventListener("drop", e => {
+            e.preventDefault();
+            const at = getAt(e);
+            let order = this.order;
+            order = order.filter(id => this.hasItem(id));
+            const moveId = e.dataTransfer.getData("text/plain");
+            order.splice(order.indexOf(moveId), 1);
+            order.splice(at, 0, moveId);
+            this.order = order;
+            this.format();
+        });
+        this.elem.addEventListener("dragend", e => {
+            line.remove();
+        });
+        this.#name = String(name);
+
+        this.#host = null;
+        this.#ignore = false;
+
+        this.#items = {};
+
+        this.host = host;
+
+        this.addHandler("update", delta => this.items.forEach(id => this.getItem(id).update(delta)));
+    }
+
+    get app() { return this.#app; }
+    get elem() { return this.#elem; }
+    get name() { return this.#name; }
+
+    get host() { return this.#host; }
+    set host(v) {
+        v = (v == null) ? null : String(v);
+        if (this.host == v) return;
+        this.#host = v;
+        this.pullItems();
+    }
+    hasHost() { return this.host != null; }
+    async get(ignoreIgnore=false) {
+        if (this.#ignore && !ignoreIgnore) return null;
+        if (!this.hasHost()) return null;
+        try {
+            let resp = await fetch(this.host+"/api/"+this.name);
+            if (resp.status != 200) throw resp.status;
+            return await resp.json();
+        } catch (e) { this.app.doError(util.formatText(this.name)+" Get Error", "", e); }
+        return null;
+    }
+    async put(k, v, ignoreIgnore=false) {
+        if (this.#ignore && !ignoreIgnore) return false;
+        if (!this.hasHost()) return false;
+        try {
+            let resp = await fetch(this.host+"/api/"+this.name, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    attr: k,
+                    value: v,
+                }),
+            });
+            if (resp.status != 200) throw resp.status;
+            return true;
+        } catch (e) { this.app.doError(util.formatText(this.name)+" Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
+        return false;
+    }
+    async del(k, ignoreIgnore=false) {
+        if (this.#ignore && !ignoreIgnore) return false;
+        if (!this.hasHost()) return false;
+        try {
+            let resp = await fetch(this.host+"/api/"+this.name, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    attr: k,
+                }),
+            });
+            if (resp.status != 200) throw resp.status;
+            return true;
+        } catch (e) { this.app.doError(util.formatText(this.name)+" Update Error", "Delete "+k, e); }
+        return false;
+    }
+
+    get items() { return Object.keys(this.#items); }
+    set items(v) {
+        let items = util.ensure(v, "arr");
+        this.clearItems();
+        this.addItem(items);
+    }
+    clearItems() {
+        let items = this.items.map(id => this.getItem(id));
+        this.remItem(items);
+        return items;
+    }
+    hasItem(v) {
+        if (!(v instanceof this.constructor.Item)) return String(v) in this.#items;
+        return this.hasItem(v.id) && v.collection == this;
+    }
+    getItem(id) {
+        id = String(id);
+        if (!this.hasItem(id)) return null;
+        return this.#items[id];
+    }
+    addItem(...items) {
+        let r = util.Target.resultingForEach(items, item => {
+            if (!(item instanceof this.constructor.Item)) return false;
+            if (this.hasItem(item.id) || this.hasItem(item)) return false;
+            this.#items[item.id] = item;
+            this.elem.appendChild(item.elem);
+            item.addHandler("change", async (c, f, t) => {
+                if (this.#ignore) return;
+                if (c == "id") {
+                    await this.del(this.name+"."+f);
+                    if (t != null) {
+                        let data = item.data;
+                        if (data != null) await this.put(this.name+"."+t, data);
+                        if (item.active) await this.put("active", t);
+                    }
+                    return this.pullItems();
+                }
+                if (c == "active") {
+                    await this.put("active", t ? item.id : null);
+                    return this.pullItems();
+                }
+                let data = item.data;
+                if (data != null) await this.put(this.name+"."+item.id, data);
+                return this.pullItems();
+            });
+            (async () => {
+                if (this.#ignore) return;
+                let data = item.data;
+                if (data == null) data = {};
+                await this.put(this.name+"."+item.id, data);
+                await this.pullItems();
+            })();
+            item.onAdd();
+            return item;
+        });
+        this.format();
+        return r;
+    }
+    remItem(...items) {
+        let r = util.Target.resultingForEach(items, item => {
+            if (!(item instanceof this.constructor.Item)) item = this.getItem(item);
+            if (!(item instanceof this.constructor.Item)) return false;
+            if (!this.hasItem(item)) return false;
+            item.onRem();
+            delete this.#items[item.id];
+            this.elem.removeChild(item.elem);
+            (async () => {
+                if (this.#ignore) return;
+                await this.del(this.name+"."+item.id);
+                await this.pullItems();
+            })();
+            return item;
+        });
+        this.format();
+        return r;
+    }
+    async pullItems() {
+        if (this.#ignore) return;
+        this.#ignore = true;
+        for (let id in this.#items) {
+            let item = this.#items[id];
+            if (id == item.id) continue;
+            delete this.#items[id];
+            this.#items[item.id] = item;
+        }
+        let data = util.ensure(await this.get(true), "obj");
+        let items = util.ensure(data[this.name], "obj");
+        this.items.forEach(id => {
+            if (id in items) return;
+            this.remItem(this.getItem(id));
+        });
+        for (let id in items) {
+            if (!this.hasItem(id)) this.addItem(new this.constructor.Item(this, id, false));
+            let item = this.getItem(id);
+            item.active = data.active == id;
+            item.load(items[id]);
+        }
+        this.#ignore = false;
+    }
+
+    get order() {
+        let state, order;
+        state = util.ensure(this.app.state[this.name], "obj");
+        order = util.ensure(state.order, "arr");
+        this.order = order;
+        state = util.ensure(this.app.state[this.name], "obj");
+        order = util.ensure(state.order, "arr");
+        return [...order];
+    }
+    set order(order) {
+        order = util.ensure(order, "arr");
+        order = order.map(id => String(id));
+        let existing = {};
+        for (let i = 0; i < order.length; i++) {
+            let id = order[i];
+            if (!(id in existing)) {
+                existing[id] = id;
+                continue;
+            }
+            order.splice(i, 1);
+            i--;
+        }
+        this.items.forEach(id => {
+            if (order.includes(id)) return;
+            order.push(id);
+        });
+        let state = util.ensure(this.app.state[this.name], "obj");
+        state.order = order;
+        this.app.state[this.name] = state;
+    }
+    format() {
+        this.order.forEach((id, i) => {
+            if (!this.hasItem(id)) return;
+            let item = this.getItem(id);
+            item.elem.style.order = 2*i+1;
+        });
+    }
+
+    update(delta) { this.post("update", delta); }
+}
+Collection.Item = class CollectionItem extends util.Target {
+    #collection;
+
+    #id;
+
+    #form;
 
     #elem;
     #eBtn;
     #eActive;
-    #eNameInput;
+    #eIdInput;
     #eContent;
     #eSide;
     #eDisplay;
@@ -35,28 +295,22 @@ class Field extends util.Target {
     #eDisplayPrev;
     #eDisplayNav;
 
-    constructor(app, name, size, robotSize, robotMass) {
+    constructor(collection, id, active) {
         super();
 
-        if (!(app instanceof App)) throw new Error("App is not of class App");
-        this.#app = app;
-
-        this.#name = null;
-
-        this.#size = new V();
-        this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
-        this.#robotSize = new V();
-        this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
-        this.#robotMass = null;
+        if (!(collection instanceof Collection)) throw new Error("Collection is not of class Collection");
+        this.#collection = collection;
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
+
         this.#eBtn = document.createElement("button");
+        this.elem.appendChild(this.eBtn);
         this.eBtn.innerHTML = "<div class='active'></div><input><div class='space'></div><ion-icon name='chevron-down'></ion-icon>";
         this.eBtn.draggable = true;
         this.eBtn.addEventListener("dragstart", e => {
             e.dataTransfer.dropEffect = "move";
-            e.dataTransfer.setData("text/plain", this.name);
+            e.dataTransfer.setData("text/plain", this.id);
             this.close();
             setTimeout(() => (this.elem.style.display = "none"), 10);
         });
@@ -64,11 +318,38 @@ class Field extends util.Target {
             this.elem.style.display = "";
         });
         this.#eActive = this.eBtn.children[0];
-        this.#eNameInput = this.eBtn.children[1];
-        this.eNameInput.addEventListener("change", e => {
-            this.name = this.eNameInput.value;
+        this.#eIdInput = this.eBtn.children[1];
+
+        this.eActive.addEventListener("click", e => {
+            e.stopPropagation();
+            this.active = !this.active;
         });
-        this.elem.appendChild(this.eBtn);
+        this.eIdInput.addEventListener("change", e => {
+            this.id = this.eIdInput.value;
+        });
+        this.eBtn.addEventListener("click", e => {
+            this.isOpen = !this.isOpen;
+        });
+        this.eBtn.addEventListener("contextmenu", e => {
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item(this.isOpen ? "Close" : "Open"));
+            itm.addHandler("trigger", e => {
+                this.isOpen = !this.isOpen;
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Delete"));
+            itm.addHandler("trigger", e => {
+                this.id = null;
+            });
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
+        this.eIdInput.addEventListener("click", e => {
+            e.stopPropagation();
+        });
+        this.open();
+        this.close();
+
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
@@ -89,210 +370,70 @@ class Field extends util.Target {
         this.#eDisplayNav = document.createElement("div");
         this.eDisplay.appendChild(this.eDisplayNav);
         this.eDisplayNav.classList.add("nav");
-        this.#odometry2d = new core.Odometry2d();
-        this.eDisplay.appendChild(this.odometry2d.elem);
-        this.odometry2d.padding = 20;
-        this.addHandler("change", () => (this.odometry2d.size = this.size));
-        this.#odometry3d = new core.Odometry3d();
-        this.eDisplay.appendChild(this.odometry3d.elem);
-        this.addHandler("change", () => (this.odometry3d.size = this.size));
 
-        this.eActive.addEventListener("click", e => {
-            e.stopPropagation();
-            this.active = !this.active;
-        });
-
-        let n = 0, i = 0, btns = [];
-        Array.from(this.eDisplay.querySelectorAll(":scope > .odom")).forEach((elem, di) => {
-            n++;
-            elem.style.setProperty("--di", di);
-            let btn = document.createElement("button");
-            this.eDisplayNav.appendChild(btn);
-            btn.classList.add("override");
-            btn.addEventListener("click", e => {
-                i = di;
-                update();
-            });
-            btns.push(btn);
-        });
+        let i = 0;
         const update = () => {
+            let elems = Array.from(this.eDisplay.querySelectorAll(":scope > .odom"));
+            let n = elems.length;
+            i = Math.min(n-1, Math.max(0, i));
             this.eDisplay.style.setProperty("--i", i);
             this.eDisplayNext.disabled = i >= n-1;
             this.eDisplayPrev.disabled = i <= 0;
-            btns.forEach((btn, di) => {
-                if (di == i) btn.classList.add("this");
-                else btn.classList.remove("this");
+            this.eDisplayNav.innerHTML = "";
+            elems.forEach((elem, j) => {
+                elem.style.setProperty("--j", j);
+                let btn = document.createElement("button");
+                this.eDisplayNav.appendChild(btn);
+                btn.classList.add("override");
+                if (i == j) btn.classList.add("this");
+                btn.addEventListener("click", e => {
+                    i = j;
+                    update();
+                });
             });
         };
+        new MutationObserver(update).observe(this.eDisplay, {
+            childList: true,
+        });
         this.eDisplayNext.addEventListener("click", e => {
-            i = Math.min(n-1, Math.max(0, i+1));
+            i++;
             update();
         });
         this.eDisplayPrev.addEventListener("click", e => {
-            i = Math.min(n-1, Math.max(0, i-1));
+            i--;
             update();
         });
         update();
 
-        this.eBtn.addEventListener("click", e => {
-            this.isOpen = !this.isOpen;
-        });
-        this.eBtn.addEventListener("contextmenu", e => {
-            let itm;
-            let menu = new core.App.Menu();
-            itm = menu.addItem(new core.App.Menu.Item(this.isOpen ? "Close" : "Open"));
-            itm.addHandler("trigger", e => {
-                this.isOpen = !this.isOpen;
-            });
-            itm = menu.addItem(new core.App.Menu.Item("Delete"));
-            itm.addHandler("trigger", e => {
-                this.name = null;
-            });
-            this.app.contextMenu = menu;
-            this.app.placeContextMenu(e.pageX, e.pageY);
-        });
-        this.eNameInput.addEventListener("click", e => {
-            e.stopPropagation();
-        });
-        this.open();
-        this.close();
+        this.#form = new core.Form();
+        this.eSide.appendChild(this.form.elem);
 
-        let apply;
+        this.id = id;
 
-        let form = new core.Form();
-        this.eSide.appendChild(form.elem);
-        this.#fSize = form.addField(new core.Form.Input2d("field-size"));
-        this.fSize.app = this.app;
-        this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
-        this.fSize.baseType = "cm";
-        this.fSize.activeType = "m";
-        this.fSize.step = 0.1;
-        this.fSize.inputs.forEach((inp, i) => {
-            inp.placeholder = ["Width", "Height"][i];
-            inp.min = 0;
-        });
-        this.fSize.addHandler("change-value", () => {
-            this.size.set(this.fSize.value);
-        });
-        apply = () => {
-            this.fSize.value = this.size;
-        };
-        this.addHandler("change-size.x", apply);
-        this.addHandler("change-size.y", apply);
-        this.#fRobotSize = form.addField(new core.Form.Input1d("robot-size"));
-        this.fRobotSize.app = this.app;
-        this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
-        this.fRobotSize.baseType = "cm";
-        this.fRobotSize.activeType = "m";
-        this.fRobotSize.step = 0.1;
-        this.fRobotSize.inputs.forEach((inp, i) => {
-            inp.placeholder = ["...", "Height"][i];
-            inp.min = 0;
-        });
-        this.fRobotSize.addHandler("change-value", () => {
-            this.robotSize = this.fRobotSize.value;
-        });
-        apply = () => {
-            this.fRobotSize.value = this.robotSize.x;
-        };
-        this.addHandler("change-robotSize.x", apply);
-        this.addHandler("change-robotSize.y", apply);
-        this.#fRobotMass = form.addField(new core.Form.Input1d("robot-mass"));
-        this.fRobotMass.app = this.app;
-        this.fRobotMass.types = ["kg", "lb"];
-        this.fRobotMass.baseType = this.fRobotMass.activeType = "kg";
-        this.fRobotMass.step = 0.1;
-        this.fRobotMass.inputs.forEach((inp, i) => {
-            inp.placeholder = "...";
-            inp.min = 0;
-        });
-        this.fRobotMass.addHandler("change-value", () => {
-            this.robotMass = this.fRobotMass.value;
-        });
-        this.addHandler("change-robotMass", () => {
-            this.fRobotMass.value = this.robotMass;
-        });
-
-        this.#fOptions = form.addField(new core.Form.JSONInput("options"));
-        this.fOptions.addHandler("set", (k, v0, v1) => {
-            try {
-                v0 = JSON.parse(v0);
-            } catch (e) { v0 = null; }
-            try {
-                v1 = JSON.parse(v1);
-            } catch (e) { v1 = null; }
-            this.change("options."+k, v0, v1);
-        });
-        this.fOptions.addHandler("del", (k, v) => {
-            try {
-                v = JSON.parse(v);
-            } catch (e) { v = null; }
-            this.change("options."+k, v, "§null");
-        });
-
-        this.name = name;
-        
-        this.size = size;
-        this.robotSize = robotSize;
-        this.robotMass = robotMass;
-
-        this.addHandler("update", delta => {
-            this.odometry2d.update(delta);
-            this.odometry3d.update(delta);
-        });
+        this.active = active;
     }
 
-    get app() { return this.#app; }
+    get collection() { return this.#collection; }
+    get app() { return this.collection.app; }
 
-    get name() { return this.#name; }
-    set name(v) {
+    get id() { return this.#id; }
+    set id(v) {
         v = (v == null) ? null : String(v);
-        if (this.name == v) return;
-        this.change("name", this.name, this.#name=v);
-        this.eNameInput.value = this.name;
+        if (this.id == v) return;
+        this.change("id", this.id, this.#id=v);
+        this.eIdInput.value = this.id;
     }
+    hasId() { return this.id != null; }
 
-    get size() { return this.#size; }
-    set size(v) { this.size.set(v); }
-    get w() { return this.size.x; }
-    set w(v) { this.size.x = v; }
-    get h() { return this.size.y; }
-    set h(v) { this.size.y = v; }
+    get data() { return null; }
+    load(data) {}
 
-    get robotSize() { return this.#robotSize; }
-    set robotSize(v) { this.robotSize.set(v); }
-    get robotW() { return this.robotSize.x; }
-    set robotW(v) { this.robotSize.x = v; }
-    get robotH() { return this.robotSize.y; }
-    set robotH(v) { this.robotSize.y = v; }
-
-    get options() { return this.fOptions.map; }
-    set options(v) { this.fOptions.map = v; }
-    clearOptions() { return this.fOptions.clear(); }
-    hasOption(k) { return this.fOptions.has(k); }
-    getOption(k) { return this.fOptions.get(k); }
-    setOption(k, v) { return this.fOptions.set(k, v); }
-    delOption(k) { return this.fOptions.del(k); }
-
-    get robotMass() { return this.#robotMass; }
-    set robotMass(v) {
-        v = Math.max(0, util.ensure(v, "num"));
-        if (this.robotMass == v) return;
-        this.change("robotMass", this.robotMass, this.#robotMass=v);
-    }
-
-    get fSize() { return this.#fSize; }
-    get fRobotSize() { return this.#fRobotSize; }
-    get fRobotMass() { return this.#fRobotMass; }
-    get fOptions() { return this.#fOptions; }
-
-    get odometry2d() { return this.#odometry2d; }
-    get odometry3d() { return this.#odometry3d; }
+    get form() { return this.#form; }
 
     get elem() { return this.#elem; }
     get eBtn() { return this.#eBtn; }
     get eActive() { return this.#eActive; }
-    get eNameInput() { return this.#eNameInput; }
+    get eIdInput() { return this.#eIdInput; }
     get eContent() { return this.#eContent; }
     get eSide() { return this.#eSide; }
     get eDisplay() { return this.#eDisplay; }
@@ -304,7 +445,7 @@ class Field extends util.Target {
     set isOpen(v) {
         if (v) this.elem.classList.add("this");
         else this.elem.classList.remove("this");
-        this.eNameInput.disabled = !this.isOpen;
+        this.eIdInput.disabled = !this.isOpen;
     }
     get isClosed() { return !this.isOpen; }
     set isClosed(v) { this.isOpen = !v; }
@@ -321,7 +462,182 @@ class Field extends util.Target {
     }
 
     update(delta) { this.post("update", delta); }
+};
+
+class TemplateCollection extends Collection {
+    constructor(app, elem, host) {
+        super(app, elem, "templates", host);
+    }
 }
+TemplateCollection.Item = class TemplateCollectionItem extends TemplateCollection.Item {
+    #odometry2d;
+    #odometry3d;
+
+    #fSize;
+    #fRobotSize;
+    #fRobotMass;
+    #fOptions;
+
+    constructor(...a) {
+        super(...a);
+
+        this.addHandler("rem", () => {
+            this.odometry3d.renderer.dispose();
+            this.odometry3d.renderer.forceContextLoss();
+        });
+
+        let apply = async () => {
+            this.odometry2d.size = this.size;
+            this.odometry3d.size = this.size;
+            let templateImages = util.ensure(await window.api.get("template-images"), "obj");
+            this.odometry2d.imageSrc = templateImages[this.id];
+            this.odometry3d.template = this.id;
+        };
+        this.addHandler("change", apply);
+
+        this.#odometry2d = new core.Odometry2d();
+        this.eDisplay.appendChild(this.odometry2d.elem);
+        this.odometry2d.padding = 20;
+        this.#odometry3d = new core.Odometry3d();
+        this.eDisplay.appendChild(this.odometry3d.elem);
+
+        this.#fSize = this.form.addField(new core.Form.Input2d("field-size", 0));
+        this.fSize.app = this.app;
+        this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fSize.baseType = "cm";
+        this.fSize.activeType = "m";
+        this.fSize.step = 0.1;
+        this.fSize.inputs.forEach((inp, i) => {
+            inp.placeholder = ["Width", "Height"][i];
+            inp.min = 0;
+        });
+        this.fSize.addHandler("change-value", (f, t) => this.change("size", f, t));
+        this.#fRobotSize = this.form.addField(new core.Form.Input1d("robot-size", 0));
+        this.fRobotSize.app = this.app;
+        this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fRobotSize.baseType = "cm";
+        this.fRobotSize.activeType = "m";
+        this.fRobotSize.step = 0.1;
+        this.fRobotSize.inputs.forEach((inp, i) => {
+            inp.placeholder = ["...", "Height"][i];
+            inp.min = 0;
+        });
+        this.fRobotSize.addHandler("change-value", (f, t) => this.change("robotSize", f, t));
+        this.#fRobotMass = this.form.addField(new core.Form.Input1d("robot-mass", 0));
+        this.fRobotMass.app = this.app;
+        this.fRobotMass.types = ["kg", "lb"];
+        this.fRobotMass.baseType = this.fRobotMass.activeType = "kg";
+        this.fRobotMass.step = 0.1;
+        this.fRobotMass.inputs.forEach((inp, i) => {
+            inp.placeholder = "...";
+            inp.min = 0;
+        });
+        this.fRobotMass.addHandler("change-value", (f, t) => this.change("robotMass", f, t));
+        this.#fOptions = this.form.addField(new core.Form.JSONInput("options"));
+        this.fOptions.addHandler("set", (k, v0, v1) => this.change("options."+k, v0, v1));
+        this.fOptions.addHandler("del", (k, v) => this.change("options."+k, v, null));
+
+        this.addHandler("update", delta => {
+            this.odometry2d.update(delta);
+            this.odometry3d.update(delta);
+        });
+
+        apply();
+    }
+
+    get odometry2d() { return this.#odometry2d; }
+    get odometry3d() { return this.#odometry3d; }
+
+    get fSize() { return this.#fSize; }
+    get fRobotSize() { return this.#fRobotSize; }
+    get fRobotMass() { return this.#fRobotMass; }
+    get fOptions() { return this.#fOptions; }
+
+    get size() { return this.fSize.value; }
+    set size(v) { this.fSize.value = v; }
+    get robotSize() { return this.fRobotSize.value; }
+    set robotSize(v) { this.fRobotSize.value = v; }
+    get robotMass() { return this.fRobotMass.value; }
+    set robotMass(v) { this.fRobotMass.value = v; }
+    get options() {
+        let options = {};
+        this.fOptions.keys.forEach(k => {
+            let v = this.fOptions.get(k);
+            try {
+                v = JSON.parse(v);
+            } catch (e) { v = null; }
+            options[k] = v;
+        });
+        return options;
+    }
+    set options(options) {
+        options = util.ensure(options, "obj");
+        for (let k in options) {
+            let v = options[k];
+            try {
+                v = JSON.stringify(v);
+            } catch (e) { v = "null"; }
+            options[k] = v;
+        }
+        this.fOptions.map = options;
+    }
+
+    get data() {
+        return {
+            size: this.size.xy,
+            robotSize: this.robotSize,
+            robotMass: this.robotMass,
+            options: this.options,
+        };
+    }
+    load(data) {
+        data = util.ensure(data, "obj");
+        this.size = data.size;
+        this.robotSize = data.robotSize;
+        this.robotMass = data.robotMass;
+        this.options = data.options;
+    }
+};
+
+class RobotCollection extends Collection {
+    constructor(app, elem, host) {
+        super(app, elem, "robots", host);
+    }
+}
+RobotCollection.Item = class RobotCollectionItem extends RobotCollection.Item {
+    #odometry3d;
+
+    constructor(...a) {
+        super(...a);
+        
+        this.addHandler("rem", () => {
+            this.odometry3d.renderer.dispose();
+            this.odometry3d.renderer.forceContextLoss();
+        });
+
+        let apply = async () => {
+            robot.name = this.id;
+            robot.robot = this.id;
+        };
+        this.addHandler("change-id", apply);
+
+        this.#odometry3d = new core.Odometry3d();
+        this.eDisplay.appendChild(this.odometry3d.elem);
+        this.odometry3d.size = 0;
+        this.odometry3d.camera.position.set(0, 5, -5);
+        let robot = this.odometry3d.addRender(new core.Odometry3d.Render(this.odometry3d, 0, "", null));
+        robot.color = "--a";
+
+        this.addHandler("update", delta => {
+            this.odometry3d.update(delta);
+        });
+
+        apply();
+    }
+
+    get odometry3d() { return this.#odometry3d; }
+};
+
 
 export default class App extends core.App {
     #state;
@@ -349,196 +665,50 @@ export default class App extends core.App {
                 let idfs = {
                     templates: () => {
                         if (!(elem instanceof HTMLDivElement)) return;
-                        const eList = elem.querySelector(":scope > .list");
+                        const eCollection = elem.querySelector(":scope > .collection");
                         const eAdd = elem.querySelector(":scope > .title > button");
-                        if (!(eList instanceof HTMLDivElement)) return;
+                        if (!(eCollection instanceof HTMLDivElement)) return;
                         if (!(eAdd instanceof HTMLButtonElement)) return;
-                        elem.draggable = false;
-                        const getAt = e => {
-                            let state = util.ensure(this.state.templates, "obj");
-                            let order = util.ensure(state.order, "arr");
-                            const moveId = e.dataTransfer.getData("text/plain");
-                            let last = order.length > 1 ? order.at(-1) == moveId ? order.at(-2) : order.at(-1) : null;
-                            for (let i = 0; i < order.length; i++) {
-                                let id = order[i];
-                                if (id == moveId) continue;
-                                if (!fields[id]) return;
-                                let field = fields[id];
-                                let r = field.eBtn.getBoundingClientRect();
-                                if (e.pageY < r.top+r.height/2) return i;
-                                if (id != last) continue;
-                                if (e.pageY >= r.top+r.height/2)
-                                    return i+1;
-                            }
-                            return 0;
-                        }
-                        let line = null;
-                        elem.addEventListener("dragover", e => {
-                            e.preventDefault();
-                            for (let id in fields)
-                                fields[id].close();
-                            const at = getAt(e);
-                            if (line == null) {
-                                line = document.createElement("div");
-                                eList.appendChild(line);
-                                line.classList.add("line");
-                            }
-                            line.style.order = 2*at;
-                        });
-                        elem.addEventListener("drop", e => {
-                            e.preventDefault();
-                            let state = util.ensure(this.state.templates, "obj");
-                            let order = util.ensure(state.order, "arr");
-                            const moveId = e.dataTransfer.getData("text/plain");
-                            const at = getAt(e);
-                            console.log(at);
-                            order.splice(order.indexOf(moveId), 1);
-                            order.splice(at, 0, moveId);
-                            state.order = order;
-                            this.state.templates = state;
-                            organize();
-                            line.remove();
-                            line = null;
-                        });
-                        elem.addEventListener("dragend", e => {
-                            line.remove();
-                            line = null;
-                        });
-                        let fields = {};
-                        this.addHandler("update", delta => {
-                            for (let id in fields)
-                                fields[id].update(delta);
-                        });
-                        const organize = () => {
-                            let state = util.ensure(this.state.templates, "obj");
-                            let order = util.ensure(state.order, "arr");
-                            order = order.filter(id => (id in fields));
-                            for (let id in fields) {
-                                if (order.includes(id)) continue;
-                                order.push(id);
-                            }
-                            order.forEach((id, i) => {
-                                fields[id].elem.style.order = 2*i+1;
-                            });
-                            state.order = order;
-                            this.state.templates = state;
-                        };
-                        this.addHandler("load", organize);
-                        let host = null;
-                        const PUT = async (k, v) => {
-                            try {
-                                let resp = await fetch(host, {
-                                    method: "PUT",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        attr: k,
-                                        value: v,
-                                    }),
-                                });
-                                if (resp.status != 200) throw resp.status;
-                                return true;
-                            } catch (e) { this.doError("Template Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
-                            return false;
-                        };
-                        const DELETE = async k => {
-                            try {
-                                let resp = await fetch(host, {
-                                    method: "DELETE",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        attr: k,
-                                    }),
-                                });
-                                if (resp.status != 200) throw resp.status;
-                                return true;
-                            } catch (e) { this.doError("Template Update Error", "Delete "+k, e); }
-                            return false;
-                        };
+                        const collection = new TemplateCollection(this, eCollection);
                         this.addHandler("refresh-templates", async () => {
-                            host = String(await window.api.get("socket-host")) + "/api/templates";
-                            let data = null;
-                            try {
-                                let resp = await fetch(host);
-                                if (resp.status != 200) throw resp.status;
-                                data = await resp.json();
-                            } catch (e) {
-                                this.doError("Templates Fetch Error", "", e);
-                                data = util.ensure(await window.api.get("_fulltemplates"), "obj");
-                            }
-                            data = util.ensure(data, "obj");
-                            let templates = util.ensure(data.templates, "obj");
-                            let activeTemplate = data.active in templates ? data.active : null;
-                            let templateImages = util.ensure(await window.api.get("template-images"), "obj");
-                            for (let id in fields) {
-                                if (id in templates) continue;
-                                let field = fields[id];
-                                eList.removeChild(field.elem);
-                                field.clearLinkedHandlers(this, "change");
-                                delete fields[id];
-                            }
-                            for (let id in templates) {
-                                if (!(id in fields)) {
-                                    let field = fields[id] = new Field(this, id, 0, 0, 0);
-                                    eList.appendChild(field.elem);
-                                    field.addLinkedHandler(this, "change", async (c, f, t) => {
-                                        if (field.ignore) return;
-                                        if (c == "name") {
-                                            if (field.active) await PUT("active", t);
-                                            await DELETE("templates."+f);
-                                            if (t != null) await PUT("templates."+t, templates[f]);
-                                            return this.refreshTemplates();
-                                        }
-                                        if (c == "active") {
-                                            t = t ? id : null;
-                                            await PUT("active", t);
-                                            return this.refreshTemplates();
-                                        }
-                                        if (c.endsWith(".x")) c = c.substring(0, c.length-2)+".0";
-                                        if (c.endsWith(".y")) c = c.substring(0, c.length-2)+".1";
-                                        if (util.is(t, "num")) t = Math.round(t*1000000)/1000000;
-                                        if (!(await DELETE("templates."+id+"."+c)))
-                                            return this.refreshTemplates();
-                                        if (c.startsWith("options.") && t != "§null")
-                                            if (!(await PUT("templates."+id+"."+c, t)))
-                                                return this.refreshTemplates();
-                                        this.refreshTemplates();
-                                    });
-                                }
-                                let field = fields[id];
-                                field.ignore = true;
-                                field.active = id == activeTemplate;
-                                field.size = templates[id].size;
-                                field.robotSize = templates[id].robotSize;
-                                field.robotMass = templates[id].robotMass;
-                                field.options = templates[id].options;
-                                delete field.ignore;
-                                field.odometry2d.imageSrc = templateImages[id];
-                                field.odometry3d.template = id;
-                                organize();
-                            }
+                            collection.host = String(await window.api.get("db-host"));
                         });
+                        this.addHandler("load", () => collection.format());
+                        this.addHandler("update", delta => collection.update(delta));
                         btn.addEventListener("click", activate);
                         eAdd.addEventListener("click", async e => {
                             e.stopPropagation();
-                            let state = util.ensure(this.state.templates, "obj");
-                            let order = util.ensure(state.order, "arr");
                             let id = String(new Date().getFullYear());
-                            if (order.includes(id)) {
+                            if (collection.hasItem(id)) {
                                 let n = 1;
-                                while (order.includes(id+"-"+n)) n++;
+                                while (collection.hasItem(id+"-"+n)) n++;
                                 id += "-"+n;
                             }
-                            host = String(await window.api.get("socket-host")) + "/api/templates";
-                            await PUT("templates."+id, {
-                                size: [1654, 821],
-                                robotSize: 75,
-                                robotMass: 75
-                            });
-                            this.refreshTemplates();
+                            collection.addItem(new collection.constructor.Item(collection, id, false));
+                        });
+                    },
+                    robots: () => {
+                        if (!(elem instanceof HTMLDivElement)) return;
+                        const eCollection = elem.querySelector(":scope > .collection");
+                        const eAdd = elem.querySelector(":scope > .title > button");
+                        if (!(eCollection instanceof HTMLDivElement)) return;
+                        if (!(eAdd instanceof HTMLButtonElement)) return;
+                        const collection = new RobotCollection(this, eCollection);
+                        this.addHandler("refresh-templates", async () => {
+                            collection.host = String(await window.api.get("db-host"));
+                        });
+                        this.addHandler("load", () => collection.format());
+                        this.addHandler("update", delta => collection.update(delta));
+                        btn.addEventListener("click", activate);
+                        eAdd.addEventListener("click", async e => {
+                            e.stopPropagation();
+                            let id = "Robot";
+                            if (collection.hasItem(id)) {
+                                let n = 1;
+                                while (collection.hasItem(id+"-"+n)) n++;
+                                id += "-"+n;
+                            }
+                            collection.addItem(new collection.constructor.Item(collection, id, false));
                         });
                     },
                     features: () => {

@@ -4955,7 +4955,7 @@ export class Odometry3d extends Odometry {
         let axes, xAxis, yAxis, zAxis;
 
         this.#axisScene = new THREE.Group();
-        this.axisScene._builtin = true;
+        this.axisScene._builtin = "axis-scene";
         axes = this.axisScene.axes = new THREE.Group();
         this.axisScene.add(axes);
         xAxis = this.axisScene.xAxis = new THREE.Mesh(
@@ -4981,7 +4981,7 @@ export class Odometry3d extends Odometry {
         this.axisScene.planes = [];
 
         this.#axisSceneSized = new THREE.Group();
-        this.axisSceneSized._builtin = true;
+        this.axisSceneSized._builtin = "axis-scene-sized";
         axes = this.axisSceneSized.axes = new THREE.Group();
         this.axisSceneSized.add(axes);
         xAxis = this.axisSceneSized.xAxis = new THREE.Mesh(
@@ -5064,7 +5064,7 @@ export class Odometry3d extends Odometry {
             this.axisSceneSized.xAxis.material.color.set(colorR.toHex(false));
             this.axisSceneSized.yAxis.material.color.set(colorG.toHex(false));
             this.axisSceneSized.zAxis.material.color.set(colorB.toHex(false));
-            this.axisSceneSized.axes.position.set(...this.size.div(-2).xy, 0);
+            this.axisSceneSized.axes.position.set(...this.size.div(-200).xy, 0);
             let planes, i;
             planes = this.axisScene.planes;
             let size = 10;
@@ -5111,7 +5111,7 @@ export class Odometry3d extends Odometry {
             i = 0;
             for (let x = 0; x < w; x++) {
                 for (let y = 0; y < h; y++) {
-                    if ((x+y) % 2 == 0) continue;
+                    if ((x+y) % 2 > 0) continue;
                     if (i >= planes.length) {
                         let plane = new THREE.Mesh(
                             new THREE.PlaneGeometry(0, 0),
