@@ -158,24 +158,9 @@ button:not(.override) {
     opacity: 100%;
     visibility: inherit;
 }
+#PAGE > .content > div > .collection {
+    height: 100%;
 
-#templates > .title {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 10px;
-
-    font-size: 30px;
-
-    color: var(--v8);
-}
-#templates > .title > div {
-    flex-basis: 100%;
-}
-#templates > .list {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -184,14 +169,14 @@ button:not(.override) {
     align-content: center;
     gap: 10px;
 }
-#templates > .list > .line {
+#PAGE > .content > div > .collection > .line {
     height: 5px;
     margin: 5px;
 
     background-color: var(--a);
     border-radius: 10px;
 }
-#templates > .list > .item {
+#PAGE > .content > div > .collection > .item {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -205,12 +190,12 @@ button:not(.override) {
     
     transition: background-color var(--t), border var(--t);
 }
-#templates > .list > .item:hover,
-#templates > .list > .item.this {
+#PAGE > .content > div > .collection > .item:hover,
+#PAGE > .content > div > .collection > .item.this {
     background-color: var(--v2);
     border: 1px solid var(--v3);
 }
-#templates > .list > .item > button {
+#PAGE > .content > div > .collection > .item > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -220,7 +205,7 @@ button:not(.override) {
 
     font-size: 20px;
 }
-#templates > .list > .item > button > .active {
+#PAGE > .content > div > .collection > .item > button > .active {
     width: 20px;
     aspect-ratio: 1 / 1;
 
@@ -230,31 +215,31 @@ button:not(.override) {
     
     transition: background-color;
 }
-#templates > .list > .item > button > .active.this {
+#PAGE > .content > div > .collection > .item > button > .active.this {
     background-color: var(--a);
 }
-#templates > .list > .item > button > input {
+#PAGE > .content > div > .collection > .item > button > input {
     padding: 0px;
 
     font-size: 20px;
 
     background-color: transparent;
 }
-#templates > .list > .item > button > input:disabled {
+#PAGE > .content > div > .collection > .item > button > input:disabled {
     pointer-events: none;
 }
-#templates > .list > .item > button > .space {
+#PAGE > .content > div > .collection > .item > button > .space {
     flex-basis: 100%;
 }
-#templates > .list > .item > button > ion-icon {
+#PAGE > .content > div > .collection > .item > button > ion-icon {
     transform: scaleY(100%);
 
     transition: transform var(--t);
 }
-#templates > .list > .item.this > button > ion-icon {
+#PAGE > .content > div > .collection > .item.this > button > ion-icon {
     transform: scaleY(-100%);
 }
-#templates > .list > .item > .content {
+#PAGE > .content > div > .collection > .item > .content {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -269,12 +254,15 @@ button:not(.override) {
 
     transition: max-height var(--t), padding var(--t);
 }
-#templates > .list > .item.this > .content {
+#PAGE > .content > div > .collection > .item.this > .content {
     max-height: 100vh;
     overflow: visible;
     padding: 0px 20px 20px 20px;
 }
-#templates > .list > .item > .content > .display {
+#PAGE > .content > div > .collection > .item > .content > .side:has(> .form:empty) {
+    display: none;
+}
+#PAGE > .content > div > .collection > .item > .content > .display {
     --i: 0;
 
     flex-basis: 100%;
@@ -290,10 +278,10 @@ button:not(.override) {
 
     transition: border var(--t);
 }
-#templates > .list > .item > .content > .display:hover {
+#PAGE > .content > div > .collection > .item > .content > .display:hover {
     border: 1px solid var(--v4);
 }
-#templates > .list > .item > .content > .display > button {
+#PAGE > .content > div > .collection > .item > .content > .display > button {
     z-index: 1;
 
     --bg: var(--v1-8);
@@ -317,7 +305,7 @@ button:not(.override) {
 
     font-size: 30px;
 }
-#templates > .list > .item > .content > .display > button.next {
+#PAGE > .content > div > .collection > .item > .content > .display > button.next {
     right: 0px;
 
     padding-left: 10px;
@@ -325,7 +313,7 @@ button:not(.override) {
     border-radius: 100px 0px 0px 100px;
     border-right: none;
 }
-#templates > .list > .item > .content > .display > button.prev {
+#PAGE > .content > div > .collection > .item > .content > .display > button.prev {
     left: 0px;
 
     padding-right: 10px;
@@ -333,7 +321,7 @@ button:not(.override) {
     border-radius: 0px 100px 100px 0px;
     border-left: none;
 }
-#templates > .list > .item > .content > .display > .nav {
+#PAGE > .content > div > .collection > .item > .content > .display > .nav {
     z-index: 1;
 
     position: absolute;
@@ -356,11 +344,11 @@ button:not(.override) {
 
     transition: background-color var(--t), border var(--t);
 }
-#templates > .list > .item > .content > .display > .nav:hover {
+#PAGE > .content > div > .collection > .item > .content > .display > .nav:hover {
     background-color: var(--v1);
     border: 1px solid var(--v4);
 }
-#templates > .list > .item > .content > .display > .nav > button {
+#PAGE > .content > div > .collection > .item > .content > .display > .nav > button {
     width: 10px;
     aspect-ratio: 1 / 1;
 
@@ -369,31 +357,48 @@ button:not(.override) {
 
     transition: background-color var(--t);
 }
-#templates > .list > .item > .content > .display > .nav:hover > button {
+#PAGE > .content > div > .collection > .item > .content > .display > .nav:hover > button {
     background-color: var(--v6);
 }
-#templates > .list > .item > .content > .display > .nav > button.this {
+#PAGE > .content > div > .collection > .item > .content > .display > .nav > button.this {
     background-color: var(--v8-8);
 }
-#templates > .list > .item > .content > .display > .nav:hover > button.this {
+#PAGE > .content > div > .collection > .item > .content > .display > .nav:hover > button.this {
     background-color: var(--v8);
 }
-#templates > .list > .item > .content > .display > .odom {
-    --di: 0;
+#PAGE > .content > div > .collection > .item > .content > .display > .odom {
+    --j: 0;
 
     position: absolute;
     top: 0px;
-    left: calc(100% * (var(--di) - var(--i)));
+    left: calc(100% * (var(--j) - var(--i)));
 
-    width: calc(100% - 40px);
+    width: calc(100% - 80px);
     height: calc(100% - 80px);
-    margin: 20px;
+    margin: 40px;
+    margin-top: 20px;
     margin-bottom: 60px;
 
     background-color: transparent;
 
     transition: left var(--t);
 }
-#templates > .list > .item > .content > .display > .odom > canvas {
+#PAGE > .content > div > .collection > .item > .content > .display > .odom > canvas {
     border: none !important;
+}
+#PAGE > .content > div.collectionbox > .title {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
+    font-size: 30px;
+
+    color: var(--v8);
+}
+#PAGE > .content > div.collectionbox > .title > div {
+    flex-basis: 100%;
 }

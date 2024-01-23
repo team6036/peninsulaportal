@@ -5607,6 +5607,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     constructor(...a) {
         super("3d");
 
+        this.addHandler("add", () => {
+            this.odometry.renderer.forceContextRestore();
+        });
+        this.addHandler("rem", () => {
+            this.odometry.renderer.forceContextLoss();
+        });
+
         const eInfo = document.createElement("div");
         this.eContent.appendChild(eInfo);
         eInfo.classList.add("info");
