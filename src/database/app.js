@@ -742,6 +742,10 @@ ThemeCollection.Item = class ThemeCollectionItem extends ThemeCollection.Item {
         fTry.addHandler("trigger", e => {
             ThemeCollection.tryTheme(this.id, this.data);
         });
+        this.addHandler("change", () => {
+            if (ThemeCollection.currThemeId != this.id) return;
+            ThemeCollection.tryTheme(this.id, this.data);
+        });
     }
 
     get fName() { return this.#fName; }
