@@ -638,6 +638,88 @@ RobotCollection.Item = class RobotCollectionItem extends RobotCollection.Item {
     get odometry3d() { return this.#odometry3d; }
 };
 
+class ThemeCollection extends Collection {
+    constructor(app, elem, host) {
+        super(app, elem, "themes", host);
+    }
+};
+ThemeCollection.Item = class ThemeCollectionItem extends ThemeCollection.Item {
+    #fName;
+
+    #colors;
+    #base;
+    #accent;
+
+    constructor(...a) {
+        super(...a);
+
+        this.eDisplay.style.display = "none";
+
+        this.#fName = this.form.addField(new core.Form.TextInput("name"));
+        this.fName.app = this.app;
+        this.fName.inputs.forEach((inp, i) => {
+            inp.placeholder = "...";
+        });
+        this.fName.addHandler("change-value", (f, t) => this.change("name", f, t));
+
+        let fColors = this.form.addField(new core.Form.SubForm("colors"));
+        "roygcbpm".split("").forEach(k => {
+            let f = fColors.form.addField(new core.Form.ColorInput({
+                r: "Red",
+                o: "Orange",
+                y: "Yellow",
+                g: "Green",
+                c: "Cyan",
+                b: "Blue",
+                p: "Purple",
+                m: "Magenta",
+            }[k], null));
+            f.type = "--c"+k;
+            this.addHandler("load", () => (f.value = this.#colors[k]));
+        });
+        
+        let fBase = this.form.addField(new core.Form.SubForm("base"));
+        fBase.form.addField(new core.Form.SubHeader("Colors ordered from darkest to lightest"));
+        fBase.form.addField(new core.Form.SubHeader("First and last colors are locked as black and white respectively"));
+        for (let i = 0; i < 9; i++) {
+            let f = fBase.form.addField(new core.Form.ColorInput("", null));
+            f.showHeader = false;
+            f.disabled = (i == 0) || (i == 8);
+            this.addHandler("load", () => (f.value = this.#base[i]));
+        }
+    }
+
+    get fName() { return this.#fName; }
+
+    get name() { return this.fName.value; }
+    set name(v) { this.fName.value = v; }
+
+    get data() {
+        let colors = {};
+        for (let k in this.#colors)
+            colors[k] = this.#colors[k].toHex(false);
+        let base = this.#base.map(c => c.toHex(false));
+        return {
+            name: this.name,
+            colors: colors,
+            base: base,
+            accent: this.#accent,
+        };
+    }
+    load(data) {
+        data = util.ensure(data, "obj");
+        this.name = data.name;
+        this.#colors = util.ensure(data.colors, "obj");
+        for (let k in this.#colors)
+            this.#colors[k] = new util.Color(this.#colors[k]);
+        this.#base = util.ensure(data.base, "arr");
+        for (let i = 0; i < this.#base.length; i++)
+            this.#base[i] = new util.Color(this.#base[i]);
+        this.post("load");
+        this.#accent = data.accent;
+    }
+};
+
 
 export default class App extends core.App {
     #state;
@@ -651,7 +733,7 @@ export default class App extends core.App {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
         this.addHandler("post-setup", async () => {
-            const sideButtons = Array.from(document.body.querySelectorAll("#PAGE > .side button"));
+            const sideButtons = Array.from(document.body.querySelectorAll("#PAGE > .side button:not(.override)"));
             sideButtons.forEach(btn => {
                 const elem = document.querySelector("#PAGE > .content > div#"+btn.id);
                 const activate = e => {
@@ -694,7 +776,7 @@ export default class App extends core.App {
                         if (!(eCollection instanceof HTMLDivElement)) return;
                         if (!(eAdd instanceof HTMLButtonElement)) return;
                         const collection = new RobotCollection(this, eCollection);
-                        this.addHandler("refresh-templates", async () => {
+                        this.addHandler("refresh-robots", async () => {
                             collection.host = String(await window.api.get("db-host"));
                         });
                         this.addHandler("load", () => collection.format());
@@ -703,6 +785,30 @@ export default class App extends core.App {
                         eAdd.addEventListener("click", async e => {
                             e.stopPropagation();
                             let id = "Robot";
+                            if (collection.hasItem(id)) {
+                                let n = 1;
+                                while (collection.hasItem(id+"-"+n)) n++;
+                                id += "-"+n;
+                            }
+                            collection.addItem(new collection.constructor.Item(collection, id, false));
+                        });
+                    },
+                    themes: () => {
+                        if (!(elem instanceof HTMLDivElement)) return;
+                        const eCollection = elem.querySelector(":scope > .collection");
+                        const eAdd = elem.querySelector(":scope > .title > button");
+                        if (!(eCollection instanceof HTMLDivElement)) return;
+                        if (!(eAdd instanceof HTMLButtonElement)) return;
+                        const collection = new ThemeCollection(this, eCollection);
+                        this.addHandler("refresh-themes", async () => {
+                            collection.host = String(await window.api.get("db-host"));
+                        });
+                        this.addHandler("load", () => collection.format());
+                        this.addHandler("update", delta => collection.update(delta));
+                        btn.addEventListener("click", activate);
+                        eAdd.addEventListener("click", async e => {
+                            e.stopPropagation();
+                            let id = "new-theme";
                             if (collection.hasItem(id)) {
                                 let n = 1;
                                 while (collection.hasItem(id+"-"+n)) n++;

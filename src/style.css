@@ -739,6 +739,8 @@ article.md.lighter table td {
     initial-value: 0%;
 }
 .tooltip {
+    z-index: 10000;
+
     --bg: var(--v2);
     --space: 10px;
     --size: var(--space);
@@ -791,6 +793,7 @@ article.md.lighter table td {
     color: var(--v8);
     opacity: 100%;
     visibility: inherit;
+    filter: drop-shadow(0px 0px 5px var(--v1));
 
     font-size: 14px;
 
@@ -881,6 +884,115 @@ article.md.lighter table td {
 .tooltip.sey,
 .tooltip.swy {
     --y: +1;
+}
+.tooltip.color {
+    min-width: 150px;
+    max-width: 150px;
+    padding: 10px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+.tooltip.color > .title {
+    color: var(--v8);
+
+    text-align: center;
+}
+.tooltip.color > .title:empty {
+    display: none;
+}
+.tooltip.color > .picker {
+    --thumb: #000;
+
+    position: relative;
+
+    aspect-ratio: 1 / 1;
+
+    background-color: #000;
+    outline: 1px solid var(--v8);
+}
+.tooltip.color > .picker::before {
+    content: "";
+
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    width: 100%;
+    height: 100%;
+
+    background: linear-gradient(0deg, #000f, #0000);
+}
+.tooltip.color > .picker > div {
+    position: absolute;
+    transform: translate(-50%, -50%);
+
+    height: 12.5px;
+    aspect-ratio: 1 / 1;
+    
+    background-color: var(--thumb);
+    border-radius: 100%;
+    outline: 1px solid var(--v8);
+}
+.tooltip.color > .sliders {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+}
+.tooltip.color > .sliders > input {
+    --thumb: #000;
+
+    -webkit-appearance: none;
+    appearance: none;
+
+    height: 10px;
+    padding: 0px;
+    margin: 0px;
+
+    border: 1px solid var(--v8);
+    outline: none;
+}
+.tooltip.color > .sliders > input::-webkit-slider-thumb {
+    z-index: 1;
+
+    -webkit-appearance: none;
+    appearance: none;
+
+    height: 12.5px;
+    aspect-ratio: 1 / 1;
+
+    background-color: var(--thumb);
+    border-radius: 100%;
+    outline: 1px solid var(--v8);
+}
+.tooltip.color > .swatches {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+.tooltip.color > .swatches:empty {
+    display: none;
+}
+.tooltip.color > .swatches > button {
+    width: 25px;
+    aspect-ratio: 1 / 1;
+    padding: 0px;
+
+    outline: 1px solid var(--v8);
+    border-radius: 5px;
 }
 
 @property --border-hov-c-line-v {
@@ -1208,7 +1320,7 @@ article.md.lighter table td {
 
     background-color: var(--v2);
     border-radius: 5px;
-    filter: drop-shadow(0px 5px 5px var(--v0-8));
+    filter: drop-shadow(0px 0px 5px var(--v1));
 
     transition: transform var(--t);
 }
@@ -1522,6 +1634,7 @@ div.contextmenu {
     background-color: var(--v2);
     border-radius: 5px;
     border: 1px solid var(--v3);
+    filter: drop-shadow(0px 0px 5px var(--v1));
 }
 div.contextmenu .item {
     position: relative;
@@ -1596,6 +1709,19 @@ div.contextmenu .item.divider::before {
     background-color: var(--v4);
 }
 div.contextmenu .item.divider > * {
+    display: none;
+}
+div.contextmenu .item.input {
+    padding: 0px;
+}
+div.contextmenu .item.input > input {
+    padding: 5px;
+
+    background-color: transparent;
+    border-radius: 0px;
+}
+div.contextmenu .item.input > *:not(input),
+div.contextmenu .item:not(.input) > input {
     display: none;
 }
 
@@ -1916,7 +2042,8 @@ div.contextmenu .item.divider > * {
     flex-basis: 100%;
 }
 .form > .item > .header > .type {
-
+    min-width: max-content;
+    
     color: var(--v6);
 
     font-style: italic;
@@ -1967,6 +2094,35 @@ div.contextmenu .item.divider > * {
 }
 .form > .item.dirent > .content > button {
     border-radius: 5px;
+}
+.form > .item.color > .content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+.form > .item.color > .content > button {
+    min-width: 85px;
+
+    border-radius: 5px;
+    outline: 1px solid var(--v8);
+}
+.form > .item.color > .content > input {
+    width: 85px;
+
+    outline: 1px solid var(--v3);
+
+    text-transform: uppercase;
+    font-family: monospace;
+}
+.form > .item.color > .content > input:disabled {
+    outline: 1px solid var(--v2);
+}
+.form > .item.color > .content > input:focus-visible {
+    outline: 1px solid var(--v8);
 }
 .form > .item.enum > .content {
     display: flex;
@@ -2091,6 +2247,28 @@ div.contextmenu .item.divider > * {
 }
 .form > .item.line * {
     display: none;
+}
+
+.form > .item.subform > .header > ion-icon {
+    transform: rotate(0deg);
+
+    margin-right: -5px;
+
+    color: var(--v8);
+}
+.form > .item.subform.this > .header > ion-icon {
+    transform: rotate(90deg);
+}
+.form > .item.subform > .content {
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+.form > .item.subform.this > .content {
+    display: flex;
 }
 
 #drag {

@@ -795,7 +795,7 @@ export class Color extends Target {
                     if (!all) a = [0, 0, 0];
                     else {
                         if (a.length == 3 || a.length == 4) a = new Array(a.length).fill(null).map((_, i) => hex.indexOf(a[i])).map(x => x*16+x);
-                        else if (a.length == 6 || a.length == 8) a = new Array(a.length/2).fill(null).map((_, i) => hex.indexOf(a[i])*16+hex.indexOf(a[i+1]));
+                        else if (a.length == 6 || a.length == 8) a = new Array(a.length/2).fill(null).map((_, i) => hex.indexOf(a[2*i])*16+hex.indexOf(a[2*i+1]));
                         else a = [0, 0, 0];
                     }
                     if (a.length == 4) a[3] /= 255;
@@ -816,6 +816,8 @@ export class Color extends Target {
 
         [this.r, this.g, this.b, this.a] = a;
     }
+
+    set(...a) { this.rgba = new Color(...a).rgba; return this; }
 
     #uncache() { this.#hsv = this.#hex = this.#hexNoAlpha = this.#rgba = this.#rgb = null; }
 

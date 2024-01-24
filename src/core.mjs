@@ -120,6 +120,8 @@ export class App extends util.Target {
         this.#menu = null;
         this.#contextMenu = null;
         document.body.addEventListener("click", e => {
+            if (!this.hasContextMenu()) return;
+            if (this.contextMenu.elem.contains(e.target) && e.target.classList.contains("blocking")) return;
             this.contextMenu = null;
         }, { capture: true });
 
@@ -747,6 +749,48 @@ export class App extends util.Target {
         const qrcode = document.createElement("script");
         document.head.appendChild(qrcode);
         qrcode.src = root+"/assets/modules/qrcode.min.js";
+        
+        let t = util.getTime();
+        
+        this.fullscreen = await window.api.get("fullscreen");
+        this.devMode = await window.api.get("devmode");
+        this.holiday = await window.api.get("active-holiday");
+
+        let agent = window.agent();
+        document.documentElement.style.setProperty("--WIN32", ((util.is(agent.os, "obj") && (agent.os.platform == "win32")) ? 1 : 0));
+        document.documentElement.style.setProperty("--DARWIN", ((util.is(agent.os, "obj") && (agent.os.platform == "darwin")) ? 1 : 0));
+        document.documentElement.style.setProperty("--LINUX", ((util.is(agent.os, "obj") && (agent.os.platform == "linux")) ? 1 : 0));
+        PROPERTYCACHE.clear();
+
+        let themeUpdating = false;
+        const themeUpdate = async () => {
+            if (themeUpdating) return;
+            themeUpdating = true;
+            let theme = await window.api.get("theme");
+            theme = util.is(theme, "obj") ? theme : String(theme);
+            let data = util.is(theme, "obj") ? theme : util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj");
+            this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
+            let darkWanted = !!(await window.api.get("dark-wanted"));
+            highlight2.href = root+"/assets/modules/" + (darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css");
+            if (!darkWanted) this.base = this.base.reverse();
+            this.colors = data.colors || {
+                r: [255, 0, 0],
+                o: [255, 128, 0],
+                y: [255, 255, 0],
+                g: [0, 255, 0],
+                c: [0, 255, 255],
+                b: [0, 0, 255],
+                p: [128, 0, 255],
+                m: [255, 0, 255],
+            };
+            this.accent = data.accent || "b";
+            themeUpdating = false;
+        };
+        this.addHandler("cmd-theme", () => themeUpdate());
+        this.addHandler("cmd-native-theme", () => themeUpdate());
+        await themeUpdate();
+
+        await this.postResult("setup");
 
         const updatePage = () => {
             Array.from(document.querySelectorAll(".loading")).forEach(elem => {
@@ -810,51 +854,206 @@ export class App extends util.Target {
                 });
                 await onHolidayState(await window.api.get("active-holiday"));
             });
+            Array.from(document.querySelectorAll(".tooltip.color")).forEach(elem => {
+                if (elem.children.length > 0) return;
+                const signal = new util.Target();
+                Object.defineProperty(elem, "signal", { value: signal, writable: false });
+                const color = new util.Color(255, 0, 0);
+                color.addHandler("change", () => {
+                    update();
+                    signal.post("change");
+                });
+                Object.defineProperty(elem, "color", {
+                    get: () => color,
+                    set: v => color.set(v),
+                });
+                "rgba".split("").forEach(k => Object.defineProperty(elem, k, {
+                    get: () => color[k],
+                    set: v => (color[k] = v),
+                }));
+                let useAlpha = true;
+                Object.defineProperty(elem, "useAlpha", {
+                    get: () => useAlpha,
+                    set: v => {
+                        useAlpha = !!v;
+                        update();
+                    },
+                });
+                let show = {};
+                "hsv".split("").forEach(k => {
+                    show[k] = true;
+                    Object.defineProperty(elem, "show"+k.toUpperCase(), {
+                        get: () => show[k],
+                        set: v => {
+                            show[k] = !!v;
+                            update();
+                        },
+                    });
+                });
+                elem.innerHTML = "<div class='title'></div><div class='picker'><div></div></div><div class='sliders'><input type='range' min='0' max='100'><input type='range' min='0' max='100'><input type='range' min='0' max='100'><input type='range' min='0' max='100'></div><div class='swatches'></div>";
+                const title = elem.children[0];
+                Object.defineProperty(elem, "title", {
+                    get: () => title.textContent,
+                    set: v => (title.textContent = v),
+                });
+                elem.title = "Pick a color";
+                const picker = elem.children[1];
+                picker.addEventListener("mousedown", e => {
+                    const mouseup = () => {
+                        document.body.removeEventListener("mouseup", mouseup);
+                        document.body.removeEventListener("mousemove", mousemove);
+                    };
+                    const mousemove = e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        let r = picker.getBoundingClientRect();
+                        let x = (e.pageX - r.left) / r.width;
+                        let y = (e.pageY - r.top) / r.height;
+                        y = 1-y;
+                        color.s = x;
+                        color.v = y;
+                    };
+                    document.body.addEventListener("mouseup", mouseup);
+                    document.body.addEventListener("mousemove", mousemove);
+                    mousemove(e);
+                });
+                const pickerThumb = picker.children[0];
+                const sliders = elem.children[2];
+                const sliderElements = {};
+                "hsva".split("").forEach((k, i) => {
+                    const slider = sliderElements[k] = sliders.children[i];
+                    slider.addEventListener("input", e => {
+                        let v = slider.value;
+                        v /= 100;
+                        if (k == "h") v *= 360;
+                        color[k] = v;
+                    });
+                });
+                const swatches = elem.children[3];
+                let swatchColors = [];
+                Object.defineProperty(elem, "swatches", {
+                    get: () => [...swatchColors],
+                    set: v => {
+                        v = util.ensure(v, "arr");
+                        elem.clearSwatches();
+                        elem.addSwatch(v);
+                    },
+                });
+                elem.clearSwatches = () => {
+                    let swatches = elem.swatches;
+                    elem.remSwatch(swatches);
+                    return swatches;
+                };
+                const getSwatch = swatch => {
+                    swatch = new util.Color(swatch);
+                    for (let i = 0; i < swatchColors.length; i++) {
+                        let swatch2 = swatchColors[i];
+                        let r = Math.abs(swatch.r-swatch2.r);
+                        let g = Math.abs(swatch.g-swatch2.g);
+                        let b = Math.abs(swatch.b-swatch2.b);
+                        let a = Math.abs(swatch.a-swatch2.a);
+                        if ((r+g+b+a)/4 < 2) return i;
+                    }
+                    return -1;
+                };
+                elem.hasSwatch = swatch => getSwatch(swatch) >= 0;
+                elem.addSwatch = (...swatches) => {
+                    let r = util.Target.resultingForEach(swatches, swatch => {
+                        swatch = new util.Color(swatch);
+                        if (elem.hasSwatch(swatch)) return false;
+                        swatchesChanged = true;
+                        swatchColors.push(swatch);
+                        swatch.addLinkedHandler(this, "change", () => update());
+                        return swatch;
+                    });
+                    update();
+                    return r;
+                };
+                elem.remSwatch = (...swatches) => {
+                    let r = util.Target.resultingForEach(swatches, swatch => {
+                        swatch = util.Color(swatch);
+                        if (!elem.hasSwatch(swatch)) return false;
+                        swatchesChanged = true;
+                        swatchColors.splice(getSwatch(swatch), 1);
+                        swatch.clearLinkedHandlers(this, "change");
+                        return swatch;
+                    });
+                    update();
+                    return r;
+                };
+                let swatchesChanged = false;
+                const importDefault = () => {
+                    if (swatchesChanged || !document.body.contains(elem)) return this.remHandler("update-dynamic-style", importDefault);
+                    elem.swatches = "roygcbpm".split("").map(k => PROPERTYCACHE.getColor("--c"+k));
+                    swatchesChanged = false;
+                };
+                this.addHandler("update-dynamic-style", importDefault);
+                const update = () => {
+                    let c = new util.Color(255, 0, 0);
+                    c.h = color.h;
+                    picker.style.background = "linear-gradient(90deg, #fff, "+c.toHex(false)+")";
+                    picker.style.setProperty("--thumb", color.toHex(false));
+                    pickerThumb.style.left = (100*color.s)+"%";
+                    pickerThumb.style.top = (100*(1-color.v))+"%";
+                    for (let k in sliderElements) {
+                        let v = color[k];
+                        if (k == "h") v /= 360;
+                        v *= 100;
+                        let on = (k == "a") ? useAlpha : show[k];
+                        const slider = sliderElements[k];
+                        slider.value = v;
+                        slider.disabled = !on;
+                        slider.style.display = on ? "" : "none";
+                        let cthumb = new util.Color(255, 0, 0);
+                        let carr = [];
+                        if (k == "h") {
+                            cthumb.h = color.h;
+                            for (let i = 0; i < 7; i++) {
+                                let c = new util.Color();
+                                c.hsv = [util.lerp(0, 360, i/6), 1, 1];
+                                carr.push(c);
+                            }
+                        } else if (k == "s") {
+                            cthumb.h = color.h;
+                            cthumb.s = color.s;
+                            let c = new util.Color(255, 0, 0);
+                            c.h = color.h;
+                            carr.push(new util.Color(255, 255, 255), c);
+                        } else if (k == "v") {
+                            cthumb.h = color.h;
+                            cthumb.s = color.s;
+                            cthumb.v = color.v;
+                            let c = new util.Color(255, 0, 0);
+                            c.h = color.h;
+                            c.s = color.s;
+                            carr.push(new util.Color(0, 0, 0), c);
+                        } else {
+                            cthumb.hsva = color.hsva;
+                            let c = new util.Color();
+                            c.hsv = color.hsv;
+                            carr.push(new util.Color(c.r, c.g, c.b, 0), c);
+                        }
+                        slider.style.background = "linear-gradient(90deg, "+carr.map(c => c.toHex()).join(", ")+")";
+                        slider.style.setProperty("--thumb", cthumb.toHex());
+                    }
+                    swatches.innerHTML = "";
+                    for (let c of swatchColors) {
+                        let btn = document.createElement("button");
+                        swatches.appendChild(btn);
+                        btn.classList.add("override");
+                        btn.style.backgroundColor = c.toHex();
+                        btn.addEventListener("click", e => {
+                            e.stopPropagation();
+                            color.set(c);
+                        });
+                    }
+                };
+                update();
+                importDefault();
+            });
         };
         setInterval(updatePage, 500);
         updatePage();
-        
-        let t = util.getTime();
-        
-        this.fullscreen = await window.api.get("fullscreen");
-        this.devMode = await window.api.get("devmode");
-        this.holiday = await window.api.get("active-holiday");
-
-        let agent = window.agent();
-        document.documentElement.style.setProperty("--WIN32", ((util.is(agent.os, "obj") && (agent.os.platform == "win32")) ? 1 : 0));
-        document.documentElement.style.setProperty("--DARWIN", ((util.is(agent.os, "obj") && (agent.os.platform == "darwin")) ? 1 : 0));
-        document.documentElement.style.setProperty("--LINUX", ((util.is(agent.os, "obj") && (agent.os.platform == "linux")) ? 1 : 0));
-        PROPERTYCACHE.clear();
-
-        let themeUpdating = false;
-        const themeUpdate = async () => {
-            if (themeUpdating) return;
-            themeUpdating = true;
-            let theme = await window.api.get("theme");
-            theme = util.is(theme, "obj") ? theme : String(theme);
-            let data = util.is(theme, "obj") ? theme : util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj");
-            this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
-            let darkWanted = !!(await window.api.get("dark-wanted"));
-            highlight2.href = root+"/assets/modules/" + (darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css");
-            if (!darkWanted) this.base = this.base.reverse();
-            this.colors = data.colors || {
-                r: [255, 0, 0],
-                o: [255, 128, 0],
-                y: [255, 255, 0],
-                g: [0, 255, 0],
-                c: [0, 255, 255],
-                b: [0, 0, 255],
-                p: [128, 0, 255],
-                m: [255, 0, 255],
-            };
-            this.accent = data.accent || "b";
-            themeUpdating = false;
-        };
-        this.addHandler("cmd-theme", () => themeUpdate());
-        this.addHandler("cmd-native-theme", () => themeUpdate());
-        await themeUpdate();
-
-        await this.postResult("setup");
 
         if (this.hasELoadingTo())
             this.eLoadingTo.style.visibility = "hidden";
@@ -1015,6 +1214,7 @@ export class App extends util.Target {
         styleStr += "}";
         this.eDynamicStyle.innerHTML = styleStr;
         PROPERTYCACHE.clear();
+        this.post("update-dynamic-style");
         window.api.set("title-bar-overlay", {
             color: PROPERTYCACHE.get("--v1"),
             symbolColor: PROPERTYCACHE.get("--v8"),
@@ -1949,7 +2149,7 @@ App.Menu = class AppMenu extends util.Target {
     }
 
     toObj() {
-        return this.items.filter(itm => itm.exists).map(itm => itm.toObj());
+        return this.items.filter(itm => itm.exists && itm.type != "input").map(itm => itm.toObj());
     }
     static fromObj(data) {
         let menu = new App.Menu();
@@ -2126,6 +2326,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     #eLabel;
     #eAccelerator;
     #eSubIcon;
+    #eInput;
 
     constructor(label, icon="") {
         super();
@@ -2158,13 +2359,23 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.elem.appendChild(this.eSubIcon);
         this.eSubIcon.classList.add("sub");
         this.eSubIcon.name = "chevron-forward";
+        this.#eInput = document.createElement("input");
+        this.elem.appendChild(this.eInput);
+        this.eInput.classList.add("blocking");
+
         this.elem.appendChild(this.menu.elem);
 
         this.elem.addEventListener("mouseenter", e => this.fix());
         this.elem.addEventListener("click", e => {
+            if (this.type == "input") return;
             if (this.disabled) return;
             e.stopPropagation();
             this.post("trigger", e);
+        });
+        this.eInput.addEventListener("change", e => {
+            if (this.type != "input") return;
+            if (this.disabled) return;
+            this.post("trigger", e, this.eInput.value);
         });
 
         this.icon = icon;
@@ -2205,6 +2416,8 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.change("type", this.type, this.#type=v);
         if (this.type == "separator") this.elem.classList.add("divider");
         else this.elem.classList.remove("divider");
+        if (this.type == "input") this.elem.classList.add("input");
+        else this.elem.classList.remove("input");
         this.#check();
     }
     hasType() { return this.type != null; }
@@ -2213,12 +2426,12 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.label == v) return;
         this.change("label", this.label, this.#label=v);
-        if (!this.hasRole()) return this.eLabel.textContent = this.hasLabel() ? this.label : "";
+        if (!this.hasRole()) return this.eLabel.textContent = this.eInput.placeholder = this.hasLabel() ? this.label : "";
         (async () => {
             let v = this.role;
             let label = await window.api.send("menu-role-label", v);
             if (this.role != v) return;
-            this.eLabel.textContent = label;
+            this.eLabel.textContent = this.eInput.placeholder = label;
         })();
         this.#check();
     }
@@ -2273,6 +2486,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.change("enabled", this.enabled, this.#enabled=v);
         if (this.disabled) this.elem.classList.add("disabled");
         else this.elem.classList.remove("disabled");
+        this.eInput.disabled = this.disabled;
         this.#check();
     }
     get disabled() { return !this.enabled; }
@@ -2328,6 +2542,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     get eLabel() { return this.#eLabel; }
     get eAccelerator() { return this.#eAccelerator; }
     get eSubIcon() { return this.#eSubIcon; }
+    get eInput() { return this.#eInput; }
 
     get icon() { return this.eIcon.name; }
     set icon(v) {
@@ -6633,7 +6848,6 @@ Form.DirentInput = class FormDirentInput extends Form.GenericInput {
         this.dialogFilters = [];
         this.dialogProperties = ["openFile"];
 
-        this.elem.classList.add("dirent");
         this.#eInput = document.createElement("input");
         this.eContent.appendChild(this.eInput);
         this.eInput.type = "text";
@@ -6684,6 +6898,82 @@ Form.DirentInput = class FormDirentInput extends Form.GenericInput {
     set dialogFilters(v) { this.#dialogFilters = util.ensure(v, "arr"); }
     get dialogProperties() { return this.#dialogProperties; }
     set dialogProperties(v) { this.#dialogProperties = util.ensure(v, "arr"); }
+};
+Form.ColorInput = class FormColorInput extends Form.Field {
+    #value;
+    #useAlpha;
+
+    #eColorbox;
+    #eInput;
+
+    constructor(name, value) {
+        super(name);
+
+        this.elem.classList.add("color");
+        
+        this.#value = new util.Color();
+        this.value.addHandler("change", (c, f, t) => this.change("value."+c, f, t));
+        this.#useAlpha = null;
+
+        this.eContent.innerHTML = "<div class='tooltip tog swx color'></div>";
+        let colorPicker = this.eContent.children[0];
+        let observer = new MutationObserver(() => {
+            observer.disconnect();
+            colorPicker.signal.addHandler("change", () => (this.value = colorPicker.color));
+            apply();
+        });
+        observer.observe(colorPicker, { childList: true });
+
+        this.#eColorbox = document.createElement("button");
+        this.eContent.appendChild(this.eColorbox);
+        this.eColorbox.classList.add("override");
+        this.eColorbox.addEventListener("click", e => {
+            e.stopPropagation();
+            this.eContent.classList.add("active");
+            const onClick = e => {
+                if (colorPicker.contains(e.target)) return;
+                e.stopPropagation();
+                this.eContent.classList.remove("active");
+                document.body.removeEventListener("click", onClick, true);
+            };
+            document.body.addEventListener("click", onClick, true);
+        });
+        this.#eInput = document.createElement("input");
+        this.eContent.appendChild(this.eInput);
+        this.eInput.type = "text";
+        this.eInput.addEventListener("change", e => {
+            this.value.set(this.eInput.value);
+        });
+        const apply = () => {
+            this.eInput.value = this.value.toHex(this.useAlpha);
+            this.eColorbox.style.backgroundColor = this.value.toHex(this.useAlpha);
+            colorPicker.color = this.value;
+            colorPicker.useAlpha = this.useAlpha;
+        };
+        this.addHandler("change-value.r", apply);
+        this.addHandler("change-value.g", apply);
+        this.addHandler("change-value.b", apply);
+        this.addHandler("change-value.a", apply);
+        this.addHandler("change-useAlpha", apply);
+
+        this.value = value;
+        this.useAlpha = true;
+    }
+
+    get value() { return this.#value; }
+    set value(v) { this.#value.set(v); }
+    get useAlpha() { return this.#useAlpha; }
+    set useAlpha(v) {
+        v = !!v;
+        if (this.useAlpha == v) return;
+        this.change("useAlpha", this.useAlpha, this.#useAlpha=v);
+    }
+    
+    get disabled() { return this.eInput.disabled; }
+    set disabled(v) { this.eInput.disabled = this.eColorbox.disabled = v; }
+
+    get eColorbox() { return this.#eColorbox; }
+    get eInput() { return this.#eInput; }
 };
 Form.EnumInput = class FormEnumInput extends Form.Field {
     #values;
@@ -7021,4 +7311,25 @@ Form.Line = class FormLine extends Form.Field {
 
     get color() { return this.elem.style.backgroundColor; }
     set color(v) { this.elem.style.backgroundColor = v; }
+};
+Form.SubForm = class FormSubForm extends Form.Field {
+    #form;
+
+    constructor(name) {
+        super(name);
+
+        this.elem.classList.add("subform");
+
+        this.eHeader.insertBefore(document.createElement("ion-icon"), this.eHeader.firstChild);
+        this.eHeader.firstChild.name = "chevron-forward";
+        this.eHeader.addEventListener("click", e => {
+            if (this.elem.classList.contains("this")) this.elem.classList.remove("this");
+            else this.elem.classList.add("this");
+        });
+
+        this.#form = new Form();
+        this.eContent.appendChild(this.form.elem);
+    }
+
+    get form() { return this.#form; }
 };
