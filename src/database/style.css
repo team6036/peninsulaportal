@@ -59,7 +59,7 @@ button:not(.override) {
 
     transition: top var(--t);
 }
-#PAGE > .side button {
+#PAGE > .side button:not(.override) {
     --bg: transparent;
     --fg: var(--v4);
     --bgh: transparent;
@@ -71,7 +71,7 @@ button:not(.override) {
 
     font-size: 25px;
 }
-#PAGE > .side button.this {
+#PAGE > .side button:not(.override).this {
     --fg: var(--v6);
     --fgh: var(--v8);
     --fgd: var(--v4);
