@@ -639,6 +639,19 @@ RobotCollection.Item = class RobotCollectionItem extends RobotCollection.Item {
 };
 
 class ThemeCollection extends Collection {
+    static prevthemeId = null;
+    static currThemeId = null;
+    static async tryTheme(id, data) {
+        if (id == null) {
+            if (this.prevthemeId != null) await window.api.set("theme", this.prevthemeId);
+            this.prevthemeId = this.currThemeId = null;
+            return;
+        }
+        if (this.prevthemeId == null) this.prevthemeId = String(await window.api.get("theme"));
+        this.currThemeId = String(id);
+        await window.api.set("theme", data);
+    }
+
     constructor(app, elem, host) {
         super(app, elem, "themes", host);
     }
@@ -687,6 +700,12 @@ ThemeCollection.Item = class ThemeCollectionItem extends ThemeCollection.Item {
             f.disabled = (i == 0) || (i == 8);
             this.addHandler("load", () => (f.value = this.#base[i]));
         }
+
+        let fTry = this.form.addField(new core.Form.Button("try", "Try Theme", ));
+        fTry.showHeader = false;
+        fTry.addHandler("trigger", e => {
+            ThemeCollection.tryTheme(this.id, this.data);
+        });
     }
 
     get fName() { return this.#fName; }
@@ -766,7 +785,8 @@ export default class App extends core.App {
                                 while (collection.hasItem(id+"-"+n)) n++;
                                 id += "-"+n;
                             }
-                            collection.addItem(new collection.constructor.Item(collection, id, false));
+                            let item = new collection.constructor.Item(collection, id, false);
+                            collection.addItem(item);
                         });
                     },
                     robots: () => {
@@ -790,7 +810,8 @@ export default class App extends core.App {
                                 while (collection.hasItem(id+"-"+n)) n++;
                                 id += "-"+n;
                             }
-                            collection.addItem(new collection.constructor.Item(collection, id, false));
+                            let item = new collection.constructor.Item(collection, id, false);
+                            collection.addItem(item);
                         });
                     },
                     themes: () => {
@@ -814,8 +835,28 @@ export default class App extends core.App {
                                 while (collection.hasItem(id+"-"+n)) n++;
                                 id += "-"+n;
                             }
-                            collection.addItem(new collection.constructor.Item(collection, id, false));
+                            let item = new collection.constructor.Item(collection, id, false);
+                            item.load({
+                                name: "New Theme",
+                                colors: {
+                                    r: "#ff0000",
+                                    o: "#ff8800",
+                                    y: "#ffff00",
+                                    g: "#00ff00",
+                                    c: "#00ffff",
+                                    b: "#0088ff",
+                                    p: "#8800ff",
+                                    m: "#ff00ff",
+                                },
+                                base: new Array(9).fill(null).map((_, i) => new Array(3).fill(i/8*255)),
+                                accent: "b",
+                            });
+                            collection.addItem(item);
                         });
+                        new MutationObserver(() => {
+                            if (elem.classList.contains("this")) return;
+                            ThemeCollection.tryTheme(null);
+                        }).observe(elem, { attributeFilter: ["class"] })
                     },
                     features: () => {
                         btn.addEventListener("click", e => {
@@ -855,6 +896,10 @@ export default class App extends core.App {
             });
 
             this.refresh();
+        });
+        this.addHandler("perm", async () => {
+            await ThemeCollection.tryTheme(null);
+            return true;
         });
     }
 

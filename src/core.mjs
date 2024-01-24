@@ -774,14 +774,14 @@ export class App extends util.Target {
             highlight2.href = root+"/assets/modules/" + (darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css");
             if (!darkWanted) this.base = this.base.reverse();
             this.colors = data.colors || {
-                r: [255, 0, 0],
-                o: [255, 128, 0],
-                y: [255, 255, 0],
-                g: [0, 255, 0],
-                c: [0, 255, 255],
-                b: [0, 0, 255],
-                p: [128, 0, 255],
-                m: [255, 0, 255],
+                r: "#ff0000",
+                o: "#ff8800",
+                y: "#ffff00",
+                g: "#00ff00",
+                c: "#00ffff",
+                b: "#0088ff",
+                p: "#8800ff",
+                m: "#ff00ff",
             };
             this.accent = data.accent || "b";
             themeUpdating = false;
@@ -971,7 +971,7 @@ export class App extends util.Target {
                 };
                 elem.remSwatch = (...swatches) => {
                     let r = util.Target.resultingForEach(swatches, swatch => {
-                        swatch = util.Color(swatch);
+                        swatch = new util.Color(swatch);
                         if (!elem.hasSwatch(swatch)) return false;
                         swatchesChanged = true;
                         swatchColors.splice(getSwatch(swatch), 1);
