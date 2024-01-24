@@ -762,7 +762,7 @@ const MAIN = async () => {
                 let id = setTimeout(() => {
                     clear();
                     res(true);
-                }, 500);
+                }, 10000);
                 const clear = () => {
                     clearTimeout(id);
                     ipc.removeListener("permack", permack);
@@ -3664,6 +3664,7 @@ const MAIN = async () => {
                 },
                 "comp-mode": async () => await kfs._fullclientconfig("isCompMode", !!v),
                 "theme": async () => {
+                    console.log(v);
                     await kfs._fullclientconfig("theme", util.is(v, "obj") ? v : String(v));
                     await this.send("theme");
                 },

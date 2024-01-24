@@ -656,7 +656,7 @@ export class Target {
     getHandlers(e) { return this.getLinkedHandlers(null, e); }
     clearHandlers(e) { return this.clearLinkedHandlers(null, e); }
     post(e, ...a) {
-        if (this.#nHandlers <= 0) return [];
+        if (this.#nHandlers <= 0) return;
         e = String(e);
         for (let handlers of this.#handlers.values()) {
             if (!(e in handlers)) continue;
