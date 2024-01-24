@@ -51,7 +51,8 @@ Toggling competition mode on disables polling of database, if constant repolling
 ## Appearance
 
 ### Theme
-The current application theme. Feel free to pick from the list supplied.
+The current application theme. Feel free to pick from the list supplied.  
+Some history: This project initially started as RoboView, a simpler version of AdvantageScope, with only basic graphing and viewing abilities. The "Legacy" theme is this old application's theme, before it was switched to "Space Steel"
 
 ### Holiday
 The current application holiday!
