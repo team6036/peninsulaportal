@@ -623,7 +623,7 @@ export class App extends util.Target {
         });
         this.addHandler("cmd-documentation", async () => {
             let name = String(await window.api.get("name"));
-            if (["PANEL", "PLANNER", "PRESETS"].includes(name))
+            if (["PANEL", "PLANNER", "PRESETS", "DATABASE"].includes(name))
                 this.addPopup(new App.MarkdownPopup("./docs/"+name.toLowerCase()+"/MAIN.md"));
             else this.addPopup(new App.MarkdownPopup("./README.md"));
         });
@@ -6917,9 +6917,13 @@ Form.ColorInput = class FormColorInput extends Form.Field {
 
         this.eContent.innerHTML = "<div class='tooltip tog swx color'></div>";
         let colorPicker = this.eContent.children[0];
+        let ignore = false;
         let observer = new MutationObserver(() => {
             observer.disconnect();
-            colorPicker.signal.addHandler("change", () => (this.value = colorPicker.color));
+            colorPicker.signal.addHandler("change", () => {
+                if (ignore) return;
+                this.value = colorPicker.color;
+            });
             apply();
         });
         observer.observe(colorPicker, { childList: true });
@@ -6947,8 +6951,10 @@ Form.ColorInput = class FormColorInput extends Form.Field {
         const apply = () => {
             this.eInput.value = this.value.toHex(this.useAlpha);
             this.eColorbox.style.backgroundColor = this.value.toHex(this.useAlpha);
+            ignore = true;
             colorPicker.color = this.value;
             colorPicker.useAlpha = this.useAlpha;
+            ignore = false;
         };
         this.addHandler("change-value.r", apply);
         this.addHandler("change-value.g", apply);

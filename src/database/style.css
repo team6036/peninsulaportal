@@ -259,6 +259,9 @@ button:not(.override) {
     overflow: visible;
     padding: 0px 20px 20px 20px;
 }
+#PAGE > .content > div > .collection > .item > .content > .content {
+    flex-basis: 100%;
+}
 #PAGE > .content > div > .collection > .item > .content > .side:has(> .form:empty) {
     display: none;
 }

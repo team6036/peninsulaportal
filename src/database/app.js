@@ -668,6 +668,20 @@ ThemeCollection.Item = class ThemeCollectionItem extends ThemeCollection.Item {
 
         this.eDisplay.style.display = "none";
 
+        let eContents = [];
+        for (let i = 0; i < 4; i++) {
+            let eContent = document.createElement("div");
+            this.eContent.appendChild(eContent);
+            eContent.classList.add("content");
+            eContents.push(eContent);
+        }
+        let forms = [];
+        for (let i = 0; i < eContents.length; i++) {
+            let form = new core.Form();
+            eContents[i].appendChild(form.elem);
+            forms.push(form);
+        }
+
         this.#fName = this.form.addField(new core.Form.TextInput("name"));
         this.fName.app = this.app;
         this.fName.inputs.forEach((inp, i) => {
@@ -675,9 +689,12 @@ ThemeCollection.Item = class ThemeCollectionItem extends ThemeCollection.Item {
         });
         this.fName.addHandler("change-value", (f, t) => this.change("name", f, t));
 
-        let fColors = this.form.addField(new core.Form.SubForm("colors"));
-        "roygcbpm".split("").forEach(k => {
-            let f = fColors.form.addField(new core.Form.ColorInput({
+        forms[0].addField(new core.Form.Header("Colors"));
+        forms[1].addField(new core.Form.Header("")).type = "color";
+
+        "roygcbpm".split("").forEach((k, i) => {
+            let form = (i < 4) ? forms[0] : forms[1];
+            let f = form.addField(new core.Form.ColorInput({
                 r: "Red",
                 o: "Orange",
                 y: "Yellow",
@@ -688,17 +705,36 @@ ThemeCollection.Item = class ThemeCollectionItem extends ThemeCollection.Item {
                 m: "Magenta",
             }[k], null));
             f.type = "--c"+k;
-            this.addHandler("load", () => (f.value = this.#colors[k]));
+            let ignore = false;
+            f.addHandler("change", () => {
+                if (ignore) return;
+                this.#colors[k].set(f.value);
+            });
+            this.addHandler("load", () => {
+                ignore = true;
+                f.value = this.#colors[k];
+                ignore = false;
+            });
         });
         
-        let fBase = this.form.addField(new core.Form.SubForm("base"));
-        fBase.form.addField(new core.Form.SubHeader("Colors ordered from darkest to lightest"));
-        fBase.form.addField(new core.Form.SubHeader("First and last colors are locked as black and white respectively"));
+        forms[2].addField(new core.Form.Header("Base Values"));
+        forms[3].addField(new core.Form.Header("")).type = "color";
+
         for (let i = 0; i < 9; i++) {
-            let f = fBase.form.addField(new core.Form.ColorInput("", null));
+            let form = (i < 5) ? forms[2] : forms[3];
+            let f = form.addField(new core.Form.ColorInput("", null));
             f.showHeader = false;
             f.disabled = (i == 0) || (i == 8);
-            this.addHandler("load", () => (f.value = this.#base[i]));
+            let ignore = false;
+            f.addHandler("change", () => {
+                if (ignore) return;
+                this.#base[i].set(f.value);
+            });
+            this.addHandler("load", () => {
+                ignore = true;
+                f.value = this.#base[i];
+                ignore = false;
+            });
         }
 
         let fTry = this.form.addField(new core.Form.Button("try", "Try Theme", ));
@@ -729,11 +765,15 @@ ThemeCollection.Item = class ThemeCollectionItem extends ThemeCollection.Item {
         data = util.ensure(data, "obj");
         this.name = data.name;
         this.#colors = util.ensure(data.colors, "obj");
-        for (let k in this.#colors)
+        for (let k in this.#colors) {
             this.#colors[k] = new util.Color(this.#colors[k]);
+            this.#colors[k].addHandler("change", () => this.change("data", null, this.data));
+        }
         this.#base = util.ensure(data.base, "arr");
-        for (let i = 0; i < this.#base.length; i++)
+        for (let i = 0; i < this.#base.length; i++) {
             this.#base[i] = new util.Color(this.#base[i]);
+            this.#base[i].addHandler("change", () => this.change("data", null, this.data));
+        }
         this.post("load");
         this.#accent = data.accent;
     }
