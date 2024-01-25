@@ -2689,7 +2689,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsDownload([name]);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Download Error", "LogName: "+name, e);
+                    this.app.doError("Log Download Error", "LogName: "+name, e);
             }
         });
         this.addHandler("log-trigger2", (e, name) => {
@@ -2794,7 +2794,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 await LOGGERCONTEXT.logsServerDelete(names);
             } catch (e) {
                 if (this.hasApp())
-                    this.app.error("Log Delete Error", "Names:", names.join("\n"), e);
+                    this.app.doError("Log Delete Error", "Names:", names.join("\n"), e);
             }
         });
 
@@ -3481,7 +3481,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             await window.api.send("wpilog-write", pth, data);
                         }
                     } catch (e) {
-                        this.app.error("Log Merge Error", "", e);
+                        this.app.doError("Log Merge Error", "", e);
                     }
                     progress(null);
                     state.eSubmit.disabled = false;
@@ -3971,7 +3971,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     range[1] = Math.max(range[1], subrange[1]);
                 });
                 range = range.map(v => util.ensure(v, "num"));
-                let step = Panel.GraphTab.findStep(range[1]-range[0], 5);
+                // let step = Panel.GraphTab.findStep(range[1]-range[0], 5);
+                let step = util.findStep(range[1]-range[0], 5);
                 range[0] = Math.floor(range[0]/step) - 1;
                 range[1] = Math.ceil(range[1]/step) + 1;
                 o.range = range;
@@ -3993,7 +3994,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 range[1] += addAbove;
                 o.range = range;
             });
-            const timeStep = Panel.GraphTab.findStep(graphRange[1]-graphRange[0], 10);
+            // const timeStep = Panel.GraphTab.findStep(graphRange[1]-graphRange[0], 10);
+            const timeStep = util.findStep(graphRange[1]-graphRange[0], 10);
             const mnx = qpadding, mxx = ctx.canvas.width-qpadding;
             const mny = qpadding, mxy = ctx.canvas.height-qpadding;
             let y0 = mny, y1 = mxy;
@@ -5123,6 +5125,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         super("2d");
 
         this.#odometry = new core.Odometry2d(this.eContent);
+        this.addHandler("change-lengthUnits", () => {
+            this.odometry.unit = this.lengthUnits;
+        });
 
         this.#size = new V(1000);
         this.#robotSize = new V(100);
@@ -6799,7 +6804,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        this.app.error("WPILOG Load Error", "File: "+this.project.config.source, e);
+                        this.app.doError("WPILOG Load Error", "File: "+this.project.config.source, e);
                     }
                     this.app.progress = null;
                     delete this.source.importing;

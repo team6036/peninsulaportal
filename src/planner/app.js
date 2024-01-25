@@ -1900,7 +1900,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             await this.app.post("cmd-save");
             try {
                 await window.api.send("exec", this.page.project.id, path.id);
-            } catch (e) { this.app.error("Exec Error", "", e); }
+            } catch (e) { this.app.doError("Exec Error", "", e); }
             this.generating = false;
         });
 

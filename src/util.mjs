@@ -341,6 +341,39 @@ export function compareStr(s1, s2) {
     return 0;
 }
 
+export function findStep(v, n=10) {
+    v = Math.max(0, util.ensure(v, "num"));
+    n = Math.max(0, util.ensure(n, "int"));
+    if (v <= 0) return 1;
+    let factors = [1, 2, 5];
+    let pow1 = 10 ** Math.floor(Math.log10(v/n));
+    let pow2 = 10 * pow1;
+    factors = [
+        ...factors.map(f => { return {
+            f: f*pow1,
+            v: Math.abs(n-Math.round(v/(f*pow1))),
+        }; }),
+        ...factors.map(f => { return {
+            f: f*pow2,
+            v: Math.abs(n-Math.round(v/(f*pow2))),
+        }; }),
+    ];
+    factors.sort((a, b) => a.v-b.v);
+    return factors[0].f;
+    // let closestN = null, closestStep = null;
+    // factors.forEach(f => {
+    //     let step = (10 ** (pow-1)) * f;
+    //     let d = Math.abs(nSteps - Math.round(v / step));
+    //     if (closestN == null || d < closestN) {
+    //         closestN = d;
+    //         closestStep = step;
+    //     }
+    //     if (d > closestN) return;
+    //     if (step < closestStep) closestStep = step;
+    // });
+    // return closestStep;
+}
+
 export const ease = {
     // https://easings.net/
 
