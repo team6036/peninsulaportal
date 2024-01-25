@@ -510,9 +510,6 @@
     background-color: transparent;
     border-radius: 0px;
 }
-#pathspanel > #pathsbox > .item > input::placeholder {
-    color: var(--v4);
-}
 #pathspanel > #pathsbox > .item > button {
     --bg: transparent;
     --bgh: transparent;

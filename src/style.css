@@ -238,36 +238,55 @@ input {
 input:not(.override) {
     --bg: var(--v1);
     --fg: var(--v8);
+    --mg: var(--v4);
     --o: var(--v3);
     --bgf: var(--v1);
     --fgf: var(--v8);
+    --mgf: var(--v4);
     --of: var(--v8);
     --bgd: var(--v2);
     --fgd: var(--v6);
+    --mgd: var(--v4);
     --od: var(--v2);
+
+    --use-o: 0;
 
     padding: 5px;
 
-    background-color: var(--v1);
-    color: var(--v8);
+    background-color: var(--bg);
+    color: var(--fg);
+    border: calc(1px * var(--use-o)) solid var(--o);
     border-radius: 5px;
 
-    transition: background-color var(--t), color var(--t);
+    transition: background-color var(--t), color var(--t), border var(--t);
+}
+input:not(.override):focus-visible {
+    background-color: var(--bgf);
+    color: var(--fgf);
+    border: calc(1px * var(--use-o)) solid var(--of);
+}
+input:not(.override):disabled {
+    background-color: var(--bgd);
+    color: var(--fgd);
+    border: calc(1px * var(--use-o)) solid var(--od);
 }
 input:not(.override)::placeholder {
-    color: var(--v4);
+    color: var(--mg);
 
     font-style: italic;
+
+    transition: color var(--t);
 }
 input[type="number"]:not(.override) {
-    color: var(--cg);
-}
-input[type="number"]:not(.override):disabled {
-    color: var(--cg2);
+    --fg: var(--cg);
+    --fgf: var(--cg);
+    --fgd: var(--cg2);
 }
 input[type="number"]:not(.override)::-webkit-outer-spin-button,
 input[type="number"]:not(.override)::-webkit-inner-spin-button {
     -webkit-appearance: none;
+    appearance: none;
+
     margin: 0px;
 }
 
@@ -449,7 +468,7 @@ label.switch::after {
 
     transition: transform var(--t);
 }
-label.switch:has(input[type="checkbox"]:checked)::after {
+label.switch:has(> input[type="checkbox"]:checked)::after {
     content: var(--on-text);
 
     transform: translate(0px, -50%);
@@ -1582,15 +1601,11 @@ article.md.lighter table td {
     aspect-ratio: 1 / 1;
 }
 .popup.core > .inner > input {
+    --use-o: 1;
+
     width: 100%;
 
     outline: 1px solid var(--v3);
-}
-.popup.core > .inner > input:disabled {
-    outline: 1px solid var(--v3-8);
-}
-.popup.core > .inner > input:focus-visible {
-    outline: 1px solid var(--v8);
 }
 .popup.core > .inner > .progress {
     --progress: 0%;
@@ -2072,25 +2087,14 @@ div.contextmenu .item:not(.input) > input {
     gap: 5px;
 }
 .form > .item.input > .content > input {
-    --o: var(--v3);
-    --of: var(--v8);
-    --od: var(--v2);
+    --use-o: 1;
 
     flex-basis: 100%;
-
-    border: 1px solid var(--o);
-}
-.form > .item.input > .content > input:focus-visible {
-    border: 1px solid var(--of);
-}
-.form > .item.input > .content > input:disabled {
-    border: 1px solid var(--od);
 }
 .form > .item.input > .content > input[type="text"] {
-    color: var(--cy);
-}
-.form > .item.input > .content > input[type="text"]:disabled {
-    color: var(--cy2);
+    --fg: var(--cy);
+    --fgf: var(--cy);
+    --fgd: var(--cy2);
 }
 .form > .item.dirent > .content > button {
     border-radius: 5px;
@@ -2111,18 +2115,12 @@ div.contextmenu .item:not(.input) > input {
     outline: 1px solid var(--v8);
 }
 .form > .item.color > .content > input {
-    width: 85px;
+    --use-o: 1;
 
-    outline: 1px solid var(--v3);
+    width: 85px;
 
     text-transform: uppercase;
     font-family: monospace;
-}
-.form > .item.color > .content > input:disabled {
-    outline: 1px solid var(--v2);
-}
-.form > .item.color > .content > input:focus-visible {
-    outline: 1px solid var(--v8);
 }
 .form > .item.enum > .content {
     display: flex;
@@ -2192,18 +2190,16 @@ div.contextmenu .item:not(.input) > input {
     gap: 5px;
 }
 .form > .item.json > .content > .item > input {
+    --use-o: 1;
+
     flex-basis: 100%;
 
     outline: 1px solid var(--v3);
 }
-.form > .item.json > .content > .item > input:disabled {
-    outline: 1px solid var(--v2);
-}
-.form > .item.json > .content > .item > input:focus-visible {
-    outline: 1px solid var(--v8);
-}
 .form > .item.json > .content > .item > input:first-of-type {
-    color: var(--a);
+    --fg: var(--a);
+    --fgf: var(--a);
+    --fgd: var(--a2);
 }
 .form > .item.json > .content > .item > .separator {
     min-width: max-content;

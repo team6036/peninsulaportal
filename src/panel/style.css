@@ -1035,17 +1035,13 @@
     border-radius: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav > input {
-    flex-basis: 100%;
+    --bg: var(--v2-8);
+    --bgf: var(--v2-8);
+    --bgd: var(--v2-8);
 
-    background-color: var(--v2-8);
-    color: var(--v8);
-    outline: 1px solid var(--v3);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav > input:disabled {
-    outline: 1px solid var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav > input:focus-visible {
-    outline: 1px solid var(--v8);
+    --use-o: 1;
+
+    flex-basis: 100%;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > webview {
     width: 100%;
