@@ -91,15 +91,11 @@ button:not(.override) {
     gap: 10px;
 }
 #PAGE > .content > article p:not(.override) > input {
-    background-color: var(--v2-8);
+    --bg: var(--v2-8);
+    --bgf: var(--v2-8);
+    --bgd: var(--v2-8);
 
-    outline: 1px solid var(--v3);
-}
-#PAGE > .content > article p:not(.override) > input:disabled {
-    outline: 1px solid transparent;
-}
-#PAGE > .content > article p:not(.override) > input:focus-visible {
-    outline: 1px solid var(--v8);
+    --use-o: 1;
 }
 #PAGE > .content > article > #colorsheet {
     display: inline-grid;

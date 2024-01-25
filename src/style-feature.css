@@ -83,15 +83,9 @@
     visibility: inherit;
 }
 #titlebar > #projectinfo > .content > input {
-    background-color: var(--v1-8);
+    --use-o: 1;
 
-    outline: 1px solid var(--v3);
-}
-#titlebar > #projectinfo > .content > input:disabled {
-    outline: 1px solid var(--v3-8);
-}
-#titlebar > #projectinfo > .content > input:focus-visible {
-    outline: 1px solid var(--v8);
+    background-color: var(--v1-8);
 }
 #titlebar > #projectinfo > .content > .divider {
     height: 1px;
@@ -316,10 +310,6 @@
     flex-basis: 100%;
 
     background-color: transparent;
-    color: var(--v8);
-}
-#PROJECTSPAGE > .nav > .search > input::placeholder {
-    color: var(--v3);
 }
 #PROJECTSPAGE > .nav > .search > button {
     --bg: transparent;
