@@ -1267,10 +1267,12 @@ export class App extends util.Target {
     }
     alert(...a) { return this.addPopup(new App.Alert(...a)); }
     error(...a) { return this.addPopup(new App.Error(...a)); }
+    warn(...a) { return this.addPopup(new App.Warn(...a)); }
     confirm(...a) { return this.addPopup(new App.Confirm(...a)); }
     prompt(...a) { return this.addPopup(new App.Prompt(...a)); }
     async doAlert(...a) { return await this.alert(...a).whenResult(); }
     async doError(...a) { return await this.error(...a).whenResult(); }
+    async doWarn(...a) { return await this.warn(...a).whenResult(); }
     async doConfirm(...a) { return await this.confirm(...a).whenResult(); }
     async doPrompt(...a) { return await this.prompt(...a).whenResult(); }
 
@@ -1850,6 +1852,15 @@ App.Error = class AppError extends App.Alert {
         super(title, content, "warning");
 
         this.iconColor = "var(--cr)";
+
+        this.infos = infos;
+    }
+};
+App.Warn = class AppError extends App.Alert {
+    constructor(title, content, ...infos) {
+        super(title, content, "warning");
+
+        this.iconColor = "var(--cy)";
 
         this.infos = infos;
     }
@@ -4419,6 +4430,8 @@ export class Odometry2d extends Odometry {
 
     #padding;
 
+    #unit;
+
     static BEFOREGRID = 0;
     static AFTERGRID = 1;
     static BEFOREIMAGE = 1;
@@ -4449,7 +4462,11 @@ export class Odometry2d extends Odometry {
 
         this.#padding = 0;
 
+        this.#unit = null;
+
         this.padding = 40;
+
+        this.unit = "m";
 
         this.addHandler("render", () => {
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
@@ -4461,6 +4478,9 @@ export class Odometry2d extends Odometry {
             ctx.globalCompositeOperation = "source-over";
             this.render.render(0);
 
+            let w = Math.floor(util.Unit.convert(this.w, "cm", this.unit));
+            let h = Math.floor(util.Unit.convert(this.h, "cm", this.unit));
+            let step = util.findStep((w+h)/2, 10);
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
             ctx.lineWidth = 1*quality;
@@ -4474,8 +4494,8 @@ export class Odometry2d extends Odometry {
             let y1 = mxy;
             let y2 = mxy + 5*quality;
             let y3 = mxy + 10*quality;
-            for (let i = 0; i <= Math.floor(this.w/100); i++) {
-                let x = util.lerp(mnx, mxx, (i*100) / this.w);
+            for (let i = 0; i <= w; i += step) {
+                let x = util.lerp(mnx, mxx, util.Unit.convert(i, this.unit, "cm") / this.w);
                 ctx.strokeStyle = PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
@@ -4486,7 +4506,7 @@ export class Odometry2d extends Odometry {
                 ctx.moveTo(x, y0);
                 ctx.lineTo(x, y1);
                 ctx.stroke();
-                if (i%2 == 1 && i < Math.floor(this.w/100)) continue;
+                if (i%2 == 1 && i < w) continue;
                 ctx.fillText(i, x, y3);
             }
             ctx.textAlign = "right";
@@ -4495,8 +4515,8 @@ export class Odometry2d extends Odometry {
             let x1 = mnx;
             let x2 = mnx - 5*quality;
             let x3 = mnx - 10*quality;
-            for (let i = 0; i <= Math.floor(this.h/100); i++) {
-                let y = util.lerp(mxy, mny, (i*100) / this.h);
+            for (let i = 0; i <= h; i += step) {
+                let y = util.lerp(mxy, mny, util.Unit.convert(i, this.unit, "cm") / this.h);
                 ctx.strokeStyle = PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x1, y);
@@ -4507,7 +4527,7 @@ export class Odometry2d extends Odometry {
                 ctx.moveTo(x0, y);
                 ctx.lineTo(x1, y);
                 ctx.stroke();
-                if (i%2 == 1 && i < Math.floor(this.h/100)) continue;
+                if (i%2 == 1 && i < h) continue;
                 ctx.fillText(i, x3, y);
             }
 
@@ -4570,6 +4590,9 @@ export class Odometry2d extends Odometry {
 
     get padding() { return this.#padding; }
     set padding(v) { this.#padding = Math.max(0, util.ensure(v, "num")); }
+
+    get unit() { return this.#unit; }
+    set unit(v) { this.#unit = String(v); }
 
     get scale() {
         return Math.min(((this.canvas.width/this.quality) - 2*this.padding)/this.w, ((this.canvas.height/this.quality) - 2*this.padding)/this.h);
