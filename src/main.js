@@ -3239,7 +3239,7 @@ const MAIN = async () => {
             try {
                 let preVersion = String(await this.getFSVersion(pth));
                 await this.fileWrite([pth, ".version"], String(version));
-                await this.bumpVersion(preVersion);
+                await this.bumpVersion(preVersion, String(version));
             } catch (e) {}
         }
         static async canFS(pth, version) {
@@ -3254,8 +3254,9 @@ const MAIN = async () => {
         async setFSVersion(verison) { return this.hasWindow() ? await this.window.manager.setFSVersion(verison) : await WindowManager.setFSVersion(this.dataPath, verison); }
         async canFS(version) { return this.hasWindow() ? await this.window.manager.canFS(version) : await WindowManager.canFS(this.dataPath, version); }
 
-        async bumpVersion(v) {
-            v = String(v);
+        async bumpVersion(from, to) {
+            from = String(from);
+            to = String(to);
         }
 
         modalSpawn(name, params) {
