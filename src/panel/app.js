@@ -4303,25 +4303,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         [this.lVars, this.rVars, this.viewMode, this.viewParams, this.optionState] = a;
     }
 
-    static findStep(v, nSteps) {
-        v = Math.max(0, util.ensure(v, "num"));
-        if (v <= 0) return 1;
-        let factors = [1, 2, 5];
-        let pow = Math.round(Math.log10(v));
-        let closestN = null, closestStep = null;
-        factors.forEach(f => {
-            let step = (10 ** (pow-1)) * f;
-            let d = Math.abs(nSteps - Math.round(v / step));
-            if (closestN == null || d < closestN) {
-                closestN = d;
-                closestStep = step;
-            }
-            if (d > closestN) return;
-            if (step < closestStep) closestStep = step;
-        });
-        return closestStep;
-    }
-
     get lVars() { return [...this.#lVars]; }
     set lVars(v) {
         v = util.ensure(v, "arr");

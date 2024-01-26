@@ -244,7 +244,7 @@ input:not(.override) {
     --fgf: var(--v8);
     --mgf: var(--v4);
     --of: var(--v8);
-    --bgd: var(--v2);
+    --bgd: var(--v1);
     --fgd: var(--v6);
     --mgd: var(--v4);
     --od: var(--v2);
@@ -1651,7 +1651,7 @@ article.md.lighter table td {
     transition: width var(--t);
 }
 
-div.contextmenu {
+.contextmenu {
     z-index: 1000;
 
     position: absolute;
@@ -1670,7 +1670,10 @@ div.contextmenu {
     border: 1px solid var(--v3);
     filter: drop-shadow(0px 0px 5px var(--v1));
 }
-div.contextmenu .item {
+.contextmenu:empty {
+    display: none;
+}
+.contextmenu .item {
     position: relative;
 
     padding: 5px;
@@ -1690,46 +1693,46 @@ div.contextmenu .item {
     font-size: 12px;
     user-select: none;
 }
-div.contextmenu .item:not(.divider):not(.disabled):hover {
+.contextmenu .item:not(.divider):not(.disabled):hover {
     background-color: var(--v3);
 }
-div.contextmenu .item:not(.divider).disabled {
+.contextmenu .item:not(.divider).disabled {
     color: var(--v6);
 }
-div.contextmenu .item:not(.divider) > ion-icon.icon {
+.contextmenu .item:not(.divider) > ion-icon.icon {
     min-width: 12px;
     margin-right: 5px;
 }
-div.contextmenu .item:not(.divider) > .label {
+.contextmenu .item:not(.divider) > .label {
     flex-basis: 100%;
 }
-div.contextmenu .item:not(.divider) > .accelerator {
+.contextmenu .item:not(.divider) > .accelerator {
     margin-right: 5px;
     margin-left: 15px;
 
     color: var(--v5);
 }
-div.contextmenu .item:not(.divider) > ion-icon.sub {
+.contextmenu .item:not(.divider) > ion-icon.sub {
     color: var(--v6);
 
     font-size: 16px;
 }
-div.contextmenu .item:not(.divider) > div.contextmenu {
+.contextmenu .item:not(.divider) > .contextmenu {
     position: absolute;
     top: 0%;
     left: 100%;
 
     visibility: hidden;
 }
-div.contextmenu .item:not(.divider):not(.disabled):hover > div.contextmenu {
+.contextmenu .item:not(.divider):not(.disabled):hover > .contextmenu {
     visibility: inherit;
 }
-div.contextmenu .item.divider {
+.contextmenu .item.divider {
     padding: 5px 0px;
 
     height: 1px;
 }
-div.contextmenu .item.divider::before {
+.contextmenu .item.divider::before {
     content: "";
 
     position: absolute;
@@ -1742,20 +1745,20 @@ div.contextmenu .item.divider::before {
 
     background-color: var(--v4);
 }
-div.contextmenu .item.divider > * {
+.contextmenu .item.divider > * {
     display: none;
 }
-div.contextmenu .item.input {
+.contextmenu .item.input {
     padding: 0px;
 }
-div.contextmenu .item.input > input {
+.contextmenu .item.input > input {
     padding: 5px;
 
     background-color: transparent;
     border-radius: 0px;
 }
-div.contextmenu .item.input > *:not(input),
-div.contextmenu .item:not(.input) > input {
+.contextmenu .item.input > *:not(input),
+.contextmenu .item:not(.input) > input {
     display: none;
 }
 
