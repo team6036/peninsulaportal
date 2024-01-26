@@ -5100,6 +5100,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
     #fSize;
     #fRobotSize;
+    #fQuality;
     #fUnitsLength1;
     #fUnitsLength2;
     #fUnitsAngle;
@@ -5182,6 +5183,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         let optionsForm = new core.Form();
         eOptions.appendChild(optionsForm.elem);
         optionsForm.side = "center";
+
+        this.#fQuality = optionsForm.addField(new core.Form.SelectInput("quality", [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }]));
+        this.fQuality.addHandler("change-value", () => {
+            this.odometry.quality = this.fQuality.value;
+        });
+        this.fQuality.value = this.odometry.quality;
 
         this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }]));
         this.fUnitsLength1.addHandler("change-value", () => {
@@ -5368,6 +5375,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
     get fSize() { return this.#fSize; }
     get fRobotSize() { return this.#fRobotSize; }
+    get fQuality() { return this.#fQuality; }
     get fUnitsLength1() { return this.#fUnitsLength1; }
     get fUnitsLength2() { return this.#fUnitsLength2; }
     get fUnitsAngle() { return this.#fUnitsAngle; }
@@ -5576,6 +5584,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     #fViewType;
     #fViewMovementType;
+    #fQuality;
     #fUnitsLength1;
     #fUnitsLength2;
     #fUnitsAngle;
@@ -5652,6 +5661,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.addHandler("change-isOrbit", () => {
             this.fViewMovementType.value = this.isOrbit ? "orbit" : "free";
         });
+
+        this.#fQuality = optionsForm.addField(new core.Form.SelectInput("quality", [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }]));
+        this.fQuality.addHandler("change-value", () => {
+            this.odometry.quality = this.fQuality.value;
+        });
+        this.fQuality.value = this.odometry.quality;
 
         this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }]));
         this.fUnitsLength1.addHandler("change-value", () => {
@@ -5899,6 +5914,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     get fViewType() { return this.#fViewType; }
     get fViewMovementType() { return this.#fViewMovementType; }
+    get fQuality() { return this.#fQuality; }
     get fUnitsLength1() { return this.#fUnitsLength1; }
     get fUnitsLength2() { return this.#fUnitsLength2; }
     get fUnitsAngle() { return this.#fUnitsAngle; }
