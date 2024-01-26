@@ -4442,14 +4442,16 @@ export class Odometry2d extends Odometry {
     constructor(elem) {
         super(elem);
 
-        new ResizeObserver(() => {
+        const update = () => {
             let r = this.elem.getBoundingClientRect();
             this.canvas.width = r.width * this.quality;
             this.canvas.height = r.height * this.quality;
             this.canvas.style.width = r.width+"px";
             this.canvas.style.height = r.height+"px";
             this.update(0);
-        }).observe(this.elem);
+        };
+        new ResizeObserver(update).observe(this.elem);
+        this.addHandler("change-quality", update);
 
         this.#ctx = this.canvas.getContext("2d");
         this.#worldMouse = new V();
