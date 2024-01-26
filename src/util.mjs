@@ -360,18 +360,6 @@ export function findStep(v, n=10) {
     ];
     factors.sort((a, b) => a.v-b.v);
     return factors[0].f;
-    // let closestN = null, closestStep = null;
-    // factors.forEach(f => {
-    //     let step = (10 ** (pow-1)) * f;
-    //     let d = Math.abs(nSteps - Math.round(v / step));
-    //     if (closestN == null || d < closestN) {
-    //         closestN = d;
-    //         closestStep = step;
-    //     }
-    //     if (d > closestN) return;
-    //     if (step < closestStep) closestStep = step;
-    // });
-    // return closestStep;
 }
 
 export const ease = {
