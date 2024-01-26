@@ -809,6 +809,7 @@ article.md.lighter table td {
 
     background-color: var(--bg);
     border: 1px solid var(--v3);
+    border-radius: 5px;
     color: var(--v8);
     opacity: 100%;
     visibility: inherit;

@@ -27,7 +27,8 @@ class WPILOGEncoderWorker extends WorkerBase {
                     if (type == "int") type = "int64";
                     if (type == "int[]") type = "int64[]";
                     let valueLog = field.valueLog;
-                    if (valueLog.length <= 0) return;
+                    let metadataLog = field.metadataLog;
+                    if (valueLog.length <= 0 && metadataLog.length <= 0) return;
                     encoder.addRecord(
                         WPILOGEncoder.Record.makeControlStart(
                             valueLog[0].ts,
@@ -56,6 +57,17 @@ class WPILOGEncoderWorker extends WorkerBase {
                         };
                         if (type in typefs) encoder.addRecord(typefs[type]());
                         else encoder.addRecord(WPILOGEncoder.Record.makeRaw(entryId, ts, v));
+                    });
+                    metadataLog.forEach((log, i) => {
+                        let ts = log.ts * 1000, v = log.v;
+                        if (!util.is(v, "str"))
+                            try {
+                                v = JSON.stringify(v);
+                            } catch (e) { v = String(v); }
+                        encoder.addRecord(WPILOGEncoder.Record.makeControlMetadata(ts, {
+                            entry: entryId,
+                            v: v,
+                        }));
                     });
                     this.progress(util.lerp(0, 0.5, (i+1)/fields.length));
                 });

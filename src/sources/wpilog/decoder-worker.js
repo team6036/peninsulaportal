@@ -32,26 +32,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                             if (["int64"].includes(type)) type = "int";
                             if (["int64[]"].includes(type)) type = "int[]";
                             source.add(name, type);
-                            (entryId2Field[id] = source.getField(name)).updateMetadata(`
-                            {
-                                "key1": "value",
-                                "key2": 15,
-                                "key3": {
-                                    "a": 1,
-                                    "b": [
-                                        1,
-                                        2,
-                                        3
-                                    ],
-                                    "c": 2
-                                },
-                                "key4": [
-                                    -1,
-                                    -2,
-                                    -3
-                                ]
-                            }
-                            `, record.ts / 1000);
+                            entryId2Field[id] = source.getField(name);
                         } else if (record.isControlMetadata()) {
                             let metadataData = record.getControlMetadataData();
                             let id = metadataData.entry;
