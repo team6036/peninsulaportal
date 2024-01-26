@@ -260,16 +260,7 @@ Project.Config = class ProjectConfig extends Project.Config {
                 a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
             }
             else if (util.is(a, "str")) a = [a, 0, 0, false];
-            else if (util.is(a, "obj")) {
-                // REMOVE WHEN FIXED
-                if ("momentOfInertia" in a || "efficiency" in a || "is12MotorMode" in a) {
-                    a = [a.script, a.scriptPython, a.scriptUseDefault, {
-                        "moment_of_inertia": JSON.stringify(a.momentOfInertia),
-                        "efficiency_percent": JSON.stringify(a.efficiency),
-                        "12_motor_mode": JSON.stringify(a.is12MotorMode),
-                    }];
-                } else a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
-            }
+            else if (util.is(a, "obj")) a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
             else a = [null, 0, 0, null];
         }
 
