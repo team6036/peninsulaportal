@@ -24,48 +24,87 @@ class WPILOGDecoderWorker extends WorkerBase {
                 decoder.build((record, progress) => {
                     this.progress(progress);
                     if (record.isControl()) {
-                        if (!record.isControlStart()) return;
-                        let startData = record.getControlStartData();
-                        let id = startData.entry;
-                        let name = entryId2Name[id] = startData.name;
-                        let type = entryId2Type[id] = startData.type;
-                        if (["int64"].includes(type)) type = "int";
-                        if (["int64[]"].includes(type)) type = "int[]";
-                        source.add(name, type);
-                        entryId2Field[id] = source.getField(name);
-                    } else {
-                        let id = record.entryId;
-                        if (!(id in entryId2Name)) return;
-                        if (!(id in entryId2Type)) return;
-                        if (!(id in entryId2Field)) return;
-                        let name = entryId2Name[id];
-                        let type = entryId2Type[id];
-                        const field = entryId2Field[id];
-                        let ts = record.ts / 1000;
-                        let typefs = {
-                            boolean: () => record.getBool(),
-                            int: () => record.getInt(),
-                            int64: () => typefs["int"](),
-                            float: () => record.getFloat(),
-                            double: () => record.getDouble(),
-                            string: () => record.getStr(),
-                            json: () => typefs["string"](),
-                            "boolean[]": () => record.getBoolArr(),
-                            "int[]": () => record.getIntArr(),
-                            "int64[]": () => typefs["int[]"](),
-                            "float[]": () => record.getFloatArr(),
-                            "double[]": () => record.getDoubleArr(),
-                            "string[]": () => record.getStrArr(),
-                        };
-                        let v = (type in typefs) ? typefs[type]() : record.getRaw();
-                        field.update(v, ts);
-                        if (first) {
-                            first = false;
-                            source.tsMin = source.tsMax = ts;
-                        } else {
-                            source.tsMin = Math.min(source.tsMin, ts);
-                            source.tsMax = Math.max(source.tsMax, ts);
+                        if (record.isControlStart()) {
+                            let startData = record.getControlStartData();
+                            let id = startData.entry;
+                            let name = entryId2Name[id] = startData.name;
+                            let type = entryId2Type[id] = startData.type;
+                            if (["int64"].includes(type)) type = "int";
+                            if (["int64[]"].includes(type)) type = "int[]";
+                            source.add(name, type);
+                            (entryId2Field[id] = source.getField(name)).updateMetadata(`
+                            {
+                                "key1": "value",
+                                "key2": 15,
+                                "key3": {
+                                    "a": 1,
+                                    "b": [
+                                        1,
+                                        2,
+                                        3
+                                    ],
+                                    "c": 2
+                                },
+                                "key4": [
+                                    -1,
+                                    -2,
+                                    -3
+                                ]
+                            }
+                            `, record.ts / 1000);
+                        } else if (record.isControlMetadata()) {
+                            let metadataData = record.getControlMetadataData();
+                            let id = metadataData.entry;
+                            let metadata = metadataData.metadata;
+                            if (!(id in entryId2Name)) return;
+                            if (!(id in entryId2Type)) return;
+                            if (!(id in entryId2Field)) return;
+                            let name = entryId2Name[id];
+                            let type = entryId2Type[id];
+                            const field = entryId2Field[id];
+                            let ts = record.ts / 1000;
+                            field.updateMetadata(metadata, ts);
+                            if (first) {
+                                first = false;
+                                source.tsMin = source.tsMax = ts;
+                            } else {
+                                source.tsMin = Math.min(source.tsMin, ts);
+                                source.tsMax = Math.max(source.tsMax, ts);
+                            }
                         }
+                        return;
+                    }
+                    let id = record.entryId;
+                    if (!(id in entryId2Name)) return;
+                    if (!(id in entryId2Type)) return;
+                    if (!(id in entryId2Field)) return;
+                    let name = entryId2Name[id];
+                    let type = entryId2Type[id];
+                    const field = entryId2Field[id];
+                    let ts = record.ts / 1000;
+                    let typefs = {
+                        boolean: () => record.getBool(),
+                        int: () => record.getInt(),
+                        int64: () => typefs["int"](),
+                        float: () => record.getFloat(),
+                        double: () => record.getDouble(),
+                        string: () => record.getStr(),
+                        json: () => typefs["string"](),
+                        "boolean[]": () => record.getBoolArr(),
+                        "int[]": () => record.getIntArr(),
+                        "int64[]": () => typefs["int[]"](),
+                        "float[]": () => record.getFloatArr(),
+                        "double[]": () => record.getDoubleArr(),
+                        "string[]": () => record.getStrArr(),
+                    };
+                    let v = (type in typefs) ? typefs[type]() : record.getRaw();
+                    field.update(v, ts);
+                    if (first) {
+                        first = false;
+                        source.tsMin = source.tsMax = ts;
+                    } else {
+                        source.tsMin = Math.min(source.tsMin, ts);
+                        source.tsMax = Math.max(source.tsMax, ts);
                     }
                 });
                 this.progress(1);

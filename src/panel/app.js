@@ -172,6 +172,19 @@ function getTabDisplay(name) {
     };
 }
 
+function stringify(data) {
+    const dfs = (data, indent=0) => {
+        const space = new Array(indent).fill("  ").join("");
+        indent++;
+        if (util.is(data, "obj"))
+            return "\n"+Object.keys(data).map(k => space+k+": "+dfs(data[k], indent)).join("\n");
+        if (util.is(data, "arr"))
+            return "\n"+data.map((v, i) => space+i+": "+dfs(v, indent)).join("\n");
+        return String(data);
+    };
+    return dfs(data).trim();
+}
+
 core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
     #canShowValue;
 
@@ -180,6 +193,7 @@ core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
             util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
                 node.info = node.hasField() ? node.field.type : null;
                 node.value = node.hasField() ? node.field.get() : null;
+                node.tooltip = node.hasField() ? stringify(node.field.getMetadata()) : null;
                 return node;
             }),
             enodeArr,
@@ -3971,7 +3985,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     range[1] = Math.max(range[1], subrange[1]);
                 });
                 range = range.map(v => util.ensure(v, "num"));
-                // let step = Panel.GraphTab.findStep(range[1]-range[0], 5);
                 let step = util.findStep(range[1]-range[0], 5);
                 range[0] = Math.floor(range[0]/step) - 1;
                 range[1] = Math.ceil(range[1]/step) + 1;
@@ -3994,7 +4007,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 range[1] += addAbove;
                 o.range = range;
             });
-            // const timeStep = Panel.GraphTab.findStep(graphRange[1]-graphRange[0], 10);
             const timeStep = util.findStep(graphRange[1]-graphRange[0], 10);
             const mnx = qpadding, mxx = ctx.canvas.width-qpadding;
             const mny = qpadding, mxy = ctx.canvas.height-qpadding;
@@ -7471,6 +7483,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         let elems = ids.map(id => this.getESideSection(id).elem);
         let idsOpen = ids.filter(id => this.getESideSection(id).getIsOpen());
         let availableHeight = r.height - ids.length*22;
+        Array.from(this.eSide.children).forEach(elem => {
+            if (elems.includes(elem)) return;
+            availableHeight -= elem.getBoundingClientRect().height;
+        });
         Array.from(this.eSide.children).forEach(child => {
             if (elems.includes(child)) return;
             let r = child.getBoundingClientRect();

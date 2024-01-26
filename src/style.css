@@ -847,6 +847,7 @@ article.md.lighter table td {
     transition: background-color var(--t);
 }
 .tooltip.hov,
+.tooltip.hov-long,
 .tooltip.tog {
     --tooltip-size-v: 75%;
 
@@ -859,6 +860,23 @@ article.md.lighter table td {
 
     opacity: 100%;
     visibility: inherit;
+}
+:hover > .tooltip.hov-long {
+    animation: tooltip-long-hov var(--t) 2s forwards;
+}
+@keyframes tooltip-long-hov {
+    0% {
+        --tooltip-size-v: 75%;
+
+        opacity: 0%;
+        visibility: hidden;
+    }
+    100% {
+        --tooltip-size-v: 100%;
+
+        opacity: 100%;
+        visibility: inherit;
+    }
 }
 .tooltip.nex,
 .tooltip.nx,
@@ -1868,6 +1886,20 @@ div.contextmenu .item:not(.input) > input {
     --fgd: var(--v3);
 
     font-style: italic;
+}
+.explorer > .node > button.display > .tooltip,
+.explorernode > button.display > .tooltip {
+    padding: 5px;
+
+    text-align: left;
+    font-size: 12px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.explorer > .node > button.display > .tooltip:empty,
+.explorernode > button.display > .tooltip:empty {
+    display: none;
 }
 .explorer > .node > button.display > .main,
 .explorernode > button.display > .main {
