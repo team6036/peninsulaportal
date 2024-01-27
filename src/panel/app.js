@@ -311,6 +311,7 @@ class ToolButton extends util.Target {
 
 class LoggerContext extends util.Target {
     #location;
+    #connected;
 
     #serverLogs;
     #clientLogs;
@@ -321,6 +322,7 @@ class LoggerContext extends util.Target {
         super();
 
         this.#location = null;
+        this.#connected = false;
 
         this.#serverLogs = new Set();
         this.#clientLogs = {};
@@ -339,13 +341,16 @@ class LoggerContext extends util.Target {
             if (timer2.time >= 100) {
                 timer2.clear();
                 this.pollClient();
-                (async () => (this.#location = await window.api.get("location")))();
+                (async () => (this.#location = await window.api.get("client-location")))();
+                (async () => (this.#connected = await window.api.get("client-connected")))();
             }
         });
     }
 
     get location() { return this.#location; }
     hasLocation() { return this.location != null; }
+    get connected() { return this.#connected; }
+    get disconnected() { return !this.connected; }
 
     get serverLogs() { return [...this.#serverLogs]; }
     hasServerLog(name) {
@@ -2815,7 +2820,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
             this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
 
-            this.status = LOGGERCONTEXT.hasLocation() ? LOGGERCONTEXT.location : "Missing Location";
+            this.status = LOGGERCONTEXT.hasLocation() ? LOGGERCONTEXT.connected ? LOGGERCONTEXT.location : "Connecting to "+LOGGERCONTEXT.location : "Missing Location";
             if (LOGGERCONTEXT.hasLocation()) {
                 eIcon.name = "cloud";
                 this.eStatus.setAttribute("href", LOGGERCONTEXT.location);
