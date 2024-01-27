@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
-let context = {};
+const context = {};
 
 /*
 
@@ -48,7 +48,7 @@ const MAIN = async () => {
     const cp = require("child_process");
 
     const electron = require("electron");
-    let showError = context.showError = async (name, type, e) => {
+    let showError = this.showError = async (name, type, e) => {
         let message = String(name);
         if (type) message += " - "+String(type);
         electron.dialog.showErrorBox(message, util.stringifyError(e));
@@ -65,7 +65,7 @@ const MAIN = async () => {
         })).response;
         return i == 0;
     };
-    const app = context.app = electron.app;
+    const app = this.app = electron.app;
     const ipc = electron.ipcMain;
 
     const lock = app.requestSingleInstanceLock();
@@ -3665,7 +3665,6 @@ const MAIN = async () => {
                 },
                 "comp-mode": async () => await kfs._fullclientconfig("isCompMode", !!v),
                 "theme": async () => {
-                    console.log(v);
                     await kfs._fullclientconfig("theme", util.is(v, "obj") ? v : String(v));
                     await this.send("theme");
                 },
@@ -3885,8 +3884,8 @@ const MAIN = async () => {
         return;
     }
 
-    showError = context.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, infos: [e] }).whenModalResult();
-    showConfirm = async (name, type, e) => await manager.modalConfirm({ icon: "help-circle", title: name, content: type, infos: [e], confirm: "Terminate", cancel: "Continue anyway" }).whenModalResult();
+    showError = this.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, infos: [e] }).whenModalResult();
+    showConfirm = this.showConfirm = async (name, type, e) => await manager.modalConfirm({ icon: "help-circle", title: name, content: type, infos: [e], confirm: "Terminate", cancel: "Continue anyway" }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;
@@ -3910,7 +3909,7 @@ const MAIN = async () => {
 };
 (async () => {
     try {
-        await MAIN();
+        await MAIN.call(context);
     } catch (e) {
         if (context.showError) context.showError("Main Script Error", null, e);
         else console.log("Main Script Error", e);

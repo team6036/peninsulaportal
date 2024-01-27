@@ -946,14 +946,9 @@ export class App extends util.Target {
                 };
                 const getSwatch = swatch => {
                     swatch = new util.Color(swatch);
-                    for (let i = 0; i < swatchColors.length; i++) {
-                        let swatch2 = swatchColors[i];
-                        let r = Math.abs(swatch.r-swatch2.r);
-                        let g = Math.abs(swatch.g-swatch2.g);
-                        let b = Math.abs(swatch.b-swatch2.b);
-                        let a = Math.abs(swatch.a-swatch2.a);
-                        if ((r+g+b+a)/4 < 2) return i;
-                    }
+                    for (let i = 0; i < swatchColors.length; i++)
+                        if (swatch.diff(swatchColors[i]) < 2)
+                            return i;
                     return -1;
                 };
                 elem.hasSwatch = swatch => getSwatch(swatch) >= 0;
@@ -1098,46 +1093,46 @@ export class App extends util.Target {
         if (i < 0 || i >= 9) return null;
         return this.#base[i];
     }
-    get colors() { return Object.keys(this.#colors); }
+    get colorNames() { return Object.keys(this.#colors); }
+    get colorValues() { return Object.keys(this.#colors); }
+    get colors() {
+        let colors = {};
+        this.colorNames.forEach(name => (colors[name] = this.getColor(name)));
+        return colors;
+    }
     set colors(v) {
         v = util.ensure(v, "obj");
         this.clearColors();
-        for (let name in v) this.addColor(name, v[name]);
+        for (let name in v) this.setColor(name, v[name]);
     }
     clearColors() {
         let colors = this.colors;
-        colors.forEach(name => this.remColor(name));
+        for (let name in colors) this.delColor(name);
         return colors;
     }
     hasColor(name) {
-        name = String(name);
-        return name in this.#colors;
+        return String(name) in this.#colors;
     }
     getColor(name) {
-        name = String(name);
         if (!this.hasColor(name)) return null;
-        return this.#colors[name];
-    }
-    addColor(name, color) {
-        name = String(name);
-        color = new util.Color(color);
-        if (this.hasColor(name)) return false;
-        this.#colors[name] = color;
-        this.updateDynamicStyle();
-        return color;
-    }
-    remColor(name) {
-        name = String(name);
-        if (!this.hasColor(name)) return false;
-        let color = this.getColor(name);
-        delete this.#colors[name];
-        this.updateDynamicStyle();
-        return color;
+        return this.#colors[String(name)];
     }
     setColor(name, color) {
         name = String(name);
         color = new util.Color(color);
+        if (this.hasColor(name))
+            if (color.diff(this.getColor(name)) < 2)
+                return this.getColor(name);
+        color.addHandler("change", () => this.updateDynamicStyle());
         this.#colors[name] = color;
+        this.updateDynamicStyle();
+        return color;
+    }
+    delColor(name) {
+        name = String(name);
+        if (!this.hasColor(name)) return null;
+        let color = this.getColor(name);
+        delete this.#colors[name];
         this.updateDynamicStyle();
         return color;
     }
@@ -1173,7 +1168,7 @@ export class App extends util.Target {
         if (!(black instanceof util.Color)) black = new util.Color(0, 0, 0);
         if (!(white instanceof util.Color)) white = new util.Color(255, 255, 255);
         let colors = {};
-        this.colors.forEach(name => (colors[name] = this.getColor(name)));
+        this.colorNames.forEach(name => (colors[name] = this.getColor(name)));
         colors._ = new util.Color(this.hasColor(accent) ? this.getColor(accent) : this.getBase(4));
         for (let name in colors) {
             let color = colors[name];
@@ -4091,13 +4086,17 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             return await this.app.saveProjectsClean();
         });
 
+        const timer = new util.Timer();
+        timer.play();
         let lock = false;
-        setInterval(async () => {
+        this.addHandler("update", async () => {
             if (lock) return;
+            if (timer.time < 10000) return;
+            timer.clear();
             lock = true;
             await this.app.post("cmd-save");
             lock = false;
-        }, 10000);
+        });
 
         this.#projectId = null;
 
@@ -5593,6 +5592,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
     #name;
     #color;
+    #isGhost;
+    #isSolid;
 
     #robot;
 
@@ -5611,16 +5612,16 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.pos.addHandler("change", (c, f, t) => this.change("pos."+c, f, t));
         this.#offset = new util.V3();
         this.pos.addHandler("change", (c, f, t) => this.change("offset."+c, f, t));
-        // ew this is gross for a V4
-        this.#q = [new V(), new V()];
-        this.#q[0].addHandler("change", (c, f, t) => this.change("q["+("xy".indexOf(c)+0)+"]", f, t));
-        this.#q[1].addHandler("change", (c, f, t) => this.change("q["+("xy".indexOf(c)+2)+"]", f, t));
+        this.#q = new util.V4();
+        this.q.addHandler("change", (c, f, t) => this.change("q."+c, f, t));
         this.addHandler("change", (c, f, t) => {
             this.odometry.requestRedraw();
         });
 
         this.#name = "";
         this.#color = "";
+        this.#isGhost = false;
+        this.#isSolid = false;
 
         this.#robot = null;
 
@@ -5731,9 +5732,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                     this.theObject.traverse(obj => {
                         if (!obj.isMesh) return;
                         if (!(obj.material instanceof THREE.Material)) return;
-                        let oldMaterial;
-                        [oldMaterial, obj.material] = [obj.material, obj.material.clone()];
-                        oldMaterial.dispose();
                         obj.material._transparent = obj.material.transparent;
                         obj.material._opacity = obj.material.opacity;
                         obj.material._color = obj.material.color.clone();
@@ -5743,6 +5741,32 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 }
             }
             if (!this.hasObject()) return;
+            if (this.theObject.isGhost != this.isGhost) {
+                this.theObject.isGhost = this.isGhost;
+                this.theObject.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    if (!(obj.material instanceof THREE.Material)) return;
+                    if (this.isGhost) {
+                        obj.material.transparent = true;
+                        obj.material.opacity = obj.material._opacity * 0.25;
+                    } else {
+                        obj.material.transparent = obj.material._transparent;
+                        obj.material.opacity = obj.material._opacity;
+                    }
+                });
+            }
+            if (this.theObject.isSolid != this.isSolid) {
+                this.theObject.isSolid = this.isSolid;
+                this.theObject.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    if (!(obj.material instanceof THREE.Material)) return;
+                    if (this.isSolid) {
+                        obj.material.color.set(color.toHex(false));
+                    } else {
+                        obj.material.color.set(obj.material._color);
+                    }
+                });
+            }
             let r = this.odometry.canvas.getBoundingClientRect();
             this.theObject.position.set(
                 this.x + this.offsetX/100,
@@ -5810,21 +5834,16 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     get offsetZ() { return this.offset.z; }
     set offsetZ(v) { this.offset.z = v; }
 
-    get q() { return [...this.#q[0].xy, ...this.#q[1].xy]; }
-    set q(v) {
-        v = util.ensure(v, "arr");
-        if (v.length != 4) v = [0, 0, 0, 0];
-        this.#q[0].set(v.slice(0, 2));
-        this.#q[1].set(v.slice(2, 4));
-    }
-    get qw() { return this.#q[0].x; }
-    set qw(v) { this.#q[0].x = v; }
-    get qx() { return this.#q[0].y; }
-    set qx(v) { this.#q[0].y = v; }
-    get qy() { return this.#q[1].x; }
-    set qy(v) { this.#q[1].x = v; }
-    get qz() { return this.#q[1].y; }
-    set qz(v) { this.#q[1].y = v; }
+    get q() { return this.#q; }
+    set q(v) { this.q.set(v); }
+    get qw() { return this.q.w; }
+    set qw(v) { this.q.w = v; }
+    get qx() { return this.q.x; }
+    set qx(v) { this.q.x = v; }
+    get qy() { return this.q.y; }
+    set qy(v) { this.q.y = v; }
+    get qz() { return this.q.z; }
+    set qz(v) { this.q.z = v; }
     
     get name() { return this.#name; }
     set name(v) { this.#name = String(v); }
@@ -5835,6 +5854,19 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.change("color", this.color, this.#color=v);
     }
     hasColor() { return this.color != null; }
+
+    get isGhost() { return this.#isGhost; }
+    set isGhost(v) {
+        v = !!v;
+        if (this.isGhost == v) return;
+        this.change("isGhost", this.isGhost, this.#isGhost=v);
+    }
+    get isSolid() { return this.#isSolid; }
+    set isSolid(v) {
+        v = !!v;
+        if (this.isSolid == v) return;
+        this.change("isSolid", this.isSolid, this.#isSolid=v);
+    }
 
     get robot() { return this.#robot; }
     set robot(v) {
