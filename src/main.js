@@ -1343,11 +1343,17 @@ const MAIN = async () => {
             else {
                 let namefs = {
                     PANEL: {
-                        "location": async () => {
+                        "client-location": async () => {
                             doLog = false;
                             const client = this.clientManager.getClientById("logger");
                             if (!client) return null;
                             return client.location;
+                        },
+                        "client-connected": async () => {
+                            doLog = false;
+                            const client = this.clientManager.getClientById("logger");
+                            if (!client) return null;
+                            return client.connected;
                         },
                         "logs-client": async () => {
                             doLog = false;
