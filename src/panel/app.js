@@ -6268,7 +6268,7 @@ Project.Config = class ProjectConfig extends Project.Config {
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             VERSION: VERSION,
-            sources: this.#sources,
+            sources: this.sources,
             sourceType: this.sourceType,
         });
     }
