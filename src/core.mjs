@@ -4227,130 +4227,6 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
 };
 
-export class Client extends util.Target {
-    #id;
-
-    #location;
-
-    #connectionResolver;
-    #socketId;
-
-    #destructionResolver;
-
-    constructor(location) {
-        super();
-
-        this.#id = new Array(8).fill(null).map(_ => util.BASE64[Math.floor(util.BASE64.length*Math.random())]).join("");
-
-        this.#location = String(location);
-
-        this.#connectionResolver = new util.Resolver(false);
-        this.#connectionResolver.addHandler("change-state", () => console.log(this.id+":meta.connected = "+this.connected));
-        this.#socketId = null;
-
-        this.#destructionResolver = new util.Resolver(true);
-
-        const confirm = (id, meta) => {
-            if (this.destroyed) {
-                remClientMsg();
-                remClientStreamStart();
-                remClientStreamStop();
-                return false;
-            }
-            if (this.id != id) return false;
-            meta = util.ensure(meta, "obj");
-            if (this.location != meta.location) return false;
-            this.#connectionResolver.state = !!meta.connected;
-            let socketId = (meta.socketId == null) ? null : String(meta.socketId);
-            if (this.#socketId != socketId) {
-                console.log(this.id+":meta.socketId = "+socketId);
-                this.#socketId = socketId;
-            }
-            return true;
-        };
-        const remClientMsg = window.sio.onClientMsg((_, id, name, payload, meta) => {
-            if (!confirm(id, meta)) return;
-            name = String(name);
-            console.log(this.id+":msg", name, payload);
-            this.post("msg", name, payload);
-            this.post("msg-"+name, payload);
-        });
-        const remClientStreamStart = window.sio.onClientStreamStart((_, id, name, pth, fname, payload, meta) => {
-            if (!confirm(id, meta)) return;
-            name = String(name);
-            pth = String(pth);
-            fname = String(fname);
-            console.log(this.id+":stream-start", name, pth, fname, payload);
-            this.post("stream-start", name, pth, fname, payload);
-            this.post("stream-start-"+name, pth, fname, payload);
-        });
-        const remClientStreamStop = window.sio.onClientStreamStop((_, id, name, pth, fname, payload, meta) => {
-            if (!confirm(id, meta)) return;
-            name = String(name);
-            pth = String(pth);
-            fname = String(fname);
-            console.log(this.id+":stream-stop", name, pth, fname, payload);
-            this.post("stream-stop", name, pth, fname, payload);
-            this.post("stream-stop-"+name, pth, fname, payload);
-        });
-
-        (async () => {
-            await window.sio.clientMake(this.id, this.location);
-            this.#destructionResolver.state = false;
-        })();
-    }
-
-    get id() { return this.#id; }
-
-    get location() { return this.#location; }
-
-    get connected() { return this.#connectionResolver.state; }
-    get disconnected() { return !this.connected; }
-    get socketId() { return this.#socketId; }
-
-    get destroyed() { return this.#destructionResolver.state; }
-    get created() { return !this.destroyed; }
-
-    async whenConnected() { await this.#connectionResolver.whenTrue(); }
-    async whenNotConnected() { await this.#connectionResolver.whenFalse(); }
-    async whenDisconnected() { return await this.whenNotConnected(); }
-    async whenNotDisconnected() { return await this.whenConnected(); }
-    async whenDestroyed() { await this.#destructionResolver.whenTrue(); }
-    async whenNotDestroyed() { await this.#destructionResolver.whenFalse(); }
-    async whenCreated() { return this.whenNotDestroyed(); }
-    async whenNotCreated() { return this.whenDestroyed(); }
-
-    async connect() {
-        if (this.destroyed) return false;
-        if (this.connected) return false;
-        await window.sio.clientConn(this.id);
-        return true;
-    }
-    async disconnect() {
-        if (this.destroyed) return false;
-        if (this.disconnected) return false;
-        await window.sio.clientDisconn(this.id);
-        return true;
-    }
-    async emit(name, payload) {
-        if (this.destroyed) return null;
-        if (this.disconnected) return null;
-        return await window.sio.clientEmit(this.id, name, payload);
-    }
-    async stream(pth, name, payload) {
-        if (this.destroyed) return null;
-        if (this.disconnected) return null;
-        return await window.sio.clientStream(this.id, pth, name, payload);
-    }
-
-    async destroy() {
-        if (this.destroyed) return false;
-        await window.sio.clientDestroy(this.id);
-        this.#destructionResolver.state = true;
-        return true;
-    }
-}
-
 export class Odometry extends util.Target {
     #elem;
     #canvas;
@@ -5614,9 +5490,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.pos.addHandler("change", (c, f, t) => this.change("offset."+c, f, t));
         this.#q = new util.V4();
         this.q.addHandler("change", (c, f, t) => this.change("q."+c, f, t));
-        this.addHandler("change", (c, f, t) => {
-            this.odometry.requestRedraw();
-        });
+        this.addHandler("change", (c, f, t) => this.odometry.requestRedraw());
 
         this.#name = "";
         this.#color = "";

@@ -341,6 +341,7 @@ const MAIN = async () => {
         get location() { return this.#location; }
 
         get connected() { return this.#socket.connected; }
+        get disconnected() { return !this.connected; }
         get socketId() { return this.#socket.id; }
 
         connect() { this.#socket.connect(); }
@@ -942,8 +943,26 @@ const MAIN = async () => {
                     this.manager.addHandler("change-addWindow", () => checkForShow());
                     this.manager.addHandler("change-remWindow", () => checkForShow());
                 },
-                PANEL: () => {
-                    this.addHandler("client-stream-logs", async () => ["logs"]);
+                PANEL: async () => {
+                    const client = this.clientManager.addClient(new Client((await this.get("socket-host"))+"/api/panel"));
+                    client.id = "logger";
+                    client.addHandler("stream-logs", async (fname, payload, meta, ssStream) => {
+                        await this.affirm();
+                        if (!(await this.dirHas(["logs"])))
+                            await this.manager.dirMake(["logs"]);
+                        const pth = WindowManager.makePath(this.dataPath, "logs", fname);
+                        const stream = fs.createWriteStream(pth);
+                        try {
+                            await new Promise((res, rej) => {
+                                stream.on("open", () => {
+                                    ssStream.pipe(stream);
+                                    ssStream.on("end", () => res());
+                                    ssStream.on("error", e => rej(e));
+                                });
+                            });
+                        } catch (e) { return { success: false, reason: util.stringifyError(e) }; }
+                        return { success: true };
+                    });
                 },
                 PLANNER: () => {
                 }
@@ -1022,10 +1041,19 @@ const MAIN = async () => {
             }
             this.log(`STOP - perm: ${this.perm}`);
             if (!this.perm) return false;
+            this.log("STOP children");
+            let perm = true;
+            for (let window of this.windowManager.windows)
+                perm &&= !!(await window.stop());
+            this.log(`STOP children - perm: ${perm}`);
+            if (!perm) return this.perm = false;
             if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
             this.#started = false;
             await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
-            await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
+            await Promise.all(this.clientManager.clients.map(async client => {
+                await client.disconnect();
+                this.clientManager.remClient(client);
+            }));
             await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
             if (this.hasWindow()) this.window.close();
             this.#window = null;
@@ -1151,77 +1179,6 @@ const MAIN = async () => {
                 return true;
             }
             return false;
-        }
-
-        async clientMake(id, location) {
-            let client = await this.manager.clientMake(this.name+":"+id, location);
-            client = this.clientManager.addClient(client);
-            client.addTag(this);
-            client.addHandler("msg", async (name, payload, meta) => {
-                name = String(name);
-                meta = util.ensure(meta, "obj");
-                if (!this.hasWindow()) return { success: false, reason: "No window" };
-                this.post("client-msg", id, name, payload, meta);
-                this.post("client-msg-"+name, id, payload, meta);
-                this.window.webContents.send("client-msg", id, name, payload, meta);
-                return { success: true };
-            });
-            client.addHandler("stream", async (name, fname, payload, meta, ssStream) => {
-                name = String(name);
-                fname = String(fname);
-                meta = util.ensure(meta, "obj");
-                await this.affirm();
-                let results = [];
-                results.push(...(await this.postResult("client-stream", id, name, fname, payload, meta)));
-                results.push(...(await this.postResult("client-stream-"+name, id, fname, payload, meta)));
-                let pth = (results.length > 0) ? results[0] : [];
-                if (!(await this.dirHas(pth)))
-                    await this.dirMake(pth);
-                pth = WindowManager.makePath(this.dataPath, pth, fname);
-                const stream = fs.createWriteStream(pth);
-                try {
-                    await new Promise((res, rej) => {
-                        stream.on("open", async () => {
-                            this.post("client-stream-start", id, name, pth, fname, payload, meta);
-                            this.post("clietn-stream-start-"+name, id, pth, fname, payload, meta);
-                            this.window.webContents.send("client-stream-start", id, name, pth, fname, payload, meta);
-                            ssStream.pipe(stream);
-                            ssStream.on("end", async () => {
-                                this.post("client-stream-stop", id, name, pth, fname, payload, meta);
-                                this.post("client-stream-stop-"+name, id, pth, fname, payload, meta);
-                                this.window.webContents.send("client-stream-stop", id, name, pth, fname, payload, meta);
-                                res();
-                            });
-                            ssStream.on("error", e => rej(e));
-                        });
-                    });
-                } catch (e) { return { success: false, reason: util.stringifyError(e) }; }
-                return { success: true };
-            });
-            return client;
-        }
-        async clientDestroy(id) {
-            return await this.manager.clientDestroy((id instanceof Client) ? id : (this.name+":"+id));
-        }
-        async clientHas(id) {
-            if (!(await this.manager.clientHas((id instanceof Client) ? id : (this.name+":"+id)))) return false;
-            return (id instanceof Client) ? this.clientManager.clients.includes(id) : (this.clientManager.getClientById(this.name+":"+id) instanceof Client);
-        }
-        async clientGet(id) {
-            if (!(await this.clientHas(id))) return null;
-            return (id instanceof Client) ? id : this.manager.clientGet(this.name+":"+id);
-        }
-        async clientConn(id) {
-            return await this.manager.clientConn((id instanceof Client) ? id : (this.name+":"+id));
-        }
-        async clientDisconn(id) {
-            return await this.manager.clientDisconn((id instanceof Client) ? id : (this.name+":"+id));
-        }
-        async clientEmit(id, name, payload) {
-            return await this.manager.clientEmit((id instanceof Client) ? id : (this.name+":"+id), name, payload);
-        }
-        async clientStream(id, pth, name, payload) {
-            return await this.manager.clientStream((id instanceof Client) ? id : (this.name+":"+id), pth, name, payload);
         }
 
         async tbaClientMake(id) {
@@ -1386,7 +1343,13 @@ const MAIN = async () => {
             else {
                 let namefs = {
                     PANEL: {
-                        "logs": async () => {
+                        "location": async () => {
+                            doLog = false;
+                            const client = this.clientManager.getClientById("logger");
+                            if (!client) return null;
+                            return client.location;
+                        },
+                        "logs-client": async () => {
                             doLog = false;
                             let hasLogsDir = await this.dirHas("logs");
                             if (!hasLogsDir) return [];
@@ -1397,6 +1360,16 @@ const MAIN = async () => {
                                     path: path.join(this.dataPath, "logs", dirent.name),
                                 };
                             });
+                        },
+                        "logs-server": async () => {
+                            doLog = false;
+                            const client = this.clientManager.getClientById("logger");
+                            if (!client) return [];
+                            if (client.disconnected) {
+                                client.connect();
+                                return [];
+                            }
+                            return util.ensure(await client.emit("logs-get", null), "arr").map(name => String(name));
                         },
                     },
                 };
@@ -1790,28 +1763,79 @@ const MAIN = async () => {
                     "wpilog-write": async (pth, content) => {
                         return await WindowManager.fileWriteRaw(pth, content);
                     },
-                    "log-delete": async name => {
-                        let logs = await this.get("logs");
-                        let has = false;
-                        for (let log of logs) {
-                            if (log.name != name) continue;
-                            has = true;
-                        }
-                        if (!has) return false;
-                        if (await this.fileHas(["logs", name]))
-                            await this.fileDelete(["logs", name]);
-                        return true;
-                    },
                     "log-cache": async pth => {
                         pth = String(pth);
-                        if (!(await WindowManager.fileHas(pth))) return false;
+                        if (!(await WindowManager.fileHas(pth))) return null;
                         await this.manager.affirm();
                         if (!(await this.dirHas(["logs"])))
                             await this.manager.dirMake(["logs"]);
                         const name = path.basename(pth);
                         let pthDest = path.join(this.dataPath, "logs", name);
-                        if (path.resolve(pth) == path.resolve(pthDest)) return true;
+                        if (path.resolve(pth) == path.resolve(pthDest)) return name;
                         await fs.promises.cp(pth, pthDest, { force: true, recursive: true });
+                        return name;
+                    },
+                    "log-upload": async name => {
+                        name = String(name);
+                        await this.manager.affirm();
+                        let logs = await this.get("logs-client");
+                        let found = null;
+                        for (let log of logs) {
+                            if (log.name != name) continue;
+                            found = log;
+                            break;
+                        }
+                        if (!found) return false;
+                        const client = this.clientManager.getClientById("logger");
+                        if (!client) return false;
+                        if (client.disconnected) {
+                            client.connect();
+                            return false;
+                        }
+                        await client.stream(found.path, "logs", null);
+                        return true;
+                    },
+                    "log-download": async name => {
+                        name = String(name);
+                        await this.manager.affirm();
+                        let logs = await this.get("logs-server");
+                        if (!logs.includes(name)) return false;
+                        const client = this.clientManager.getClientById("logger");
+                        if (!client) return false;
+                        if (client.disconnected) {
+                            client.connect();
+                            return false;
+                        }
+                        await client.emit("log-download", name);
+                        return true;
+                    },
+                    "log-client-delete": async name => {
+                        name = String(name);
+                        await this.manager.affirm();
+                        let logs = await this.get("logs-client");
+                        let found = null;
+                        for (let log of logs) {
+                            if (log.name != name) continue;
+                            found = log;
+                            break;
+                        }
+                        if (!found) return false;
+                        if (await this.fileHas(["logs", found.name]))
+                            await this.fileDelete(["logs", found.name]);
+                        return true;
+                    },
+                    "log-server-delete": async name => {
+                        name = String(name);
+                        await this.manager.affirm();
+                        let logs = await this.get("logs-server");
+                        if (!logs.includes(name)) return false;
+                        const client = this.clientManager.getClientById("logger");
+                        if (!client) return false;
+                        if (client.disconnected) {
+                            client.connect();
+                            return false;
+                        }
+                        await client.emit("log-delete", name);
                         return true;
                     },
                 },
@@ -2854,35 +2878,6 @@ const MAIN = async () => {
                 return win.modalModify(id, params);
             }));
 
-            ipc.handle("client-make", decorate(async (e, id, location) => {
-                let win = identify(e);
-                return await win.clientMake(id, location);
-            }));
-            ipc.handle("client-destroy", decorate(async (e, id) => {
-                let win = identify(e);
-                return await win.clientDestroy(id);
-            }));
-            ipc.handle("client-has", decorate(async (e, id) => {
-                let win = identify(e);
-                return await win.clientHas(id);
-            }));
-            ipc.handle("client-conn", decorate(async (e, id) => {
-                let win = identify(e);
-                return await win.clientConn(id);
-            }));
-            ipc.handle("client-disconn", decorate(async (e, id) => {
-                let win = identify(e);
-                return await win.clientDisconn(id);
-            }));
-            ipc.handle("client-emit", decorate(async (e, id, name, payload) => {
-                let win = identify(e);
-                return await win.clientEmit(id, name, payload);
-            }));
-            ipc.handle("client-stream", decorate(async (e, id, pth, name, payload) => {
-                let win = identify(e);
-                return await win.clientStream(id, pth, name, payload);
-            }));
-
             ipc.handle("tba-client-make", decorate(async (e, id) => {
                 let win = identify(e);
                 return await win.tbaClientMake(id);
@@ -2957,11 +2952,15 @@ const MAIN = async () => {
             return true;
         }
         async stop() {
+            await Promise.all(this.clientManager.clients.map(async client => {
+                await client.disconnect();
+                this.clientManager.remClient(client);
+            }));
+
             if (this.hasWindow()) return this.window.manager.stop();
 
             this.log("STOP");
             await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
-            await Promise.all(this.clientManager.clients.map(async client => await this.clientDestroy(client)));
             await Promise.all(this.tbaClientManager.clients.map(async client => await this.tbaClientDestroy(client)));
             try {
                 await this.postResult("stop");
@@ -2997,6 +2996,8 @@ const MAIN = async () => {
             await this.basicAffirm(dataPath);
             let hasLogDir = await this.dirHas([dataPath, "logs"]);
             if (!hasLogDir) await this.dirMake([dataPath, "logs"]);
+            let hasDumpDir = await this.dirHas([dataPath, "dump"]);
+            if (!hasDumpDir) await this.dirMake([dataPath, "dump"]);
             let hasTemplatesDir = await this.dirHas([dataPath, "templates"]);
             if (!hasTemplatesDir) await this.dirMake([dataPath, "templates"]);
             let hasTemplateImagesDir = await this.dirHas([dataPath, "templates", "images"]);
@@ -3056,6 +3057,14 @@ const MAIN = async () => {
                     children: [
                         //~/logs/*.log
                         { type: "file", match: (_, name) => name.endsWith(".log") },
+                    ],
+                },
+                //~/dump
+                {
+                    type: "dir", name: "temp",
+                    children: [
+                        //~/dump/*
+                        { type: "file" },
                     ],
                 },
                 //~/templates
@@ -3193,8 +3202,9 @@ const MAIN = async () => {
                         if (("name" in pattern) && (dirent.name != pattern.name)) return;
                         if (("match" in pattern) && !pattern.match(dirent.type, dirent.name)) return;
                         any = true;
-                        if (("children" in pattern) && (dirent.type == "dir"))
-                            await cleanup([...pth, dirent.name], pattern.children);
+                        if (dirent.type != "dir") return;
+                        if (!("children" in pattern)) return;
+                        await cleanup([...pth, dirent.name], pattern.children);
                     }));
                     if (any) return;
                     l(...pth, dirent.name);
@@ -3278,59 +3288,6 @@ const MAIN = async () => {
                 return true;
             }
             return false;
-        }
-
-        async clientMake(id, location) {
-            if (this.hasWindow()) return await this.window.clientMake(id, location);
-            if (await this.clientHas(id)) return null;
-            this.log(`CLIENT:make - ${id} = ${location}`);
-            let client = this.clientManager.addClient(new Client(location));
-            client.id = id;
-            return client;
-        }
-        async clientDestroy(id) {
-            if (this.hasWindow()) return await this.window.clientDestroy(id);
-            if (!(await this.clientHas(id))) return null;
-            await this.clientDisconn(id);
-            this.log(`CLIENT:destroy - ${id}`);
-            let client = this.clientManager.remClient((id instanceof Client) ? id : this.clientManager.getClientById(id));
-            return client;
-        }
-        async clientHas(id) { return this.hasWindow() ? !!(await this.window.clientHas(id)) : (id instanceof Client) ? this.clientManager.clients.includes(id) : (!!this.clientManager.getClientById(id)); }
-        async clientGet(id) {
-            if (this.hasWindow()) return await this.window.clientGet(id);
-            if (!(await this.clientHas(id))) return null;
-            return (id instanceof Client) ? id : this.clientManager.getClientById(id);
-        }
-        async clientConn(id) {
-            if (this.hasWindow()) return await this.window.clientConn(id);
-            if (!(await this.clientHas(id))) return null;
-            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            this.log(`CLIENT:conn - ${client.id}`);
-            client.connect();
-            return client;
-        }
-        async clientDisconn(id) {
-            if (this.hasWindow()) return await this.window.clientDisconn(id);
-            if (!(await this.clientHas(id))) return null;
-            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            this.log(`CLIENT:disconn - ${client.id}`);
-            client.disconnect();
-            return client;
-        }
-        async clientEmit(id, name, payload) {
-            if (this.hasWindow()) return await this.window.clientEmit(id, name, payload);
-            if (!(await this.clientHas(id))) return null;
-            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            this.log(`CLIENT:emit - ${client.id} > ${name}`);
-            return await client.emit(name, payload);
-        }
-        async clientStream(id, pth, name, payload) {
-            if (this.hasWindow()) return await this.window.clientStream(id, pth, name, payload);
-            if (!(await this.clientHas(id))) return null;
-            let client = (id instanceof Client) ? id : this.clientManager.getClientById(id);
-            this.log(`CLIENT:stream - ${client.id} > ${name}`);
-            return await client.stream(pth, name, payload);
         }
 
         async tbaClientMake(id) {
