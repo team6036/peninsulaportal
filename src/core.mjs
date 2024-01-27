@@ -6080,7 +6080,6 @@ Explorer.Node = class ExplorerNode extends util.Target {
             clearTimeout(enterId);
             clearTimeout(leaveId);
             leaveId = setTimeout(() => {
-                console.log("leave-trigger");
                 this.eDisplay.classList.remove("active");
             }, 100);
         });
