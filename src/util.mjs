@@ -781,6 +781,8 @@ export class Color extends Target {
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Color) a = a.rgba;
+            else if (a instanceof V3) a = [...a.xyz, 1];
+            else if (a instanceof V4) a = a.wxyz;
             else if (is(a, "arr")) a = new Color(...a).rgba;
             else if (is(a, "obj")) a = [a.r, a.g, a.b, a.a];
             else if (is(a, "num")) {
@@ -874,6 +876,16 @@ export class Color extends Target {
     set rgb(v) { [this.r, this.g, this.b] = new Color(v).rgb; }
     get rgba() { return [this.r, this.g, this.b, this.a]; }
     set rgba(v) { [this.r, this.g, this.b, this.a] = new Color(v).rgba; }
+
+    diff(...v) {
+        v = new Color(...v);
+        return (
+            Math.abs(this.r-v.r) +
+            Math.abs(this.g-v.g) +
+            Math.abs(this.b-v.b) +
+            Math.abs(this.a-v.a)
+        ) / 4;
+    }
 
     get hsva() {
         if (this.#hsv == null) {
@@ -1069,6 +1081,7 @@ export class V extends Target {
             a = a[0];
             if (a instanceof V) a = a.xy;
             else if (a instanceof V3) a = [a.x, a.y];
+            else if (a instanceof V4) a = [a.x, a.y];
             else if (is(a, "arr")) a = new V(...a).xy;
             else if (is(a, "obj")) a = [a.x, a.y];
             else if (is(a, "num")) a = [a, a];
@@ -1214,6 +1227,7 @@ export class V3 extends Target {
             a = a[0];
             if (a instanceof V3) a = [a.x, a.y, a.z];
             else if (a instanceof V) a = [a.x, a.y, 0];
+            else if (a instanceof V4) a = [a.x, a.y, a.z];
             else if (is(a, "arr")) a = new V3(...a).xyz;
             else if (is(a, "obj")) a = [a.x, a.y, a.z];
             else if (is(a, "num")) a = [a, a, a];
@@ -1305,7 +1319,7 @@ export class V3 extends Target {
 
     distSquared(...v) {
         v = new V3(...v);
-        return (this.x-v.x)**2 + (this.y-v.y)**2 + (this.z-v.z);
+        return (this.x-v.x)**2 + (this.y-v.y)**2 + (this.z-v.z)**2;
     }
     dist(...v) { return Math.sqrt(this.distSquared(...v)); }
     towards(...v) {
@@ -1331,6 +1345,126 @@ export class V3 extends Target {
     }
 
     toString() { return "<"+this.xyz.join(", ")+">" }
+
+    toJSON() {
+        return Reviver.revivable(this.constructor, {
+            VERSION: VERSION,
+            x: this.x,
+            y: this.y,
+            z: this.z,
+        });
+    }
+}
+
+export class V4 extends Target {
+    #w; #x; #y; #z;
+
+    constructor(...a) {
+        super();
+
+        if (a.length <= 0 || a.length > 4) a = [0];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof V4) a = a.wxyz;
+            else if (a instanceof V) a = [0, a.x, a.y, 0];
+            else if (a instanceof V3) a = [0, a.x, a.y, a.z];
+            else if (is(a, "arr")) a = new V4(...a).wxyz;
+            else if (is(a, "obj")) a = [a.w, a.x, a.y, a.z];
+            else if (is(a, "num")) a = [a, a, a, a];
+            else a = [0, 0, 0, 0];
+        }
+        if (a.length == 2) a = [...a, 0];
+        if (a.length == 3) a = [0, ...a];
+        [this.w, this.x, this.y, this.z] = a;
+    }
+
+    get w() { return this.#w; }
+    set w(v) {
+        v = ensure(v, "num");
+        if (this.w == v) return;
+        this.change("w", this.w, this.#w=v);
+    }
+    get x() { return this.#x; }
+    set x(v) {
+        v = ensure(v, "num");
+        if (this.x == v) return;
+        this.change("x", this.x, this.#x=v);
+    }
+    get y() { return this.#y; }
+    set y(v) {
+        v = ensure(v, "num");
+        if (this.y == v) return;
+        this.change("y", this.y, this.#y=v);
+    }
+    get z() { return this.#z; }
+    set z(v) {
+        v = ensure(v, "num");
+        if (this.z == v) return;
+        this.change("z", this.z, this.#z=v);
+    }
+    get wxyz() { return [this.w, this.x, this.y, this.z]; }
+    set wxyz(v) { [this.w, this.x, this.y, this.z] = new V4(v).wxyz; }
+
+    set(...a) { this.wxyz = a; return this; }
+
+    add(...a) {
+        a = new V4(...a);
+        return new V4(this.w+a.w, this.x+a.x, this.y+a.y, this.z+a.z);
+    }
+    sub(...a) {
+        a = new V4(...a);
+        return new V4(this.w-a.w, this.x-a.x, this.y-a.y, this.z-a.z);
+    }
+    mul(...a) {
+        a = new V4(...a);
+        return new V4(this.w*a.w, this.x*a.x, this.y*a.y, this.z*a.z);
+    }
+    div(...a) {
+        a = new V4(...a);
+        return new V4(this.w/a.w, this.x/a.x, this.y/a.y, this.z/a.z);
+    }
+    pow(...a) {
+        a = new V4(...a);
+        return new V4(this.w**a.w, this.x**a.x, this.y**a.y, this.z**a.z);
+    }
+
+    map(f) {
+        return new V4(f(this.w), f(this.x), f(this.y), f(this.z));
+    }
+    abs() { return this.map(v => Math.abs(v)); }
+    floor() { return this.map(v => Math.floor(v)); }
+    ceil() { return this.map(v => Math.ceil(v)); }
+    round() { return this.map(v => Math.round(v)); }
+
+    normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V4(this); }
+
+    iadd(...a) { return this.set(this.add(...a)); }
+    isub(...a) { return this.set(this.sub(...a)); }
+    imul(...a) { return this.set(this.mul(...a)); }
+    idiv(...a) { return this.set(this.div(...a)); }
+    ipow(...a) { return this.set(this.pow(...a)); }
+
+    imap(f) { return this.set(this.map(f)); }
+    iabs() { return this.set(this.abs()); }
+    ifloor() { return this.set(this.floor()); }
+    iceil() { return this.set(this.ceil()); }
+    iround() { return this.set(this.round()); }
+
+    irotateOrigin(d) { return this.set(this.rotateOrigin(d)); }
+    irotate(d, o) { return this.set(this.rotate(d, o)); }
+    inormalize() { return this.set(this.normalize()); }
+
+    distSquared(...v) {
+        v = new V4(...v);
+        return (this.w-v.w)**2 + (this.x-v.x)**2 + (this.y-v.y)**2 + (this.z-v.z)**2;
+    }
+    dist(...v) { return Math.sqrt(this.distSquared(...v)); }
+    equals(...v) {
+        v = new V4(...v);
+        return (this.w == v.w) && (this.x == v.x) && (this.y == v.y) && (this.z == v.z);
+    }
+
+    toString() { return "<"+this.wxyz.join(", ")+">" }
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
@@ -2092,7 +2226,7 @@ export class Reviver extends Target {
 }
 
 export const REVIVER = new Reviver();
-REVIVER.addRuleAndAllSub(Color, Range, V, V3, Shape);
+REVIVER.addRuleAndAllSub(Color, Range, V, V3, V4, Shape);
 
 export class Playback extends Target {
     #ts;
@@ -2193,6 +2327,44 @@ export class Playback extends Target {
     hasSignal() { return this.signal != null; }
 
     update(delta) { this.post("update", delta); }
+}
+
+export class Timer extends Target {
+    #tSum;
+    #t;
+    #paused;
+
+    constructor() {
+        super();
+
+        this.#tSum = 0;
+        this.#t = 0;
+        this.#paused = true;
+    }
+
+    get paused() { return this.#paused; }
+    set paused(v) {
+        v = !!v;
+        if (this.paused == v) return;
+        if (v) this.#tSum += getTime() - this.#t;
+        else this.#t = getTime();
+        this.change("paused", this.paused, this.#paused=v);
+    }
+    get playing() { return !this.paused; }
+    set playing(v) { this.paused = !v; }
+    pause() { return this.paused = true; }
+    play() { return this.playing = true; }
+
+    clear() {
+        let time = this.time;
+        this.#tSum = 0;
+        this.#t = getTime();
+        return time;
+    }
+    get time() { return this.#tSum + this.playing*(getTime()-this.#t); }
+
+    pauseAndClear() { this.pause(); return this.clear(); }
+    playAndClear() { this.play(); return this.clear(); }
 }
 
 export class FSOperator extends Target {

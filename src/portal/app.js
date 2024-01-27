@@ -452,7 +452,11 @@ export default class App extends core.App {
                         e.stopPropagation();
                         this.post("cmd-spawn", "PRESETS");
                     });
-                setInterval(async () => {
+                const timer = new util.Timer();
+                timer.play();
+                this.addHandler("update", async () => {
+                    if (timer.time < 250) return;
+                    timer.clear();
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)
                         dbHostAnchor.href = await window.api.get("val-db-host");
@@ -462,7 +466,7 @@ export default class App extends core.App {
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
                     if (repoAnchor instanceof HTMLAnchorElement)
                         repoAnchor.href = await window.api.get("val-repo");
-                }, 250);
+                });
             }
             this.#eLoads = document.querySelector("#PAGE > .loads");
             

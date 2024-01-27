@@ -15,38 +15,6 @@ import WPILOGSource from "../sources/wpilog/source.js";
 import { WorkerClient } from "../worker.js";
 
 
-const LOADER = new GLTFLoader();
-
-
-THREE.Quaternion.fromRotationSequence = (...seq) => {
-    if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq[0]);
-    let q = new THREE.Quaternion();
-    seq.forEach(rot => {
-        if (!(util.is(rot, "obj"))) return;
-        if (!("axis" in rot) || !("angle" in rot)) return;
-        let axis = rot.axis, angle = rot.angle;
-        if (!util.is(axis, "str") || !util.is(angle, "num")) return;
-        axis = axis.toLowerCase();
-        if (!["x","y","z"].includes(axis)) return;
-        let vec = new THREE.Vector3(+(axis=="x"), +(axis=="y"), +(axis=="z"));
-        q.multiply(new THREE.Quaternion().setFromAxisAngle(vec, (Math.PI/180)*angle));
-    });
-    return q;
-};
-
-const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
-    {
-        axis: "x",
-        angle: 90,
-    },
-    {
-        axis: "y",
-        angle: 180,
-    },
-);
-const THREE2WPILIB = WPILIB2THREE.clone().invert();
-
-
 export const VERSION = 3;
 
 class RLine extends core.Odometry2d.Render {
@@ -361,20 +329,30 @@ class LoggerContext extends util.Target {
 
         this.#loading = {};
 
-        setInterval(async () => {
-            if (this.#hasClient()) {
-                if (this.#client.disconnected)
-                    this.#client.connect();
-            } else {
-                this.#host = await window.api.get("socket-host");
-                this.#host = (this.#host == null) ? null : String(this.#host);
-                if (this.#hasHost()) this.#client = new core.Client(this.#host+"/api/panel");
+        const timer1 = new util.Timer();
+        const timer2 = new util.Timer();
+        timer1.play();
+        timer2.play();
+        this.addHandler("update", delta => {
+            if (timer1.time >= 1000) {
+                timer1.clear();
+                (async () => {
+                    if (this.#hasClient()) {
+                        if (this.#client.disconnected)
+                            this.#client.connect();
+                    } else {
+                        this.#host = await window.api.get("socket-host");
+                        this.#host = (this.#host == null) ? null : String(this.#host);
+                        if (this.#hasHost()) this.#client = new core.Client(this.#host+"/api/panel");
+                    }
+                    await this.pollServer();
+                })();
             }
-            await this.pollServer();
-        }, 1000);
-        setInterval(async () => {
-            await this.pollClient();
-        }, 100);
+            if (timer2.time >= 100) {
+                timer2.clear();
+                this.pollClient();
+            }
+        });
     }
 
     #hasHost() { return this.#host != null; }
@@ -514,7 +492,10 @@ class LoggerContext extends util.Target {
             this.#clientLogs[name] = path;
         });
     }
+
+    update(delta) { this.post("update", delta); }
 }
+const LOGGERCONTEXT = new LoggerContext();
 
 class Widget extends util.Target {
     #elem;
@@ -2634,7 +2615,6 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
         });
     }
 };
-const LOGGERCONTEXT = new LoggerContext();
 Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #logs;
 
@@ -6083,6 +6063,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     let render = renders[i];
                     render.name = this.pose.path;
                     render.color = this.pose.color;
+                    render.isGhost = this.pose.isGhost;
+                    render.isSolid = this.pose.isSolid;
                     render.robot = this.pose.type;
                     render.pos =
                         (type == 7) ?
@@ -6217,10 +6199,10 @@ Project.Config = class ProjectConfig extends Project.Config {
         if (a.length <= 0 || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Config) a = [a.#sources, a.sourceType];
+            if (a instanceof Project.Config) a = [a.sources, a.sourceType];
             else if (util.is(a, "arr")) {
                 a = new Project.Config(...a);
-                a = [a.#sources, a.sourceType];
+                a = [a.sources, a.sourceType];
             }
             else if (util.is(a, "obj")) a = [a.sources, a.sourceType];
             else a = [{}, "nt"];
@@ -6229,46 +6211,52 @@ Project.Config = class ProjectConfig extends Project.Config {
         [this.sources, this.sourceType] = a;
     }
 
-    get sources() { return Object.keys(this.#sources); }
+    get sourceTypes() { return Object.keys(this.#sources); }
+    get sourceValues() { return Object.values(this.#sources); }
+    get sources() {
+        let sources = {};
+        this.sourceTypes.forEach(type => (sources[type] = this.getSource(type)));
+        return sources;
+    }
     set sources(v) {
         v = util.ensure(v, "obj");
         this.clearSources();
-        for (let k in v) this.addSource(k, v[k]);
+        for (let type in v) this.setSource(type, v[type]);
     }
     clearSources() {
         let sources = this.sources;
-        sources.forEach(type => this.remSource(type));
+        for (let type in sources) this.delSource(type);
         return sources;
     }
     hasSource(type) {
-        type = String(type);
-        return type in this.#sources;
+        return String(type) in this.#sources;
     }
     getSource(type) {
-        type = String(type);
         if (!this.hasSource(type)) return null;
-        return this.#sources[type];
+        return this.#sources[String(type)];
     }
-    addSource(type, v) {
+    setSource(type, v) {
         type = String(type);
         v = (v == null) ? null : String(v);
-        if (this.getSource(type) == v) return v;
-        this.#sources[type] = v;
-        this.change("addSource("+type+")", null, v);
+        if (this.hasSource(type))
+            if (this.getSource(type) == v)
+                return this.getSource(type);
+        this.change("setSource", this.getSource(type), this.#sources[type]=v);
         return v;
     }
-    remSource(type) {
+    delSource(type) {
         type = String(type);
+        if (!this.hasSource(type)) return null;
         let v = this.getSource(type);
         delete this.#sources[type];
-        this.change("remSource("+type+")", v, null);
+        this.change("delSource", v, null);
         return v;
     }
     get source() { return this.getSource(this.sourceType); }
     set source(v) {
         v = (v == null) ? null : String(v);
         if (this.source == v) return;
-        this.addSource(this.sourceType, v);
+        this.setSource(this.sourceType, v);
     }
     get sourceType() { return this.#sourceType; }
     set sourceType(v) {
@@ -6796,6 +6784,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             }
             if (this.source instanceof WPILOGSource) {
                 if (this.source.importing) return;
+                if (this.project.config.source == null) return;
                 (async () => {
                     this.source.importing = true;
                     this.app.progress = 0;
@@ -7089,11 +7078,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         };
         this.addHandler("change-project", update);
         this.addHandler("change-project.meta.name", update);
-        this.addHandler("change-project.config.source", update);
+        this.addHandler("change-project.config.setSource", update);
+        this.addHandler("change-project.config.delSource", update);
         this.addHandler("change-project.config.sourceType", update);
 
         let timer = 0;
         this.addHandler("update", async delta => {
+            LOGGERCONTEXT.update(delta);
+
             if (this.app.page == this.name)
                 this.app.title = this.hasProject() ? (this.project.meta.name+" — "+this.sourceInfo) : "?";
             
@@ -7256,6 +7248,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             } else {
                 this.project = new Project();
                 this.project.meta.created = this.project.meta.modified = util.getTime();
+                this.project.config.setSource("nt", "http://localhost");
             }
         });
         this.addHandler("post-enter", async data => {
