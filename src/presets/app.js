@@ -106,7 +106,7 @@ export default class App extends core.App {
                 document.querySelector("#PAGE > .content").appendChild(await this.createMarkdown(text, signal));
                 const eColorsheet = document.getElementById("colorsheet");
                 if (eColorsheet instanceof HTMLDivElement) {
-                    let headers = ["v", "a", ...this.colors.map(c => "c"+c)];
+                    let headers = ["v", "a", ...this.colorNames.map(c => "c"+c)];
                     eColorsheet.style.gridTemplateRows = "repeat("+headers.length+", 20px)";
                     eColorsheet.innerHTML = "";
                     headers.forEach((header, i) => {

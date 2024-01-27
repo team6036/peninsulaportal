@@ -310,8 +310,7 @@ class ToolButton extends util.Target {
 }
 
 class LoggerContext extends util.Target {
-    #host;
-    #client;
+    #location;
 
     #serverLogs;
     #clientLogs;
@@ -321,8 +320,7 @@ class LoggerContext extends util.Target {
     constructor() {
         super();
 
-        this.#host = null;
-        this.#client = null;
+        this.#location = null;
 
         this.#serverLogs = new Set();
         this.#clientLogs = {};
@@ -336,34 +334,18 @@ class LoggerContext extends util.Target {
         this.addHandler("update", delta => {
             if (timer1.time >= 1000) {
                 timer1.clear();
-                (async () => {
-                    if (this.#hasClient()) {
-                        if (this.#client.disconnected)
-                            this.#client.connect();
-                    } else {
-                        this.#host = await window.api.get("socket-host");
-                        this.#host = (this.#host == null) ? null : String(this.#host);
-                        if (this.#hasHost()) this.#client = new core.Client(this.#host+"/api/panel");
-                    }
-                    await this.pollServer();
-                })();
+                this.pollServer();
             }
             if (timer2.time >= 100) {
                 timer2.clear();
                 this.pollClient();
+                (async () => (this.#location = await window.api.get("location")))();
             }
         });
     }
 
-    #hasHost() { return this.#host != null; }
-    #hasClient() { return !!this.#client; }
-
-    get initializing() { return !this.#hasClient(); }
-    get initialized() { return !this.initializing; }
-    get connected() { return this.#hasClient() && this.#client.connected; }
-    get disconnected() { return !this.connected; }
-    get location() { return this.#hasClient() ? this.#client.location : null; }
-    get socketId() { return this.#hasClient() ? this.#client.socketId : null; }
+    get location() { return this.#location; }
+    hasLocation() { return this.location != null; }
 
     get serverLogs() { return [...this.#serverLogs]; }
     hasServerLog(name) {
@@ -412,19 +394,36 @@ class LoggerContext extends util.Target {
     }
     isLoading(name) { return this.loading.includes(name); }
 
-    async logsUpload(paths) {
+    async logsCache(paths) {
         paths = util.ensure(paths, "arr").map(path => String(path));
-        if (this.disconnected) return;
-        await Promise.all(paths.map(async path => {
-            this.incLoading("§uploading");
+        let names = await Promise.all(paths.map(async path => {
+            this.incLoading("§caching");
+            let name = null;
             try {
-                await window.api.send("log-cache", path);
-                await this.#client.stream(path, "logs", {});
+                name = await window.api.send("log-cache", path);
             } catch (e) {
-                this.decLoading("§uploading");
+                this.decLoading("§caching");
                 throw e;
             }
-            this.decLoading("§uploading");
+            this.decLoading("§caching");
+            return name;
+        }));
+        await this.pollClient();
+        return names.filter(name => name != null);
+    }
+    async logsUpload(names) {
+        names = util.ensure(names, "arr").map(name => String(name));
+        if (this.disconnected) return;
+        await Promise.all(names.map(async name => {
+            if (!this.hasClientLog(name)) return;
+            this.incLoading(name);
+            try {
+                await window.api.send("log-upload", name);
+            } catch (e) {
+                this.decLoading(name);
+                throw e;
+            }
+            this.decLoading(name);
         }));
         await this.pollServer();
     }
@@ -434,7 +433,7 @@ class LoggerContext extends util.Target {
         await Promise.all(names.map(async name => {
             this.incLoading(name);
             try {
-                await this.#client.emit("log-download", name);
+                await window.api.send("log-download", name);
             } catch (e) {
                 this.decLoading(name);
                 throw e;
@@ -448,7 +447,7 @@ class LoggerContext extends util.Target {
         await Promise.all(names.map(async name => {
             this.incLoading(name);
             try {
-                await window.api.send("log-delete", name);
+                await window.api.send("log-client-delete", name);
             } catch (e) {
                 this.decLoading(name);
                 throw e;
@@ -463,7 +462,7 @@ class LoggerContext extends util.Target {
         await Promise.all(names.map(async name => {
             this.incLoading(name);
             try {
-                await this.#client.emit("log-delete", name);
+                await window.api.send("log-server-delete", name);
             } catch (e) {
                 this.decLoading(name);
                 throw e;
@@ -474,17 +473,12 @@ class LoggerContext extends util.Target {
     }
 
     async pollServer() {
-        let logs = [];
-        if (this.connected) {
-            try {
-                logs = util.ensure(await this.#client.emit("logs-get"), "arr");
-            } catch (e) { logs = []; }
-        }
+        let logs = util.ensure(await window.api.get("logs-server"), "arr");
         this.#serverLogs.clear();
         logs.map(log => this.#serverLogs.add(String(log)));
     }
     async pollClient() {
-        let logs = util.ensure(await window.api.get("logs"), "arr");
+        let logs = util.ensure(await window.api.get("logs-client"), "arr");
         this.#clientLogs = {};
         logs.map(log => {
             log = util.ensure(log, "obj");
@@ -2666,7 +2660,8 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             });
             result = util.ensure(result, "obj");
             if (result.canceled) return;
-            await LOGGERCONTEXT.logsUpload(result.filePaths);
+            const names = await LOGGERCONTEXT.logsCache(result.filePaths);
+            await LOGGERCONTEXT.logsUpload(names);
         });
 
         this.addHandler("format", () => {
@@ -2737,7 +2732,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             itm = menu.addItem(new core.App.Menu.Item("Upload Selected"));
             itm.disabled = names.length <= 0 || !anyClientHas;
             itm.addHandler("trigger", e => {
-                LOGGERCONTEXT.logsUpload(names.filter(name => LOGGERCONTEXT.hasClientLog(name)).map(name => LOGGERCONTEXT.getClientPath(name)));
+                LOGGERCONTEXT.logsUpload(names);
             });
             menu.addItem(new core.App.Menu.Divider());
             itm = menu.addItem(new core.App.Menu.Item("Open"));
@@ -2820,15 +2815,15 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
 
             this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
 
-            this.status = LOGGERCONTEXT.initializing ? "Initializing client" : LOGGERCONTEXT.disconnected ? ("Connecting - "+LOGGERCONTEXT.location) : LOGGERCONTEXT.location;
-            if (LOGGERCONTEXT.connected) {
+            this.status = LOGGERCONTEXT.hasLocation() ? LOGGERCONTEXT.location : "Missing Location";
+            if (LOGGERCONTEXT.hasLocation()) {
                 eIcon.name = "cloud";
                 this.eStatus.setAttribute("href", LOGGERCONTEXT.location);
             } else {
                 eIcon.name = "cloud-offline";
                 this.eStatus.removeAttribute("href");
             }
-            this.loading = LOGGERCONTEXT.isLoading("§uploading");
+            this.loading = LOGGERCONTEXT.isLoading("§caching");
 
             let logs = LOGGERCONTEXT.logs;
             logs.forEach(name => {
@@ -3508,7 +3503,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
             },
             export: () => {
                 this.displayName = this.title = "Export Logs";
-                this.iconSrc = "../assets/icons/swap.svg";
+                this.icon = "repeat";
             },
         };
         if (this.name in namefs) namefs[this.name]();
@@ -6071,8 +6066,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                             value.slice(0, 3).map(v => util.Unit.convert(v, this.tab.lengthUnits, "m")) :
                         (type == 3) ?
                             [...value.slice(0, 2).map(v => util.Unit.convert(v, this.tab.lengthUnits, "m")), 0] :
-                        [0, 0, 0]
-                    ;
+                        [0, 0, 0];
                     render.q = 
                         (type == 7) ?
                             value.slice(3, 7) :

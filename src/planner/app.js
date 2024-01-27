@@ -722,7 +722,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         this.odometry.canvas.addEventListener("mousedown", e => {
             if (e.button != 0) return;
-            // e.preventDefault();
             e.stopPropagation();
             const hovered = this.odometry.hovered;
             const hoveredPart = this.odometry.hoveredPart;
