@@ -3857,8 +3857,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             if (small) {
                                 if (util.is(data, "obj")) return data;
                                 return { value: data, name: {
-                                    left: "l", right: "r",
-                                    section: "sect",
+                                    left: "L", right: "R",
+                                    section: "Sect",
                                     all: "*",
                                 }[data] };
                             } else {
@@ -5877,7 +5877,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     }
                 };
             };
-            this.fViewType.values = this.fViewType.values.map(makeMapValue(v => v));
+            this.fViewType.values = this.fViewType.values.map(makeMapValue(v => util.formatText(v)));
             this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.substring(0, 2)));
             this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
