@@ -1862,7 +1862,7 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: flex-start;
     align-items: center;
     align-content: center;

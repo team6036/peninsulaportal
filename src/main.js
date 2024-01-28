@@ -3067,7 +3067,7 @@ const MAIN = async () => {
                 },
                 //~/dump
                 {
-                    type: "dir", name: "temp",
+                    type: "dir", name: "dump",
                     children: [
                         //~/dump/*
                         { type: "file" },

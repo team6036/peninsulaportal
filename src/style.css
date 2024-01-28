@@ -2161,7 +2161,7 @@ article.md.lighter table td {
 .form > .item.enum > .content {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;

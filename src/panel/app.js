@@ -262,6 +262,9 @@ class ToolButton extends util.Target {
             if (cancel <= 0) return cancel = 10;
             this.post("trigger", e);
         });
+        this.elem.addEventListener("contextmenu", e => {
+            this.post("contextmenu", e);
+        });
         this.elem.addEventListener("mousedown", e => {
             if (e.button != 0) return;
             e.preventDefault();
@@ -1099,7 +1102,26 @@ Panel.Tab = class PanelTab extends util.Target {
             if (!this.hasParent()) return;
             this.parent.tabIndex = this.parent.tabs.indexOf(this);
         });
-        this.eTab.addEventListener("mousedown", e => {
+        this.eTab.addEventListener("contextmenu", e => {
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item("Open"));
+            itm.addHandler("trigger", e => {
+                this.eTab.click();
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Close"));
+            itm.addHandler("trigger", e => {
+                this.eTabClose.click();
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Start Dragging"));
+            itm.addHandler("trigger", e => {
+                onDrag(e);
+            });
+            if (!this.hasApp()) return;
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
+        const onDrag = e => {
             if (e.button != 0) return;
             e.preventDefault();
             e.stopPropagation();
@@ -1118,7 +1140,8 @@ Panel.Tab = class PanelTab extends util.Target {
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
-        });
+        };
+        this.eTab.addEventListener("mousedown", onDrag);
         this.eTabClose.addEventListener("click", e => {
             e.stopPropagation();
             if (!this.hasParent()) return;
@@ -1325,6 +1348,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         toolItems = toolItems.map(data => {
             let display = getTabDisplay(data.id);
             let itm = new Panel.AddTab.Button(data.name, "", "");
+            let btn = itm;
             itm.btn.disabled = !!data.disabled;
             if (display != null) {
                 if ("src" in display) itm.iconSrc = display.src;
@@ -1341,6 +1365,21 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     this.parent.addTab(new data.tab(), index);
                     this.parent.remTab(this);
                 },
+                contextmenu: e => {
+                    let itm;
+                    let menu = new core.App.Menu();
+                    itm = menu.addItem(new core.App.Menu.Item("Open"));
+                    itm.addHandler("trigger", e => {
+                        btn.post("trigger", e);
+                    });
+                    itm = menu.addItem(new core.App.Menu.Item("Start Dragging"));
+                    itm.addHandler("trigger", e => {
+                        btn.post("drag", e);
+                    });
+                    if (!this.hasApp()) return;
+                    this.app.contextMenu = menu;
+                    this.app.placeContextMenu(e.pageX, e.pageY);
+                },
                 drag: () => {
                     if (!this.hasApp()) return;
                     if (!!data.disabled) return;
@@ -1352,6 +1391,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         toolItems = toolItems.map(item => {
             if (item.init) item.init(item.item);
             item.item.addHandler("trigger", item.trigger);
+            item.item.addHandler("contextmenu", item.contextmenu);
             item.item.addHandler("drag", item.drag);
             return item.item;
         });
@@ -1379,6 +1419,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     let node = this.page.source.tree;
                     const dfs = node => {
                         let itm = new Panel.AddTab.NodeButton(node);
+                        let btn = itm;
                         nodeItems.push({
                             item: itm,
                             trigger: () => {
@@ -1386,6 +1427,21 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 let index = this.parent.tabs.indexOf(this);
                                 this.parent.addTab(new Panel.BrowserTab(node.path), index);
                                 this.parent.remTab(this);
+                            },
+                            contextmenu: e => {
+                                let itm;
+                                let menu = new core.App.Menu();
+                                itm = menu.addItem(new core.App.Menu.Item("Open"));
+                                itm.addHandler("trigger", e => {
+                                    btn.post("trigger", e);
+                                });
+                                itm = menu.addItem(new core.App.Menu.Item("Start Dragging"));
+                                itm.addHandler("trigger", e => {
+                                    btn.post("drag", e);
+                                });
+                                if (!this.hasApp()) return;
+                                this.app.contextMenu = menu;
+                                this.app.placeContextMenu(e.pageX, e.pageY);
                             },
                             drag: () => {
                                 if (!this.hasApp() || !this.hasPage()) return;
@@ -1400,6 +1456,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 nodeItems = nodeItems.map(item => {
                     if (item.init) item.init(item.item);
                     item.item.addHandler("trigger", item.trigger);
+                    item.item.addHandler("contextmenu", item.contextmenu);
                     item.item.addHandler("drag", item.drag);
                     return item.item;
                 });
@@ -1451,6 +1508,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 let node = this.page.source.tree;
                 const dfs = node => {
                     let itm = new Panel.AddTab.NodeButton(node);
+                    let btn = itm;
                     if ({
                         tables: !node.hasField(),
                         topics: node.hasField(),
@@ -1463,6 +1521,21 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 let index = this.parent.tabs.indexOf(this);
                                 this.parent.addTab(new Panel.BrowserTab(node.path), index);
                                 this.parent.remTab(this);
+                            },
+                            contextmenu: e => {
+                                let itm;
+                                let menu = new core.App.Menu();
+                                itm = menu.addItem(new core.App.Menu.Item("Open"));
+                                itm.addHandler("trigger", e => {
+                                    btn.post("trigger", e);
+                                });
+                                itm = menu.addItem(new core.App.Menu.Item("Start Dragging"));
+                                itm.addHandler("trigger", e => {
+                                    btn.post("drag", e);
+                                });
+                                if (!this.hasApp()) return;
+                                this.app.contextMenu = menu;
+                                this.app.placeContextMenu(e.pageX, e.pageY);
                             },
                             drag: () => {
                                 if (!this.hasApp() || !this.hasPage()) return;
@@ -1477,6 +1550,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             items = items.map(item => {
                 if (item.init) item.init(item.item);
                 item.item.addHandler("trigger", item.trigger);
+                item.item.addHandler("contextmenu", item.contextmenu);
                 item.item.addHandler("drag", item.drag);
                 return item.item;
             });
@@ -1697,6 +1771,9 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
             if (cancel <= 0) return cancel = 10;
             this.post("trigger", e);
         });
+        this.btn.addEventListener("contextmenu", e => {
+            this.post("contextmenu", e);
+        });
         this.btn.addEventListener("mousedown", e => {
             if (e.button != 0) return;
             e.preventDefault();
@@ -1887,6 +1964,31 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         this.#explorer = new core.Explorer();
         this.explorer.addHandler("trigger2", (e, path) => (this.path += "/"+path));
+        this.explorer.addHandler("contextmenu", (e, path) => {
+            e = util.ensure(e, "obj");
+            let enode = this.explorer.lookup(path);
+            if (!enode) return;
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item((enode.isJustPrimitive && enode.isOpen) ? "Close" : "Open"));
+            itm.disabled = enode.isJustPrimitive;
+            itm.addHandler("trigger", e => {
+                enode.isOpen = !enode.isOpen;
+            });
+            itm = menu.addItem(new core.App.Menu.Item(enode.showValue ? "Hide Value" : "Show Value"));
+            itm.disabled = !enode.hasType();
+            itm.addHandler("trigger", e => {
+                enode.showValue = !enode.showValue;
+            });
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Start Dragging"));
+            itm.addHandler("trigger", e => {
+                enode.post("drag", e, enode.name);
+            });
+            if (!this.hasApp()) return;
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
         this.explorer.addHandler("drag", (e, path) => {
             path = util.generatePath(this.path+"/"+path);
             if (!this.hasApp() || !this.hasPage()) return;
@@ -2818,10 +2920,9 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
                 }
             }
 
-            this.eUploadBtn.disabled = LOGGERCONTEXT.disconnected;
-
+            this.eUploadBtn.disabled = !LOGGERCONTEXT.hasLocation() || LOGGERCONTEXT.disconnected;
             this.status = LOGGERCONTEXT.hasLocation() ? LOGGERCONTEXT.connected ? LOGGERCONTEXT.location : "Connecting to "+LOGGERCONTEXT.location : "Missing Location";
-            if (LOGGERCONTEXT.hasLocation()) {
+            if (LOGGERCONTEXT.hasLocation() && LOGGERCONTEXT.connected) {
                 eIcon.name = "cloud";
                 this.eStatus.setAttribute("href", LOGGERCONTEXT.location);
             } else {
@@ -3749,6 +3850,23 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     let fViewMode = form.addField(new core.Form.SelectInput("view-mode", viewModes));
                     fViewMode.showHeader = false;
                     fViewMode.addHandler("change-value", () => (this.viewMode = fViewMode.value));
+                    new ResizeObserver(() => {
+                        let r = fViewMode.elem.getBoundingClientRect();
+                        let small = r.width < 250;
+                        fViewMode.values = fViewMode.values.map(data => {
+                            if (small) {
+                                if (util.is(data, "obj")) return data;
+                                return { value: data, name: {
+                                    left: "l", right: "r",
+                                    section: "sect",
+                                    all: "*",
+                                }[data] };
+                            } else {
+                                if (util.is(data, "obj")) return data.value;
+                                return data;
+                            }
+                        });
+                    }).observe(fViewMode.elem);
                     form.addField(new core.Form.Line());
                     let forms = {};
                     viewModes.forEach(mode => {
@@ -4512,6 +4630,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             { _: "cb", h: "cb5", d: "cb3" },
             { _: "cp", h: "cp5", d: "cp3" },
             { _: "cm", h: "cm5", d: "cm3" },
+            { _: "v4", h: "v5", d: "v2" },
         ].forEach(colors => {
             let btn = document.createElement("button");
             this.eColorPicker.appendChild(btn);
@@ -4649,12 +4768,15 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
         this.#poses = new Set();
 
-        this.#template = 0;
+        this.#template = "§null";
 
+        let ignore = false;
         let templates = {};
         (async () => {
             templates = util.ensure(await window.api.get("templates"), "obj");
+            ignore = true;
             this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
+            ignore = false;
             if (this.template != "§null") return;
             this.template = await window.api.get("active-template");
         })();
@@ -4690,6 +4812,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                     this.fTemplate.addHandler("change-values", apply);
                     this.addHandler("change-template", apply);
                     this.fTemplate.addHandler("change-value", () => {
+                        if (ignore) return;
                         this.template = this.fTemplate.value == "§null" ? null : this.fTemplate.value;
                     });
                     this.addHandler("add", () => (this.fTemplate.app = this.app));
@@ -4758,6 +4881,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
     get template() { return this.#template; }
     set template(v) {
+        if (v == "§null") return;
         v = (v == null) ? null : String(v);
         if (this.template == v) return;
         this.change("template", this.template, this.#template=v);
@@ -4894,6 +5018,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             { _: "cb", h: "cb5", d: "cb3" },
             { _: "cp", h: "cp5", d: "cp3" },
             { _: "cm", h: "cm5", d: "cm3" },
+            { _: "v4", h: "v5", d: "v2" },
         ].forEach(colors => {
             let btn = document.createElement("button");
             this.eColorPicker.appendChild(btn);
@@ -5217,6 +5342,26 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.fOriginBlue.value = this.origin;
             this.fOriginRed.value = this.origin;
         });
+
+        new ResizeObserver(() => {
+            let r = optionsForm.elem.getBoundingClientRect();
+            let small = r.width < 250;
+            const makeMapValue = f => {
+                return data => {
+                    if (small) {
+                        if ("name2" in data) return data;
+                        return { value: data.value, name: f(String(data.value), String(data.name)), name2: data.name };
+                    } else {
+                        if ("name2" in data) return { value: data.value, name: data.name2 };
+                        return data;
+                    }
+                };
+            };
+            this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.substring(0, 2)));
+            this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
+            this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
+            this.fUnitsAngle.values = this.fUnitsAngle.values.map(makeMapValue(v => v.toUpperCase()));
+        }).observe(optionsForm.elem);
 
         this.quality = this.odometry.quality;
 
@@ -5594,9 +5739,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     constructor(...a) {
         super("3d");
 
-        this.addHandler("add", () => {
-            this.odometry.renderer.forceContextRestore();
-        });
         this.addHandler("rem", () => {
             this.odometry.renderer.forceContextLoss();
         });
@@ -5720,6 +5862,27 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.addHandler("change-lengthUnits", () => {
             this.fCameraPos.activeType = this.lengthUnits;
         });
+
+        new ResizeObserver(() => {
+            let r = optionsForm.elem.getBoundingClientRect();
+            let small = r.width < 250;
+            const makeMapValue = f => {
+                return data => {
+                    if (small) {
+                        if ("name2" in data) return data;
+                        return { value: data.value, name: f(String(data.value), String(data.name)), name2: data.name };
+                    } else {
+                        if ("name2" in data) return { value: data.value, name: data.name2 };
+                        return data;
+                    }
+                };
+            };
+            this.fViewType.values = this.fViewType.values.map(makeMapValue(v => v));
+            this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.substring(0, 2)));
+            this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
+            this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
+            this.fUnitsAngle.values = this.fUnitsAngle.values.map(makeMapValue(v => v.toUpperCase()));
+        }).observe(optionsForm.elem);
 
         if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 8) a = [null];
         if (a.length == 1) {
@@ -6730,7 +6893,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-newtab", () => {
             if (!this.hasActivePanel()) return;
             const active = this.activeWidget;
-            active.addTab(new Panel.AddTab());
+            active.addTab(new Panel.AddTab(), active.tabIndex+1);
         });
         this.app.addHandler("cmd-nexttab", () => {
             if (!this.hasActivePanel()) return;
@@ -6857,6 +7020,30 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         this.#explorer = new core.Explorer();
+        this.explorer.addHandler("contextmenu", (e, path) => {
+            e = util.ensure(e, "obj");
+            let enode = this.explorer.lookup(path);
+            if (!enode) return;
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item((enode.isJustPrimitive && enode.isOpen) ? "Close" : "Open"));
+            itm.disabled = enode.isJustPrimitive;
+            itm.addHandler("trigger", e => {
+                enode.isOpen = !enode.isOpen;
+            });
+            itm = menu.addItem(new core.App.Menu.Item(enode.showValue ? "Hide Value" : "Show Value"));
+            itm.disabled = !enode.hasType();
+            itm.addHandler("trigger", e => {
+                enode.showValue = !enode.showValue;
+            });
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Start Dragging"));
+            itm.addHandler("trigger", e => {
+                enode.post("drag", e, enode.name);
+            });
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
         this.explorer.addHandler("drag", (e, path) => {
             path = util.generatePath(path);
             let node = this.hasSource() ? this.source.tree.lookup(path) : null;
@@ -6986,6 +7173,26 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addToolButton(toolButtons.map(data => {
             let btn = new ToolButton(data.name, data.id);
             btn.elem.disabled = !!data.disabled;
+            btn.addHandler("trigger", () => {
+                if (!!data.disabled) return;
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                active.addTab(new data.tab(), active.tabIndex+1);
+            });
+            btn.addHandler("contextmenu", e => {
+                let itm;
+                let menu = new core.App.Menu();
+                itm = menu.addItem(new core.App.Menu.Item("Open"));
+                itm.addHandler("trigger", e => {
+                    btn.post("trigger", e);
+                });
+                itm = menu.addItem(new core.App.Menu.Item("Start Dragging"));
+                itm.addHandler("trigger", e => {
+                    btn.post("drag", e);
+                });
+                this.app.contextMenu = menu;
+                this.app.placeContextMenu(e.pageX, e.pageY);
+            });
             btn.addHandler("drag", () => {
                 if (!!data.disabled) return;
                 this.app.dragData = new data.tab();
