@@ -20,6 +20,7 @@
 	"homepage": "https://github.com/team6036/peninsulaportal",
 	"dependencies": {
 		"compare-versions": "^6.1.0",
+		"electron": "^28.2.0",
 		"electron-fetch": "^1.9.1",
 		"ionicons": "^7.1.2",
 		"mathjs": "^12.3.0",
@@ -31,7 +32,6 @@
 		"ytdl-core": "^4.11.5"
 	},
 	"devDependencies": {
-		"electron": "^28.1.1",
 		"electron-builder": "^24.9.1"
 	},
 	"build": {

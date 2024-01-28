@@ -5021,6 +5021,13 @@ export class Odometry3d extends Odometry {
     constructor(elem) {
         super(elem);
 
+        let contextLost = false;
+        this.canvas.addEventListener("webglcontextlost", () => (contextLost = true));
+        this.canvas.addEventListener("webglcontextrestored", () => {
+            this.requestRedraw();
+            contextLost = false;
+        });
+
         this.#renders = new Set();
 
         this.#scene = new THREE.Scene();
@@ -5161,7 +5168,15 @@ export class Odometry3d extends Odometry {
 
         let fieldLock = false;
 
+        const timer = new util.Timer();
+        timer.play();
+
         this.addHandler("render", delta => {
+
+            if (contextLost && timer.time >= 500) {
+                timer.clear();
+                this.renderer.forceContextRestore();
+            }
 
             this.renders.forEach(render => {
                 [render.offsetX, render.offsetY] = this.size.div(-2).xy;
@@ -5830,6 +5845,7 @@ export class Explorer extends util.Target {
             this.#nodeObjects.push(node);
             node.addLinkedHandler(this, "trigger", (e, path) => this.post("trigger", e, path));
             node.addLinkedHandler(this, "trigger2", (e, path) => this.post("trigger2", e, path));
+            node.addLinkedHandler(this, "contextmenu", (e, path) => this.post("contextmenu", e, path));
             node.addLinkedHandler(this, "drag", (e, path) => this.post("drag", e, path));
             this.elem.appendChild(node.elem);
             node.onAdd();
@@ -5954,6 +5970,11 @@ Explorer.Node = class ExplorerNode extends util.Target {
             if (this.name.length > 0) path = this.name+"/"+path;
             this.post("trigger2", e, path);
         });
+        this.explorer.addHandler("contextmenu", (e, path) => {
+            path = util.generatePath(path);
+            if (this.name.length > 0) path = this.name+"/"+path;
+            this.post("contextmenu", e, path);
+        });
         this.explorer.addHandler("drag", (e, path) => {
             path = util.generatePath(path);
             if (this.name.length > 0) path = this.name+"/"+path;
@@ -6022,7 +6043,10 @@ Explorer.Node = class ExplorerNode extends util.Target {
             this.post("trigger", e, [this.name]);
         });
         this.eDisplay.addEventListener("dblclick", e => {
-            this.post("trigger2", e, [this.name]);
+            this.post("trigger2", e, this.name);
+        });
+        this.eDisplay.addEventListener("contextmenu", e => {
+            this.post("contextmenu", e, this.name);
         });
         this.eDisplay.addEventListener("mousedown", e => {
             if (e.button != 0) return;
