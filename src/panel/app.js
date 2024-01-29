@@ -499,6 +499,19 @@ class LoggerContext extends util.Target {
 }
 const LOGGERCONTEXT = new LoggerContext();
 
+const COLORS = [
+    { _: "cr", h: "cr5", d: "cr3", name: "Red" },
+    { _: "co", h: "co5", d: "co3", name: "Orange" },
+    { _: "cy", h: "cy5", d: "cy3", name: "Yellow" },
+    { _: "cg", h: "cg5", d: "cg3", name: "Green" },
+    { _: "cc", h: "cc5", d: "cc3", name: "Cyan" },
+    { _: "cb", h: "cb5", d: "cb3", name: "Blue" },
+    { _: "cp", h: "cp5", d: "cp3", name: "Purple" },
+    { _: "cm", h: "cm5", d: "cm3", name: "Magenta" },
+    { _: "v8", h: "v8", d: "v6", name: "White" },
+    { _: "v4", h: "v5", d: "v2", name: "Grey" },
+];
+
 class Widget extends util.Target {
     #elem;
 
@@ -4401,6 +4414,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         [this.lVars, this.rVars, this.viewMode, this.viewParams, this.optionState] = a;
     }
 
+    compute() {
+        super.compute();
+        try {
+            this.lVars.forEach(v => v.compute());
+            this.rVars.forEach(v => v.compute());
+        } catch (e) {}
+    }
+
     get lVars() { return [...this.#lVars]; }
     set lVars(v) {
         v = util.ensure(v, "arr");
@@ -4414,18 +4435,20 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     }
     hasLVar(lVar) {
         if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
-        return this.#lVars.has(lVar);
+        return this.#lVars.has(lVar) && lVar.tab == this;
     }
     addLVar(...lVars) {
         return util.Target.resultingForEach(lVars, lVar => {
             if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
             if (this.hasLVar(lVar)) return false;
+            if (lVar.tab != null) return false;
             this.#lVars.add(lVar);
             lVar.addLinkedHandler(this, "remove", () => this.remLVar(lVar));
             lVar.addLinkedHandler(this, "change", (c, f, t) => this.change("lVars["+this.lVars.indexOf(lVar)+"]."+c, f, t));
             if (this.hasEOptionSection("l"))
                 this.getEOptionSection("l").appendChild(lVar.elem);
             this.change("addLVar", null, lVar);
+            lVar.tab = this;
             lVar.onAdd();
             return lVar;
         });
@@ -4434,7 +4457,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         return util.Target.resultingForEach(lVars, lVar => {
             if (!(lVar instanceof Panel.GraphTab.Variable)) return false;
             if (!this.hasLVar(lVar)) return false;
+            if (lVar.tab != this) return false;
             lVar.onRem();
+            lVar.tab = null;
             this.#lVars.delete(lVar);
             lVar.clearLinkedHandlers(this, "remove");
             lVar.clearLinkedHandlers(this, "change");
@@ -4457,18 +4482,20 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     }
     hasRVar(rVar) {
         if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
-        return this.#rVars.has(rVar);
+        return this.#rVars.has(rVar) && rVar.tab == this;
     }
     addRVar(...rVars) {
         return util.Target.resultingForEach(rVars, rVar => {
             if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
             if (this.hasRVar(rVar)) return false;
+            if (rVar.tab != null) return false;
             this.#rVars.add(rVar);
             rVar.addLinkedHandler(this, "remove", () => this.remRVar(rVar));
             rVar.addLinkedHandler(this, "change", (c, f, t) => this.change("rVars["+this.rVars.indexOf(rVar)+"]."+c, f, t));
             if (this.hasEOptionSection("r"))
                 this.getEOptionSection("r").appendChild(rVar.elem);
             this.change("addRVar", null, rVar);
+            rVar.tab = this;
             rVar.onAdd();
             return rVar;
         });
@@ -4477,7 +4504,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         return util.Target.resultingForEach(rVars, rVar => {
             if (!(rVar instanceof Panel.GraphTab.Variable)) return false;
             if (!this.hasRVar(rVar)) return false;
+            if (rVar.tab != this) return false;
             rVar.onRem();
+            rVar.tab = null;
             this.#rVars.delete(rVar);
             rVar.clearLinkedHandlers(this, "remove");
             rVar.clearLinkedHandlers(this, "change");
@@ -4577,6 +4606,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     }
 };
 Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
+    #tab;
+    #parent;
+    #page;
+    #app;
+
     #path;
     #color;
 
@@ -4594,6 +4628,11 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     constructor(...a) {
         super();
 
+        this.#tab = null;
+        this.#parent = null;
+        this.#page = null;
+        this.#app = null;
+
         this.#path = "";
         this.#color = null;
 
@@ -4605,7 +4644,8 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#eShowBox = document.createElement("label");
         this.eDisplay.appendChild(this.eShowBox);
         this.eShowBox.classList.add("checkbox");
-        this.eShowBox.innerHTML = "<input type='checkbox'><span><ion-icon name='eye'></ion-icon></span>";
+        this.eShowBox.style.setProperty("--size", "10px");
+        this.eShowBox.innerHTML = "<input type='checkbox'><span></span>";
         this.#eShow = this.eShowBox.children[0];
         this.#eShowDisplay = this.eShowBox.children[1];
         this.#eDisplayName = document.createElement("div");
@@ -4621,17 +4661,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.eContent.appendChild(this.eColorPicker);
         this.eColorPicker.classList.add("colorpicker");
         this.#eColorPickerColors = [];
-        [
-            { _: "cr", h: "cr5", d: "cr3" },
-            { _: "co", h: "co5", d: "co3" },
-            { _: "cy", h: "cy5", d: "cy3" },
-            { _: "cg", h: "cg5", d: "cg3" },
-            { _: "cc", h: "cc5", d: "cc3" },
-            { _: "cb", h: "cb5", d: "cb3" },
-            { _: "cp", h: "cp5", d: "cp3" },
-            { _: "cm", h: "cm5", d: "cm3" },
-            { _: "v4", h: "v5", d: "v2" },
-        ].forEach(colors => {
+        COLORS.forEach(colors => {
             let btn = document.createElement("button");
             this.eColorPicker.appendChild(btn);
             this.#eColorPickerColors.push(btn);
@@ -4643,6 +4673,36 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
                 e.stopPropagation();
                 this.color = btn.color;
             });
+        });
+
+        this.eDisplay.addEventListener("contextmenu", e => {
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item(this.isOpen ? "Close" : "Open"));
+            itm.addHandler("trigger", e => {
+                this.isOpen = !this.isOpen;
+            });
+            itm = menu.addItem(new core.App.Menu.Item(this.isShown ? "Hide" : "Show"));
+            itm.addHandler("trigger", e => {
+                this.isShown = !this.isShown;
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Remove"));
+            itm.addHandler("trigger", e => {
+                this.eRemoveBtn.click();
+            });
+            menu.addItem(new core.App.Menu.Divider());
+            itm = menu.addItem(new core.App.Menu.Item("Colors"));
+            let submenu = itm.menu;
+            COLORS.forEach(colors => {
+                itm = submenu.addItem(new core.App.Menu.Item(colors.name));
+                itm.eLabel.style.color = "var(--"+colors._+")";
+                itm.addHandler("trigger", e => {
+                    this.color = "--"+colors._;
+                });
+            });
+            if (!this.hasApp()) return;
+            this.app.contextMenu = menu;
+            this.app.placeContextMenu(e.pageX, e.pageY);
         });
 
         this.eShowBox.addEventListener("click", e => {
@@ -4676,6 +4736,26 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         [this.path, this.color, this.isShown] = a;
     }
 
+    get tab() { return this.#tab; }
+    set tab(v) {
+        v = (v instanceof Panel.GraphTab) ? v : null;
+        if (this.tab == v) return;
+        this.#tab = v;
+        this.compute();
+    }
+    hasTab() { return !!this.tab; }
+    get parent() { return this.#parent; }
+    hasParent() { return !!this.parent; }
+    get page() { return this.#page; }
+    hasPage() { return !!this.page; }
+    get app() { return this.#app; }
+    hasApp() { return !!this.app; }
+    compute() {
+        this.#parent = this.hasTab() ? this.tab.parent : null;
+        this.#page = this.hasParent() ? this.parent.page : null;
+        this.#app = this.hasPage() ? this.page.app : null;
+    }
+
     get path() { return this.#path; }
     set path(v) {
         v = util.generatePath(v);
@@ -4689,8 +4769,8 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
         let color = this.hasColor() ? this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color : "#fff";
-        this.eShowDisplay.style.setProperty("--bgc", color);
-        this.eShowDisplay.style.setProperty("--bgch", color);
+        this.eShowBox.style.setProperty("--bgc", color);
+        this.eShowBox.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
         this.eColorPickerColors.forEach(btn => {
             if (btn.color == this.color) btn.classList.add("this");
@@ -4993,7 +5073,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#eShowBox = document.createElement("label");
         this.eDisplay.appendChild(this.eShowBox);
         this.eShowBox.classList.add("checkbox");
-        this.eShowBox.innerHTML = "<input type='checkbox'><span><ion-icon name='eye'></ion-icon></span>";
+        this.eShowBox.style.setProperty("--size", "10px");
+        this.eShowBox.innerHTML = "<input type='checkbox'><span></span>";
         this.#eShow = this.eShowBox.children[0];
         this.#eShowDisplay = this.eShowBox.children[1];
         this.#eDisplayName = document.createElement("div");
@@ -5009,17 +5090,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.eContent.appendChild(this.eColorPicker);
         this.eColorPicker.classList.add("colorpicker");
         this.#eColorPickerColors = [];
-        [
-            { _: "cr", h: "cr5", d: "cr3" },
-            { _: "co", h: "co5", d: "co3" },
-            { _: "cy", h: "cy5", d: "cy3" },
-            { _: "cg", h: "cg5", d: "cg3" },
-            { _: "cc", h: "cc5", d: "cc3" },
-            { _: "cb", h: "cb5", d: "cb3" },
-            { _: "cp", h: "cp5", d: "cp3" },
-            { _: "cm", h: "cm5", d: "cm3" },
-            { _: "v4", h: "v5", d: "v2" },
-        ].forEach(colors => {
+        COLORS.forEach(colors => {
             let btn = document.createElement("button");
             this.eColorPicker.appendChild(btn);
             this.#eColorPickerColors.push(btn);
@@ -5031,6 +5102,13 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
                 e.stopPropagation();
                 this.color = btn.color;
             });
+        });
+
+        this.eDisplay.addEventListener("contextmenu", async e => {
+            let menu = await this.makeContextMenu();
+            if (!this.state.hasApp()) return;
+            this.state.app.contextMenu = menu;
+            this.state.app.placeContextMenu(e.pageX, e.pageY);
         });
 
         this.eShowBox.addEventListener("click", e => {
@@ -5064,6 +5142,34 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         [this.path, this.color, this.isShown] = a;
     }
 
+    async makeContextMenu() {
+        let itm;
+        let menu = new core.App.Menu();
+        itm = menu.addItem(new core.App.Menu.Item(this.isOpen ? "Close" : "Open"));
+        itm.addHandler("trigger", e => {
+            this.isOpen = !this.isOpen;
+        });
+        itm = menu.addItem(new core.App.Menu.Item(this.isShown ? "Hide" : "Show"));
+        itm.addHandler("trigger", e => {
+            this.isShown = !this.isShown;
+        });
+        itm = menu.addItem(new core.App.Menu.Item("Remove"));
+        itm.addHandler("trigger", e => {
+            this.eRemoveBtn.click();
+        });
+        menu.addItem(new core.App.Menu.Divider());
+        itm = menu.addItem(new core.App.Menu.Item("Colors"));
+        let submenu = itm.menu;
+        COLORS.forEach(colors => {
+            itm = submenu.addItem(new core.App.Menu.Item(colors.name));
+            itm.eLabel.style.color = "var(--"+colors._+")";
+            itm.addHandler("trigger", e => {
+                this.color = "--"+colors._;
+            });
+        });
+        return menu;
+    }
+
     get path() { return this.#path; }
     set path(v) {
         v = util.generatePath(v);
@@ -5077,8 +5183,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
         let color = this.hasColor() ? this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color : "#fff";
-        this.eShowDisplay.style.setProperty("--bgc", color);
-        this.eShowDisplay.style.setProperty("--bgch", color);
+        this.eShowBox.style.setProperty("--bgc", color);
+        this.eShowBox.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
         this.eColorPickerColors.forEach(btn => {
             if (btn.color == this.color) btn.classList.add("this");
@@ -5153,6 +5259,9 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
         super();
 
         this.#tab = null;
+        this.#parent = null;
+        this.#page = null;
+        this.#app = null;
         this.#pose = null;
 
         this.compute();
@@ -5570,6 +5679,24 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         if (a.length == 4) a = [...a, core.Odometry2d.Robot.TYPES.DEFAULT];
 
         [this.path, this.color, this.isShown, this.isGhost, this.type] = a;
+    }
+    
+    async makeContextMenu() {
+        let itm;
+        let menu = await super.makeContextMenu();
+        itm = menu.addItem(new core.App.Menu.Item("Types"));
+        let submenu = itm.menu;
+        for (let name in core.Odometry2d.Robot.TYPES) {
+            itm = submenu.addItem(new core.App.Menu.Item(util.formatText(name), (this.type == core.Odometry2d.Robot.TYPES[name]) ? "checkmark" : ""));
+            itm.addHandler("trigger", e => {
+                this.type = core.Odometry2d.Robot.TYPES[name];
+            });
+        }
+        itm = menu.addItem(new core.App.Menu.Item("Ghost", this.isGhost ? "checkmark" : ""));
+        itm.addHandler("trigger", e => {
+            this.isGhost = !this.isGhost;
+        });
+        return menu;
     }
 
     get isGhost() { return this.#isGhost; }
@@ -6139,6 +6266,55 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         if (a.length == 5) a = [...a, "KitBot"];
 
         [this.path, this.color, this.isShown, this.isGhost, this.isSolid, this.type] = a;
+    }
+
+    async makeContextMenu() {
+        let itm;
+        let menu = await super.makeContextMenu();
+        itm = menu.addItem(new core.App.Menu.Item("Types"));
+        let submenu = itm.menu;
+        let menuData = {
+            "§node": "Node",
+            "§cube": "Cube",
+            "Arrows": {
+                "§arrow+x": "Arrow (+X)",
+                "§arrow-x": "Arrow (-X)",
+                "§arrow+y": "Arrow (+Y)",
+                "§arrow-y": "Arrow (-Y)",
+                "§arrow+z": "Arrow (+Z)",
+                "§arrow-z": "Arrow (-Z)",
+            },
+            "§axes": "Axes",
+        };
+        const dfs = (menu, k, v) => {
+            if (util.is(v, "obj")) {
+                let itm = menu.addItem(new core.App.Menu.Item(k));
+                for (let k2 in v) dfs(itm.menu, k2, v[k2]);
+                return;
+            }
+            let itm = menu.addItem(new core.App.Menu.Item(v, (this.type == k) ? "checkmark" : ""));
+            itm.addHandler("trigger", e => {
+                this.type = k;
+            });
+        };
+        for (let k in menuData) dfs(submenu, k, menuData[k]);
+        submenu.addItem(new core.App.Menu.Divider());
+        let robots = util.ensure(await window.api.get("robots"), "obj");
+        Object.keys(robots).forEach(k => {
+            itm = submenu.addItem(new core.App.Menu.Item(k, (this.type == k) ? "checkmark" : ""));
+            itm.addHandler("trigger", e => {
+                this.type = k;
+            });
+        });
+        itm = menu.addItem(new core.App.Menu.Item("Ghost", this.isGhost ? "checkmark" : ""));
+        itm.addHandler("trigger", e => {
+            this.isGhost = !this.isGhost;
+        });
+        itm = menu.addItem(new core.App.Menu.Item("Solid", this.isSolid ? "checkmark" : ""));
+        itm.addHandler("trigger", e => {
+            this.isSolid = !this.isSolid;
+        });
+        return menu;
     }
 
     get isGhost() { return this.#isGhost; }
@@ -7678,15 +7854,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         let ids = this.eSideSections;
         let elems = ids.map(id => this.getESideSection(id).elem);
         let idsOpen = ids.filter(id => this.getESideSection(id).getIsOpen());
-        let availableHeight = r.height - ids.length*22;
+        let availableHeight = r.height - 20 - ids.length*22;
         Array.from(this.eSide.children).forEach(elem => {
             if (elems.includes(elem)) return;
             availableHeight -= elem.getBoundingClientRect().height;
-        });
-        Array.from(this.eSide.children).forEach(child => {
-            if (elems.includes(child)) return;
-            let r = child.getBoundingClientRect();
-            availableHeight -= r.height;
         });
         let divideAmong = idsOpen.length;
         idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));

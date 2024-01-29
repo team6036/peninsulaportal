@@ -672,8 +672,6 @@
     aspect-ratio: 1 / 1;
 }
 #PROJECTPAGE > .nav > .progress > .hover > .tooltip {
-    padding: 5px;
-
     font-family: monospace;
     font-size: 12px;
 }

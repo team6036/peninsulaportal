@@ -357,6 +357,7 @@ label.filedialog > button::before {
 }
 
 label.checkbox {
+    --size: 20px;
     --bg: var(--v3);
     --fg: var(--v8);
     --bgh: var(--v4);
@@ -377,10 +378,10 @@ label.checkbox > input[type="checkbox"] {
     top: 0px;
     left: 0px;
 
-    width: 20px;
-    min-width: 20px;
-    height: 20px;
-    min-height: 20px;
+    width: var(--size);
+    min-width: var(--size);
+    height: var(--size);
+    min-height: var(--size);
     padding: 0px;
     margin: 0px;
 
@@ -389,10 +390,10 @@ label.checkbox > input[type="checkbox"] {
     cursor: pointer;
 }
 label.checkbox > span {
-    width: 20px;
-    min-width: 20px;
-    height: 20px;
-    min-height: 20px;
+    width: var(--size);
+    min-width: var(--size);
+    height: var(--size);
+    min-height: var(--size);
 
     display: block flex;
     flex-direction: row;
@@ -805,7 +806,7 @@ article.md.lighter table td {
 
     width: max-content;
     height: max-content;
-    padding: 10px 20px;
+    padding: 7.5px;
 
     background-color: var(--bg);
     border: 1px solid var(--v3);
@@ -1893,8 +1894,6 @@ article.md.lighter table td {
 }
 .explorer > .node > button.display > .tooltip,
 .explorernode > button.display > .tooltip {
-    padding: 5px;
-
     text-align: left;
     font-size: 12px;
     font-family: monospace;
