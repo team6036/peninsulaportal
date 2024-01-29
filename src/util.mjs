@@ -27,8 +27,9 @@ export const NUMBERS = "0123456789";
 export const ALPHABETUPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const ALPHABETLOWER = ALPHABETUPPER.toLowerCase();
 export const ALPHABETALL = ALPHABETLOWER+ALPHABETUPPER;
-export const BASE64 = ALPHABETALL+NUMBERS+"-_";
-export const VARIABLE = ALPHABETALL+NUMBERS+"_";
+export const BASE16 = NUMBERS+ALPHABETLOWER.substring(0, 6);
+export const BASE64 = NUMBERS+ALPHABETALL+"-_";
+export const VARIABLE = NUMBERS+ALPHABETALL+"_";
 
 export const MAGIC = "_*[[;ƒ";
 
@@ -808,17 +809,16 @@ export class Color extends Target {
             else if (is(a, "str")) {
                 if (a[0] == "#") {
                     a = a.substring(1).toLowerCase();
-                    const hex = "0123456789abcdef";
                     let all = true;
                     for (let c of a) {
-                        if (hex.includes(c)) continue;
+                        if (BASE16.includes(c)) continue;
                         all = false;
                         break;
                     }
                     if (!all) a = [0, 0, 0];
                     else {
-                        if (a.length == 3 || a.length == 4) a = new Array(a.length).fill(null).map((_, i) => hex.indexOf(a[i])).map(x => x*16+x);
-                        else if (a.length == 6 || a.length == 8) a = new Array(a.length/2).fill(null).map((_, i) => hex.indexOf(a[2*i])*16+hex.indexOf(a[2*i+1]));
+                        if (a.length == 3 || a.length == 4) a = new Array(a.length).fill(null).map((_, i) => BASE16.indexOf(a[i])).map(x => x*16+x);
+                        else if (a.length == 6 || a.length == 8) a = new Array(a.length/2).fill(null).map((_, i) => BASE16.indexOf(a[2*i])*16+BASE16.indexOf(a[2*i+1]));
                         else a = [0, 0, 0];
                     }
                     if (a.length == 4) a[3] /= 255;
@@ -960,11 +960,10 @@ export class Color extends Target {
     toHex(a=true) {
         let v = a ? this.#hex : this.#hexNoAlpha;
         if (v == null) {
-            const hex = "0123456789abcdef";
             v = "#"+(a ? this.rgba : this.rgb).map((v, i) => {
                 if (i == 3) v *= 255;
                 v = Math.round(v);
-                return hex[Math.floor(v/16)]+hex[v%16];
+                return BASE16[Math.floor(v/16)]+BASE16[v%16];
             }).join("");
             a ? (this.#hex=v) : (this.#hexNoAlpha=v);
         }

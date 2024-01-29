@@ -172,8 +172,6 @@
     aspect-ratio: 1 / 1;
 }
 #PROJECTPAGE > .main > .side > .meta > button > .tooltip {
-    padding: 10px;
-
     text-align: left;
     font-size: 12px;
     font-family: monospace;
@@ -1809,11 +1807,16 @@
     --bgd: transparent;
 
     padding: 0px;
+    padding-left: 5px;
 
     justify-content: flex-start;
-    gap: 10px;
+    gap: 5px;
 
     border-radius: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > input {
+    width: 10px;
+    aspect-ratio: 1 / 1;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div {
     flex-basis: 100%;
