@@ -1821,6 +1821,9 @@ article.md.lighter table td {
     align-content: center;
     gap: 15px;
 }
+.odom > .overlay > .label > div > .info:has(> .pos:empty):has(> .pos:empty) {
+    display: none;
+}
 .odom > .overlay > .label > div > .info > div {
     display: flex;
     flex-direction: row;
