@@ -4952,12 +4952,12 @@ export class Odometry3d extends Odometry {
                 });
                 let obj, pobj;
                 obj = gltf.scene;
-                let bbox = new THREE.Box3().setFromObject(obj);
-                obj.position.set(
-                    obj.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
-                    obj.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
-                    obj.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
-                );
+                // let bbox = new THREE.Box3().setFromObject(obj);
+                // obj.position.set(
+                //     obj.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
+                //     obj.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
+                //     obj.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
+                // );
                 [obj, pobj] = [new THREE.Object3D(), obj];
                 obj.add(pobj);
                 this.loadedFields[name] = obj;
@@ -5485,6 +5485,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     #color;
     #isGhost;
     #isSolid;
+    #display;
 
     #robot;
 
@@ -5511,6 +5512,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#color = "";
         this.#isGhost = false;
         this.#isSolid = false;
+        this.#display = {};
 
         this.#robot = null;
 
@@ -5687,12 +5689,26 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 obj.element.elem.style.transform = "translate("+(50*x)+"%, "+(50*y)+"%)";
                 obj.element.eTitle.style.color = color.toRGBA();
                 obj.element.eTitle.textContent = this.name;
-                while (obj.element.ePos.children.length < 3) obj.element.ePos.appendChild(document.createElement("div"));
-                while (obj.element.ePos.children.length > 3) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
-                while (obj.element.eDir.children.length < 4) obj.element.eDir.appendChild(document.createElement("div"));
-                while (obj.element.eDir.children.length > 4) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
-                for (let i = 0; i < 3; i++) obj.element.ePos.children[i].textContent = this.pos["xyz"[i]];
-                for (let i = 0; i < 4; i++) obj.element.eDir.children[i].textContent = "wxyz"[i]+": "+this.q[i];
+                let type = this.display.type;
+                let data = util.ensure(this.display.data, "arr");
+                if (type == 7) {
+                    while (obj.element.ePos.children.length < 3) obj.element.ePos.appendChild(document.createElement("div"));
+                    while (obj.element.ePos.children.length > 3) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
+                    while (obj.element.eDir.children.length < 4) obj.element.eDir.appendChild(document.createElement("div"));
+                    while (obj.element.eDir.children.length > 4) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
+                    for (let i = 0; i < 3; i++) obj.element.ePos.children[i].textContent = data[i];
+                    for (let i = 0; i < 4; i++) obj.element.eDir.children[i].textContent = "wxyz"[i]+": "+data[3+i];
+                } else if (type == 3) {
+                    while (obj.element.ePos.children.length < 2) obj.element.ePos.appendChild(document.createElement("div"));
+                    while (obj.element.ePos.children.length > 2) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
+                    while (obj.element.eDir.children.length < 1) obj.element.eDir.appendChild(document.createElement("div"));
+                    while (obj.element.eDir.children.length > 1) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
+                    for (let i = 0; i < 2; i++) obj.element.ePos.children[i].textContent = data[i];
+                    for (let i = 0; i < 1; i++) obj.element.eDir.children[i].textContent = "d"[i]+": "+data[2+i];
+                } else {
+                    while (obj.element.ePos.children.length > 0) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
+                    while (obj.element.eDir.children.length > 0) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
+                }
             });
         });
 
@@ -5756,6 +5772,9 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         if (this.isSolid == v) return;
         this.change("isSolid", this.isSolid, this.#isSolid=v);
     }
+
+    get display() { return this.#display; }
+    set display(v) { this.#display = util.ensure(v, "obj"); }
 
     get robot() { return this.#robot; }
     set robot(v) {

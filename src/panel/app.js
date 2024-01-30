@@ -6404,6 +6404,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     render.color = this.pose.color;
                     render.isGhost = this.pose.isGhost;
                     render.isSolid = this.pose.isSolid;
+                    render.display.type = type;
+                    render.display.data = value;
                     render.robot = this.pose.type;
                     render.pos =
                         (type == 7) ?
@@ -7867,8 +7869,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     formatContent() {
         if (!this.hasWidget()) return false;
         let r = this.eContent.getBoundingClientRect();
-        this.widget.elem.style.setProperty("--w", (r.width-0)+"px");
-        this.widget.elem.style.setProperty("--h", (r.height-0)+"px");
+        this.widget.elem.style.setProperty("--w", r.width+"px");
+        this.widget.elem.style.setProperty("--h", r.height+"px");
         this.widget.format();
         return true;
     }
