@@ -3,12 +3,6 @@ import { V } from "../util.mjs";
 
 import * as core from "../core.mjs";
 
-import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
-import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
-
 import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
@@ -153,7 +147,10 @@ function stringify(data) {
     return dfs(data).trim();
 }
 
-core.Explorer.Node = class ExplorerNode extends core.Explorer.Node {
+class FieldExplorer extends core.Explorer {
+    static SORT = true;
+};
+FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     #canShowValue;
 
     static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc=null) {
@@ -1975,7 +1972,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         this.#path = null;
 
-        this.#explorer = new core.Explorer();
+        this.#explorer = new FieldExplorer();
         this.explorer.addHandler("trigger2", (e, path) => (this.path += "/"+path));
         this.explorer.addHandler("contextmenu", (e, path) => {
             e = util.ensure(e, "obj");
@@ -2073,7 +2070,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             }
             if (this.isClosed) return;
             if (!node.hasField() || node.field.isArray || node.field.isStruct) {
-                core.Explorer.Node.doubleTraverse(
+                FieldExplorer.Node.doubleTraverse(
                     node.nodeObjects,
                     this.explorer.nodeObjects,
                     (...enodes) => this.explorer.add(...enodes),
@@ -3316,7 +3313,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 this.displayName = this.title = "Edit Logs";
                 this.icon = "pencil";
 
-                const explorer = new core.Explorer();
+                const explorer = new FieldExplorer();
                 this.eContent.appendChild(explorer.elem);
                 explorer.elem.addEventListener("scroll", () => (state.eEditor.scrollTop = explorer.elem.scrollTop));
 
@@ -3328,7 +3325,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 let editors = [];
 
                 this.addHandler("update", delta => {
-                    core.Explorer.Node.doubleTraverse(
+                    FieldExplorer.Node.doubleTraverse(
                         this.page.hasSource() ? this.page.source.tree.nodeObjects : [],
                         explorer.nodeObjects,
                         (...enodes) => explorer.add(...enodes),
@@ -6053,7 +6050,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         this.addHandler("update", delta => {
             if (this.isClosed) {
-                if (this.odometry.controls instanceof PointerLockControls)
+                if (this.odometry.isFree)
                     this.odometry.controls.unlock();
                 return;
             }
@@ -7040,6 +7037,7 @@ App.TitlePage = class AppTitlePage extends App.TitlePage {
 };
 App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #explorer;
+    #metaExplorer;
 
     #toolButtons;
     #widget;
@@ -7048,10 +7046,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     #eNavPreInfo;
     #eSide;
-    #eSideMeta;
-    #eSideMetaInfo;
-    #eSideMetaBtn;
-    #eSideMetaTooltip;
     #eSideSections;
     #eContent;
     #eDragBox;
@@ -7197,7 +7191,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.source.ts += 5*1000;
         });
 
-        this.#explorer = new core.Explorer();
+        this.#explorer = new FieldExplorer();
         this.explorer.addHandler("contextmenu", (e, path) => {
             e = util.ensure(e, "obj");
             let enode = this.explorer.lookup(path);
@@ -7229,6 +7223,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragData = node;
             this.app.dragging = true;
         });
+        this.#metaExplorer = new core.Explorer();
 
         this.#toolButtons = new Set();
         this.#widget = null;
@@ -7242,33 +7237,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#eSide = document.createElement("div");
         this.eMain.appendChild(this.eSide);
         this.eSide.classList.add("side");
-        this.#eSideMeta = document.createElement("div");
-        this.eSide.appendChild(this.eSideMeta);
-        this.eSideMeta.classList.add("meta");
-        this.#eSideMetaInfo = document.createElement("div");
-        this.eSideMeta.appendChild(this.eSideMetaInfo);
-        this.#eSideMetaBtn = document.createElement("button");
-        this.eSideMeta.appendChild(this.eSideMetaBtn);
-        this.eSideMetaBtn.innerHTML = "<ion-icon name='information-circle'></ion-icon>";
-        this.eSideMetaBtn.addEventListener("click", e => {
-            if (this.eSideMetaBtn.classList.contains("active")) this.eSideMetaBtn.classList.remove("active");
-            else {
-                this.eSideMetaBtn.classList.add("active");
-                const click = e => {
-                    e.stopPropagation();
-                    document.body.removeEventListener("click", click, true);
-                    this.eSideMetaBtn.click();
-                };
-                document.body.addEventListener("click", click, true);
-            }
-        });
-        this.#eSideMetaTooltip = document.createElement("div");
-        this.eSideMetaBtn.appendChild(this.eSideMetaTooltip);
-        this.eSideMetaTooltip.classList.add("tooltip");
-        this.eSideMetaTooltip.classList.add("tog");
-        this.eSideMetaTooltip.classList.add("ney");
         this.#eSideSections = {};
-        ["browser", "tools"].forEach(name => {
+        ["source", "browser", "tools"].forEach(name => {
             let elem = document.createElement("div");
             this.eSide.appendChild(elem);
             elem.id = name;
@@ -7288,20 +7258,25 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             s.setIsClosed = v => s.setIsOpen(!v);
             s.open = () => s.setIsOpen(true);
             s.close = () => s.setIsClosed(true);
-            let btn = document.createElement("button");
+            let btn = s.eBtn = document.createElement("button");
             elem.appendChild(btn);
             btn.classList.add("override");
-            btn.innerHTML = "<ion-icon name='chevron-forward'></ion-icon>";
-            btn.append(name.toUpperCase());
-            if (btn instanceof HTMLButtonElement)
-                btn.addEventListener("click", e => {
-                    e.stopPropagation();
-                    s.setIsOpen(!s.getIsOpen());
-                });
+            btn.innerHTML = "<ion-icon name='chevron-forward'></ion-icon><span></span>";
+            btn.children[1].textContent = name.toUpperCase();
+            btn.addEventListener("click", e => {
+                e.stopPropagation();
+                s.setIsOpen(!s.getIsOpen());
+            });
             s.eContent = document.createElement("div");
             elem.appendChild(s.eContent);
             s.eContent.classList.add("content");
             let idfs = {
+                source: () => {
+                    s.eContent.remove();
+                    s.eContent = this.metaExplorer.elem;
+                    elem.appendChild(s.eContent);
+                    s.eContent.classList.add("content");
+                },
                 browser: () => {
                     s.eContent.remove();
                     s.eContent = this.explorer.elem;
@@ -7514,35 +7489,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;
             
-            this.eSideMetaInfo.textContent = this.sourceInfo;
-            let info = this.sourceMetaInfo;
-            let l = Math.max(0, info.length*2-1);
-            while (this.eSideMetaTooltip.children.length < l) {
-                if (this.eSideMetaTooltip.children.length%2 == 1) {
-                    this.eSideMetaTooltip.appendChild(document.createElement("br"));
-                    continue;
-                }
-                this.eSideMetaTooltip.appendChild(document.createElement("span"));
-            }
-            while (this.eSideMetaTooltip.children.length > l)
-                this.eSideMetaTooltip.lastChild.remove();
-            for (let i = 0; i < l; i++) {
-                if (i%2 == 1) continue;
-                let line = info[i/2];
-                if (line.includes(":")) {
-                    let j = line.indexOf(":");
-                    line = [line.substring(0, j), line.substring(j+1)];
-                    while (this.eSideMetaTooltip.children[i].children.length < line.length)
-                        this.eSideMetaTooltip.children[i].appendChild(document.createElement("span"));
-                    while (this.eSideMetaTooltip.children[i].children.length > line.length)
-                        this.eSideMetaTooltip.children[i].lastChild.remove();
-                    line.forEach((part, j) => {
-                        this.eSideMetaTooltip.children[i].children[j].textContent = part + (j > 0 ? "" : ":");
-                        this.eSideMetaTooltip.children[i].children[j].style.color = (j > 0) ? "var(--a)" : "";
-                    });
-                } else this.eSideMetaTooltip.children[i].textContent = line;
-            }
-            
             if (!this.hasSource());
             else if (this.source instanceof NTSource) {
                 let on = !this.source.connecting && !this.source.connected;
@@ -7585,11 +7531,39 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);
             } else this.navOpen = false;
             
-            core.Explorer.Node.doubleTraverse(
+            FieldExplorer.Node.doubleTraverse(
                 this.hasSource() ? this.source.tree.nodeObjects : [],
                 this.explorer.nodeObjects,
                 (...enodes) => this.explorer.add(...enodes),
                 (...enodes) => this.explorer.rem(...enodes),
+            );
+            const dfs = data => {
+                data.dump = enode => {
+                    if ("iconSrc" in data) enode.iconSrc = data.iconSrc;
+                    else enode.icon = data.icon;
+                    if ("value" in data) enode.tooltip = data.value;
+                    enode.data = data;
+                    if (enode._done) return;
+                    enode._done = true;
+                    enode.eValue.style.color = "var(--a)";
+                    enode.eTooltip.style.color = "var(--a)";
+                    enode.addHandler("trigger", e => {
+                        if (!enode.eDisplay.contains(e.target)) return;
+                        if (("value" in enode.data) || e.shiftKey) enode.showValue = !enode.showValue;
+                        else enode.isOpen = !enode.isOpen;
+                    });
+                };
+                util.ensure(data.children, "arr").forEach(data => dfs(data));
+                data.nodeObjects = data.children;
+            };
+            let info = this.sourceMetaInfo;
+            dfs(info);
+            this.getESideSection("source").eBtn.children[1].textContent = info.name;
+            core.Explorer.Node.doubleTraverse(
+                info.nodeObjects,
+                this.metaExplorer.nodeObjects,
+                (...enodes) => this.metaExplorer.add(...enodes),
+                (...enodes) => this.metaExplorer.rem(...enodes),
             );
 
             this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
@@ -7665,6 +7639,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     }
 
     get explorer() { return this.#explorer; }
+    get metaExplorer() { return this.#metaExplorer; }
 
     get toolButtons() { return [...this.#toolButtons]; }
     set toolButtons(v) {
@@ -7807,39 +7782,61 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return "Unknown source: "+this.source.constructor.name;
     }
     get sourceMetaInfo() {
-        if (!this.hasSource()) return ["No source"];
-        let r = [];
+        let data = { name: this.sourceInfo, children: [] };
+        if (!this.hasSource()) return data;
+        data.children.push({
+            name: null,
+            icon: "book",
+        });
         if (this.source instanceof NTSource) {
-            r.push(
-                "NT4",
-                "  IP: "+this.source.address,
-                "  State: "+((!this.source.connecting && !this.source.connected) ? "Disconnected" : (this.source.connecting) ? "Connecting" : "Connected"),
+            data.children.at(-1).name = "NT4";
+            data.children.push(
+                {
+                    name: "IP",
+                    value: this.source.address,
+                    icon: "navigate",
+                },
+                {
+                    name: "State",
+                    value: ((!this.source.connecting && !this.source.connected) ? "Disconnected" : (this.source.connecting) ? "Connecting" : "Connected"),
+                    icon: "cube-outline",
+                },
             );
         } else if (this.source instanceof WPILOGSource) {
-            r.push(
-                "WPILOG",
-                "  File: "+this.source.file,
-                "  State: "+((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
+            data.children.at(-1).name = "WPILOG";
+            data.children.push(
+                {
+                    name: "File",
+                    value: this.source.file,
+                    icon: "document-outline",
+                },
+                {
+                    name: "State",
+                    value: ((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
+                    icon: "cube-outline",
+                },
             );
         } else {
-            r.push("UNKNOWN: "+this.source.constructor.name);
+            data.children.at(-1).name = "Unkown: "+this.source.constructor.name;
         }
-        const n = this.source.tree.nFields;
         const tMin = this.source.tsMin, tMax = this.source.tsMax;
-        r.push(
-            "",
-            "#Fields: "+n,
-            "Duration: "+((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`),
+        data.children.push(
+            {
+                name: "Fields",
+                value: this.source.tree.nFields,
+                iconSrc: "../assets/icons/number.svg",
+            },
+            {
+                name: "Duration",
+                value: ((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`),
+                icon: "time-outline",
+            },
         );
-        return r;
+        return data;
     }
 
     get eNavPreInfo() { return this.#eNavPreInfo; }
     get eSide() { return this.#eSide; }
-    get eSideMeta() { return this.#eSideMeta; }
-    get eSideMetaInfo() { return this.#eSideMetaInfo; }
-    get eSideMetaBtn() { return this.#eSideMetaBtn; }
-    get eSideMetaTooltip() { return this.#eSideMetaTooltip; }
     get eSideSections() { return Object.keys(this.#eSideSections); }
     hasESideSection(id) { return id in this.#eSideSections; }
     getESideSection(id) { return this.#eSideSections[id]; }

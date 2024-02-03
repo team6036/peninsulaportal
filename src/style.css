@@ -1970,11 +1970,9 @@ article.md.lighter table td {
 .explorernode > button.display > .value > div {
     width: calc(100% - 14px - 20px);
     max-width: calc(100% - 14px - 20px);
-    overflow: hidden;
 
     font-size: 12px;
     text-align: left;
-    text-overflow: ellipsis;
 }
 .explorer > .node > .explorer,
 .explorernode > .explorer {

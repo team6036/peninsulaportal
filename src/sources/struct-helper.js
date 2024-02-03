@@ -291,19 +291,6 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         });
         return output;
     }
-    /*
-    decodeArr(data) {
-        data = toUint8Array(data);
-        let outputs = [];
-        let patternL = this.length / 8;
-        let l = data.length / patternL;
-        for (let i = 0; i < l; i++) {
-            let suboutput = this.decode(data.slice(i*patternL, (i+1)*patternL));
-            outputs.push(suboutput);
-        }
-        return outputs;
-    }
-    */
     splitData(data) {
         data = toUint8Array(data);
         let datas = [];
