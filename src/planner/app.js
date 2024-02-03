@@ -1069,7 +1069,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.project.meta.created = this.project.meta.modified = util.getTime();
                 this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
                 this.editorRefresh();
-            // }
                 if (this.hasProject()) {
                     for (let name in globalTemplates) {
                         if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;

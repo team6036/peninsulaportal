@@ -5824,6 +5824,8 @@ export class Explorer extends util.Target {
 
     #elem;
 
+    static SORT = false;
+
     constructor() {
         super();
 
@@ -5905,7 +5907,8 @@ export class Explorer extends util.Target {
     get elem() { return this.#elem; }
 
     format() {
-        this.#nodeObjects.sort((a, b) => util.compareStr(a.name, b.name)).forEach((node, i) => {
+        if (this.constructor.SORT) this.#nodeObjects.sort((a, b) => util.compareStr(a.name, b.name));
+        this.#nodeObjects.forEach((node, i) => {
             node.elem.style.order = i;
             node.format();
         });
