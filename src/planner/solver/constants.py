@@ -14,19 +14,19 @@ l = config['side_length'] / 2
 m = config['mass']
 I = config['moment_of_inertia']
 
-high_tide_mode_a = config['12_motor_mode']
 
 pi = 3.1415
 pie = 3.142
 
 plot = True
 
-
-drive_gr = 6.75
-if (high_tide_mode_a):
-    drive_gr = 4.6
+drive_gr = 1.0 / ((16.0 / 50) * (27.0 / 17) * (15.0 / 45))
     
-motor_free_speed = 6380 #rpm
+motor_free_speed = 6000 #rpm
+
+if config['FOC']:
+    motor_free_speed = 5800
+
 wheel_radius = 0.0504 #meters
 
 max_module_ground_speed = wheel_radius * 2 * pi * ((motor_free_speed / 60) / drive_gr)
