@@ -10,20 +10,25 @@ with open('data.in', 'r') as file:
 config = data['config']
 
 efficiency_tweak = config['efficiency_percent']
-high_tide_mode = config['12_motor_mode']
+FOC = config['FOC']
 
 nominal_voltage = 12
 
-stall_torque = 4.69 * 6.75 * efficiency_tweak
-if(high_tide_mode):
-    stall_torque = 4.69 * 4.6 * 2 * efficiency_tweak
+drive_gr_falcon = 6.75
+drive_gr_kraken = 1.0 / ((16.0 / 50) * (27.0 / 17) * (15.0 / 45))
 
-stall_current = 257
-free_current = 1.5
+stall_torque = 7.09 * drive_gr_kraken * efficiency_tweak
 
-free_speed = 6380 / 6.75
-if(high_tide_mode):
-    free_speed = 6380 / 4.6
+stall_current = 366
+free_current = 2.0
+
+free_speed = 6000 / drive_gr_kraken
+
+if FOC:
+    stall_torque = 9.37 * drive_gr_kraken * efficiency_tweak
+    stall_current = 483
+    free_current = 2
+    free_speed = 5800 / drive_gr_kraken
 
 rOhms = nominal_voltage / stall_current
 
