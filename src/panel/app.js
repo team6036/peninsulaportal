@@ -3500,21 +3500,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eLogs = document.createElement("div");
                 this.eContent.appendChild(state.eLogs);
                 state.eLogs.classList.add("logs");
-                state.eLogsDragBox = document.createElement("div");
-                state.eLogs.appendChild(state.eLogsDragBox);
-                state.eLogsDragBox.classList.add("dragbox");
-                state.eLogsDragBox.innerHTML = "<div></div><div></div>";
-                ["dragenter", "dragover"].forEach(name => state.eLogs.addEventListener(name, e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    state.eLogsDragBox.classList.add("this");
-                }));
-                ["dragleave", "drop"].forEach(name => state.eLogs.addEventListener(name, e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    state.eLogsDragBox.classList.remove("this");
-                }));
-                state.eLogs.addEventListener("drop", e => {
+                new core.DropTarget(state.eLogs, e => {
                     let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
                     items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
                     if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
@@ -3593,7 +3579,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 });
 
                 state.refresh = () => {
-                    Array.from(state.eLogs.querySelectorAll(":scope > div:not(.dragbox)")).forEach(elem => elem.remove());
+                    Array.from(state.eLogs.querySelectorAll(":scope > div:not(.overlay)")).forEach(elem => elem.remove());
                     state.logs.forEach(log => {
                         let elem = document.createElement("div");
                         state.eLogs.appendChild(elem);
@@ -7048,7 +7034,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #eSide;
     #eSideSections;
     #eContent;
-    #eDragBox;
     #eDivider;
     
     constructor(app) {
@@ -7354,21 +7339,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             return btn;
         }));
 
-        this.#eDragBox = document.createElement("div");
-        this.eMain.appendChild(this.eDragBox);
-        this.eDragBox.classList.add("dragbox");
-        this.eDragBox.innerHTML = "<div></div><div></div>";
-        const dragIn = e => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.eDragBox.classList.add("this");
-        };
-        const dragOut = e => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.eDragBox.classList.remove("this");
-        };
-        const drop = e => {
+        new core.DropTarget(this.elem, e => {
             let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
             items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
             if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
@@ -7380,16 +7351,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.project.config.source = file.path;
             this.update(0);
             this.app.post("cmd-action");
-        };
-        this.addHandler("add", () => {
-            ["dragenter", "dragover"].forEach(name => document.body.addEventListener(name, dragIn));
-            ["dragleave", "drop"].forEach(name => document.body.addEventListener(name, dragOut));
-            document.body.addEventListener("drop", drop);
-        });
-        this.addHandler("rem", () => {
-            ["dragenter", "dragover"].forEach(name => document.body.removeEventListener(name, dragIn));
-            ["dragleave", "drop"].forEach(name => document.body.removeEventListener(name, dragOut));
-            document.body.removeEventListener("drop", drop);
         });
 
         this.#eDivider = document.createElement("div");
@@ -7841,7 +7802,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     hasESideSection(id) { return id in this.#eSideSections; }
     getESideSection(id) { return this.#eSideSections[id]; }
     get eContent() { return this.#eContent; }
-    get eDragBox() { return this.#eDragBox; }
     get eDivider() { return this.#eDivider; }
 
     format() {
