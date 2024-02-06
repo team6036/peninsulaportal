@@ -7339,3 +7339,96 @@ Form.SubForm = class FormSubForm extends Form.Field {
 
     get form() { return this.#form; }
 };
+
+export class DropTarget extends util.Target {
+    #elem;
+    #eOverlay;
+    #observer;
+    #observed;
+
+    #dragIn;
+    #dragOut;
+    #drop;
+
+    constructor(elem, drop=null) {
+        super();
+
+        this.#elem = null;
+        this.#eOverlay = document.createElement("div");
+        this.#eOverlay.classList.add("overlay");
+        this.#eOverlay.innerHTML = "<div></div><div></div>";
+        this.#observed = () => {
+            if (!this.hasElem()) return;
+            let r = this.elem.getBoundingClientRect();
+            this.#eOverlay.style.setProperty("--size", Math.min(r.width, r.height)+"px");
+        };
+        this.#observer = new ResizeObserver(this.#observed);
+
+        this.#dragIn = e => {
+            if (!e) return;
+            e.preventDefault();
+            e.stopPropagation();
+            this.#eOverlay.classList.add("this");
+        };
+        this.#dragOut = e => {
+            if (!e) return;
+            e.preventDefault();
+            e.stopPropagation();
+            this.#eOverlay.classList.remove("this");
+        };
+        this.#drop = () => {};
+
+        this.elem = elem;
+
+        this.drop = drop;
+    }
+
+    get elem() { return this.#elem; }
+    set elem(v) {
+        v = (v instanceof HTMLElement) ? v : null;
+        if (this.elem == v) return;
+        this.unhook();
+        this.#elem = v;
+        this.hook();
+    }
+    hasElem() { return !!this.elem; }
+    unhook() {
+        this.unhookDrop();
+        if (!this.hasElem()) return;
+        this.elem.classList.remove("droptarget");
+        this.elem.removeChild(this.#eOverlay);
+        this.#observer.unobserve();
+        ["dragenter", "dragover"].forEach(name => this.elem.removeEventListener(name, this.#dragIn));
+        ["dragleave", "dragend", "drop"].forEach(name => this.elem.removeEventListener(name, this.#dragOut));
+        this.#dragOut(null);
+        this.#observed();
+    }
+    hook() {
+        this.hookDrop();
+        if (!this.hasElem()) return;
+        this.elem.classList.add("droptarget");
+        this.elem.appendChild(this.#eOverlay);
+        this.#observer.observe(this.elem);
+        ["dragenter", "dragover"].forEach(name => this.elem.addEventListener(name, this.#dragIn));
+        ["dragleave", "dragend", "drop"].forEach(name => this.elem.addEventListener(name, this.#dragOut));
+        this.#dragOut(null);
+        this.#observed();
+    }
+
+    get drop() { return this.#drop; }
+    set drop(v) {
+        v = util.ensure(v, "func");
+        if (this.drop == v) return;
+        this.unhookDrop();
+        this.#drop = v;
+        this.hookDrop();
+    }
+    unhookDrop() {
+        if (!this.hasElem()) return;
+        this.elem.removeEventListener("drop", this.#drop);
+    }
+    hookDrop() {
+        if (!this.hasElem()) return;
+        this.elem.addEventListener("drop", this.#drop);
+    }
+}
