@@ -147,89 +147,94 @@ export class App extends util.Target {
 
         let today = new Date();
         if (today.getMonth() == 3 && today.getDate() == 1) {
-            let elem = document.createElement("div");
-            document.body.appendChild(elem);
-            elem.style.zIndex = 1000000;
-            elem.style.position = "absolute";
-            elem.style.top = elem.style.left = "0px";
-            elem.style.width = elem.style.height = "100%";
-            const funnyFunction = async () => {
-                let t = 0;
-                let t1 = 5000, t2 = 6000, t3 = 6500, t4 = 9500, t5 = 10000;
-                let glitchT = [50, 100];
-                let pos = new V(), brightness = 1, hue = 0, T = 0;
-                let facePos = new V(), faceSize = 1, faceT = 0;
-                let percentPos = new V(), percentT = 0;
-                const funnyUpdate = delta => {
-                    t += delta;
-                    T += delta;
-                    if (T > util.lerp(...glitchT, Math.random())) {
-                        T = 0;
-                        pos.set(util.lerp(-15, 15, Math.random()), util.lerp(-15, 15, Math.random()));
-                        brightness = util.lerp(0.75, 1.25, Math.random());
-                        hue = util.lerp(-30, 30, Math.random());
-                    }
-                    let y = (t < t4 ? 0 : util.lerp(0, window.innerHeight, util.ease.sinI((t-t4)/(t5-t4))));
-                    theElem.style.transform = (t < t2 ? "" : t < t3 ? "translate("+pos.xy.map(v => v+"px").join(",")+")" : "translate("+V.dir(360*Math.random(), 5*Math.random()).add(0, y).xy.map(v => v+"px").join(",")+")");
-                    theElem.style.filter = (t < t2 ? "" : t < t3 ? "brightness("+brightness+") hue-rotate("+hue+"deg)" : "");
-                    theElem.style.background = (t < t3 ? "#357EC7" : "radial-gradient(circle,#8000,#8004), #357EC7");
-                    theSadFace.textContent = (t < t2 ? ":(" : t < t3 ? [":)", ":P", ":|", ":3"][Math.floor(4*Math.random())] : ">:)");
-                    faceT += delta;
-                    if (faceT > util.lerp(...glitchT, Math.random())) {
-                        faceT = 0;
-                        facePos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
-                        faceSize = util.lerp(0.5, 1.5, Math.random());
-                    }
-                    theSadFace.style.transform = (t < t2 ? "" : t < t3 ? "translate("+facePos.xy.map(v => v+"px").join(",")+") scale("+faceSize+")" : "");
-                    thePercentage.textContent = Math.round(100*(t < t1 ? ((t-0)/t1) : t < t2 ? 1 : (1+(t-t3)/2500)))+"% complete";
-                    percentT += delta;
-                    if (percentT > util.lerp(...glitchT, Math.random())) {
-                        percentT = 0;
-                        percentPos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
-                    }
-                    thePercentage.style.transform = (t < t2 ? "" : t < t3 ? "translate("+percentPos.xy.map(v => v+"px").join(",")+")" : "");
-                    let url = (t < t3 ? "https://www.windows.com/stopcode" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-                    let code = (t < t3 ? "CRITICAL_PROCESS_DIED" : "CRITICAL_PROCESS_CHILLING");
-                    theInfo.innerHTML = `For more information about the issue and possible fixes, visit ${url}<br><br>If you call a support person, give them this info:<br>Stop code: ${code}`;
-                };
-                await util.wait(1000);
-                await window.api.set("fullscreen", true);
-                await util.wait(1000);
-                elem.style.backgroundColor = "#000";
-                await util.wait(500);
-                elem.style.backgroundColor = "";
-                elem.style.cursor = "none";
-                elem.innerHTML = `
-<div style="width:100%;height:100%;padding:150px;display:flex;flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:stretch;align-content:center;gap:20px;color:#fff;">
-    <div id="thesadface" style="font-family:Roboto;font-size:160px;">:(</div>
-    <div style="font-family:Roboto;font-size:32px;">Your PC ran into a problem and needs to restart as soon as we're finished collecting some error info<br><br><span id="thepercentage" style="display:inline-block;font-family:Roboto;"></span></div>
-    <div style="margin-top:40px;display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start;align-items:flex-start;align-content:flex-start;gap:20px;">
-        <div id="thecanvas" style="border:10px solid #fff;"></div>
-        <div id="theinfo" style="font-family:Roboto;font-size:16px;text-align:left;line-height:1.75;"></div>
+            if (localStorage.getItem("funny") == null) {
+                localStorage.setItem("funny", "notnull");
+                let elem = document.createElement("div");
+                document.body.appendChild(elem);
+                elem.style.zIndex = 1000000;
+                elem.style.position = "absolute";
+                elem.style.top = elem.style.left = "0px";
+                elem.style.width = elem.style.height = "100%";
+                const funnyFunction = async () => {
+                    let t = 0;
+                    let t1 = 5000, t2 = 6000, t3 = 6500, t4 = 9500, t5 = 10000;
+                    let glitchT = [50, 100];
+                    let pos = new V(), brightness = 1, hue = 0, T = 0;
+                    let facePos = new V(), faceSize = 1, faceT = 0;
+                    let percentPos = new V(), percentT = 0;
+                    const funnyUpdate = delta => {
+                        t += delta;
+                        T += delta;
+                        if (T > util.lerp(...glitchT, Math.random())) {
+                            T = 0;
+                            pos.set(util.lerp(-15, 15, Math.random()), util.lerp(-15, 15, Math.random()));
+                            brightness = util.lerp(0.75, 1.25, Math.random());
+                            hue = util.lerp(-30, 30, Math.random());
+                        }
+                        let y = (t < t4 ? 0 : util.lerp(0, window.innerHeight, util.ease.sinI((t-t4)/(t5-t4))));
+                        theElem.style.transform = (t < t2 ? "" : t < t3 ? "translate("+pos.xy.map(v => v+"px").join(",")+")" : "translate("+V.dir(360*Math.random(), 5*Math.random()).add(0, y).xy.map(v => v+"px").join(",")+")");
+                        theElem.style.filter = (t < t2 ? "" : t < t3 ? "brightness("+brightness+") hue-rotate("+hue+"deg)" : "");
+                        theElem.style.background = (t < t3 ? "#357EC7" : "radial-gradient(circle,#8000,#8004), #357EC7");
+                        theSadFace.textContent = (t < t2 ? ":(" : t < t3 ? [":)", ":P", ":|", ":3"][Math.floor(4*Math.random())] : ">:)");
+                        faceT += delta;
+                        if (faceT > util.lerp(...glitchT, Math.random())) {
+                            faceT = 0;
+                            facePos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
+                            faceSize = util.lerp(0.5, 1.5, Math.random());
+                        }
+                        theSadFace.style.transform = (t < t2 ? "" : t < t3 ? "translate("+facePos.xy.map(v => v+"px").join(",")+") scale("+faceSize+")" : "");
+                        thePercentage.textContent = Math.round(100*(t < t1 ? ((t-0)/t1) : t < t2 ? 1 : (1+(t-t3)/2500)))+"% complete";
+                        percentT += delta;
+                        if (percentT > util.lerp(...glitchT, Math.random())) {
+                            percentT = 0;
+                            percentPos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
+                        }
+                        thePercentage.style.transform = (t < t2 ? "" : t < t3 ? "translate("+percentPos.xy.map(v => v+"px").join(",")+")" : "");
+                        let url = (t < t3 ? "https://www.windows.com/stopcode" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+                        let code = (t < t3 ? "CRITICAL_PROCESS_DIED" : "CRITICAL_PROCESS_CHILLING");
+                        theInfo.innerHTML = `For more information about the issue and possible fixes, visit ${url}<br><br>If you call a support person, give them this info:<br>Stop code: ${code}`;
+                    };
+                    await util.wait(1000);
+                    await window.api.set("fullscreen", true);
+                    await util.wait(1000);
+                    elem.style.backgroundColor = "#000";
+                    await util.wait(500);
+                    elem.style.backgroundColor = "";
+                    elem.style.cursor = "none";
+                    elem.innerHTML = `
+    <div style="width:100%;height:100%;padding:150px;display:flex;flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:stretch;align-content:center;gap:20px;color:#fff;">
+        <div id="thesadface" style="font-family:Roboto;font-size:160px;">:(</div>
+        <div style="font-family:Roboto;font-size:32px;">Your PC ran into a problem and needs to restart as soon as we're finished collecting some error info<br><br><span id="thepercentage" style="display:inline-block;font-family:Roboto;"></span></div>
+        <div style="margin-top:40px;display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start;align-items:flex-start;align-content:flex-start;gap:20px;">
+            <div id="thecanvas" style="border:10px solid #fff;"></div>
+            <div id="theinfo" style="font-family:Roboto;font-size:16px;text-align:left;line-height:1.75;"></div>
+        </div>
     </div>
-</div>
-                `;
-                let theElem = elem.children[0];
-                let theSadFace = document.getElementById("thesadface");
-                let thePercentage = document.getElementById("thepercentage");
-                let theCanvas = document.getElementById("thecanvas");
-                let theInfo = document.getElementById("theinfo");
-                new QRCode(theCanvas, {
-                    text: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                    width: 500,
-                    height: 500,
-                    colorDark : "#0000",
-                    colorLight : "#fff",
-                    correctLevel : QRCode.CorrectLevel.H,
-                });
-                Array.from(theCanvas.children).forEach(elem => (elem.style.width = elem.style.height = "100px"));
-                this.addHandler("update", funnyUpdate);
-                await util.wait(t5);
-                this.remHandler("update", funnyUpdate);
-                await window.api.set("fullscreen", false);
-                elem.remove();
-            };
-            funnyFunction();
+                    `;
+                    let theElem = elem.children[0];
+                    let theSadFace = document.getElementById("thesadface");
+                    let thePercentage = document.getElementById("thepercentage");
+                    let theCanvas = document.getElementById("thecanvas");
+                    let theInfo = document.getElementById("theinfo");
+                    new QRCode(theCanvas, {
+                        text: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                        width: 500,
+                        height: 500,
+                        colorDark : "#0000",
+                        colorLight : "#fff",
+                        correctLevel : QRCode.CorrectLevel.H,
+                    });
+                    Array.from(theCanvas.children).forEach(elem => (elem.style.width = elem.style.height = "100px"));
+                    this.addHandler("update", funnyUpdate);
+                    await util.wait(t5);
+                    this.remHandler("update", funnyUpdate);
+                    await window.api.set("fullscreen", false);
+                    elem.remove();
+                };
+                funnyFunction();
+            }
+        } else {
+            localStorage.removeItem("funny");
         }
 
         this.addHandler("start", async () => {
