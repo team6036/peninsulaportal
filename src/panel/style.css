@@ -65,7 +65,7 @@
 
     width: calc(var(--side) - 1px);
     max-width: calc(var(--side) - 1px);
-    padding: 10px;
+    padding: min(10px, calc(var(--side) / 2));
 
     display: flex;
     flex-direction: column;
