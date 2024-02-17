@@ -65,7 +65,6 @@
 
     width: calc(var(--side) - 1px);
     max-width: calc(var(--side) - 1px);
-    padding: min(10px, calc(var(--side) / 2));
 
     display: flex;
     flex-direction: column;
@@ -74,13 +73,65 @@
     align-items: stretch;
     align-content: center;
 }
+#PROJECTPAGE > .main > .side > .divider {
+    z-index: 1;
+
+    order: 0;
+    
+    position: relative;
+
+    height: 11px;
+    max-height: 11px;
+    width: 100%;
+    margin: -5px 0px;
+    
+    cursor: ns-resize;
+}
+#PROJECTPAGE > .main > .side > .divider::before {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    height: 1px;
+
+    background-color: var(--v2);
+}
+#PROJECTPAGE > .main > .side > .divider::after {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 20px;
+    height: 2px;
+
+    background-color: var(--v4);
+
+    transition: width var(--t), height var(--t), background-color var(--t);
+}
+#PROJECTPAGE > .main > .side > .divider:hover::after {
+    height: 5px;
+
+    background-color: var(--v8);
+}
+#PROJECTPAGE > .main > .side > .divider.this::after {
+    height: 100%;
+
+    background-color: var(--a);
+}
 #PROJECTPAGE > .main > .side > .section {
-    --h: 100px;
+    --h: 0px;
 
     min-width: 100%;
     max-width: 100%;
-    min-height: 22px;
-    max-height: 22px;
+    min-height: calc(var(--h) - 1px);
+    max-height: calc(var(--h) - 1px);
     overflow: hidden;
 
     display: flex;
@@ -92,12 +143,8 @@
 
     transition: min-height var(--t), max-height var(--t);
 }
-#PROJECTPAGE > .main > .side > .section.this {
-    min-height: var(--h);
-    max-height: var(--h);
-}
 #PROJECTPAGE > .main > .side > .section > button {
-    padding: 5px;
+    padding: 10px;
     
     display: flex;
     flex-direction: row;
@@ -142,6 +189,8 @@
     max-height: calc(var(--h) - 22px);
 }
 #PROJECTPAGE > .main > .side > .section#tools > .content {
+    padding: 10px;
+
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
