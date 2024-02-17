@@ -6444,35 +6444,37 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
 class Project extends core.Project {
     #widgetData;
     #sidePos;
+    #sideSectionPos;
 
     constructor(...a) {
         super();
 
         this.#widgetData = "";
         this.#sidePos = 0.15;
+        this.#sideSectionPos = {};
 
-        if (a.length <= 0 || a.length > 5) a = [null];
+        if (a.length <= 0 || a.length == 4 || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project) a = [a.id, a.widgetData, a.sidePos, a.config, a.meta];
+            if (a instanceof Project) a = [a.id, a.widgetData, a.sidePos, a.sideSectionPos, a.config, a.meta];
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
-                a = [a.id, a.widgetData, a.sidePos, a.config, a.meta];
+                a = [a.id, a.widgetData, a.sidePos, a.sideSectionPos, a.config, a.meta];
             }
             else if (a instanceof Project.Config) a = ["", a, null];
             else if (a instanceof Project.Meta) a = ["", null, a];
             else if (util.is(a, "str")) a = ["", null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.widgetData, a.sidePos, a.config, a.meta];
+            else if (util.is(a, "obj")) a = [a.id, a.widgetData, a.sidePos, a.sideSectionPos, a.config, a.meta];
             else a = ["", null, null];
         }
         if (a.length == 2) {
             if (a[0] instanceof Project.Config && a[1] instanceof Project.Meta) a = ["", ...a];
             else a = ["", null, null];
         }
-        if (a.length == 3) a = [a[0], 0.15, ...a.slice(1)];
-        if (a.length == 4) a = [null, ...a];
+        if (a.length == 3) a = [a[0], 0.15, { source: 0, browser: 1, tools: 0 }, ...a.slice(1)];
+        if (a.length == 5) a = [null, ...a];
 
-        [this.id, this.widgetData, this.sidePos, this.config, this.meta] = a;
+        [this.id, this.widgetData, this.sidePos, this.sideSectionPos, this.config, this.meta] = a;
     }
 
     get widgetData() { return this.#widgetData; }
@@ -6487,6 +6489,62 @@ class Project extends core.Project {
         v = Math.min(1, Math.max(0, util.ensure(v, "num", 0.15)));
         if (this.sidePos == v) return;
         this.change("sidePos", this.sidePos, this.#sidePos=v);
+    }
+    
+    get sideSectionPos() {
+        let sideSectionPos = {};
+        for (let k in this.#sideSectionPos)
+            sideSectionPos[k] = this.#sideSectionPos[k];
+        return sideSectionPos;
+    }
+    set sideSectionPos(v) {
+        v = util.ensure(v, "obj");
+        this.clearSideSectionPos();
+        for (let k in v) this.setSideSectionPos(k, v[k], false);
+        this.fixSideSectionPos();
+    }
+    clearSideSectionPos() {
+        let sideSectionPos = this.sideSectionPos;
+        for (let k in sideSectionPos) this.delSideSectionPos(k);
+        return sideSectionPos;
+    }
+    hasSideSectionPos(k) { return String(k) in this.#sideSectionPos; }
+    getSideSectionPos(k) {
+        if (!this.hasSideSectionPos(k)) return null;
+        return this.#sideSectionPos[k];
+    }
+    setSideSectionPos(k, v, fix=true) {
+        let v2 = this.getSideSectionPos(k);
+        k = String(k);
+        if (!["source", "browser", "tools"].includes(k)) return v2;
+        this.#sideSectionPos[k] = Math.max(0, util.ensure(v, "num"));
+        if (fix) this.#fixSideSectionPos();
+        v = this.getSideSectionPos(k);
+        this.change("setSideSectionPos", v, v2);
+        return v2;
+    }
+    delSideSectionPos(k, fix=true) {
+        if (!this.hasSideSectionPos(k)) return null;
+        let v = this.getSideSectionPos(k);
+        k = String(k);
+        delete this.#sideSectionPos[k];
+        if (fix) this.#fixSideSectionPos();
+        this.change("delSideSectionPos", v, null);
+        return v;
+    }
+    #fixSideSectionPos() {
+        let sideSectionPos = this.sideSectionPos;
+        let n = Object.keys(sideSectionPos).length;
+        if (n <= 0) return;
+        let sum = 0;
+        for (let k in sideSectionPos) sum += sideSectionPos[k];
+        if (sum <= 0) return;
+        for (let k in sideSectionPos)
+            this.#sideSectionPos[k] /= sum;
+    }
+    fixSideSectionPos() {
+        this.#fixSideSectionPos();
+        this.change("fixSideSectionPos", null, this.sideSectionPos);
     }
 
     buildWidget() {
@@ -6505,6 +6563,7 @@ class Project extends core.Project {
             id: this.id,
             widgetData: this.widgetData,
             sidePos: this.sidePos,
+            sideSectionPos: this.sideSectionPos,
             config: this.config, meta: this.meta,
         });
     }
@@ -7223,26 +7282,39 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eMain.appendChild(this.eSide);
         this.eSide.classList.add("side");
         this.#eSideSections = {};
-        ["source", "browser", "tools"].forEach(name => {
+        const names = ["source", "browser", "tools"];
+        names.forEach((name, i) => {
+            if (i > 0) {
+                // let elem = document.createElement("div");
+                // this.eSide.appendChild(elem);
+                // elem.classList.add("divider");
+                // elem.addEventListener("mousedown", e => {
+                //     const mouseup = () => {
+                //         document.removeEventListener("mouseup", mouseup);
+                //         document.removeEventListener("mousemove", mousemove);
+                //     };
+                //     const mousemove = e => {
+                //         if (!this.hasProject()) return;
+                //         let r = this.eSide.getBoundingClientRect();
+                //         let p = (e.pageY-r.top) / r.height;
+                //         let mnBound = 0, mxBound = 1;
+                //         for (let j = 0; j < i-1; j++) mnBound += this.project.getSideSectionPos(name[j]);
+                //         for (let j = names.length-1; j > i; j--) mxBound -= this.project.getSideSectionPos(name[j]);
+                //         p = Math.min(mxBound, Math.max(mnBound, p));
+                //         // this.project.setSideSectionPos(names[i-1], p-mnBound, false);
+                //         // this.project.setSideSectionPos(names[i], mxBound-p, false);
+                //         this.project.fixSideSectionPos();
+                //     };
+                //     document.addEventListener("mouseup", mouseup);
+                //     document.addEventListener("mousemove", mousemove);
+                // });
+            }
             let elem = document.createElement("div");
             this.eSide.appendChild(elem);
             elem.id = name;
             elem.classList.add("section");
             let s = this.#eSideSections[name] = new util.Target();
             s.elem = elem;
-            s.getIsOpen = () => elem.classList.contains("this");
-            s.setIsOpen = v => {
-                v = !!v;
-                if (s.getIsOpen() == v) return true;
-                if (v) elem.classList.add("this");
-                else elem.classList.remove("this");
-                this.formatSide();
-                return true;
-            };
-            s.getIsClosed = () => !s.getIsOpen();
-            s.setIsClosed = v => s.setIsOpen(!v);
-            s.open = () => s.setIsOpen(true);
-            s.close = () => s.setIsClosed(true);
             let btn = s.eBtn = document.createElement("button");
             elem.appendChild(btn);
             btn.classList.add("override");
@@ -7250,7 +7322,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             btn.children[1].textContent = name.toUpperCase();
             btn.addEventListener("click", e => {
                 e.stopPropagation();
-                s.setIsOpen(!s.getIsOpen());
+                if (!this.hasProject()) return;
+                if (this.project.getSideSectionPos(name) > 0)
+                    return this.project.setSideSectionPos(name, 0);
+                let sideSectionPos = this.project.sideSectionPos;
+                let sum = 0, n = 0;
+                for (let k in sideSectionPos) {
+                    if (sideSectionPos[k] <= 0) continue;
+                    sum += sideSectionPos[k];
+                    n++;
+                }
+                this.project.setSideSectionPos(name, (n > 0) ? (sum/n) : 1);
             });
             s.eContent = document.createElement("div");
             elem.appendChild(s.eContent);
@@ -7276,6 +7358,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eMain.appendChild(this.eContent);
         this.eContent.classList.add("content");
         new ResizeObserver(() => this.formatContent()).observe(this.eContent);
+        this.addHandler("change-project", () => this.formatSide());
+        this.addHandler("change-project.setSideSectionPos", () => this.formatSide());
+        this.addHandler("change-project.delSideSectionPos", () => this.formatSide());
+        this.addHandler("change-project.fixSideSectionPos", () => this.formatSide());
         
         let toolButtons = [
             {
@@ -7536,14 +7622,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.project.meta.thumb = await App.capture({
                 x: Math.round(r.left), y: Math.round(r.top),
                 width: Math.round(r.width), height: Math.round(r.height),
-            });
-        });
-
-        this.addHandler("refresh", () => {
-            this.eSideSections.forEach(name => {
-                let section = this.getESideSection(name);
-                if (["browser"].includes(name)) section.open();
-                else section.close();
             });
         });
 
@@ -7808,18 +7886,39 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.formatSide();
         this.formatContent();
     }
-    formatSide() {
-        let r = this.eSide.getBoundingClientRect();
+    get sideAvailable() {
         let ids = this.eSideSections;
         let elems = ids.map(id => this.getESideSection(id).elem);
-        let idsOpen = ids.filter(id => this.getESideSection(id).getIsOpen());
-        let availableHeight = r.height - 20 - ids.length*22;
+        let height = this.eSide.getBoundingClientRect().height;
         Array.from(this.eSide.children).forEach(elem => {
             if (elems.includes(elem)) return;
-            availableHeight -= elem.getBoundingClientRect().height;
+            if (elem.classList.contains("divider")) return;
+            height -= elem.getBoundingClientRect().height;
         });
-        let divideAmong = idsOpen.length;
-        idsOpen.forEach(id => this.getESideSection(id).elem.style.setProperty("--h", (availableHeight/divideAmong + 22)+"px"));
+        let h = 0, n = 0;
+        elems.forEach(elem => {
+            let btn = elem.querySelector(":scope > button");
+            if (!btn) return;
+            h = Math.max(h, btn.getBoundingClientRect().height);
+            n++;
+        });
+        return {
+            height: height,
+            heightBtn: h,
+            nBtn: n,
+        };
+    }
+    formatSide() {
+        const available = this.sideAvailable;
+        const availableHeight = available.height - available.heightBtn*available.nBtn;
+        this.eSideSections.forEach(id => {
+            let s = this.getESideSection(id);
+            let x = this.hasProject() ? this.project.getSideSectionPos(id) : 0;
+            if (x > 0) s.elem.classList.add("this");
+            else s.elem.classList.remove("this");
+            s.elem.style.setProperty("--h", (availableHeight*x + available.heightBtn)+"px");
+        });
+        this.metaExplorer.format();
         this.explorer.format();
         return true;
     }
