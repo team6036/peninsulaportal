@@ -2566,8 +2566,14 @@ const MAIN = async () => {
                         let templates = util.ensure(data.templates, "obj");
                         await Promise.all(Object.keys(templates).map(async name => {
                             name = String(name);
+                            const template = templates[name];
                             await Promise.all(["images", "models"].map(async section => {
                                 let tag = { "images": "png", "models": "glb" }[section];
+                                if (section.substring(0, section.length-1) in template)
+                                    if (!template[section.substring(0, section.length-1)]) {
+                                        this.log(`DB templates/${name}.${tag} IGNORED`);
+                                        return;
+                                    }
                                 this.log(`DB templates/${name}.${tag}`);
                                 this.addLoad(`templates/${name}.${tag}`);
                                 try {
