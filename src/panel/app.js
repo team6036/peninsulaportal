@@ -6518,8 +6518,8 @@ class Project extends core.Project {
         k = String(k);
         if (!["source", "browser", "tools"].includes(k)) return v2;
         this.#sideSectionPos[k] = Math.max(0, util.ensure(v, "num"));
-        if (fix) this.#fixSideSectionPos();
         v = this.getSideSectionPos(k);
+        if (fix) this.fixSideSectionPos();
         this.change("setSideSectionPos", v, v2);
         return v2;
     }
@@ -6528,22 +6528,19 @@ class Project extends core.Project {
         let v = this.getSideSectionPos(k);
         k = String(k);
         delete this.#sideSectionPos[k];
-        if (fix) this.#fixSideSectionPos();
+        if (fix) this.fixSideSectionPos();
         this.change("delSideSectionPos", v, null);
         return v;
     }
-    #fixSideSectionPos() {
+    fixSideSectionPos(force=false) {
         let sideSectionPos = this.sideSectionPos;
         let n = Object.keys(sideSectionPos).length;
         if (n <= 0) return;
         let sum = 0;
         for (let k in sideSectionPos) sum += sideSectionPos[k];
-        if (sum <= 0) return;
+        if (sum <= (force ? 0 : 1)) return;
         for (let k in sideSectionPos)
             this.#sideSectionPos[k] /= sum;
-    }
-    fixSideSectionPos() {
-        this.#fixSideSectionPos();
         this.change("fixSideSectionPos", null, this.sideSectionPos);
     }
 
@@ -7285,29 +7282,49 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         const names = ["source", "browser", "tools"];
         names.forEach((name, i) => {
             if (i > 0) {
-                // let elem = document.createElement("div");
-                // this.eSide.appendChild(elem);
-                // elem.classList.add("divider");
-                // elem.addEventListener("mousedown", e => {
-                //     const mouseup = () => {
-                //         document.removeEventListener("mouseup", mouseup);
-                //         document.removeEventListener("mousemove", mousemove);
-                //     };
-                //     const mousemove = e => {
-                //         if (!this.hasProject()) return;
-                //         let r = this.eSide.getBoundingClientRect();
-                //         let p = (e.pageY-r.top) / r.height;
-                //         let mnBound = 0, mxBound = 1;
-                //         for (let j = 0; j < i-1; j++) mnBound += this.project.getSideSectionPos(name[j]);
-                //         for (let j = names.length-1; j > i; j--) mxBound -= this.project.getSideSectionPos(name[j]);
-                //         p = Math.min(mxBound, Math.max(mnBound, p));
-                //         // this.project.setSideSectionPos(names[i-1], p-mnBound, false);
-                //         // this.project.setSideSectionPos(names[i], mxBound-p, false);
-                //         this.project.fixSideSectionPos();
-                //     };
-                //     document.addEventListener("mouseup", mouseup);
-                //     document.addEventListener("mousemove", mousemove);
-                // });
+                let elem = document.createElement("div");
+                this.eSide.appendChild(elem);
+                elem.classList.add("divider");
+                elem.addEventListener("mousedown", e => {
+                    const mouseup = () => {
+                        document.removeEventListener("mouseup", mouseup);
+                        document.removeEventListener("mousemove", mousemove);
+                    };
+                    const mousemove = e => {
+                        if (!this.hasProject()) return;
+                        const available = this.sideAvailable;
+                        let r = this.eSide.getBoundingClientRect();
+                        let y = e.pageY-r.top;
+                        let top = 0;
+                        for (let j = 0; j < i-1; j++)
+                            top += this.getESideSection(names[j]).elem.getBoundingClientRect().height;
+                        top += available.heightBtn;
+                        let bottom = r.height;
+                        for (let j = names.length-1; j > i; j--)
+                            bottom -= this.getESideSection(names[j]).elem.getBoundingClientRect().height;
+                        bottom -= available.heightBtn;
+                        y = Math.min(bottom, Math.max(top, y));
+                        // const names2 = names.filter(name => this.project.getSideSectionPos(name) > 0);
+                        // let i2 = names2.indexOf(names[i-1]);
+                        // if (names2.length <= 1) {
+                        //     this.project.setSideSectionPos(names[i-1], );
+                        //     this.project.fixSideSectionPos(true);
+                        // } else {
+                        //     // let p = (e.pageY-r.top) / r.height;
+                        //     let mnBound = 0, mxBound = 0;
+                        //     for (let j = 0; j < names2.length; j++) mxBound += this.project.getSideSectionPos(names2[j]);
+                        //     for (let j = 0; j < i2-1; j++) mnBound += this.project.getSideSectionPos(names2[j]);
+                        //     for (let j = names2.length-1; j > i2; j--) mxBound -= this.project.getSideSectionPos(names2[j]);
+                        //     // p = Math.min(mxBound, Math.max(mnBound, p));
+                        //     let p = util.lerp(mnBound, mxBound, (y-top)/(bottom-top));
+                        //     this.project.setSideSectionPos(names2[i2-1], p-mnBound, false);
+                        //     this.project.setSideSectionPos(names2[i2], mxBound-p, false);
+                        //     this.project.fixSideSectionPos();
+                        // }
+                    };
+                    document.addEventListener("mouseup", mouseup);
+                    document.addEventListener("mousemove", mousemove);
+                });
             }
             let elem = document.createElement("div");
             this.eSide.appendChild(elem);
@@ -7323,16 +7340,32 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             btn.addEventListener("click", e => {
                 e.stopPropagation();
                 if (!this.hasProject()) return;
-                if (this.project.getSideSectionPos(name) > 0)
-                    return this.project.setSideSectionPos(name, 0);
-                let sideSectionPos = this.project.sideSectionPos;
-                let sum = 0, n = 0;
-                for (let k in sideSectionPos) {
-                    if (sideSectionPos[k] <= 0) continue;
-                    sum += sideSectionPos[k];
-                    n++;
+                if (this.project.hasSideSectionPos(name) && this.project.getSideSectionPos(name) > 0)
+                    this.project.delSideSectionPos(name);
+                else {
+                    let sideSectionPos = this.project.sideSectionPos;
+                    let sum = 0, n = 0;
+                    for (let k in sideSectionPos) {
+                        if (sideSectionPos[k] <= 0) continue;
+                        sum += sideSectionPos[k];
+                        n++;
+                    }
+                    this.project.setSideSectionPos(name, (n > 0) ? (sum/n) : 1);
                 }
-                this.project.setSideSectionPos(name, (n > 0) ? (sum/n) : 1);
+                this.project.fixSideSectionPos(true);
+                // if (this.project.getSideSectionPos(name) > 0)
+                //     this.project.setSideSectionPos(name, 0);
+                // else {
+                //     let sideSectionPos = this.project.sideSectionPos;
+                //     let sum = 0, n = 0;
+                //     for (let k in sideSectionPos) {
+                //         if (sideSectionPos[k] <= 0) continue;
+                //         sum += sideSectionPos[k];
+                //         n++;
+                //     }
+                //     this.project.setSideSectionPos(name, (n > 0) ? (sum/n) : 1);
+                // }
+                // this.project.fixSideSectionPos(true);
             });
             s.eContent = document.createElement("div");
             elem.appendChild(s.eContent);
@@ -7913,7 +7946,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         const availableHeight = available.height - available.heightBtn*available.nBtn;
         this.eSideSections.forEach(id => {
             let s = this.getESideSection(id);
-            let x = this.hasProject() ? this.project.getSideSectionPos(id) : 0;
+            let x = (this.hasProject() && this.project.hasSideSectionPos(id)) ? this.project.getSideSectionPos(id) : 0;
             if (x > 0) s.elem.classList.add("this");
             else s.elem.classList.remove("this");
             s.elem.style.setProperty("--h", (availableHeight*x + available.heightBtn)+"px");
