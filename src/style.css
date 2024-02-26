@@ -1796,7 +1796,7 @@ article.md.lighter table td {
     pointer-events: auto;
 }
 .odom > .overlay > .label > div {
-    padding: 15px;
+    padding: 7.5px;
 
     display: flex;
     flex-direction: column;
@@ -1804,13 +1804,11 @@ article.md.lighter table td {
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 15px;
+    gap: 7.5px;
 
     background-color: var(--v1-a);
     color: var(--v8);
-    border: 2px solid var(--v3);
-
-    font-size: 2em;
+    border: 1px solid var(--v3);
 }
 .odom > .overlay > .label > div > .info {
     display: flex;
@@ -1819,7 +1817,7 @@ article.md.lighter table td {
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 15px;
+    gap: 7.5px;
 }
 .odom > .overlay > .label > div > .info:has(> .pos:empty):has(> .pos:empty) {
     display: none;
@@ -1831,7 +1829,7 @@ article.md.lighter table td {
     justify-content: center;
     align-items: center;
     align-content: center;
-    gap: 15px;
+    gap: 7.5px;
 }
 .odom > .overlay > .label > div > .info > .dir {
     flex-direction: column;
@@ -2082,6 +2080,8 @@ article.md.lighter table td {
     flex-basis: 100%;
 }
 .form > .item > .header > .name {
+    flex-basis: 100%;
+    
     color: var(--v8);
 
     font-weight: 550;

@@ -4270,11 +4270,11 @@ export class Odometry extends util.Target {
 
         this.addHandler("update", delta => {
             if (!this.doRender) return;
-            this.rend();
+            this.rend(delta);
         });
     }
 
-    rend() { this.post("render"); }
+    rend(delta) { this.post("render", delta); }
 
     get elem() { return this.#elem; }
     get canvas() { return this.#canvas; }
@@ -4350,7 +4350,7 @@ export class Odometry2d extends Odometry {
 
         this.unit = "m";
 
-        this.addHandler("render", () => {
+        this.addHandler("render", delta => {
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             const mnx = (ctx.canvas.width - this.w*scale*quality)/2, mxx = (ctx.canvas.width + this.w*scale*quality)/2;
@@ -4923,10 +4923,40 @@ export class Odometry3d extends Odometry {
 
     #isProjection;
     #isOrbit;
+    #isCinematic;
     #origin;
     
-    static async loadField(name) {
+    static #traverseObject(obj, type) {
+        const material = obj.material;
+        obj.material = material.clone();
+        material.dispose();
+        if (type == "basic") {
+            if (!(obj.material instanceof THREE.MeshStandardMaterial)) return;
+            obj.material.metalness = 0;
+            obj.material.roughness = 1;
+            return;
+        }
+        if (type == "cinematic") {
+            if (!(obj.material instanceof THREE.MeshStandardMaterial)) return;
+            const material = new THREE.MeshLambertMaterial({
+                color: obj.material.color,
+                transparent: obj.material.transparent,
+                opacity: obj.material.opacity,
+            });
+            if (obj.name.toLowerCase().includes("carpet")) {
+                obj.castShadow = false;
+                obj.receiveShadow = true;
+            } else {
+                obj.castShadow = !obj.material.transparent;
+                obj.receiveShadow = !obj.material.transparent;
+            }
+            obj.material = material;
+            return;
+        }
+    }
+    static async loadField(name, type) {
         name = String(name);
+        type = String(type);
         let templatesLoad = this.templatesLoad;
         let templates = {};
         let templateModels = {};
@@ -4941,37 +4971,38 @@ export class Odometry3d extends Odometry {
         }
         if (!(name in templates)) return null;
         if (!(name in templateModels)) return null;
-        if (this.loadedFields[name]) return this.loadedFields[name];
+        if (this.loadedFields[name]) {
+            if (this.loadedFields[name][type])
+                return this.loadedFields[name][type];
+            return null;
+        }
         let t0 = util.ensure(this.loadingFields[name], "num");
         let t1 = util.getTime();
         if (t1-t0 < 1000) return null;
         this.loadingFields[name] = t1;
-        return new Promise((res, rej) => {
+        return await new Promise((res, rej) => {
             LOADER.load(templateModels[name], gltf => {
-                gltf.scene.traverse(obj => {
-                    if (!obj.isMesh) return;
-                    if (obj.material instanceof THREE.MeshStandardMaterial) {
-                        obj.material.metalness = 0;
-                        obj.material.roughness = 1;
-                    }
+                this.loadedFields[name] = {};
+                const scene = gltf.scene;
+                ["basic", "cinematic"].forEach(type => {
+                    const obj = this.loadedFields[name][type] = scene.clone();
+                    obj.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        this.#traverseObject(obj, type);
+                    });
                 });
-                let obj, pobj;
-                obj = gltf.scene;
-                // let bbox = new THREE.Box3().setFromObject(obj);
-                // obj.position.set(
-                //     obj.position.x + (0-(bbox.max.x+bbox.min.x)/2)*0,
-                //     obj.position.y + (0-(bbox.max.y+bbox.min.y)/2)*0,
-                //     obj.position.z + (0-(bbox.max.z+bbox.min.z)/2)*0,
-                // );
-                [obj, pobj] = [new THREE.Object3D(), obj];
-                obj.add(pobj);
-                this.loadedFields[name] = obj;
-                res(this.loadedFields[name]);
+                scene.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    obj.material.dispose();
+                });
+                if (!this.loadedFields[name][type]) return null;
+                res(this.loadedFields[name][type]);
             }, null, err => res(null));
         });
     }
-    static async loadRobot(name) {
+    static async loadRobot(name, type) {
         name = String(name);
+        type = String(type);
         let robotsLoad = this.robotsLoad;
         let robots = {};
         let robotModels = {};
@@ -4986,39 +5017,45 @@ export class Odometry3d extends Odometry {
         }
         if (!(name in robots)) return null;
         if (!(name in robotModels)) return null;
-        if (this.loadedRobots[name]) return this.loadedRobots[name];
+        if (this.loadedRobots[name]) {
+            if (this.loadedRobots[name][type])
+                return this.loadedRobots[name][type];
+            return null;
+        }
         let t0 = util.ensure(this.loadingRobots[name], "num");
         let t1 = util.getTime();
         if (t1-t0 < 1000) return null;
         this.loadingRobots[name] = t1;
         return await new Promise((res, rej) => {
             LOADER.load(robotModels[name], gltf => {
-                gltf.scene.traverse(obj => {
-                    if (!obj.isMesh) return;
-                    if (obj.material instanceof THREE.MeshStandardMaterial) {
-                        obj.material.metalness = 0;
-                        obj.material.roughness = 1;
-                    }
+                this.loadedRobots[name] = {};
+                const scene = gltf.scene;
+                ["basic", "cinematic"].forEach(type => {
+                    let obj, pobj, bbox;
+                    obj = scene.clone();
+                    obj.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        this.#traverseObject(obj, type);
+                    });
+                    bbox = new THREE.Box3().setFromObject(obj);
+                    obj.position.set(
+                        obj.position.x - (bbox.max.x+bbox.min.x)/2,
+                        obj.position.y - (bbox.max.y+bbox.min.y)/2,
+                        obj.position.z + (bbox.max.z-bbox.min.z)/2,
+                    );
+                    [obj, pobj] = [new THREE.Object3D(), obj];
+                    obj.add(pobj);
+                    obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[name], "obj").rotations));
+                    [obj, pobj] = [new THREE.Object3D(), obj];
+                    obj.add(pobj);
+                    this.loadedRobots[name][type] = obj;
                 });
-                let obj, pobj, bbox;
-                obj = gltf.scene;
-                bbox = new THREE.Box3().setFromObject(obj);
-                obj.position.set(
-                    obj.position.x - (bbox.max.x+bbox.min.x)/2,
-                    obj.position.y - (bbox.max.y+bbox.min.y)/2,
-                    obj.position.z - (bbox.max.z+bbox.min.z)/2,
-                );
-                [obj, pobj] = [new THREE.Object3D(), obj];
-                obj.add(pobj);
-                obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[name], "obj").rotations));
-                [obj, pobj] = [new THREE.Object3D(), obj];
-                obj.add(pobj);
-                bbox = new THREE.Box3().setFromObject(obj);
-                obj.position.setZ((bbox.max.z-bbox.min.z)/2);
-                [obj, pobj] = [new THREE.Object3D(), obj];
-                obj.add(pobj);
-                this.loadedRobots[name] = obj;
-                res(this.loadedRobots[name]);
+                scene.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    obj.material.dispose();
+                });
+                if (!this.loadedRobots[name][type]) return null;
+                res(this.loadedRobots[name][type]);
             }, null, err => res(null));
         });
     }
@@ -5039,11 +5076,12 @@ export class Odometry3d extends Odometry {
         this.#wpilibGroup = new THREE.Group();
         this.scene.add(this.wpilibGroup);
         this.wpilibGroup.quaternion.copy(WPILIB2THREE);
-        this.scene.fog = new THREE.Fog(0x000000, 20, 25);
         this.#camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
         let cam = new Array(7).fill(null);
 
-        this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true });
+        this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, powerPreference: "default" });
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.#cssRenderer = new CSS2DRenderer({ element: this.overlay });
         
         this.#controls = null;
@@ -5052,26 +5090,42 @@ export class Odometry3d extends Odometry {
         this.#raycastIntersections = [];
 
         this.#requestRedraw = true;
+
+        let r = this.elem.getBoundingClientRect();
         
         this.canvas.addEventListener("click", e => {
             e.stopPropagation();
-            if (this.controls instanceof PointerLockControls)
-                this.controls.lock();
+            if (this.isFree) this.controls.lock();
         });
         this.elem.addEventListener("mousemove", e => {
-            let r = this.elem.getBoundingClientRect();
             let x = (e.pageX - r.left) / r.width, y = (e.pageY - r.top) / r.height;
             x = (x*2)-1; y = (y*2)-1;
-            if (this.controls instanceof PointerLockControls && this.controls.isLocked) x = y = 0;
+            if (this.isFree && this.controls.isLocked) x = y = 0;
             this.raycaster.setFromCamera(new THREE.Vector2(x, -y), this.camera);
             this.#raycastIntersections = this.raycaster.intersectObject(this.scene, true);
         });
+        const updateCamera = () => {
+            if (this.isProjection) {
+                if (this.camera.aspect != r.width / r.height) {
+                    this.camera.aspect = r.width / r.height;
+                    this.camera.updateProjectionMatrix();
+                }
+            } else if (this.isIsometric) {
+                let size = 15;
+                let aspect = r.width / r.height;
+                this.camera.left = -size/2 * aspect;
+                this.camera.right = +size/2 * aspect;
+                this.camera.top = +size/2;
+                this.camera.bottom = -size/2;
+            }
+        };
+        this.addHandler("change-isProjection", updateCamera);
         const updateScene = () => {
-            let r = this.elem.getBoundingClientRect();
-            this.renderer.setSize(r.width*this.quality, r.height*this.quality);
-            this.renderer.domElement.style.transform = "scale("+(1/this.quality)+")";
-            this.cssRenderer.setSize(r.width*this.quality, r.height*this.quality);
-            this.cssRenderer.domElement.style.transform = "scale("+(1/this.quality)+")";
+            r = this.elem.getBoundingClientRect();
+            this.renderer.setSize(Math.ceil(r.width), Math.ceil(r.height));
+            this.cssRenderer.setSize(Math.ceil(r.width), Math.ceil(r.height));
+            this.renderer.setPixelRatio(this.quality);
+            updateCamera();
             this.requestRedraw();
         };
         new ResizeObserver(updateScene).observe(this.elem);
@@ -5081,27 +5135,35 @@ export class Odometry3d extends Odometry {
         const length = 5;
         let axes, xAxis, yAxis, zAxis;
 
+        const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
+
         this.#axisScene = new THREE.Group();
         this.axisScene._builtin = "axis-scene";
         axes = this.axisScene.axes = new THREE.Group();
         this.axisScene.add(axes);
         xAxis = this.axisScene.xAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        xAxis.castShadow = true;
+        xAxis.receiveShadow = false;
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
         yAxis = this.axisScene.yAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        yAxis.castShadow = true;
+        yAxis.receiveShadow = false;
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         zAxis = this.axisScene.zAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        zAxis.castShadow = true;
+        zAxis.receiveShadow = false;
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
@@ -5112,22 +5174,28 @@ export class Odometry3d extends Odometry {
         axes = this.axisSceneSized.axes = new THREE.Group();
         this.axisSceneSized.add(axes);
         xAxis = this.axisSceneSized.xAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        xAxis.castShadow = true;
+        xAxis.receiveShadow = false;
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
         yAxis = this.axisSceneSized.yAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        yAxis.castShadow = true;
+        yAxis.receiveShadow = false;
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         zAxis = this.axisSceneSized.zAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        zAxis.castShadow = true;
+        zAxis.receiveShadow = false;
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
@@ -5138,15 +5206,50 @@ export class Odometry3d extends Odometry {
         this.#field = null;
         this.#theField = null;
 
-        const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
+        const hemLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
         this.scene.add(hemLight);
 
-        const light = new THREE.PointLight(0xffffff, 0.5);
-        light.position.set(0, 0, 10);
-        this.scene.add(light);
+        const lights = [[], []];
+
+        {
+            const light = new THREE.PointLight(0xffffff, 0.5);
+            lights[0].push(light);
+            light.position.set(0, 10, 0);
+        }
+        {
+            const data = [
+                [[0, 10, 0], [0, 0, 0], 0xffffff],
+                // [[+5, 10, 0], [+2, 0, 0], 0xffffff],
+                // [[-5, 10, 0], [-2, 0, 0], 0xffffff],
+                [[+5, 10, 0], [+5, 0, 0], 0xff0000],
+                [[-5, 10, 0], [-5, 0, 0], 0x0000ff],
+            ];
+            for (const [[x0, y0, z0], [x1, y1, z1], color] of data) {
+                const light = new THREE.SpotLight(color, 150, 0, 60*(Math.PI/180), 0.25, 2);
+                lights[1].push(light);
+                light.position.set(x0, y0, z0);
+                light.target.position.set(x1, y1, z1);
+                light.castShadow = true;
+                light.shadow.mapSize.width = 1024;
+                light.shadow.mapSize.height = 1024;
+            }
+        }
+        this.addHandler("change-isCinematic", () => {
+            for (let i = 0; i < 2; i++)
+                lights[i].forEach(light => {
+                    if (i == +this.isCinematic)
+                        this.scene.add(light);
+                    else this.scene.remove(light);
+                });
+        });
+
+        const singlePlaneGeometry = new THREE.PlaneGeometry(1, 1);
+        const planeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        planeMaterial.side = THREE.DoubleSide;
 
         this.#isProjection = null;
         this.#isOrbit = null;
+        this.#isCinematic = null;
         this.#origin = null;
 
         let keys = new Set();
@@ -5192,7 +5295,7 @@ export class Odometry3d extends Odometry {
             let colorG = PROPERTYCACHE.getColor("--cg");
             let colorB = PROPERTYCACHE.getColor("--cb");
             let colorV = PROPERTYCACHE.getColor("--v2");
-            this.scene.fog.color.set(colorV.toHex(false));
+            planeMaterial.color.set(colorV.toHex(false));
             this.axisScene.xAxis.material.color.set(colorR.toHex(false));
             this.axisScene.yAxis.material.color.set(colorG.toHex(false));
             this.axisScene.zAxis.material.color.set(colorB.toHex(false));
@@ -5209,24 +5312,22 @@ export class Odometry3d extends Odometry {
                     if ((x+y) % 2 == 0) continue;
                     if (i >= planes.length) {
                         let plane = new THREE.Mesh(
-                            new THREE.PlaneGeometry(1, 1),
-                            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                            singlePlaneGeometry,
+                            planeMaterial,
                         );
-                        plane.material.side = THREE.DoubleSide;
+                        plane.castShadow = false;
+                        plane.receiveShadow = true;
                         planes.push(plane);
                         this.axisScene.add(plane);
                         this.requestRedraw();
                     }
                     let plane = planes[i++];
                     plane.position.set(0.5+1*(x-size/2), 0.5+1*(y-size/2), 0);
-                    plane.material.color.set(colorV.toHex(false));
                 }
             }
             while (planes.length > i) {
                 let plane = planes.pop();
                 this.axisScene.remove(plane);
-                plane.geometry.dispose();
-                plane.material.dispose();
                 this.requestRedraw();
             }
             planes = this.axisSceneSized.planes;
@@ -5239,7 +5340,6 @@ export class Odometry3d extends Odometry {
                     let plane = planes.pop();
                     this.axisSceneSized.remove(plane);
                     plane.geometry.dispose();
-                    plane.material.dispose();
                 };
                 this.requestRedraw();
             }
@@ -5250,10 +5350,11 @@ export class Odometry3d extends Odometry {
                     if (i >= planes.length) {
                         let plane = new THREE.Mesh(
                             new THREE.PlaneGeometry(0, 0),
-                            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                            planeMaterial,
                         );
+                        plane.castShadow = false;
+                        plane.receiveShadow = true;
                         plane.geometry.w = plane.geometry.h = 0;
-                        plane.material.side = THREE.DoubleSide;
                         planes.push(plane);
                         this.axisSceneSized.add(plane);
                         this.requestRedraw();
@@ -5268,27 +5369,25 @@ export class Odometry3d extends Odometry {
                         this.requestRedraw();
                     }
                     plane.position.set(x+pw/2-w/2, y+ph/2-h/2, 0);
-                    plane.material.color.set(colorV.toHex(false));
                 }
             }
             while (planes.length > i) {
                 let plane = planes.pop();
                 this.axisSceneSized.remove(plane);
                 plane.geometry.dispose();
-                plane.material.dispose();
                 this.requestRedraw();
             }
 
             if (!fieldLock)
                 (async () => {
                     fieldLock = true;
-                    this.field = (await Odometry3d.loadField(this.template)) || (this.hasTemplate() ? this.axisSceneSized : this.axisScene);
+                    this.field = (await Odometry3d.loadField(this.template, this.isCinematic ? "cinematic" : "basic")) || (this.hasTemplate() ? this.axisSceneSized : this.axisScene);
                     fieldLock = false;
                 })();
 
-            if (this.controls instanceof OrbitControls) {
+            if (this.isOrbit) {
                 this.controls.update();
-            } else if (this.controls instanceof PointerLockControls) {
+            } else if (this.isFree) {
                 if (this.controls.isLocked) {
                     let xP = keys.has("KeyD") || keys.has("ArrowRight");
                     let xN = keys.has("KeyA") || keys.has("ArrowLeft");
@@ -5299,7 +5398,7 @@ export class Odometry3d extends Odometry {
                     let x = xP - xN;
                     let y = yP - yN;
                     let z = zP - zN;
-                    velocity.iadd(new util.V3(x, y, z).mul(keys.has("ShiftRight") ? 0.001 : 0.01));
+                    velocity.iadd(new util.V3(x, y, z).mul(keys.has("ShiftRight") ? 0.1 : 1).mul(delta/1000));
                     velocity.imul(0.9);
                     velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));
                     this.controls.moveRight(velocity.x);
@@ -5322,22 +5421,6 @@ export class Odometry3d extends Odometry {
                 this.requestRedraw();
             }
 
-            let r = this.canvas.getBoundingClientRect();
-
-            if (this.camera instanceof THREE.PerspectiveCamera) {
-                if (this.camera.aspect != r.width / r.height) {
-                    this.camera.aspect = r.width / r.height;
-                    this.camera.updateProjectionMatrix();
-                }
-            } else if (this.camera instanceof THREE.OrthographicCamera) {
-                let size = 15;
-                let aspect = r.width / r.height;
-                this.camera.left = -size/2 * aspect;
-                this.camera.right = +size/2 * aspect;
-                this.camera.top = +size/2;
-                this.camera.bottom = -size/2;
-            }
-
             if (!this.#requestRedraw) return;
             this.#requestRedraw = false;
 
@@ -5347,6 +5430,7 @@ export class Odometry3d extends Odometry {
 
         this.isProjection = true;
         this.isOrbit = true;
+        this.isCinematic = false;
         this.origin = "blue+";
     }
 
@@ -5415,11 +5499,6 @@ export class Odometry3d extends Odometry {
         if (this.field == v) return;
         if (this.hasField()) {
             this.wpilibGroup.remove(this.theField);
-            this.theField.traverse(obj => {
-                if (!obj.isMesh) return;
-                obj.geometry.dispose();
-                obj.material.dispose();
-            });
             this.#theField = null;
         }
         [v, this.#field] = [this.#field, v];
@@ -5452,11 +5531,12 @@ export class Odometry3d extends Odometry {
     set isProjection(v) {
         v = !!v;
         if (this.isProjection == v) return;
-        this.change("isProjection", this.isProjection, this.#isProjection=v);
+        this.#isProjection = v;
         this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
         this.camera.position.set(...(this.isProjection ? [0, 7.5, -7.5] : [10, 10, -10]));
-        this.updateControls();
         this.camera.lookAt(0, 0, 0);
+        this.change("isProjection", !this.isProjection, this.isProjection);
+        this.updateControls();
         this.requestRedraw();
     }
     get isIsometric() { return !this.isProjection; }
@@ -5470,6 +5550,12 @@ export class Odometry3d extends Odometry {
     }
     get isFree() { return !this.isOrbit; }
     set isFree(v) { this.isOrbit = !v; }
+    get isCinematic() { return this.#isCinematic; }
+    set isCinematic(v) {
+        v = !!v;
+        if (this.isCinematic == v) return;
+        this.change("isCinematic", this.isCinematic, this.#isCinematic=v);
+    }
     get origin() { return this.#origin; }
     set origin(v) {
         v = String(v);
@@ -5527,25 +5613,28 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#loadedObjects = {};
         const node = new THREE.Mesh(
             new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        node.castShadow = node.receiveShadow = true;
         this.#loadedObjects["§node"] = node;
         const cube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        cube.castShadow = cube.receiveShadow = true;
         this.#loadedObjects["§cube"] = cube;
         const radius = 0.05, arrowLength = 0.25, arrowRadius = 0.1;
         const arrow = new THREE.Object3D();
         const tip = new THREE.Mesh(
             new THREE.ConeGeometry(arrowRadius, arrowLength, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
+        arrow.castShadow = arrow.receiveShadow = true;
         tip.position.set(0, (1-arrowLength)/2, 0);
         arrow.add(tip);
         const line = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, 1-arrowLength, 8),
-            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
         line.position.set(0, -arrowLength/2, 0);
         arrow.add(line);
@@ -5572,26 +5661,28 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             }
         }
         const axes = new THREE.Object3D();
-        let length = 1;
+        axes.castShadow = axes.receiveShadow = true;
+        const length = 1;
+        const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
         let xAxis, yAxis, zAxis;
         xAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xff0000 }),
         );
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
         axes.xAxis = xAxis;
         yAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0x00ff00 }),
         );
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         axes.yAxis = yAxis;
         zAxis = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, length, 8),
-            new THREE.MeshBasicMaterial({ color: 0x0000ff }),
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0x0000ff }),
         );
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
@@ -5609,7 +5700,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             if (!robotLock)
                 (async () => {
                     robotLock = true;
-                    theModelObject = (this.hasRobot() && this.robot.startsWith("§")) ? this.#loadedObjects[this.robot] : (await Odometry3d.loadRobot(this.robot));
+                    theModelObject = (this.hasRobot() && this.robot.startsWith("§")) ? this.#loadedObjects[this.robot] : (await Odometry3d.loadRobot(this.robot, this.odometry.isCinematic ? "cinematic" : "basic"));
                     robotLock = false;
                 })();
             if (modelObject != theModelObject) {
@@ -7098,6 +7189,7 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
                 btn.textContent = (util.is(data, "obj") ? data.name : data);
                 btn.addEventListener("click", e => {
                     this.value = (util.is(data, "obj") ? data.value : data);
+                    if (util.is(data.click, "func")) data.click();
                 });
                 btn.style.setProperty("--n", this.values.length);
             });
@@ -7118,6 +7210,36 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
         for (let btn of this.eContent.children)
             btn.disabled = v;
     }
+};
+Form.ToggleInput = class FormToggleInput extends Form.SelectInput {
+    #disabled;
+
+    constructor(name, toggleName, value) {
+        // gross might migrate over to BooleanInput
+        let changed = false;
+        super(name, [{ value: true, name: toggleName, click: () => {
+            this.value = (changed ? value : !value);
+            changed = false;
+        }}], !!value);
+        this.addHandler("change-value", (f, t) => {
+            changed = true;
+            value = this.value;
+        });
+        value = this.value;
+        this.#disabled = true;
+    }
+
+    get values() { return super.values; }
+    set values(v) {
+        try {
+            if (this.#disabled)
+                return;
+        } catch (e) {}
+        super.values = v;
+    }
+
+    get value() { return !!super.value; }
+    set value(v) { super.value = !!v; }
 };
 Form.BooleanInput = class FormBooleanInput extends Form.Field {
     constructor(name, value) {
