@@ -5813,12 +5813,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     #isProjection;
     #isOrbit;
+    #isCinematic;
     #lengthUnits;
     #angleUnits;
     #origin;
 
     #fViewType;
     #fViewMovementType;
+    #fViewCinematic;
     #fQuality;
     #fUnitsLength1;
     #fUnitsLength2;
@@ -5864,6 +5866,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         this.#isProjection = null;
         this.#isOrbit = null;
+        this.#isCinematic = null;
         this.#lengthUnits = null;
         this.#angleUnits = null;
         this.#origin = null;
@@ -5892,6 +5895,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         });
         this.addHandler("change-isOrbit", () => {
             this.fViewMovementType.value = this.isOrbit ? "orbit" : "free";
+        });
+
+        this.#fViewCinematic = optionsForm.addField(new core.Form.ToggleInput("cinematic", "Cinematic"));
+        this.fViewCinematic.showHeader = false;
+        this.fViewCinematic.addHandler("change-value", () => {
+            this.isCinematic = this.fViewCinematic.value;
+        });
+        this.addHandler("change-isOrbit", () => {
+            this.fViewCinematic.value = this.isCinematic;
         });
 
         this.#fQuality = optionsForm.addField(new core.Form.SelectInput("quality", [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }]));
@@ -6142,6 +6154,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     }
     get isFree() { return !this.isOrbit; }
     set isFree(v) { this.isOrbit = !v; }
+    get isCinematic() { return this.#isCinematic; }
+    set isCinematic(v) {
+        v = !!v;
+        if (this.isCinematic == v) return;
+        this.change("isCinematic", this.isCinematic, this.#isCinematic=v);
+        this.odometry.isCinematic = this.isCinematic;
+    }
     get lengthUnits() { return this.#lengthUnits; }
     set lengthUnits(v) {
         v = String(v);
@@ -6167,6 +6186,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     get fViewType() { return this.#fViewType; }
     get fViewMovementType() { return this.#fViewMovementType; }
+    get fViewCinematic() { return this.#fViewCinematic; }
     get fQuality() { return this.#fQuality; }
     get fUnitsLength1() { return this.#fUnitsLength1; }
     get fUnitsLength2() { return this.#fUnitsLength2; }
