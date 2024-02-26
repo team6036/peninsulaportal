@@ -3139,7 +3139,6 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
         this.elem.appendChild(this.eActions);
         this.eActions.classList.add("actions");
 
-        // this.addAction(new Panel.LogWorksTab.Action(this, "edit"));
         this.addAction(new Panel.LogWorksTab.Action(this, "merge"));
         this.addAction(new Panel.LogWorksTab.Action(this, "export"));
 
@@ -3309,66 +3308,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     #init() {
         const state = this.#state;
         let namefs = {
-            // edit: () => {
-            //     this.displayName = this.title = "Edit Logs";
-            //     this.icon = "pencil";
-
-            //     const explorer = new FieldExplorer();
-            //     this.eContent.appendChild(explorer.elem);
-            //     explorer.elem.addEventListener("scroll", () => (state.eEditor.scrollTop = explorer.elem.scrollTop));
-
-            //     state.eEditor = document.createElement("div");
-            //     this.eContent.appendChild(state.eEditor);
-            //     state.eEditor.classList.add("editor");
-            //     state.eEditor.addEventListener("scroll", () => (explorer.elem.scrollTop = state.eEditor.scrollTop));
-
-            //     let editors = [];
-
-            //     this.addHandler("update", delta => {
-            //         FieldExplorer.Node.doubleTraverse(
-            //             this.page.hasSource() ? this.page.source.tree.nodeObjects : [],
-            //             explorer.nodeObjects,
-            //             (...enodes) => explorer.add(...enodes),
-            //             (...enodes) => explorer.rem(...enodes),
-            //             (node, enode) => {
-            //                 enode.canShowValue = false;
-            //                 enode.node = node;
-            //             },
-            //         );
-            //         let nodes = [];
-            //         const dfs = explorer => {
-            //             explorer.nodeObjects.forEach(enode => {
-            //                 nodes.push(enode.node);
-            //                 if (enode.node.hasField() && enode.node.field.isStruct)
-            //                     enode.isClosed = true;
-            //                 if (enode.isClosed) return;
-            //                 dfs(enode.explorer);
-            //             });
-            //         };
-            //         dfs(explorer);
-            //         while (editors.length < nodes.length) {
-            //             let editor = {};
-            //             editors.push(editor);
-            //             let elem = editor.elem = document.createElement("div");
-            //             state.eEditor.appendChild(elem);
-            //             elem.classList.add("item");
-            //             editor.node = null;
-            //         }
-            //         while (editors.length > nodes.length) {
-            //             let editor = editors.pop();
-            //             state.eEditor.removeChild(editor.elem);
-            //         }
-            //         for (let i = 0; i < nodes.length; i++) {
-            //             let editor = editors[i];
-            //             let node = editor.node = nodes[i];
-            //             if (!node.hasField() || node.field.isStruct || node.field.isArray || node.field.type == "structschema") {
-            //                 editor.elem.classList.remove("open");
-            //                 continue;
-            //             }
-            //             editor.elem.classList.add("open");
-            //         }
-            //     });
-            // },
             merge: () => {
                 this.displayName = this.title = "Merge Logs";
                 this.iconSrc = "../assets/icons/merge.svg";
@@ -7373,19 +7312,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     this.project.setSideSectionPos(name, (n > 0) ? (sum/n) : 1);
                 }
                 this.project.fixSideSectionPos(true);
-                // if (this.project.getSideSectionPos(name) > 0)
-                //     this.project.setSideSectionPos(name, 0);
-                // else {
-                //     let sideSectionPos = this.project.sideSectionPos;
-                //     let sum = 0, n = 0;
-                //     for (let k in sideSectionPos) {
-                //         if (sideSectionPos[k] <= 0) continue;
-                //         sum += sideSectionPos[k];
-                //         n++;
-                //     }
-                //     this.project.setSideSectionPos(name, (n > 0) ? (sum/n) : 1);
-                // }
-                // this.project.fixSideSectionPos(true);
             });
             s.eContent = document.createElement("div");
             elem.appendChild(s.eContent);
