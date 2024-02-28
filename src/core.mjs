@@ -371,7 +371,8 @@ export class App extends util.Target {
             await (async () => {
                 if (elem instanceof HTMLImageElement && elem.classList.contains("docs-icon")) {
                     const onHolidayState = async holiday => {
-                        elem.src = (holiday == null) ? String(new URL("./src/assets/app/icon.png", url)) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
+                        const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
+                        elem.src = (holiday == null || ("icon" in holidayData && !holidayData.icon)) ? String(new URL("./src/assets/app/icon.png", url)) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
                     };
                     signal.addHandler("holiday", onHolidayState);
                     await onHolidayState(await window.api.get("active-holiday"));
@@ -618,9 +619,10 @@ export class App extends util.Target {
         this.addHandler("cmd-about", async () => {
             let name = String(await window.api.get("name"));
             let holiday = await window.api.get("active-holiday");
+            const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
             let pop = this.confirm();
             pop.cancel = "Documentation";
-            pop.iconSrc = (holiday == null) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
+            pop.iconSrc = (holiday == null || ("icon" in holidayData && !holidayData.icon)) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.title = "Peninsula "+util.formatText(name);
@@ -848,7 +850,8 @@ export class App extends util.Target {
                 }
                 if (both < 2) return;
                 const onHolidayState = async holiday => {
-                    if (holiday == null) return elem.classList.remove("special");
+                    const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
+                    if (holiday == null || ("hat" in holidayData && !holidayData.hat)) return elem.classList.remove("special");
                     elem.classList.add("special");
                     let eSpecialBack = elem.querySelector(".special.back");
                     if (eSpecialBack instanceof HTMLImageElement)

@@ -2685,10 +2685,17 @@ const MAIN = async () => {
                         let holidays = util.ensure(data.holidays, "obj");
                         await Promise.all(Object.keys(holidays).map(async name => {
                             name = String(name);
+                            const holiday = holidays[name];
                             await Promise.all([
                                 "svg", "png", // "ico", "icns",
                                 "hat1", "hat2",
                             ].map(async tag => {
+                                if (["svg", "png"].includes(tag))
+                                    if ("icon" in holiday && !holiday.icon)
+                                        return;
+                                if (["hat1", "hat2"].includes(tag))
+                                    if ("hat" in holiday && !holiday.hat)
+                                        return;
                                 let pth = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
                                 this.log(`DB holidays/${pth}`);
                                 this.addLoad(`holidays/${pth}`);
@@ -2704,6 +2711,8 @@ const MAIN = async () => {
                         }));
                         await Promise.all(Object.keys(holidays).map(async name => {
                             name = String(name);
+                            const holiday = holidays[name];
+                            if ("icon" in holiday && !holiday.icon) return;
                             if (!(await WindowManager.fileHas([this.dataPath, "holidays", "icons", name+".png"]))) return;
                             let input = await fs.promises.readFile(path.join(this.dataPath, "holidays", "icons", name+".png"));
                             await Promise.all([
