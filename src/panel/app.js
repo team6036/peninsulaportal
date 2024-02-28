@@ -7,6 +7,7 @@ import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
 import CSVTimeSource from "../sources/csv/time/source.js";
+import CSVFieldSource from "../sources/csv/field/source.js";
 import { WorkerClient } from "../worker.js";
 
 
@@ -3569,12 +3570,20 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         tag: "wpilog",
                     },
                     csv_time: {
-                        name: "CSV Time",
+                        name: "CSV-Time",
                         command: "csv",
                         decoder: "../csv/time/decoder-worker.js",
                         encoder: "../csv/time/encoder-worker.js",
                         source: CSVTimeSource,
-                        tag: "csv",
+                        tag: "time.csv",
+                    },
+                    csv_field: {
+                        name: "CSV-Field",
+                        command: "csv",
+                        decoder: "../csv/field/decoder-worker.js",
+                        encoder: "../csv/field/encoder-worker.js",
+                        source: CSVFieldSource,
+                        tag: "field.csv",
                     },
                 };
 
@@ -3756,7 +3765,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 return source;
                             }))))
                             .filter(source => !!source);
-                        console.log(sources);
                         [sum, a, b] = [[], 0.5, 1];
                         const datas = (await Promise.all(sources.map(async (source, i) => {
                             sum.push(0);
@@ -3777,7 +3785,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             return data;
                         })))
                             .filter(data => !!data);
-                        console.log(datas);
                         const tag = "."+portMap[state.exportTo].tag;
                         for (const data of datas) {
                             const content = data.data;
@@ -6972,6 +6979,14 @@ export default class App extends core.AppFeature {
                                             page.project.config.sourceType = "csv-time";
                                         },
                                     },
+                                    {
+                                        id: "source:csv-field", label: "CSV-FIELD", type: "radio",
+                                        click: () => {
+                                            const page = this.projectPage;
+                                            if (!page.hasProject()) return;
+                                            page.project.config.sourceType = "csv-field";
+                                        },
+                                    },
                                 ],
                             },
                             "separator",
@@ -7012,13 +7027,14 @@ export default class App extends core.AppFeature {
             this.eProjectInfoContent.appendChild(eNav);
             eNav.classList.add("nav");
             eNav.classList.add("source");
-            ["nt", "wpilog", "csv-time"].forEach(name => {
+            ["nt", "wpilog", "csv-time", "csv-field"].forEach(name => {
                 let btn = document.createElement("button");
                 eNav.appendChild(this.#eProjectInfoSourceTypes[name] = btn);
                 btn.textContent = {
                     "nt": "NT4",
                     "wpilog": "WPILOG",
                     "csv-time": "CSV-TIME",
+                    "csv-field": "CSV-FIELD",
                 }[name];
                 btn.addEventListener("click", e => {
                     e.stopPropagation();
@@ -7398,7 +7414,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-source-type", type => {
             if (!this.hasProject()) return;
             type = String(type);
-            if (!["nt", "wpilog", "csv-time"].includes(type)) return;
+            if (!["nt", "wpilog", "csv-time", "csv-field"].includes(type)) return;
             this.project.config.sourceType = type;
             this.update(0);
             this.app.post("cmd-action");
@@ -7409,7 +7425,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.source.address = (this.source.address == null) ? this.project.config.source : null;
                 return;
             }
-            if (this.source instanceof WPILOGSource) {
+            if (
+                (this.source instanceof WPILOGSource) ||
+                (this.source instanceof CSVTimeSource) ||
+                (this.source instanceof CSVFieldSource)
+            ) {
                 if (this.source.importing) return;
                 if (this.project.config.source == null) return;
                 (async () => {
@@ -7429,34 +7449,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        this.app.doError("WPILOG Load Error", "File: "+this.project.config.source, e);
-                    }
-                    this.app.progress = null;
-                    delete source.importing;
-                })();
-                return;
-            }
-            if (this.source instanceof CSVTimeSource) {
-                if (this.source.importing) return;
-                if (this.project.config.source == null) return;
-                (async () => {
-                    const source = this.source;
-                    source.importing = true;
-                    this.app.progress = 0;
-                    try {
-                        let file = this.project.config.source;
-                        let i1 = file.lastIndexOf("/");
-                        let i2 = file.lastIndexOf("\\");
-                        let i = Math.max(i1, i2);
-                        source.file = file;
-                        source.shortFile = file.substring(i+1);
-                        const progress = v => (this.app.progress = v);
-                        source.addHandler("progress", progress);
-                        await source.import(file);
-                        source.remHandler("progress", progress);
-                        this.app.progress = 1;
-                    } catch (e) {
-                        this.app.doError("CSV-TIME Load Error", "File: "+this.project.config.source, e);
+                        this.app.doError({
+                            WPILOGSource: "WPILOG",
+                            CSVTimeSource: "CSV-TIME",
+                            CSVFieldSource: "CSV-FIELD",
+                        }[source.constructor.name]+" Load Error", "File: "+this.project.config.source, e);
                     }
                     this.app.progress = null;
                     delete source.importing;
@@ -7735,7 +7732,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!this.hasProject()) return;
             let type = "wpilog";
             if (path.endsWith(".wpilog")) type = "wpilog";
-            if (path.endsWith(".csv")) type = "csv-time";
+            else if (path.endsWith(".time.csv")) type = "csv-time";
+            else if (path.endsWith(".field.csv")) type = "csv-field";
+            else if (path.endsWith(".csv")) type = "csv-time";
             this.project.config.sourceType = type;
             this.project.config.source = path;
             this.update(0);
@@ -7779,7 +7778,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
             this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
 
-            ["nt", "wpilog", "csv-time"].forEach(type => {
+            ["nt", "wpilog", "csv-time", "csv-field"].forEach(type => {
                 let itm = this.app.menu.findItemWithId("source:"+type);
                 if (!itm) return;
                 itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
@@ -7803,6 +7802,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     nt: NTSource,
                     wpilog: WPILOGSource,
                     "csv-time": CSVTimeSource,
+                    "csv-field": CSVFieldSource,
                 }[this.project.config.sourceType];
                 if (!util.is(constructor, "func")) this.source = null;
                 else {
@@ -7810,6 +7810,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         nt: () => new NTSource(null),
                         wpilog: () => new WPILOGSource(null),
                         "csv-time": () => new CSVTimeSource(null),
+                        "csv-field": () => new CSVFieldSource(null),
                     }[this.project.config.sourceType]();
                     let typefs = {
                         nt: () => {
@@ -7849,9 +7850,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!on) this.app.eProjectInfoActionBtn.classList.add("off");
                 else this.app.eProjectInfoActionBtn.classList.remove("off");
                 this.app.eProjectInfoActionBtn.textContent = on ? "Connect" : "Disconnect";
-            } else if (this.source instanceof WPILOGSource) {
-                this.app.eProjectInfoActionBtn.disabled = this.source.importing;
-            } else if (this.source instanceof CSVTimeSource) {
+            } else if (
+                (this.source instanceof WPILOGSource) ||
+                (this.source instanceof CSVTimeSource) ||
+                (this.source instanceof CSVFieldSource)
+            ) {
                 this.app.eProjectInfoActionBtn.disabled = this.source.importing;
             }
 
@@ -7864,15 +7867,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     let on = !this.source.connecting && !this.source.connected;
                     itm.enabled = true;
                     itm.label = on ? "Connect" : "Disconnect";
-                } else if (this.source instanceof WPILOGSource) {
+                } else if (
+                    (this.source instanceof WPILOGSource) ||
+                    (this.source instanceof CSVTimeSource) ||
+                    (this.source instanceof CSVFieldSource)
+                ) {
                     itm.enabled = true;
                     itm.label = "Import";
-                } else if (this.source instanceof CSVTimeSource) {
-                    itm.enabled = true;
-                    itm.label = "Import";
-                } else {
-                    itm.enabled = false;
-                    itm.label = "Unknown source: "+this.source.constructor.name;
                 }
             }
 
@@ -8084,13 +8085,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
             this.app.eProjectInfoActionBtn.disabled = false;
             this.app.eProjectInfoActionBtn.classList.remove("special");
-        } else if (this.source instanceof WPILOGSource) {
-            this.app.eProjectInfoSourceInput.placeholder = "Path...";
-            this.app.eProjectInfoActionBtn.classList.remove("on");
-            this.app.eProjectInfoActionBtn.classList.remove("off");
-            this.app.eProjectInfoActionBtn.classList.add("special");
-            this.app.eProjectInfoActionBtn.textContent = "Import";
-        } else if (this.source instanceof CSVTimeSource) {
+        } else if (
+            (this.source instanceof WPILOGSource) ||
+            (this.source instanceof CSVTimeSource) ||
+            (this.source instanceof CSVFieldSource)
+        ) {
             this.app.eProjectInfoSourceInput.placeholder = "Path...";
             this.app.eProjectInfoActionBtn.classList.remove("on");
             this.app.eProjectInfoActionBtn.classList.remove("off");
@@ -8113,10 +8112,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             let on = !this.source.connecting && !this.source.connected;
             itm.enabled = true;
             itm.label = on ? "Connect" : "Disconnect";
-        } else if (this.source instanceof WPILOGSource) {
-            itm.enabled = true;
-            itm.label = "Import";
-        } else if (this.source instanceof CSVTimeSource) {
+        } else if (
+            (this.source instanceof WPILOGSource) ||
+            (this.source instanceof CSVTimeSource) ||
+            (this.source instanceof CSVFieldSource)
+        ) {
             itm.enabled = true;
             itm.label = "Import";
         } else {
@@ -8132,12 +8132,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.source.connecting) return "Connecting to "+this.source.address;
             return this.source.address;
         }
-        if (this.source instanceof WPILOGSource) {
-            if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
-            if (this.source.importing) return "Importing from "+this.source.shortFile;
-            return this.source.shortFile;
-        }
-        if (this.source instanceof CSVTimeSource) {
+        if (
+            (this.source instanceof WPILOGSource) ||
+            (this.source instanceof CSVTimeSource) ||
+            (this.source instanceof CSVFieldSource)
+        ) {
             if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
             if (this.source.importing) return "Importing from "+this.source.shortFile;
             return this.source.shortFile;
@@ -8165,22 +8164,16 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     icon: "cube-outline",
                 },
             );
-        } else if (this.source instanceof WPILOGSource) {
-            data.children.at(-1).name = "WPILOG";
-            data.children.push(
-                {
-                    name: "File",
-                    value: this.source.file,
-                    icon: "document-outline",
-                },
-                {
-                    name: "State",
-                    value: ((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
-                    icon: "cube-outline",
-                },
-            );
-        } else if (this.source instanceof CSVTimeSource) {
-            data.children.at(-1).name = "CSV-TIME";
+        } else if (
+            (this.source instanceof WPILOGSource) ||
+            (this.source instanceof CSVTimeSource) ||
+            (this.source instanceof CSVFieldSource)
+        ) {
+            data.children.at(-1).name = {
+                WPILOGSource: "WPILOG",
+                CSVTimeSource: "CSV-TIME",
+                CSVFieldSource: "CSV-FIELD",
+            }[this.source.constructor.name];
             data.children.push(
                 {
                     name: "File",
