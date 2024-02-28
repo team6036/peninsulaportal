@@ -809,6 +809,7 @@ export default class App extends core.App {
                 };
                 let idfs = {
                     templates: () => {
+                        btn.addEventListener("click", activate);
                         if (!(elem instanceof HTMLDivElement)) return;
                         const eCollection = elem.querySelector(":scope > .collection");
                         const eAdd = elem.querySelector(":scope > .title > button");
@@ -816,11 +817,12 @@ export default class App extends core.App {
                         if (!(eAdd instanceof HTMLButtonElement)) return;
                         const collection = new TemplateCollection(this, eCollection);
                         this.addHandler("refresh-templates", async () => {
-                            collection.host = String(await window.api.get("db-host"));
+                            const host = await window.api.get("db-host");
+                            if (collection.host == host) return await collection.pullItems();
+                            collection.host = host;
                         });
                         this.addHandler("load", () => collection.format());
                         this.addHandler("update", delta => collection.update(delta));
-                        btn.addEventListener("click", activate);
                         eAdd.addEventListener("click", async e => {
                             e.stopPropagation();
                             let id = String(new Date().getFullYear());
@@ -834,6 +836,7 @@ export default class App extends core.App {
                         });
                     },
                     robots: () => {
+                        btn.addEventListener("click", activate);
                         if (!(elem instanceof HTMLDivElement)) return;
                         const eCollection = elem.querySelector(":scope > .collection");
                         const eAdd = elem.querySelector(":scope > .title > button");
@@ -841,11 +844,12 @@ export default class App extends core.App {
                         if (!(eAdd instanceof HTMLButtonElement)) return;
                         const collection = new RobotCollection(this, eCollection);
                         this.addHandler("refresh-robots", async () => {
-                            collection.host = String(await window.api.get("db-host"));
+                            const host = await window.api.get("db-host");
+                            if (collection.host == host) return await collection.pullItems();
+                            collection.host = host;
                         });
                         this.addHandler("load", () => collection.format());
                         this.addHandler("update", delta => collection.update(delta));
-                        btn.addEventListener("click", activate);
                         eAdd.addEventListener("click", async e => {
                             e.stopPropagation();
                             let id = "Robot";
@@ -859,6 +863,7 @@ export default class App extends core.App {
                         });
                     },
                     themes: () => {
+                        btn.addEventListener("click", activate);
                         if (!(elem instanceof HTMLDivElement)) return;
                         const eCollection = elem.querySelector(":scope > .collection");
                         const eAdd = elem.querySelector(":scope > .title > button");
@@ -866,11 +871,12 @@ export default class App extends core.App {
                         if (!(eAdd instanceof HTMLButtonElement)) return;
                         const collection = new ThemeCollection(this, eCollection);
                         this.addHandler("refresh-themes", async () => {
-                            collection.host = String(await window.api.get("db-host"));
+                            const host = await window.api.get("db-host");
+                            if (collection.host == host) return await collection.pullItems();
+                            collection.host = host;
                         });
                         this.addHandler("load", () => collection.format());
                         this.addHandler("update", delta => collection.update(delta));
-                        btn.addEventListener("click", activate);
                         eAdd.addEventListener("click", async e => {
                             e.stopPropagation();
                             let id = "new-theme";
@@ -911,6 +917,79 @@ export default class App extends core.App {
                                 !btn.parentElement.classList.contains("this")
                             ) btn.classList.add("this");
                             else btn.classList.remove("this");
+                        });
+                    },
+                    config: () => {
+                        btn.addEventListener("click", activate);
+                        if (!(elem instanceof HTMLDivElement)) return;
+                        const eContent = elem.querySelector(":scope > .content");
+                        const form = new core.Form();
+                        eContent.appendChild(form.elem);
+                        let ignore = false;
+                        this.addHandler("refresh-config", async () => {
+                            ignore = true;
+                            const host = await window.api.get("db-host");
+                            let data = null;
+                            if (host != null) {
+                                try {
+                                    let resp = await fetch(host+"/api/config");
+                                    if (resp.status != 200) throw resp.status;
+                                    data = await resp.json();
+                                } catch (e) { this.app.doError("Config Get Error", "", e); }
+                            }
+                            data = util.ensure(data, "obj");
+                            fAssetHost.value = util.ensure(data.assetsHost, "str");
+                            fSocketHost.value = util.ensure(data.socketHost, "str");
+                            ignore = false;
+                        });
+                        // const fDBHost = form.addField(new core.Form.TextInput("Database Host URL"));
+                        const fAssetHost = form.addField(new core.Form.TextInput("Asset Host URL"));
+                        fAssetHost.type = "";
+                        fAssetHost.addHandler("change-value", async () => {
+                            if (ignore) return;
+                            let value = fAssetHost.value;
+                            if (value.length <= 0) value = null;
+                            const host = await window.api.get("db-host");
+                            if (host == null) return;
+                            let k = "assetsHost", v = value;
+                            try {
+                                let resp = await fetch(host+"/api/config", {
+                                    method: "PUT",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        attr: k,
+                                        value: v,
+                                    }),
+                                });
+                                if (resp.status != 200) throw resp.status;
+                            } catch (e) { this.app.doError("Config Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
+                            return false;
+                        });
+                        const fSocketHost = form.addField(new core.Form.TextInput("Socket Host URL"));
+                        fSocketHost.type = "";
+                        fSocketHost.addHandler("change-value", async () => {
+                            if (ignore) return;
+                            let value = fSocketHost.value;
+                            if (value.length <= 0) value = null;
+                            const host = await window.api.get("db-host");
+                            if (host == null) return;
+                            let k = "socketHost", v = value;
+                            try {
+                                let resp = await fetch(host+"/api/config", {
+                                    method: "PUT",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        attr: k,
+                                        value: v,
+                                    }),
+                                });
+                                if (resp.status != 200) throw resp.status;
+                            } catch (e) { this.app.doError("Config Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
+                            return false;
                         });
                     },
                 };
