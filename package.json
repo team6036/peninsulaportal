@@ -10,7 +10,8 @@
 	"main": "src/main.js",
 	"scripts": {
 		"start": "electron src/main.js",
-		"package": "electron-builder build"
+		"package": "electron-builder build",
+		"stats": "scc --not-match 'src/assets/modules/three-addons.*'"
 	},
 	"repository": {
 		"type": "git",
