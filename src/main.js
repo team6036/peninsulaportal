@@ -1758,17 +1758,41 @@ const MAIN = async () => {
                     const root = await kfs["root-get"]();
                     await WindowManager.fileWrite([root, "projects.json"], content);
                 },
+                "read": async (type, pth) => {
+                    if (type == "wpilog")
+                        return await WindowManager.fileReadRaw(pth);
+                    if (type == "csv")
+                        return await WindowManager.fileRead(pth);
+                    return null;
+                },
+                "write": async (type, pth, content, force=true) => {
+                    pth = WindowManager.makePath(pth);
+                    if (!force) {
+                        let root = path.dirname(pth);
+                        let ext = path.extname(pth);
+                        let name = path.basename(pth, ext);
+                        if (await WindowManager.fileHas([root, name+ext])) {
+                            let n = 1;
+                            while (await WindowManager.fileHas([root, name+"-"+n+ext])) n++;
+                            name += "-"+n;
+                        }
+                        pth = path.join(root, name+ext);
+                    }
+                    if (type == "wpilog") {
+                        await WindowManager.fileWriteRaw(pth, content);
+                        return pth;
+                    }
+                    if (type == "csv") {
+                        await WindowManager.fileWrite(pth, content);
+                        return pth;
+                    }
+                    return null;
+                },
             };
             if (k in kfs)
                 return await kfs[k](...a);
             let namefs = {
                 PANEL: {
-                    "wpilog-read": async pth => {
-                        return await WindowManager.fileReadRaw(pth);
-                    },
-                    "wpilog-write": async (pth, content) => {
-                        return await WindowManager.fileWriteRaw(pth, content);
-                    },
                     "log-cache": async pth => {
                         pth = String(pth);
                         if (!(await WindowManager.fileHas(pth))) return null;

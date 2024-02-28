@@ -29,8 +29,8 @@ class WPILOGDecoderWorker extends WorkerBase {
                             let id = startData.entry;
                             let name = entryId2Name[id] = startData.name;
                             let type = entryId2Type[id] = startData.type;
-                            if (["int64"].includes(type)) type = "int";
-                            if (["int64[]"].includes(type)) type = "int[]";
+                            if (type == "int64") type = "int";
+                            if (type == "int64[]") type = "int[]";
                             source.add(name, type);
                             entryId2Field[id] = source.getField(name);
                         } else if (record.isControlMetadata()) {

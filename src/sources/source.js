@@ -172,14 +172,14 @@ export default class Source extends util.Target {
             let datas = util.ensure(pattern.splitData(v), "arr");
             datas.forEach((data, i) => {
                 let path2 = path+"/"+i;
-                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, "struct:"+type));
+                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, "struct:"+type)).real = false;
                 this.getField(path2).update(data, ts);
             });
         } else {
             let data = util.ensure(pattern.decode(v), "obj");
             pattern.fields.forEach(field => {
                 let path2 = path+"/"+field.name;
-                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, field.isStruct ? ("struct:"+field.type) : field.type));
+                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, field.isStruct ? ("struct:"+field.type) : field.type)).real = false;
                 this.getField(path2).update(data[field.name], ts);
             });
         }
@@ -235,6 +235,8 @@ Source.Field = class SourceField extends util.Target {
 
     #node;
 
+    #real;
+
     #path;
     #name;
     #isHidden;
@@ -288,6 +290,8 @@ Source.Field = class SourceField extends util.Target {
 
         this.#node = null;
 
+        this.#real = true;
+
         this.#path = util.generatePath(path);
         path = this.path.split("/").filter(part => part.length > 0);
         this.#name = (path.length > 0) ? path.at(-1) : "";
@@ -315,6 +319,9 @@ Source.Field = class SourceField extends util.Target {
         this.#node = v;
     }
     hasNode() { return !!this.node; }
+
+    get real() { return this.#real; }
+    set real(v) { this.#real = !!v; }
 
     get path() { return this.#path; }
 
@@ -410,7 +417,7 @@ Source.Field = class SourceField extends util.Target {
         } else if (this.isArray) {
             v.forEach((v, i) => {
                 let path = this.path+"/"+i;
-                if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, this.arrayType));
+                if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, this.arrayType)).real = false;
                 this.source.getField(path).update(v, ts);
             });
         }
@@ -478,6 +485,7 @@ Source.Field = class SourceField extends util.Target {
 
     toSerialized() {
         return {
+            real: this.real,
             path: this.path,
             type: this.type,
             valueLog: this.#valueLog,
@@ -487,6 +495,7 @@ Source.Field = class SourceField extends util.Target {
     static fromSerialized(source, data) {
         data = util.ensure(data, "obj");
         let field = new Source.Field(source, data.path, data.type);
+        field.real = data.real;
         field.valueLog = data.valueLog;
         field.metadataLog = data.metadataLog;
         return field;

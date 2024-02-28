@@ -7477,8 +7477,12 @@ export class DropTarget extends util.Target {
     #dragOut;
     #drop;
 
+    #disabled;
+
     constructor(elem, drop=null) {
         super();
+
+        this.#disabled = false;
 
         this.#elem = null;
         this.#eOverlay = document.createElement("div");
@@ -7492,15 +7496,18 @@ export class DropTarget extends util.Target {
         this.#observer = new ResizeObserver(this.#observed);
 
         this.#dragIn = e => {
-            if (!e) return;
-            e.preventDefault();
-            e.stopPropagation();
+            if (this.disabled) return this.#dragOut();
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             this.#eOverlay.classList.add("this");
         };
         this.#dragOut = e => {
-            if (!e) return;
-            e.preventDefault();
-            e.stopPropagation();
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             this.#eOverlay.classList.remove("this");
         };
         this.#drop = () => {};
@@ -7523,17 +7530,23 @@ export class DropTarget extends util.Target {
         this.unhookDrop();
         if (!this.hasElem()) return;
         this.elem.classList.remove("droptarget");
-        this.elem.removeChild(this.#eOverlay);
-        this.#observer.unobserve();
+        if (this.disabled)
+            this.elem.classList.remove("disabled");
+        this.#eOverlay.remove();
+        this.#observer.disconnect();
         ["dragenter", "dragover"].forEach(name => this.elem.removeEventListener(name, this.#dragIn));
         ["dragleave", "dragend", "drop"].forEach(name => this.elem.removeEventListener(name, this.#dragOut));
         this.#dragOut(null);
         this.#observed();
     }
     hook() {
+        if (this.disabled) return this.unhook();
         this.hookDrop();
         if (!this.hasElem()) return;
         this.elem.classList.add("droptarget");
+        this.elem.classList.remove("disabled");
+        if (this.disabled)
+            this.elem.classList.add("disabled");
         this.elem.appendChild(this.#eOverlay);
         this.#observer.observe(this.elem);
         ["dragenter", "dragover"].forEach(name => this.elem.addEventListener(name, this.#dragIn));
@@ -7555,7 +7568,21 @@ export class DropTarget extends util.Target {
         this.elem.removeEventListener("drop", this.#drop);
     }
     hookDrop() {
+        if (this.disabled) return this.unhookDrop();
         if (!this.hasElem()) return;
         this.elem.addEventListener("drop", this.#drop);
     }
+
+    get disabled() { return this.#disabled; }
+    set disabled(v) {
+        v = !!v;
+        if (this.disabled == v) return;
+        this.change("disabled", this.disabled, this.#disabled=v);
+        this.unhook();
+        this.hook();
+    }
+    get enabled() { return !this.disabled; }
+    set enabled(v) { this.disabled = !v; }
+    disable() { return this.disabled = true; }
+    enable() { return this.enabled = true; }
 }

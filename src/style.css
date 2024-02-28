@@ -2305,6 +2305,11 @@ article.md.lighter table td {
 
 .droptarget {
     position: relative;
+
+    transition: opacity var(--t);
+}
+.droptarget.disabled {
+    opacity: 50%;
 }
 .droptarget > .overlay {
     --size: 0px;
