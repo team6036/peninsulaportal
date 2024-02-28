@@ -635,7 +635,7 @@ export class App extends util.Target {
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
             let isDevMode = await window.api.get("devmode");
-            if (!isDevMode && ["DATABASE"].includes(name)) {
+            if (!isDevMode && ["DATABASE", "PIT"].includes(name)) {
                 let pop = this.confirm("Open "+util.formatText(name), "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs");
                 let result = await pop.whenResult();
                 if (!result) return;

@@ -99,7 +99,7 @@ const MAIN = async () => {
         return s;
     }
 
-    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE"];
+    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
     class Process extends util.Target {
