@@ -106,6 +106,8 @@ export class App extends util.Target {
     #eMount;
     #eRunInfo;
 
+    static CLEANUPPROMPT = true;
+
     constructor() {
         super();
 
@@ -302,6 +304,7 @@ export class App extends util.Target {
                         t0 = t1;
                     };
                     update();
+                    if (!this.constructor.CLEANUPPROMPT) return;
                     let cleanups = util.ensure(await window.api.get("cleanup"), "arr").map(pth => {
                         return [pth].flatten().join("/");
                     });
@@ -2656,6 +2659,8 @@ export class AppModal extends App {
     #ieSubIcon;
     #ieTitle;
     #ieContent;
+
+    static CLEANUPPROMPT = false;
 
     constructor() {
         super();
