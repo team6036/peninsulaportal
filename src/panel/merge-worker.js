@@ -38,12 +38,6 @@ class MergeWorker extends WorkerBase {
                 const existing = new Set();
                 const existingConflicts = {};
                 sources.forEach((source, i) => {
-                    // let fields = [];
-                    // const dfs = node => {
-                    //     if (!node.hasField()) return node.nodeObjects.forEach(node => dfs(node));
-                    //     fields.push(node.field);
-                    // };
-                    // dfs(source.tree);
                     let fields = source.fieldObjects.filter(field => field.real);
                     fields.forEach((field, j) => {
                         this.progress(util.lerp(0, 0.5, (i+(j/fields.length))/sources.length));
