@@ -3463,8 +3463,9 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eSubmit.addEventListener("click", async e => {
                     e.stopPropagation();
                     if (!this.hasApp()) return;
+                    const app = this.app;
                     state.eSubmit.disabled = true;
-                    const progress = v => (this.app.progress = v);
+                    const progress = v => (app.progress = v);
                     try {
                         progress(0);
                         const sum = [];
@@ -3519,7 +3520,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             await window.api.send("write", "wpilog", pth, data);
                         }
                     } catch (e) {
-                        this.app.doError("Log Merge Error", "", e);
+                        app.doError("Log Merge Error", "", e);
                     }
                     progress(null);
                     state.eSubmit.disabled = false;
@@ -3569,7 +3570,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         source: WPILOGSource,
                         tag: "wpilog",
                     },
-                    csv_time: {
+                    "csv-time": {
                         name: "CSV-Time",
                         command: "csv",
                         decoder: "../csv/time/decoder-worker.js",
@@ -3577,7 +3578,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         source: CSVTimeSource,
                         tag: "time.csv",
                     },
-                    csv_field: {
+                    "csv-field": {
                         name: "CSV-Field",
                         command: "csv",
                         decoder: "../csv/field/decoder-worker.js",
@@ -3735,9 +3736,24 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eSubmit.addEventListener("click", async e => {
                     e.stopPropagation();
                     if (!this.hasApp()) return;
+                    const app = this.app;
+                    if (!this.hasPage()) return;
+                    const page = this.page;
                     if (state.importFrom == state.exportTo) return;
+                    if (state.importFrom == "session") {
+                    } else if (state.exportTo == "session") {
+                        if (state.logs.length != 1) return;
+                        if (!page.hasProject()) return;
+                        const project = this.page.project;
+                        project.config.sourceType = state.importFrom;
+                        project.config.source = state.logs[0];
+                        page.update(0);
+                        app.post("cmd-action");
+                    } else {
+                        if (state.logs.length <= 0) return;
+                    }
                     state.eSubmit.disabled = true;
-                    const progress = v => (this.app.progress = v);
+                    const progress = v => (app.progress = v);
                     try {
                         progress(0);
                         let sum, a, b;
@@ -3805,10 +3821,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             await window.api.send("write", portMap[state.exportTo].command, pth, content);
                         }
                     } catch (e) {
-                        this.app.doError("Log Export Error", "", e);
+                        app.doError("Log Export Error", "", e);
                     }
                     progress(null);
-                    state.eSubmit.disabled = false;
+                    state.refresh();
                 });
 
                 state.refresh = () => {
@@ -3826,8 +3842,18 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             state.remLog(log);
                         });
                     });
+                    if (state.importFrom == state.exportTo)
+                        state.eSubmit.disabled = true;
+                    else {
+                        if (state.importFrom == "session") {
+                            state.eSubmit.disabled = false;
+                        } else if (state.exportTo == "session") {
+                            state.eSubmit.disabled = state.logs.length != 1;
+                        } else {
+                            state.eSubmit.disabled = state.logs.length <= 0;
+                        }
+                    }
                     let v = state.logs.length <= 0;
-                    state.eSubmit.disabled = (v && (state.importFrom != "session")) || (state.importFrom == state.exportTo);
                     if (v == state.eLogs.classList.contains("empty")) return;
                     if (v) state.eLogs.classList.add("empty");
                     else state.eLogs.classList.remove("empty");
