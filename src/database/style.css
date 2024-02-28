@@ -389,7 +389,7 @@ button:not(.override) {
 #PAGE > .content > div > .collection > .item > .content > .display > .odom > canvas {
     border: none !important;
 }
-#PAGE > .content > div.collectionbox > .title {
+#PAGE > .content > div > .title {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -402,6 +402,6 @@ button:not(.override) {
 
     color: var(--v8);
 }
-#PAGE > .content > div.collectionbox > .title > div {
+#PAGE > .content > div > .title > div {
     flex-basis: 100%;
 }
