@@ -1,7 +1,7 @@
-import * as util from "../../../util.mjs";
+import * as util from "../../util.mjs";
 
 
-export default class CSVTimeDecoder extends util.Target {
+export default class CSVDecoder extends util.Target {
     #data;
     #grid;
 
@@ -26,6 +26,8 @@ export default class CSVTimeDecoder extends util.Target {
             let buff = "";
             let quotes = false;
             for (let j = 0; j < row.length; j++) {
+                if (util.is(callback, "func"))
+                    callback((i+(j/row.length))/grid.length);
                 let c = row[j];
                 if (quotes) {
                     if (c == "\"") {
@@ -57,10 +59,9 @@ export default class CSVTimeDecoder extends util.Target {
             row2.push(buff);
             grid[i] = row2.map(data => data.trim());
         }
-        console.log(grid);
         const h = grid.length;
+        if (h < 1) throw new Error("Invalid height ("+h+")");
         const w = grid[0].length;
-        if (h < 2) throw new Error("Invalid height ("+h+")");
         if (w < 1) throw new Error("Invalid width ("+w+")");
         let i = 0;
         for (let row of grid) {
@@ -68,33 +69,6 @@ export default class CSVTimeDecoder extends util.Target {
                 throw new Error("Invalid row length for row "+i);
             i++;
         }
-        for (let i = 0; i < h; i++) {
-            for (let j = 0; j < w; j++) {
-                if (util.is(callback, "func"))
-                    callback((i*w+j)/(w*h));
-                if (i <= 1 && j <= 0) {
-                    grid[i][j] = null;
-                    continue;
-                }
-                if (i <= 1) {
-                    grid[i][j] = String(grid[i][j]);
-                    continue;
-                }
-                if (j <= 0) {
-                    grid[i][j] = parseFloat(grid[i][j]);
-                    continue;
-                }
-                try {
-                    grid[i][j] = JSON.parse(String(grid[i][j]));
-                } catch (e) { grid[i][j] = null; }
-            }
-        }
-        grid = grid.filter((row, i) => (i <= 1) || util.is(row[0], "num")).sort((a, b) => {
-            if (a[0] == null && b[0] == null) return 0;
-            if (a[0] == null) return -1;
-            if (b[0] == null) return +1;
-            return a[0]-b[0];
-        });
         this.#grid = grid;
         return this.grid;
     }

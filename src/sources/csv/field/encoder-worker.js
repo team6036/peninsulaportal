@@ -7,7 +7,7 @@ import CSVEncoder from "../encoder.js";
 import Source, { toUint8Array } from "../../source.js";
 
 
-class CSVTimeEncoderWorker extends WorkerBase {
+class CSVFieldEncoderWorker extends WorkerBase {
     constructor() {
         super(self);
 
@@ -29,13 +29,13 @@ class CSVTimeEncoderWorker extends WorkerBase {
                     typeArr.push(field.type);
                 });
                 tsArr = [...tsArr].sort((a, b) => a-b);
-                const grid = [["", ...nameArr], ["", ...typeArr], ...tsArr.map(ts => [ts, ...new Array(nameArr.length).fill(JSON.stringify(null))])];
+                const grid = [["", "", ...tsArr], ...nameArr.map((name, i) => [name, typeArr[i], ...new Array(tsArr.length).fill(JSON.stringify(null))])];
                 fields.forEach((field, i) => {
                     this.progress(util.lerp(0, 0.5, i/fields.length));
                     field.valueLog.forEach(log => {
                         let ts = log.ts, v = log.v;
                         if (field.type == "structschema" || field.isStruct) v = [...toUint8Array(v)];
-                        grid[2+tsArr.indexOf(ts)][1+i] = JSON.stringify(v);
+                        grid[1+i][2+tsArr.indexOf(ts)] = JSON.stringify(v);
                     });
                 });
                 encoder.grid = grid;
@@ -47,4 +47,4 @@ class CSVTimeEncoderWorker extends WorkerBase {
     }
 }
 
-new CSVTimeEncoderWorker();
+new CSVFieldEncoderWorker();
