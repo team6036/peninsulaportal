@@ -15,12 +15,13 @@ class WPILOGEncoderWorker extends WorkerBase {
             try {
                 data = util.ensure(data, "obj");
                 const opt = util.ensure(data.opt, "obj");
-                const prefix = util.ensure(opt.prefix, "str").split("/").filter(part => part.length > 0).join("/")+"/";
+                const prefix = util.generatePath(data.prefix)+"/";
                 this.progress(0);
                 const encoder = new WPILOGEncoder();
                 const source = new Source();
                 source.fromSerialized(data.source);
                 let fields = source.fieldObjects;
+                fields = fields.filter(field => field.real);
                 fields.forEach((field, i) => {
                     let entryId = i+1;
                     let type = field.type;

@@ -6,6 +6,7 @@ import * as core from "../core.mjs";
 import Source from "../sources/source.js";
 import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
+import CSVTimeSource from "../sources/csv/time/source.js";
 import { WorkerClient } from "../worker.js";
 
 
@@ -3309,6 +3310,8 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
         const state = this.#state;
         let namefs = {
             merge: () => {
+                this.elem.classList.add("form");
+
                 this.displayName = this.title = "Merge Logs";
                 this.iconSrc = "../assets/icons/merge.svg";
 
@@ -3351,6 +3354,11 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         v.forEach(v => state.addLog(v));
                     },
                 });
+                state.clearLogs = () => {
+                    let logs = state.logs;
+                    logs.forEach(log => state.remLog(log));
+                    return logs;
+                };
                 state.hasLog = log => {
                     log = String(log);
                     return logs.has(log);
@@ -3378,7 +3386,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 this.eContent.appendChild(eHeader);
                 state.eConflict = document.createElement("div");
                 this.eContent.appendChild(state.eConflict);
-                state.eConflict.classList.add("conflict");
+                state.eConflict.classList.add("select");
                 state.eConflict.innerHTML = "<div>Merge conflicts with</div>";
                 state.eConflictAffixBtn = document.createElement("button");
                 state.eConflict.appendChild(state.eConflictAffixBtn);
@@ -3464,14 +3472,13 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             sum.push(0);
                             let source = null;
                             try {
-                                source = new WPILOGSource();
-                                source.data = await window.api.send("wpilog-read", log);
+                                source = new WPILOGSource(null);
                                 const progress = v => {
                                     sum[i] = v;
                                     updateSum();
                                 };
                                 source.addHandler("progress", progress);
-                                await source.build();
+                                await source.import(log);
                                 source.remHandler("progress", progress);
                             } catch (e) {}
                             sum[i] = 1;
@@ -3495,11 +3502,11 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 sources: sources.map(source => source.toSerialized()),
                             });
                         });
-                        const source = new WPILOGSource();
+                        const source = new WPILOGSource(null);
                         source.fromSerialized(sourceData);
                         progress(null);
                         const result = util.ensure(await App.fileSaveDialog({
-                            title: "Save log to...",
+                            title: "Save merged log to...",
                             buttonLabel: "Save",
                         }), "obj");
                         if (!result.canceled && result.filePath) {
@@ -3508,7 +3515,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             source.addHandler("progress", progress);
                             let data = await source.export(state.ePrefixInput.value);
                             source.remHandler("progress", progress);
-                            await window.api.send("wpilog-write", pth, data);
+                            await window.api.send("write", "wpilog", pth, data);
                         }
                     } catch (e) {
                         this.app.doError("Log Merge Error", "", e);
@@ -3543,8 +3550,285 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.refresh();
             },
             export: () => {
+                this.elem.classList.add("form");
+
                 this.displayName = this.title = "Export Logs";
                 this.icon = "repeat";
+
+                const portMap = {
+                    session: {
+                        name: "Current Session",
+                        command: "session",
+                    },
+                    wpilog: {
+                        name: "WPILOG",
+                        command: "wpilog",
+                        decoder: "../wpilog/decoder-worker.js",
+                        encoder: "../wpilog/encoder-worker.js",
+                        source: WPILOGSource,
+                        tag: "wpilog",
+                    },
+                    csv_time: {
+                        name: "CSV Time",
+                        command: "csv",
+                        decoder: "../csv/time/decoder-worker.js",
+                        encoder: "../csv/time/encoder-worker.js",
+                        source: CSVTimeSource,
+                        tag: "csv",
+                    },
+                };
+
+                let importFrom = null;
+                Object.defineProperty(state, "importFrom", {
+                    get: () => importFrom,
+                    set: v => {
+                        v = String(v);
+                        if (!(v in portMap)) return;
+                        importFrom = v;
+                        state.refresh();
+                        state.eImportFromBtnName.textContent = portMap[state.importFrom].name;
+                        if (state.importFrom == "session") {
+                            dropTarget.disabled = true;
+                            return;
+                        }
+                        dropTarget.disabled = false;
+                    },
+                });
+                let exportTo = null;
+                Object.defineProperty(state, "exportTo", {
+                    get: () => exportTo,
+                    set: v => {
+                        v = String(v);
+                        if (!(v in portMap)) return;
+                        exportTo = v;
+                        state.refresh();
+                        state.eExportToBtnName.textContent = portMap[state.exportTo].name;
+                    },
+                });
+                let logs = new Set();
+                Object.defineProperty(state, "logs", {
+                    get: () => [...logs],
+                    set: v => {
+                        v = util.ensure(v, "arr");
+                        state.clearLogs();
+                        v.forEach(v => state.addLog(v));
+                    },
+                });
+                state.clearLogs = () => {
+                    let logs = state.logs;
+                    logs.forEach(log => state.remLog(log));
+                    return logs;
+                };
+                state.hasLog = log => {
+                    log = String(log);
+                    return logs.has(log);
+                };
+                state.addLog = log => {
+                    log = String(log);
+                    if (state.hasLog(log)) return false;
+                    logs.add(log);
+                    state.refresh();
+                    return true;
+                };
+                state.remLog = log => {
+                    log = String(log);
+                    if (!state.hasLog(log)) return false;
+                    logs.delete(log);
+                    state.refresh();
+                    return true;
+                };
+
+                let eHeader;
+
+                eHeader = document.createElement("div");
+                eHeader.classList.add("header");
+                eHeader.textContent = "Export Configuration";
+                this.eContent.appendChild(eHeader);
+                state.eImport = document.createElement("div");
+                this.eContent.appendChild(state.eImport);
+                state.eImport.classList.add("select");
+                state.eImport.innerHTML = "<div>Import from</div>";
+                state.eImportFromBtn = document.createElement("button");
+                state.eImport.appendChild(state.eImportFromBtn);
+                state.eImportFromBtn.classList.add("normal");
+                state.eImportFromBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+                state.eImportFromBtnName = state.eImportFromBtn.children[0];
+                state.eImportFromBtn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    if (!this.hasApp()) return;
+                    let itm;
+                    let menu = new core.App.Menu();
+                    Object.keys(portMap).forEach(type => {
+                        itm = menu.addItem(new core.App.Menu.Item(portMap[type].name, (state.importFrom == type) ? "checkmark" : ""));
+                        itm.addHandler("trigger", e => {
+                            state.importFrom = type;
+                        });
+                    });
+                    this.app.contextMenu = menu;
+                    let r = state.eImportFromBtn.getBoundingClientRect();
+                    this.app.placeContextMenu(r.left, r.bottom);
+                    menu.elem.style.minWidth = r.width+"px";
+                });
+                state.eExport = document.createElement("div");
+                this.eContent.appendChild(state.eExport);
+                state.eExport.classList.add("select");
+                state.eExport.innerHTML = "<div>Export to</div>";
+                state.eExportToBtn = document.createElement("button");
+                state.eExport.appendChild(state.eExportToBtn);
+                state.eExportToBtn.classList.add("normal");
+                state.eExportToBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
+                state.eExportToBtnName = state.eExportToBtn.children[0];
+                state.eExportToBtn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    if (!this.hasApp()) return;
+                    let itm;
+                    let menu = new core.App.Menu();
+                    Object.keys(portMap).forEach(type => {
+                        itm = menu.addItem(new core.App.Menu.Item(portMap[type].name, (state.exportTo == type) ? "checkmark" : ""));
+                        itm.addHandler("trigger", e => {
+                            state.exportTo = type;
+                        });
+                    });
+                    this.app.contextMenu = menu;
+                    let r = state.eExportToBtn.getBoundingClientRect();
+                    this.app.placeContextMenu(r.left, r.bottom);
+                    menu.elem.style.minWidth = r.width+"px";
+                });
+                state.ePrefix = document.createElement("div");
+                this.eContent.appendChild(state.ePrefix);
+                state.ePrefix.classList.add("prefix");
+                state.ePrefix.innerHTML = "<div>Global prefix</div>";
+                state.ePrefixInput = document.createElement("input");
+                state.ePrefix.appendChild(state.ePrefixInput);
+                state.ePrefixInput.type = "text";
+                state.ePrefixInput.placeholder = "No prefix";
+                state.ePrefixInput.autocomplete = "off";
+                state.ePrefixInput.spellcheck = false;
+                eHeader = document.createElement("div");
+                eHeader.classList.add("header");
+                eHeader.textContent = "Logs to Export";
+                this.eContent.appendChild(eHeader);
+                state.eLogs = document.createElement("div");
+                this.eContent.appendChild(state.eLogs);
+                state.eLogs.classList.add("logs");
+                const dropTarget = new core.DropTarget(state.eLogs, e => {
+                    let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+                    items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+                    if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+                    items = items.filter(item => item instanceof File);
+                    if (items.length <= 0) return;
+                    items.forEach(file => state.addLog(file.path));
+                });
+                state.eSubmit = document.createElement("button");
+                this.eContent.appendChild(state.eSubmit);
+                state.eSubmit.classList.add("special");
+                state.eSubmit.textContent = "Export";
+                state.eSubmit.addEventListener("click", async e => {
+                    e.stopPropagation();
+                    if (!this.hasApp()) return;
+                    if (state.importFrom == state.exportTo) return;
+                    state.eSubmit.disabled = true;
+                    const progress = v => (this.app.progress = v);
+                    try {
+                        progress(0);
+                        let sum, a, b;
+                        const updateSum = () => progress(util.lerp(a, b, sum.sum()/sum.length));
+                        [sum, a, b] = [[], 0, 0.5];
+                        const sources = 
+                            ((state.importFrom == "session") ? [this.hasPage() ? { pth: null, source: this.page.source } : null] :
+                            (await Promise.all(state.logs.map(async (log, i) => {
+                                sum.push(0);
+                                updateSum();
+                                let source = null;
+                                try {
+                                    source = new portMap[state.importFrom].source(null);
+                                    const progress = v => {
+                                        sum[i] = v;
+                                        updateSum();
+                                    };
+                                    source.addHandler("progress", progress);
+                                    await source.import(log);
+                                    source.remHandler("progress", progress);
+                                    source = { pth: log, source: source };
+                                } catch (e) {}
+                                sum[i] = 1;
+                                updateSum();
+                                return source;
+                            }))))
+                            .filter(source => !!source);
+                        console.log(sources);
+                        [sum, a, b] = [[], 0.5, 1];
+                        const datas = (await Promise.all(sources.map(async (source, i) => {
+                            sum.push(0);
+                            updateSum();
+                            let data = null;
+                            try {
+                                const progress = v => {
+                                    sum[i] = v;
+                                    updateSum();
+                                };
+                                source.source.addHandler("progress", progress);
+                                data = await portMap[state.exportTo].source.export(source.source, state.ePrefixInput.value);
+                                source.source.remHandler("progress", progress);
+                                data = { pth: source.pth, source: source, data: data };
+                            } catch (e) {}
+                            sum[i] = 1;
+                            updateSum();
+                            return data;
+                        })))
+                            .filter(data => !!data);
+                        console.log(datas);
+                        const tag = "."+portMap[state.exportTo].tag;
+                        for (const data of datas) {
+                            const content = data.data;
+                            let pth = data.pth;
+                            if (pth == null) {
+                                const result = util.ensure(await App.fileSaveDialog({
+                                    title: "Save exported session to...",
+                                    buttonLabel: "Save",
+                                }), "obj");
+                                if (result.canceled || !result.filePath) continue;
+                                pth = String(result.filePath);
+                            } else {
+                                if (pth.endsWith(tag))
+                                    pth = pth.substring(0, pth.length-tag.length);
+                            }
+                            pth = String(pth);
+                            if (!pth.endsWith(tag)) pth += tag;
+                            await window.api.send("write", portMap[state.exportTo].command, pth, content);
+                        }
+                    } catch (e) {
+                        this.app.doError("Log Export Error", "", e);
+                    }
+                    progress(null);
+                    state.eSubmit.disabled = false;
+                });
+
+                state.refresh = () => {
+                    Array.from(state.eLogs.querySelectorAll(":scope > div:not(.overlay)")).forEach(elem => elem.remove());
+                    state.logs.forEach(log => {
+                        let elem = document.createElement("div");
+                        state.eLogs.appendChild(elem);
+                        elem.innerHTML = "<div></div>";
+                        elem.children[0].textContent = log;
+                        let btn = document.createElement("button");
+                        elem.appendChild(btn);
+                        btn.innerHTML = "<ion-icon name='close'></ion-icon>";
+                        btn.addEventListener("click", e => {
+                            e.stopPropagation();
+                            state.remLog(log);
+                        });
+                    });
+                    let v = state.logs.length <= 0;
+                    state.eSubmit.disabled = (v && (state.importFrom != "session")) || (state.importFrom == state.exportTo);
+                    if (v == state.eLogs.classList.contains("empty")) return;
+                    if (v) state.eLogs.classList.add("empty");
+                    else state.eLogs.classList.remove("empty");
+                };
+
+                state.importFrom = "session";
+                state.exportTo = "wpilog";
+                state.refresh();
             },
         };
         if (this.name in namefs) namefs[this.name]();
@@ -6665,7 +6949,7 @@ export default class App extends core.AppFeature {
                                 id: "source", label: "Select Source...", click: () => {},
                                 submenu: [
                                     {
-                                        id: "source:nt", label: "NetworkTables", type: "radio",
+                                        id: "source:nt", label: "NT4", type: "radio",
                                         click: () => {
                                             const page = this.projectPage;
                                             if (!page.hasProject()) return;
@@ -6678,6 +6962,14 @@ export default class App extends core.AppFeature {
                                             const page = this.projectPage;
                                             if (!page.hasProject()) return;
                                             page.project.config.sourceType = "wpilog";
+                                        },
+                                    },
+                                    {
+                                        id: "source:csv-time", label: "CSV-TIME", type: "radio",
+                                        click: () => {
+                                            const page = this.projectPage;
+                                            if (!page.hasProject()) return;
+                                            page.project.config.sourceType = "csv-time";
                                         },
                                     },
                                 ],
@@ -6720,12 +7012,13 @@ export default class App extends core.AppFeature {
             this.eProjectInfoContent.appendChild(eNav);
             eNav.classList.add("nav");
             eNav.classList.add("source");
-            ["nt", "wpilog"].forEach(name => {
+            ["nt", "wpilog", "csv-time"].forEach(name => {
                 let btn = document.createElement("button");
                 eNav.appendChild(this.#eProjectInfoSourceTypes[name] = btn);
                 btn.textContent = {
-                    "nt": "NetworkTables",
+                    "nt": "NT4",
                     "wpilog": "WPILOG",
+                    "csv-time": "CSV-TIME",
                 }[name];
                 btn.addEventListener("click", e => {
                     e.stopPropagation();
@@ -7105,7 +7398,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-source-type", type => {
             if (!this.hasProject()) return;
             type = String(type);
-            if (!["nt", "wpilog"].includes(type)) return;
+            if (!["nt", "wpilog", "csv-time"].includes(type)) return;
             this.project.config.sourceType = type;
             this.update(0);
             this.app.post("cmd-action");
@@ -7120,26 +7413,53 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (this.source.importing) return;
                 if (this.project.config.source == null) return;
                 (async () => {
-                    this.source.importing = true;
+                    const source = this.source;
+                    source.importing = true;
                     this.app.progress = 0;
                     try {
-                        let source = this.project.config.source;
-                        let i1 = source.lastIndexOf("/");
-                        let i2 = source.lastIndexOf("\\");
+                        let file = this.project.config.source;
+                        let i1 = file.lastIndexOf("/");
+                        let i2 = file.lastIndexOf("\\");
                         let i = Math.max(i1, i2);
-                        this.source.file = source;
-                        this.source.shortFile = source.substring(i+1);
-                        this.source.data = await window.api.send("wpilog-read", source);
+                        source.file = file;
+                        source.shortFile = file.substring(i+1);
                         const progress = v => (this.app.progress = v);
-                        this.source.addHandler("progress", progress);
-                        await this.source.build();
-                        this.source.remHandler("progress", progress);
+                        source.addHandler("progress", progress);
+                        await source.import(file);
+                        source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
                         this.app.doError("WPILOG Load Error", "File: "+this.project.config.source, e);
                     }
                     this.app.progress = null;
-                    delete this.source.importing;
+                    delete source.importing;
+                })();
+                return;
+            }
+            if (this.source instanceof CSVTimeSource) {
+                if (this.source.importing) return;
+                if (this.project.config.source == null) return;
+                (async () => {
+                    const source = this.source;
+                    source.importing = true;
+                    this.app.progress = 0;
+                    try {
+                        let file = this.project.config.source;
+                        let i1 = file.lastIndexOf("/");
+                        let i2 = file.lastIndexOf("\\");
+                        let i = Math.max(i1, i2);
+                        source.file = file;
+                        source.shortFile = file.substring(i+1);
+                        const progress = v => (this.app.progress = v);
+                        source.addHandler("progress", progress);
+                        await source.import(file);
+                        source.remHandler("progress", progress);
+                        this.app.progress = 1;
+                    } catch (e) {
+                        this.app.doError("CSV-TIME Load Error", "File: "+this.project.config.source, e);
+                    }
+                    this.app.progress = null;
+                    delete source.importing;
                 })();
                 return;
             }
@@ -7411,9 +7731,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             items = items.filter(item => item instanceof File);
             if (items.length <= 0) return;
             const file = items[0];
+            const path = file.path;
             if (!this.hasProject()) return;
-            this.project.config.sourceType = "wpilog";
-            this.project.config.source = file.path;
+            let type = "wpilog";
+            if (path.endsWith(".wpilog")) type = "wpilog";
+            if (path.endsWith(".csv")) type = "csv-time";
+            this.project.config.sourceType = type;
+            this.project.config.source = path;
             this.update(0);
             this.app.post("cmd-action");
         });
@@ -7455,7 +7779,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
             this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
 
-            ["nt", "wpilog"].forEach(type => {
+            ["nt", "wpilog", "csv-time"].forEach(type => {
                 let itm = this.app.menu.findItemWithId("source:"+type);
                 if (!itm) return;
                 itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
@@ -7478,12 +7802,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 const constructor = {
                     nt: NTSource,
                     wpilog: WPILOGSource,
+                    "csv-time": CSVTimeSource,
                 }[this.project.config.sourceType];
                 if (!util.is(constructor, "func")) this.source = null;
                 else {
                     if (!(this.source instanceof constructor)) this.source = {
                         nt: () => new NTSource(null),
                         wpilog: () => new WPILOGSource(null),
+                        "csv-time": () => new CSVTimeSource(null),
                     }[this.project.config.sourceType]();
                     let typefs = {
                         nt: () => {
@@ -7525,6 +7851,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.app.eProjectInfoActionBtn.textContent = on ? "Connect" : "Disconnect";
             } else if (this.source instanceof WPILOGSource) {
                 this.app.eProjectInfoActionBtn.disabled = this.source.importing;
+            } else if (this.source instanceof CSVTimeSource) {
+                this.app.eProjectInfoActionBtn.disabled = this.source.importing;
             }
 
             let itm = this.app.menu.findItemWithId("action");
@@ -7537,6 +7865,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     itm.enabled = true;
                     itm.label = on ? "Connect" : "Disconnect";
                 } else if (this.source instanceof WPILOGSource) {
+                    itm.enabled = true;
+                    itm.label = "Import";
+                } else if (this.source instanceof CSVTimeSource) {
                     itm.enabled = true;
                     itm.label = "Import";
                 } else {
@@ -7759,6 +8090,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoActionBtn.classList.remove("off");
             this.app.eProjectInfoActionBtn.classList.add("special");
             this.app.eProjectInfoActionBtn.textContent = "Import";
+        } else if (this.source instanceof CSVTimeSource) {
+            this.app.eProjectInfoSourceInput.placeholder = "Path...";
+            this.app.eProjectInfoActionBtn.classList.remove("on");
+            this.app.eProjectInfoActionBtn.classList.remove("off");
+            this.app.eProjectInfoActionBtn.classList.add("special");
+            this.app.eProjectInfoActionBtn.textContent = "Import";
         } else {
             this.app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.name;
             this.app.eProjectInfoActionBtn.disabled = true;
@@ -7779,6 +8116,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         } else if (this.source instanceof WPILOGSource) {
             itm.enabled = true;
             itm.label = "Import";
+        } else if (this.source instanceof CSVTimeSource) {
+            itm.enabled = true;
+            itm.label = "Import";
         } else {
             itm.enabled = false;
             itm.label = "Unknown source: "+this.source.constructor.name;
@@ -7793,6 +8133,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             return this.source.address;
         }
         if (this.source instanceof WPILOGSource) {
+            if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
+            if (this.source.importing) return "Importing from "+this.source.shortFile;
+            return this.source.shortFile;
+        }
+        if (this.source instanceof CSVTimeSource) {
             if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
             if (this.source.importing) return "Importing from "+this.source.shortFile;
             return this.source.shortFile;
@@ -7822,6 +8167,20 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             );
         } else if (this.source instanceof WPILOGSource) {
             data.children.at(-1).name = "WPILOG";
+            data.children.push(
+                {
+                    name: "File",
+                    value: this.source.file,
+                    icon: "document-outline",
+                },
+                {
+                    name: "State",
+                    value: ((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
+                    icon: "cube-outline",
+                },
+            );
+        } else if (this.source instanceof CSVTimeSource) {
+            data.children.at(-1).name = "CSV-TIME";
             data.children.push(
                 {
                     name: "File",

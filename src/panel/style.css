@@ -1313,46 +1313,7 @@
     align-content: center;
     gap: 10px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.edit > .content {
-    flex-direction: row;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.edit > .content > .explorer {
-    width: min(200px, 33%);
-    max-width: min(200px, 33%);
-    overflow: auto;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.edit > .content > .explorer .node > button.display {
-    padding: 25px 7.5px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.edit > .content > .editor {
-    width: calc(100% - min(200px, 33%));
-    max-width: calc(100% - min(200px, 33%));
-    height: 100%;
-    max-height: 100%;
-    overflow: auto;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.edit > .content > .editor > .item {
-    min-height: 64px;
-    max-height: 64px;
-
-    background-color: var(--v2-4);
-    border-bottom: 1px solid var(--v2);
-    visibility: hidden;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.edit > .content > .editor > .item.open {
-    visibility: inherit;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.edit > .content > .editor > .item:not(.open) + .item.open {
-    border-top: 1px solid var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .header {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .header {
     padding: 5px 0px;
     margin-bottom: 5px;
 
@@ -1364,7 +1325,7 @@
     font-size: 12px;
     font-weight: 550;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .select {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1377,7 +1338,7 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .conflict > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .select > button {
     padding: 5px;
 
     gap: 5px;
@@ -1386,7 +1347,7 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .prefix {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .prefix {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -1399,7 +1360,7 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .logs {
     position: relative;
 
     max-width: 100%;
@@ -1413,7 +1374,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs::before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .logs::before {
     content: "No logs selected...";
 
     display: none;
@@ -1423,10 +1384,10 @@
     font-size: 14px;
     font-style: italic;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs.empty:before {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .logs.empty:before {
     display: block;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.overlay) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .logs > div:not(.overlay) {
     width: min(100%, max(50%, 500px));
     padding: 7.5px;
 
@@ -1443,10 +1404,10 @@
 
     font-size: 14px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.overlay) > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .logs > div:not(.overlay) > div {
     flex-basis: 100%;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > .logs > div:not(.overlay) > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .logs > div:not(.overlay) > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
@@ -1456,7 +1417,7 @@
     min-width: max-content;
     aspect-ratio: 1 / 1;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.merge > .content > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > button {
     align-self: flex-start;
 
     padding: 5px 10px;
