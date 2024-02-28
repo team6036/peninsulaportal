@@ -2704,6 +2704,7 @@ const MAIN = async () => {
                         }));
                         await Promise.all(Object.keys(holidays).map(async name => {
                             name = String(name);
+                            if (!(await WindowManager.fileHas([this.dataPath, "holidays", "icons", name+".png"]))) return;
                             let input = await fs.promises.readFile(path.join(this.dataPath, "holidays", "icons", name+".png"));
                             await Promise.all([
                                 "ico", "icns",
