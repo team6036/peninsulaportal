@@ -860,6 +860,7 @@ const MAIN = async () => {
             const readiness = 2000;
             let id = setTimeout(async () => {
                 clear();
+                if (this.isModal) return;
                 let r = await showConfirm("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
                 if (r || !this.hasWindow()) return this.stop();
                 // ew
