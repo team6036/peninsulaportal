@@ -1,4 +1,5 @@
 import * as util from "../../util.mjs";
+import * as lib from "../../lib.mjs";
 
 
 const POW32 = 0x100000000;

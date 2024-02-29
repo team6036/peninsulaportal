@@ -35,9 +35,6 @@ export const MAGIC = "_*[[;ƒ";
 
 export const VERSION = 1;
 
-export const TEXTENCODER = new TextEncoder();
-export const TEXTDECODER = new TextDecoder();
-
 
 Array.prototype.sum = function() {
     return this.reduce((sum, x) => sum+x, 0);
@@ -129,12 +126,6 @@ export function ensure(o, type) {
     return useDef ? null : def;
 }
 
-export function strictlyIs(o, cls) {
-    if (!is(o, "obj")) return false;
-    if (!is(cls, "func")) return false;
-    return (o instanceof cls) && !(o.constructor.prototype instanceof cls);
-}
-
 export function arrEquals(a1, a2) {
     a1 = ensure(a1, "arr");
     a2 = ensure(a2, "arr");
@@ -206,17 +197,6 @@ export function angleRelRadians(a, b) {
     return r;
 }
 
-export function stringifyError(e, nl="") {
-    let lines = [String(e)];
-    if (e instanceof Error) {
-        if (e.stack) lines.push(String(e.stack));
-        if (e.cause) lines.push(stringifyError(e.cause, nl+"  "));
-    }
-    lines = lines.flatten().join("\n").split("\n").filter(part => part.length > 0);
-    if (lines[0] == lines[1]) lines.shift();
-    return lines.map(line => nl+line).join("\n");
-}
-
 export function getTime() {
     return new Date().getTime();
 }
@@ -259,6 +239,19 @@ export function formatTime(t) {
         return v;
     });
     return (negative?"-":"")+split.slice(1).reverse().join(":")+"."+split[0];
+}
+export function formatText(s) {
+    s = String(s);
+    if (s.length <= 0) return s;
+    return s.split("").map((c, i) => {
+        if (!ALPHABETALL.includes(c)) {
+            if ("-_/ \\|,.".includes(c)) return " ";
+            return c;
+        }
+        if (i <= 0 || !ALPHABETALL.includes(s[i-1]))
+            return c.toUpperCase();
+        return c.toLowerCase();
+    }).join("");
 }
 
 export function loadImage(src) {
@@ -303,33 +296,6 @@ export async function timeout(t, v) {
     });
 }
 
-export function search(items, keys, query) {
-    items = ensure(items, "arr");
-    keys = ensure(keys, "arr");
-    query = String(query);
-    if (query.length <= 0) return items.map(item => { return { item: item, refIndex: 0, matches: [] }; });
-    const fuse = new Fuse(items, {
-        isCaseSensitive: false,
-        includeMatches: true,
-        keys: keys,
-    });
-    return fuse.search(query);
-}
-
-export function formatText(s) {
-    s = String(s);
-    if (s.length <= 0) return s;
-    return s.split("").map((c, i) => {
-        if (!ALPHABETALL.includes(c)) {
-            if ("-_/ \\|,.".includes(c)) return " ";
-            return c;
-        }
-        if (i <= 0 || !ALPHABETALL.includes(s[i-1]))
-            return c.toUpperCase();
-        return c.toLowerCase();
-    }).join("");
-}
-
 export function generateArrayPath(...path) { return path.flatten().join("/").split("/").filter(part => part.length > 0); }
 export function generatePath(...path) { return generateArrayPath(...path).join("/"); }
 
@@ -340,27 +306,6 @@ export function compareStr(s1, s2) {
     if (s1 < s2) return -1;
     if (s1 > s2) return +1;
     return 0;
-}
-
-export function findStep(v, n=10) {
-    v = Math.max(0, util.ensure(v, "num"));
-    n = Math.max(0, util.ensure(n, "int"));
-    if (v <= 0) return 1;
-    let factors = [1, 2, 5];
-    let pow1 = 10 ** Math.floor(Math.log10(v/n));
-    let pow2 = 10 * pow1;
-    factors = [
-        ...factors.map(f => { return {
-            f: f*pow1,
-            v: Math.abs(n-Math.round(v/(f*pow1))),
-        }; }),
-        ...factors.map(f => { return {
-            f: f*pow2,
-            v: Math.abs(n-Math.round(v/(f*pow2))),
-        }; }),
-    ];
-    factors.sort((a, b) => a.v-b.v);
-    return factors[0].f;
 }
 
 export const ease = {
@@ -1449,8 +1394,6 @@ export class V4 extends Target {
     iceil() { return this.set(this.ceil()); }
     iround() { return this.set(this.round()); }
 
-    irotateOrigin(d) { return this.set(this.rotateOrigin(d)); }
-    irotate(d, o) { return this.set(this.rotate(d, o)); }
     inormalize() { return this.set(this.normalize()); }
 
     distSquared(...v) {
@@ -1577,7 +1520,7 @@ export class Line extends Shape {
             let d = this.p1.distSquared(this.p2);
             return (Math.abs((d1+d2) - d) < 0.01);
         }
-        if (strictlyIs(o, Line)) {
+        if (o.constructor == Line) {
             let u1 = ((o.x2-o.x1)*(this.y1-o.y1) - (o.y2-o.y1)*(this.x1-o.x1)) / ((o.y2-o.y1)*(this.x2-this.x1) - (o.x2-o.x1)*(this.y2-this.y1));
             let u2 = ((this.x2-this.x1)*(this.y1-o.y1) - (this.y2-this.y1)*(this.x1-o.x1)) / ((o.y2-o.y1)*(this.x2-this.x1) - (o.x2-o.x1)*(this.y2-this.y1));
             return (0 <= u1 && u1 <= 1) && (0 <= u2 && u2 <= 1);
@@ -1664,14 +1607,14 @@ export class Circle extends Shape {
         if (o instanceof V) {
             return this.p.distSquared(o) <= this.r**2;
         }
-        if (strictlyIs(o, Line)) {
+        if (o.constructor == Line) {
             if (this.collides(o.p1)) return true;
             if (this.collides(o.p2)) return true;
             let dot = (((this.x-o.x1)*(o.x2-o.x1)) + ((this.y-o.y1)*(o.y2-o.y1))) / o.p1.distSquared(o.p2);
             let p = lerp(o.p1, o.p2, dot);
             return this.collides(p);
         }
-        if (strictlyIs(o, Circle)) {
+        if (o.constructor == Circle) {
             return this.p.distSquared(o.p) <= (this.r+o.r)**2;
         }
         if (o instanceof Shape) return o.collides(this);
@@ -1687,46 +1630,6 @@ export class Circle extends Shape {
     }
 }
 Shape.Circle = Circle;
-
-export class InvertedCircle extends Circle {
-    constructor(...a) {
-        super(...a);
-    }
-
-    collides(o) {
-        if (!is(o, "obj")) return false;
-        if (o instanceof V) {
-            return this.p.distSquared(o) >= this.r**2;
-        }
-        if (strictlyIs(o, Line)) {
-            if (this.collides(o.p1)) return true;
-            if (this.collides(o.p2)) return true;
-            return false;
-        }
-        if (strictlyIs(o, Circle)) {
-            return this.p.distSquared(o.p) >= Math.max(0, this.r-o.r)**2;
-        }
-        if (strictlyIs(o, InvertedCircle)) {
-            return true;
-        }
-        if (strictlyIs(o, Rect)) {
-            if (this.collides(o.tr)) return true;
-            if (this.collides(o.br)) return true;
-            if (this.collides(o.tl)) return true;
-            if (this.collides(o.bl)) return true;
-            return false;
-        }
-        if (strictlyIs(o, Polygon)) {
-            for (let point of points)
-                if (this.collides(point))
-                    return true;
-            return false;
-        }
-        if (o instanceof Shape) return o.collides(this);
-        return false;
-    }
-}
-Shape.InvertedCircle = InvertedCircle;
 
 export class Rect extends Shape {
     #xy; #wh;
@@ -1880,7 +1783,7 @@ export class Rect extends Shape {
             if (o.y > t) return false;
             return true;
         }
-        if (strictlyIs(o, Line)) {
+        if (o.constructor == Line) {
             if (this.collides(o.p1)) return true;
             if (this.collides(o.p2)) return true;
             if (new Line(this.tr, this.br).collides(o)) return true;
@@ -1889,7 +1792,7 @@ export class Rect extends Shape {
             if (new Line(this.br, this.bl).collides(o)) return true;
             return false;
         }
-        if (strictlyIs(o, Circle)) {
+        if (o.constructor == Circle) {
             if (this.collides(o.p)) return true;
             if (new Line(this.tr, this.br).collides(o)) return true;
             if (new Line(this.tl, this.bl).collides(o)) return true;
@@ -1897,7 +1800,7 @@ export class Rect extends Shape {
             if (new Line(this.br, this.bl).collides(o)) return true;
             return false;
         }
-        if (strictlyIs(o, Rect)) {
+        if (o.constructor == Rect) {
             let l1 = Math.min(this.l, this.r);
             let r1 = Math.max(this.l, this.r);
             let b1 = Math.min(this.b, this.t);
@@ -2028,7 +1931,7 @@ export class Polygon extends Shape {
             }
             return c;
         }
-        if (strictlyIs(o, Line)) {
+        if (o.constructor == Line) {
             if (this.collides(o.p1)) return true;
             if (this.collides(o.p2)) return true;
             let points = this.finalPoints;
@@ -2039,7 +1942,7 @@ export class Polygon extends Shape {
             }
             return false;
         }
-        if (strictlyIs(o, Circle)) {
+        if (o.constructor == Circle) {
             if (this.collides(o.p)) return true;
             let points = this.finalPoints;
             for (let i = 0; i < points.length; i++) {
@@ -2049,11 +1952,11 @@ export class Polygon extends Shape {
             }
             return false;
         }
-        if (strictlyIs(o, Rect)) {
+        if (o.constructor == Rect) {
             if (!this.getBounding().collides(o)) return false;
             return this.collides(new Polygon(o));
         }
-        if (strictlyIs(o, Polygon)) {
+        if (o.constructor == Polygon) {
             if (!this.getBounding().collides(o.getBounding())) return false;
             let points = o.finalPoints;
             for (let i = 0; i < points.length; i++) {
@@ -2364,137 +2267,4 @@ export class Timer extends Target {
 
     pauseAndClear() { this.pause(); return this.clear(); }
     playAndClear() { this.play(); return this.clear(); }
-}
-
-export class FSOperator extends Target {
-    #root;
-
-    static FS;
-    static PATH;
-    static FSLOGFUNC = null;
-
-    static get fs() { return this.FS; }
-    static set fs(v) { this.FS = is(v, "obj") ? v : null; }
-    static hasFS() { return this.fs != null; }
-    static get path() { return this.PATH; }
-    static set path(v) { this.PATH = is(v, "obj") ? v : null; }
-    static hasPath() { return this.path != null; }
-    static hasModules() { return this.hasFS() && this.hasPath(); }
-    static get fsLogFunc() { return this.FSLOGFUNC; }
-    static set fsLogFunc(v) { this.FSLOGFUNC = is(v, "func") ? v : null; }
-    static hasFSLogFunc() { return this.fsLogFunc != null; }
-
-    constructor(root) {
-        super();
-
-        this.#root = null;
-
-        this.root = root;
-    }
-
-    get root() { return this.#root; }
-    set root(v) { this.#root = v; }
-
-    static makePath(...pth) {
-        if (!this.hasModules()) return null;
-        return this.path.join(...pth.flatten());
-    }
-    static async fileHas(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:file-has ${pth}`);
-        try {
-            await this.fs.promises.access(pth);
-            return true;
-        } catch (e) {}
-        return false;
-    }
-    static async fileRead(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:file-read ${pth}`);
-        return await this.fs.promises.readFile(pth, { encoding: "utf-8" });
-    }
-    static async fileReadRaw(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:file-read-raw ${pth}`);
-        return [...(await this.fs.promises.readFile(pth))];
-    }
-    static async fileWrite(pth, content) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        content = String(content);
-        this.fsLog(`fs:file-write ${pth}`);
-        return await this.fs.promises.writeFile(pth, content, { encoding: "utf-8" });
-    }
-    static async fileWriteRaw(pth, content) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        content = Buffer.from(content);
-        this.fsLog(`fs:file-write-raw ${pth}`);
-        return await this.fs.promises.writeFile(pth, content);
-    }
-    static async fileAppend(pth, content) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:file-append ${pth}`);
-        return await this.fs.promises.appendFile(pth, content, { encoding: "utf-8" });
-    }
-    static async fileDelete(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:file-delete ${pth}`);
-        return await this.fs.promises.unlink(pth);
-    }
-
-    static async dirHas(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:dir-has ${pth}`);
-        try {
-            await this.fs.promises.access(pth);
-            return true;
-        } catch (e) {}
-        return false;
-    }
-    static async dirList(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:dir-list ${pth}`);
-        let dirents = await this.fs.promises.readdir(pth, { withFileTypes: true });
-        return dirents.map(dirent => {
-            return {
-                type: dirent.isFile() ? "file" : "dir",
-                name: dirent.name,
-            };
-        });
-    }
-    static async dirMake(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:dir-make ${pth}`);
-        return await this.fs.promises.mkdir(pth);
-    }
-    static async dirDelete(pth) {
-        if (!this.hasModules()) return null;
-        pth = this.makePath(pth);
-        this.fsLog(`fs:dir-delete ${pth}`);
-        return await this.fs.promises.rm(pth, { force: true, recursive: true });
-    }
-
-    async fileHas(pth) { return await this.constructor.fileHas([this.root, pth]); }
-    async fileRead(pth) { return await this.constructor.fileRead([this.root, pth]); }
-    async fileReadRaw(pth) { return await this.constructor.fileReadRaw([this.root, pth]); }
-    async fileWrite(pth, content) { return await this.constructor.fileWrite([this.root, pth], content); }
-    async fileWriteRaw(pth, content) { return await this.constructor.fileWriteRaw([this.root, pth], content); }
-    async fileAppend(pth, content) { return await this.constructor.fileAppend([this.root, pth], content); }
-    async fileDelete(pth) { return await this.constructor.fileDelete([this.root, pth]); }
-
-    async dirHas(pth) { return await this.constructor.dirHas([this.root, pth]); }
-    async dirList(pth) { return await this.constructor.dirList([this.root, pth]); }
-    async dirMake(pth) { return await this.constructor.dirMake([this.root, pth]); }
-    async dirDelete(pth) { return await this.constructor.dirDelete([this.root, pth]); }
-
-    static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
 }

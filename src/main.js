@@ -35,6 +35,7 @@ const MAIN = async () => {
 
     const util = await import("./util.mjs");
     const V = util.V;
+    const lib = await import("./lib.mjs");
 
     log("< IMPORTED ASYNCHRONOUSLY >");
 
@@ -42,8 +43,8 @@ const MAIN = async () => {
 
     const path = require("path");
     const fs = require("fs");
-    util.FSOperator.path = path;
-    util.FSOperator.fs = fs;
+    lib.FSOperator.path = path;
+    lib.FSOperator.fs = fs;
 
     const cp = require("child_process");
 
@@ -51,14 +52,14 @@ const MAIN = async () => {
     let showError = this.showError = async (name, type, e) => {
         let message = String(name);
         if (type) message += " - "+String(type);
-        electron.dialog.showErrorBox(message, util.stringifyError(e));
+        electron.dialog.showErrorBox(message, lib.stringifyError(e));
     };
     let showConfirm = async (name, type, e) => {
         let message = String(name);
         if (type) message += " - "+String(type);
         let i = (await electron.dialog.showMessageBox({
             message: message,
-            detail: util.stringifyError(e),
+            detail: lib.stringifyError(e),
             type: "question",
             buttons: ["Terminate", "Continue anyway"],
             cancelId: 1,
@@ -122,7 +123,7 @@ const MAIN = async () => {
             if (!this.process) throw new Error(`Invalid spawn mode '${mode}'`);
             this.process.stdout.on("data", data => this.post("data", data));
             this.process.stderr.on("data", data => {
-                this.post("error", util.TEXTDECODER.decode(data));
+                this.post("error", lib.TEXTDECODER.decode(data));
                 this.terminate();
             });
             this.process.on("exit", code => this.post("exit", code));
@@ -961,7 +962,7 @@ const MAIN = async () => {
                                     ssStream.on("error", e => rej(e));
                                 });
                             });
-                        } catch (e) { return { success: false, reason: util.stringifyError(e) }; }
+                        } catch (e) { return { success: false, reason: lib.stringifyError(e) }; }
                         return { success: true };
                     });
                 },
@@ -2225,7 +2226,7 @@ const MAIN = async () => {
 
         log(...a) { return this.manager.log(`[${this.name}]`, ...a); }
     }
-    class WindowManager extends util.FSOperator {
+    class WindowManager extends lib.FSOperator {
         #window;
 
         #started;
@@ -2837,7 +2838,7 @@ const MAIN = async () => {
                         return await f(...a);
                     } catch (e) {
                         console.error(e);
-                        throw util.stringifyError(e);
+                        throw lib.stringifyError(e);
                     }
                 };
             };

@@ -1,4 +1,5 @@
 import * as util from "../../util.mjs";
+import * as lib from "../../lib.mjs";
 
 
 export default class CSVEncoder extends util.Target {

@@ -1,5 +1,6 @@
 import * as util from "../util.mjs";
 import { V } from "../util.mjs";
+import * as lib from "../lib.mjs";
 
 import { toUint8Array } from "./source.js";
 
@@ -311,7 +312,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         let dataView = new DataView(pdata.buffer);
         let typefs = {
             "bool": () => dataView.getUint8(0) > 0,
-            "char": () => util.TEXTDECODER.decode(data),
+            "char": () => lib.TEXTDECODER.decode(data),
             "int8": () => data.getInt8(0),
             "int16": () => data.getInt16(0, true),
             "int32": () => data.getInt32(0, true),

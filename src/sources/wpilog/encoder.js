@@ -1,4 +1,5 @@
 import * as util from "../../util.mjs";
+import * as lib from "../../lib.mjs";
 
 import { toUint8Array } from "../source.js";
 
@@ -70,8 +71,8 @@ export default class WPILOGEncoder extends util.Target {
         });
         let l = 0;
         records.forEach(record => (l += record.length));
-        let header = util.TEXTENCODER.encode(HEADERSTRING);
-        let extraHeader = util.TEXTENCODER.encode(this.extraHeader);
+        let header = lib.TEXTENCODER.encode(HEADERSTRING);
+        let extraHeader = lib.TEXTENCODER.encode(this.extraHeader);
 
         let data = new Uint8Array(header.length+2+4+extraHeader.length+l);
         let dataView = new DataView(data.buffer, 0);
@@ -125,9 +126,9 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         ts = util.ensure(ts, "num");
         startData = util.ensure(startData, "obj");
         let entry = util.ensure(startData.entry, "num");
-        let name = util.TEXTENCODER.encode(String(startData.name));
-        let type = util.TEXTENCODER.encode(String(startData.type));
-        let metadata = util.TEXTENCODER.encode(String(startData.metadata));
+        let name = lib.TEXTENCODER.encode(String(startData.name));
+        let type = lib.TEXTENCODER.encode(String(startData.type));
+        let metadata = lib.TEXTENCODER.encode(String(startData.metadata));
 
         let data = new Uint8Array(1+4+4+name.length+4+type.length+4+metadata.length);
         let dataView = new DataView(data.buffer);
@@ -158,7 +159,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         ts = util.ensure(ts, "num");
         metadataData = util.ensure(metadataData, "obj");
         let entry = util.ensure(metadataData.entry, "num");
-        let metadata = util.TEXTENCODER.encode(String(metadataData.metadata));
+        let metadata = lib.TEXTENCODER.encode(String(metadataData.metadata));
 
         let data = new Uint8Array(1+4+4+metadata.length);
         let dataView = new DataView(data.buffer);
@@ -193,7 +194,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         return this.makeRaw(entry, ts, data);
     }
     static makeStr(entry, ts, v) {
-        return this.makeRaw(entry, ts, util.TEXTENCODER.encode(String(v)));
+        return this.makeRaw(entry, ts, lib.TEXTENCODER.encode(String(v)));
     }
     static makeBoolArr(entry, ts, v) {
         v = util.ensure(v, "arr").map(v => !!v);
@@ -229,7 +230,7 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         return this.makeRaw(entry, ts, data);
     }
     static makeStrArr(entry, ts, v) {
-        v = util.ensure(v, "arr").map(v => util.TEXTENCODER.encode(String(v)));
+        v = util.ensure(v, "arr").map(v => lib.TEXTENCODER.encode(String(v)));
         let l = 4+v.length*4;
         v.forEach(v => (l += v.length));
         let data = new Uint8Array(l);
