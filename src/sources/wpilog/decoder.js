@@ -1,4 +1,5 @@
 import * as util from "../../util.mjs";
+import * as lib from "../../lib.mjs";
 
 import { toUint8Array } from "../source.js";
 
@@ -32,7 +33,7 @@ export default class WPILOGDecoder extends util.Target {
     isValid() {
         return (
             this.data.length >= 12 &&
-            util.TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
+            lib.TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
             this.version == HEADERVERSION
         );
     }
@@ -43,7 +44,7 @@ export default class WPILOGDecoder extends util.Target {
     get extraHeader() {
         if (this.data.length < 12) return "";
         let l = this.dataView.getUint32(8, true);
-        return util.TEXTDECODER.decode(this.data.subarray(12, 12+l));
+        return lib.TEXTDECODER.decode(this.data.subarray(12, 12+l));
     }
 
     #readInt(x, l) {
@@ -173,7 +174,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     getInt() { return (this.data.length == 8) ? Number(this.dataView.getBigInt64(0, true)) : null; }
     getFloat() { return (this.data.length == 4) ? this.dataView.getFloat32(0, true) : null; }
     getDouble() { return (this.data.length == 8) ? this.dataView.getFloat64(0, true) : null; }
-    getStr() { return util.TEXTDECODER.decode(this.data); }
+    getStr() { return lib.TEXTDECODER.decode(this.data); }
     getBoolArr() { return [...this.data.map(x => x != 0)]; }
     getIntArr() { return (this.data.length%8 == 0) ? Array.from(new Array(this.data.length/8).keys()).map(i => Number(this.dataView.getBigInt64(i*8, true))) : null; }
     getFloatArr() { return (this.data.length%4 == 0) ? Array.from(new Array(this.data.length/4).keys()).map(i => this.dataView.getFloat32(i*4, true)) : null; }
@@ -194,7 +195,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         let l = this.dataView.getUint32(x, true);
         if (x+4+l > this.data.length) return null;
         return {
-            str: util.TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
+            str: lib.TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
             shift: 4+l,
         };
     }

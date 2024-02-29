@@ -1,11 +1,12 @@
 import * as util from "../util.mjs";
+import * as lib from "../lib.mjs";
 
 import StructHelper from "./struct-helper.js";
 
 
 export function toUint8Array(v) {
     if (v instanceof Uint8Array) return v;
-    if (util.is(v, "str")) return util.TEXTENCODER.encode(v);
+    if (util.is(v, "str")) return lib.TEXTENCODER.encode(v);
     try {
         return Uint8Array.from(v);
     } catch (e) {}
@@ -188,7 +189,7 @@ export default class Source extends util.Target {
     createStruct(name, data) {
         name = String(name);
         if (this.structHelper.hasPattern(name)) return false;
-        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, util.TEXTDECODER.decode(toUint8Array(data))));
+        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, lib.TEXTDECODER.decode(toUint8Array(data))));
         pattern.build();
         return pattern;
     }

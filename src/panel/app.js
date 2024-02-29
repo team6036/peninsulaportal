@@ -1,5 +1,6 @@
 import * as util from "../util.mjs";
 import { V } from "../util.mjs";
+import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
 
@@ -106,7 +107,7 @@ function getRepresentation(o, alt=false) {
         util.is(o, "bool") ||
         util.is(o, "str")
     ) return (alt && util.is(o, "str")) ? `"${o}"` : String(o);
-    if (o instanceof Uint8Array) return alt ? util.TEXTDECODER.decode(o) : [...o].map(x => x.toString(16).padStart(2, "0")).join("");
+    if (o instanceof Uint8Array) return alt ? lib.TEXTDECODER.decode(o) : [...o].map(x => x.toString(16).padStart(2, "0")).join("");
     if (util.is(o, "arr")) return (alt ? "" : "[")+[...o].map(o => getRepresentation(o)).join(", ")+(alt ? "" : "]");
     if (util.is(o, "obj")) return JSON.stringify(o);
     return String(o);
@@ -1432,7 +1433,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         if (this.searchPart == null) {
             this.tags = [];
             this.placeholder = "Search tools, tables, and topics";
-            toolItems = util.search(toolItems, ["name"], this.query).map(toolItemSelect);
+            toolItems = lib.search(toolItems, ["name"], this.query).map(toolItemSelect);
             if (this.query.length > 0) {
                 let nodeItems = [];
                 if (this.hasPage() && this.page.hasSource()) {
@@ -1480,7 +1481,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     item.item.addHandler("drag", item.drag);
                     return item.item;
                 });
-                nodeItems = util.search(nodeItems, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
+                nodeItems = lib.search(nodeItems, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
                 this.items = [
                     new Panel.AddTab.Header("Tools"),
                     ...toolItems,
@@ -1514,7 +1515,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         } else if (this.searchPart == "tools") {
             this.tags = [new Panel.AddTab.Tag("Tools", "hammer")];
             this.placeholder = "Search tools";
-            toolItems = util.search(toolItems, ["name"], this.query).map(toolItemSelect);
+            toolItems = lib.search(toolItems, ["name"], this.query).map(toolItemSelect);
             this.items = toolItems;
         } else if (["tables", "topics", "all"].includes(this.searchPart)) {
             this.tags = [new Panel.AddTab.Tag(
@@ -1574,7 +1575,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 item.item.addHandler("drag", item.drag);
                 return item.item;
             });
-            items = util.search(items, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
+            items = lib.search(items, ["node.path", "node.field.type"], this.query).map(nodeItemSelect);
             this.items = items;
         }
         this.eSearchInput.focus();
@@ -4361,7 +4362,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     range[1] = Math.max(range[1], subrange[1]);
                 });
                 range = range.map(v => util.ensure(v, "num"));
-                let step = util.findStep(range[1]-range[0], 5);
+                let step = lib.findStep(range[1]-range[0], 5);
                 range[0] = Math.floor(range[0]/step) - 1;
                 range[1] = Math.ceil(range[1]/step) + 1;
                 o.range = range;
@@ -4383,7 +4384,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 range[1] += addAbove;
                 o.range = range;
             });
-            const timeStep = util.findStep(graphRange[1]-graphRange[0], 10);
+            const timeStep = lib.findStep(graphRange[1]-graphRange[0], 10);
             const mnx = qpadding, mxx = ctx.canvas.width-qpadding;
             const mny = qpadding, mxy = ctx.canvas.height-qpadding;
             let y0 = mny, y1 = mxy;

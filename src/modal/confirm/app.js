@@ -1,5 +1,6 @@
 import * as util from "../../util.mjs";
 import { V } from "../../util.mjs";
+import * as lib from "../../lib.mjs";
 
 import * as core from "../../core.mjs";
 

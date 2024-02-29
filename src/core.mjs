@@ -1,5 +1,6 @@
 import * as util from "./util.mjs";
 import { V } from "./util.mjs";
+import * as lib from "./lib.mjs";
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -3693,7 +3694,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eLoading.style.display = "none";
         let projects = this.app.projects.map(id => this.app.getProject(id));
         if (projects.length > 0) {
-            projects = util.search(projects, ["meta.name"], this.eSearchInput.value);
+            projects = lib.search(projects, ["meta.name"], this.eSearchInput.value);
             this.addButton(projects.map(itm => {
                 let btn = new this.constructor.Button(itm.item);
                 itm.matches.forEach(match => btn.select(match.indices));
@@ -4370,7 +4371,7 @@ export class Odometry2d extends Odometry {
 
             let w = Math.floor(util.Unit.convert(this.w, "cm", this.unit));
             let h = Math.floor(util.Unit.convert(this.h, "cm", this.unit));
-            let step = util.findStep((w+h)/2, 10);
+            let step = lib.findStep((w+h)/2, 10);
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
             ctx.lineWidth = 1*quality;
