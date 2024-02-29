@@ -8,7 +8,7 @@ import { PointerLockControls } from "three/addons/controls/PointerLockControls.j
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 
 
-const LOADER = new GLTFLoader();
+export const LOADER = new GLTFLoader();
 
 THREE.Quaternion.fromRotationSequence = (...seq) => {
     if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq[0]);
@@ -26,7 +26,7 @@ THREE.Quaternion.fromRotationSequence = (...seq) => {
     return q;
 };
 
-const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
+export const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
     {
         axis: "x",
         angle: 90,
@@ -36,7 +36,7 @@ const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
         angle: 180,
     },
 );
-const THREE2WPILIB = WPILIB2THREE.clone().invert();
+export const THREE2WPILIB = WPILIB2THREE.clone().invert();
 
 
 class PropertyCache extends util.Target {
@@ -4958,6 +4958,7 @@ export class Odometry3d extends Odometry {
                 obj.castShadow = !obj.material.transparent;
                 obj.receiveShadow = !obj.material.transparent;
             }
+            obj.material.dispose();
             obj.material = material;
             return;
         }
@@ -5088,7 +5089,7 @@ export class Odometry3d extends Odometry {
         let cam = new Array(7).fill(null);
 
         this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, powerPreference: "default" });
-        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.enabled = this.isCinematic;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.#cssRenderer = new CSS2DRenderer({ element: this.overlay });
         
@@ -5243,6 +5244,7 @@ export class Odometry3d extends Odometry {
             }
         }
         this.addHandler("change-isCinematic", () => {
+            this.renderer.shadowMap.enabled = this.isCinematic;
             for (let i = 0; i < 2; i++)
                 lights[i].forEach(light => {
                     if (i == +this.isCinematic)
@@ -5920,6 +5922,324 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
     update(delta) { this.post("update", delta); }
 };
+
+export class Parallax extends util.Target {
+    #canvas;
+    #quality;
+    #size;
+    #run;
+    #type;
+
+    #scene;
+    #camera;
+
+    #renderer;
+
+    #speed;
+
+    constructor(canvas) {
+        super();
+
+        if (!(canvas instanceof HTMLCanvasElement)) throw new Error("Canvas is not of class HTMLCanvasElement");
+        this.#canvas = canvas;
+        this.#quality = 2;
+        this.#size = new V(300, 150);
+        this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
+        this.#run = 1;
+        this.#type = null;
+
+        this.#scene = new THREE.Scene();
+        this.scene.fog = new THREE.Fog(0x000000, 7.5, 10);
+        this.#camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+
+        this.#renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, powerPreference: "default" });
+
+        const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
+        this.scene.add(hemLight);
+
+        const specks = [];
+
+        let spawn = 0;
+
+        const update = () => {
+            const w = Math.max(0, Math.ceil(this.w));
+            const h = Math.max(0, Math.ceil(this.h));
+            this.renderer.setSize(w, h);
+            this.renderer.setPixelRatio(this.quality);
+            if (this.camera.aspect != w/h) {
+                this.camera.aspect = w/h;
+                this.camera.updateProjectionMatrix();
+            }
+        };
+        new ResizeObserver(update).observe(this.canvas.parentElement);
+        this.addHandler("change-quality", update);
+        this.addHandler("change-size.x", update);
+        this.addHandler("change-size.y", update);
+        update();
+
+        this.#speed = 0;
+
+        this.addHandler("update", delta => {
+            const height = 2 * Math.tan((this.camera.fov*(Math.PI/180))/2) * this.camera.near;
+            const width = height * this.camera.aspect;
+
+            for (let i = 0; i < this.run; i++) {
+                if (specks.length < 1000) {
+                    while (spawn < 0) {
+                        if (this.type == "july4") {
+                            spawn += util.lerp(1, 10, Math.random());
+                            let radii = [0.02, 0.015, 0.01];
+                            let pos = new util.V3(util.lerp(-5, +5, Math.random()), util.lerp(-5, +5, Math.random()), -5);
+                            for (let i = 0; i < 20; i++) {
+                                let azimuth = util.lerp(0, 360, Math.random());
+                                let elevation = util.lerp(0, 360, Math.random());
+                                let xz = V.dir(azimuth);
+                                let y = V.dir(elevation);
+                                xz.imul(y.x);
+                                let mag = new util.V3(xz.x, y.y, xz.y);
+                                const speck = new Parallax.Speck(
+                                    Math.floor(Parallax.Speck.materials.length*Math.random()),
+                                    radii[Math.floor(radii.length*Math.random())], 0,
+                                );
+                                speck.object.position.set(...pos.xyz);
+                                [speck.velX, speck.velY, speck.velZ] = mag.mul(util.lerp(0.05, 0.15, Math.random())).xyz;
+                                this.scene.add(speck.object);
+                                specks.push(speck);
+                                speck.addHandler("update", delta => {
+                                    speck.velY -= 0.001;
+                                    if (
+                                        Math.abs(speck.object.position.x) <= +15 &&
+                                        Math.abs(speck.object.position.y) <= +15 &&
+                                        Math.abs(speck.object.position.z) <= +15
+                                    ) return;
+                                    specks.splice(specks.indexOf(speck), 1);
+                                    this.scene.remove(speck.object);
+                                });
+                            }
+                        } else {
+                            spawn += util.lerp(0.01, 0.1, Math.random());
+                            let radii = [0.02, 0.015, 0.01];
+                            const speck = new Parallax.Speck(
+                                Math.floor(Parallax.Speck.materials.length*Math.random()),
+                                radii[Math.floor(radii.length*Math.random())], 0,
+                            );
+                            let pos;
+                            do {
+                                pos = new V(Math.random(), Math.random()).map(v => util.lerp(-15, +15, v));
+                            } while (Math.abs(pos.x) < width && Math.abs(pos.y) < height);
+                            speck.object.position.set(pos.x, pos.y, -15);
+                            this.scene.add(speck.object);
+                            specks.push(speck);
+                            speck.addHandler("update", delta => {
+                                speck.velX = speck.velY = speck.velZ = 0;
+                                speck.cvelX = speck.cvelY = 0;
+                                speck.cvelZ = this.speed;
+                                if (
+                                    Math.abs(speck.object.position.x) <= +15 &&
+                                    Math.abs(speck.object.position.y) <= +15 &&
+                                    Math.abs(speck.object.position.z) <= +15
+                                ) return;
+                                specks.splice(specks.indexOf(speck), 1);
+                                this.scene.remove(speck.object);
+                            });
+                        }
+                    }
+                    if (this.type == "july4") spawn -= 0.1;
+                    else spawn -= 2*this.speed;
+                }
+                [...specks].forEach(speck => speck.update(delta));
+            }
+
+            let colorW = PROPERTYCACHE.getColor("--v8");
+            let colorA = PROPERTYCACHE.getColor("--a");
+            let colorV = PROPERTYCACHE.getColor("--v2");
+            Parallax.Speck.materials[0].color.set(colorW.toHex(false));
+            Parallax.Speck.materials[1].color.set(colorA.toHex(false));
+            this.scene.fog.color.set(colorV.toHex(false));
+            
+            this.renderer.render(this.scene, this.camera);
+        });
+    }
+
+    get canvas() { return this.#canvas; }
+    get quality() { return this.#quality; }
+    set quality(v) {
+        v = Math.max(1, util.ensure(v, "int"));
+        if (this.quality == v) return;
+        this.change("quality", this.quality, this.#quality=v);
+    }
+    get size() { return this.#size; }
+    set size(v) { this.#size.set(v); }
+    get w() { return this.size.x; }
+    set w(v) { this.size.x = v; }
+    get h() { return this.size.y; }
+    set h(v) { this.size.y = v; }
+    get run() { return this.#run; }
+    set run(v) {
+        v = Math.max(0, util.ensure(v, "int"));
+        if (this.run == v) return;
+        this.change("run", this.run, this.#run=v);
+    }
+    get type() { return this.#type; }
+    set type(v) {
+        v = (v == null) ? null : String(v);
+        if (this.type == v) return;
+        this.change("type", this.type, this.#type=v);
+    }
+    hasType() { return this.type != null; }
+
+    get scene() { return this.#scene; }
+    get camera() { return this.#camera; }
+
+    get renderer() { return this.#renderer; }
+
+    get speed() { return this.#speed; }
+    set speed(v) {
+        v = Math.max(0, util.ensure(v, "num"));
+        if (this.speed == v) return;
+        this.change("speed", this.speed, this.#speed=v);
+    }
+
+    update(delta) { this.post("update", delta); }
+}
+Parallax.Speck = class ParallaxSpeck extends util.Target {
+    #type;
+    #r; #l;
+
+    #vel;
+    #cvel;
+
+    #sphereGeometry;
+    #cylinderGeometry;
+    #material;
+    #headMesh; #tailMesh; #midMesh;
+    #object;
+
+    static sphereGeometryCache = {};
+    static cylinderGeometryCache = {};
+    static materials = [
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    ];
+
+    constructor(type, r, l) {
+        super();
+
+        this.#type = 0;
+        this.#r = 0;
+        this.#l = 0;
+
+        this.#vel = [0, 0, 0];
+        this.#cvel = [0, 0, 0];
+
+        this.type = type;
+        this.r = r;
+        this.l = l;
+
+        let vel = [null, null, null];
+
+        this.addHandler("update", delta => {
+            let newVel = [
+                this.velX+this.cvelX,
+                this.velY+this.cvelY,
+                this.velZ+this.cvelZ,
+            ];
+            let changed = false;
+            for (let i = 0; i < 3; i++) {
+                if (vel[i] == newVel[i]) continue;
+                vel[i] = newVel[i];
+                changed = true;
+            }
+            let d = Math.sqrt(vel[0]**2 + vel[1]**2 + vel[2]**2);
+            this.l = Math.min(2.5, d * 2.5);
+            this.object.position.set(
+                this.object.position.x+vel[0],
+                this.object.position.y+vel[1],
+                this.object.position.z+vel[2],
+            );
+            this.#headMesh.position.setZ(+this.l/2);
+            this.#tailMesh.position.setZ(-this.l/2);
+            if (changed) {
+                this.object.lookAt(
+                    this.object.position.x+vel[0],
+                    this.object.position.y+vel[1],
+                    this.object.position.z+vel[2],
+                );
+            }
+            let p = 0.99 ** (5/delta);
+            this.velX *= p;
+            this.velY *= p;
+            this.velZ *= p;
+        });
+    }
+
+    #check() {
+        if (!(this.r in Parallax.Speck.sphereGeometryCache))
+            Parallax.Speck.sphereGeometryCache[this.r] = new THREE.SphereGeometry(this.r, 8, 8);
+        if (!(this.r in Parallax.Speck.cylinderGeometryCache))
+            Parallax.Speck.cylinderGeometryCache[this.r] = {};
+        if (!(this.l in Parallax.Speck.cylinderGeometryCache[this.r]))
+            Parallax.Speck.cylinderGeometryCache[this.r][this.l] = new THREE.CylinderGeometry(this.r, this.r, this.l, 8, 1, true);
+        this.#sphereGeometry = Parallax.Speck.sphereGeometryCache[this.r];
+        this.#cylinderGeometry = Parallax.Speck.cylinderGeometryCache[this.r][this.l];
+        this.#material = Parallax.Speck.materials[this.type];
+        if (!this.#headMesh) this.#headMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
+        if (!this.#tailMesh) this.#tailMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
+        if (!this.#midMesh) {
+            this.#midMesh = new THREE.Mesh(this.#cylinderGeometry, this.#material);
+            this.#midMesh.rotateX(Math.PI/2);
+        }
+        this.#headMesh.geometry = this.#tailMesh.geometry = this.#sphereGeometry;
+        this.#midMesh.geometry = this.#cylinderGeometry;
+        this.#headMesh.material = this.#tailMesh.material = this.#midMesh.material = this.#material;
+        if (!this.#object) {
+            this.#object = new THREE.Object3D();
+            this.#object.add(this.#headMesh);
+            this.#object.add(this.#tailMesh);
+            this.#object.add(this.#midMesh);
+        }
+    }
+
+    get type() { return this.#type; }
+    set type(v) {
+        v = Math.min(Parallax.Speck.materials.length-1, Math.max(0, util.ensure(v, "int")));
+        if (this.type == v) return;
+        this.#type = v;
+        this.#check();
+    }
+
+    get r() { return this.#r; }
+    set r(v) {
+        v = Math.max(0, Math.floor(util.ensure(v, "num")*100)/100);
+        if (this.r == v) return;
+        this.#r = v;
+        this.#check();
+    }
+    get l() { return this.#l; }
+    set l(v) {
+        v = Math.max(0, Math.floor(util.ensure(v, "num")*100)/100);
+        if (this.l == v) return;
+        this.#l = v;
+        this.#check();
+    }
+
+    get velX() { return this.#vel[0]; }
+    set velX(v) { this.#vel[0] = util.ensure(v, "num"); }
+    get velY() { return this.#vel[1]; }
+    set velY(v) { this.#vel[1] = util.ensure(v, "num"); }
+    get velZ() { return this.#vel[2]; }
+    set velZ(v) { this.#vel[2] = util.ensure(v, "num"); }
+    get cvelX() { return this.#cvel[0]; }
+    set cvelX(v) { this.#cvel[0] = util.ensure(v, "num"); }
+    get cvelY() { return this.#cvel[1]; }
+    set cvelY(v) { this.#cvel[1] = util.ensure(v, "num"); }
+    get cvelZ() { return this.#cvel[2]; }
+    set cvelZ(v) { this.#cvel[2] = util.ensure(v, "num"); }
+
+    get object() { return this.#object; }
+
+    update(delta) { this.post("update", delta); }
+}
 
 export class Explorer extends util.Target {
     #nodes;
