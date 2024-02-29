@@ -1,4 +1,16 @@
+import * as util from "./util.mjs";
+import * as lib from "./lib.mjs";
+
+
+class VirtualFS extends util.Target {
+    constructor() {
+        super();
+    }
+}
+
+
 const PATCH = () => {
+    const operator = new lib.FSOperator();
     const AGENT = {
         os: "web",
 

@@ -50,22 +50,19 @@ export function findStep(v, n=10) {
     return factors[0].f;
 }
 
+let FS = null, PATH = null, FSLOGFUNC = null;
 export class FSOperator extends util.Target {
     #root;
 
-    static FS;
-    static PATH;
-    static FSLOGFUNC = null;
-
-    static get fs() { return this.FS; }
-    static set fs(v) { this.FS = util.is(v, "obj") ? v : null; }
+    static get fs() { return FS; }
+    static set fs(v) { FS = util.is(v, "obj") ? v : null; }
     static hasFS() { return this.fs != null; }
-    static get path() { return this.PATH; }
-    static set path(v) { this.PATH = util.is(v, "obj") ? v : null; }
+    static get path() { return PATH; }
+    static set path(v) { PATH = util.is(v, "obj") ? v : null; }
     static hasPath() { return this.path != null; }
     static hasModules() { return this.hasFS() && this.hasPath(); }
-    static get fsLogFunc() { return this.FSLOGFUNC; }
-    static set fsLogFunc(v) { this.FSLOGFUNC = util.is(v, "func") ? v : null; }
+    static get fsLogFunc() { return FSLOGFUNC; }
+    static set fsLogFunc(v) { FSLOGFUNC = util.is(v, "func") ? v : null; }
     static hasFSLogFunc() { return this.fsLogFunc != null; }
 
     constructor(root) {
