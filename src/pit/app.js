@@ -34,15 +34,17 @@ export default class App extends core.App {
                     light1.castShadow = true;
                     light1.shadow.mapSize.width = shadowQ;
                     light1.shadow.mapSize.height = shadowQ;
+                    light1.shadow.bias = -0.01;
                 }
                 const light2 = new THREE.SpotLight(0xffffff, 300, 0, 60*(Math.PI/180), 0.25, 2);
                 scene.add(light2);
-                light2.position.set(-4, 0, -2);
+                light2.position.set(-2, -2, -2);
                 light2.target.position.set(0, 0, 0);
                 if (useShadow) {
                     light2.castShadow = true;
                     light2.shadow.mapSize.width = shadowQ;
                     light2.shadow.mapSize.height = shadowQ;
+                    light2.shadow.bias = -0.01;
                 }
 
                 const specks = [];
@@ -94,7 +96,6 @@ export default class App extends core.App {
                         obj.material.shininess = 0;
                         obj.castShadow = !obj.material.transparent;
                         obj.receiveShadow = !obj.material.transparent;
-                        console.log(obj.material);
                     });
                     const scale = 1.25;
                     model.scale.set(scale, scale, scale);

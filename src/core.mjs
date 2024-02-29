@@ -5241,6 +5241,7 @@ export class Odometry3d extends Odometry {
                 light.castShadow = true;
                 light.shadow.mapSize.width = 1024;
                 light.shadow.mapSize.height = 1024;
+                light.shadow.bias = -0.01;
             }
         }
         this.addHandler("change-isCinematic", () => {
