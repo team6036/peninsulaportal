@@ -177,6 +177,7 @@ export default class App extends core.App {
                         "db-host": "str",
                         "assets-host": "str",
                         "socket-host": "str",
+                        "scout-url": "str",
                         "comp-mode": "bool",
                         "holiday": "str",
                         "holiday-opt": "bool",
@@ -208,6 +209,9 @@ export default class App extends core.App {
                                     value = (value == null) ? "" : String(value);
                                 },
                                 "socket-host": async () => {
+                                    value = (value == null) ? "" : String(value);
+                                },
+                                "scout-url": async () => {
                                     value = (value == null) ? "" : String(value);
                                 },
                                 "holiday": async () => {
@@ -264,6 +268,9 @@ export default class App extends core.App {
                                 v = (v.length <= 0) ? null : String(v);
                             },
                             "socket-host": async () => {
+                                v = (v.length <= 0) ? null : String(v);
+                            },
+                            "scout-url": async () => {
                                 v = (v.length <= 0) ? null : String(v);
                             },
                         };
@@ -369,6 +376,9 @@ export default class App extends core.App {
                     const assetsHostAnchor = this.eInfo.querySelector(":scope > .nav > a#assets-host");
                     if (assetsHostAnchor instanceof HTMLAnchorElement)
                         assetsHostAnchor.href = await window.api.get("assets-host");
+                    const scoutURLAnchor = this.eInfo.querySelector(":scope > .nav > a#scout-url");
+                    if (scoutURLAnchor instanceof HTMLAnchorElement)
+                        scoutURLAnchor.href = await window.api.get("scout-url");
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
                     if (repoAnchor instanceof HTMLAnchorElement)
                         repoAnchor.href = await window.api.get("val-repo");

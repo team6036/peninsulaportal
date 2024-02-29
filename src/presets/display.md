@@ -37,6 +37,11 @@
     <input class="val" id="socket-host" placeholder="Socket Host URL" style="min-width:300px;color:var(--cy);">
 </p>
 <p>
+    <span>Scouting URL</span>
+    <span class="space"></span>
+    <input class="val" id="scout-url" placeholder="Scouting URL" style="min-width:300px;color:var(--cy);">
+</p>
+<p>
     <span>Competition Mode</span>
     <span class="space"></span>
     <label class="switch">
