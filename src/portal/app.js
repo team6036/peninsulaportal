@@ -263,123 +263,23 @@ export default class App extends core.App {
             this.#eBackground = document.querySelector("#PAGE > .background");
             this.#eCanvas = document.querySelector("#PAGE > .background > div > #canvas");
             if (this.hasECanvas()) {
-                const canvas = this.eCanvas;
-
-                const quality = 3;
-
-                const scene = new THREE.Scene();
-                scene.fog = new THREE.Fog(0x000000, 7.5, 10);
-                const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-                
-                const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
-
-                const hemLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2);
-                scene.add(hemLight);
-
-                const specks = [];
-
-                const near = camera.near;
-                const fov = camera.fov;
-                const height = 2 * Math.tan((fov*(Math.PI/180))/2) * near;
-                const width = height * camera.aspect;
-
-                let spawn = 0;
-
-                let first = true;
-
                 const getScroll = () => (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
                 const getSpeed = () => {
                     let scroll = getScroll();
                     return util.lerp(1, 25, (scroll<0) ? 0 : (scroll>1) ? 1 : scroll)*0.02;
                 };
-
+                let ff = 10;
+                const parallax = new core.Parallax(this.eCanvas);
                 this.addHandler("update", delta => {
-                    let scroll = getScroll();
-                    let speed = getSpeed();
-
-                    canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
-
-                    for (let i = 0; i < (first ? 60*10 : 1); i++) {
-                        if (specks.length < 1000) {
-                            while (spawn < 0) {
-                                if (this.holiday == "july4") {
-                                    spawn += util.lerp(1, 10, Math.random());
-                                    let radii = [0.02, 0.015, 0.01];
-                                    let pos = new util.V3(util.lerp(-5, +5, Math.random()), util.lerp(-5, +5, Math.random()), -5);
-                                    for (let i = 0; i < 20; i++) {
-                                        let azimuth = util.lerp(0, 360, Math.random());
-                                        let elevation = util.lerp(0, 360, Math.random());
-                                        let xz = V.dir(azimuth);
-                                        let y = V.dir(elevation);
-                                        xz.imul(y.x);
-                                        let mag = new util.V3(xz.x, y.y, xz.y);
-                                        const speck = new Speck(
-                                            Math.floor(Speck.materials.length*Math.random()),
-                                            radii[Math.floor(radii.length*Math.random())], 0,
-                                        );
-                                        speck.object.position.set(...pos.xyz);
-                                        [speck.velX, speck.velY, speck.velZ] = mag.mul(util.lerp(0.05, 0.15, Math.random())).xyz;
-                                        scene.add(speck.object);
-                                        specks.push(speck);
-                                        speck.addHandler("update", delta => {
-                                            speck.velY -= 0.001;
-                                            if (
-                                                Math.abs(speck.object.position.x) <= +15 &&
-                                                Math.abs(speck.object.position.y) <= +15 &&
-                                                Math.abs(speck.object.position.z) <= +15
-                                            ) return;
-                                            specks.splice(specks.indexOf(speck), 1);
-                                            scene.remove(speck.object);
-                                        });
-                                    }
-                                } else {
-                                    spawn += util.lerp(0.01, 0.1, Math.random());
-                                    let radii = [0.02, 0.015, 0.01];
-                                    const speck = new Speck(
-                                        Math.floor(Speck.materials.length*Math.random()),
-                                        radii[Math.floor(radii.length*Math.random())], 0,
-                                    );
-                                    let pos;
-                                    do {
-                                        pos = new V(Math.random(), Math.random()).map(v => util.lerp(-15, +15, v));
-                                    } while (Math.abs(pos.x) < width && Math.abs(pos.y) < height);
-                                    speck.object.position.set(pos.x, pos.y, -15);
-                                    scene.add(speck.object);
-                                    specks.push(speck);
-                                    speck.addHandler("update", delta => {
-                                        speck.velX = speck.velY = speck.velZ = 0;
-                                        speck.cvelX = speck.cvelY = 0;
-                                        speck.cvelZ = getSpeed();
-                                        if (
-                                            Math.abs(speck.object.position.x) <= +15 &&
-                                            Math.abs(speck.object.position.y) <= +15 &&
-                                            Math.abs(speck.object.position.z) <= +15
-                                        ) return;
-                                        specks.splice(specks.indexOf(speck), 1);
-                                        scene.remove(speck.object);
-                                    });
-                                }
-                            }
-                            if (this.holiday == "july4") spawn -= 0.1;
-                            else spawn -= 2*speed;
-                        }
-                        [...specks].forEach(speck => speck.update(delta));
-                    }
-                    first = false;
-
-                    let colorW = core.PROPERTYCACHE.getColor("--v8");
-                    let colorA = core.PROPERTYCACHE.getColor("--a");
-                    let colorV = core.PROPERTYCACHE.getColor("--v2");
-                    Speck.materials[0].color.set(colorW.toHex(false));
-                    Speck.materials[1].color.set(colorA.toHex(false));
-                    scene.fog.color.set(colorV.toHex(false));
-                    
-                    camera.aspect = window.innerWidth/window.innerHeight;
-                    camera.updateProjectionMatrix();
-
-                    renderer.setSize(window.innerWidth*quality, window.innerHeight*quality);
-                    renderer.domElement.style.transform = "scale("+(1/quality)+")";
-                    renderer.render(scene, camera);
+                    parallax.run = ff ? 60 : 1;
+                    if (ff) ff--;
+                    const scroll = getScroll();
+                    parallax.canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
+                    parallax.w = window.innerWidth;
+                    parallax.h = window.innerHeight;
+                    parallax.speed = getSpeed();
+                    parallax.update(delta);
+                    parallax.type = (this.holiday == "july4") ? "july4" : null;
                 });
             }
             this.#eMain = document.querySelector("#PAGE > .main");

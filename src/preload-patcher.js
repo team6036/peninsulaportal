@@ -4,11 +4,10 @@ const PATCH = () => {
 
         app: "web",
     };
-    Object.defineProperty(window, "agent", { value: AGENT, writable: false });
+    window.agent = () => AGENT;
     window.buildAgent = async () => AGENT;
     window.onBuildAgent = f => (() => {});
     window.api = {
-        // stub
     };
 };
 if (!window.api) PATCH();
