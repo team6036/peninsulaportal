@@ -3564,6 +3564,9 @@ const MAIN = async () => {
                     let host = (await kfs._fullconfig()).socketHost;
                     return (host == null) ? (await kfs["db-host"]()) : String(host);
                 },
+                "scout-url": async () => {
+                    return String((await kfs._fullconfig()).scoutURL);
+                },
                 "_fullclientconfig": async () => {
                     await this.affirm();
                     let content = "";
@@ -3610,6 +3613,7 @@ const MAIN = async () => {
                 "db-host": async () => await this.get("db-host"),
                 "assets-host": async () => await this.get("assets-host"),
                 "socket-host": async () => await this.get("socket-host"),
+                "scout-url": async () => await this.get("scout-url"),
                 "repo": async () => await this.get("repo"),
                 "holiday": async () => await this.get("active-holiday"),
                 "comp-mode": async () => await this.get("comp-mode"),
@@ -3652,6 +3656,7 @@ const MAIN = async () => {
                 "db-host": async () => await kfs._fullconfig("dbHost", (v == null) ? null : String(v)),
                 "assets-host": async () => await kfs._fullconfig("assetsHost", String(v)),
                 "socket-host": async () => await kfs._fullconfig("socketHost", (v == null) ? null : String(v)),
+                "scout-url": async () => await kfs._fullconfig("scoutURL", (v == null) ? null : String(v)),
                 "_fullclientconfig": async (k=null, v=null) => {
                     if (k == null) return;
                     let content = "";
@@ -3695,6 +3700,7 @@ const MAIN = async () => {
                 "db-host": async () => await this.set("db-host", v),
                 "assets-host": async () => await this.set("assets-host", v),
                 "socket-host": async () => await this.set("socket-host", v),
+                "scout-url": async () => await this.set("scout-url", v),
                 "comp-mode": async () => await this.set("comp-mode", v),
                 "holiday-opt": async () => await this.set("holiday-opt", v),
             };

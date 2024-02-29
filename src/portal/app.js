@@ -97,145 +97,6 @@ class UpperFeatureButton extends util.Target {
     set iconSrc(v) { this.eIcon.setAttribute("src", v); }
 }
 
-class Speck extends util.Target {
-    #type;
-    #r; #l;
-
-    #vel;
-    #cvel;
-
-    #sphereGeometry;
-    #cylinderGeometry;
-    #material;
-    #headMesh; #tailMesh; #midMesh;
-    #object;
-
-    static sphereGeometryCache = {};
-    static cylinderGeometryCache = {};
-    static materials = [
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    ];
-
-    constructor(type, r, l) {
-        super();
-
-        this.#type = 0;
-        this.#r = 0;
-        this.#l = 0;
-
-        this.#vel = [0, 0, 0];
-        this.#cvel = [0, 0, 0];
-
-        this.type = type;
-        this.r = r;
-        this.l = l;
-
-        let vel = [null, null, null];
-
-        this.addHandler("update", delta => {
-            let newVel = [
-                this.velX+this.cvelX,
-                this.velY+this.cvelY,
-                this.velZ+this.cvelZ,
-            ];
-            let changed = false;
-            for (let i = 0; i < 3; i++) {
-                if (vel[i] == newVel[i]) continue;
-                vel[i] = newVel[i];
-                changed = true;
-            }
-            let d = Math.sqrt(vel[0]**2 + vel[1]**2 + vel[2]**2);
-            this.l = Math.min(2.5, d * 2.5);
-            this.object.position.set(
-                this.object.position.x+vel[0],
-                this.object.position.y+vel[1],
-                this.object.position.z+vel[2],
-            );
-            this.#headMesh.position.setZ(+this.l/2);
-            this.#tailMesh.position.setZ(-this.l/2);
-            if (changed) {
-                this.object.lookAt(
-                    this.object.position.x+vel[0],
-                    this.object.position.y+vel[1],
-                    this.object.position.z+vel[2],
-                );
-            }
-            let p = 0.99 ** (5/delta);
-            this.velX *= p;
-            this.velY *= p;
-            this.velZ *= p;
-        });
-    }
-
-    #check() {
-        if (!(this.r in Speck.sphereGeometryCache))
-            Speck.sphereGeometryCache[this.r] = new THREE.SphereGeometry(this.r, 8, 8);
-        if (!(this.r in Speck.cylinderGeometryCache))
-            Speck.cylinderGeometryCache[this.r] = {};
-        if (!(this.l in Speck.cylinderGeometryCache[this.r]))
-            Speck.cylinderGeometryCache[this.r][this.l] = new THREE.CylinderGeometry(this.r, this.r, this.l, 8, 1, true);
-        this.#sphereGeometry = Speck.sphereGeometryCache[this.r];
-        this.#cylinderGeometry = Speck.cylinderGeometryCache[this.r][this.l];
-        this.#material = Speck.materials[this.type];
-        if (!this.#headMesh) this.#headMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
-        if (!this.#tailMesh) this.#tailMesh = new THREE.Mesh(this.#sphereGeometry, this.#material);
-        if (!this.#midMesh) {
-            this.#midMesh = new THREE.Mesh(this.#cylinderGeometry, this.#material);
-            this.#midMesh.rotateX(Math.PI/2);
-        }
-        this.#headMesh.geometry = this.#tailMesh.geometry = this.#sphereGeometry;
-        this.#midMesh.geometry = this.#cylinderGeometry;
-        this.#headMesh.material = this.#tailMesh.material = this.#midMesh.material = this.#material;
-        if (!this.#object) {
-            this.#object = new THREE.Object3D();
-            this.#object.add(this.#headMesh);
-            this.#object.add(this.#tailMesh);
-            this.#object.add(this.#midMesh);
-        }
-    }
-
-    get type() { return this.#type; }
-    set type(v) {
-        v = Math.min(Speck.materials.length-1, Math.max(0, util.ensure(v, "int")));
-        if (this.type == v) return;
-        this.#type = v;
-        this.#check();
-    }
-
-    get r() { return this.#r; }
-    set r(v) {
-        v = Math.max(0, Math.floor(util.ensure(v, "num")*100)/100);
-        if (this.r == v) return;
-        this.#r = v;
-        this.#check();
-    }
-    get l() { return this.#l; }
-    set l(v) {
-        v = Math.max(0, Math.floor(util.ensure(v, "num")*100)/100);
-        if (this.l == v) return;
-        this.#l = v;
-        this.#check();
-    }
-
-    get velX() { return this.#vel[0]; }
-    set velX(v) { this.#vel[0] = util.ensure(v, "num"); }
-    get velY() { return this.#vel[1]; }
-    set velY(v) { this.#vel[1] = util.ensure(v, "num"); }
-    get velZ() { return this.#vel[2]; }
-    set velZ(v) { this.#vel[2] = util.ensure(v, "num"); }
-    get cvelX() { return this.#cvel[0]; }
-    set cvelX(v) { this.#cvel[0] = util.ensure(v, "num"); }
-    get cvelY() { return this.#cvel[1]; }
-    set cvelY(v) { this.#cvel[1] = util.ensure(v, "num"); }
-    get cvelZ() { return this.#cvel[2]; }
-    set cvelZ(v) { this.#cvel[2] = util.ensure(v, "num"); }
-
-    get object() { return this.#object; }
-
-    update(delta) { this.post("update", delta); }
-}
-
 export default class App extends core.App {
     #featureButtons;
     #upperFeatureButtons;
@@ -363,6 +224,9 @@ export default class App extends core.App {
                     const assetsHostAnchor = this.eInfo.querySelector(":scope > .nav > a#assets-host");
                     if (assetsHostAnchor instanceof HTMLAnchorElement)
                         assetsHostAnchor.href = await window.api.get("assets-host");
+                    const scoutURLAnchor = this.eInfo.querySelector(":scope > .nav > a#scout-url");
+                    if (scoutURLAnchor instanceof HTMLAnchorElement)
+                        scoutURLAnchor.href = await window.api.get("scout-url");
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
                     if (repoAnchor instanceof HTMLAnchorElement)
                         repoAnchor.href = await window.api.get("val-repo");

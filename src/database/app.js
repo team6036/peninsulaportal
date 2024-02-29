@@ -940,8 +940,28 @@ export default class App extends core.App {
                             data = util.ensure(data, "obj");
                             fAssetHost.value = util.ensure(data.assetsHost, "str");
                             fSocketHost.value = util.ensure(data.socketHost, "str");
+                            fScoutURL.value = util.ensure(data.scoutURL, "str");
                             ignore = false;
                         });
+                        const put = async (k, v) => {
+                            const host = await window.api.get("db-host");
+                            if (host == null) return false;
+                            try {
+                                let resp = await fetch(host+"/api/config", {
+                                    method: "PUT",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        attr: k,
+                                        value: v,
+                                    }),
+                                });
+                                if (resp.status != 200) throw resp.status;
+                                return true;
+                            } catch (e) { this.doError("Config Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
+                            return false;
+                        };
                         // const fDBHost = form.addField(new core.Form.TextInput("Database Host URL"));
                         const fAssetHost = form.addField(new core.Form.TextInput("Asset Host URL"));
                         fAssetHost.type = "";
@@ -949,23 +969,7 @@ export default class App extends core.App {
                             if (ignore) return;
                             let value = fAssetHost.value;
                             if (value.length <= 0) value = null;
-                            const host = await window.api.get("db-host");
-                            if (host == null) return;
-                            let k = "assetsHost", v = value;
-                            try {
-                                let resp = await fetch(host+"/api/config", {
-                                    method: "PUT",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        attr: k,
-                                        value: v,
-                                    }),
-                                });
-                                if (resp.status != 200) throw resp.status;
-                            } catch (e) { this.app.doError("Config Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
-                            return false;
+                            return await put("assetsHost", value);
                         });
                         const fSocketHost = form.addField(new core.Form.TextInput("Socket Host URL"));
                         fSocketHost.type = "";
@@ -973,23 +977,15 @@ export default class App extends core.App {
                             if (ignore) return;
                             let value = fSocketHost.value;
                             if (value.length <= 0) value = null;
-                            const host = await window.api.get("db-host");
-                            if (host == null) return;
-                            let k = "socketHost", v = value;
-                            try {
-                                let resp = await fetch(host+"/api/config", {
-                                    method: "PUT",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        attr: k,
-                                        value: v,
-                                    }),
-                                });
-                                if (resp.status != 200) throw resp.status;
-                            } catch (e) { this.app.doError("Config Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
-                            return false;
+                            return await put("socketHost", value);
+                        });
+                        const fScoutURL = form.addField(new core.Form.TextInput("Scout URL"));
+                        fScoutURL.type = "";
+                        fScoutURL.addHandler("change-value", async () => {
+                            if (ignore) return;
+                            let value = fScoutURL.value;
+                            if (value.length <= 0) value = null;
+                            return await put("scoutURL", value);
                         });
                     },
                 };

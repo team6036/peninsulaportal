@@ -130,6 +130,10 @@ function getTabDisplay(name) {
         name: "globe-outline",
         color: "var(--cc)",
     };
+    if (name == "scout") return {
+        name: "search-outline",
+        color: "var(--cc)",
+    };
     if (name == "logger" || name == "logworks") return {
         name: "list",
         color: "var(--cc)",
@@ -1346,6 +1350,10 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             {
                 id: "webview", name: "WebView",
                 tab: Panel.WebViewTab,
+            },
+            {
+                id: "scout", name: "Scout",
+                tab: Panel.ScoutTab,
             },
             {
                 id: "logger", name: "Logger",
@@ -2727,6 +2735,24 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
             src: this.src,
         });
     }
+};
+Panel.ScoutTab = class PanelScoutTab extends Panel.ToolTab {
+    #eWebView;
+
+    constructor() {
+        super("Scout", "scout");
+
+        this.elem.classList.add("scout");
+
+        this.#eWebView = document.createElement("webview");
+        this.elem.appendChild(this.eWebView);
+        (async () => {
+            const scoutURL = await window.api.get("scout-url");
+            this.eWebView.setAttribute("src", scoutURL);
+        })();
+    }
+
+    get eWebView() { return this.#eWebView; }
 };
 Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #logs;
@@ -7705,6 +7731,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             {
                 id: "webview", name: "WebView",
                 tab: Panel.WebViewTab,
+            },
+            {
+                id: "scout", name: "Scout",
+                tab: Panel.ScoutTab,
             },
             {
                 id: "logger", name: "Logger",

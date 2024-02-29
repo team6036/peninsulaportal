@@ -989,6 +989,9 @@
 
     background-color: #fff;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.scout > webview {
+    flex-basis: 100%;
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logger > .status {
     position: relative;
 
