@@ -1204,6 +1204,10 @@ const MAIN = async () => {
             return await this.manager.tbaClientInvoke((id instanceof TbaClient) ? id : (this.name+":"+id), invoke, ...a);
         }
 
+        async ytdlDownload(url, options) {
+            return await this.manager.ytdlDownload(url, options);
+        }
+
         async get(k) {
             if (!this.started) return null;
             k = String(k);
@@ -1869,6 +1873,72 @@ const MAIN = async () => {
                         }
                         await client.emit("log-delete", name);
                         return true;
+                    },
+                    "videos": async () => {
+                        if (!(await this.dirHas("videos")))
+                            await this.dirMake("videos");
+                        return (await this.dirList("videos")).filter(dirent => dirent.type == "file").map(dirent => dirent.name);
+                    },
+                    "video-has": async name => {
+                        name = String(name);
+                        if (!(await this.dirHas("videos")))
+                            await this.dirMake("videos");
+                        return !!(await this.fileHas(["videos", name]));
+                    },
+                    "video-get": async name => {
+                        name = String(name);
+                        if (!(await this.dirHas("videos")))
+                            await this.dirMake("videos");
+                        if (!(await this.fileHas(["videos", name])))
+                            return null;
+                        return WindowManager.makePath(this.dataPath, "videos", name);
+                    },
+                    "video-add-url": async url => {
+                        url = String(url);
+                        const ytStream = await this.ytdlDownload(url, { quality: "136" });
+                        if (!(await this.dirHas("videos")))
+                            await this.dirMake("videos");
+                        const l = 11;
+                        const id = url.substring(url.length-l).split("").filter(c => util.BASE64.includes(c)).join("");
+                        const name = id+".mp4";
+                        if (await this.fileHas(["videos", name]))
+                            await this.fileDelete(["videos", name]);
+                        const pth = WindowManager.makePath(this.dataPath, "videos", name);
+                        const fsStream = fs.createWriteStream(pth);
+                        await new Promise((res, rej) => {
+                            fsStream.on("open", () => {
+                                ytStream.pipe(fsStream);
+                                ytStream.on("end", () => res());
+                                ytStream.on("error", e => rej(e));
+                            });
+                        });
+                        if (await this.fileHas(["videos", name]))
+                            return name;
+                        return null;
+                    },
+                    "video-add-file": async (pth, name) => {
+                        pth = WindowManager.makePath(pth);
+                        name = String(name);
+                        if (!(await this.dirHas("videos")))
+                            await this.dirMake("videos");
+                        if (await this.fileHas(["videos", name]))
+                            await this.fileDelete(["videos", name]);
+                        const pth2 = WindowManager.makePath(this.dataPath, "videos", name);
+                        await fs.promises.cp(
+                            pth, pth2,
+                            { force: true, recursive: true },
+                        );
+                        if (await this.fileHas(["videos", name]))
+                            return name;
+                        return null;
+                    },
+                    "video-rem": async name => {
+                        name = String(name);
+                        if (!(await this.dirHas("videos")))
+                            await this.dirMake("videos");
+                        if (!(await this.fileHas(["videos", name])))
+                            return null;
+                        return name;
                     },
                 },
                 PLANNER: {
@@ -3204,6 +3274,14 @@ const MAIN = async () => {
                                 { type: "file", match: (_, name) => name.endsWith(".wpilog") },
                             ],
                         },
+                        //~/panel/videos
+                        {
+                            type: "dir", name: "videos",
+                            children: [
+                                //~/panel/videos/*.mp4
+                                { type: "file", match: (_, name) => name.endsWith(".mp4") },
+                            ],
+                        },
                         //~/panel/projects
                         {
                             type: "dir", name: "projects",
@@ -3365,6 +3443,12 @@ const MAIN = async () => {
             let client = (id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id);
             this.log(`TBACLIENT:emit - ${client.id} > ${invoke}`);
             return await client.invoke(invoke, ...a);
+        }
+
+        async ytdlDownload(url, options) {
+            if (this.hasWindow()) return await this.window.ytdlDownload(url, options);
+            this.log(`YTDL - ${url}`);
+            return ytdl(url, options);
         }
 
         identifyWindow(id) {

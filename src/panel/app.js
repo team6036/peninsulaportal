@@ -139,6 +139,10 @@ function getTabDisplay(name) {
         name: "list",
         color: "var(--cc)",
     };
+    if (name == "videosync") return {
+        name: "play-outline",
+        color: "var(--cc)",
+    };
 }
 
 function stringify(data) {
@@ -1364,6 +1368,10 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             {
                 id: "logworks", name: "LogWorks",
                 tab: Panel.LogWorksTab,
+            },
+            {
+                id: "videosync", name: "VideoSync",
+                tab: Panel.VideoSyncTab,
             },
         ];
         toolItems = toolItems.map(data => {
@@ -3931,6 +3939,82 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     get eBackBtn() { return this.#eBackBtn; }
     get eTitle() { return this.#eTitle; }
     get eContent() { return this.#eContent; }
+};
+Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
+    #eVideoBox;
+    #eVideo;
+    #eNav;
+    #eSource;
+    #eSourceTitle;
+    #eTime;
+    #eTimeTitle;
+
+    constructor(...a) {
+        super("VideoSync", "videosync");
+
+        this.elem.classList.add("videosync");
+
+        this.#eVideoBox = document.createElement("div");
+        this.elem.appendChild(this.eVideoBox);
+        this.eVideoBox.classList.add("video");
+        this.#eVideo = document.createElement("video");
+        this.eVideoBox.appendChild(this.eVideo);
+
+        this.#eNav = document.createElement("div");
+        this.elem.appendChild(this.eNav);
+        this.eNav.classList.add("nav");
+
+        this.#eSource = document.createElement("div");
+        this.eNav.appendChild(this.eSource);
+        this.eSource.classList.add("source");
+        this.#eSourceTitle = document.createElement("div");
+        this.eSource.appendChild(this.eSourceTitle);
+        this.eSourceTitle.classList.add("title");
+        this.eSourceTitle.textContent = "Choose a source";
+
+        this.#eTime = document.createElement("div");
+        this.eNav.appendChild(this.eTime);
+        this.eTime.classList.add("time");
+        this.#eTimeTitle = document.createElement("div");
+        // this.eTime.appendChild(this.eTimeTitle);
+        this.eTimeTitle.classList.add("title");
+        this.eTimeTitle.textContent = "Sync";
+
+        let elems = {};
+
+        const timer = new util.Timer();
+        timer.play();
+        this.addHandler("update", async delta => {
+            if (timer.time < 1000) return;
+            timer.clear();
+            const videos = util.ensure(await window.api.send("videos"), "arr").map(name => String(name));
+            videos.forEach(name => {
+                if (name in elems) return;
+                let elem = document.createElement("button");
+                elems[name] = elem;
+                this.eSource.appendChild(elem);
+                elem.classList.add("item");
+                elem.textContent = name;
+            });
+            Object.keys(elems).forEach(name => {
+                if (videos.includes(name)) return;
+                let elem = elems[name];
+                delete elems[name];
+                elem.remove();
+            });
+            videos.forEach((name, i) => {
+                elems[name].style.order = i+1;
+            });
+        });
+    }
+
+    get eVideoBox() { return this.#eVideoBox; }
+    get eVideo() { return this.#eVideo; }
+    get eNav() { return this.#eNav; }
+    get eSource() { return this.#eSource; }
+    get eSourceTitle() { return this.#eSourceTitle; }
+    get eTime() { return this.#eTime; }
+    get eTimeTitle() { return this.#eTimeTitle; }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
@@ -7745,6 +7829,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             {
                 id: "logworks", name: "LogWorks",
                 tab: Panel.LogWorksTab,
+            },
+            {
+                id: "videosync", name: "VideoSync",
+                tab: Panel.VideoSyncTab,
             },
         ];
         this.addToolButton(toolButtons.map(data => {

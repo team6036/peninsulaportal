@@ -1427,6 +1427,63 @@
 
     border-radius: 5px;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync {
+    padding: 0px;
+
+    gap: 0px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .video {
+    flex-basis: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav {
+    min-height: min(50%, 200px);
+    max-height: min(50%, 200px);
+    padding: 10px;
+    overflow: auto;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 10px;
+
+    border-top: 1px solid var(--v2);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > * {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > * > .title {
+    color: var(--v8);
+
+    font-size: 14px;
+    font-weight: 600;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source {
+    min-width: min(200px, 25%);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > * {
+    padding: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .title {
+    order: 0;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time {
+    flex-basis: 100%;
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas {
     --options: 100%;
 
