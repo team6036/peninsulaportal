@@ -950,8 +950,8 @@ const MAIN = async () => {
                     client.id = "logger";
                     client.addHandler("stream-logs", async (fname, payload, meta, ssStream) => {
                         await this.affirm();
-                        if (!(await this.dirHas(["logs"])))
-                            await this.manager.dirMake(["logs"]);
+                        if (!(await this.dirHas("logs")))
+                            await this.dirMake("logs");
                         const pth = WindowManager.makePath(this.dataPath, "logs", fname);
                         const stream = fs.createWriteStream(pth);
                         try {
@@ -1803,8 +1803,8 @@ const MAIN = async () => {
                         pth = String(pth);
                         if (!(await WindowManager.fileHas(pth))) return null;
                         await this.manager.affirm();
-                        if (!(await this.dirHas(["logs"])))
-                            await this.manager.dirMake(["logs"]);
+                        if (!(await this.dirHas("logs")))
+                            await this.dirMake("logs");
                         const name = path.basename(pth);
                         let pthDest = path.join(this.dataPath, "logs", name);
                         if (path.resolve(pth) == path.resolve(pthDest)) return name;
