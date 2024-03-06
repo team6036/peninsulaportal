@@ -645,10 +645,10 @@ const MAIN = async () => {
         name = String(name);
         return [
             {
-                label: (name.length > 0) ? util.formatText(name) : "Portal",
+                label: (name.length > 0) ? util.formatText(name).replaceAll(":", " ") : "Portal",
                 submenu: [
                     {
-                        label: (name.length > 0) ? ("About Peninsula "+util.formatText(name)) : "About Peninsula",
+                        label: (name.length > 0) ? ("About Peninsula "+util.formatText(name).replaceAll(":", " ")) : "About Peninsula",
                         enabled: !!("about" in signal ? signal.about : true),
                         click: () => signal.post("about"),
                     },
@@ -1918,7 +1918,7 @@ const MAIN = async () => {
                     },
                     "video-add-file": async (pth, name) => {
                         pth = WindowManager.makePath(pth);
-                        name = String(name);
+                        name = (name == null) ? path.basename(pth) : (String(name)+path.extname(pth));
                         if (!(await this.dirHas("videos")))
                             await this.dirMake("videos");
                         if (await this.fileHas(["videos", name]))
@@ -1938,6 +1938,7 @@ const MAIN = async () => {
                             await this.dirMake("videos");
                         if (!(await this.fileHas(["videos", name])))
                             return null;
+                        await this.fileDelete(["videos", name]);
                         return name;
                     },
                 },
@@ -2480,7 +2481,7 @@ const MAIN = async () => {
             dfs(this);
             for (let win of windows) {
                 if (!win.hasWindow()) continue;
-                if (win.isModal) continue;
+                // if (win.isModal) continue;
                 let signal = new util.Target();
                 signal.addHandler("about", () => win.send("about"));
                 signal.addHandler("settings", () => win.on("spawn", "PRESETS"));
@@ -3279,7 +3280,9 @@ const MAIN = async () => {
                             type: "dir", name: "videos",
                             children: [
                                 //~/panel/videos/*.mp4
+                                //~/panel/videos/*.mov
                                 { type: "file", match: (_, name) => name.endsWith(".mp4") },
+                                { type: "file", match: (_, name) => name.endsWith(".mov") },
                             ],
                         },
                         //~/panel/projects

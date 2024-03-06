@@ -305,7 +305,10 @@ Project.Config = class ProjectConfig extends Project.Config {
         return options;
     }
     hasOption(k) { return String(k) in this.#options; }
-    getOption(k) { return this.hasOption(k) ? this.#options[String(k)] : null; }
+    getOption(k) {
+        if (!this.hasOption(k)) return null;
+        return this.#options[String(k)];
+    }
     setOption(k, v) {
         k = String(k);
         v = String(v);
@@ -319,7 +322,7 @@ Project.Config = class ProjectConfig extends Project.Config {
         let v = this.getOption(k);
         if (v == null) return v;
         delete this.#options[String(k)];
-        this.change("remOption", v, null);
+        this.change("delOption", v, null);
         return v;
     }
 
@@ -521,7 +524,10 @@ Project.Node = class ProjectNode extends Project.Item {
         return options;
     }
     hasOption(k) { return String(k) in this.#options; }
-    getOption(k) { return this.hasOption(k) ? this.#options[String(k)] : null; }
+    getOption(k) {
+        if (!this.hasOption(k)) return null;
+        return this.#options[String(k)];
+    }
     setOption(k, v) {
         k = String(k);
         v = String(v);
@@ -535,7 +541,7 @@ Project.Node = class ProjectNode extends Project.Item {
         let v = this.getOption(k);
         if (v == null) return v;
         delete this.#options[String(k)];
-        this.change("remOption", v, null);
+        this.change("delOption", v, null);
         return v;
     }
 

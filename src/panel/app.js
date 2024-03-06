@@ -1205,6 +1205,9 @@ Panel.Tab = class PanelTab extends util.Target {
     set isOpen(v) {
         v = !!v;
         if (this.isOpen == v) return;
+        this.post("openState", this.isOpen, v);
+        if (v) this.post("open");
+        else this.post("close");
         if (v) this.elem.classList.add("this");
         else this.elem.classList.remove("this");
         if (v) this.eTab.classList.add("this");
@@ -3941,6 +3944,12 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     get eContent() { return this.#eContent; }
 };
 Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
+    #video;
+    #offsets;
+    #locked;
+
+    #duration;
+
     #eVideoBox;
     #eVideo;
     #eNav;
@@ -3948,17 +3957,36 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     #eSourceTitle;
     #eTime;
     #eTimeTitle;
+    #eTimeBox;
+    #eTimeSourceBox;
+    #eTimeVideoBox;
+    #eTimeNav;
+    #eTimeNavBack;
+    #eTimeNavAction;
+    #eTimeNavForward;
+    #eTimeNavZeroLeft;
+    #eTimeNavZeroRight;
+    #eTimeNavEdit;
+    #eTimeNavLock;
 
     constructor(...a) {
         super("VideoSync", "videosync");
 
         this.elem.classList.add("videosync");
 
+        this.#video = null;
+        this.#offsets = {};
+        this.#locked = false;
+
+        this.#duration = 0;
+
         this.#eVideoBox = document.createElement("div");
         this.elem.appendChild(this.eVideoBox);
         this.eVideoBox.classList.add("video");
         this.#eVideo = document.createElement("video");
         this.eVideoBox.appendChild(this.eVideo);
+        this.eVideo.muted = true;
+        this.eVideo.loop = false;
 
         this.#eNav = document.createElement("div");
         this.elem.appendChild(this.eNav);
@@ -3970,7 +3998,58 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.#eSourceTitle = document.createElement("div");
         this.eSource.appendChild(this.eSourceTitle);
         this.eSourceTitle.classList.add("title");
-        this.eSourceTitle.textContent = "Choose a source";
+        this.eSourceTitle.innerHTML = "<div>Videos</div>";
+
+        ["yt", "file"].forEach(name => {
+            let elem = document.createElement("button");
+            this.eSourceTitle.appendChild(elem);
+            elem.style.setProperty("--color", {
+                yt: "var(--cr)",
+                file: "var(--a)",
+            }[name]);
+            elem.innerHTML = "<ion-icon></ion-icon>";
+            elem.children[0].name = {
+                yt: "logo-youtube",
+                file: "document",
+            }[name];
+            elem.addEventListener("click", async e => {
+                if (!this.hasApp()) return;
+                e.stopPropagation();
+                let namefs = {
+                    yt: async () => {
+                        elem.disabled = true;
+                        let pop = this.app.prompt("Youtube Video URL", "");
+                        pop.icon = "logo-youtube";
+                        pop.iconColor = "var(--cr)";
+                        let result = await pop.whenResult();
+                        if (result == null) return elem.disabled = false;
+                        try {
+                            await window.api.send("video-add-url", result);
+                        } catch (e) { this.app.doError("Youtube Add Error", result, e); }
+                        elem.disabled = false;
+                    },
+                    file: async () => {
+                        elem.disabled = true;
+                        let file = await App.fileOpenDialog({
+                            title: "Choose a video",
+                            properties: [
+                                "openFile",
+                            ],
+                        });
+                        file = util.ensure(file, "obj");
+                        if (file.canceled) return elem.disabled = false;
+                        file = util.ensure(file.filePaths, "arr")[0];
+                        let name = await this.app.doPrompt("Name", "");
+                        try {
+                            await window.api.send("video-add-file", file, name);
+                        } catch (e) { this.app.doError("File Add Error", file+" -> "+name, e); }
+                        elem.disabled = false;
+                    },
+                };
+                if (name in namefs)
+                    await namefs[name]();
+            });
+        });
 
         this.#eTime = document.createElement("div");
         this.eNav.appendChild(this.eTime);
@@ -3978,23 +4057,214 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.#eTimeTitle = document.createElement("div");
         // this.eTime.appendChild(this.eTimeTitle);
         this.eTimeTitle.classList.add("title");
-        this.eTimeTitle.textContent = "Sync";
+        this.eTimeTitle.textContent = "<div>Sync</div>";
+        this.#eTimeBox = document.createElement("div");
+        this.eTime.appendChild(this.eTimeBox);
+        this.eTimeBox.classList.add("box");
+        this.#eTimeSourceBox = document.createElement("div");
+        this.eTimeBox.appendChild(this.eTimeSourceBox);
+        this.eTimeSourceBox.classList.add("source");
+        this.#eTimeVideoBox = document.createElement("div");
+        this.eTimeBox.appendChild(this.eTimeVideoBox);
+        this.eTimeVideoBox.classList.add("video");
+        this.eTimeVideoBox.addEventListener("mousedown", e => {
+            if (e.button != 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            let r = this.eTimeVideoBox.getBoundingClientRect();
+            let offset = r.left-e.pageX;
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+            };
+            const mousemove = e => {
+                let x = e.pageX+offset;
+                let r = this.eTimeBox.getBoundingClientRect();
+                let p = Math.min(1, Math.max(0, (x-r.left)/r.width));
+                if (!this.hasPage()) return;
+                if (!this.page.hasSource()) return;
+                const len = this.duration * 1000;
+                const playback = this.page.source.playback;
+                const slen = playback.tsMax-playback.tsMin;
+                const blen = slen+2*len;
+                let t = blen*p - len;
+                this.setOffset(this.video, -t);
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+            mousemove(e);
+        });
+        this.#eTimeNav = document.createElement("div");
+        this.eTime.appendChild(this.eTimeNav);
+        this.eTimeNav.classList.add("nav");
+
+        this.#eTimeNavEdit = document.createElement("button");
+        this.eTimeNav.appendChild(this.eTimeNavEdit);
+        this.eTimeNavEdit.innerHTML = "<ion-icon name='pencil'></ion-icon>";
+        this.eTimeNavEdit.addEventListener("click", async e => {
+            e.stopPropagation();
+            if (!this.hasApp()) return;
+            let pop = this.app.prompt("Time Offset", "Shift video this many seconds", String(-util.ensure(this.getOffset(this.video), "num")/1000), "time");
+            pop.type = "num";
+            let result = await pop.whenResult();
+            if (result == null) return;
+            result = util.ensure(parseFloat(result), "num");
+            this.setOffset(this.video, -result*1000);
+        });
+
+        this.#eTimeNavZeroLeft = document.createElement("button");
+        this.eTimeNav.appendChild(this.eTimeNavZeroLeft);
+        this.eTimeNavZeroLeft.innerHTML = "<ion-icon name='arrow-back'></ion-icon>";
+        this.eTimeNavZeroLeft.addEventListener("click", e => {
+            e.stopPropagation();
+            this.setOffset(this.video, 0);
+        });
+
+        this.#eTimeNavBack = document.createElement("button");
+        this.eTimeNav.appendChild(this.eTimeNavBack);
+        this.eTimeNavBack.innerHTML = "<ion-icon name='play-skip-back'></ion-icon>";
+        this.eTimeNavBack.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.hasPage()) return;
+            if (!this.page.hasSource()) return;
+            const playback = this.page.source.playback;
+            playback.ts = playback.tsMin - util.ensure(this.getOffset(this.video), "num");
+        });
+
+        this.#eTimeNavAction = document.createElement("button");
+        this.eTimeNav.appendChild(this.eTimeNavAction);
+        this.eTimeNavAction.innerHTML = "<ion-icon></ion-icon>";
+        this.eTimeNavAction.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.hasPage()) return;
+            if (!this.page.hasSource()) return;
+            const playback = this.page.source.playback;
+            playback.paused = !playback.paused;
+        });
+        const actionIcon = this.eTimeNavAction.children[0];
+
+        this.#eTimeNavForward = document.createElement("button");
+        this.eTimeNav.appendChild(this.eTimeNavForward);
+        this.eTimeNavForward.innerHTML = "<ion-icon name='play-skip-forward'></ion-icon>";
+        this.eTimeNavForward.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.hasPage()) return;
+            if (!this.page.hasSource()) return;
+            const playback = this.page.source.playback;
+            playback.ts = this.duration*1000 + playback.tsMin - util.ensure(this.getOffset(this.video), "num");
+        });
+
+        this.#eTimeNavZeroRight = document.createElement("button");
+        this.eTimeNav.appendChild(this.eTimeNavZeroRight);
+        this.eTimeNavZeroRight.innerHTML = "<ion-icon name='arrow-forward'></ion-icon>";
+        this.eTimeNavZeroRight.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.hasPage()) return;
+            if (!this.page.hasSource()) return;
+            const len = this.duration * 1000;
+            const playback = this.page.source.playback;
+            const slen = playback.tsMax-playback.tsMin;
+            this.setOffset(this.video, len-slen);
+        });
+
+        this.#eTimeNavLock = document.createElement("button");
+        this.eTimeNav.appendChild(this.eTimeNavLock);
+        this.eTimeNavLock.innerHTML = "<ion-icon></ion-icon>";
+        this.eTimeNavLock.addEventListener("click", e => {
+            e.stopPropagation();
+            this.locked = !this.locked;
+        });
+        const lockIcon = this.eTimeNavLock.children[0];
+
+        this.addHandler("change", () => {
+            if (this.locked)
+                this.eTimeBox.classList.add("disabled");
+            else this.eTimeBox.classList.remove("disabled");
+            this.eTimeNavZeroLeft.disabled = this.locked;
+            this.eTimeNavZeroRight.disabled = this.locked;
+            this.eTimeNavEdit.disabled = this.locked;
+            lockIcon.name = this.locked ? "lock-closed" : "lock-open";
+        });
 
         let elems = {};
 
         const timer = new util.Timer();
         timer.play();
+        this.addHandler("change", () => timer.set(1000));
+        let desync = 0;
+        this.#duration = 0;
         this.addHandler("update", async delta => {
+            if (this.isClosed) return;
+            if (this.hasVideo()) {
+                if (util.is(this.eVideo.duration, "num")) this.#duration = this.eVideo.duration;
+            } else this.#duration = 0;
+            const len = this.duration * 1000;
+            let time = 0;
+            let thresh = 0.05;
+            if (this.hasPage() && this.page.hasSource()) {
+                const offset = util.ensure(this.getOffset(this.video), "num");
+                const playback = this.page.source.playback;
+                const slen = playback.tsMax-playback.tsMin;
+                let stime = playback.ts-playback.tsMin;
+                time = stime + offset;
+                time = Math.min(len, Math.max(0, time)) / 1000;
+                if (this.eVideo.readyState > 0) {
+                    if (playback.paused || time < 0 || time >= len/1000) {
+                        thresh = 0.001;
+                        if (!this.eVideo.paused)
+                            this.eVideo.pause();
+                    } else {
+                        if (this.eVideo.paused)
+                            this.eVideo.play();
+                    }
+                }
+                const blen = slen + 2*len;
+                let l, r;
+                [l, r] = [len, slen+len];
+                l = Math.min(1, Math.max(0, l/blen));
+                r = Math.min(1, Math.max(0, r/blen));
+                this.eTimeSourceBox.style.setProperty("--l", (l*100)+"%");
+                this.eTimeSourceBox.style.setProperty("--r", (r*100)+"%");
+                [l, r] = [len-offset, 2*len-offset];
+                l = Math.min(1, Math.max(0, l/blen));
+                r = Math.min(1, Math.max(0, r/blen));
+                this.eTimeVideoBox.style.setProperty("--l", (l*100)+"%");
+                this.eTimeVideoBox.style.setProperty("--r", (r*100)+"%");
+                actionIcon.name = playback.playing ? "pause" : "play";
+            } else {
+                this.eTimeSourceBox.style.setProperty("--l", "0%");
+                this.eTimeSourceBox.style.setProperty("--r", "0%");
+                this.eTimeVideoBox.style.setProperty("--l", "0%");
+                this.eTimeVideoBox.style.setProperty("--r", "0%");
+                actionIcon.name = "play";
+            }
+            if (Math.abs(this.eVideo.currentTime-time) > thresh) {
+                desync++;
+                if (desync >= 5)
+                    this.eVideo.currentTime = time;
+            } else desync = 0;
             if (timer.time < 1000) return;
             timer.clear();
             const videos = util.ensure(await window.api.send("videos"), "arr").map(name => String(name));
             videos.forEach(name => {
                 if (name in elems) return;
-                let elem = document.createElement("button");
+                let elem = document.createElement("div");
                 elems[name] = elem;
                 this.eSource.appendChild(elem);
                 elem.classList.add("item");
-                elem.textContent = name;
+                elem.innerHTML = "<div></div><button><ion-icon name='close'></ion-icon></button>";
+                elem.addEventListener("click", e => {
+                    e.stopPropagation();
+                    this.video = name;
+                });
+                elem.children[0].textContent = name;
+                elem.children[1].addEventListener("click", async e => {
+                    e.stopPropagation();
+                    if (this.video == name) this.video = null;
+                    try {
+                        await window.api.send("video-rem", name);
+                    } catch (e) { this.app.doError("Video Remove Error", name, e); }
+                });
             });
             Object.keys(elems).forEach(name => {
                 if (videos.includes(name)) return;
@@ -4004,9 +4274,92 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             });
             videos.forEach((name, i) => {
                 elems[name].style.order = i+1;
+                if (this.video == name)
+                    elems[name].classList.add("this");
+                else elems[name].classList.remove("this");
             });
         });
+
+        this.addHandler("change-video", async () => {
+            this.eVideo.src = "file://"+(await window.api.send("video-get", this.video));
+        });
+
+        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.VideoSyncTab) a = [a.video, a.offsets, a.locked];
+            else if (util.is(a, "arr")) {
+                a = new Panel.VideoSyncTab(...a);
+                a = [a.video, a.offsets, a.locked];
+            }
+            else if (util.is(a, "obj")) a = [a.video, a.offsets, a.locked];
+            else a = [String(a), {}];
+        }
+        if (a.length == 2)
+            a = [...a, false];
+
+        [this.video, this.offsets, this.locked] = a;
     }
+
+    get video() { return this.#video; }
+    set video(v) {
+        v = (v == null) ? null : String(v);
+        if (this.video == v) return;
+        this.change("video", this.video, this.#video=v);
+    }
+    hasVideo() { return this.video != null; }
+
+    get offsetKeys() { return Object.keys(this.#offsets); }
+    get offsetValues() { return Object.values(this.#offsets); }
+    get offsets() {
+        let offsets = {};
+        this.offsetKeys.forEach(k => (offsets[k] = this.getOffset(k)));
+        return offsets;
+    }
+    set offsets(v) {
+        v = util.ensure(v, "obj");
+        this.clearOffsets();
+        for (let k in v) this.setOffset(k, v[k]);
+    }
+    clearOffsets() {
+        let offsets = this.offsets;
+        for (let k in offsets) this.delOffset(k);
+        return offsets;
+    }
+    hasOffset(k) { return String(k) in this.#offsets }
+    getOffset(k) {
+        if (!this.hasOffset(k)) return null;
+        return this.#offsets[String(k)];
+    }
+    setOffset(k, v) {
+        k = String(k);
+        v = util.ensure(v, "num");
+        let v2 = this.getOffset(k);
+        if (v == v2) return v2;
+        this.#offsets[k] = v;
+        this.change("setOffset", v2, v);
+        return v;
+    }
+    delOffset(k) {
+        let v = this.getOption(k);
+        if (v == null) return v;
+        delete this.#offsets[String(k)];
+        this.change("delOffset", v, null);
+        return v;
+    }
+
+    get locked() { return this.#locked; }
+    set locked(v) {
+        v = !!v;
+        if (this.locked == v) return;
+        this.change("locked", this.locked, this.#locked=v);
+    }
+    get unlocked() { return !this.locked; }
+    set unlocked(v) { this.locked = !v; }
+    lock() { return this.locked = true; }
+    unlock() { return this.unlocked = true; }
+
+    get duration() { return this.#duration; }
 
     get eVideoBox() { return this.#eVideoBox; }
     get eVideo() { return this.#eVideo; }
@@ -4015,6 +4368,25 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     get eSourceTitle() { return this.#eSourceTitle; }
     get eTime() { return this.#eTime; }
     get eTimeTitle() { return this.#eTimeTitle; }
+    get eTimeBox() { return this.#eTimeBox; }
+    get eTimeSourceBox() { return this.#eTimeSourceBox; }
+    get eTimeVideoBox() { return this.#eTimeVideoBox; }
+    get eTimeNav() { return this.#eTimeNav; }
+    get eTimeNavBack() { return this.#eTimeNavBack; }
+    get eTimeNavAction() { return this.#eTimeNavAction; }
+    get eTimeNavForward() { return this.#eTimeNavForward; }
+    get eTimeNavZeroLeft() { return this.#eTimeNavZeroLeft; }
+    get eTimeNavZeroRight() { return this.#eTimeNavZeroRight; }
+    get eTimeNavEdit() { return this.#eTimeNavEdit; }
+    get eTimeNavLock() { return this.#eTimeNavLock; }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            video: this.video,
+            offsets: this.offsets,
+            locked: this.locked,
+        });
+    }
 };
 Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #quality;
@@ -7983,7 +8355,44 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     requestCollapse = false;
                     this.widget.collapse();
                 }
-            } else this.widget = new Panel();
+                if (this.hasSource()) {
+                    const sstart = this.source.tsMin, sstop = this.source.tsMax, slen = sstop-sstart;
+                    let n = 0;
+                    const dfs = widget => {
+                        if (widget instanceof Container)
+                            return widget.children.forEach(widget => dfs(widget));
+                        const tab = widget.tabs[widget.tabIndex];
+                        if (!(tab instanceof Panel.VideoSyncTab)) return;
+                        if (!tab.hasVideo()) return;
+                        const offset = util.ensure(tab.getOffset(tab.video), "num");
+                        const len = util.ensure(tab.duration, "num") * 1000;
+                        const buffered = tab.eVideo.buffered;
+                        while (this.sections.length < n+buffered.length+1)
+                            this.addSection(new core.AppFeature.ProjectPage.Section(0, 0, 0));
+                        for (let i = 0; i < buffered.length+1; i++) {
+                            let sect = this.sections[n+i];
+                            if (i <= 0) {
+                                sect.l = Math.min(1, Math.max(0, (-offset)/slen));
+                                sect.r = Math.min(1, Math.max(0, (len-offset)/slen));
+                                sect.x = 0;
+                                sect.color = "var(--a)";
+                                continue;
+                            }
+                            sect.l = Math.min(1, Math.max(0, (buffered.start(i-1)*1000-offset)/slen));
+                            sect.r = Math.min(1, Math.max(0, (buffered.end(i-1)*1000-offset)/slen));
+                            sect.x = 1;
+                            sect.color = "var(--v8)";
+                        }
+                        n += buffered.length+1;
+                    };
+                    dfs(this.widget);
+                    while (this.sections.length > n)
+                        this.remSection(this.sections.at(-1));
+                }
+            } else {
+                this.widget = new Panel();
+                this.sections = [];
+            }
             if (!this.hasWidget() || !this.widget.contains(this.activeWidget))
                 this.activeWidget = null;
             
@@ -8030,8 +8439,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (this.eNavActionButton.children[0])
                     this.eNavActionButton.children[0].name = this.source.playback.finished ? "refresh" : this.source.playback.paused ? "play" : "pause";
                 this.eNavProgressTooltip.textContent = util.formatTime(util.lerp(tMin, tMax, this.progressHover));
-                this.eNavPreInfo.textContent = util.formatTime(tMin);
-                this.eNavInfo.textContent = util.formatTime(tNow) + " / " + util.formatTime(tMax);
+                this.eNavPreInfo.textContent = [tNow-tMin, tMax-tMin].map(v => util.formatTime(v)).join(" / ");
+                this.eNavInfo.textContent = [tMin, tNow, tMax].map(v => util.formatTime(v)).join(" / ");
             } else this.navOpen = false;
             
             FieldExplorer.Node.doubleTraverse(

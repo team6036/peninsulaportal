@@ -329,6 +329,7 @@ Collection.Item = class CollectionItem extends util.Target {
             this.id = this.eIdInput.value;
         });
         this.eBtn.addEventListener("click", e => {
+            e.stopPropagation();
             this.isOpen = !this.isOpen;
         });
         this.eBtn.addEventListener("contextmenu", e => {
@@ -388,6 +389,7 @@ Collection.Item = class CollectionItem extends util.Target {
                 btn.classList.add("override");
                 if (i == j) btn.classList.add("this");
                 btn.addEventListener("click", e => {
+                    e.stopPropagation();
                     i = j;
                     update();
                 });
@@ -397,10 +399,12 @@ Collection.Item = class CollectionItem extends util.Target {
             childList: true,
         });
         this.eDisplayNext.addEventListener("click", e => {
+            e.stopPropagation();
             i++;
             update();
         });
         this.eDisplayPrev.addEventListener("click", e => {
+            e.stopPropagation();
             i--;
             update();
         });
@@ -801,6 +805,7 @@ export default class App extends core.App {
             sideButtons.forEach(btn => {
                 const elem = document.querySelector("#PAGE > .content > div#"+btn.id);
                 const activate = e => {
+                    e.stopPropagation();
                     sideButtons.forEach(btn => btn.classList.remove("this"));
                     btn.classList.add("this");
                     Array.from(document.body.querySelectorAll("#PAGE > .content > div")).forEach(elem => elem.classList.remove("this"));
@@ -911,7 +916,9 @@ export default class App extends core.App {
                     },
                     features: () => {
                         btn.addEventListener("click", e => {
-                            if (btn.parentElement.classList.contains("this")) btn.parentElement.classList.remove("this");
+                            e.stopPropagation();
+                            if (btn.parentElement.classList.contains("this"))
+                                btn.parentElement.classList.remove("this");
                             else btn.parentElement.classList.add("this");
                             if (
                                 btn.parentElement.querySelector(":scope > .sub button.this") &&

@@ -675,3 +675,15 @@
     font-family: monospace;
     font-size: 12px;
 }
+#PROJECTPAGE > .nav > .progress > .section {
+    --l: 0%;
+    --r: 100%;
+    --x: 0;
+
+    position: absolute;
+    bottom: calc(50% * (var(--x) + 2));
+    left: var(--l);
+    right: calc(100% - var(--r));
+
+    height: 50%;
+}

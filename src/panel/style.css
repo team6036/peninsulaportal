@@ -1435,12 +1435,19 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .video {
     flex-basis: 100%;
 
+    min-height: calc(100% - min(50%, 200px));
+    max-height: calc(100% - min(50%, 200px));
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
     align-content: center;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .video > video {
+    max-width: 100%;
+    max-height: 100%;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav {
     min-height: min(50%, 200px);
@@ -1467,13 +1474,24 @@
     align-content: center;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > * > .title {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+
     color: var(--v8);
 
     font-size: 14px;
     font-weight: 600;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > * > .title > div {
+    flex-basis: 100%;
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source {
-    min-width: min(200px, 25%);
+    min-width: min(300px, 25%);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > * {
     padding: 5px;
@@ -1481,8 +1499,130 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .title {
     order: 0;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .title > button {
+    --bg: transparent;
+    --fg: var(--color);
+    --bgh: transparent;
+    --fgh: var(--vf);
+    --bgd: transparent;
+    --fgd: var(--color);
+
+    --color: var(--v8);
+
+    padding: 0px;
+
+    font-size: 16px;
+
+    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), border var(--t), opacity var(--t);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .title > button:disabled {
+    opacity: 50%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item {
+    padding: 5px 7.5px;
+
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+
+    background-color: var(--v2);
+    color: var(--v6);
+
+    transition: background-color var(--t), color var(--t);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item:hover {
+    background-color: var(--v3);
+    color: var(--v8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item.this::before {
+    content: "";
+
+    position: absolute;
+    top: 0%;
+    bottom: 0%;
+    left: 0%;
+    right: 0%;
+
+    border: 1px solid var(--a);
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item > div {
+    flex-basis: 100%;
+
+    font-size: 14px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 0px;
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time {
     flex-basis: 100%;
+
+    gap: 10px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time > .box {
+    position: relative;
+
+    height: 40px;
+
+    background-color: var(--v2);
+    opacity: 100%;
+
+    transition: opacity var(--t);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time > .box.disabled {
+    opacity: 50%;
+
+    pointer-events: none;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time > .box > div {
+    --l: 0%;
+    --r: 100%;
+
+    position: absolute;
+    left: var(--l);
+    right: calc(100% - var(--r));
+
+    height: 50%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time > .box > .source {
+    bottom: 0%;
+
+    background-color: var(--v4);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time > .box > .video {
+    top: 0%;
+
+    background-color: var(--a);
+
+    cursor: grab;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time > .nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time > .nav > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    padding: 0px;
+
+    font-size: 16px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas {
     --options: 100%;

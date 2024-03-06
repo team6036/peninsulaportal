@@ -1814,6 +1814,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
             elem.appendChild(btn);
             btn.innerHTML = "<ion-icon name='copy-outline'></ion-icon>";
             btn.addEventListener("click", e => {
+                e.stopPropagation();
                 navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([info], { type: "text/plain" })})]);
             });
         });
@@ -2686,6 +2687,9 @@ export class AppModal extends App {
         })();
 
         this.addHandler("setup", async () => {
+            this.menu.findItemWithId("reload").disabled = true;
+            this.menu.findItemWithId("spawn").disabled = true;
+
             this.#eModalStyle = document.createElement("link");
             document.head.appendChild(this.eModalStyle);
             this.eModalStyle.rel = "stylesheet";
@@ -2797,6 +2801,7 @@ export class AppModal extends App {
             elem.appendChild(btn);
             btn.innerHTML = "<ion-icon name='copy-outline'></ion-icon>";
             btn.addEventListener("click", e => {
+                e.stopPropagation();
                 navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([info], { type: "text/plain" })})]);
             });
         });
@@ -3077,6 +3082,7 @@ export class AppFeature extends App {
                 else {
                     this.eProjectInfo.classList.add("this");
                     const click = e => {
+                        e.stopPropagation();
                         if (this.eProjectInfo.contains(e.target)) return;
                         document.body.removeEventListener("click", click, { capture: true });
                         this.eProjectInfo.classList.remove("this");
@@ -3606,8 +3612,7 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             itm.addHandler("trigger", async e => {
                 let project = this.app.getProject(ids[0]);
                 if (!(project instanceof this.app.constructor.PROJECTCLASS)) return;
-                let pop = this.app.prompt("Rename", "", project.meta.name);
-                let result = await pop.whenResult();
+                let result = await this.app.doPrompt("Rename", "", project.meta.name);
                 if (result == null) return;
                 project.meta.name = result;
                 await this.app.saveProjectsClean();
@@ -4012,6 +4017,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
     #progress;
     #progressHover;
+    #sections;
 
     #eMain;
     #eNav;
@@ -4029,6 +4035,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
         this.#progress = null;
         this.#progressHover = null;
+        this.#sections = new Set();
 
         this.#eMain = document.createElement("div");
         this.elem.appendChild(this.eMain);
@@ -4199,6 +4206,39 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.change("progressHover", this.progressHover, this.#progressHover=v);
         this.eNavProgress.style.setProperty("--hover", (this.progressHover*100)+"%");
     }
+    get sections() { return [...this.#sections]; }
+    set sections(v) {
+        v = util.ensure(v, "arr");
+        this.clearSections();
+        this.addSection(v);
+    }
+    clearSections() {
+        let sections = this.sections;
+        this.remSection(sections);
+        return sections;
+    }
+    hasSection(sect) {
+        if (!(sect instanceof AppFeature.ProjectPage.Section)) return false;
+        return this.#sections.has(sect);
+    }
+    addSection(...sects) {
+        return util.Target.resultingForEach(sects, sect => {
+            if (!(sect instanceof AppFeature.ProjectPage.Section)) return false;
+            if (this.hasSection(sect)) return false;
+            this.#sections.add(sect);
+            this.eNavProgress.appendChild(sect.elem);
+            return sect;
+        });
+    }
+    remSection(...sects) {
+        return util.Target.resultingForEach(sects, sect => {
+            if (!(sect instanceof AppFeature.ProjectPage.Section)) return false;
+            if (!this.hasSection(sect)) return false;
+            this.#sections.delete(sect);
+            this.eNavProgress.removeChild(sect.elem);
+            return sect;
+        });
+    }
 
     get eMain() { return this.#eMain; }
     get eNav() { return this.#eNav; }
@@ -4239,6 +4279,52 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         else if ((data.project instanceof Project) && (data.project instanceof this.app.constructor.PROJECTCLASS)) return this.project == data.project;
         return false;
     }
+};
+AppFeature.ProjectPage.Section = class AppFeatureProjectPageSection extends util.Target {
+    #l; #r; #x;
+
+    #elem;
+
+    constructor(l, r, x) {
+        super();
+
+        this.#l = this.#r = this.#x = null;
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("section");
+
+        this.addHandler("change", () => {
+            this.elem.style.setProperty("--l", (this.l*100)+"%");
+            this.elem.style.setProperty("--r", (this.r*100)+"%");
+            this.elem.style.setProperty("--x", String(this.x));
+        });
+
+        [this.l, this.r, this.x] = [l, r, x];
+    }
+
+    get l() { return this.#l; }
+    set l(v) {
+        v = Math.min(1, Math.max(util.ensure(v, "num")));
+        if (this.l == v) return;
+        this.change("l", this.l, this.#l=v);
+    }
+    get r() { return this.#r; }
+    set r(v) {
+        v = Math.min(1, Math.max(util.ensure(v, "num")));
+        if (this.r == v) return;
+        this.change("r", this.r, this.#r=v);
+    }
+    get x() { return this.#x; }
+    set x(v) {
+        v = Math.max(0, util.ensure(v, "int"));
+        if (this.x == v) return;
+        this.change("x", this.x, this.#x=v);
+    }
+
+    get color() { return this.elem.style.backgroundColor; }
+    set color(v) { this.elem.style.backgroundColor = v; }
+    
+    get elem() { return this.#elem; }
 };
 
 export class Odometry extends util.Target {
@@ -7518,6 +7604,7 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
                 if ((util.is(data, "obj") ? data.value : data) == this.value) btn.classList.add("this");
                 btn.textContent = (util.is(data, "obj") ? data.name : data);
                 btn.addEventListener("click", e => {
+                    e.stopPropagation();
                     this.value = (util.is(data, "obj") ? data.value : data);
                     if (util.is(data.click, "func")) data.click();
                 });
@@ -7694,7 +7781,10 @@ Form.JSONInput = class FormJSONInput extends Form.Field {
         return map;
     }
     has(k) { return String(k) in this.#map; }
-    get(k) { return this.has(k) ? this.#map[String(k)] : null; }
+    get(k) {
+        if (!this.has(k)) return null;
+        return this.#map[String(k)];
+    }
     set(k, v) {
         k = String(k);
         v = String(v);
@@ -7786,7 +7876,9 @@ Form.SubForm = class FormSubForm extends Form.Field {
         this.eHeader.insertBefore(document.createElement("ion-icon"), this.eHeader.firstChild);
         this.eHeader.firstChild.name = "chevron-forward";
         this.eHeader.addEventListener("click", e => {
-            if (this.elem.classList.contains("this")) this.elem.classList.remove("this");
+            e.stopPropagation();
+            if (this.elem.classList.contains("this"))
+                this.elem.classList.remove("this");
             else this.elem.classList.add("this");
         });
 
