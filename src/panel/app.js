@@ -870,6 +870,48 @@ class Panel extends Widget {
     #eAdd;
     #eContent;
 
+    static getTools() {
+        return [
+            {
+                id: "graph", name: "Graph",
+                tab: Panel.GraphTab,
+            },
+            {
+                id: "table", name: "Table",
+                tab: Panel.TableTab,
+            },
+            {
+                id: "odometry2d", name: "Odometry2d",
+                tab: Panel.Odometry2dTab,
+            },
+            {
+                id: "odometry3d", name: "Odometry3d",
+                tab: Panel.Odometry3dTab,
+            },
+            {
+                id: "webview", name: "WebView",
+                tab: Panel.WebViewTab,
+            },
+            {
+                id: "videosync", name: "VideoSync",
+                tab: Panel.VideoSyncTab,
+            },
+            {
+                id: "logger", name: "Logger",
+                tab: Panel.LoggerTab,
+                disabled: window.agent().public,
+            },
+            {
+                id: "logworks", name: "LogWorks",
+                tab: Panel.LogWorksTab,
+            },
+            {
+                id: "scout", name: "Scout",
+                tab: Panel.ScoutTab,
+            },
+        ];
+    }
+
     constructor(...a) {
         super();
 
@@ -1338,45 +1380,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         this.clearTags();
         this.placeholder = "";
         this.clearItems();
-        let toolItems = [
-            {
-                id: "graph", name: "Graph",
-                tab: Panel.GraphTab,
-            },
-            {
-                id: "table", name: "Table",
-                tab: Panel.TableTab,
-            },
-            {
-                id: "odometry2d", name: "Odometry2d",
-                tab: Panel.Odometry2dTab,
-            },
-            {
-                id: "odometry3d", name: "Odometry3d",
-                tab: Panel.Odometry3dTab,
-            },
-            {
-                id: "webview", name: "WebView",
-                tab: Panel.WebViewTab,
-            },
-            {
-                id: "videosync", name: "VideoSync",
-                tab: Panel.VideoSyncTab,
-            },
-            {
-                id: "logger", name: "Logger",
-                tab: Panel.LoggerTab,
-                disabled: window.agent().public,
-            },
-            {
-                id: "logworks", name: "LogWorks",
-                tab: Panel.LogWorksTab,
-            },
-            {
-                id: "scout", name: "Scout",
-                tab: Panel.ScoutTab,
-            },
-        ];
+        let toolItems = Panel.getTools();
         toolItems = toolItems.map(data => {
             let display = getTabDisplay(data.id);
             let itm = new Panel.AddTab.Button(data.name, "", "");
@@ -8168,45 +8172,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("change-project.delSideSectionPos", () => this.formatSide());
         this.addHandler("change-project.fixSideSectionPos", () => this.formatSide());
         
-        let toolButtons = [
-            {
-                id: "graph", name: "Graph",
-                tab: Panel.GraphTab,
-            },
-            {
-                id: "table", name: "Table",
-                tab: Panel.TableTab,
-            },
-            {
-                id: "odometry2d", name: "Odom2d",
-                tab: Panel.Odometry2dTab,
-            },
-            {
-                id: "odometry3d", name: "Odom3d",
-                tab: Panel.Odometry3dTab,
-            },
-            {
-                id: "webview", name: "WebView",
-                tab: Panel.WebViewTab,
-            },
-            {
-                id: "videosync", name: "VideoSync",
-                tab: Panel.VideoSyncTab,
-            },
-            {
-                id: "logger", name: "Logger",
-                tab: Panel.LoggerTab,
-                disabled: window.agent().public,
-            },
-            {
-                id: "logworks", name: "LogWorks",
-                tab: Panel.LogWorksTab,
-            },
-            {
-                id: "scout", name: "Scout",
-                tab: Panel.ScoutTab,
-            },
-        ];
+        let toolButtons = Panel.getTools();
         this.addToolButton(toolButtons.map(data => {
             let btn = new ToolButton(data.name, data.id);
             btn.elem.disabled = !!data.disabled;
