@@ -90,6 +90,7 @@ export default class App extends core.App {
 
                 let model = null;
                 core.LOADER.load("../../temp/model.glb", gltf => {
+                    throw "error";
                     model = gltf.scene;
                     model.traverse(obj => {
                         if (!obj.isMesh) return;
