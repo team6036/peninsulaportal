@@ -131,16 +131,16 @@ function getTabDisplay(name) {
         name: "globe-outline",
         color: "var(--cc)",
     };
-    if (name == "scout") return {
-        name: "search-outline",
+    if (name == "videosync") return {
+        name: "play-outline",
         color: "var(--cc)",
     };
     if (name == "logger" || name == "logworks") return {
         name: "list",
         color: "var(--cc)",
     };
-    if (name == "videosync") return {
-        name: "play-outline",
+    if (name == "scout") return {
+        name: "search-outline",
         color: "var(--cc)",
     };
 }
@@ -1360,8 +1360,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 tab: Panel.WebViewTab,
             },
             {
-                id: "scout", name: "Scout",
-                tab: Panel.ScoutTab,
+                id: "videosync", name: "VideoSync",
+                tab: Panel.VideoSyncTab,
             },
             {
                 id: "logger", name: "Logger",
@@ -1373,8 +1373,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 tab: Panel.LogWorksTab,
             },
             {
-                id: "videosync", name: "VideoSync",
-                tab: Panel.VideoSyncTab,
+                id: "scout", name: "Scout",
+                tab: Panel.ScoutTab,
             },
         ];
         toolItems = toolItems.map(data => {
@@ -8190,8 +8190,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 tab: Panel.WebViewTab,
             },
             {
-                id: "scout", name: "Scout",
-                tab: Panel.ScoutTab,
+                id: "videosync", name: "VideoSync",
+                tab: Panel.VideoSyncTab,
             },
             {
                 id: "logger", name: "Logger",
@@ -8203,8 +8203,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 tab: Panel.LogWorksTab,
             },
             {
-                id: "videosync", name: "VideoSync",
-                tab: Panel.VideoSyncTab,
+                id: "scout", name: "Scout",
+                tab: Panel.ScoutTab,
             },
         ];
         this.addToolButton(toolButtons.map(data => {
