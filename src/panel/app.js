@@ -889,8 +889,8 @@ class Panel extends Widget {
                 tab: Panel.Odometry3dTab,
             },
             {
-                id: "webview", name: "WebView",
-                tab: Panel.WebViewTab,
+                id: "scout", name: "Scout",
+                tab: Panel.ScoutTab,
             },
             {
                 id: "videosync", name: "VideoSync",
@@ -906,8 +906,8 @@ class Panel extends Widget {
                 tab: Panel.LogWorksTab,
             },
             {
-                id: "scout", name: "Scout",
-                tab: Panel.ScoutTab,
+                id: "webview", name: "WebView",
+                tab: Panel.WebViewTab,
             },
         ];
     }
