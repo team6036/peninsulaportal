@@ -39,8 +39,14 @@ export default class App extends core.AppModal {
                 e.preventDefault();
                 this.ieConfirm.click();
             });
-            this.ieConfirm.addEventListener("click", e => this.result(this.cast()));
-            this.ieCancel.addEventListener("click", e => this.result(null));
+            this.ieConfirm.addEventListener("click", e => {
+                e.stopPropagation();
+                this.result(this.cast());
+            });
+            this.ieCancel.addEventListener("click", e => {
+                e.stopPropagation();
+                this.result(null);
+            });
 
             this.ivalue = "";
             this.iicon = "pencil";

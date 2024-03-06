@@ -2263,6 +2263,26 @@ export class Timer extends Target {
         this.#t = getTime();
         return time;
     }
+    add(v) {
+        this.#tSum += ensure(v, "num");
+        return this;
+    }
+    sub(v) {
+        this.#tSum -= ensure(v, "num");
+        return this;
+    }
+    mul(v) {
+        this.#tSum *= ensure(v, "num");
+        return this;
+    }
+    div(v) {
+        this.#tSum *= ensure(v, "num");
+        return this;
+    }
+    set(v) {
+        this.#tSum = ensure(v, "num");
+        return this;
+    }
     get time() { return this.#tSum + this.playing*(getTime()-this.#t); }
 
     pauseAndClear() { this.pause(); return this.clear(); }
