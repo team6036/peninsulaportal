@@ -2367,28 +2367,13 @@ const MAIN = async () => {
                 app.dock.setMenu(electron.Menu.buildFromTemplate([
                     {
                         label: "Features...",
-                        submenu: [
-                            {
-                                label: "Panel",
-                                accelerator: "CmdOrCtrl+1",
-                                click: () => this.on("spawn", "PANEL"),
-                            },
-                            {
-                                label: "Planner",
-                                accelerator: "CmdOrCtrl+2",
-                                click: () => this.on("spawn", "PLANNER"),
-                            },
-                            {
-                                label: "Database",
-                                accelerator: "CmdOrCtrl+3",
-                                click: () => this.on("spawn", "DATABASE"),
-                            },
-                            {
-                                label: "Pit",
-                                accelerator: "CmdOrCtrl+4",
-                                click: () => this.on("spawn", "PIT"),
-                            },
-                        ],
+                        submenu: ["PANEL", "PLANNER", "DATABASE", "PIT"].map((name, i) => {
+                            return {
+                                label: util.formatText(name),
+                                accelerator: "CmdOrCtrl+"+(i+1),
+                                click: () => this.on("spawn", name),
+                            };
+                        }),
                     },
                 ]));
             electron.nativeTheme.on("updated", () => this.send("native-theme"));
