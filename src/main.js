@@ -2383,6 +2383,11 @@ const MAIN = async () => {
                                 accelerator: "CmdOrCtrl+3",
                                 click: () => this.on("spawn", "DATABASE"),
                             },
+                            {
+                                label: "Pit",
+                                accelerator: "CmdOrCtrl+4",
+                                click: () => this.on("spawn", "PIT"),
+                            },
                         ],
                     },
                 ]));

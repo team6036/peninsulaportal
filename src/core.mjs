@@ -2225,7 +2225,7 @@ App.Menu = class AppMenu extends util.Target {
     static buildSpawnItems() {
         let itm = new App.Menu.Item("Features...");
         itm.id = "spawn";
-        ["PANEL", "PLANNER", "DATABASE"].forEach((name, i) => {
+        ["PANEL", "PLANNER", "DATABASE", "PIT"].forEach((name, i) => {
             let subitm = new App.Menu.Item(util.formatText(name));
             subitm.id = "spawn:"+name;
             subitm.accelerator = "CmdOrCtrl+"+(i+1);
