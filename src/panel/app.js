@@ -873,40 +873,49 @@ class Panel extends Widget {
     static getTools() {
         return [
             {
-                id: "graph", name: "Graph",
+                id: "graph",
+                name: "Graph", nickname: "Graph",
                 tab: Panel.GraphTab,
             },
             {
-                id: "table", name: "Table",
+                id: "table",
+                name: "Table", nickname: "Table",
                 tab: Panel.TableTab,
             },
             {
-                id: "odometry2d", name: "Odometry2d",
+                id: "odometry2d",
+                name: "Odometry2d", nickname: "Odom2d",
                 tab: Panel.Odometry2dTab,
             },
             {
-                id: "odometry3d", name: "Odometry3d",
+                id: "odometry3d",
+                name: "Odometry3d", nickname: "Odom3d",
                 tab: Panel.Odometry3dTab,
             },
             {
-                id: "scout", name: "Scout",
+                id: "scout",
+                name: "Scout", nickname: "Scout",
                 tab: Panel.ScoutTab,
             },
             {
-                id: "videosync", name: "VideoSync",
+                id: "videosync",
+                name: "VideoSync", nickname: "VidSync",
                 tab: Panel.VideoSyncTab,
             },
             {
-                id: "logger", name: "Logger",
+                id: "logger",
+                name: "Logger", nickname: "Logger",
                 tab: Panel.LoggerTab,
                 disabled: window.agent().public,
             },
             {
-                id: "logworks", name: "LogWorks",
+                id: "logworks",
+                name: "LogWorks", nickname: "LogWorks",
                 tab: Panel.LogWorksTab,
             },
             {
-                id: "webview", name: "WebView",
+                id: "webview",
+                name: "WebView", nickname: "WebView",
                 tab: Panel.WebViewTab,
             },
         ];
@@ -8174,7 +8183,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         
         let toolButtons = Panel.getTools();
         this.addToolButton(toolButtons.map(data => {
-            let btn = new ToolButton(data.name, data.id);
+            let btn = new ToolButton(data.nickname, data.id);
             btn.elem.disabled = !!data.disabled;
             btn.addHandler("trigger", () => {
                 if (!!data.disabled) return;
