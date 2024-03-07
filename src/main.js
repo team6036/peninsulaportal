@@ -697,7 +697,7 @@ const MAIN = async () => {
             if (!(manager instanceof WindowManager)) throw new Error("Manager is not of class WindowManager");
             this.#manager = manager;
 
-            this.#id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*util.BASE64.length)]).join("");
+            this.#id = util.jargonBase64(10);
 
             this.#started = false;
             this.#resolver = new util.Resolver(0);

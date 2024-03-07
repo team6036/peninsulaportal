@@ -123,7 +123,7 @@ export class Project extends core.Project {
             if (this.hasItem(itm)) return false;
             let id = itm.id;
             while (id == null || this.hasItem(id))
-                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
+                id = util.jargonBase64(10);
             this.#items[id] = itm;
             itm.id = id;
             itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));

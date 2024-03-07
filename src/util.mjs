@@ -308,6 +308,23 @@ export function compareStr(s1, s2) {
     return 0;
 }
 
+export function choose(source) {
+    if (!is(source, "arr") && !is(source, "str")) source = [];
+    return source[Math.floor(source.length*Math.random())];
+}
+export function jargon(l, source) {
+    l = Math.max(0, ensure(l, "int"));
+    source = String(source);
+    return new Array(l).fill(null).map(_ => choose(source)).join("");
+}
+export function jargonNumbers(l) { return jargon(l, NUMBERS); }
+export function jargonAlphabetUpper() { return jargon(l, ALPHABETUPPER); }
+export function jargonAlphabetLower() { return jargon(l, ALPHABETLOWER); }
+export function jargonAlphabetAll() { return jargon(l, ALPHABETALL); }
+export function jargonBase16(l) { return jargon(l, BASE16); }
+export function jargonBase64(l) { return jargon(l, BASE64); }
+export function jargonVariable(l) { return jargon(l, VARIABLE); }
+
 export const ease = {
     // https://easings.net/
 
