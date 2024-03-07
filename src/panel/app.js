@@ -4035,9 +4035,9 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                         pop.doCast = v => {
                             v = String(v);
                             if (v.length <= 0) return v;
-                            if (v.startsWith("youtube.com/watch?v=")) v = "www."+v;
-                            if (v.startsWith("www.youtube.com/watch?v=")) v = "https://"+v;
-                            if (!v.startsWith("https://www.youtube.com/watch?v=")) v = "https://www.youtube.com/watch?v="+v;
+                            if (v.startsWith("https://www.youtube.com/watch?v=")) v = v.substring("https://".length);
+                            if (v.startsWith("www.youtube.com/watch?v=")) v = v.substring("www.".length);
+                            if (!v.startsWith("youtube.com/watch?v=")) v = "youtube.com/watch?v="+v;
                             return v;
                         };
                         pop.type = null;
@@ -4045,6 +4045,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                         pop.iconColor = "var(--cr)";
                         let result = await pop.whenResult();
                         if (result == null) return elem.disabled = false;
+                        result = "https://"+result;
                         try {
                             await window.api.send("video-add-url", result);
                         } catch (e) { this.app.doError("Youtube Add Error", result, e); }

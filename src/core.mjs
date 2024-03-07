@@ -2722,6 +2722,7 @@ export class AppModal extends App {
                     this["i"+param] = params[param];
             }
             this.resize();
+            this.post("modify");
         };
 
         this.#resolver = new util.Resolver(false);
