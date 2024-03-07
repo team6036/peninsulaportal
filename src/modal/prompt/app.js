@@ -39,9 +39,9 @@ export default class App extends core.AppModal {
                 e.preventDefault();
                 this.ieConfirm.click();
             });
-            this.ieConfirm.addEventListener("click", e => {
+            this.ieConfirm.addEventListener("click", async e => {
                 e.stopPropagation();
-                this.result(this.cast());
+                this.result(await this.cast());
             });
             this.ieCancel.addEventListener("click", e => {
                 e.stopPropagation();
@@ -61,7 +61,7 @@ export default class App extends core.AppModal {
 
     get itype() { return this.#itype; }
     set itype(v) {
-        v = String(v);
+        v = (v == null) ? null : String(v);
         if (this.itype == v) return;
         this.#itype = v;
         this.ieInput.type = ["any_num", "num", "float", "int"].includes(this.itype) ? "number" : "text";
@@ -69,6 +69,7 @@ export default class App extends core.AppModal {
         else this.ieInput.removeAttribute("step");
         this.cast();
     }
+    customType() { return this.itype == null; }
 
     get ieInput() { return this.#ieInput; }
     get ieCancel() { return this.#ieCancel; }
@@ -81,6 +82,8 @@ export default class App extends core.AppModal {
 
     get ivalue() { return this.ieInput.value; }
     set ivalue(v) {
+        v = String(v);
+        if (this.ivalue == v) return;
         this.ieInput.value = v;
         this.cast();
     }
@@ -88,13 +91,16 @@ export default class App extends core.AppModal {
     get iplaceholder() { return this.ieInput.placeholder; }
     set iplaceholder(v) { this.ieInput.placeholder = v; }
 
-    cast() {
+    async cast() {
+        if (this.customType()) {
+            await window.modal.cast(this.ivalue);
+            return this.ivalue;
+        }
         let v = this.ivalue;
         if (["any_num", "num", "float"].includes(this.itype)) v = util.ensure(parseFloat(v), this.itype);
         else if (["int"].includes(this.itype)) v = util.ensure(parseInt(v), this.itype);
         else v = util.ensure(v, this.itype);
-        let vs = String(v);
-        if (this.ivalue != vs) this.ivalue = vs;
+        this.ivalue = v;
         return v;
     }
 }

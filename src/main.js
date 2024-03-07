@@ -972,20 +972,17 @@ const MAIN = async () => {
 
             if (namefs[this.name]) namefs[this.name]();
 
-            let useQueue = true, modifyQueue = [params];
+            let finished = false, modifyQueue = [params];
             const checkModify = () => {
-                if (!this.isModal) return null;
-                if (useQueue) return false;
-                if (!this.hasWindow()) return false;
+                if (!this.isModal) return;
+                if (!finished) return;
+                if (!this.hasWindow()) return;
                 while (modifyQueue.length > 0)
                     this.window.webContents.send("modal-modify", modifyQueue.shift());
-                return true;
             };
             const addModify = params => {
-                let r = checkModify();
-                if (r == null) return;
-                if (r) return;
                 modifyQueue.push(params);
+                checkModify();
             };
             this.addHandler("modal-modify", addModify);
             
@@ -1020,7 +1017,7 @@ const MAIN = async () => {
                     this.#resolver.state++;
                     this.window.show();
                     this.window.setSize(...size);
-                    useQueue = false;
+                    finished = true;
                     checkModify();
                 };
                 if (!this.canOperate) return finishAndShow();
@@ -1158,21 +1155,8 @@ const MAIN = async () => {
         async dirMake(pth) { return Window.dirMake(this.manager, this.name, pth, this.started); }
         async dirDelete(pth) { return Window.dirDelete(this.manager, this.name, pth, this.started); }
 
-        modalResult(r) { this.post("result", r); }
-        async whenModalResult() { return await new Promise((res, rej) => this.addHandler("result", r => res(r))); }
-        modalSpawn(name, params) {
-            let win = this.windowManager.modalSpawn(name, params);
-            if (!win) return null;
-            win.addHandler("result", async r => {
-                if (!this.hasWindow()) return;
-                this.window.webContents.send("modal-result", win.id, r);
-            });
-            return win.id;
-        }
-        modalAlert(params) { return this.modalSpawn("ALERT", params); }
-        modalConfirm(params) { return this.modalSpawn("CONFIRM", params); }
-        modalPrompt(params) { return this.modalSpawn("PROMPT", params); }
-        modalProgress(params) { return this.modalSpawn("PROGRESS", params); }
+        modalResult(r) { this.post("modal-result", r); }
+        async whenModalResult() { return await new Promise((res, rej) => this.addHandler("modal-result", r => res(r))); }
         modalModify(id, params) {
             for (let win of this.windowManager.windows) {
                 if (win.id != id) continue;
@@ -1182,6 +1166,25 @@ const MAIN = async () => {
             }
             return false;
         }
+        modalCast(v) { this.post("modal-cast", v); }
+
+        modalSpawn(name, params) {
+            let win = this.windowManager.modalSpawn(name, params);
+            if (!win) return null;
+            win.addHandler("modal-result", async r => {
+                if (!this.hasWindow()) return;
+                this.window.webContents.send("modal-result", win.id, r);
+            });
+            win.addHandler("modal-cast", async v => {
+                if (!this.hasWindow()) return;
+                this.window.webContents.send("modal-cast", win.id, v);
+            });
+            return win.id;
+        }
+        modalAlert(params) { return this.modalSpawn("ALERT", params); }
+        modalConfirm(params) { return this.modalSpawn("CONFIRM", params); }
+        modalPrompt(params) { return this.modalSpawn("PROMPT", params); }
+        modalProgress(params) { return this.modalSpawn("PROGRESS", params); }
 
         async tbaClientMake(id) {
             let client = await this.manager.tbaClientMake(this.name+":"+id, location);
@@ -1892,6 +1895,16 @@ const MAIN = async () => {
                         if (!(await this.fileHas(["videos", name])))
                             return null;
                         return WindowManager.makePath(this.dataPath, "videos", name);
+                    },
+                    "video-rename": async (from, to) => {
+                        from = String(from);
+                        to = String(to).replaceAll("/", "-").replaceAll("\\", "-");
+                        if (!(await this.dirHas("videos")))
+                            await this.dirMake("videos");
+                        if (!(await this.fileHas(["videos", from])))
+                            return null;
+                        await fs.promises.rename(WindowManager.makePath(this.dataPath, "videos", from), WindowManager.makePath(this.dataPath, "videos", to));
+                        return to;
                     },
                     "video-add-url": async url => {
                         url = String(url);
@@ -2978,13 +2991,17 @@ const MAIN = async () => {
                 let win = identify(e);
                 return win.modalResult(r);
             }));
-            ipc.handle("modal-spawn", decorate(async (e, name, params) => {
-                let win = identify(e);
-                return win.modalSpawn(name, params);
-            }));
             ipc.handle("modal-modify", decorate(async (e, id, params) => {
                 let win = identify(e);
                 return win.modalModify(id, params);
+            }));
+            ipc.handle("modal-cast", decorate(async (e, v) => {
+                let win = identify(e);
+                return win.modalCast(v);
+            }));
+            ipc.handle("modal-spawn", decorate(async (e, name, params) => {
+                let win = identify(e);
+                return win.modalSpawn(name, params);
             }));
 
             ipc.handle("tba-client-make", decorate(async (e, id) => {
@@ -3388,6 +3405,15 @@ const MAIN = async () => {
             to = String(to);
         }
 
+        modalModify(id, params) {
+            for (let win of this.windowManager.windows) {
+                if (win.id != id) continue;
+                if (!win.hasWindow()) continue;
+                win.post("modal-modify", params);
+                return true;
+            }
+            return false;
+        }
         modalSpawn(name, params) {
             name = String(name);
             if (!MODALS.includes(name)) return null;
@@ -3399,15 +3425,6 @@ const MAIN = async () => {
         modalConfirm(params) { return this.modalSpawn("CONFIRM", params); }
         modalPrompt(params) { return this.modalSpawn("PROMPT", params); }
         modalProgress(params) { return this.modalSpawn("PROGRESS", params); }
-        modalModify(id, params) {
-            for (let win of this.windowManager.windows) {
-                if (win.id != id) continue;
-                if (!win.hasWindow()) continue;
-                win.post("modal-modify", params);
-                return true;
-            }
-            return false;
-        }
 
         async tbaClientMake(id) {
             if (this.hasWindow()) return await this.window.tbaClientMake(id);

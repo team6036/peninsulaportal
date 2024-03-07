@@ -1518,6 +1518,7 @@ export class App extends util.Target {
     async loadState(state) {}
 }
 App.PopupBase = class AppPopupBase extends util.Target {
+    #id;
     #result;
 
     #resolver;
@@ -1531,6 +1532,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
     constructor() {
         super();
 
+        this.#id = null;
         this.#result = null;
 
         this.#resolver = new util.Resolver(false);
@@ -1541,33 +1543,45 @@ App.PopupBase = class AppPopupBase extends util.Target {
         this.elem.appendChild(this.inner);
         this.inner.classList.add("inner");
 
+        let remove = null;
         this.addHandler("add", async () => {
             let agent = window.agent();
-            let id = (!util.is(agent, "obj") || agent.os.platform != "darwin") ? null : await window.modal.spawn(this.constructor.NAME, this.generateParams());
-            if (id == null) {
+            this.#id = (!util.is(agent, "obj") || agent.os.platform != "darwin") ? null : await window.modal.spawn(this.constructor.NAME, this.generateParams());
+            if (this.id == null) {
                 document.body.appendChild(this.elem);
                 setTimeout(() => {
                     this.elem.classList.add("in");
                 }, 0.01*1000);
             } else {
-                const onChange = () => window.modal.modify(id, this.generateParams());
+                const onChange = () => window.modal.modify(this.id, this.generateParams());
                 this.addHandler("change", onChange);
                 onChange();
-                const remove = window.modal.onResult((_, id2, r) => {
-                    if (id2 != id) return;
+                remove = window.modal.onResult((_, id2, r) => {
+                    if (id2 != this.id) return;
+                    if (util.is(remove, "func")) {
+                        remove();
+                        remove = null;
+                    }
                     this.result(r);
-                    remove();
                     this.remHandler("change", onChange);
                 });
+                this.post("post-add");
             }
         });
         this.addHandler("rem", async () => {
+            if (util.is(remove, "func")) {
+                remove();
+                remove = null;
+            }
             if (document.body.contains(this.elem)) {
                 this.elem.classList.remove("in");
                 setTimeout(() => {
                     document.body.removeChild(this.elem);
                 }, 0.25*1000);
+            } else {
+                this.post("post-rem");
             }
+            this.#id = null;
         });
     }
 
@@ -1576,6 +1590,8 @@ App.PopupBase = class AppPopupBase extends util.Target {
         this.constructor.PARAMS.forEach(param => (params[param] = this[param]));
         return params;
     }
+
+    get id() { return this.#id; }
 
     get hasResult() { return this.#resolver.state; }
     get theResult() { return this.#result; }
@@ -1924,6 +1940,7 @@ App.Confirm = class AppConfirm extends App.CorePopup {
 };
 App.Prompt = class AppPrompt extends App.CorePopup {
     #type;
+    #doCast;
 
     #eInput;
     #eConfirm;
@@ -1941,6 +1958,7 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.elem.classList.add("prompt");
 
         this.#type = "str";
+        this.#doCast = v => v;
 
         this.#eInput = document.createElement("input");
         this.inner.appendChild(this.eInput);
@@ -1970,6 +1988,18 @@ App.Prompt = class AppPrompt extends App.CorePopup {
             this.result(null);
         });
 
+        let remove = null;
+        this.addHandler("post-add", async () => {
+            remove = window.modal.onCast((_, id2, v) => {
+                if (id2 != this.id) return;
+                this.value = v;
+                return this.value;
+            });
+        });
+        this.addHandler("post-rem", async () => {
+            if (util.is(remove, "func")) remove();
+        });
+
         this.value = value;
         this.confirm = confirm;
         this.cancel = cancel;
@@ -1978,12 +2008,20 @@ App.Prompt = class AppPrompt extends App.CorePopup {
 
     get type() { return this.#type; }
     set type(v) {
-        v = String(v);
+        v = (v == null) ? null : String(v);
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
         this.eInput.type = ["any_num", "num", "float", "int"].includes(this.type) ? "number" : "text";
         if (["int"].includes(this.type)) this.eInput.step = 1;
         else this.eInput.removeAttribute("step");
+        this.cast();
+    }
+    customType() { return this.type == null; }
+    get doCast() { return this.#doCast; }
+    set doCast(v) {
+        v = util.ensure(v, "func");
+        if (this.doCast == v) return;
+        this.change("doCast", this.doCast, this.#doCast=v);
         this.cast();
     }
 
@@ -2004,9 +2042,11 @@ App.Prompt = class AppPrompt extends App.CorePopup {
 
     get value() { return this.eInput.value; }
     set value(v) {
+        v = String(v);
+        if (this.value == v) return;
         [v, this.eInput.value] = [this.value, v];
-        this.change("value", v, this.value);
         this.cast();
+        this.change("value", v, this.value);
     }
 
     get placeholder() { return this.eInput.placeholder; }
@@ -2016,12 +2056,13 @@ App.Prompt = class AppPrompt extends App.CorePopup {
     }
 
     cast() {
+        if (this.customType())
+            return this.value = this.doCast(this.value);
         let v = this.value;
         if (["any_num", "num", "float"].includes(this.type)) v = util.ensure(parseFloat(v), this.type);
         else if (["int"].includes(this.type)) v = util.ensure(parseInt(v), this.type);
         else v = util.ensure(v, this.type);
-        let vs = String(v);
-        if (this.value != vs) this.value = vs;
+        this.value = v;
         return v;
     }
 };
@@ -2672,14 +2713,22 @@ export class AppModal extends App {
 
         this.#result = null;
 
+        let finished = false, modifyQueue = [];
+        const checkModify = () => {
+            if (!finished) return;
+            while (modifyQueue.length > 0) {
+                let params = modifyQueue.shift();
+                for (let param in params)
+                    this["i"+param] = params[param];
+            }
+            this.resize();
+        };
+
         this.#resolver = new util.Resolver(false);
         window.modal.onModify((_, params) => {
             params = util.ensure(params, "obj");
-            for (let param in params) {
-                if (params[param] == null) continue;
-                this["i"+param] = params[param];
-            }
-            this.resize();
+            modifyQueue.push(params);
+            checkModify();
         });
         (async () => {
             await window.modal.result(await this.whenResult());
@@ -2725,6 +2774,9 @@ export class AppModal extends App {
             await this.postResult("pre-post-setup");
 
             await this.resize();
+
+            finished = true;
+            checkModify();
         });
 
         this.addHandler("perm", async () => this.hasResult);

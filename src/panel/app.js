@@ -4032,6 +4032,15 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                     yt: async () => {
                         elem.disabled = true;
                         let pop = this.app.prompt("Youtube Video URL", "");
+                        pop.doCast = v => {
+                            v = String(v);
+                            if (v.length <= 0) return v;
+                            if (v.startsWith("youtube.com/watch?v=")) v = "www."+v;
+                            if (v.startsWith("www.youtube.com/watch?v=")) v = "https://"+v;
+                            if (!v.startsWith("https://www.youtube.com/watch?v=")) v = "https://www.youtube.com/watch?v="+v;
+                            return v;
+                        };
+                        pop.type = null;
                         pop.icon = "logo-youtube";
                         pop.iconColor = "var(--cr)";
                         let result = await pop.whenResult();
@@ -4052,7 +4061,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                         file = util.ensure(file, "obj");
                         if (file.canceled) return elem.disabled = false;
                         file = util.ensure(file.filePaths, "arr")[0];
-                        let name = await this.app.doPrompt("Name", "");
+                        let name = await this.app.doPrompt("Name", "Will take file name if not defined");
                         try {
                             await window.api.send("video-add-file", file, name);
                         } catch (e) { this.app.doError("File Add Error", file+" -> "+name, e); }
@@ -4150,9 +4159,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavAction.addEventListener("click", e => {
             e.stopPropagation();
             if (!this.hasPage()) return;
-            if (!this.page.hasSource()) return;
-            const playback = this.page.source.playback;
-            playback.paused = !playback.paused;
+            this.page.eNavActionButton.click();
         });
         const actionIcon = this.eTimeNavAction.children[0];
 
@@ -4243,7 +4250,8 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                 r = Math.min(1, Math.max(0, r/blen));
                 this.eTimeVideoBox.style.setProperty("--l", (l*100)+"%");
                 this.eTimeVideoBox.style.setProperty("--r", (r*100)+"%");
-                actionIcon.name = playback.playing ? "pause" : "play";
+                if (this.page.eNavActionButton.children[0])
+                    actionIcon.name = this.page.eNavActionButton.children[0].name;
             } else {
                 this.eTimeSourceBox.style.setProperty("--l", "0%");
                 this.eTimeSourceBox.style.setProperty("--r", "0%");
@@ -4265,18 +4273,38 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                 elems[name] = elem;
                 this.eSource.appendChild(elem);
                 elem.classList.add("item");
-                elem.innerHTML = "<div></div><button><ion-icon name='close'></ion-icon></button>";
+                elem.innerHTML = "<div></div><button><ion-icon name='ellipsis-vertical'></ion-icon></button>";
                 elem.addEventListener("click", e => {
                     e.stopPropagation();
                     this.video = name;
                 });
-                elem.children[0].textContent = name;
-                elem.children[1].addEventListener("click", async e => {
+                const [eName, eBtn] = elem.children;
+                eName.textContent = name;
+                eBtn.addEventListener("click", e => {
                     e.stopPropagation();
-                    if (this.video == name) this.video = null;
-                    try {
-                        await window.api.send("video-rem", name);
-                    } catch (e) { this.app.doError("Video Remove Error", name, e); }
+                    let itm;
+                    let menu = new core.App.Menu();
+                    itm = menu.addItem(new core.App.Menu.Item("Remove", "close"));
+                    itm.addHandler("trigger", async e => {
+                        if (this.video == name) this.video = null;
+                        try {
+                            await window.api.send("video-rem", name);
+                        } catch (e) { this.app.doError("Video Remove Error", name, e); }
+                    });
+                    itm = menu.addItem(new core.App.Menu.Item("Rename"));
+                    itm.addHandler("trigger", async e => {
+                        if (!this.hasApp()) return;
+                        let result = await this.app.doPrompt("Rename", name, name);
+                        if (result == null) return;
+                        try {
+                            result = await window.api.send("video-rename", name, result);
+                            if (this.video == name) this.video = result;
+                        } catch (e) { this.app.doError("Video Rename Error", name, e); }
+                    });
+                    if (!this.hasApp()) return;
+                    this.app.contextMenu = menu;
+                    let r = eBtn.getBoundingClientRect();
+                    this.app.placeContextMenu(r.left, r.bottom);
                 });
             });
             Object.keys(elems).forEach(name => {
