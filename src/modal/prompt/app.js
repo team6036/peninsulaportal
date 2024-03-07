@@ -48,6 +48,7 @@ export default class App extends core.AppModal {
                     };
                     await this.cast();
                     this.addHandler("modify", f);
+                    if (!this.customType()) f();
                 });
                 this.result(this.ivalue);
             });

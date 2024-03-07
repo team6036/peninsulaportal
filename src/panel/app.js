@@ -6764,7 +6764,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             return v;
         };
         const convertAngle = v => {
-            v = util.clampAngle(v);
+            v = util.ensure(v, "num");
             if (!this.hasTab()) return v;
             v = util.Unit.convert(v, this.tab.angleUnits, "deg");
             if (!this.tab.origin.startsWith("blue")) v = 180-v;
@@ -8325,6 +8325,53 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
         });
+        this.eNavOptionsButton.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this.hasSource()) return;
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item(
+                this.source.playback.finished ? "Replay" : this.source.playback.paused ? "Play" : "Pause",
+                this.source.playback.finished ? "refresh" : this.source.playback.paused ? "play" : "pause",
+            ));
+            itm.addHandler("trigger", e => {
+                this.eNavActionButton.click();
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Skip to front"));
+            itm.addHandler("trigger", e => {
+                this.eNavBackButton.click();
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Skip to end"));
+            itm.addHandler("trigger", e => {
+                this.eNavForwardButton.click();
+            });
+            itm = menu.addItem(new core.App.Menu.Item("Custom timestamp..."));
+            let subitm;
+            subitm = itm.menu.addItem(new core.App.Menu.Item("Exact timestamp"));
+            subitm.addHandler("trigger", async e => {
+                let pop = this.app.prompt("Custom Timestamp", "Exact timestamp in seconds");
+                pop.type = "num";
+                pop.icon = "time";
+                let result = await pop.whenResult();
+                if (result == null) return;
+                if (!this.hasSource()) return;
+                this.source.ts = parseFloat(result)*1000;
+                // 199.461
+            });
+            subitm = itm.menu.addItem(new core.App.Menu.Item("Time since beginning"));
+            subitm.addHandler("trigger", async e => {
+                let pop = this.app.prompt("Custom Timestamp", "Time since beginning in seconds");
+                pop.type = "num";
+                pop.icon = "time";
+                let result = await pop.whenResult();
+                if (result == null) return;
+                if (!this.hasSource()) return;
+                this.source.ts = this.source.tsMin+parseFloat(result)*1000;
+            });
+            this.app.contextMenu = menu;
+            let r = this.eNavOptionsButton.getBoundingClientRect();
+            this.app.placeContextMenu(r.left, r.top);
+        });
         this.eNavActionButton.addEventListener("click", e => {
             e.stopPropagation();
             if (!this.hasSource()) return;
@@ -8348,6 +8395,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("nav-forward", () => {
             if (!this.hasSource()) return;
             this.source.ts += 5*1000;
+        });
+        this.addHandler("nav-back-small", () => {
+            if (!this.hasSource()) return;
+            this.source.ts -= 1;
+        });
+        this.addHandler("nav-forward-small", () => {
+            if (!this.hasSource()) return;
+            this.source.ts += 1;
         });
 
         this.#explorer = new FieldExplorer();
