@@ -4677,6 +4677,19 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     set toggleOff(v) { this.toggleOn = !v; }
     on() { return this.toggleOn = true; }
     off() { return this.toggleOff = true; }
+
+    to() {
+        return {
+            path: this.path,
+            toggleOn: this.toggleOn,
+        };
+    }
+    from(o) {
+        o = util.ensure(o, "obj");
+        this.path = o.path;
+        this.toggleOn = o.toggleOn;
+        return this;
+    }
 };
 Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #lVars; #rVars;
@@ -4944,7 +4957,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let logs = {}, nodes = {};
                 vars.forEach(v => {
                     let node;
-                    node = source.tree.lookup(v.shownHook.path);
+                    node = v.shownHook.hasPath() ? source.tree.lookup(v.shownHook.path) : null;
                     v.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                     if (!v.shown) return;
                     node = source.tree.lookup(v.path);
@@ -5607,10 +5620,10 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.shownHook.path];
+            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.shownHook.to()];
             else if (util.is(a, "arr")) {
                 a = new Panel.GraphTab.Variable(...a);
-                a = [a.path, a.shown, a.color, a.shownHook.path];
+                a = [a.path, a.shown, a.color, a.shownHook.to()];
             }
             // TODO: remove when fixed
             else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook];
@@ -5619,7 +5632,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, null];
 
-        [this.path, this.shown, this.color, this.shownHook.path] = a;
+        [this.path, this.shown, this.color, this.shownHook] = a;
     }
 
     get tab() { return this.#tab; }
@@ -5676,7 +5689,9 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     }
     hasColor() { return this.color != null; }
 
+    get hooks() { return [this.shownHook]; }
     get shownHook() { return this.#shownHook; }
+    set shownHook(o) { this.shownHook.from(o); }
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
@@ -5693,10 +5708,10 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         if (!(data instanceof Source.Node)) return null;
         if (!data.hasField()) return null;
         if (!data.field.isJustPrimitive) return null;
-        for (let hook of [this.shownHook]) {
+        for (let hook of this.hooks) {
             let r = hook.eBox.getBoundingClientRect();
-            if (pos.x < r.left || pos.x > r.right) return null;
-            if (pos.y < r.top || pos.y > r.bottom) return null;
+            if (pos.x < r.left || pos.x > r.right) continue;
+            if (pos.y < r.top || pos.y > r.bottom) continue;
             return {
                 r: r,
                 submit: () => {
@@ -5747,7 +5762,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             path: this.path,
             shown: this.shown,
             color: this.color,
-            shownHook: this.shownHook.path,
+            shownHook: this.shownHook.to(),
         });
     }
 };
@@ -6059,10 +6074,10 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.shownHook.path];
+            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.shownHook.to()];
             else if (util.is(a, "arr")) {
                 a = new this.constructor(...a);
-                a = [a.path, a.shown, a.color, a.shownHook.path];
+                a = [a.path, a.shown, a.color, a.shownHook.to()];
             }
             // TODO: remove when fixed
             else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook];
@@ -6071,7 +6086,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, null];
 
-        [this.path, this.shown, this.color, this.shownHook.path] = a;
+        [this.path, this.shown, this.color, this.shownHook] = a;
     }
 
     async makeContextMenu() {
@@ -6136,7 +6151,9 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     }
     hasColor() { return this.color != null; }
 
+    get hooks() { return [this.shownHook]; }
     get shownHook() { return this.#shownHook; }
+    set shownHook(o) { this.shownHook.from(o); }
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
@@ -6149,10 +6166,11 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.isClosed) return null;
-        for (let hook of [this.shownHook]) {
+        console.log(this.hooks);
+        for (let hook of this.hooks) {
             let r = hook.eBox.getBoundingClientRect();
-            if (pos.x < r.left || pos.x > r.right) return null;
-            if (pos.y < r.top || pos.y > r.bottom) return null;
+            if (pos.x < r.left || pos.x > r.right) continue;
+            if (pos.y < r.top || pos.y > r.bottom) continue;
             return {
                 r: r,
                 submit: () => {
@@ -6205,7 +6223,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             path: this.path,
             shown: this.shown,
             color: this.color,
-            shownHook: this.shownHook,
+            shownHook: this.shownHook.to(),
         });
     }
 };
@@ -6489,8 +6507,10 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 let node;
-                node = source ? source.tree.lookup(pose.shownHook.path) : null;
+                node = (source && pose.shownHook.hasPath()) ? source.tree.lookup(pose.shownHook.path) : null;
                 pose.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                node = (source && pose.ghostHook.hasPath()) ? source.tree.lookup(pose.ghostHook.path) : null;
+                pose.ghostHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 pose.state.pose = pose.isShown ? pose : null;
                 node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
@@ -6597,6 +6617,8 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     #ghost;
     #type;
 
+    #ghostHook;
+
     #eGhostBtn;
     #eDisplayType;
 
@@ -6605,6 +6627,12 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
         this.#ghost = false;
         this.#type = null;
+
+        this.#ghostHook = new Panel.ToolCanvasTab.Hook("Ghost Hook", null);
+        this.ghostHook.showToggle();
+        this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
+
+        this.eContent.appendChild(this.ghostHook.elem);
 
         this.#eGhostBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eGhostBtn);
@@ -6624,27 +6652,27 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             this.post("type");
         });
 
-        if (a.length <= 0 || a.length > 6) a = [null];
+        if (a.length <= 0 || [6].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.path];
+            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to()];
             else if (util.is(a, "arr")) {
                 if (util.is(a[0], "str")) a = [a, null];
                 else {
                     a = new this.constructor(...a);
-                    a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.path];
+                    a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to()];
                 }
             }
             // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.type, a.shownHook];
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.type, a.shownHook, a.ghostHook];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, false];
         if (a.length == 4) a = [...a, core.Odometry2d.Robot.TYPES.DEFAULT];
-        if (a.length == 5) a = [...a, null];
+        if (a.length == 5) a = [...a, null, null];
 
-        [this.path, this.shown, this.color, this.ghost, this.type, this.shownHook.path] = a;
+        [this.path, this.shown, this.color, this.ghost, this.type, this.shownHook, this.ghostHook] = a;
     }
     
     async makeContextMenu() {
@@ -6684,6 +6712,17 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             this.eDisplayType.children[0].textContent = util.formatText(core.Odometry2d.Robot.lookupTypeName(this.type));
     }
 
+    get hooks() { return [this.shownHook, this.ghostHook]; }
+    get ghostHook() { return this.#ghostHook; }
+    set ghostHook(o) { this.ghostHook.from(o); }
+    get isGhost() {
+        if (this.ghost) return true;
+        if (this.ghostHook.value == null) return false;
+        if (this.ghostHook.toggleOn)
+            return !this.ghostHook.value;
+        return this.ghostHook.value;
+    }
+
     get eGhostBtn() { return this.#eGhostBtn; }
     get eDisplayType() { return this.#eDisplayType; }
 
@@ -6694,7 +6733,8 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             color: this.color,
             ghost: this.ghost,
             type: core.Odometry2d.Robot.lookupTypeName(this.type),
-            shownHook: this.shownHook.path,
+            shownHook: this.shownHook.to(),
+            ghostHook: this.ghostHook.to(),
         });
     }
 };
@@ -6747,7 +6787,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     let render = renders[i];
                     render.color = color;
                     render.colorH = colorH;
-                    render.alpha = this.pose.ghost ? 0.5 : 1;
+                    render.alpha = this.pose.isGhost ? 0.5 : 1;
                     render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
                     render.pos = convertPos(this.value[3*i+0], this.value[3*i+1]);
                     render.heading = convertAngle(this.value[3*i+2]);
@@ -6763,7 +6803,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     render.a = convertPos(this.value[i*2+0], this.value[i*2+1]);
                     render.b = convertPos(this.value[i*2+2], this.value[i*2+3]);
                     render.color = this.pose.color;
-                    render.alpha = this.pose.ghost ? 0.5 : 1;
+                    render.alpha = this.pose.isGhost ? 0.5 : 1;
                 }
                 this.pose.eDisplayType.style.display = "none";
             } else this.pose.disable();
@@ -7041,8 +7081,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 let node;
-                node = source ? source.tree.lookup(pose.shownHook.path) : null;
+                node = (source && pose.shownHook.hasPath()) ? source.tree.lookup(pose.shownHook.path) : null;
                 pose.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                node = (source && pose.ghostHook.hasPath()) ? source.tree.lookup(pose.ghostHook.path) : null;
+                pose.ghostHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                node = (source && pose.solidHook.hasPath()) ? source.tree.lookup(pose.solidHook.path) : null;
+                pose.solidHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 pose.state.pose = pose.isShown ? pose : null;
                 [pose.state.offsetX, pose.state.offsetY] = new V(util.ensure(templates[this.template], "obj").size).div(-2).xy;
                 node = source ? source.tree.lookup(pose.path) : null;
@@ -7201,6 +7245,9 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     #solid;
     #type;
 
+    #ghostHook;
+    #solidHook;
+
     #eGhostBtn;
     #eSolidBtn;
     #eDisplayType;
@@ -7211,6 +7258,16 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.#ghost = null;
         this.#solid = null;
         this.#type = "";
+
+        this.#ghostHook = new Panel.ToolCanvasTab.Hook("Ghost Hook", null);
+        this.ghostHook.showToggle();
+        this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
+        this.#solidHook = new Panel.ToolCanvasTab.Hook("Solid Hook", null);
+        this.solidHook.showToggle();
+        this.solidHook.addHandler("change", (c, f, t) => this.change("solidHook."+c, f, t));
+
+        this.eContent.appendChild(this.ghostHook.elem);
+        this.eContent.appendChild(this.solidHook.elem);
 
         this.#eGhostBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eGhostBtn);
@@ -7239,26 +7296,26 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             this.post("type");
         });
 
-        if (a.length <= 0 || [3, 4, 5].includes(a.length) || a.length > 7) a = [null];
+        if (a.length <= 0 || [3, 4, 5, 7, 8].includes(a.length) || a.length > 9) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.path];
+            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.to(), a.ghostHook.to(), a.solidHook.to()];
             else if (util.is(a, "arr")) {
                 if (util.is(a[0], "str")) a = [a, null];
                 else {
                     a = new this.constructor(...a);
-                    a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.path];
+                    a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.to(), a.ghostHook.to(), a.solidHook.to()];
                 }
             }
             // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.solid || a.isSolid, a.type, a.shownHook];
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.solid || a.isSolid, a.type, a.shownHook, a.ghostHook, a.solidHook];
             else a = [null, null];
         }
         if (a.length == 2) a = [a[0], true, a[1], false, false];
         if (a.length == 5) a = [...a, "KitBot"];
-        if (a.length == 6) a = [...a, null];
+        if (a.length == 6) a = [...a, null, null, null];
 
-        [this.path, this.shown, this.color, this.ghost, this.solid, this.type, this.shownHook.path] = a;
+        [this.path, this.shown, this.color, this.ghost, this.solid, this.type, this.shownHook, this.ghostHook, this.solidHook] = a;
     }
 
     async makeContextMenu() {
@@ -7350,6 +7407,26 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             this.eDisplayType.children[0].textContent = type;
     }
 
+    get hooks() { return [this.shownHook, this.ghostHook, this.solidHook]; }
+    get ghostHook() { return this.#ghostHook; }
+    set ghostHook(o) { this.ghostHook.from(o); }
+    get isGhost() {
+        if (this.ghost) return true;
+        if (this.ghostHook.value == null) return false;
+        if (this.ghostHook.toggleOn)
+            return !this.ghostHook.value;
+        return this.ghostHook.value;
+    }
+    get solidHook() { return this.#solidHook; }
+    set solidHook(o) { this.solidHook.from(o); }
+    get isSolid() {
+        if (this.solid) return true;
+        if (this.solidHook.value == null) return false;
+        if (this.solidHook.toggleOn)
+            return !this.solidHook.value;
+        return this.solidHook.value;
+    }
+
     get eGhostBtn() { return this.#eGhostBtn; }
     get eSolidBtn() { return this.#eSolidBtn; }
     get eDisplayType() { return this.#eDisplayType; }
@@ -7362,7 +7439,9 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             ghost: this.ghost,
             solid: this.solid,
             type: this.type,
-            shownHook: this.shownHook.path,
+            shownHook: this.shownHook.to(),
+            ghostHook: this.ghostHook.to(),
+            solidHook: this.solidHook.to(),
         });
     }
 };
@@ -7398,8 +7477,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     let render = renders[i];
                     render.name = this.pose.path;
                     render.color = this.pose.color;
-                    render.isGhost = this.pose.ghost;
-                    render.isSolid = this.pose.solid;
+                    render.isGhost = this.pose.isGhost;
+                    render.isSolid = this.pose.isSolid;
                     render.display.type = type;
                     render.display.data = value;
                     render.robot = this.pose.type;
