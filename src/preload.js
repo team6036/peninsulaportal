@@ -69,16 +69,16 @@ contextBridge.exposeInMainWorld("modal", {
         return () => ipcRenderer.removeListener("modal-result", f);
     },
 
-    modify: (id, params) => ipcRenderer.invoke("modal-modify", id, params),
-    onModify: f => {
-        ipcRenderer.on("modal-modify", f);
-        return () => ipcRenderer.removeListener("modal-modify", f);
-    },
-
     cast: v => ipcRenderer.invoke("modal-cast", v),
     onCast: f => {
         ipcRenderer.on("modal-cast", f);
         return () => ipcRenderer.removeListener("modal-cast", f);
+    },
+
+    modify: (id, params) => ipcRenderer.invoke("modal-modify", id, params),
+    onModify: f => {
+        ipcRenderer.on("modal-modify", f);
+        return () => ipcRenderer.removeListener("modal-modify", f);
     },
 
     spawnAlert: params => ipcRenderer.invoke("modal-spawn", "ALERT", params),

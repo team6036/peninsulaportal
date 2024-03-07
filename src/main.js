@@ -1157,6 +1157,7 @@ const MAIN = async () => {
 
         modalResult(r) { this.post("modal-result", r); }
         async whenModalResult() { return await new Promise((res, rej) => this.addHandler("modal-result", r => res(r))); }
+        modalCast(v) { this.post("modal-cast", v); }
         modalModify(id, params) {
             for (let win of this.windowManager.windows) {
                 if (win.id != id) continue;
@@ -1166,7 +1167,6 @@ const MAIN = async () => {
             }
             return false;
         }
-        modalCast(v) { this.post("modal-cast", v); }
 
         modalSpawn(name, params) {
             let win = this.windowManager.modalSpawn(name, params);
@@ -2991,13 +2991,13 @@ const MAIN = async () => {
                 let win = identify(e);
                 return win.modalResult(r);
             }));
-            ipc.handle("modal-modify", decorate(async (e, id, params) => {
-                let win = identify(e);
-                return win.modalModify(id, params);
-            }));
             ipc.handle("modal-cast", decorate(async (e, v) => {
                 let win = identify(e);
                 return win.modalCast(v);
+            }));
+            ipc.handle("modal-modify", decorate(async (e, id, params) => {
+                let win = identify(e);
+                return win.modalModify(id, params);
             }));
             ipc.handle("modal-spawn", decorate(async (e, name, params) => {
                 let win = identify(e);
