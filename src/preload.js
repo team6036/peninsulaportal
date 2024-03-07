@@ -69,17 +69,23 @@ contextBridge.exposeInMainWorld("modal", {
         return () => ipcRenderer.removeListener("modal-result", f);
     },
 
-    spawnAlert: params => ipcRenderer.invoke("modal-spawn", "ALERT", params),
-    spawnConfirm: params => ipcRenderer.invoke("modal-spawn", "CONFIRM", params),
-    spawnPrompt: params => ipcRenderer.invoke("modal-spawn", "PROMPT", params),
-    spawnProgress: params => ipcRenderer.invoke("modal-spawn", "PROGRESS", params),
-    spawn: (name, params) => ipcRenderer.invoke("modal-spawn", name, params),
-
     modify: (id, params) => ipcRenderer.invoke("modal-modify", id, params),
     onModify: f => {
         ipcRenderer.on("modal-modify", f);
         return () => ipcRenderer.removeListener("modal-modify", f);
     },
+
+    cast: v => ipcRenderer.invoke("modal-cast", v),
+    onCast: f => {
+        ipcRenderer.on("modal-cast", f);
+        return () => ipcRenderer.removeListener("modal-cast", f);
+    },
+
+    spawnAlert: params => ipcRenderer.invoke("modal-spawn", "ALERT", params),
+    spawnConfirm: params => ipcRenderer.invoke("modal-spawn", "CONFIRM", params),
+    spawnPrompt: params => ipcRenderer.invoke("modal-spawn", "PROMPT", params),
+    spawnProgress: params => ipcRenderer.invoke("modal-spawn", "PROGRESS", params),
+    spawn: (name, params) => ipcRenderer.invoke("modal-spawn", name, params),
 });
 
 contextBridge.exposeInMainWorld("tba", {

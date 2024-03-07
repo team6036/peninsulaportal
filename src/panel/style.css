@@ -1555,13 +1555,20 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item > div {
     flex-basis: 100%;
 
+    min-width: 0px;
+    overflow: auto;
+
     font-size: 14px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item > div::-webkit-scrollbar {
+    display: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .source > .item > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
 
+    min-width: max-content;
     padding: 0px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > .time {
