@@ -80,6 +80,7 @@ function getDisplay(t, v) {
     };
     if (!Source.Field.TYPES.includes(t)) return {
         name: "document-outline",
+        color: "var(--cr)",
     };
     if (["double", "float", "int"].includes(t)) return {
         src: "../assets/icons/number.svg",
@@ -4037,7 +4038,10 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                             if (v.length <= 0) return v;
                             if (v.startsWith("https://www.youtube.com/watch?v=")) v = v.substring("https://".length);
                             if (v.startsWith("www.youtube.com/watch?v=")) v = v.substring("www.".length);
-                            if (!v.startsWith("youtube.com/watch?v=")) v = "youtube.com/watch?v="+v;
+                            if (!v.startsWith("youtube.com/watch?v=")) {
+                                if (v.length != 11) return v;
+                                v = "youtube.com/watch?v="+v;
+                            }
                             return v;
                         };
                         pop.type = null;
@@ -4574,6 +4578,106 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     }
     closeOptions() { return this.optionState = 0; }
 };
+Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
+    #path;
+    #value;
+
+    #elem;
+    #eName;
+    #eToggle;
+    #eBox;
+    #eIcon;
+
+    constructor(name, path) {
+        super();
+
+        this.#path = null;
+        this.#value = null;
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("hook");
+        this.#eName = document.createElement("div");
+        this.elem.appendChild(this.eName);
+        this.eName.classList.add("name");
+        this.#eToggle = document.createElement("button");
+        this.elem.appendChild(this.eToggle);
+        this.eToggle.classList.add("normal");
+        this.eToggle.textContent = "!";
+        this.eToggle.addEventListener("click", e => (this.toggleOn = !this.toggleOn));
+        this.#eBox = document.createElement("div");
+        this.elem.appendChild(this.eBox);
+        this.eBox.classList.add("box");
+        this.#eIcon = null;
+
+        this.name = name;
+        this.path = path;
+    }
+
+    get path() { return this.#path; }
+    set path(v) {
+        v = (v == null) ? null : util.generatePath(v);
+        if (this.path == v) return;
+        this.change("path", this.path, this.#path=v);
+        if (!this.hasPath()) return this.eBox.innerHTML = "";
+        this.eBox.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div class='name'></div><ion-icon name='close'></ion-icon></div></button></div>";
+        this.#eIcon = this.eBox.children[0].children[0].children[0].children[0];
+        const eName = this.eBox.children[0].children[0].children[0].children[1];
+        eName.style.flexBasis = "100%";
+        eName.style.textAlign = "left";
+        eName.textContent = this.path;
+        const eRem = this.eBox.children[0].children[0].children[0].children[2];
+        eRem.addEventListener("click", e => {
+            e.stopPropagation();
+            this.path = null;
+        });
+        this.setFrom("*", null);
+    }
+    hasPath() { return this.path != null; }
+
+    setFrom(t, v) {
+        this.#value = v;
+        if (!this.#eIcon) return;
+        const icon = this.#eIcon;
+        let display = getDisplay(t, v);
+        if (display != null) {
+            if ("src" in display) icon.setAttribute("src", display.src);
+            else icon.name = display.name;
+            if ("color" in display) icon.style.color = display.color;
+            else icon.style.color = "";
+        } else {
+            icon.name = "document";
+            icon.style.color = "var(--cr)";
+        }
+    }
+    get value() { return this.#value; }
+
+    get elem() { return this.#elem; }
+    get eName() { return this.#eName; }
+    get eToggle() { return this.#eToggle; }
+    get eBox() { return this.#eBox; }
+
+    get name() { return this.eName.textContent; }
+    set name(v) { this.eName.textContent = v; }
+
+    get toggleShown() { return this.eToggle.classList.contains("this"); }
+    set toggleShown(v) {
+        if (v) this.eToggle.classList.add("this");
+        else this.eToggle.classList.remove("this");
+    }
+    get toggleHidden() { return !this.toggleShown; }
+    set toggleHidden(v) { this.toggleShown = !v; }
+    showToggle() { return this.toggleShown = true; }
+    hideToggle() { return this.toggleHidden = true; }
+    get toggleOn() { return this.eToggle.classList.contains("on"); }
+    set toggleOn(v) {
+        if (v) this.eToggle.classList.add("on");
+        else this.eToggle.classList.remove("on");
+    }
+    get toggleOff() { return !this.toggleOn; }
+    set toggleOff(v) { this.toggleOn = !v; }
+    on() { return this.toggleOn = true; }
+    off() { return this.toggleOff = true; }
+};
 Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #lVars; #rVars;
 
@@ -4839,8 +4943,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let range = [null, null];
                 let logs = {}, nodes = {};
                 vars.forEach(v => {
-                    if (!v.isShown) return;
-                    let node = source.tree.lookup(v.path);
+                    let node;
+                    node = source.tree.lookup(v.shownHook.path);
+                    v.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                    if (!v.shown) return;
+                    node = source.tree.lookup(v.path);
                     if (!node) return v.disable();
                     if (!node.hasField()) return v.disable();
                     if (!node.field.isJustPrimitive) return v.disable();
@@ -4850,8 +4957,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
                     if (stop != null) log.push({ ts: graphRange[1], v: stop });
                     if (log.length <= 0) return v.disable();
-                    logs[v.path] = log;
-                    nodes[v.path] = node;
+                    if (v.isShown) {
+                        logs[v.path] = log;
+                        nodes[v.path] = node;
+                    }
                     if (!["double", "float", "int"].includes(node.field.type)) return v.disable();
                     v.enable();
                     let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
@@ -5315,6 +5424,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             let idfs = {
                 _: side => {
+                    for (let v of this[side+"Vars"]) {
+                        let hovered = v.getHovered(data, pos, options);
+                        if (hovered) return hovered;
+                    }
                     if (!(data instanceof Source.Node)) return null;
                     if (!data.hasField()) return null;
                     return {
@@ -5337,9 +5450,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                         nextColor = colors[i];
                                     });
                                     if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
-                                    let has = false;
-                                    this[side+"Vars"].forEach(v => (v.path == pth) ? (has = true) : null);
-                                    if (has) return;
                                     this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
                                 }
                                 node.nodeObjects.forEach(node => addVar(node));
@@ -5376,7 +5486,10 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     #app;
 
     #path;
+    #shown;
     #color;
+
+    #shownHook;
 
     #elem;
     #eDisplay;
@@ -5398,7 +5511,12 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#app = null;
 
         this.#path = "";
+        this.#shown = null;
         this.#color = null;
+
+        this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
+        this.shownHook.showToggle();
+        this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -5439,6 +5557,8 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             });
         });
 
+        this.eContent.appendChild(this.shownHook.elem);
+
         this.eDisplay.addEventListener("contextmenu", e => {
             let itm;
             let menu = new core.App.Menu();
@@ -5446,9 +5566,9 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             itm.addHandler("trigger", e => {
                 this.isOpen = !this.isOpen;
             });
-            itm = menu.addItem(new core.App.Menu.Item(this.isShown ? "Hide" : "Show"));
+            itm = menu.addItem(new core.App.Menu.Item(this.shown ? "Hide" : "Show"));
             itm.addHandler("trigger", e => {
-                this.isShown = !this.isShown;
+                this.shown = !this.shown;
             });
             itm = menu.addItem(new core.App.Menu.Item("Remove"));
             itm.addHandler("trigger", e => {
@@ -5473,7 +5593,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             e.stopPropagation();
         });
         this.eShow.addEventListener("change", e => {
-            this.change("isShown", null, this.isShown);
+            this.shown = this.eShow.checked;
         });
         this.eRemoveBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -5484,20 +5604,22 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             this.isOpen = !this.isOpen;
         });
 
-        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.color, a.isShown];
+            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.shownHook.path];
             else if (util.is(a, "arr")) {
                 a = new Panel.GraphTab.Variable(...a);
-                a = [a.path, a.color, a.isShown];
+                a = [a.path, a.shown, a.color, a.shownHook.path];
             }
-            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown];
+            // TODO: remove when fixed
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook];
             else a = [[], null];
         }
-        if (a.length == 2) a = [...a, true];
+        if (a.length == 2) a = [a[0], true, a[1]];
+        if (a.length == 3) a = [...a, null];
 
-        [this.path, this.color, this.isShown] = a;
+        [this.path, this.shown, this.color, this.shownHook.path] = a;
     }
 
     get tab() { return this.#tab; }
@@ -5527,6 +5649,17 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.change("path", this.path, this.#path=v);
         this.eDisplayName.textContent = this.path;
     }
+    get shown() { return this.#shown; }
+    set shown(v) {
+        v = !!v;
+        if (this.shown == v) return;
+        this.change("shown", this.shown, this.#shown=v);
+        this.eShow.checked = this.shown;
+    }
+    get hidden() { return !this.shown; }
+    set hidden(v) { this.shown = !v; }
+    show() { return this.shown = true; }
+    hide() { return this.hidden = true; }
     get color() { return this.#color; }
     set color(v) {
         v = (v == null) ? null : String(v);
@@ -5543,6 +5676,37 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     }
     hasColor() { return this.color != null; }
 
+    get shownHook() { return this.#shownHook; }
+    get isShown() {
+        if (!this.shown) return false;
+        if (this.shownHook.value == null) return true;
+        if (this.shownHook.toggleOn)
+            return !this.shownHook.value;
+        return this.shownHook.value;
+    }
+    
+    getHovered(data, pos, options) {
+        pos = new V(pos);
+        options = util.ensure(options, "obj");
+        if (this.isClosed) return null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (!(data instanceof Source.Node)) return null;
+        if (!data.hasField()) return null;
+        if (!data.field.isJustPrimitive) return null;
+        for (let hook of [this.shownHook]) {
+            let r = hook.eBox.getBoundingClientRect();
+            if (pos.x < r.left || pos.x > r.right) return null;
+            if (pos.y < r.top || pos.y > r.bottom) return null;
+            return {
+                r: r,
+                submit: () => {
+                    hook.path = data.path;
+                },
+            };
+        }
+        return null;
+    }
+
     get elem() { return this.#elem; }
     get eDisplay() { return this.#eDisplay; }
     get eShowBox() { return this.#eShowBox; }
@@ -5553,16 +5717,6 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     get eContent() { return this.#eContent; }
     get eColorPicker() { return this.#eColorPicker; }
     get eColorPickerColors() { return [...this.#eColorPickerColors]; }
-
-    get isShown() { return this.eShow.checked; }
-    set isShown(v) {
-        v = !!v;
-        this.change("isShown", this.isShown, this.eShow.checked=v);
-    }
-    get isHidden() { return !this.isShown; }
-    set isHidden(v) { this.isShown = !v; }
-    show() { return this.isShown = true; }
-    hide() { return this.isHidden = true; }
 
     get isOpen() { return this.elem.classList.contains("open"); }
     set isOpen(v) {
@@ -5591,8 +5745,9 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             path: this.path,
+            shown: this.shown,
             color: this.color,
-            isShown: this.isShown,
+            shownHook: this.shownHook.path,
         });
     }
 };
@@ -5764,6 +5919,10 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             let idfs = {
                 p: () => {
+                    for (let pose of this.poses) {
+                        let hovered = pose.getHovered(data, pos, options);
+                        if (hovered) return hovered;
+                    }
                     if (!(data instanceof Source.Node)) return null;
                     if (!data.hasField()) return null;
                     return {
@@ -5784,9 +5943,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                                     nextColor = colors[i];
                                 });
                                 if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
-                                let has = false;
-                                this.poses.forEach(v => v.path == pth ? (has = true) : null);
-                                if (has) return;
                                 this.addPose(new this.constructor.Pose(pth, "--c"+nextColor));
                             };
                             addPose(data.path);
@@ -5806,7 +5962,10 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 };
 Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     #path;
+    #shown;
     #color;
+
+    #shownHook;
 
     #state;
 
@@ -5825,7 +5984,12 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         super();
 
         this.#path = "";
+        this.#shown = null;
         this.#color = null;
+
+        this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
+        this.shownHook.showToggle();
+        this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
 
         this.#state = new this.constructor.State();
 
@@ -5868,6 +6032,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             });
         });
 
+        this.eContent.appendChild(this.shownHook.elem);
+
         this.eDisplay.addEventListener("contextmenu", async e => {
             let menu = await this.makeContextMenu();
             if (!this.state.hasApp()) return;
@@ -5879,7 +6045,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             e.stopPropagation();
         });
         this.eShow.addEventListener("change", e => {
-            this.change("isShown", null, this.isShown);
+            this.shown = this.eShow.checked;
         });
         this.eRemoveBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -5890,20 +6056,22 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             this.isOpen = !this.isOpen;
         });
 
-        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.color, a.isShown];
+            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.shownHook.path];
             else if (util.is(a, "arr")) {
                 a = new this.constructor(...a);
-                a = [a.path, a.color, a.isShown];
+                a = [a.path, a.shown, a.color, a.shownHook.path];
             }
-            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown];
+            // TODO: remove when fixed
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook];
             else a = [[], null];
         }
-        if (a.length == 2) a = [...a, true];
+        if (a.length == 2) a = [a[0], true, a[1]];
+        if (a.length == 3) a = [...a, null];
 
-        [this.path, this.color, this.isShown] = a;
+        [this.path, this.shown, this.color, this.shownHook.path] = a;
     }
 
     async makeContextMenu() {
@@ -5913,9 +6081,9 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         itm.addHandler("trigger", e => {
             this.isOpen = !this.isOpen;
         });
-        itm = menu.addItem(new core.App.Menu.Item(this.isShown ? "Hide" : "Show"));
+        itm = menu.addItem(new core.App.Menu.Item(this.shown ? "Hide" : "Show"));
         itm.addHandler("trigger", e => {
-            this.isShown = !this.isShown;
+            this.shown = !this.shown;
         });
         itm = menu.addItem(new core.App.Menu.Item("Remove"));
         itm.addHandler("trigger", e => {
@@ -5941,6 +6109,17 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.change("path", this.path, this.#path=v);
         this.eDisplayName.textContent = this.path;
     }
+    get shown() { return this.#shown; }
+    set shown(v) {
+        v = !!v;
+        if (this.shown == v) return;
+        this.change("shown", this.shown, this.#shown=v);
+        this.eShow.checked = this.shown;
+    }
+    get hidden() { return !this.shown; }
+    set hidden(v) { this.shown = !v; }
+    show() { return this.shown = true; }
+    hide() { return this.hidden = true; }
     get color() { return this.#color; }
     set color(v) {
         v = (v == null) ? null : String(v);
@@ -5957,6 +6136,33 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     }
     hasColor() { return this.color != null; }
 
+    get shownHook() { return this.#shownHook; }
+    get isShown() {
+        if (!this.shown) return false;
+        if (this.shownHook.value == null) return true;
+        if (this.shownHook.toggleOn)
+            return !this.shownHook.value;
+        return this.shownHook.value;
+    }
+
+    getHovered(data, pos, options) {
+        pos = new V(pos);
+        options = util.ensure(options, "obj");
+        if (this.isClosed) return null;
+        for (let hook of [this.shownHook]) {
+            let r = hook.eBox.getBoundingClientRect();
+            if (pos.x < r.left || pos.x > r.right) return null;
+            if (pos.y < r.top || pos.y > r.bottom) return null;
+            return {
+                r: r,
+                submit: () => {
+                    hook.path = data.path;
+                },
+            };
+        }
+        return null;
+    }
+
     get state() { return this.#state; }
 
     get elem() { return this.#elem; }
@@ -5969,16 +6175,6 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     get eContent() { return this.#eContent; }
     get eColorPicker() { return this.#eColorPicker; }
     get eColorPickerColors() { return [...this.#eColorPickerColors]; }
-
-    get isShown() { return this.eShow.checked; }
-    set isShown(v) {
-        v = !!v;
-        this.change("isShown", this.isShown, this.eShow.checked=v);
-    }
-    get isHidden() { return !this.isShown; }
-    set isHidden(v) { this.isShown = !v; }
-    show() { return this.isShown = true; }
-    hide() { return this.isHidden = true; }
 
     get isOpen() { return this.elem.classList.contains("open"); }
     set isOpen(v) {
@@ -6007,8 +6203,9 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             path: this.path,
+            shown: this.shown,
             color: this.color,
-            isShown: this.isShown,
+            shownHook: this.shownHook,
         });
     }
 };
@@ -6291,8 +6488,11 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
+                let node;
+                node = source ? source.tree.lookup(pose.shownHook.path) : null;
+                pose.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 pose.state.pose = pose.isShown ? pose : null;
-                const node = source ? source.tree.lookup(pose.path) : null;
+                node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.update(delta);
             });
@@ -6394,7 +6594,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     }
 };
 Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTab.Pose {
-    #isGhost;
+    #ghost;
     #type;
 
     #eGhostBtn;
@@ -6403,7 +6603,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     constructor(...a) {
         super();
 
-        this.#isGhost = false;
+        this.#ghost = false;
         this.#type = null;
 
         this.#eGhostBtn = document.createElement("button");
@@ -6412,7 +6612,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.eGhostBtn.textContent = "Ghost";
         this.eGhostBtn.addEventListener("click", e => {
             e.stopPropagation();
-            this.isGhost = !this.isGhost;
+            this.ghost = !this.ghost;
         });
 
         this.#eDisplayType = document.createElement("button");
@@ -6424,25 +6624,27 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             this.post("type");
         });
 
-        if (a.length <= 0 || a.length > 5) a = [null];
+        if (a.length <= 0 || a.length > 6) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.color, a.isShown, a.isGhost, a.type];
+            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.path];
             else if (util.is(a, "arr")) {
                 if (util.is(a[0], "str")) a = [a, null];
                 else {
                     a = new this.constructor(...a);
-                    a = [a.path, a.color, a.isShown, a.isGhost, a.type];
+                    a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.path];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown, a.isGhost, a.type];
+            // TODO: remove when fixed
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.type, a.shownHook];
             else a = [[], null];
         }
-        if (a.length == 2) a = [...a, true];
+        if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, false];
         if (a.length == 4) a = [...a, core.Odometry2d.Robot.TYPES.DEFAULT];
+        if (a.length == 5) a = [...a, null];
 
-        [this.path, this.color, this.isShown, this.isGhost, this.type] = a;
+        [this.path, this.shown, this.color, this.ghost, this.type, this.shownHook.path] = a;
     }
     
     async makeContextMenu() {
@@ -6456,19 +6658,20 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
                 this.type = core.Odometry2d.Robot.TYPES[name];
             });
         }
-        itm = menu.addItem(new core.App.Menu.Item("Ghost", this.isGhost ? "checkmark" : ""));
+        itm = menu.addItem(new core.App.Menu.Item("Ghost", this.ghost ? "checkmark" : ""));
         itm.addHandler("trigger", e => {
-            this.isGhost = !this.isGhost;
+            this.ghost = !this.ghost;
         });
         return menu;
     }
 
-    get isGhost() { return this.#isGhost; }
-    set isGhost(v) {
+    get ghost() { return this.#ghost; }
+    set ghost(v) {
         v = !!v;
-        if (this.isGhost == v) return;
-        this.change("isGhost", this.isGhost, this.#isGhost=v);
-        if (this.isGhost) this.eGhostBtn.classList.add("this");
+        if (this.ghost == v) return;
+        this.change("ghost", this.ghost, this.#ghost=v);
+        if (this.ghost)
+            this.eGhostBtn.classList.add("this");
         else this.eGhostBtn.classList.remove("this");
     }
     get type() { return this.#type; }
@@ -6487,10 +6690,11 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             path: this.path,
+            shown: this.shown,
             color: this.color,
-            isShown: this.isShown,
-            isGhost: this.isGhost,
+            ghost: this.ghost,
             type: core.Odometry2d.Robot.lookupTypeName(this.type),
+            shownHook: this.shownHook.path,
         });
     }
 };
@@ -6543,7 +6747,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     let render = renders[i];
                     render.color = color;
                     render.colorH = colorH;
-                    render.alpha = this.pose.isGhost ? 0.5 : 1;
+                    render.alpha = this.pose.ghost ? 0.5 : 1;
                     render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
                     render.pos = convertPos(this.value[3*i+0], this.value[3*i+1]);
                     render.heading = convertAngle(this.value[3*i+2]);
@@ -6559,7 +6763,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     render.a = convertPos(this.value[i*2+0], this.value[i*2+1]);
                     render.b = convertPos(this.value[i*2+2], this.value[i*2+3]);
                     render.color = this.pose.color;
-                    render.alpha = this.pose.isGhost ? 0.5 : 1;
+                    render.alpha = this.pose.ghost ? 0.5 : 1;
                 }
                 this.pose.eDisplayType.style.display = "none";
             } else this.pose.disable();
@@ -6836,9 +7040,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
+                let node;
+                node = source ? source.tree.lookup(pose.shownHook.path) : null;
+                pose.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 pose.state.pose = pose.isShown ? pose : null;
                 [pose.state.offsetX, pose.state.offsetY] = new V(util.ensure(templates[this.template], "obj").size).div(-2).xy;
-                const node = source ? source.tree.lookup(pose.path) : null;
+                node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.update(delta);
             });
@@ -6990,8 +7197,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     }
 };
 Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTab.Pose {
-    #isGhost;
-    #isSolid;
+    #ghost;
+    #solid;
     #type;
 
     #eGhostBtn;
@@ -7001,8 +7208,8 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     constructor(...a) {
         super();
 
-        this.#isGhost = false;
-        this.#isSolid = false;
+        this.#ghost = null;
+        this.#solid = null;
         this.#type = "";
 
         this.#eGhostBtn = document.createElement("button");
@@ -7011,7 +7218,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.eGhostBtn.textContent = "Ghost";
         this.eGhostBtn.addEventListener("click", e => {
             e.stopPropagation();
-            this.isGhost = !this.isGhost;
+            this.ghost = !this.ghost;
         });
 
         this.#eSolidBtn = document.createElement("button");
@@ -7020,7 +7227,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.eSolidBtn.textContent = "Solid";
         this.eSolidBtn.addEventListener("click", e => {
             e.stopPropagation();
-            this.isSolid = !this.isSolid;
+            this.solid = !this.solid;
         });
 
         this.#eDisplayType = document.createElement("button");
@@ -7032,24 +7239,26 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             this.post("type");
         });
 
-        if (a.length <= 0 || [3, 4, 5].includes(a.length) || a.length > 6) a = [null];
+        if (a.length <= 0 || [3, 4, 5].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
+            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.path];
             else if (util.is(a, "arr")) {
                 if (util.is(a[0], "str")) a = [a, null];
                 else {
                     a = new this.constructor(...a);
-                    a = [a.path, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
+                    a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.path];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.path, a.color, a.isShown, a.isGhost, a.isSolid, a.type];
+            // TODO: remove when fixed
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.solid || a.isSolid, a.type, a.shownHook];
             else a = [null, null];
         }
-        if (a.length == 2) a = [...a, true, false, false];
+        if (a.length == 2) a = [a[0], true, a[1], false, false];
         if (a.length == 5) a = [...a, "KitBot"];
+        if (a.length == 6) a = [...a, null];
 
-        [this.path, this.color, this.isShown, this.isGhost, this.isSolid, this.type] = a;
+        [this.path, this.shown, this.color, this.ghost, this.solid, this.type, this.shownHook.path] = a;
     }
 
     async makeContextMenu() {
@@ -7090,31 +7299,33 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
                 this.type = k;
             });
         });
-        itm = menu.addItem(new core.App.Menu.Item("Ghost", this.isGhost ? "checkmark" : ""));
+        itm = menu.addItem(new core.App.Menu.Item("Ghost", this.ghost ? "checkmark" : ""));
         itm.addHandler("trigger", e => {
-            this.isGhost = !this.isGhost;
+            this.ghost = !this.ghost;
         });
-        itm = menu.addItem(new core.App.Menu.Item("Solid", this.isSolid ? "checkmark" : ""));
+        itm = menu.addItem(new core.App.Menu.Item("Solid", this.solid ? "checkmark" : ""));
         itm.addHandler("trigger", e => {
-            this.isSolid = !this.isSolid;
+            this.solid = !this.solid;
         });
         return menu;
     }
 
-    get isGhost() { return this.#isGhost; }
-    set isGhost(v) {
+    get ghost() { return this.#ghost; }
+    set ghost(v) {
         v = !!v;
-        if (this.isGhost == v) return;
-        this.change("isGhost", this.isGhost, this.#isGhost=v);
-        if (this.isGhost) this.eGhostBtn.classList.add("this");
+        if (this.ghost == v) return;
+        this.change("ghost", this.ghost, this.#ghost=v);
+        if (this.ghost)
+            this.eGhostBtn.classList.add("this");
         else this.eGhostBtn.classList.remove("this");
     }
-    get isSolid() { return this.#isSolid; }
-    set isSolid(v) {
+    get solid() { return this.#solid; }
+    set solid(v) {
         v = !!v;
-        if (this.isSolid == v) return;
-        this.change("isSolid", this.isSolid, this.#isSolid=v);
-        if (this.isSolid) this.eSolidBtn.classList.add("this");
+        if (this.solid == v) return;
+        this.change("solid", this.solid, this.#solid=v);
+        if (this.solid)
+            this.eSolidBtn.classList.add("this");
         else this.eSolidBtn.classList.remove("this");
     }
     get type() { return this.#type; }
@@ -7146,11 +7357,12 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             path: this.path,
+            shown: this.shown,
             color: this.color,
-            isShown: this.isShown,
-            isGhost: this.isGhost,
-            isSolid: this.isSolid,
+            ghost: this.ghost,
+            solid: this.solid,
             type: this.type,
+            shownHook: this.shownHook.path,
         });
     }
 };
@@ -7186,8 +7398,8 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     let render = renders[i];
                     render.name = this.pose.path;
                     render.color = this.pose.color;
-                    render.isGhost = this.pose.isGhost;
-                    render.isSolid = this.pose.isSolid;
+                    render.isGhost = this.pose.ghost;
+                    render.isSolid = this.pose.solid;
                     render.display.type = type;
                     render.display.data = value;
                     render.robot = this.pose.type;

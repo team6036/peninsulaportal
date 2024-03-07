@@ -2013,7 +2013,7 @@ article.md.lighter table td {
     transition: background-color var(--t);
 }
 .explorer > .node > .explorer > button.side:not(:disabled):hover::before,
-.browsernode > .explorer > button.side:not(:disabled):hover::before {
+.explorernode > .explorer > button.side:not(:disabled):hover::before {
     background-color: var(--a);
 }
 .explorer > .node > .explorer > button.side:disabled::before,
