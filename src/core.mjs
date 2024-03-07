@@ -178,7 +178,7 @@ export class App extends util.Target {
                         theElem.style.transform = (t < t2 ? "" : t < t3 ? "translate("+pos.xy.map(v => v+"px").join(",")+")" : "translate("+V.dir(360*Math.random(), 5*Math.random()).add(0, y).xy.map(v => v+"px").join(",")+")");
                         theElem.style.filter = (t < t2 ? "" : t < t3 ? "brightness("+brightness+") hue-rotate("+hue+"deg)" : "");
                         theElem.style.background = (t < t3 ? "#357EC7" : "radial-gradient(circle,#8000,#8004), #357EC7");
-                        theSadFace.textContent = (t < t2 ? ":(" : t < t3 ? [":)", ":P", ":|", ":3"][Math.floor(4*Math.random())] : ">:)");
+                        theSadFace.textContent = (t < t2 ? ":(" : t < t3 ? util.choose([":)", ":P", ":|", ":3"]) : ">:)");
                         faceT += delta;
                         if (faceT > util.lerp(...glitchT, Math.random())) {
                             faceT = 0;
@@ -2391,7 +2391,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
     constructor(label, icon="") {
         super();
 
-        this.#id = new Array(64).fill(null).map(_ => util.BASE64[Math.floor(util.BASE64.length*Math.random())]).join("");
+        this.#id = util.jargonBase64(64);
 
         this.#role = null;
         this.#type = null;
@@ -3452,7 +3452,7 @@ export class AppFeature extends App {
             if (this.hasProject(proj)) return false;
             let id = proj.id;
             while (id == null || this.hasProject(id))
-                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
+                id = util.jargonBase64(10);
             this.#projects[id] = proj;
             proj.id = id;
             proj.addLinkedHandler(this, "change", c => this.markChange(":"+id));
@@ -6140,7 +6140,7 @@ export class Parallax extends util.Target {
                                 let mag = new util.V3(xz.x, y.y, xz.y);
                                 const speck = new Parallax.Speck(
                                     Math.floor(Parallax.Speck.materials.length*Math.random()),
-                                    radii[Math.floor(radii.length*Math.random())], 0,
+                                    util.choose(radii), 0,
                                 );
                                 speck.object.position.set(...pos.xyz);
                                 [speck.velX, speck.velY, speck.velZ] = mag.mul(util.lerp(0.05, 0.15, Math.random())).xyz;
@@ -6162,7 +6162,7 @@ export class Parallax extends util.Target {
                             let radii = [0.02, 0.015, 0.01];
                             const speck = new Parallax.Speck(
                                 Math.floor(Parallax.Speck.materials.length*Math.random()),
-                                radii[Math.floor(radii.length*Math.random())], 0,
+                                util.choose(radii), 0,
                             );
                             let pos;
                             do {
