@@ -1355,7 +1355,7 @@ export class App extends util.Target {
         if (!this.hasContextMenu()) return false;
         this.contextMenu.elem.style.left = v.x+"px";
         this.contextMenu.elem.style.top = v.y+"px";
-        this.contextMenu.fix();
+        setTimeout(() => this.contextMenu.fix(), 10);
         return this.contextMenu;
     }
 
@@ -2181,6 +2181,8 @@ App.Menu = class AppMenu extends util.Target {
     get elem() { return this.#elem; }
 
     fix() {
+        this.elem.style.transform = "";
+        this.elem.offsetWidth;
         let r = this.elem.getBoundingClientRect();
         let ox = 0, oy = 0;
         if (r.right > window.innerWidth) ox = window.innerWidth-r.right;
@@ -2425,7 +2427,7 @@ App.Menu.Item = class AppMenuItem extends util.Target {
 
         this.elem.appendChild(this.menu.elem);
 
-        this.elem.addEventListener("mouseenter", e => this.fix());
+        this.elem.addEventListener("mouseenter", e => setTimeout(() => this.fix(), 10));
         this.elem.addEventListener("click", e => {
             if (this.type == "input") return;
             if (this.disabled) return;
@@ -4078,6 +4080,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     #eNavPost;
     #eNavProgress;
     #eNavProgressTooltip;
+    #eNavOptionsButton;
     #eNavActionButton;
     #eNavForwardButton;
     #eNavBackButton;
@@ -4108,6 +4111,9 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.eNavProgress.classList.add("progress");
         this.eNavProgress.innerHTML = "<div class='hover'><div class='tooltip hov nx'></div></div>";
         this.#eNavProgressTooltip = this.eNavProgress.querySelector(":scope > .hover > .tooltip");
+        this.#eNavOptionsButton = document.createElement("button");
+        this.eNavPre.appendChild(this.eNavOptionsButton);
+        this.eNavOptionsButton.innerHTML = "<ion-icon name='ellipsis-vertical'></ion-icon>";
         this.#eNavActionButton = document.createElement("button");
         this.eNavPre.appendChild(this.eNavActionButton);
         this.eNavActionButton.innerHTML = "<ion-icon name='play'></ion-icon>";
@@ -4139,6 +4145,14 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             }
             if (e.code == "ArrowRight") {
                 this.post("nav-forward");
+                this.eNav.focus();
+            }
+            if (e.code == "Comma") {
+                this.post("nav-back-small");
+                this.eNav.focus();
+            }
+            if (e.code == "Period") {
+                this.post("nav-forward-small");
                 this.eNav.focus();
             }
             if (e.code == "Space") {
@@ -4299,6 +4313,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     get eNavPost() { return this.#eNavPost; }
     get eNavProgress() { return this.#eNavProgress; }
     get eNavProgressTooltip() { return this.#eNavProgressTooltip; }
+    get eNavOptionsButton() { return this.#eNavOptionsButton; }
     get eNavActionButton() { return this.#eNavActionButton; }
     get eNavForwardButton() { return this.#eNavForwardButton; }
     get eNavBackButton() { return this.#eNavBackButton; }
