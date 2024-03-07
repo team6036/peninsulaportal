@@ -3132,13 +3132,12 @@ export class AppFeature extends App {
             this.eProjectInfoBtn.classList.add("display");
             this.eProjectInfoBtn.innerHTML = "<ion-icon name='chevron-down'></ion-icon>";
             this.eProjectInfoBtn.addEventListener("click", e => {
-                e.stopPropagation();
                 if (this.eProjectInfo.classList.contains("this")) this.eProjectInfo.classList.remove("this");
                 else {
                     this.eProjectInfo.classList.add("this");
                     const click = e => {
-                        e.stopPropagation();
                         if (this.eProjectInfo.contains(e.target)) return;
+                        e.stopPropagation();
                         document.body.removeEventListener("click", click, { capture: true });
                         this.eProjectInfo.classList.remove("this");
                     };
