@@ -1297,7 +1297,7 @@ export class App extends util.Target {
     }
     bindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
-        ["PANEL", "PLANNER", "DATABASE"].forEach(name => {
+        ["PANEL", "PLANNER", "DATABASE", "PIT"].forEach(name => {
             let itm = menu.findItemWithId("spawn:"+name);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
