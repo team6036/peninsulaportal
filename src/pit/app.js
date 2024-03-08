@@ -58,6 +58,8 @@ export default class App extends core.App {
                 const materials = [
                     new THREE.MeshBasicMaterial({ color: 0xffffff }),
                     new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+                    new THREE.MeshBasicMaterial({ color: 0xffffff }),
                     new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true, shininess: 200 }),
                     new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true, shininess: 200 }),
                     new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true, shininess: 200 }),
@@ -93,22 +95,21 @@ export default class App extends core.App {
                 update();
 
                 let model = null;
-                core.LOADER.load("../../temp/model.glb", gltf => {
-                    throw "error";
-                    model = gltf.scene;
-                    model.traverse(obj => {
-                        if (!obj.isMesh) return;
-                        obj.material.metalness = 0;
-                        obj.material.shininess = 0;
-                        obj.castShadow = !obj.material.transparent;
-                        obj.receiveShadow = !obj.material.transparent;
-                    });
-                    const scale = 1.25;
-                    model.scale.set(scale, scale, scale);
-                    const bbox = new THREE.Box3().setFromObject(model);
-                    model.position.set(0, (bbox.max.y-bbox.min.y)/2, 0);
-                    scene.add(model);
-                });
+                // core.LOADER.load("../../temp/model.glb", gltf => {
+                //     model = gltf.scene;
+                //     model.traverse(obj => {
+                //         if (!obj.isMesh) return;
+                //         obj.material.metalness = 0;
+                //         obj.material.shininess = 0;
+                //         obj.castShadow = !obj.material.transparent;
+                //         obj.receiveShadow = !obj.material.transparent;
+                //     });
+                //     const scale = 1.25;
+                //     model.scale.set(scale, scale, scale);
+                //     const bbox = new THREE.Box3().setFromObject(model);
+                //     model.position.set(0, (bbox.max.y-bbox.min.y)/2, 0);
+                //     scene.add(model);
+                // });
 
                 const makeMesh = (n, d, r1, r2, w, i) => {
                     const kk = n;
@@ -183,13 +184,13 @@ export default class App extends core.App {
                 const group = new THREE.Group();
                 model.add(group);
                 group.position.set(-0.1, 0, 0);
-                const m1 = makeMesh(3, -30, 1/1.5-0.25, 1/1.5, 0.25, 2);
+                const m1 = makeMesh(3, -30, 1/1.5-0.25, 1/1.5, 0.25, 4);
                 m1.position.set(-1, 0.5-1/1.5, 0);
                 group.add(m1);
-                const m2 = makeMesh(60, 0, 0.5-0.125, 0.5, 0.25, 3);
+                const m2 = makeMesh(60, 0, 0.5-0.125, 0.5, 0.25, 5);
                 m2.position.set(0, 0, 0);
                 group.add(m2);
-                const m3 = makeMesh(4, 45, 0.5*Math.sqrt(2)-0.2, 0.5*Math.sqrt(2), 0.25, 4);
+                const m3 = makeMesh(4, 45, 0.5*Math.sqrt(2)-0.2, 0.5*Math.sqrt(2), 0.25, 6);
                 m3.position.set(+1.1, 0, 0);
                 group.add(m3);
                 const scale = 0.5;
@@ -207,13 +208,17 @@ export default class App extends core.App {
                     let colorA = core.PROPERTYCACHE.getColor("--a");
                     let colorV = core.PROPERTYCACHE.getColor("--v2");
                     // let color1 = core.PROPERTYCACHE.getColor("--cr");
-                    // let color2 = core.PROPERTYCACHE.getColor("--v8");
+                    // let color2 = core.PROPERTYCACHE.getColor("--cy");
                     // let color3 = core.PROPERTYCACHE.getColor("--cb");
                     materials[0].color.set(colorW.toHex(false));
                     materials[1].color.set(colorA.toHex(false));
-                    materials[2].color.set(colorV.toHex(false));
-                    materials[3].color.set(colorV.toHex(false));
+                    // materials[0].color.set(color1.toHex(false));
+                    // materials[1].color.set(color2.toHex(false));
+                    // materials[2].color.set(color3.toHex(false));
+                    // materials[3].color.set(colorW.toHex(false));
                     materials[4].color.set(colorV.toHex(false));
+                    materials[5].color.set(colorV.toHex(false));
+                    materials[6].color.set(colorV.toHex(false));
                     light1.color.set(colorW.toHex(false));
                     light2.color.set(colorA.toHex(false));
 
