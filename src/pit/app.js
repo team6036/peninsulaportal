@@ -50,6 +50,8 @@ export default class App extends core.App {
 
                 const specks = [];
 
+                const flatShading = true;
+
                 const geometries = [
                     new THREE.SphereGeometry(0.015, 8, 8),
                     new THREE.SphereGeometry(0.01, 8, 8),
@@ -60,9 +62,9 @@ export default class App extends core.App {
                     new THREE.MeshBasicMaterial({ color: 0xffffff }),
                     new THREE.MeshBasicMaterial({ color: 0xffffff }),
                     new THREE.MeshBasicMaterial({ color: 0xffffff }),
-                    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true, shininess: 200 }),
-                    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true, shininess: 200 }),
-                    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true, shininess: 200 }),
+                    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: flatShading, shininess: 200 }),
+                    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: flatShading, shininess: 200 }),
+                    new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: flatShading, shininess: 200 }),
                 ];
                 for (let i = 0; i < 100; i++) {
                     const mesh = new THREE.Mesh(
