@@ -7814,7 +7814,7 @@ export default class App extends core.AppFeature {
                                         },
                                     },
                                     {
-                                        id: "source:csv-time", label: "CSV-TIME", type: "radio",
+                                        id: "source:csv-time", label: "CSV-Time", type: "radio",
                                         click: () => {
                                             const page = this.projectPage;
                                             if (!page.hasProject()) return;
@@ -7822,7 +7822,7 @@ export default class App extends core.AppFeature {
                                         },
                                     },
                                     {
-                                        id: "source:csv-field", label: "CSV-FIELD", type: "radio",
+                                        id: "source:csv-field", label: "CSV-Field", type: "radio",
                                         click: () => {
                                             const page = this.projectPage;
                                             if (!page.hasProject()) return;
@@ -9076,8 +9076,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         ) {
             data.children.at(-1).name = {
                 WPILOGSource: "WPILOG",
-                CSVTimeSource: "CSV-TIME",
-                CSVFieldSource: "CSV-FIELD",
+                CSVTimeSource: "CSV-Time",
+                CSVFieldSource: "CSV-Field",
             }[this.source.constructor.name];
             data.children.push(
                 {
