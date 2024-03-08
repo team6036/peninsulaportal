@@ -7875,8 +7875,8 @@ export default class App extends core.AppFeature {
                 btn.textContent = {
                     "nt": "NT4",
                     "wpilog": "WPILOG",
-                    "csv-time": "CSV-TIME",
-                    "csv-field": "CSV-FIELD",
+                    "csv-time": "CSV-Time",
+                    "csv-field": "CSV-Field",
                 }[name];
                 btn.addEventListener("click", e => {
                     e.stopPropagation();
@@ -8293,8 +8293,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     } catch (e) {
                         this.app.doError({
                             WPILOGSource: "WPILOG",
-                            CSVTimeSource: "CSV-TIME",
-                            CSVFieldSource: "CSV-FIELD",
+                            CSVTimeSource: "CSV-Time",
+                            CSVFieldSource: "CSV-Field",
                         }[source.constructor.name]+" Load Error", "File: "+this.project.config.source, e);
                     }
                     this.app.progress = null;

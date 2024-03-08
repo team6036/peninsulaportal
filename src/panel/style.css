@@ -1,3 +1,7 @@
+#titlebar > #projectinfo > .content {
+    width: 400px !important;
+}
+
 #PROJECTPAGE > .main {
     --side: 15%;
 
