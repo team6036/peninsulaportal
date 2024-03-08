@@ -8292,6 +8292,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.app.progress = 1;
                     } catch (e) {
                         this.app.doError({
+                            NTSource: "NT",
                             WPILOGSource: "WPILOG",
                             CSVTimeSource: "CSV-Time",
                             CSVFieldSource: "CSV-Field",
