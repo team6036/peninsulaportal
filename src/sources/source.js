@@ -86,7 +86,6 @@ export default class Source extends util.Target {
                 node.field = field;
                 field.node = node;
             }
-            field.onAdd();
             return field;
         });
     }
@@ -95,7 +94,6 @@ export default class Source extends util.Target {
             if (!(field instanceof Source.Field)) return false;
             if (field.source != this) return false;
             if (!this.hasField(field)) return false;
-            field.onRem();
             delete this.#fields[field.path];
             if (this.buildTree) {
                 let path = field.path.split("/").filter(part => part.length > 0);
@@ -231,7 +229,8 @@ export default class Source extends util.Target {
         return this;
     }
 }
-Source.Field = class SourceField extends util.Target {
+// Source.Field = class SourceField extends util.Target {
+Source.Field = class SourceField {
     #source;
 
     #node;
@@ -284,7 +283,7 @@ Source.Field = class SourceField extends util.Target {
     }
 
     constructor(source, path, type) {
-        super();
+        // super();
 
         if (!(source instanceof Source)) throw new Error("Source is not of class Source");
         this.#source = source;
@@ -502,7 +501,8 @@ Source.Field = class SourceField extends util.Target {
         return field;
     }
 };
-Source.Node = class SourceNode extends util.Target {
+// Source.Node = class SourceNode extends util.Target {
+Source.Node = class SourceNode {
     #parent;
 
     #field;
@@ -513,7 +513,7 @@ Source.Node = class SourceNode extends util.Target {
     #nodes;
 
     constructor(parent, name, nodes) {
-        super();
+        // super();
 
         if (!(parent instanceof Source || parent instanceof Source.Node)) throw new Error("Parent is not of class Source nor of class SourceNode");
         this.#parent = parent;
