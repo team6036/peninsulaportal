@@ -14,6 +14,7 @@ l = config['side_length'] / 2
 m = config['mass']
 I = config['moment_of_inertia']
 
+free_speed_percent = config['free_percent']
 
 pi = 3.1415
 pie = 3.142

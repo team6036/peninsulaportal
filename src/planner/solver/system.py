@@ -72,7 +72,7 @@ def apply_kinematics(X, U, dt, i, opti):
 
         v = vx**2 + vy**2
 
-        opti.subject_to(v < cs.max_module_ground_speed ** 2)
+        opti.subject_to(v < (cs.max_module_ground_speed * cs.free_speed_percent) ** 2)
 
         c = get_current(ca.sqrt(v) / cs.wheel_radius, 12)
         t = get_torque(c)
@@ -114,7 +114,7 @@ def apply_kinematics2(X, U, dt, i, opti):
 
         v = vx**2 + vy**2
 
-        opti.subject_to(v < cs.max_module_ground_speed ** 2)
+        # opti.subject_to(v < cs.max_module_ground_speed ** 2)
 
         c = get_current(ca.sqrt(v) / cs.wheel_radius, 12)
         t = get_torque(c)
