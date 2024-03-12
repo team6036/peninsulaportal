@@ -55,6 +55,10 @@ for node in data['nodes']:
         w_theta.append(node['theta'])
     else:
         w_theta.append(w_theta[-1])
+
+
+    if 'theta_v' in node:
+        opti.subject_to(X[way_i[i], 5] == 0)
     i+=1
 
 
