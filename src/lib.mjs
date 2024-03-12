@@ -100,7 +100,7 @@ export class FSOperator extends util.Target {
         if (!this.hasModules()) return null;
         pth = this.makePath(pth);
         this.fsLog(`fs:file-read-raw ${pth}`);
-        return [...(await this.fs.promises.readFile(pth))];
+        return new Uint8Array(await this.fs.promises.readFile(pth));
     }
     static async fileWrite(pth, content) {
         if (!this.hasModules()) return null;

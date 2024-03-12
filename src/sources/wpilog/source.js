@@ -42,7 +42,7 @@ export default class WPILOGSource extends Source {
             });
             client.start({
                 opt: {},
-                source: [...this.data],
+                source: this.data,
             });
         });
     }

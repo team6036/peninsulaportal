@@ -16,15 +16,11 @@ export default class WPILOGDecoder extends util.Target {
     #data;
     #dataView;
 
-    #records;
-
     constructor(data) {
         super();
 
         this.#data = toUint8Array(data);
         this.#dataView = new DataView(this.data.buffer);
-
-        this.#records = [];
     }
 
     get data() { return this.#data; }
@@ -61,11 +57,8 @@ export default class WPILOGDecoder extends util.Target {
         return Number(v);
     }
 
-    get records() { return [...this.#records]; }
-
     build(callback) {
-        this.#records = [];
-        if (!this.isValid()) return this.records;
+        if (!this.isValid()) return;
         let extraHeaderL = this.dataView.getUint32(8, true);
         let x = 12 + extraHeaderL;
         while (1) {
@@ -79,15 +72,14 @@ export default class WPILOGDecoder extends util.Target {
             let size = this.#readInt(x+1+entryL, sizeL);
             let ts = this.#readInt(x+1+entryL+sizeL, tsL);
             if (this.data.length < x+headerL+size || entry < 0 || size < 0) break;
-            this.#records.push(new WPILOGDecoder.Record(
+            const record = new WPILOGDecoder.Record(
                 entry, ts,
                 this.data.subarray(x+headerL, x+headerL+size),
-            ));
+            );
             x += headerL+size;
             if (util.is(callback, "func"))
-                callback(this.#records.at(-1), x/this.data.byteLength);
+                callback(record, x/this.data.byteLength);
         }
-        return this.records;
     }
 }
 WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
