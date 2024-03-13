@@ -4234,7 +4234,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                 time = stime + offset;
                 time = Math.min(len, Math.max(0, time)) / 1000;
                 if (this.eVideo.readyState > 0) {
-                    if (playback.paused || time < 0 || time >= len/1000) {
+                    if (playback.paused || playback.finished || time < 0 || time >= len/1000) {
                         thresh = 0.001;
                         if (!this.eVideo.paused)
                             this.eVideo.pause();
