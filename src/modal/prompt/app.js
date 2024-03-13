@@ -39,17 +39,8 @@ export default class App extends core.AppModal {
                 e.preventDefault();
                 this.ieConfirm.click();
             });
-            this.ieConfirm.addEventListener("click", async e => {
+            this.ieConfirm.addEventListener("click", e => {
                 e.stopPropagation();
-                await new Promise(async (res, rej) => {
-                    const f = () => {
-                        this.remHandler("modify", f);
-                        res();
-                    };
-                    await this.cast();
-                    this.addHandler("modify", f);
-                    if (!this.customType()) f();
-                });
                 this.result(this.ivalue);
             });
             this.ieCancel.addEventListener("click", e => {

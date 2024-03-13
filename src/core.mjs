@@ -1562,7 +1562,8 @@ App.PopupBase = class AppPopupBase extends util.Target {
                         remove();
                         remove = null;
                     }
-                    this.result(r);
+                    this.value = r;
+                    this.result(this.value);
                     this.remHandler("change", onChange);
                 });
                 this.post("post-add");
