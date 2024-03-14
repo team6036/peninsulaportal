@@ -119,7 +119,12 @@ const MAIN = async () => {
 
             this.#parent = null;
 
-            this.#process = (mode == "exec") ? cp.exec(...a) : (mode == "execFile") ? cp.execFile(...a) : (mode == "fork") ? cp.fork(...a) : (mode == "spawn") ? cp.spawn(...a) : null;
+            this.#process = 
+                (mode == "exec") ? cp.exec(...a) :
+                (mode == "execFile") ? cp.execFile(...a) :
+                (mode == "fork") ? cp.fork(...a) :
+                (mode == "spawn") ? cp.spawn(...a) :
+                null;
             if (!this.process) throw new Error(`Invalid spawn mode '${mode}'`);
             this.process.stdout.on("data", data => this.post("data", data));
             this.process.stderr.on("data", data => {
@@ -648,7 +653,10 @@ const MAIN = async () => {
                 label: (name.length > 0) ? util.formatText(name).replaceAll(":", " ") : "Portal",
                 submenu: [
                     {
-                        label: (name.length > 0) ? ("About Peninsula "+util.formatText(name).replaceAll(":", " ")) : "About Peninsula",
+                        label:
+                            (name.length > 0) ?
+                                ("About Peninsula "+util.formatText(name).replaceAll(":", " ")) :
+                            "About Peninsula",
                         enabled: !!("about" in signal ? signal.about : true),
                         click: () => signal.post("about"),
                     },
@@ -709,7 +717,8 @@ const MAIN = async () => {
             this.#windowManager = new WindowManager(this);
 
             name = String(name);
-            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.substring(6))))) throw new Error(`Name '${name}' is not valid`);
+            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.substring(6)))))
+                throw new Error(`Name '${name}' is not valid`);
             this.#name = name;
 
             this.#window = null;
@@ -837,7 +846,9 @@ const MAIN = async () => {
             const onHolidayState = async holiday => {
                 let tag = "png";
                 let defaultIcon = path.join(__dirname, "assets", "app", "icon."+tag);
-                let icon = (holiday == null) ? defaultIcon : util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
+                let icon = 
+                    (holiday == null) ? defaultIcon :
+                    util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
                 if (!this.hasWindow()) return;
                 if (OS.platform == "win32") this.window.setIcon(defaultIcon);
                 if (OS.platform == "darwin") app.dock.setIcon(defaultIcon);
@@ -862,7 +873,10 @@ const MAIN = async () => {
             let id = setTimeout(async () => {
                 clear();
                 if (this.isModal) return;
-                let r = await showConfirm("Window Start Error", "Startup", `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`);
+                let r = await showConfirm(
+                    "Window Start Error", "Startup",
+                    `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`,
+                );
                 if (r || !this.hasWindow()) return this.stop();
                 // ew
                 ready({ sender: { id: this.window.webContents.id } });
@@ -917,7 +931,8 @@ const MAIN = async () => {
                 this.stop();
             });
 
-            if (this.isModal) this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.substring(6).toLowerCase());
+            if (this.isModal)
+                this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.substring(6).toLowerCase());
             else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
             namefs = {
@@ -1078,9 +1093,9 @@ const MAIN = async () => {
             let hasWindowData = await WindowManager.dirHas(this.getDataPath(manager, name, started));
             if (!hasWindowData) await WindowManager.dirMake(this.getDataPath(manager, name, started));
             let hasConfig = await WindowManager.fileHas([this.getDataPath(manager, name, started), ".config"]);
-            if (!hasConfig) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".config"], JSON.stringify({}, null, "\t"));
+            if (!hasConfig) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".config"], "");
             let hasState = await WindowManager.fileHas([this.getDataPath(manager, name, started), ".state"]);
-            if (!hasState) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".state"], JSON.stringify({}, null, "\t"));
+            if (!hasState) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".state"], "");
             return true;
         }
         async affirm() { return await Window.affirm(this.manager, this.name, this.started); }
@@ -1369,12 +1384,14 @@ const MAIN = async () => {
                             let hasLogsDir = await this.dirHas("logs");
                             if (!hasLogsDir) return [];
                             let dirents = await this.dirList("logs");
-                            return dirents.filter(dirent => dirent.type == "file" && dirent.name.endsWith(".wpilog")).map(dirent => {
-                                return {
-                                    name: dirent.name,
-                                    path: path.join(this.dataPath, "logs", dirent.name),
-                                };
-                            });
+                            return dirents
+                                .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".wpilog")))
+                                .map(dirent => {
+                                    return {
+                                        name: dirent.name,
+                                        path: path.join(this.dataPath, "logs", dirent.name),
+                                    };
+                                });
                         },
                         "logs-server": async () => {
                             doLog = false;
@@ -1409,7 +1426,10 @@ const MAIN = async () => {
                         let signal = new util.Target();
                         signal.addHandler("about", () => this.send("about"));
                         signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
-                        this.#menu = electron.Menu.buildFromTemplate([...makeMenuDefault(this.name, signal), ...util.ensure(v, "arr")]);
+                        this.#menu = electron.Menu.buildFromTemplate([
+                            ...makeMenuDefault(this.name, signal),
+                            ...util.ensure(v, "arr"),
+                        ]);
                         const dfs = menu => {
                             if (!menu) return;
                             menu.items.forEach(itm => {
@@ -1536,7 +1556,12 @@ const MAIN = async () => {
                     v = new V(v).ceil();
                     let bounds = this.window.getBounds();
                     let cx = bounds.x+bounds.width/2, cy = bounds.y+bounds.height/2;
-                    this.window.setBounds({ x: Math.floor(cx-v.x/2), y: Math.floor(cy-v.y/2), width: v.x, height: v.y });
+                    this.window.setBounds({
+                        x: Math.floor(cx-v.x/2),
+                        y: Math.floor(cy-v.y/2),
+                        width: v.x,
+                        height: v.y,
+                    });
                     return true;
                 },
                 "width": async () => {
@@ -1544,7 +1569,12 @@ const MAIN = async () => {
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
                     let c = bounds.x+bounds.width/2;
-                    this.window.setBounds({ x: Math.floor(c-v/2), y: bounds.y, width: v, height: bounds.height });
+                    this.window.setBounds({
+                        x: Math.floor(c-v/2),
+                        y: bounds.y,
+                        width: v,
+                        height: bounds.height,
+                    });
                     return true;
                 },
                 "height": async () => {
@@ -1552,7 +1582,12 @@ const MAIN = async () => {
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
                     let c = bounds.y+bounds.height/2;
-                    this.window.setBounds({ x: bounds.x, y: Math.floor(c-v/2), width: bounds.width, height: v });
+                    this.window.setBounds({
+                        x: bounds.x,
+                        y: Math.floor(c-v/2),
+                        width: bounds.width,
+                        height: v,
+                    });
                     return true;
                 },
                 "min-size": async () => {
@@ -1696,7 +1731,10 @@ const MAIN = async () => {
                 },
                 "capture": async rect => {
                     if (!this.hasWindow()) return;
-                    const img = await ((rect == null) ? this.window.webContents.capturePage() : this.window.webContents.capturePage(rect));
+                    const img = await (
+                        rect ? this.window.webContents.capturePage(rect) :
+                        this.window.webContents.capturePage()
+                    );
                     return img.toDataURL();
                 },
                 "file-open-dialog": async options => {
@@ -1717,7 +1755,10 @@ const MAIN = async () => {
                 "projects-get": async () => {
                     await kfs["project-affirm"]();
                     const root = await kfs["root-get"]();
-                    return util.ensure(await WindowManager.dirList([root, "projects"]), "arr").filter(dirent => dirent.type == "file" && dirent.name.endsWith(".json")).map(dirent => dirent.name).map(name => name.substring(0, name.length-5));
+                    return util.ensure(await WindowManager.dirList([root, "projects"]), "arr")
+                        .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".json")))
+                        .map(dirent => dirent.name)
+                        .map(name => name.substring(0, name.length-5));
                 },
                 "projects-list": async () => {
                     await kfs["project-affirm"]();
@@ -1880,7 +1921,9 @@ const MAIN = async () => {
                     "videos": async () => {
                         if (!(await this.dirHas("videos")))
                             await this.dirMake("videos");
-                        return (await this.dirList("videos")).filter(dirent => dirent.type == "file").map(dirent => dirent.name);
+                        return (await this.dirList("videos"))
+                            .filter(dirent => dirent.type == "file")
+                            .map(dirent => dirent.name);
                     },
                     "video-has": async name => {
                         name = String(name);
@@ -1903,7 +1946,10 @@ const MAIN = async () => {
                             await this.dirMake("videos");
                         if (!(await this.fileHas(["videos", from])))
                             return null;
-                        await fs.promises.rename(WindowManager.makePath(this.dataPath, "videos", from), WindowManager.makePath(this.dataPath, "videos", to));
+                        await fs.promises.rename(
+                            WindowManager.makePath(this.dataPath, "videos", from),
+                            WindowManager.makePath(this.dataPath, "videos", to),
+                        );
                         return to;
                     },
                     "video-add-url": async url => {
@@ -1957,7 +2003,8 @@ const MAIN = async () => {
                 },
                 PLANNER: {
                     "exec": async (id, pathId) => {
-                        if (this.processManager.getProcessById("script") instanceof Process) throw new Error("Existing process has not terminated");
+                        if (this.processManager.getProcessById("script") instanceof Process)
+                            throw new Error("Existing process has not terminated");
 
                         id = String(id);
                         pathId = String(pathId);
@@ -2139,7 +2186,7 @@ const MAIN = async () => {
                         if (!(project instanceof subcore.Project)) throw new Error("Invalid project content with id: "+id);
 
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
-                        if (script == null) return {}; // throw new Error("No script for project with id: "+id);
+                        if (script == null) return {};
                         script = String(script);
                         let has = await WindowManager.fileHas(script);
                         if (!has) throw new Error("Script ("+script+") does not exist for project id: "+id);
@@ -2348,7 +2395,10 @@ const MAIN = async () => {
         }
 
         get window() { return this.#window; }
-        get rootManager() { return this.hasWindow() ? this.window.rootManager : this; }
+        get rootManager() {
+            if (this.hasWindow()) return this.window.rootManager;
+            return this;
+        }
 
         async init() {
             if (this.hasWindow()) return await this.window.manager.init();
@@ -2495,7 +2545,10 @@ const MAIN = async () => {
             }
         }
 
-        get loads() { return this.hasWindow() ? this.window.manager.loads : [...this.#loads]; }
+        get loads() {
+            if (this.hasWindow()) return this.window.manager.loads;
+            return [...this.#loads];
+        }
         set loads(v) {
             if (this.hasWindow()) return this.window.manager.loads = v;
             v = util.ensure(v, "arr");
@@ -2533,7 +2586,10 @@ const MAIN = async () => {
                 return load;
             });
         }
-        get isLoading() { return this.hasWindow() ? this.window.manager.isLoading : this.#isLoading; }
+        get isLoading() {
+            if (this.hasWindow()) return this.window.manager.isLoading;
+            return this.#isLoading;
+        }
         async tryLoad() {
             if (this.hasWindow()) return await this.window.manager.tryLoad();
             if (this.isLoading) return false;
@@ -2897,7 +2953,10 @@ const MAIN = async () => {
             return r;
         }
 
-        get started() { return this.hasWindow() ? this.window.manager.started : this.#started; }
+        get started() {
+            if (this.hasWindow()) return this.window.manager.started;
+            return this.#started;
+        }
         start(params=null) {
             if (this.hasWindow()) return this.window.manager.start(params);
 
@@ -3109,7 +3168,10 @@ const MAIN = async () => {
             return await this.clearWindows();
         }
 
-        get dataPath() { return this.hasWindow() ? this.window.dataPath : path.join(app.getPath("appData"), "PeninsulaPortal"); }
+        get dataPath() {
+            if (this.hasWindow()) return this.window.dataPath;
+            return path.join(app.getPath("appData"), "PeninsulaPortal");
+        }
         get root() { return this.dataPath; }
         set root(v) {}
 
@@ -3139,9 +3201,9 @@ const MAIN = async () => {
             let hasHolidayIconsDir = await this.dirHas([dataPath, "holidays", "icons"]);
             if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
             let hasConfig = await this.fileHas([dataPath, ".config"]);
-            if (!hasConfig) await this.fileWrite([dataPath, ".config"], JSON.stringify({}, null, "\t"));
+            if (!hasConfig) await this.fileWrite([dataPath, ".config"], "");
             let hasClientConfig = await this.fileHas([dataPath, ".clientconfig"]);
-            if (!hasClientConfig) await this.fileWrite([dataPath, ".clientconfig"], JSON.stringify({}, null, "\t"));
+            if (!hasClientConfig) await this.fileWrite([dataPath, ".clientconfig"], "");
             let hasVersion = await this.fileHas([dataPath, ".version"]);
             if (!hasVersion) await this.fileWrite([dataPath, ".version"], "");
             let hasState = await this.fileHas([dataPath, ".state"]);
@@ -3149,7 +3211,8 @@ const MAIN = async () => {
             return true;
         }
         async affirm() {
-            if (this.hasWindow()) return (await this.window.manager.affirm()) && (await WindowManager.basicAffirm(this.dataPath));
+            if (this.hasWindow())
+                return (await this.window.manager.affirm()) && (await WindowManager.basicAffirm(this.dataPath));
             let r = await WindowManager.affirm(this.dataPath);
             if (!r) return r;
             if (!this.hasStream()) {
@@ -3182,7 +3245,10 @@ const MAIN = async () => {
                     type: "dir", name: "logs",
                     children: [
                         //~/logs/*.log
-                        { type: "file", match: (_, name) => name.endsWith(".log") },
+                        {
+                            type: "file",
+                            match: [/\.log$/],
+                        },
                     ],
                 },
                 //~/dump
@@ -3203,7 +3269,10 @@ const MAIN = async () => {
                             children: [
                                 //~/templates/images/*.png
                                 //~/templates/images/*.png-tmp
-                                { type: "file", match: (_, name) => (name.endsWith(".png") || name.endsWith(".png-tmp")) },
+                                {
+                                    type: "file",
+                                    match: [/\.png$/, /\.png-tmp$/],
+                                },
                             ],
                         },
                         //~/templates/models
@@ -3212,7 +3281,10 @@ const MAIN = async () => {
                             children: [
                                 //~/templates/models/*.glb
                                 //~/templates/models/*.glb-tmp
-                                { type: "file", match: (_, name) => (name.endsWith(".glb") || name.endsWith(".glb-tmp")) }
+                                {
+                                    type: "file",
+                                    match: [/\.glb$/, /\.glb-tmp$/],
+                                }
                             ],
                         },
                         //~/templates/templates.json
@@ -3229,7 +3301,10 @@ const MAIN = async () => {
                             children: [
                                 //~/robots/models/*.glb
                                 //~/robots/models/*.glb-tmp
-                                { type: "file", match: (_, name) => (name.endsWith(".glb") || name.endsWith(".glb-tmp")) }
+                                {
+                                    type: "file",
+                                    match: [/\.glb$/, /\.glb-tmp$/],
+                                }
                             ],
                         },
                         //~/robots/robots.json
@@ -3252,16 +3327,19 @@ const MAIN = async () => {
                                 //~/holidays/icons/*.png-tmp
                                 //~/holidays/icons/*.ico-tmp
                                 //~/holidays/icons/*.icns-tmp
-                                { type: "file", match: (_, name) => (
-                                    name.endsWith(".svg") ||
-                                    name.endsWith(".png") ||
-                                    name.endsWith(".ico") ||
-                                    name.endsWith(".icns") ||
-                                    name.endsWith(".svg-tmp") ||
-                                    name.endsWith(".png-tmp") ||
-                                    name.endsWith(".ico-tmp") ||
-                                    name.endsWith(".icns-tmp")
-                                ) }
+                                {
+                                    type: "file",
+                                    match: [
+                                        /\.svg$/,
+                                        /\.png$/,
+                                        /\.ico$/,
+                                        /\.icns$/,
+                                        /\.svg-tmp$/,
+                                        /\.png-tmp$/,
+                                        /\.ico-tmp$/,
+                                        /\.icns-tmp$/,
+                                    ],
+                                }
                             ],
                         },
                         //~/holidays/holidays.json
@@ -3269,7 +3347,10 @@ const MAIN = async () => {
                     ],
                 },
                 //~/<feature>
-                { type: "dir", match: (_, name) => FEATURES.includes(name.toUpperCase()) },
+                {
+                    type: "dir",
+                    match: (_, name) => FEATURES.includes(name.toUpperCase()),
+                },
                 //~/panel
                 {
                     type: "dir", name: "panel",
@@ -3279,7 +3360,10 @@ const MAIN = async () => {
                             type: "dir", name: "logs",
                             children: [
                                 //~/panel/logs/*.wpilog
-                                { type: "file", match: (_, name) => name.endsWith(".wpilog") },
+                                {
+                                    type: "file",
+                                    match: [/\.wpilog$/],
+                                },
                             ],
                         },
                         //~/panel/videos
@@ -3288,8 +3372,10 @@ const MAIN = async () => {
                             children: [
                                 //~/panel/videos/*.mp4
                                 //~/panel/videos/*.mov
-                                { type: "file", match: (_, name) => name.endsWith(".mp4") },
-                                { type: "file", match: (_, name) => name.endsWith(".mov") },
+                                {
+                                    type: "file",
+                                    match: [/\.mp4$/, /\.mov$/],
+                                },
                             ],
                         },
                         //~/panel/projects
@@ -3297,7 +3383,10 @@ const MAIN = async () => {
                             type: "dir", name: "projects",
                             children: [
                                 //~/panel/projects/*.json
-                                { type: "file", match: (_, name) => name.endsWith(".json") },
+                                {
+                                    type: "file",
+                                    match: [/\.json$/],
+                                },
                             ],
                         },
                         //~/panel/projects.json
@@ -3313,7 +3402,10 @@ const MAIN = async () => {
                             type: "dir", name: "projects",
                             children: [
                                 //~/planner/projects/*.json
-                                { type: "file", match: (_, name) => name.endsWith(".json") },
+                                {
+                                    type: "file",
+                                    match: [/\.json$/],
+                                },
                             ],
                         },
                         //~/planner/projects.json
@@ -3325,7 +3417,7 @@ const MAIN = async () => {
                     ],
                 },
                 //~/themes.json
-                { type: "file", name: "themes.json" }
+                { type: "file", name: "themes.json" },
             ];
             let pths = [];
             const cleanup = async (pth, patterns) => {
@@ -3336,7 +3428,15 @@ const MAIN = async () => {
                     await Promise.all(patterns.map(async pattern => {
                         if (("type" in pattern) && (dirent.type != pattern.type)) return;
                         if (("name" in pattern) && (dirent.name != pattern.name)) return;
-                        if (("match" in pattern) && !pattern.match(dirent.type, dirent.name)) return;
+                        if ("match" in pattern) {
+                            if (util.is(pattern.match, "func")) {
+                                if (!pattern.match(dirent.type, dirent.name))
+                                    return;
+                            } else if (util.is(pattern.match, "arr")) {
+                                if (!pattern.match.any(v => new RegExp(v).test(dirent.name)))
+                                    return;
+                            } else if (!new RegExp(pattern.match).test(dirent.name)) return;
+                        }
                         any = true;
                         if (dirent.type != "dir") return;
                         if (!("children" in pattern)) return;
@@ -3350,7 +3450,10 @@ const MAIN = async () => {
             await cleanup([dataPath], format);
             return pths;
         }
-        async getCleanup() { return this.hasWindow() ? await this.window.manager.getCleanup() : await WindowManager.getCleanup(this.dataPath); }
+        async getCleanup() {
+            if (this.hasWindow()) return await this.window.manager.getCleanup();
+            return await WindowManager.getCleanup(this.dataPath);
+        }
         static async cleanup(dataPath, version) {
             version = String(version);
             log(". cleanup");
@@ -3373,7 +3476,10 @@ const MAIN = async () => {
             }));
             return true;
         }
-        async cleanup() { return this.hasWindow() ? await this.window.manager.cleanup() : await WindowManager.cleanup(this.dataPath, await this.get("base-version")); }
+        async cleanup() {
+            if (this.hasWindow()) return await this.window.manager.cleanup();
+            return await WindowManager.cleanup(this.dataPath, await this.get("base-version"));
+        }
 
         static async getFSVersion(pth) {
             try {
@@ -3396,9 +3502,18 @@ const MAIN = async () => {
             return compareVersions.compare(version, fsVersion, ">=");
         }
 
-        async getFSVersion() { return this.hasWindow() ? await this.window.manager.getFSVersion() : await WindowManager.getFSVersion(this.dataPath); }
-        async setFSVersion(verison) { return this.hasWindow() ? await this.window.manager.setFSVersion(verison) : await WindowManager.setFSVersion(this.dataPath, verison); }
-        async canFS(version) { return this.hasWindow() ? await this.window.manager.canFS(version) : await WindowManager.canFS(this.dataPath, version); }
+        async getFSVersion() {
+            if (this.hasWindow()) return await this.window.manager.getFSVersion();
+            return await WindowManager.getFSVersion(this.dataPath);
+        }
+        async setFSVersion(verison) {
+            if (this.hasWindow()) return await this.window.manager.setFSVersion(verison);
+            return await WindowManager.setFSVersion(this.dataPath, verison);
+        }
+        async canFS(version) {
+            if (this.hasWindow()) return await this.window.manager.canFS(cachedDataVersionTag);
+            return await WindowManager.canFS(this.dataPath, version);
+        }
 
         async bumpVersion(from, to) {
             from = String(from);
@@ -3441,7 +3556,10 @@ const MAIN = async () => {
             let client = this.tbaClientDestroy.remClient((id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id));
             return client;
         }
-        async tbaClientHas(id) { return this.hasWindow() ? !!(await this.window.tbaClientHas(id)) : (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(id) instanceof TbaClient); }
+        async tbaClientHas(id) {
+            if (this.hasWindow()) return await this.window.tbaClientHas(id);
+            return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(id) instanceof TbaClient);
+        }
         async tbaClientGet(id) {
             if (this.hasWindow()) return await this.window.tbaClientGet(id);
             if (!(await this.tbaClientHas(id))) return null;
@@ -3989,8 +4107,15 @@ const MAIN = async () => {
         return;
     }
 
-    showError = this.showError = async (name, type, e) => await manager.modalAlert({ icon: "warning", iconColor: "var(--cr)", title: name, content: type, infos: [e] }).whenModalResult();
-    showConfirm = this.showConfirm = async (name, type, e) => await manager.modalConfirm({ icon: "help-circle", title: name, content: type, infos: [e], confirm: "Terminate", cancel: "Continue anyway" }).whenModalResult();
+    showError = this.showError = async (name, type, e) => await manager.modalAlert({
+        icon: "warning", iconColor: "var(--cr)",
+        title: name, content: type, infos: [e],
+    }).whenModalResult();
+    showConfirm = this.showConfirm = async (name, type, e) => await manager.modalConfirm({
+        icon: "help-circle",
+        title: name, content: type, infos: [e],
+        confirm: "Terminate", cancel: "Continue anyway",
+    }).whenModalResult();
 
     manager.start();
     initializeResolver.state = true;
