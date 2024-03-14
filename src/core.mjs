@@ -5689,7 +5689,7 @@ export class Odometry3d extends Odometry {
             orbit: () => {
                 const controls = new OrbitControls(this.camera, this.canvas);
                 controls.target.set(0, 0, 0);
-                controls.panSpeed = 0;
+                controls.enablePan = false;
                 return controls;
             },
             free: () => new PointerLockControls(this.camera, this.canvas),
