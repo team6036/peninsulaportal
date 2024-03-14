@@ -6910,7 +6910,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.addHandler("change-odometry.renderType", update);
         update();
 
-        this.#fViewControlType = optionsForm.addField(new core.Form.SelectInput("movement-type", [{ value: "orbit", name: "Orbit" }, { value: "free", name: "Free" }]));
+        this.#fViewControlType = optionsForm.addField(new core.Form.SelectInput("movement-type", [{ value: "orbit", name: "Orbit" }, { value: "free", name: "Free" }, { value: "pan", name: "Pan" }]));
         this.fViewControlType.showHeader = false;
         this.fViewControlType.addHandler("change-value", () => {
             this.odometry.controlType = this.fViewControlType.value;

@@ -5686,8 +5686,19 @@ export class Odometry3d extends Odometry {
             this.controls.disconnect();
         }
         let controlfs = {
-            orbit: () => new OrbitControls(this.camera, this.canvas),
+            orbit: () => {
+                const controls = new OrbitControls(this.camera, this.canvas);
+                controls.target.set(0, 0, 0);
+                controls.panSpeed = 0;
+                return controls;
+            },
             free: () => new PointerLockControls(this.camera, this.canvas),
+            pan: () => {
+                const controls = new OrbitControls(this.camera, this.canvas);
+                controls.target.set(0, 0, 0);
+                controls.screenSpacePanning = false;
+                return controls;
+            },
         };
         this.#controls = (this.controlType in controlfs) ? controlfs[this.controlType]() : null;
         if (this.controls instanceof OrbitControls) {
@@ -5722,7 +5733,7 @@ export class Odometry3d extends Odometry {
     get controlType() { return this.#controlType; }
     set controlType(v) {
         v = String(v);
-        if (!["orbit", "free"].includes(v)) v = "orbit";
+        if (!["orbit", "free", "pan"].includes(v)) v = "orbit";
         if (this.controlType == v) return;
         this.change("controlType", this.controlType, this.#controlType=v);
         this.updateControls();
