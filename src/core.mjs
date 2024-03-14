@@ -5333,7 +5333,8 @@ export class Odometry3d extends Odometry {
                     obj.position.set(
                         obj.position.x - (bbox.max.x+bbox.min.x)/2,
                         obj.position.y - (bbox.max.y+bbox.min.y)/2,
-                        obj.position.z + (bbox.max.z-bbox.min.z)/2,
+                        // obj.position.z - (bbox.max.z+bbox.min.z)/2,
+                        obj.position.z - bbox.min.z,
                     );
                     [obj, pobj] = [new THREE.Object3D(), obj];
                     obj.add(pobj);
