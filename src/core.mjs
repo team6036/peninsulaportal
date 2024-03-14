@@ -5697,6 +5697,11 @@ export class Odometry3d extends Odometry {
                 const controls = new OrbitControls(this.camera, this.canvas);
                 controls.target.set(0, 0, 0);
                 controls.screenSpacePanning = false;
+                controls.mouseButtons = {
+                    LEFT: THREE.MOUSE.PAN,
+                    MIDDLE: THREE.MOUSE.DOLLY,
+                    RIGHT: THREE.MOUSE.ROTATE,
+                };
                 return controls;
             },
         };
