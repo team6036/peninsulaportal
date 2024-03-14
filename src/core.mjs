@@ -5323,6 +5323,11 @@ export class Odometry3d extends Odometry {
                     obj.traverse(obj => {
                         if (!obj.isMesh) return;
                         this.#traverseObject(obj, type);
+                        const color = new util.Color(obj.material.color.r*255, obj.material.color.g*255, obj.material.color.b*255);
+                        const h = color.h, s = color.s, thresh = 60;
+                        const score = Math.max(1-Math.abs(h-210)/thresh, 1-Math.abs(h-0)/thresh, 1-Math.abs(h-360)/thresh);
+                        if (score*s < 0.5) return;
+                        obj.material._allianceMaterial = true;
                     });
                     bbox = new THREE.Box3().setFromObject(obj);
                     obj.position.set(
@@ -6100,9 +6105,11 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                     if (obj == this.odometry.raycastIntersections[0].object)
                         hovered = true;
                 if (!obj.isMesh) return;
-                if (!this.hasRobot()) return;
-                if (!this.robot.startsWith("§")) return;
-                if (this.robot == "§axes") return;
+                if (!obj.material._allianceMaterial) {
+                    if (!this.hasRobot()) return;
+                    if (!this.robot.startsWith("§")) return;
+                    if (this.robot == "§axes") return;
+                }
                 obj.material.color.set(color.toHex(false));
             });
             css2dObjects.forEach(obj => {
@@ -6232,7 +6239,9 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             this.theObject.traverse(obj => {
                 if (!obj.isMesh) return;
                 if (!(obj.material instanceof THREE.Material)) return;
+                const allianceMaterial = !!obj.material._allianceMaterial;
                 obj.material = obj.material.clone();
+                obj.material._allianceMaterial = allianceMaterial;
             });
             this.odometry.wpilibGroup.add(this.theObject);
         }
