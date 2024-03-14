@@ -74,7 +74,8 @@ export class WorkerBase extends util.Target {
     constructor(self) {
         super();
 
-        if (!(self instanceof DedicatedWorkerGlobalScope)) throw new Error("Self parameter is not of class DedicatedWorkerGlobalScope");
+        if (!(self instanceof DedicatedWorkerGlobalScope))
+            throw new Error("Self is not of class DedicatedWorkerGlobalScope");
         this.#self = self;
 
         this.self.addEventListener("message", e => {

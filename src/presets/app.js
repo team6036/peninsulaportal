@@ -25,7 +25,10 @@ class Action extends util.Target {
         let idfs = {
             "cleanup-app-data-dir": () => {
                 this.action = async () => {
-                    let pop = this.app.confirm("Cleanup", "Are you sure you want to cleanup application data?\nDo not forget to back up data!");
+                    let pop = this.app.confirm(
+                        "Cleanup",
+                        "Are you sure you want to cleanup application data?\nDo not forget to back up!",
+                    );
                     let result = await pop.whenResult();
                     if (!result) return;
                     await action();

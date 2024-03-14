@@ -11,7 +11,10 @@ if (typeof(window) != "undefined") {
             await new Promise(async (res, rej) => {
                 script.addEventListener("load", () => res());
                 script.addEventListener("error", e => rej(e));
-                script.src = new URL("node_modules/mathjs/lib/browser/math.js", "file://"+String(await window.api.getAppRoot()));
+                script.src = new URL(
+                    "node_modules/mathjs/lib/browser/math.js",
+                    "file://"+String(await window.api.getAppRoot()),
+                );
             });
             math = window.math;
             delete window.math;
@@ -46,12 +49,25 @@ Array.prototype.flatten = function() {
         return sum;
     }, []);
 };
+Array.prototype.all = function(f) {
+    for (let v of this)
+        if (!f(v)) return false;
+    return true;
+};
+Array.prototype.any = function(f) {
+    for (let v of this)
+        if (f(v)) return true;
+    return false;
+};
 
 
 export function is(o, type) {
-    if (type == "num" || type == "float") return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o);
-    if (type == "int") return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0);
-    if (type == "any_num") return (typeof(o) == "number") && !Number.isNaN(o);
+    if (type == "num" || type == "float")
+        return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o);
+    if (type == "int")
+        return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0);
+    if (type == "any_num")
+        return (typeof(o) == "number") && !Number.isNaN(o);
     let typefs = {
         bool: () => {
             return typeof(o) == "boolean";
@@ -89,9 +105,12 @@ export function is(o, type) {
 export function ensure(o, type) {
     let useDef = arguments.length != 3;
     let def = arguments[2];
-    if (type == "num" || type == "float") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? o : useDef ? 0 : def;
-    if (type == "int") return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? Math.round(o) : useDef ? 0 : def;
-    if (type == "any_num") return ((typeof(o) == "number") && !Number.isNaN(o)) ? o : useDef ? 0 : def;
+    if (type == "num" || type == "float")
+        return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? o : useDef ? 0 : def;
+    if (type == "int")
+        return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? Math.round(o) : useDef ? 0 : def;
+    if (type == "any_num")
+        return ((typeof(o) == "number") && !Number.isNaN(o)) ? o : useDef ? 0 : def;
     let typefs = {
         bool: () => {
             return !!o;
@@ -779,8 +798,10 @@ export class Color extends Target {
                     }
                     if (!all) a = [0, 0, 0];
                     else {
-                        if (a.length == 3 || a.length == 4) a = new Array(a.length).fill(null).map((_, i) => BASE16.indexOf(a[i])).map(x => x*16+x);
-                        else if (a.length == 6 || a.length == 8) a = new Array(a.length/2).fill(null).map((_, i) => BASE16.indexOf(a[2*i])*16+BASE16.indexOf(a[2*i+1]));
+                        if (a.length == 3 || a.length == 4)
+                            a = new Array(a.length).fill(null).map((_, i) => BASE16.indexOf(a[i])).map(x => x*16+x);
+                        else if (a.length == 6 || a.length == 8)
+                            a = new Array(a.length/2).fill(null).map((_, i) => BASE16.indexOf(a[2*i])*16+BASE16.indexOf(a[2*i+1]));
                         else a = [0, 0, 0];
                     }
                     if (a.length == 4) a[3] /= 255;

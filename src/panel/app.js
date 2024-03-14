@@ -3812,7 +3812,8 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         const updateSum = () => progress(util.lerp(a, b, sum.sum()/sum.length));
                         [sum, a, b] = [[], 0, 0.5];
                         const sources = 
-                            ((state.importFrom == "session") ? [this.hasPage() ? { pth: null, source: this.page.source } : null] :
+                            ((state.importFrom == "session") ?
+                                [this.hasPage() ? { pth: null, source: this.page.source } : null] :
                             (await Promise.all(state.logs.map(async (log, i) => {
                                 sum.push(0);
                                 updateSum();

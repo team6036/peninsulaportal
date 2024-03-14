@@ -175,26 +175,54 @@ export class App extends util.Target {
                             hue = util.lerp(-30, 30, Math.random());
                         }
                         let y = (t < t4 ? 0 : util.lerp(0, window.innerHeight, util.ease.sinI((t-t4)/(t5-t4))));
-                        theElem.style.transform = (t < t2 ? "" : t < t3 ? "translate("+pos.xy.map(v => v+"px").join(",")+")" : "translate("+V.dir(360*Math.random(), 5*Math.random()).add(0, y).xy.map(v => v+"px").join(",")+")");
-                        theElem.style.filter = (t < t2 ? "" : t < t3 ? "brightness("+brightness+") hue-rotate("+hue+"deg)" : "");
-                        theElem.style.background = (t < t3 ? "#357EC7" : "radial-gradient(circle,#8000,#8004), #357EC7");
-                        theSadFace.textContent = (t < t2 ? ":(" : t < t3 ? util.choose([":)", ":P", ":|", ":3"]) : ">:)");
+                        theElem.style.transform = (
+                            (t < t2) ? "" :
+                            (t < t3) ? "translate("+pos.xy.map(v => v+"px").join(",")+")" :
+                            "translate("+V.dir(360*Math.random(), 5*Math.random()).add(0, y).xy.map(v => v+"px").join(",")+")"
+                        );
+                        theElem.style.filter = (
+                            (t < t2) ? "" :
+                            (t < t3) ? "brightness("+brightness+") hue-rotate("+hue+"deg)" :
+                            ""
+                        );
+                        theElem.style.background = (
+                            (t < t3) ?
+                            "#357EC7" :
+                            "radial-gradient(circle,#8000,#8004), #357EC7"
+                        );
+                        theSadFace.textContent = (
+                            (t < t2) ? ":(" :
+                            (t < t3) ? util.choose([":)", ":P", ":|", ":3"]) :
+                            ">:)"
+                        );
                         faceT += delta;
                         if (faceT > util.lerp(...glitchT, Math.random())) {
                             faceT = 0;
                             facePos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
                             faceSize = util.lerp(0.5, 1.5, Math.random());
                         }
-                        theSadFace.style.transform = (t < t2 ? "" : t < t3 ? "translate("+facePos.xy.map(v => v+"px").join(",")+") scale("+faceSize+")" : "");
-                        thePercentage.textContent = Math.round(100*(t < t1 ? ((t-0)/t1) : t < t2 ? 1 : (1+(t-t3)/2500)))+"% complete";
+                        theSadFace.style.transform = (
+                            (t < t2) ? "" :
+                            (t < t3) ? "translate("+facePos.xy.map(v => v+"px").join(",")+") scale("+faceSize+")" :
+                            ""
+                        );
+                        thePercentage.textContent = Math.round(100*(
+                            (t < t1) ? ((t-0)/t1) :
+                            (t < t2) ? 1 :
+                            (1+(t-t3)/2500)
+                        ))+"% complete";
                         percentT += delta;
                         if (percentT > util.lerp(...glitchT, Math.random())) {
                             percentT = 0;
                             percentPos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
                         }
-                        thePercentage.style.transform = (t < t2 ? "" : t < t3 ? "translate("+percentPos.xy.map(v => v+"px").join(",")+")" : "");
-                        let url = (t < t3 ? "https://www.windows.com/stopcode" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-                        let code = (t < t3 ? "CRITICAL_PROCESS_DIED" : "CRITICAL_PROCESS_CHILLING");
+                        thePercentage.style.transform = (
+                            (t < t2) ? "" :
+                            (t < t3) ? "translate("+percentPos.xy.map(v => v+"px").join(",")+")" :
+                            ""
+                        );
+                        let url = (t < t3) ? "https://www.windows.com/stopcode" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+                        let code = (t < t3) ? "CRITICAL_PROCESS_DIED" : "CRITICAL_PROCESS_CHILLING";
                         theInfo.innerHTML = `For more information about the issue and possible fixes, visit ${url}<br><br>If you call a support person, give them this info:<br>Stop code: ${code}`;
                     };
                     await util.wait(1000);
@@ -205,10 +233,39 @@ export class App extends util.Target {
                     elem.style.backgroundColor = "";
                     elem.style.cursor = "none";
                     elem.innerHTML = `
-    <div style="width:100%;height:100%;padding:150px;display:flex;flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:stretch;align-content:center;gap:20px;color:#fff;">
+    <div
+        style="
+            width: 100%;
+            height: 100%;
+            padding: 150px;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: nowrap;
+            justify-content: flex-start;
+            align-items: stretch;
+            align-content: center;
+            gap: 20px;
+            color:#fff;
+        "
+    >
         <div id="thesadface" style="font-family:Roboto;font-size:160px;">:(</div>
-        <div style="font-family:Roboto;font-size:32px;">Your PC ran into a problem and needs to restart as soon as we're finished collecting some error info<br><br><span id="thepercentage" style="display:inline-block;font-family:Roboto;"></span></div>
-        <div style="margin-top:40px;display:flex;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start;align-items:flex-start;align-content:flex-start;gap:20px;">
+        <div style="font-family:Roboto;font-size:32px;">
+            Your PC ran into a problem and needs to restart as soon as we're finished collecting some error info
+            <br><br>
+            <span id="thepercentage" style="display:inline-block;font-family:Roboto;"></span>
+        </div>
+        <div
+            style="
+                margin-top: 40px;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+                align-items: flex-start;
+                align-content: flex-start;
+                gap:20px;
+            "
+        >
             <div id="thecanvas" style="border:10px solid #fff;"></div>
             <div id="theinfo" style="font-family:Roboto;font-size:16px;text-align:left;line-height:1.75;"></div>
         </div>
@@ -288,7 +345,8 @@ export class App extends util.Target {
                         let t1 = util.getTime();
                         if (t0 == null || error) return t0 = t1;
                         try {
-                            if (this.eMount.classList.contains("runinfo")) this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
+                            if (this.eMount.classList.contains("runinfo"))
+                                this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
                             fpst += t1-t0; fpsn++;
                             if (fpst >= 1000) {
                                 fpst -= 1000;
@@ -310,7 +368,10 @@ export class App extends util.Target {
                         return [pth].flatten().join("/");
                     });
                     if (cleanups.length <= 3) return;
-                    let pop = this.confirm("Junk Files Found!", "We found some unnecessary files in your application data. Would you like to clean up these files?");
+                    let pop = this.confirm(
+                        "Junk Files Found!",
+                        "We found some unnecessary files in your application data. Would you like to clean up these files?",
+                    );
                     pop.infos = [cleanups.join("\n")];
                     let r = await pop.whenResult();
                     if (!r) return;
@@ -373,7 +434,10 @@ export class App extends util.Target {
                 if (elem instanceof HTMLImageElement && elem.classList.contains("docs-icon")) {
                     const onHolidayState = async holiday => {
                         const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
-                        elem.src = (holiday == null || ("icon" in holidayData && !holidayData.icon)) ? String(new URL("./src/assets/app/icon.png", url)) : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
+                        elem.src = 
+                            ((holiday == null) || ("icon" in holidayData && !holidayData.icon)) ?
+                                String(new URL("./src/assets/app/icon.png", url)) :
+                            util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
                     };
                     signal.addHandler("holiday", onHolidayState);
                     await onHolidayState(await window.api.get("active-holiday"));
@@ -506,12 +570,14 @@ export class App extends util.Target {
                         let namefs = {
                             "solver": () => {
                                 if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Error while copying default solver: "+load.join(":");
+                                if (load.length > 0)
+                                    return elem.textContent += "Error while copying default solver: "+load.join(":");
                                 return elem.textContent += "Copying default solver";
                             },
                             "templates.json": () => {
                                 if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
+                                if (load.length > 0)
+                                    return elem.textContent += "Error while downloading template datas: "+load.join(":");
                                 return elem.textContent += "Downloading template datas";
                             },
                         };
@@ -623,7 +689,10 @@ export class App extends util.Target {
             const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
             let pop = this.confirm();
             pop.cancel = "Documentation";
-            pop.iconSrc = (holiday == null || ("icon" in holidayData && !holidayData.icon)) ? (root+"/assets/app/icon.svg") : util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
+            pop.iconSrc = 
+                ((holiday == null) || ("icon" in holidayData && !holidayData.icon)) ?
+                    (root+"/assets/app/icon.svg") :
+                util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.title = "Peninsula "+util.formatText(name);
@@ -642,7 +711,10 @@ export class App extends util.Target {
             name = String(name);
             let isDevMode = await window.api.get("devmode");
             if (!isDevMode && ["DATABASE", "PIT"].includes(name)) {
-                let pop = this.confirm("Open "+util.formatText(name), "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs");
+                let pop = this.confirm(
+                    "Open "+util.formatText(name),
+                    "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs",
+                );
                 let result = await pop.whenResult();
                 if (!result) return;
             }
@@ -700,7 +772,8 @@ export class App extends util.Target {
         this.#eMount = document.getElementById("mount");
         if (!(this.#eMount instanceof HTMLDivElement)) this.#eMount = document.createElement("div");
         this.eMount.remove();
-        if (document.body.children[0] instanceof HTMLElement) document.body.insertBefore(this.eMount, document.body.children[0]);
+        if (document.body.children[0] instanceof HTMLElement)
+            document.body.insertBefore(this.eMount, document.body.children[0]);
         else document.body.appendChild(this.eMount);
         this.eMount.id = "mount";
 
@@ -768,9 +841,18 @@ export class App extends util.Target {
         this.holiday = await window.api.get("active-holiday");
 
         let agent = window.agent();
-        document.documentElement.style.setProperty("--WIN32", ((util.is(agent.os, "obj") && (agent.os.platform == "win32")) ? 1 : 0));
-        document.documentElement.style.setProperty("--DARWIN", ((util.is(agent.os, "obj") && (agent.os.platform == "darwin")) ? 1 : 0));
-        document.documentElement.style.setProperty("--LINUX", ((util.is(agent.os, "obj") && (agent.os.platform == "linux")) ? 1 : 0));
+        document.documentElement.style.setProperty(
+            "--WIN32",
+            +(util.is(agent.os, "obj") && (agent.os.platform == "win32")),
+        );
+        document.documentElement.style.setProperty(
+            "--DARWIN",
+            +(util.is(agent.os, "obj") && (agent.os.platform == "darwin")),
+        );
+        document.documentElement.style.setProperty(
+            "--LINUX",
+            +(util.is(agent.os, "obj") && (agent.os.platform == "linux")),
+        );
         PROPERTYCACHE.clear();
 
         let themeUpdating = false;
@@ -779,10 +861,15 @@ export class App extends util.Target {
             themeUpdating = true;
             let theme = await window.api.get("theme");
             theme = util.is(theme, "obj") ? theme : String(theme);
-            let data = util.is(theme, "obj") ? theme : util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj");
+            let data = 
+                util.is(theme, "obj") ?
+                    theme :
+                util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj");
             this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
             let darkWanted = !!(await window.api.get("dark-wanted"));
-            highlight2.href = root+"/assets/modules/" + (darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css");
+            highlight2.href = root+"/assets/modules/" + (
+                darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css"
+            );
             if (!darkWanted) this.base = this.base.reverse();
             this.colors = data.colors || {
                 r: "#ff0000",
@@ -854,12 +941,13 @@ export class App extends util.Target {
                     const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
                     if (holiday == null || ("hat" in holidayData && !holidayData.hat)) return elem.classList.remove("special");
                     elem.classList.add("special");
+                    const holidayIconData = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj");
                     let eSpecialBack = elem.querySelector(".special.back");
                     if (eSpecialBack instanceof HTMLImageElement)
-                        eSpecialBack.src = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").hat2;
+                        eSpecialBack.src = holidayIconData.hat2;
                     let eSpecialFront = elem.querySelector(".special.front");
                     if (eSpecialFront instanceof HTMLImageElement)
-                        eSpecialFront.src = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").hat1;
+                        eSpecialFront.src = holidayIconData.hat1;
                 };
                 this.addHandler("cmd-win-holiday", async holiday => {
                     await onHolidayState(holiday);
@@ -902,14 +990,18 @@ export class App extends util.Target {
                         },
                     });
                 });
-                elem.innerHTML = "<div class='title'></div><div class='picker'><div></div></div><div class='sliders'><input type='range' min='0' max='100'><input type='range' min='0' max='100'><input type='range' min='0' max='100'><input type='range' min='0' max='100'></div><div class='swatches'></div>";
-                const title = elem.children[0];
+                const title = document.createElement("div");
+                elem.appendChild(title);
+                title.classList.add("title");
                 Object.defineProperty(elem, "title", {
                     get: () => title.textContent,
                     set: v => (title.textContent = v),
                 });
                 elem.title = "Pick a color";
-                const picker = elem.children[1];
+                const picker = document.createElement("div");
+                elem.appendChild(picker);
+                picker.classList.add("picker");
+                picker.innerHTML = "<div></div>";
                 picker.addEventListener("mousedown", e => {
                     const mouseup = () => {
                         document.body.removeEventListener("mouseup", mouseup);
@@ -930,7 +1022,10 @@ export class App extends util.Target {
                     mousemove(e);
                 });
                 const pickerThumb = picker.children[0];
-                const sliders = elem.children[2];
+                const sliders = document.createElement("div");
+                elem.appendChild(sliders);
+                sliders.classList.add("sliders");
+                sliders.innerHTML = new Array(4).fill("<input type='range' min='0' max='100'>").join("");
                 const sliderElements = {};
                 "hsva".split("").forEach((k, i) => {
                     const slider = sliderElements[k] = sliders.children[i];
@@ -941,7 +1036,9 @@ export class App extends util.Target {
                         color[k] = v;
                     });
                 });
-                const swatches = elem.children[3];
+                const swatches = document.createElement("div");
+                elem.appendChild(swatches);
+                swatches.classList.add("swatches");
                 let swatchColors = [];
                 Object.defineProperty(elem, "swatches", {
                     get: () => [...swatchColors],
@@ -990,7 +1087,8 @@ export class App extends util.Target {
                 };
                 let swatchesChanged = false;
                 const importDefault = () => {
-                    if (swatchesChanged || !document.body.contains(elem)) return this.remHandler("update-dynamic-style", importDefault);
+                    if (swatchesChanged || !document.body.contains(elem))
+                        return this.remHandler("update-dynamic-style", importDefault);
                     elem.swatches = "roygcbpm".split("").map(k => PROPERTYCACHE.getColor("--c"+k));
                     swatchesChanged = false;
                 };
@@ -1156,7 +1254,10 @@ export class App extends util.Target {
         this.updateDynamicStyle();
     }
     async updateDynamicStyle() {
-        let accent = (this.holiday == null) ? this.accent : util.ensure(util.ensure(await window.api.get("holidays"), "obj")[this.holiday], "obj").accent;
+        let accent = 
+            (this.holiday == null) ?
+                this.accent :
+            util.ensure(util.ensure(await window.api.get("holidays"), "obj")[this.holiday], "obj").accent;
         let style = {};
         let v0 = this.getBase(0), v8 = this.getBase(8);
         if (!(v0 instanceof util.Color)) v0 = new util.Color(0, 0, 0);
@@ -1546,7 +1647,9 @@ App.PopupBase = class AppPopupBase extends util.Target {
         let remove = null;
         this.addHandler("add", async () => {
             let agent = window.agent();
-            this.#id = (!util.is(agent, "obj") || agent.os.platform != "darwin") ? null : await window.modal.spawn(this.constructor.NAME, this.generateParams());
+            this.#id = null;
+            if (util.is(agent, "obj") && agent.os.platform == "darwin")
+                this.#id = await window.modal.spawn(this.constructor.NAME, this.generateParams());
             if (this.id == null) {
                 document.body.appendChild(this.elem);
                 setTimeout(() => {
@@ -1642,7 +1745,8 @@ App.Popup = class AppPopup extends App.PopupBase {
         });
 
         const onKeyDown = e => {
-            if (!document.body.contains(this.elem)) return document.body.removeEventListener("keydown", onKeyDown);
+            if (!document.body.contains(this.elem))
+                return document.body.removeEventListener("keydown", onKeyDown);
             if (e.code != "Escape") return;
             this.result(null);
         };
@@ -2489,7 +2593,8 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.label == v) return;
         this.change("label", this.label, this.#label=v);
-        if (!this.hasRole()) return this.eLabel.textContent = this.eInput.placeholder = this.hasLabel() ? this.label : "";
+        if (!this.hasRole())
+            return this.eLabel.textContent = this.eInput.placeholder = this.hasLabel() ? this.label : "";
         (async () => {
             let v = this.role;
             let label = await window.api.send("menu-role-label", v);
@@ -3057,7 +3162,9 @@ export class AppFeature extends App {
                 let right = PROPERTYCACHE.get("--RIGHT");
                 right = util.ensure(parseFloat(right.slice(0, right.length-2)), "num");
                 let w = left+right;
-                Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)")).forEach(elem => (w += elem.getBoundingClientRect().width));
+                w += Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)"))
+                    .map(elem => elem.getBoundingClientRect().width)
+                    .sum();
                 await window.api.set("min-width", w);
             };
 
@@ -3286,7 +3393,10 @@ export class AppFeature extends App {
                 if (ids.length <= 0) ids.push(page.projectId);
                 ids = ids.filter(id => this.hasProject(id));
                 if (ids.length <= 0) return;
-                let pop = this.confirm("Delete Projects", "Are you sure you want to delete these projects?\nThis action is not reversible!");
+                let pop = this.confirm(
+                    "Delete Projects",
+                    "Are you sure you want to delete these projects?\nThis action is not reversible!",
+                );
                 pop.infos = [ids.map(id => this.getProject(id).meta.name).join("\n")];
                 let result = await pop.whenResult();
                 if (!result) return;
@@ -3708,7 +3818,10 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             shift = !!shift;
             if (!this.app.hasProject(id)) return;
             if (shift && this.app.hasProject(lastSelected)) {
-                let ids = this.app.projects.map(id => this.app.getProject(id)).sort((a, b) => b.meta.modified-a.meta.modified).map(project => project.id);
+                let ids = this.app.projects
+                    .map(id => this.app.getProject(id))
+                    .sort((a, b) => b.meta.modified-a.meta.modified)
+                    .map(project => project.id);
                 let i = ids.indexOf(lastSelected);
                 let j = ids.indexOf(id);
                 for (let k = i;; k += (j>i?+1:j<i?-1:0)) {
@@ -3800,9 +3913,15 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             if (!(btn instanceof this.constructor.Button)) return false;
             if (this.hasButton(btn)) return false;
             this.#buttons.add(btn);
-            btn.addLinkedHandler(this, "trigger", e => this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey)));
-            btn.addLinkedHandler(this, "trigger2", e => this.app.setPage("PROJECT", { id: (btn.hasProject() ? btn.project.id : null) }));
-            btn.addLinkedHandler(this, "contextmenu", e => this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null));
+            btn.addLinkedHandler(this, "trigger", e => {
+                this.post("trigger", e, (btn.hasProject() ? btn.project.id : null), !!(util.ensure(e, "obj").shiftKey));
+            });
+            btn.addLinkedHandler(this, "trigger2", e => {
+                this.app.setPage("PROJECT", { id: (btn.hasProject() ? btn.project.id : null) });
+            });
+            btn.addLinkedHandler(this, "contextmenu", e => {
+                this.post("contextmenu", e, btn.hasProject() ? btn.project.id : null);
+            });
             this.eContent.appendChild(btn.elemList);
             this.eContent.appendChild(btn.elemGrid);
             btn.onAdd();
@@ -4344,7 +4463,8 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
     async determineSame(data) {
         if (this.app.hasProject(data.id)) return this.projectId == data.id;
-        else if ((data.project instanceof Project) && (data.project instanceof this.app.constructor.PROJECTCLASS)) return this.project == data.project;
+        else if ((data.project instanceof Project) && (data.project instanceof this.app.constructor.PROJECTCLASS))
+            return this.project == data.project;
         return false;
     }
 };
@@ -4717,7 +4837,8 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     constructor(parent, pos) {
         super();
 
-        if (!(parent instanceof Odometry2d || parent instanceof Odometry2d.Render)) throw new Error("Parent is not of class Odometry2d nor of class Odometry2dRender");
+        if (!(parent instanceof Odometry2d || parent instanceof Odometry2d.Render))
+            throw new Error("Parent is not of class Odometry2d nor of class Odometry2dRender");
         this.#parent = parent;
         this.#hasParent = this.parent instanceof Odometry2d.Render;
 
@@ -4874,7 +4995,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
                 ctx.beginPath();
-                let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+                let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                    .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
+                    .map(v => v.rotateOrigin(this.heading));
                 for (let i = 0; i <= path.length; i++) {
                     let j = i%path.length;
                     let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
@@ -5547,7 +5670,12 @@ export class Odometry3d extends Odometry {
             if (!fieldLock)
                 (async () => {
                     fieldLock = true;
-                    this.field = (await Odometry3d.loadField(this.template, this.isCinematic ? "cinematic" : "basic")) || (this.hasTemplate() ? this.axisSceneSized : this.axisScene);
+                    this.field = (await Odometry3d.loadField(
+                        this.template,
+                        this.isCinematic ? "cinematic" : "basic"
+                    )) || (
+                        this.hasTemplate() ? this.axisSceneSized : this.axisScene
+                    );
                     fieldLock = false;
                 })();
 
@@ -5889,11 +6017,20 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.addHandler("rem", () => (this.object = null));
 
         this.addHandler("update", delta => {
-            let color = (this.hasColor() && this.color.startsWith("--")) ? PROPERTYCACHE.getColor(this.color) : new util.Color(this.color);
+            let color =
+                (this.hasColor() && this.color.startsWith("--")) ?
+                    PROPERTYCACHE.getColor(this.color) :
+                new util.Color(this.color);
             if (!robotLock)
                 (async () => {
                     robotLock = true;
-                    theModelObject = (this.hasRobot() && this.robot.startsWith("§")) ? this.#loadedObjects[this.robot] : (await Odometry3d.loadRobot(this.robot, this.odometry.isCinematic ? "cinematic" : "basic"));
+                    theModelObject = 
+                        (this.hasRobot() && this.robot.startsWith("§")) ?
+                            this.#loadedObjects[this.robot] :
+                        (await Odometry3d.loadRobot(
+                            this.robot,
+                            this.odometry.isCinematic ? "cinematic" : "basic",
+                        ));
                     robotLock = false;
                 })();
             if (modelObject != theModelObject) {
