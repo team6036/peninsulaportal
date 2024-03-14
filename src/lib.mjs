@@ -179,3 +179,120 @@ export class FSOperator extends util.Target {
 
     static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
 }
+
+export class Option extends util.Target {
+    #name;
+    #nickname;
+    #dname;
+
+    #data;
+
+    constructor(o) {
+        super();
+
+        o = util.ensure(o, "obj");
+
+        this.#name = null;
+        this.#nickname = null;
+        this.#dname = null;
+
+        this.name = o.name;
+        this.nickname = o.nickname;
+        this.dname = o.dname || util.formatText(this.name);
+
+        this.#data = util.ensure(o.data, "obj");
+    }
+
+    get name() { return this.#name; }
+    set name(v) {
+        v = String(v);
+        if (this.name == v) return;
+        this.change("name", this.name, this.#name=v);
+    }
+    get nickname() { return this.#nickname; }
+    set nickname(v) {
+        v = String(v);
+        if (this.nickname == v) return;
+        this.change("nickname", this.nickname, this.#nickname=v);
+    }
+    get dname() { return this.#dname; }
+    set dname(v) {
+        v = String(v);
+        if (this.dname == v) return;
+        this.change("dname", this.dname, this.#dname=v);
+    }
+
+    get data() { return this.#data; }
+}
+export class OptionList extends util.Target {
+    #list;
+
+    constructor(list) {
+        super();
+
+        this.#list = new Set();
+
+        this.list = list;
+    }
+
+    get list() { return this.#list; }
+    set list(v) {
+        v = util.ensure(v, "arr");
+        this.clear();
+        this.add(v);
+    }
+    clear() {
+        let list = this.list;
+        this.rem(list);
+        return list;
+    }
+    has(o) {
+        if (!(o instanceof Option)) return false;
+        return this.#list.has(o);
+    }
+    add(...os) {
+        return util.Target.resultingForEach(os, o => {
+            if (!(o instanceof Option)) return false;
+            if (this.has(o)) return false;
+            this.#list.add(o);
+            return o;
+        });
+    }
+    rem(...os) {
+        return util.Target.resultingForEach(os, o => {
+            if (!(o instanceof Option)) return false;
+            if (!this.has(o)) return false;
+            this.#list.delete(o);
+            return o;
+        });
+    }
+
+    findByName(name) {
+        name = String(name);
+        for (let o of this.#list)
+            if (o.name == name)
+                return o;
+        return null;
+    }
+    findByNickname(nickname) {
+        nickname = String(nickname);
+        for (let o of this.#list)
+            if (o.nickname == nickname)
+                return o;
+        return null;
+    }
+    findByDName(dname) {
+        dname = String(dname);
+        for (let o of this.#list)
+            if (o.dname == dname)
+                return o;
+        return null;
+    }
+    findBy(f) {
+        f = util.ensure(f, "func");
+        for (let o of this.#list)
+            if (f(o))
+                return o;
+        return null;
+    }
+}
