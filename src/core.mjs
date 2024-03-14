@@ -5084,8 +5084,8 @@ export class Odometry3d extends Odometry {
     #field;
     #theField;
 
-    #isProjection;
-    #isOrbit;
+    #renderType;
+    #controlType;
     #isCinematic;
     #origin;
     
@@ -5259,22 +5259,22 @@ export class Odometry3d extends Odometry {
         
         this.canvas.addEventListener("click", e => {
             e.stopPropagation();
-            if (this.isFree) this.controls.lock();
+            if (this.controlType == "free") this.controls.lock();
         });
         this.elem.addEventListener("mousemove", e => {
             let x = (e.pageX - r.left) / r.width, y = (e.pageY - r.top) / r.height;
             x = (x*2)-1; y = (y*2)-1;
-            if (this.isFree && this.controls.isLocked) x = y = 0;
+            if (this.controlType == "free" && this.controls.isLocked) x = y = 0;
             this.raycaster.setFromCamera(new THREE.Vector2(x, -y), this.camera);
             this.#raycastIntersections = this.raycaster.intersectObject(this.scene, true);
         });
         const updateCamera = () => {
-            if (this.isProjection) {
+            if (this.renderType == "proj") {
                 if (this.camera.aspect != r.width / r.height) {
                     this.camera.aspect = r.width / r.height;
                     this.camera.updateProjectionMatrix();
                 }
-            } else if (this.isIsometric) {
+            } else if (this.renderType == "iso") {
                 let size = 15;
                 let aspect = r.width / r.height;
                 this.camera.left = -size/2 * aspect;
@@ -5283,7 +5283,7 @@ export class Odometry3d extends Odometry {
                 this.camera.bottom = -size/2;
             }
         };
-        this.addHandler("change-isProjection", updateCamera);
+        this.addHandler("change-renderType", updateCamera);
         const updateScene = () => {
             r = this.elem.getBoundingClientRect();
             this.renderer.setSize(Math.ceil(r.width), Math.ceil(r.height));
@@ -5413,8 +5413,8 @@ export class Odometry3d extends Odometry {
         const planeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
         planeMaterial.side = THREE.DoubleSide;
 
-        this.#isProjection = null;
-        this.#isOrbit = null;
+        this.#renderType = null;
+        this.#controlType = null;
         this.#isCinematic = null;
         this.#origin = null;
 
@@ -5551,9 +5551,9 @@ export class Odometry3d extends Odometry {
                     fieldLock = false;
                 })();
 
-            if (this.isOrbit) {
+            if (this.controlType == "orbit") {
                 this.controls.update();
-            } else if (this.isFree) {
+            } else if (this.controlType == "free") {
                 if (this.controls.isLocked) {
                     let xP = keys.has("KeyD") || keys.has("ArrowRight");
                     let xN = keys.has("KeyA") || keys.has("ArrowLeft");
@@ -5594,8 +5594,8 @@ export class Odometry3d extends Odometry {
             this.cssRenderer.render(this.scene, this.camera);
         });
 
-        this.isProjection = true;
-        this.isOrbit = true;
+        this.renderType = "proj";
+        this.controlType = "orbit";
         this.isCinematic = false;
         this.origin = "blue+";
     }
@@ -5685,7 +5685,11 @@ export class Odometry3d extends Odometry {
             this.controls.unlock();
             this.controls.disconnect();
         }
-        this.#controls = this.isOrbit ? new OrbitControls(this.camera, this.canvas) : new PointerLockControls(this.camera, this.canvas);
+        let controlfs = {
+            orbit: () => new OrbitControls(this.camera, this.canvas),
+            free: () => new PointerLockControls(this.camera, this.canvas),
+        };
+        this.#controls = (this.controlType in controlfs) ? controlfs[this.controlType]() : null;
         if (this.controls instanceof OrbitControls) {
             this.elem.classList.remove("showinfo");
         } else if (this.controls instanceof PointerLockControls) {
@@ -5693,29 +5697,36 @@ export class Odometry3d extends Odometry {
             this.controls.addEventListener("unlock", () => this.elem.classList.remove("showinfo"));
         }
     }
-    get isProjection() { return this.#isProjection; }
-    set isProjection(v) {
-        v = !!v;
-        if (this.isProjection == v) return;
-        this.#isProjection = v;
-        this.#camera = this.isProjection ? new THREE.PerspectiveCamera(75, 1, 0.1, 1000) : new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000);
-        this.camera.position.set(...(this.isProjection ? [0, 7.5, -7.5] : [10, 10, -10]));
+    get renderType() { return this.#renderType; }
+    set renderType(v) {
+        v = String(v);
+        if (!["proj", "iso"].includes(v)) v = "proj";
+        if (this.renderType == v) return;
+        [v, this.#renderType] = [this.renderType, v];
+        let renderfs;
+        renderfs = {
+            proj: () => new THREE.PerspectiveCamera(75, 1, 0.1, 1000),
+            iso: () => new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000),
+        };
+        this.#camera = (this.renderType in renderfs) ? renderfs[this.renderType]() : null;
+        renderfs = {
+            proj: [0, 7.5, -7.5],
+            iso: [10, 10, -10],
+        };
+        this.camera.position.set(...((this.renderType in renderfs) ? renderfs[this.renderType] : [0, 0, 0]));
         this.camera.lookAt(0, 0, 0);
-        this.change("isProjection", !this.isProjection, this.isProjection);
+        this.change("renderType", v, this.renderType);
         this.updateControls();
         this.requestRedraw();
     }
-    get isIsometric() { return !this.isProjection; }
-    set isIsometric(v) { this.isProjection = !v; }
-    get isOrbit() { return this.#isOrbit; }
-    set isOrbit(v) {
-        v = !!v;
-        if (this.isOrbit == v) return;
-        this.change("isOrbit", this.isOrbit, this.#isOrbit=v);
+    get controlType() { return this.#controlType; }
+    set controlType(v) {
+        v = String(v);
+        if (!["orbit", "free"].includes(v)) v = "orbit";
+        if (this.controlType == v) return;
+        this.change("controlType", this.controlType, this.#controlType=v);
         this.updateControls();
     }
-    get isFree() { return !this.isOrbit; }
-    set isFree(v) { this.isOrbit = !v; }
     get isCinematic() { return this.#isCinematic; }
     set isCinematic(v) {
         v = !!v;

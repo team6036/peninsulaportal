@@ -6836,15 +6836,11 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
 Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #odometry;
 
-    #isProjection;
-    #isOrbit;
-    #isCinematic;
     #lengthUnits;
     #angleUnits;
-    #origin;
 
-    #fViewType;
-    #fViewMovementType;
+    #fViewRenderType;
+    #fViewControlType;
     #fViewCinematic;
     #fQuality;
     #fUnitsLength1;
@@ -6886,15 +6882,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eInfo.innerHTML = "   [W]\n[A][S][D]\n[ Space ] Up\n[ Shift ] Down\n[  Esc  ] Leave Pointer Lock";
 
         this.#odometry = new core.Odometry3d(this.eContent);
+        this.odometry.addHandler("change", (c, f, t) => this.change("odometry."+c, f, t));
 
         this.quality = this.odometry.quality = 2;
 
-        this.#isProjection = null;
-        this.#isOrbit = null;
-        this.#isCinematic = null;
         this.#lengthUnits = null;
         this.#angleUnits = null;
-        this.#origin = null;
 
         const eField = this.getEOptionSection("f");
 
@@ -6904,32 +6897,40 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eOptions.appendChild(optionsForm.elem);
         optionsForm.side = "center";
 
-        this.#fViewType = optionsForm.addField(new core.Form.SelectInput("camera-type", [{ value: "proj", name: "Projection" }, { value: "iso", name: "Isometric" }]));
-        this.fViewType.showHeader = false;
-        this.fViewType.addHandler("change-value", () => {
-            this.isProjection = this.fViewType.value == "proj";
-        });
-        this.addHandler("change-isProjection", () => {
-            this.fViewType.value = this.isProjection ? "proj" : "iso";
-        });
+        let update;
 
-        this.#fViewMovementType = optionsForm.addField(new core.Form.SelectInput("movement-type", [{ value: "orbit", name: "Orbit" }, { value: "free", name: "Free" }]));
-        this.fViewMovementType.showHeader = false;
-        this.fViewMovementType.addHandler("change-value", () => {
-            this.isOrbit = this.fViewMovementType.value == "orbit";
+        this.#fViewRenderType = optionsForm.addField(new core.Form.SelectInput("camera-type", [{ value: "proj", name: "Projection" }, { value: "iso", name: "Isometric" }]));
+        this.fViewRenderType.showHeader = false;
+        this.fViewRenderType.addHandler("change-value", () => {
+            this.odometry.renderType = this.fViewRenderType.value;
         });
-        this.addHandler("change-isOrbit", () => {
-            this.fViewMovementType.value = this.isOrbit ? "orbit" : "free";
+        update = () => {
+            this.fViewRenderType.value = this.odometry.renderType;
+        };
+        this.addHandler("change-odometry.renderType", update);
+        update();
+
+        this.#fViewControlType = optionsForm.addField(new core.Form.SelectInput("movement-type", [{ value: "orbit", name: "Orbit" }, { value: "free", name: "Free" }]));
+        this.fViewControlType.showHeader = false;
+        this.fViewControlType.addHandler("change-value", () => {
+            this.odometry.controlType = this.fViewControlType.value;
         });
+        update = () => {
+            this.fViewControlType.value = this.odometry.controlType;
+        };
+        this.addHandler("change-odometry.controlType", update);
+        update();
 
         this.#fViewCinematic = optionsForm.addField(new core.Form.ToggleInput("cinematic", "Cinematic"));
         this.fViewCinematic.showHeader = false;
         this.fViewCinematic.addHandler("change-value", () => {
-            this.isCinematic = this.fViewCinematic.value;
+            this.odometry.isCinematic = this.fViewCinematic.value;
         });
-        this.addHandler("change-isOrbit", () => {
-            this.fViewCinematic.value = this.isCinematic;
-        });
+        update = () => {
+            this.fViewCinematic.value = this.odometry.isCinematic;
+        };
+        this.addHandler("change-odometry.isCinematic", update);
+        update();
 
         this.#fQuality = optionsForm.addField(new core.Form.SelectInput("quality", [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }]));
         this.fQuality.addHandler("change-value", () => {
@@ -6964,7 +6965,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#fOriginBlue = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }]));
         this.fOriginBlue.addHandler("change-value", () => {
             if (!this.fOriginBlue.hasValue()) return;
-            this.origin = this.fOriginBlue.value;
+            this.odometry.origin = this.fOriginBlue.value;
         });
         const applyBlue = () => Array.from(this.fOriginBlue.eContent.children).forEach(elem => (elem.style.color = "var(--cb)"));
         this.fOriginBlue.addHandler("apply", applyBlue);
@@ -6974,16 +6975,18 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.fOriginRed.showHeader = false;
         this.fOriginRed.addHandler("change-value", () => {
             if (!this.fOriginRed.hasValue()) return;
-            this.origin = this.fOriginRed.value;
+            this.odometry.origin = this.fOriginRed.value;
         });
         const applyRed = () => Array.from(this.fOriginRed.eContent.children).forEach(elem => (elem.style.color = "var(--cr)"));
         this.fOriginRed.addHandler("apply", applyRed);
         applyRed();
 
-        this.addHandler("change-origin", () => {
-            this.fOriginBlue.value = this.origin;
-            this.fOriginRed.value = this.origin;
-        });
+        update = () => {
+            this.fOriginBlue.value = this.odometry.origin;
+            this.fOriginRed.value = this.odometry.origin;
+        };
+        this.addHandler("change-odometry.origin", update);
+        update();
 
         optionsForm.addField(new core.Form.Header("View"));
 
@@ -7024,7 +7027,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     }
                 };
             };
-            this.fViewType.values = this.fViewType.values.map(makeMapValue(v => util.formatText(v)));
+            this.fViewRenderType.values = this.fViewRenderType.values.map(makeMapValue(v => util.formatText(v)));
             this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.substring(0, 2)));
             this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
@@ -7034,21 +7037,21 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 8) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
+            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry3dTab(...a);
-                    a = [a.poses, a.template, a.isProjection, a.isOrbit, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
+                    a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.isProjection, a.isOrbit, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.renderType, a.controlType, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
             else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 0.5];
         if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, "blue+", a[2]];
 
-        [this.poses, this.template, this.isProjection, this.isOrbit, this.lengthUnits, this.angleUnits, this.origin, this.optionState] = a;
+        [this.poses, this.template, this.odometry.renderType, this.odometry.controlType, this.lengthUnits, this.angleUnits, this.odometry.origin, this.optionState] = a;
 
         let templates = {};
         let templateModels = {};
@@ -7073,7 +7076,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         this.addHandler("update", delta => {
             if (this.isClosed) {
-                if (this.odometry.isFree)
+                if (this.odometry.controlType == "free")
                     this.odometry.controls.unlock();
                 return;
             }
@@ -7168,31 +7171,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         return r;
     }
 
-    get isProjection() { return this.#isProjection; }
-    set isProjection(v) {
-        v = !!v;
-        if (this.isProjection == v) return;
-        this.change("isProjection", this.isProjection, this.#isProjection=v);
-        this.odometry.isProjection = this.isProjection;
-    }
-    get isIsometric() { return !this.isProjection; }
-    set isIsometric(v) { this.isProjection = !v; }
-    get isOrbit() { return this.#isOrbit; }
-    set isOrbit(v) {
-        v = !!v;
-        if (this.isOrbit == v) return;
-        this.change("isOrbit", this.isOrbit, this.#isOrbit=v);
-        this.odometry.isOrbit = this.isOrbit;
-    }
-    get isFree() { return !this.isOrbit; }
-    set isFree(v) { this.isOrbit = !v; }
-    get isCinematic() { return this.#isCinematic; }
-    set isCinematic(v) {
-        v = !!v;
-        if (this.isCinematic == v) return;
-        this.change("isCinematic", this.isCinematic, this.#isCinematic=v);
-        this.odometry.isCinematic = this.isCinematic;
-    }
     get lengthUnits() { return this.#lengthUnits; }
     set lengthUnits(v) {
         v = String(v);
@@ -7207,17 +7185,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         if (this.angleUnits == v) return;
         this.change("angleUnits", this.angleUnits, this.#angleUnits=v);
     }
-    get origin() { return this.#origin; }
-    set origin(v) {
-        v = String(v);
-        if (!["blue+", "blue-", "red+", "red-"].includes(v)) v = "blue+";
-        if (this.origin == v) return;
-        this.change("origin", this.origin, this.#origin=v);
-        this.odometry.origin = this.origin;
-    }
 
-    get fViewType() { return this.#fViewType; }
-    get fViewMovementType() { return this.#fViewMovementType; }
+    get fViewRenderType() { return this.#fViewRenderType; }
+    get fViewControlType() { return this.#fViewControlType; }
     get fViewCinematic() { return this.#fViewCinematic; }
     get fQuality() { return this.#fQuality; }
     get fUnitsLength1() { return this.#fUnitsLength1; }
@@ -7231,11 +7201,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         return util.Reviver.revivable(this.constructor, {
             poses: this.poses,
             template: this.template,
-            isProjection: this.isProjection,
-            isOrbit: this.isOrbit,
+            renderType: this.odometry.renderType,
+            controlType: this.odometry.controlType,
             lengthUnits: this.lengthUnits,
             angleUnits: this.angleUnits,
-            origin: this.origin,
+            origin: this.odometry.origin,
             optionState: this.optionState,
         });
     }
