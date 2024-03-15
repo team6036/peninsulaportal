@@ -9,11 +9,17 @@ import * as THREE from "three";
 
 export default class App extends core.App {
     #eCanvas;
+    #eTitlePart1;
+    #eTitlePart2;
+    #eSubTitle;
 
     constructor() {
         super();
 
         this.addHandler("post-setup", async () => {
+            this.#eTitlePart1 = document.getElementById("title-part-1");
+            this.#eTitlePart2 = document.getElementById("title-part-2");
+            this.#eSubTitle = document.getElementById("subtitle");
             this.#eCanvas = document.getElementById("canvas");
             if (this.hasECanvas()) {
                 const scene = new THREE.Scene();
@@ -261,4 +267,27 @@ export default class App extends core.App {
 
     get eCanvas() { return this.#eCanvas; }
     hasECanvas() { return this.eCanvas instanceof HTMLCanvasElement; }
+    get eTitlePart1() { return this.#eTitlePart1; }
+    hasETitlePart1() { return this.eTitlePart1 instanceof HTMLDivElement; }
+    get eTitlePart2() { return this.#eTitlePart2; }
+    hasETitlePart2() { return this.eTitlePart2 instanceof HTMLDivElement; }
+    get eSubTitle() { return this.#eSubTitle; }
+    hasESubTitle() { return this.eSubTitle instanceof HTMLDivElement; }
+
+    get state() {
+        return {
+            title1: this.hasETitlePart1() ? this.eTitlePart1.textContent : "Peninsula",
+            title2: this.hasETitlePart2() ? this.eTitlePart2.textContent : "Robotics",
+            subtitle: this.hasESubTitle() ? this.eSubTitle.textContent : "Based in Palo Alto, California",
+        };
+    }
+    async loadState(state) {
+        state = util.ensure(state, "obj");
+        if (this.hasETitlePart1())
+            this.eTitlePart1.textContent = util.ensure(state.title1, "str", "Peninsula");
+        if (this.hasETitlePart2())
+            this.eTitlePart2.textContent = util.ensure(state.title2, "str", "Robotics");
+        if (this.hasESubTitle())
+            this.eSubTitle.textContent = util.ensure(state.subtitle, "str", "Based in Palo Alto, California");
+    }
 }
