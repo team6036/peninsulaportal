@@ -52,20 +52,41 @@ const MAIN = async () => {
     let showError = this.showError = async (name, type, e) => {
         let message = String(name);
         if (type) message += " - "+String(type);
-        electron.dialog.showErrorBox(message, lib.stringifyError(e));
+        electron.dialog.showErrorBox(message, (e == null) ? "" : lib.stringifyError(e));
     };
-    let showConfirm = async (name, type, e) => {
+    let showWarn = async (name, type, e) => {
+        let message = String(name);
+        if (type) message += " - "+String(type);
+        await electron.dialog.showMessageBox({
+            message: message,
+            detail: (e == null) ? "" : lib.stringifyError(e),
+            type: "warning",
+            buttons: ["OK"],
+        });
+    };
+    let showSuccess = async (name, type, e) => {
+        let message = String(name);
+        if (type) message += " - "+String(type);
+        await electron.dialog.showMessageBox({
+            message: message,
+            detail: (e == null) ? "" : lib.stringifyError(e),
+            type: "info",
+            buttons: ["OK"],
+        });
+    };
+    let showConfirm = async (name, type, e, ok="OK", cancel="Cancel") => {
         let message = String(name);
         if (type) message += " - "+String(type);
         let i = (await electron.dialog.showMessageBox({
             message: message,
-            detail: lib.stringifyError(e),
+            detail: (e == null) ? "" : lib.stringifyError(e),
             type: "question",
-            buttons: ["Terminate", "Continue anyway"],
+            buttons: [ok, cancel],
             cancelId: 1,
         })).response;
         return i == 0;
     };
+    let showTerminationConfirm = async (name, type, e) => await showConfirm(name, type, e, "Terminate", "Continue anyway");
     const app = this.app = electron.app;
     const ipc = electron.ipcMain;
 
@@ -816,6 +837,7 @@ const MAIN = async () => {
                 show: false,
                 resizable: true,
                 maximizable: false,
+                fullscreenable: true,
 
                 titleBarStyle: "hidden",
                 titleBarOverlay: {
@@ -873,7 +895,7 @@ const MAIN = async () => {
             let id = setTimeout(async () => {
                 clear();
                 if (this.isModal) return;
-                let r = await showConfirm(
+                let r = await showTerminationConfirm(
                     "Window Start Error", "Startup",
                     `The application (${this.name}) did not acknowledge readiness within ${readiness/1000} second${readiness==1000?"":"s"}`,
                 );
@@ -3090,7 +3112,7 @@ const MAIN = async () => {
                 try {
                     await this.postResult("start");
                 } catch (e) {
-                    let r = await showConfirm("WindowManager Start Error", "'start' event", e);
+                    let r = await showTerminationConfirm("WindowManager Start Error", "'start' event", e);
                     if (r) return;
                 }
 
@@ -3150,7 +3172,7 @@ const MAIN = async () => {
             try {
                 await this.postResult("stop");
             } catch (e) {
-                let r = await showConfirm("WindowManager Stop Error", "'stop' event", e);
+                let r = await showTerminationConfirm("WindowManager Stop Error", "'stop' event", e);
                 if (r) return false;
             }
 
@@ -4109,12 +4131,20 @@ const MAIN = async () => {
 
     showError = this.showError = async (name, type, e) => await manager.modalAlert({
         icon: "warning", iconColor: "var(--cr)",
-        title: name, content: type, infos: [e],
+        title: name, content: type, infos: (e == null) ? [] : [e],
     }).whenModalResult();
-    showConfirm = this.showConfirm = async (name, type, e) => await manager.modalConfirm({
+    showWarn = async (name, type, e) => await manager.modalAlert({
+        icon: "warning", iconColor: "var(--cy)",
+        title: name, content: type, infos: (e == null) ? [] : [e],
+    }).whenModalResult();
+    showSuccess = async (name, type, e) => await manager.modalAlert({
+        icon: "checkmark-circle", iconColor: "var(--cg)",
+        title: name, content: type, infos: (e == null) ? [] : [e],
+    }).whenModalResult();
+    showConfirm = async (name, type, e, ok="OK", cancel="Cancel") => await manager.modalConfirm({
         icon: "help-circle",
-        title: name, content: type, infos: [e],
-        confirm: "Terminate", cancel: "Continue anyway",
+        title: name, content: type, infos: (e == null) ? [] : [e],
+        confirm: ok, cancel: cancel,
     }).whenModalResult();
 
     manager.start();
