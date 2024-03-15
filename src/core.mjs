@@ -5325,7 +5325,7 @@ export class Odometry3d extends Odometry {
                         this.#traverseObject(obj, type);
                         const color = new util.Color(obj.material.color.r*255, obj.material.color.g*255, obj.material.color.b*255);
                         const h = color.h, s = color.s, thresh = 60;
-                        const score = Math.max(1-Math.abs(h-210)/thresh, 1-Math.abs(h-0)/thresh, 1-Math.abs(h-360)/thresh);
+                        const score = Math.min(1, Math.max(0, (1-Math.min(Math.abs(h-210)/thresh, Math.abs(h-0)/thresh, Math.abs(h-360)/thresh))));
                         if (score*s < 0.5) return;
                         obj.material._allianceMaterial = true;
                     });
