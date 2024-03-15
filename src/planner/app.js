@@ -408,7 +408,7 @@ export default class App extends core.AppFeature {
         this.addHandler("pre-post-setup", () => {
             ["file", "edit", "view"].forEach(name => {
                 let id = "menu:"+name;
-                let menu = this.menu.findItemWithId(id);
+                let menu = this.menu.getItemById(id);
                 let namefs = {
                     file: () => {
                         let itms = [
@@ -1042,7 +1042,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 "maxmin", "resetdivider",
             ];
             projectOnly.forEach(id => {
-                let itm = this.app.menu.findItemWithId(id);
+                let itm = this.app.menu.getItemById(id);
                 if (!itm) return;
                 itm.exists = true;
             });
@@ -1107,7 +1107,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 "maxmin", "resetdivider",
             ];
             projectOnly.forEach(id => {
-                let itm = this.app.menu.findItemWithId(id);
+                let itm = this.app.menu.getItemById(id);
                 if (!itm) return;
                 itm.exists = false;
             });
