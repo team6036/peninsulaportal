@@ -657,7 +657,7 @@ export class App extends util.Target {
             let perm = await this.getPerm();
             try {
                 window.api.sendPerm(perm);
-            } catch (e) { await this.doError("Send Permission Error", "", e); }
+            } catch (e) { await this.doError("Permission Send Error", "", e); }
         });
         window.api.on((_, cmd, ...a) => {
             cmd = String(cmd);
@@ -1376,11 +1376,13 @@ export class App extends util.Target {
     alert(...a) { return this.addPopup(new App.Alert(...a)); }
     error(...a) { return this.addPopup(new App.Error(...a)); }
     warn(...a) { return this.addPopup(new App.Warn(...a)); }
+    success(...a) { return this.addPopup(new App.Success(...a)); }
     confirm(...a) { return this.addPopup(new App.Confirm(...a)); }
     prompt(...a) { return this.addPopup(new App.Prompt(...a)); }
     async doAlert(...a) { return await this.alert(...a).whenResult(); }
     async doError(...a) { return await this.error(...a).whenResult(); }
     async doWarn(...a) { return await this.warn(...a).whenResult(); }
+    async doSuccess(...a) { return await this.success(...a).whenResult(); }
     async doConfirm(...a) { return await this.confirm(...a).whenResult(); }
     async doPrompt(...a) { return await this.prompt(...a).whenResult(); }
 
@@ -1990,6 +1992,15 @@ App.Warn = class AppError extends App.Alert {
         super(title, content, "warning");
 
         this.iconColor = "var(--cy)";
+
+        this.infos = infos;
+    }
+};
+App.Success = class AppError extends App.Alert {
+    constructor(title, content, ...infos) {
+        super(title, content, "checkmark-circle");
+
+        this.iconColor = "var(--cg)";
 
         this.infos = infos;
     }
