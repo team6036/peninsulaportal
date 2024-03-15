@@ -634,7 +634,7 @@ export class App extends util.Target {
             delete window.util;
             delete window.colors;
         }
-        let itm = this.menu.findItemWithId("toggledevtools");
+        let itm = this.menu.getItemById("toggledevtools");
         if (!itm) return;
         // itm.enabled = this.devMode;
     }
@@ -741,7 +741,7 @@ export class App extends util.Target {
         });
 
         this.addHandler("cmd-menu-click", async id => {
-            let itm = this.menu.findItemWithId(id);
+            let itm = this.menu.getItemById(id);
             if (!itm) return;
             itm.post("trigger", null);
         });
@@ -1399,44 +1399,44 @@ export class App extends util.Target {
     bindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
         ["PANEL", "PLANNER", "DATABASE", "PIT"].forEach(name => {
-            let itm = menu.findItemWithId("spawn:"+name);
+            let itm = menu.getItemById("spawn:"+name);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
         });
         ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
-            let itm = menu.findItemWithId(id);
+            let itm = menu.getItemById(id);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-helpurl", id));
         });
         let itm;
-        itm = menu.findItemWithId("about");
+        itm = menu.getItemById("about");
         if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-about"));
-        itm = menu.findItemWithId("settings");
+        itm = menu.getItemById("settings");
         if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", "PRESETS"));
-        itm = menu.findItemWithId("reload");
+        itm = menu.getItemById("reload");
         if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-reload"));
-        itm = menu.findItemWithId("documentation");
+        itm = menu.getItemById("documentation");
         if (itm) itm.addLinkedHandler(this, "trigger", e => this.post("cmd-documentation"));
         return menu;
     }
     unbindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
         ["PANEL", "PLANNER"].forEach(name => {
-            let itm = menu.findItemWithId("spawn:"+name);
+            let itm = menu.getItemById("spawn:"+name);
             if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
         });
         ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
-            let itm = menu.findItemWithId(id);
+            let itm = menu.getItemById(id);
             if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
         });
         let itm;
-        itm = menu.findItemWithId("about");
+        itm = menu.getItemById("about");
         if (itm) itm.clearLinkedHandlers(this, "trigger");
-        itm = menu.findItemWithId("settings");
+        itm = menu.getItemById("settings");
         if (itm) itm.clearLinkedHandlers(this, "trigger");
-        itm = menu.findItemWithId("reload");
+        itm = menu.getItemById("reload");
         if (itm) itm.clearLinkedHandlers(this, "trigger");
         return menu;
     }
@@ -2274,9 +2274,9 @@ App.Menu = class AppMenu extends util.Target {
         this.format();
         return itm;
     }
-    findItemWithId(id) {
+    getItemById(id) {
         for (let itm of this.items) {
-            let foundItm = itm.findItemWithId(id);
+            let foundItm = itm.getItemById(id);
             if (!foundItm) continue;
             return foundItm;
         }
@@ -2700,9 +2700,9 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         else this.menu.items = [];
     }
 
-    findItemWithId(id) {
+    getItemById(id) {
         if (this.id == id) return this;
-        return this.menu.findItemWithId(id);
+        return this.menu.getItemById(id);
     }
 
     get elem() { return this.#elem; }
@@ -2845,8 +2845,8 @@ export class AppModal extends App {
         })();
 
         this.addHandler("setup", async () => {
-            this.menu.findItemWithId("reload").disabled = true;
-            this.menu.findItemWithId("spawn").disabled = true;
+            this.menu.getItemById("reload").disabled = true;
+            this.menu.getItemById("spawn").disabled = true;
 
             this.#eModalStyle = document.createElement("link");
             document.head.appendChild(this.eModalStyle);
@@ -3191,7 +3191,7 @@ export class AppFeature extends App {
             this.eFileBtn.textContent = "File";
             this.eFileBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                let itm = this.menu.findItemWithId("menu:file");
+                let itm = this.menu.getItemById("menu:file");
                 if (!itm) return;
                 this.contextMenu = itm.menu;
                 let r = this.eFileBtn.getBoundingClientRect();
@@ -3206,7 +3206,7 @@ export class AppFeature extends App {
             this.eEditBtn.textContent = "Edit";
             this.eEditBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                let itm = this.menu.findItemWithId("menu:edit");
+                let itm = this.menu.getItemById("menu:edit");
                 if (!itm) return;
                 this.contextMenu = itm.menu;
                 let r = this.eEditBtn.getBoundingClientRect();
@@ -3221,7 +3221,7 @@ export class AppFeature extends App {
             this.eViewBtn.textContent = "View";
             this.eViewBtn.addEventListener("click", e => {
                 e.stopPropagation();
-                let itm = this.menu.findItemWithId("menu:view");
+                let itm = this.menu.getItemById("menu:view");
                 if (!itm) return;
                 this.contextMenu = itm.menu;
                 let r = this.eViewBtn.getBoundingClientRect();
@@ -3414,7 +3414,7 @@ export class AppFeature extends App {
         this.addHandler("post-setup", async () => {
             ["file", "edit", "view"].forEach(name => {
                 let id = "menu:"+name;
-                let menu = this.menu.findItemWithId(id);
+                let menu = this.menu.getItemById(id);
                 let namefs = {
                     file: () => {
                         let itms = [
@@ -3441,7 +3441,7 @@ export class AppFeature extends App {
                 };
                 if (name in namefs) namefs[name]();
             });
-            let itm = this.menu.findItemWithId("close");
+            let itm = this.menu.getItemById("close");
             if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
 
             await this.postResult("pre-post-setup");
@@ -4314,15 +4314,15 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
                 "delete", "closeproject",
             ];
             projectOnly.forEach(id => {
-                let itm = this.app.menu.findItemWithId(id);
+                let itm = this.app.menu.getItemById(id);
                 if (!itm) return;
                 itm.exists = true;
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = ""));
             let itm;
-            itm = this.app.menu.findItemWithId("closeproject");
+            itm = this.app.menu.getItemById("closeproject");
             if (itm) itm.accelerator = "CmdOrCtrl+W";
-            itm = this.app.menu.findItemWithId("close");
+            itm = this.app.menu.getItemById("close");
             if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
             await this.postResult("post-enter", data);
         });
@@ -4333,15 +4333,15 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
                 "delete", "closeproject",
             ];
             projectOnly.forEach(id => {
-                let itm = this.app.menu.findItemWithId(id);
+                let itm = this.app.menu.getItemById(id);
                 if (!itm) return;
                 itm.exists = false;
             });
             Array.from(document.querySelectorAll(".forproject")).forEach(elem => (elem.style.display = "none"));
             let itm;
-            itm = this.app.menu.findItemWithId("closeproject");
+            itm = this.app.menu.getItemById("closeproject");
             if (itm) itm.accelerator = null;
-            itm = this.app.menu.findItemWithId("close");
+            itm = this.app.menu.getItemById("close");
             if (itm) itm.accelerator = null;
             this.app.markChange("*all");
             await this.app.post("cmd-save");

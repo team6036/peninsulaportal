@@ -4582,10 +4582,11 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
 Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     #path;
     #value;
+    #toggle;
+    #toggles;
 
     #elem;
     #eName;
-    #eToggle;
     #eBox;
     #eIcon;
 
@@ -4594,21 +4595,21 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
 
         this.#path = null;
         this.#value = null;
+        this.#toggle = new Panel.ToolCanvasTab.Hook.Toggle("!");
+        this.toggle.addHandler("change", (c, f, t) => this.change("toggle."+c, f, t));
+        this.#toggles = new Set();
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("hook");
         this.#eName = document.createElement("div");
         this.elem.appendChild(this.eName);
         this.eName.classList.add("name");
-        this.#eToggle = document.createElement("button");
-        this.elem.appendChild(this.eToggle);
-        this.eToggle.classList.add("normal");
-        this.eToggle.textContent = "!";
-        this.eToggle.addEventListener("click", e => (this.toggleOn = !this.toggleOn));
         this.#eBox = document.createElement("div");
         this.elem.appendChild(this.eBox);
         this.eBox.classList.add("box");
         this.#eIcon = null;
+
+        this.elem.insertBefore(this.toggle.elem, this.eBox);
 
         this.name = name;
         this.path = path;
@@ -4654,42 +4655,130 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
 
     get elem() { return this.#elem; }
     get eName() { return this.#eName; }
-    get eToggle() { return this.#eToggle; }
     get eBox() { return this.#eBox; }
 
     get name() { return this.eName.textContent; }
     set name(v) { this.eName.textContent = v; }
 
-    get toggleShown() { return this.eToggle.classList.contains("this"); }
-    set toggleShown(v) {
-        if (v) this.eToggle.classList.add("this");
-        else this.eToggle.classList.remove("this");
+    get toggle() { return this.#toggle; }
+    set toggle(v) { this.toggle.from(v); }
+    get toggles() { return [...this.#toggles]; }
+    set toggles(v) {
+        v = util.ensure(v, "arr");
+        this.clearToggles();
+        this.addToggle(v);
     }
-    get toggleHidden() { return !this.toggleShown; }
-    set toggleHidden(v) { this.toggleShown = !v; }
-    showToggle() { return this.toggleShown = true; }
-    hideToggle() { return this.toggleHidden = true; }
-    get toggleOn() { return this.eToggle.classList.contains("on"); }
-    set toggleOn(v) {
-        if (v) this.eToggle.classList.add("on");
-        else this.eToggle.classList.remove("on");
+    clearToggles() {
+        let toggles = this.toggles;
+        this.remToggle(toggles);
+        return toggles;
     }
-    get toggleOff() { return !this.toggleOn; }
-    set toggleOff(v) { this.toggleOn = !v; }
-    on() { return this.toggleOn = true; }
-    off() { return this.toggleOff = true; }
+    hasToggle(toggle) {
+        if (!(toggle instanceof Panel.ToolCanvasTab.Hook.Toggle)) return false;
+        return this.#toggles.has(toggle);
+    }
+    addToggle(...toggles) {
+        return util.Target.resultingForEach(toggles, toggle => {
+            if (!(toggle instanceof Panel.ToolCanvasTab.Hook.Toggle)) toggle = Panel.ToolCanvasTab.Hook.Toggle.from(toggle);
+            if (toggle == this.toggle) return false;
+            if (this.hasToggle(toggle)) return false;
+            this.#toggles.add(toggle);
+            this.elem.insertBefore(toggle.elem, this.eBox);
+            toggle.addLinkedHandler(this, "change", (c, f, t) => this.change("toggles."+c, f, t));
+            this.change("addToggle", null, toggle);
+            return toggle;
+        });
+    }
+    remToggle(...toggles) {
+        return util.Target.resultingForEach(toggles, toggle => {
+            if (!(toggle instanceof Panel.ToolCanvasTab.Hook.Toggle)) toggle = Panel.ToolCanvasTab.Hook.Toggle.from(toggle);
+            if (toggle == this.toggle) return false;
+            if (!this.hasToggle(toggle)) return false;
+            this.#toggles.delete(toggle);
+            this.elem.removeChild(toggle.elem);
+            toggle.clearLinkedHandlers(this, "change");
+            this.change("remToggle", toggle, null);
+            return toggle;
+        });
+    }
+    getToggleByName(name) {
+        name = String(name);
+        for (let toggle of this.toggles)
+            if (toggle.name == name)
+                return toggle;
+        return null;
+    }
 
     to() {
         return {
             path: this.path,
-            toggleOn: this.toggleOn,
+            toggle: this.toggle.to(),
+            toggles: this.toggles.map(toggle => toggle.to()),
         };
     }
     from(o) {
         o = util.ensure(o, "obj");
         this.path = o.path;
-        this.toggleOn = o.toggleOn;
+        this.toggle = o.toggle;
+        this.toggles = o.toggles;
         return this;
+    }
+};
+Panel.ToolCanvasTab.Hook.Toggle = class PanelToolCanvasTabHookToggle extends util.Target {
+    #name;
+    #value;
+
+    #elem;
+
+    constructor(name, value=false) {
+        super();
+
+        this.#name = String(name);
+        this.#value = null;
+
+        this.#elem = document.createElement("button");
+        this.elem.classList.add("normal");
+        this.elem.textContent = this.name;
+        this.elem.addEventListener("click", e => (this.value = !this.value));
+
+        this.value = value;
+    }
+
+    get shown() { return this.elem.classList.contains("this"); }
+    set shown(v) {
+        if (v) this.elem.classList.add("this");
+        else this.elem.classList.remove("this");
+    }
+    get hidden() { return !this.shown; }
+    set hidden(v) { this.shown = !v; }
+    show() { return this.shown = true; }
+    hide() { return this.hidden = true; }
+    get name() { return this.#name; }
+    get value() { return this.#value; }
+    set value(v) {
+        v = !!v;
+        if (this.value == v) return;
+        this.change("value", this.value, this.#value=v);
+        if (v) this.elem.classList.add("on");
+        else this.elem.classList.remove("on");
+    }
+
+    get elem() { return this.#elem; }
+
+    to() {
+        return {
+            name: this.name,
+            value: this.value,
+        };
+    }
+    from(o) {
+        o = util.ensure(o, "obj");
+        this.value = o.value;
+        return this;
+    }
+    static from(o) {
+        o = util.ensure(o, "obj");
+        return new this(o.name, o.value);
     }
 };
 Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
@@ -5529,7 +5618,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#color = null;
 
         this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
-        this.shownHook.showToggle();
+        this.shownHook.toggle.show();
         this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
 
         this.#elem = document.createElement("div");
@@ -5696,7 +5785,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
-        if (this.shownHook.toggleOn)
+        if (this.shownHook.toggle.value)
             return !this.shownHook.value;
         return this.shownHook.value;
     }
@@ -6004,7 +6093,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#color = null;
 
         this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
-        this.shownHook.showToggle();
+        this.shownHook.toggle.show();
         this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
 
         this.#state = new this.constructor.State();
@@ -6158,7 +6247,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
-        if (this.shownHook.toggleOn)
+        if (this.shownHook.toggle.value)
             return !this.shownHook.value;
         return this.shownHook.value;
     }
@@ -6630,7 +6719,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.#type = null;
 
         this.#ghostHook = new Panel.ToolCanvasTab.Hook("Ghost Hook", null);
-        this.ghostHook.showToggle();
+        this.ghostHook.toggle.show();
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
 
         this.eContent.appendChild(this.ghostHook.elem);
@@ -6719,7 +6808,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     get isGhost() {
         if (this.ghost) return true;
         if (this.ghostHook.value == null) return false;
-        if (this.ghostHook.toggleOn)
+        if (this.ghostHook.toggle.value)
             return !this.ghostHook.value;
         return this.ghostHook.value;
     }
@@ -7231,10 +7320,10 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.#type = "";
 
         this.#ghostHook = new Panel.ToolCanvasTab.Hook("Ghost Hook", null);
-        this.ghostHook.showToggle();
+        this.ghostHook.toggle.show();
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
         this.#solidHook = new Panel.ToolCanvasTab.Hook("Solid Hook", null);
-        this.solidHook.showToggle();
+        this.solidHook.toggle.show();
         this.solidHook.addHandler("change", (c, f, t) => this.change("solidHook."+c, f, t));
 
         this.eContent.appendChild(this.ghostHook.elem);
@@ -7384,7 +7473,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     get isGhost() {
         if (this.ghost) return true;
         if (this.ghostHook.value == null) return false;
-        if (this.ghostHook.toggleOn)
+        if (this.ghostHook.toggle.value)
             return !this.ghostHook.value;
         return this.ghostHook.value;
     }
@@ -7393,7 +7482,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     get isSolid() {
         if (this.solid) return true;
         if (this.solidHook.value == null) return false;
-        if (this.solidHook.toggleOn)
+        if (this.solidHook.toggle.value)
             return !this.solidHook.value;
         return this.solidHook.value;
     }
@@ -7738,7 +7827,7 @@ export default class App extends core.AppFeature {
         this.addHandler("pre-post-setup", () => {
             ["file", "edit", "view"].forEach(name => {
                 let id = "menu:"+name;
-                let menu = this.menu.findItemWithId(id);
+                let menu = this.menu.getItemById(id);
                 let namefs = {
                     file: () => {
                         let itms = [
@@ -8618,7 +8707,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
 
             ["nt", "wpilog", "csv-time", "csv-field"].forEach(type => {
-                let itm = this.app.menu.findItemWithId("source:"+type);
+                let itm = this.app.menu.getItemById("source:"+type);
                 if (!itm) return;
                 itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
             });
@@ -8734,7 +8823,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.app.eProjectInfoActionBtn.disabled = this.source.importing;
             }
 
-            let itm = this.app.menu.findItemWithId("action");
+            let itm = this.app.menu.getItemById("action");
             if (itm) {
                 if (!this.hasSource()) {
                     itm.enabled = false;
@@ -8820,7 +8909,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 "openclose", "expandcollapse", "resetdivider",
             ];
             projectOnly.forEach(id => {
-                let itm = this.app.menu.findItemWithId(id);
+                let itm = this.app.menu.getItemById(id);
                 if (!itm) return;
                 itm.exists = true;
             });
@@ -8837,9 +8926,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         this.addHandler("post-enter", async data => {
             let itm;
-            itm = this.app.menu.findItemWithId("closeproject");
+            itm = this.app.menu.getItemById("closeproject");
             if (itm) itm.accelerator = "CmdOrCtrl+Shift+W";
-            itm = this.app.menu.findItemWithId("close");
+            itm = this.app.menu.getItemById("close");
             if (itm) itm.accelerator = "";
         });
         this.addHandler("leave", async data => {
@@ -8850,16 +8939,16 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 "openclose", "expandcollapse", "resetdivider",
             ];
             projectOnly.forEach(id => {
-                let itm = this.app.menu.findItemWithId(id);
+                let itm = this.app.menu.getItemById(id);
                 if (!itm) return;
                 itm.exists = false;
             });
         });
         this.addHandler("post-leave", async data => {
             let itm;
-            itm = this.app.menu.findItemWithId("closeproject");
+            itm = this.app.menu.getItemById("closeproject");
             if (itm) itm.accelerator = null;
-            itm = this.app.menu.findItemWithId("close");
+            itm = this.app.menu.getItemById("close");
             if (itm) itm.accelerator = null;
         });
     }
@@ -8979,7 +9068,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoActionBtn.classList.remove("special");
             this.app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.name;
         }
-        let itm = this.app.menu.findItemWithId("action");
+        let itm = this.app.menu.getItemById("action");
         if (!itm) return;
         if (!this.hasSource()) {
             itm.enabled = false;
