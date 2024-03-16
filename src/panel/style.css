@@ -1978,7 +1978,7 @@
 
     color: var(--v8);
 
-    font-size: 12px;
+    font-size: 14px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > button {
     align-self: stretch;
@@ -2006,20 +2006,8 @@
     border-radius: 5px;
     outline: 1px solid var(--v4);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > .box:has(> input) {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: stretch;
-    align-content: center;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > .box > input {
-    flex-basis: 100%;
-
-    min-width: 0px;
-    width: 100%;
-    padding: 5px 7.5px;
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .form {
+    padding: 0px;
 }
 #overlay {
     position: absolute;

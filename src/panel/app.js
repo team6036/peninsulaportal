@@ -4578,7 +4578,6 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     closeOptions() { return this.optionState = 0; }
 };
 Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
-    #useText;
     #path;
     #value;
     #toggle;
@@ -4588,12 +4587,10 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     #eName;
     #eBox;
     #eIcon;
-    #eInput;
 
     constructor(name, path) {
         super();
 
-        this.#useText = false;
         this.#path = 0;
         this.#value = null;
         this.#toggle = new Panel.ToolCanvasTab.Hook.Toggle("!");
@@ -4609,7 +4606,6 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
         this.elem.appendChild(this.eBox);
         this.eBox.classList.add("box");
         this.#eIcon = null;
-        this.#eInput = null;
 
         this.elem.insertBefore(this.toggle.elem, this.eBox);
 
@@ -4618,17 +4614,9 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     }
 
     #update() {
-        this.#eIcon = null;
-        this.#eInput = null;
-        if (this.useText) {
-            this.eBox.innerHTML = "<input type='text'>";
-            this.#eInput = this.eBox.children[0];
-            let text = this.text;
-            this.#eInput.addEventListener("change", e => this.change("text", text, text=this.text));
-            return;
-        }
         if (!this.hasPath()) {
             this.eBox.innerHTML = "";
+            this.#eIcon = null;
             return;
         }
         this.eBox.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div class='name'></div><ion-icon name='close'></ion-icon></div></button></div>";
@@ -4644,22 +4632,6 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
         });
     }
 
-    get useText() { return this.#useText; }
-    set useText(v) {
-        v = !!v;
-        if (this.useText == v) return;
-        this.change("useText", this.useText, this.#useText=v);
-        this.#update();
-    }
-    get text() { return this.#eInput ? this.#eInput.value : null; }
-    set text(v) {
-        if (v == null) return;
-        v = String(v);
-        if (this.#eInput) return this.#eInput.value = v;
-        this.useText = true;
-        this.text = v;
-    }
-
     get path() { return this.#path; }
     set path(v) {
         v = (v == null) ? null : util.generatePath(v);
@@ -4672,8 +4644,8 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
 
     setFrom(t, v) {
         this.#value = v;
-        if (!this.#eIcon) return;
-        const icon = this.#eIcon;
+        if (!this.eIcon) return;
+        const icon = this.eIcon;
         let display = getDisplay(t, v);
         if (display != null) {
             if ("src" in display) icon.setAttribute("src", display.src);
@@ -4690,6 +4662,7 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     get elem() { return this.#elem; }
     get eName() { return this.#eName; }
     get eBox() { return this.#eBox; }
+    get eIcon() { return this.#eIcon; }
 
     get name() { return this.eName.textContent; }
     set name(v) { this.eName.textContent = v; }
@@ -4745,8 +4718,6 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
 
     to() {
         return {
-            useText: this.useText,
-            text: this.text,
             path: this.path,
             toggle: this.toggle.to(),
             toggles: this.toggles.map(toggle => toggle.to()),
@@ -4754,8 +4725,6 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     }
     from(o) {
         o = util.ensure(o, "obj");
-        this.useText = o.useText;
-        this.text = o.text;
         this.path = o.path;
         this.toggle = o.toggle;
         this.toggles = o.toggles;
@@ -5636,7 +5605,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
 
     #expr;
     #exprCompiled;
-    #exprHook;
+    #fExpr;
 
     #elem;
     #eDisplay;
@@ -5665,13 +5634,16 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.shownHook.toggle.show();
         this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
 
+        const form = new core.Form();
+
         this.#expr = null;
         this.#exprCompiled = null;
-        this.#exprHook = new Panel.ToolCanvasTab.Hook("Expression", null);
-        this.exprHook.useText = true;
-        this.exprHook.addHandler("change", () => {
-            const text = this.exprHook.text;
-            this.expr = (text.length > 0) ? text : null;
+        this.#fExpr = form.addField(new core.Form.TextInput("expression"));
+        this.fExpr.type = "";
+        this.fExpr.isHorizontal = true;
+        this.fExpr.addHandler("change", () => {
+            const value = this.fExpr.value;
+            this.expr = (value.length > 0) ? value : null;
         });
 
         this.#elem = document.createElement("div");
@@ -5714,7 +5686,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         });
 
         this.eContent.appendChild(this.shownHook.elem);
-        this.eContent.appendChild(this.exprHook.elem);
+        this.eContent.appendChild(form.elem);
 
         this.eDisplay.addEventListener("contextmenu", e => {
             let itm;
@@ -5853,7 +5825,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.expr == v) return;
         this.change("expr", this.expr, this.#expr=v);
-        this.exprHook.text = this.hasExpr() ? this.expr : "";
+        this.fExpr.value = this.hasExpr() ? this.expr : "";
         this.compileExpr();
     }
     hasExpr() { return this.expr != null; }
@@ -5867,7 +5839,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         if (!this.#exprCompiled) return x;
         return this.exprCompiled.evaluate({ x: x });
     }
-    get exprHook() { return this.#exprHook; }
+    get fExpr() { return this.#fExpr; }
     
     getHovered(data, pos, options) {
         pos = new V(pos);
