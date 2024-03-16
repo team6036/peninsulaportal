@@ -242,10 +242,8 @@ Source.Field = class SourceField {
     #isHidden;
     #type;
     #isStruct;
-    #structType;
-    #clippedType;
     #isArray;
-    #arrayType;
+    #baseType;
     #isPrimitive;
     #isJustPrimitive;
 
@@ -299,11 +297,9 @@ Source.Field = class SourceField {
         if (type == null) throw new Error("Type is null");
         this.#type = String(type);
         this.#isStruct = this.type.startsWith("struct:");
-        this.#structType = this.isStruct ? this.type.slice(7) : this.type;
-        this.#clippedType = this.isStruct ? this.structType : this.type;
-        this.#isArray = this.clippedType.endsWith("[]");
-        this.#arrayType = this.isArray ? this.clippedType.slice(0, -2) : this.clippedType;
-        this.#isPrimitive = Source.Field.TYPES.includes(this.arrayType);
+        this.#isArray = this.type.endsWith("[]");
+        this.#baseType = this.type.slice(this.isStruct ? 7 : 0, this.type.length - (this.isArray ? 2 : 0));
+        this.#isPrimitive = Source.Field.TYPES.includes(this.baseType);
         this.#isJustPrimitive = this.isPrimitive && !this.isArray;
 
         this.#valueLog = [];
@@ -330,10 +326,8 @@ Source.Field = class SourceField {
 
     get type() { return this.#type; }
     get isStruct() { return this.#isStruct; }
-    get structType() { return this.#structType; }
-    get clippedType() { return this.#clippedType; }
     get isArray() { return this.#isArray; }
-    get arrayType() { return this.#arrayType; }
+    get baseType() { return this.#baseType; }
     get isPrimitive() { return this.#isPrimitive; }
     get isJustPrimitive() { return this.#isJustPrimitive; }
 
@@ -412,12 +406,13 @@ Source.Field = class SourceField {
         }
         this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
         if (this.isStruct) {
-            if (this.source.structDecode(this.path, this.arrayType, this.isArray, v, ts)) return;
-            this.source.queueStructDecode(this.path, this.arrayType, this.isArray, v, ts);
+            if (this.source.structDecode(this.path, this.baseType, this.isArray, v, ts)) return;
+            this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
         } else if (this.isArray) {
             v.forEach((v, i) => {
                 let path = this.path+"/"+i;
-                if (!this.source.hasField(path)) this.source.addField(new this.source.constructor.Field(this.source, path, this.arrayType)).real = false;
+                if (!this.source.hasField(path))
+                    this.source.addField(new this.source.constructor.Field(this.source, path, this.baseType)).real = false;
                 this.source.getField(path).update(v, ts);
             });
         }
