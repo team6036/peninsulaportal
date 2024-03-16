@@ -5641,7 +5641,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#fExpr = form.addField(new core.Form.TextInput("expression"));
         this.fExpr.type = "";
         this.fExpr.isHorizontal = true;
-        this.fExpr.addHandler("change", () => {
+        this.fExpr.addHandler("change-value", () => {
             const value = this.fExpr.value;
             this.expr = (value.length > 0) ? value : null;
         });
