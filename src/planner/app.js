@@ -1214,7 +1214,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let blob = await itm.getType(type);
                 let text = await blob.text();
                 if (!text.startsWith(util.MAGIC)) return;
-                text = text.substring(util.MAGIC.length);
+                text = text.slice(util.MAGIC.length);
                 try {
                     let data = JSON.parse(text, subcore.REVIVER.f);
                     if (!util.is(data, "arr")) return;

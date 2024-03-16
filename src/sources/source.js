@@ -196,7 +196,7 @@ export default class Source extends util.Target {
             if (!field.name.startsWith("struct:")) return;
             if (field.type != "structschema") return;
             if (field.valueLog.length <= 0) return;
-            this.createStruct(field.name.substring(7), field.valueLog[0].v);
+            this.createStruct(field.name.slice(7), field.valueLog[0].v);
         });
     }
 
@@ -421,7 +421,7 @@ Source.Field = class SourceField {
                 this.source.getField(path).update(v, ts);
             });
         }
-        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.createStruct(this.name.substring(7), v);
+        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.createStruct(this.name.slice(7), v);
     }
     pop(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
@@ -433,7 +433,7 @@ Source.Field = class SourceField {
                 if (!node.hasField()) return;
                 node.field.pop(ts);
             });
-        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.structHelper.remPattern(this.name.substring(7));
+        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.structHelper.remPattern(this.name.slice(7));
     }
 
     getMetadataIndex(ts=null) {

@@ -4,7 +4,7 @@ export const NUMBERS = "0123456789";
 export const ALPHABETUPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const ALPHABETLOWER = ALPHABETUPPER.toLowerCase();
 export const ALPHABETALL = ALPHABETLOWER+ALPHABETUPPER;
-export const BASE16 = NUMBERS+ALPHABETLOWER.substring(0, 6);
+export const BASE16 = NUMBERS+ALPHABETLOWER.slice(0, 6);
 export const BASE64 = NUMBERS+ALPHABETALL+"-_";
 export const VARIABLE = NUMBERS+ALPHABETALL+"_";
 
@@ -707,7 +707,7 @@ export class Color extends Target {
             }
             else if (is(a, "str")) {
                 if (a[0] == "#") {
-                    a = a.substring(1).toLowerCase();
+                    a = a.slice(1).toLowerCase();
                     let all = true;
                     for (let c of a) {
                         if (BASE16.includes(c)) continue;
@@ -724,9 +724,9 @@ export class Color extends Target {
                     }
                     if (a.length == 4) a[3] /= 255;
                 } else if (a.startsWith("rgb")) {
-                    a = a.substring(a.startsWith("rgba") ? 4 : 3);
+                    a = a.slice(a.startsWith("rgba") ? 4 : 3);
                     if (a.at(0) == "(" && a.at(-1) == ")") {
-                        a = a.substring(1, a.length-1);
+                        a = a.slice(1, a.length-1);
                         a = a.split(",").map(v => v.trim()).map(v => parseFloat(v));
                         a = new Color(...a).rgba;
                     } else a = [0, 0, 0];

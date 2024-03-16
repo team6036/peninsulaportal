@@ -457,7 +457,7 @@ export class App extends util.Target {
                     elem.setAttribute("href", "");
                     elem.addEventListener("click", e => {
                         e.stopPropagation();
-                        signal.post("nav", e, String(new URL(href, new URL(pth, url))).substring(url.length));
+                        signal.post("nav", e, String(new URL(href, new URL(pth, url))).slice(url.length));
                     });
                 }
             })();
@@ -532,31 +532,31 @@ export class App extends util.Target {
             };
             if (name in namefs) return namefs[name]();
             if (name.startsWith("templates/") && name.endsWith(".png")) {
-                name = name.substring(10, name.length-4);
+                name = name.slice(10, name.length-4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading template image "+name+": "+load.join(":");
                 return elem.textContent += "Downloading template image "+name;
             }
             if (name.startsWith("templates/") && name.endsWith(".glb")) {
-                name = name.substring(10, name.length-4);
+                name = name.slice(10, name.length-4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading template model "+name+": "+load.join(":");
                 return elem.textContent += "Downloading template model "+name;
             }
             if (name.startsWith("robots/") && name.endsWith(".glb")) {
-                name = name.substring(7, name.length-4);
+                name = name.slice(7, name.length-4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading robot model "+name+": "+load.join(":");
                 return elem.textContent += "Downloading robot model "+name;
             }
             if (name.startsWith("holidays/")) {
-                name = name.substring(9);
+                name = name.slice(9);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading holiday icon "+name+": "+load.join(":");
                 return elem.textContent += "Downloading holiday icon "+name;
             }
             if (name.startsWith("holidays/") && name.endsWith("-conv")) {
-                name = name.substring(9, name.length-5);
+                name = name.slice(9, name.length-5);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while converting holiday icon "+name+": "+load.join(":");
                 return elem.textContent += "Converting holiday icon "+name;
@@ -1603,7 +1603,7 @@ export class App extends util.Target {
     get progress() {
         if (!this.eTitleBar.classList.contains("progress")) return null;
         let progress = this.eTitleBar.style.getPropertyValue("--progress");
-        progress = progress.substring(0, progress.length-1);
+        progress = progress.slice(0, progress.length-1);
         return Math.min(1, Math.max(0, util.ensure(parseFloat(progress), "num")/100));
     }
     set progress(v) {
@@ -1807,7 +1807,7 @@ App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
             const repoRoot = await window.api.getRepoRoot();
             const url = "file://"+repoRoot+"/";
             const hrefUrl = String(new URL(href, url));
-            const relativeUrl = String(new URL("..", hrefUrl+"/")).substring(url.length);
+            const relativeUrl = String(new URL("..", hrefUrl+"/")).slice(url.length);
             this.#eArticle = await App.createMarkdown(await (await fetch(hrefUrl)).text(), this.signal, "./"+relativeUrl);
             this.eContent.appendChild(this.eArticle);
         } catch (e) { return false; }
@@ -4131,10 +4131,10 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         if (indices == null) return;
         let chunks = [];
         indices.forEach((range, i) => {
-            chunks.push(v.substring((i > 0) ? indices[i-1][1] : 0, range[0]));
-            chunks.push(v.substring(...range));
+            chunks.push(v.slice((i > 0) ? indices[i-1][1] : 0, range[0]));
+            chunks.push(v.slice(...range));
         });
-        chunks.push(v.substring((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
+        chunks.push(v.slice((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
         this.eListName.innerHTML = this.eGridName.innerHTML = "";
         chunks.forEach((chunk, i) => {
             let elem1 = document.createElement("span");
