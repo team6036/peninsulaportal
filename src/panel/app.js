@@ -5808,10 +5808,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
 
     get hooks() { return [this.shownHook]; }
     get shownHook() { return this.#shownHook; }
-    set shownHook(o) {
-        this.shownHook.from(o);
-        this.shownHook.useText = false;
-    }
+    set shownHook(o) { this.shownHook.from(o); }
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
@@ -6046,17 +6043,34 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
     getValue(node) {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
-        if (node.field.isStruct && (node.field.structType in this.constructor.PATTERNS)) {
-            let paths = util.ensure(this.constructor.PATTERNS[node.field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+        const field = node.field;
+        if (field.isStruct && (field.structType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let value = paths.map(path => {
                 let subnode = node.lookup(path.join("/"));
                 if (!(subnode instanceof Source.Node)) return null;
                 if (!subnode.hasField()) return null;
                 return subnode.field.get();
             });
-            return value.filter(v => util.is(v, "num"));
+            return value;
         }
-        return node.field.get();
+        return field.get();
+    }
+    getValueRange(node, tsStart=null, tsStop=null) {
+        if (!(node instanceof Source.Node)) return null;
+        if (!node.hasField()) return null;
+        const field = node.field;
+        if (field.isStruct && (field.structType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+            let range = paths.map(path => {
+                let subnode = node.lookup(path.join("/"));
+                if (!(subnode instanceof Source.Node)) return null;
+                if (!subnode.hasField()) return null;
+                return subnode.field.getRange(tsStart, tsStop);
+            });
+            return range;
+        }
+        return field.get(tsStart, tsStop);
     }
 
     getHovered(data, pos, options) {
@@ -6295,10 +6309,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
 
     get hooks() { return [this.shownHook]; }
     get shownHook() { return this.#shownHook; }
-    set shownHook(o) {
-        this.shownHook.from(o);
-        this.shownHook.useText = false;
-    }
+    set shownHook(o) { this.shownHook.from(o); }
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
@@ -6660,6 +6671,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
+                pose.state.trail = this.getValueRange(node);
                 pose.state.update(delta);
             });
             this.odometry.update(delta);
@@ -6822,27 +6834,29 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             this.post("type");
         });
 
-        if (a.length <= 0 || [6].includes(a.length) || a.length > 7) a = [null];
+        if (a.length <= 0 || [6].includes(a.length) || a.length > 9) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to()];
+            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to(), a.trail, a.useTrail];
             else if (util.is(a, "arr")) {
                 if (util.is(a[0], "str")) a = [a, null];
                 else {
                     a = new this.constructor(...a);
-                    a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to()];
+                    a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to(), a.trail, a.useTrail];
                 }
             }
             // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.type, a.shownHook, a.ghostHook];
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.type, a.shownHook, a.ghostHook, a.trail, a.useTrail];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, false];
         if (a.length == 4) a = [...a, core.Odometry2d.Robot.TYPES.DEFAULT];
         if (a.length == 5) a = [...a, null, null];
+        if (a.length == 7) a = [...a, 0];
+        if (a.length == 8) a = [...a, false];
 
-        [this.path, this.shown, this.color, this.ghost, this.type, this.shownHook, this.ghostHook] = a;
+        [this.path, this.shown, this.color, this.ghost, this.type, this.shownHook, this.ghostHook, this.trail, this.useTrail] = a;
     }
     
     async makeContextMenu() {
@@ -6884,10 +6898,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
     get hooks() { return [this.shownHook, this.ghostHook]; }
     get ghostHook() { return this.#ghostHook; }
-    set ghostHook(o) {
-        this.ghostHook.from(o);
-        this.ghostHook.useText = false;
-    }
+    set ghostHook(o) { this.ghostHook.from(o); }
     get isGhost() {
         if (this.ghost) return true;
         if (this.ghostHook.value == null) return false;
@@ -6925,11 +6936,14 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             type: core.Odometry2d.Robot.lookupTypeName(this.type),
             shownHook: this.shownHook.to(),
             ghostHook: this.ghostHook.to(),
+            trail: this.trail,
+            useTrail: this.useTrail,
         });
     }
 };
 Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel.OdometryTab.Pose.State {
     #value;
+    #trail;
 
     #renders;
 
@@ -6937,6 +6951,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         super();
 
         this.#value = [];
+        this.#trail = [];
 
         this.#renders = [];
 
@@ -7010,6 +7025,9 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         this.destroy();
         this.#value = v;
         this.create();
+    }
+    get trail() { return this.#trail; }
+    set trail(v) {
     }
 
     destroy() {
@@ -7569,10 +7587,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
 
     get hooks() { return [this.shownHook, this.ghostHook, this.solidHook]; }
     get ghostHook() { return this.#ghostHook; }
-    set ghostHook(o) {
-        this.ghostHook.from(o);
-        this.ghostHook.useText = false;
-    }
+    set ghostHook(o) { this.ghostHook.from(o); }
     get isGhost() {
         if (this.ghost) return true;
         if (this.ghostHook.value == null) return false;
@@ -7581,10 +7596,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         return this.ghostHook.value;
     }
     get solidHook() { return this.#solidHook; }
-    set solidHook(o) {
-        this.solidHook.from(o);
-        this.solidHook.useText = false;
-    }
+    set solidHook(o) { this.solidHook.from(o); }
     get isSolid() {
         if (this.solid) return true;
         if (this.solidHook.value == null) return false;
