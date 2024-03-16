@@ -178,12 +178,12 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
             let oline = line;
             let enums = {};
             if (line.startsWith("enum")) {
-                line = line.substring(4).trim();
+                line = line.slice(4).trim();
                 if (line[0] != "{") throw `Line ${linei}, '${oline}' does not have valid '{' for keyword 'enum'`;
                 let i = line.indexOf("}");
                 if (i < 0) throw `Line ${linei}, '${oline}' does not have valid '}' for keyword 'enum'`;
-                let enumStr = line.substring(1, i).split("").filter(c => c != " ").join("");
-                line = line.substring(i+1);
+                let enumStr = line.slice(1, i).split("").filter(c => c != " ").join("");
+                line = line.slice(i+1);
                 enumStr.split(",").map(pair => {
                     let opair = pair;
                     pair = pair.split("=");

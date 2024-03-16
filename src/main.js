@@ -117,7 +117,7 @@ const MAIN = async () => {
 
     function simplify(s) {
         s = String(s);
-        if (s.length > 20) s = s.substring(0, 20)+"...";
+        if (s.length > 20) s = s.slice(0, 20)+"...";
         return s;
     }
 
@@ -738,7 +738,7 @@ const MAIN = async () => {
             this.#windowManager = new WindowManager(this);
 
             name = String(name);
-            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.substring(6)))))
+            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.slice(6)))))
                 throw new Error(`Name '${name}' is not valid`);
             this.#name = name;
 
@@ -954,7 +954,7 @@ const MAIN = async () => {
             });
 
             if (this.isModal)
-                this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.substring(6).toLowerCase());
+                this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.slice(6).toLowerCase());
             else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
 
             namefs = {
@@ -1780,7 +1780,7 @@ const MAIN = async () => {
                     return util.ensure(await WindowManager.dirList([root, "projects"]), "arr")
                         .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".json")))
                         .map(dirent => dirent.name)
-                        .map(name => name.substring(0, name.length-5));
+                        .map(name => name.slice(0, name.length-5));
                 },
                 "projects-list": async () => {
                     await kfs["project-affirm"]();
@@ -1980,7 +1980,7 @@ const MAIN = async () => {
                         if (!(await this.dirHas("videos")))
                             await this.dirMake("videos");
                         const l = 11;
-                        const id = url.substring(url.length-l).split("").filter(c => util.BASE64.includes(c)).join("");
+                        const id = url.slice(url.length-l).split("").filter(c => util.BASE64.includes(c)).join("");
                         const name = id+".mp4";
                         if (await this.fileHas(["videos", name]))
                             await this.fileDelete(["videos", name]);
@@ -2747,8 +2747,8 @@ const MAIN = async () => {
                             const template = templates[name];
                             await Promise.all(["images", "models"].map(async section => {
                                 let tag = { "images": "png", "models": "glb" }[section];
-                                if (section.substring(0, section.length-1) in template)
-                                    if (!template[section.substring(0, section.length-1)]) {
+                                if (section.slice(0, section.length-1) in template)
+                                    if (!template[section.slice(0, section.length-1)]) {
                                         this.log(`DB templates/${name}.${tag} IGNORED`);
                                         return;
                                     }
@@ -3010,7 +3010,7 @@ const MAIN = async () => {
                 let win = identify(e);
                 if (type == "app") return __dirname;
                 if (type == "window") {
-                    if (win.isModal) return path.join(__dirname, "modal", win.name.substring(6).toLowerCase());
+                    if (win.isModal) return path.join(__dirname, "modal", win.name.slice(6).toLowerCase());
                     return path.join(__dirname, win.name.toLowerCase());
                 }
                 if (type == "repo") return path.join(__dirname, "..");
@@ -3835,7 +3835,7 @@ const MAIN = async () => {
             if (k in kfs) return await kfs[k]();
             if (k.startsWith("val-")) {
                 try {
-                    return await this.getValue(k.substring(4));
+                    return await this.getValue(k.slice(4));
                 } catch (e) { if (!String(e).startsWith("§GV ")) throw e; }
             }
             throw "§G No possible \"get\" for key: "+k;
@@ -3923,7 +3923,7 @@ const MAIN = async () => {
             if (k in kfs) return await kfs[k]();
             if (k.startsWith("val-")) {
                 try {
-                    return await this.setValue(k.substring(4), v);
+                    return await this.setValue(k.slice(4), v);
                 } catch (e) { if (!String(e).startsWith("§SV ")) throw e; }
             }
             throw "§S No possible \"set\" for key: "+k;

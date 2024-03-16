@@ -65,7 +65,7 @@ function getDisplay(t, v) {
         color: "",
     };
     if (t.endsWith("[]")) {
-        t = t.substring(0, t.length-2);
+        t = t.slice(0, t.length-2);
         let display = getDisplay(t, (t == "boolean") ? true : null);
         if (display == null) return null;
         return {
@@ -1867,10 +1867,10 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         if (indices == null) return;
         let chunks = [];
         indices.forEach((range, i) => {
-            chunks.push(v.substring((i > 0) ? indices[i-1][1] : 0, range[0]));
-            chunks.push(v.substring(...range));
+            chunks.push(v.slice((i > 0) ? indices[i-1][1] : 0, range[0]));
+            chunks.push(v.slice(...range));
         });
-        chunks.push(v.substring((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
+        chunks.push(v.slice((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
         this.eName.innerHTML = "";
         chunks.forEach((chunk, i) => {
             let elem = document.createElement("span");
@@ -1889,10 +1889,10 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         if (indices == null) return;
         let chunks = [];
         indices.forEach((range, i) => {
-            chunks.push(v.substring((i > 0) ? indices[i-1][1] : 0, range[0]));
-            chunks.push(v.substring(...range));
+            chunks.push(v.slice((i > 0) ? indices[i-1][1] : 0, range[0]));
+            chunks.push(v.slice(...range));
         });
-        chunks.push(v.substring((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
+        chunks.push(v.slice((indices.length > 0) ? indices.at(-1)[1] : 0, v.length));
         this.eInfo.innerHTML = "";
         chunks.forEach((chunk, i) => {
             let elem = document.createElement("span");
@@ -3865,7 +3865,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 pth = String(result.filePath);
                             } else {
                                 if (pth.endsWith(tag))
-                                    pth = pth.substring(0, pth.length-tag.length);
+                                    pth = pth.slice(0, pth.length-tag.length);
                             }
                             pth = String(pth);
                             if (!pth.endsWith(tag)) pth += tag;
@@ -4035,8 +4035,8 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                         pop.doCast = v => {
                             v = String(v);
                             if (v.length <= 0) return v;
-                            if (v.startsWith("https://www.youtube.com/watch?v=")) v = v.substring("https://".length);
-                            if (v.startsWith("www.youtube.com/watch?v=")) v = v.substring("www.".length);
+                            if (v.startsWith("https://www.youtube.com/watch?v=")) v = v.slice("https://".length);
+                            if (v.startsWith("www.youtube.com/watch?v=")) v = v.slice("www.".length);
                             if (!v.startsWith("youtube.com/watch?v=")) {
                                 if (v.length != 11) return v;
                                 v = "youtube.com/watch?v="+v;
@@ -6044,8 +6044,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
         const field = node.field;
-        if (field.isStruct && (field.structType in this.constructor.PATTERNS)) {
-            let paths = util.ensure(this.constructor.PATTERNS[field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+        if (field.isStruct && (field.arrayType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[field.arrayType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let value = paths.map(path => {
                 let subnode = node.lookup(path.join("/"));
                 if (!(subnode instanceof Source.Node)) return null;
@@ -6601,7 +6601,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                     }
                 };
             };
-            this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.substring(0, 2)));
+            this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.slice(0, 2)));
             this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsAngle.values = this.fUnitsAngle.values.map(makeMapValue(v => v.toUpperCase()));
@@ -6986,7 +6986,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                 let l = this.value.length / 3;
                 while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new core.Odometry2d.Robot(this.tab.odometry.render)));
                 while (renders.length > l) this.tab.odometry.render.remRender(renders.pop());
-                let color = this.pose.color.substring(2);
+                let color = this.pose.color.slice(2);
                 let colorH = color+5;
                 for (let i = 0; i < l; i++) {
                     let render = renders[i];
@@ -7236,7 +7236,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 };
             };
             this.fViewRenderType.values = this.fViewRenderType.values.map(makeMapValue(v => util.formatText(v)));
-            this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.substring(0, 2)));
+            this.fQuality.values = this.fQuality.values.map(makeMapValue((_, n) => n.slice(0, 2)));
             this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsAngle.values = this.fUnitsAngle.values.map(makeMapValue(v => v.toUpperCase()));
@@ -8460,7 +8460,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         let i2 = file.lastIndexOf("\\");
                         let i = Math.max(i1, i2);
                         source.file = file;
-                        source.shortFile = file.substring(i+1);
+                        source.shortFile = file.slice(i+1);
                         const progress = v => (this.app.progress = v);
                         source.addHandler("progress", progress);
                         await source.import(file);
