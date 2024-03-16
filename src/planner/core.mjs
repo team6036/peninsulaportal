@@ -5,9 +5,6 @@ import * as lib from "../lib.mjs";
 import * as core from "../core.mjs";
 
 
-export const VERSION = 2;
-
-
 export class Project extends core.Project {
     #items;
     #paths;
@@ -226,7 +223,6 @@ export class Project extends core.Project {
     
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             id: this.id,
             items: this.#items,
             paths: this.#paths,
@@ -328,7 +324,6 @@ Project.Config = class ProjectConfig extends Project.Config {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             script: this.script, scriptPython: this.scriptPython, scriptUseDefault: this.scriptUseDefault,
             options: this.options,
         });
@@ -369,7 +364,6 @@ Project.Meta = class ProjectMeta extends Project.Meta {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             name: this.name,
             modified: this.modified, created: this.created,
             thumb: this.thumb,
@@ -422,7 +416,6 @@ Project.Item = class ProjectItem extends util.Target {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             pos: this.pos,
         });
     }
@@ -547,7 +540,6 @@ Project.Node = class ProjectNode extends Project.Item {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             pos: this.pos,
             heading: this.heading, useHeading: this.useHeading,
             velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
@@ -593,7 +585,6 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             pos: this.pos,
             radius: this.radius,
         });
@@ -676,7 +667,6 @@ Project.Path = class ProjectPath extends util.Target {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             name: this.name,
             nodes: this.nodes,
         });

@@ -12,8 +12,6 @@ import CSVFieldSource from "../sources/csv/field/source.js";
 import { WorkerClient } from "../worker.js";
 
 
-export const VERSION = 3;
-
 class RLine extends core.Odometry2d.Render {
     #a; #b;
     #color;
@@ -7708,7 +7706,6 @@ class Project extends core.Project {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             id: this.id,
             widgetData: this.widgetData,
             sidePos: this.sidePos,
@@ -7798,7 +7795,6 @@ Project.Config = class ProjectConfig extends Project.Config {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             sources: this.sources,
             sourceType: this.sourceType,
         });

@@ -36,8 +36,6 @@ export const VARIABLE = NUMBERS+ALPHABETALL+"_";
 
 export const MAGIC = "_*[[;ƒ";
 
-export const VERSION = 1;
-
 
 Array.prototype.sum = function() {
     return this.reduce((sum, x) => sum+x, 0);
@@ -963,7 +961,6 @@ export class Color extends Target {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             r: this.r,
             g: this.g,
             b: this.b,
@@ -1045,7 +1042,6 @@ export class Range extends Target {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             l: this.l, r: this.r,
             lInclude: this.lInclude, rInclude: this.rInclude,
         });
@@ -1191,7 +1187,6 @@ export class V extends Target {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             x: this.x,
             y: this.y,
         });
@@ -1330,7 +1325,6 @@ export class V3 extends Target {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             x: this.x,
             y: this.y,
             z: this.z,
@@ -1448,7 +1442,6 @@ export class V4 extends Target {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             x: this.x,
             y: this.y,
             z: this.z,
@@ -1569,7 +1562,6 @@ export class Line extends Shape {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             x1: this.x1, y1: this.y1,
             x2: this.x2, y2: this.y2,
         });
@@ -1661,7 +1653,6 @@ export class Circle extends Shape {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             x: this.x, y: this.y,
             r: this.r,
         });
@@ -1859,7 +1850,6 @@ export class Rect extends Shape {
     
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             x: this.x, y: this.y,
             w: this.w, h: this.h,
         });
@@ -2011,7 +2001,6 @@ export class Polygon extends Shape {
     
     toJSON() {
         return Reviver.revivable(this.constructor, {
-            VERSION: VERSION,
             p: this.p,
             points: this.points,
         });
