@@ -2063,11 +2063,11 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         });
         this.page.addHandler("nav-back", () => {
             if (!visual) return;
-            visual.playback.ts -= 5*1000;
+            visual.playback.ts -= 5000;
         });
         this.page.addHandler("nav-forward", () => {
             if (!visual) return;
-            visual.playback.ts += 5*1000;
+            visual.playback.ts += 5000;
         });
     }
 

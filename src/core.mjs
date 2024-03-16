@@ -797,7 +797,7 @@ export class App extends util.Target {
         setTimeout(() => {
             this.eTitleBar.style.opacity = "";
             this.eMount.style.opacity = "";
-        }, 0.5*1000);
+        }, 500);
         this.eTitleBar.style.opacity = "0%";
         this.eMount.style.opacity = "0%";
 
@@ -1656,7 +1656,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
                 document.body.appendChild(this.elem);
                 setTimeout(() => {
                     this.elem.classList.add("in");
-                }, 0.01*1000);
+                }, 10);
             } else {
                 const onChange = () => window.modal.modify(this.id, this.generateParams());
                 this.addHandler("change", onChange);
@@ -1683,7 +1683,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
                 this.elem.classList.remove("in");
                 setTimeout(() => {
                     document.body.removeChild(this.elem);
-                }, 0.25*1000);
+                }, 250);
             } else {
                 this.post("post-rem");
             }
