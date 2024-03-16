@@ -532,19 +532,19 @@ export class App extends util.Target {
             };
             if (name in namefs) return namefs[name]();
             if (name.startsWith("templates/") && name.endsWith(".png")) {
-                name = name.slice(10, name.length-4);
+                name = name.slice(10, -4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading template image "+name+": "+load.join(":");
                 return elem.textContent += "Downloading template image "+name;
             }
             if (name.startsWith("templates/") && name.endsWith(".glb")) {
-                name = name.slice(10, name.length-4);
+                name = name.slice(10, -4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading template model "+name+": "+load.join(":");
                 return elem.textContent += "Downloading template model "+name;
             }
             if (name.startsWith("robots/") && name.endsWith(".glb")) {
-                name = name.slice(7, name.length-4);
+                name = name.slice(7, -4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while downloading robot model "+name+": "+load.join(":");
                 return elem.textContent += "Downloading robot model "+name;
@@ -556,7 +556,7 @@ export class App extends util.Target {
                 return elem.textContent += "Downloading holiday icon "+name;
             }
             if (name.startsWith("holidays/") && name.endsWith("-conv")) {
-                name = name.slice(9, name.length-5);
+                name = name.slice(9, -5);
                 if (load.length > 0) elem.style.color = "var(--cr)";
                 if (load.length > 0) return elem.textContent += "Error while converting holiday icon "+name+": "+load.join(":");
                 return elem.textContent += "Converting holiday icon "+name;
@@ -1603,7 +1603,7 @@ export class App extends util.Target {
     get progress() {
         if (!this.eTitleBar.classList.contains("progress")) return null;
         let progress = this.eTitleBar.style.getPropertyValue("--progress");
-        progress = progress.slice(0, progress.length-1);
+        progress = progress.slice(0, -1);
         return Math.min(1, Math.max(0, util.ensure(parseFloat(progress), "num")/100));
     }
     set progress(v) {
@@ -3169,9 +3169,9 @@ export class AppFeature extends App {
 
             const checkMinWidth = async () => {
                 let left = PROPERTYCACHE.get("--LEFT");
-                left = util.ensure(parseFloat(left.slice(0, left.length-2)), "num");
+                left = util.ensure(parseFloat(left.slice(0, -2)), "num");
                 let right = PROPERTYCACHE.get("--RIGHT");
-                right = util.ensure(parseFloat(right.slice(0, right.length-2)), "num");
+                right = util.ensure(parseFloat(right.slice(0, -2)), "num");
                 let w = left+right;
                 w += Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)"))
                     .map(elem => elem.getBoundingClientRect().width)
