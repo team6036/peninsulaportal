@@ -267,7 +267,7 @@ Source.Field = class SourceField {
         t = String(t);
         if (t.startsWith("struct:")) return v;
         if (t.endsWith("[]")) {
-            t = t.slice(0, t.length-2);
+            t = t.slice(0, -2);
             return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
         }
         if (t == "structschema") return toUint8Array(v);
@@ -302,7 +302,7 @@ Source.Field = class SourceField {
         this.#structType = this.isStruct ? this.type.slice(7) : this.type;
         this.#clippedType = this.isStruct ? this.structType : this.type;
         this.#isArray = this.clippedType.endsWith("[]");
-        this.#arrayType = this.isArray ? this.clippedType.slice(0, this.clippedType.length-2) : this.clippedType;
+        this.#arrayType = this.isArray ? this.clippedType.slice(0, -2) : this.clippedType;
         this.#isPrimitive = Source.Field.TYPES.includes(this.arrayType);
         this.#isJustPrimitive = this.isPrimitive && !this.isArray;
 

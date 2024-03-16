@@ -65,7 +65,7 @@ function getDisplay(t, v) {
         color: "",
     };
     if (t.endsWith("[]")) {
-        t = t.slice(0, t.length-2);
+        t = t.slice(0, -2);
         let display = getDisplay(t, (t == "boolean") ? true : null);
         if (display == null) return null;
         return {
@@ -218,7 +218,7 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     get arrayType() {
         if (!this.hasType()) return null;
         if (!this.isArray) return this.clippedType;
-        return this.clippedType.slice(0, this.clippedType.length-2);
+        return this.clippedType.slice(0, -2);
     }
     get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.arrayType); }
     get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
@@ -3865,7 +3865,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 pth = String(result.filePath);
                             } else {
                                 if (pth.endsWith(tag))
-                                    pth = pth.slice(0, pth.length-tag.length);
+                                    pth = pth.slice(0, -tag.length);
                             }
                             pth = String(pth);
                             if (!pth.endsWith(tag)) pth += tag;

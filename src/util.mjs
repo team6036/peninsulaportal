@@ -726,7 +726,7 @@ export class Color extends Target {
                 } else if (a.startsWith("rgb")) {
                     a = a.slice(a.startsWith("rgba") ? 4 : 3);
                     if (a.at(0) == "(" && a.at(-1) == ")") {
-                        a = a.slice(1, a.length-1);
+                        a = a.slice(1, -1);
                         a = a.split(",").map(v => v.trim()).map(v => parseFloat(v));
                         a = new Color(...a).rgba;
                     } else a = [0, 0, 0];

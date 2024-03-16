@@ -1780,7 +1780,7 @@ const MAIN = async () => {
                     return util.ensure(await WindowManager.dirList([root, "projects"]), "arr")
                         .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".json")))
                         .map(dirent => dirent.name)
-                        .map(name => name.slice(0, name.length-5));
+                        .map(name => name.slice(0, -5));
                 },
                 "projects-list": async () => {
                     await kfs["project-affirm"]();
@@ -2747,8 +2747,8 @@ const MAIN = async () => {
                             const template = templates[name];
                             await Promise.all(["images", "models"].map(async section => {
                                 let tag = { "images": "png", "models": "glb" }[section];
-                                if (section.slice(0, section.length-1) in template)
-                                    if (!template[section.slice(0, section.length-1)]) {
+                                if (section.slice(0, -1) in template)
+                                    if (!template[section.slice(0, -1)]) {
                                         this.log(`DB templates/${name}.${tag} IGNORED`);
                                         return;
                                     }
