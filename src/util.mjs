@@ -1,29 +1,3 @@
-let math = null;
-if (typeof(window) != "undefined") {
-    try {
-        math = (await import("../node_modules/mathjs/lib/browser/math.js")).default;
-    } catch (e) {
-        console.log("MATHJS IMPORT TRY 1 ERR", e);
-        try {
-            // THIS IS SO BAD - FIND ME A SOLUTION NOW
-            const script = document.createElement("script");
-            document.head.appendChild(script);
-            await new Promise(async (res, rej) => {
-                script.addEventListener("load", () => res());
-                script.addEventListener("error", e => rej(e));
-                script.src = new URL(
-                    "node_modules/mathjs/lib/browser/math.js",
-                    "file://"+String(await window.api.getAppRoot()),
-                );
-            });
-            math = window.math;
-            delete window.math;
-        } catch (e) {
-            console.log("MATHJS IMPORT TRY 2 ERR", e);
-        }
-    }
-}
-
 export const EPSILON = 0.000001;
 
 export const NUMBERS = "0123456789";
@@ -686,60 +660,6 @@ export class Target {
     }
     onAdd() { return this.post("add"); }
     onRem() { return this.post("rem"); }
-}
-
-export class Unit extends Target {
-    #value;
-    #unit;
-
-    constructor(...a) {
-        super();
-
-        this.#value = 0;
-        this.#unit = null;
-
-        if (a.length <= 0 || a.length > 2) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Unit) a = [a.value, a.unit];
-            else if (is(a, "arr")) {
-                a = new Unit(...a);
-                a = [a.value, a.unit];
-            }
-            else if (is(a, "obj")) a = [a.value, a.unit];
-            else if (is(a, "num")) a = [a, "#"];
-            else a = [0, "#"];
-        }
-        
-        [this.value, this.unit] = a;
-    }
-
-    get value() { return this.#value; }
-    set value(v) {
-        v = ensure(v, "num");
-        if (this.value == v) return;
-        this.change("value", this.value, this.#value=v);
-    }
-    get unit() { return this.#unit; }
-    set unit(v) {
-        v = String(v).toLowerCase();
-        if (this.unit == v) return;
-        this.change("unit", this.unit, this.#unit=v);
-    }
-
-    convert(to) {
-        to = String(to).toLowerCase();
-        if (this.unit == "#" || to == "#" || !math) return new Unit(this.value, to);
-        return new Unit(math.unit(this.value, this.unit).toNumber(to), to);
-    }
-
-    static convert(v, u1, u2) {
-        v = ensure(v, "num");
-        u1 = String(u1).toLowerCase();
-        u2 = String(u2).toLowerCase();
-        if (u1 == "#" || u2 == "#" || !math) return v;
-        return math.unit(v, u1).toNumber(u2);
-    }
 }
 
 export class Color extends Target {
