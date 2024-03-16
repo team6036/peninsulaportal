@@ -1978,7 +1978,7 @@
 
     color: var(--v8);
 
-    font-size: 14px;
+    font-size: 12px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > button {
     align-self: stretch;
@@ -2006,8 +2006,11 @@
     border-radius: 5px;
     outline: 1px solid var(--v4);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .form {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content .form {
     padding: 0px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content .form > .item > .header {
+    font-size: 12px;
 }
 #overlay {
     position: absolute;

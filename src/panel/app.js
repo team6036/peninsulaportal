@@ -6651,6 +6651,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
+                pose.fTrail.app = this.app;
                 let node;
                 node = (source && pose.shownHook.hasPath()) ? source.tree.lookup(pose.shownHook.path) : null;
                 pose.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
@@ -6764,6 +6765,10 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
     #ghostHook;
 
+    #trail;
+    #useTrail;
+    #fTrail;
+
     #eGhostBtn;
     #eDisplayType;
 
@@ -6777,7 +6782,27 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.ghostHook.toggle.show();
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
 
+        const form = new core.Form();
+
+        this.#trail = null;
+        this.#useTrail = null;
+        this.#fTrail = form.addField(new core.Form.Input1d("trail"));
+        this.fTrail.types = ["ms", "s", "min"];
+        this.fTrail.baseType = "ms";
+        this.fTrail.activeType = "s";
+        this.fTrail.step = 0.1;
+        this.fTrail.showToggle = true;
+        this.fTrail.addHandler("change-toggleOn", () => {
+            this.useTrail = this.fTrail.toggleOn;
+        });
+        this.fTrail.addHandler("change-value", () => {
+            this.trail = this.fTrail.value;
+        });
+        this.trail = 0;
+        this.useTrail = false;
+
         this.eContent.appendChild(this.ghostHook.elem);
+        this.eContent.appendChild(form.elem);
 
         this.#eGhostBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eGhostBtn);
@@ -6870,6 +6895,23 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             return !this.ghostHook.value;
         return this.ghostHook.value;
     }
+
+    get trail() { return this.#trail; }
+    set trail(v) {
+        v = Math.max(0, util.ensure(v, "num"));
+        if (this.trail == v) return;
+        this.change("trail", this.trail, this.#trail=v);
+        this.fTrail.value = this.trail;
+    }
+    get useTrail() { return this.#useTrail; }
+    set useTrail(v) {
+        v = !!v;
+        if (this.useTrail == v) return;
+        this.change("useTrail", this.useTrail, this.#useTrail=v);
+        this.fTrail.toggleOn = this.useTrail;
+        this.fTrail.disabled = !this.useTrail;
+    }
+    get fTrail() { return this.#fTrail; }
 
     get eGhostBtn() { return this.#eGhostBtn; }
     get eDisplayType() { return this.#eDisplayType; }
