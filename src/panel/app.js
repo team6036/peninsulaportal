@@ -6032,6 +6032,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!node.hasField()) return null;
         const field = node.field;
         if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+            if (field.isArray)
+                return node.nodeObjects.map(node => this.getValue(node)).flatten();
             let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let value = paths.map(path => {
                 let subnode = node.lookup(path.join("/"));
@@ -6048,6 +6050,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!node.hasField()) return null;
         const field = node.field;
         if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+            if (field.isArray)
+                return node.nodeObjects.map(node => this.getValue(node)).flatten();
             let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let range = paths.map(path => {
                 let subnode = node.lookup(path.join("/"));
