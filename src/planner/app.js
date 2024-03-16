@@ -1536,7 +1536,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.eSpawnBox.appendChild(this.eSpawnDelete);
         this.eSpawnDelete.classList.add("delete");
         this.eSpawnDelete.classList.add("off");
-        this.eSpawnDelete.innerHTML = "<ion-icon name='trash'></ion-icon>";
+        this.eSpawnDelete.innerHTML = "<ion-icon name='close'></ion-icon>";
         this.#eSpawns = {};
         ["node", "obstacle"].forEach(name => {
             let btn = this.#eSpawns[name] = document.createElement("button");
@@ -2207,7 +2207,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
         this.eEdit.innerHTML = "<ion-icon name='pencil'></ion-icon>";
         this.#eRemove = document.createElement("button");
         this.elem.appendChild(this.eRemove);
-        this.eRemove.innerHTML = "<ion-icon name='trash'></ion-icon>";
+        this.eRemove.innerHTML = "<ion-icon name='close'></ion-icon>";
 
         this.elem.addEventListener("click", e => {
             e.stopPropagation();

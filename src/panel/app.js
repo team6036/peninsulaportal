@@ -5638,7 +5638,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#eRemoveBtn = document.createElement("button");
         this.eDisplay.appendChild(this.eRemoveBtn);
         this.eRemoveBtn.classList.add("icon");
-        this.eRemoveBtn.innerHTML = "<ion-icon name='trash'></ion-icon>";
+        this.eRemoveBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
@@ -6115,7 +6115,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#eRemoveBtn = document.createElement("button");
         this.eDisplay.appendChild(this.eRemoveBtn);
         this.eRemoveBtn.classList.add("icon");
-        this.eRemoveBtn.innerHTML = "<ion-icon name='trash'></ion-icon>";
+        this.eRemoveBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
