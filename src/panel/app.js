@@ -204,23 +204,11 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     get type() { return super.info; }
     hasType() { return super.info != null; }
     get isStruct() { return this.hasType() && this.type.startsWith("struct:"); }
-    get structType() {
-        if (!this.hasType()) return null;
-        if (!this.isStruct) return this.type;
-        return this.type.slice(7);
+    get isArray() { return this.hasType() && this.type.endsWith("[]"); }
+    get baseType() {
+        return this.type.slice(this.isStruct ? 7 : 0, this.type.length - (this.isArray ? 2 : 0));
     }
-    get clippedType() {
-        if (!this.hasType()) return null;
-        if (this.isStruct) return this.structType;
-        return this.type;
-    }
-    get isArray() { return this.hasType() && this.clippedType.endsWith("[]"); }
-    get arrayType() {
-        if (!this.hasType()) return null;
-        if (!this.isArray) return this.clippedType;
-        return this.clippedType.slice(0, -2);
-    }
-    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.arrayType); }
+    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.baseType); }
     get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
 
     get value() {
@@ -1962,7 +1950,7 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
             }
             this.name = this.node.path;
             if (this.name.length <= 0) this.name = "/";
-            this.info = util.ensure(this.node.hasField() ? this.node.field.clippedType : "", "str");
+            this.info = util.ensure(this.node.hasField() ? this.node.field.type : "", "str");
         };
         this.addHandler("change", update);
 
@@ -2137,7 +2125,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                             eType.textContent = node.field.type;
                             let display = getDisplay(node.field.type, value);
                             eValue.style.color = (display == null) ? "" : util.ensure(display.color, "str");
-                            eValue.style.fontSize = (["double", "float", "int"].includes(node.field.arrayType) ? 32 : 16)+"px";
+                            eValue.style.fontSize = (["double", "float", "int"].includes(node.field.baseType) ? 32 : 16)+"px";
                             eValue.textContent = getRepresentation(value, node.field.type == "structschema");
                         }
                     };
@@ -4081,7 +4069,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eNav.appendChild(this.eTime);
         this.eTime.classList.add("time");
         this.#eTimeTitle = document.createElement("div");
-        // this.eTime.appendChild(this.eTimeTitle);
         this.eTimeTitle.classList.add("title");
         this.eTimeTitle.textContent = "<div>Sync</div>";
         this.#eTimeBox = document.createElement("div");
@@ -6044,8 +6031,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
         const field = node.field;
-        if (field.isStruct && (field.arrayType in this.constructor.PATTERNS)) {
-            let paths = util.ensure(this.constructor.PATTERNS[field.arrayType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let value = paths.map(path => {
                 let subnode = node.lookup(path.join("/"));
                 if (!(subnode instanceof Source.Node)) return null;
@@ -6060,8 +6047,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
         const field = node.field;
-        if (field.isStruct && (field.structType in this.constructor.PATTERNS)) {
-            let paths = util.ensure(this.constructor.PATTERNS[field.structType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let range = paths.map(path => {
                 let subnode = node.lookup(path.join("/"));
                 if (!(subnode instanceof Source.Node)) return null;
@@ -6671,7 +6658,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
-                pose.state.trail = this.getValueRange(node);
+                // pose.state.trail = this.getValueRange(node);
                 pose.state.update(delta);
             });
             this.odometry.update(delta);
@@ -8654,23 +8641,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                             bottom -= this.getESideSection(names[j]).elem.getBoundingClientRect().height;
                         bottom -= available.heightBtn;
                         y = Math.min(bottom, Math.max(top, y));
-                        // const names2 = names.filter(name => this.project.getSideSectionPos(name) > 0);
-                        // let i2 = names2.indexOf(names[i-1]);
-                        // if (names2.length <= 1) {
-                        //     this.project.setSideSectionPos(names[i-1], );
-                        //     this.project.fixSideSectionPos(true);
-                        // } else {
-                        //     // let p = (e.pageY-r.top) / r.height;
-                        //     let mnBound = 0, mxBound = 0;
-                        //     for (let j = 0; j < names2.length; j++) mxBound += this.project.getSideSectionPos(names2[j]);
-                        //     for (let j = 0; j < i2-1; j++) mnBound += this.project.getSideSectionPos(names2[j]);
-                        //     for (let j = names2.length-1; j > i2; j--) mxBound -= this.project.getSideSectionPos(names2[j]);
-                        //     // p = Math.min(mxBound, Math.max(mnBound, p));
-                        //     let p = util.lerp(mnBound, mxBound, (y-top)/(bottom-top));
-                        //     this.project.setSideSectionPos(names2[i2-1], p-mnBound, false);
-                        //     this.project.setSideSectionPos(names2[i2], mxBound-p, false);
-                        //     this.project.fixSideSectionPos();
-                        // }
                     };
                     document.addEventListener("mouseup", mouseup);
                     document.addEventListener("mousemove", mousemove);
