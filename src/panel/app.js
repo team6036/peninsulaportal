@@ -4578,6 +4578,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     closeOptions() { return this.optionState = 0; }
 };
 Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
+    #useText;
     #path;
     #value;
     #toggle;
@@ -4587,11 +4588,13 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     #eName;
     #eBox;
     #eIcon;
+    #eInput;
 
     constructor(name, path) {
         super();
 
-        this.#path = null;
+        this.#useText = false;
+        this.#path = 0;
         this.#value = null;
         this.#toggle = new Panel.ToolCanvasTab.Hook.Toggle("!");
         this.toggle.addHandler("change", (c, f, t) => this.change("toggle."+c, f, t));
@@ -4606,6 +4609,7 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
         this.elem.appendChild(this.eBox);
         this.eBox.classList.add("box");
         this.#eIcon = null;
+        this.#eInput = null;
 
         this.elem.insertBefore(this.toggle.elem, this.eBox);
 
@@ -4613,12 +4617,20 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
         this.path = path;
     }
 
-    get path() { return this.#path; }
-    set path(v) {
-        v = (v == null) ? null : util.generatePath(v);
-        if (this.path == v) return;
-        this.change("path", this.path, this.#path=v);
-        if (!this.hasPath()) return this.eBox.innerHTML = "";
+    #update() {
+        this.#eIcon = null;
+        this.#eInput = null;
+        if (this.useText) {
+            this.eBox.innerHTML = "<input type='text'>";
+            this.#eInput = this.eBox.children[0];
+            let text = this.text;
+            this.#eInput.addEventListener("change", e => this.change("text", text, text=this.text));
+            return;
+        }
+        if (!this.hasPath()) {
+            this.eBox.innerHTML = "";
+            return;
+        }
         this.eBox.innerHTML = "<div class='explorernode'><button class='display'><div class='main'><ion-icon></ion-icon><div class='name'></div><ion-icon name='close'></ion-icon></div></button></div>";
         this.#eIcon = this.eBox.children[0].children[0].children[0].children[0];
         const eName = this.eBox.children[0].children[0].children[0].children[1];
@@ -4630,6 +4642,30 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
             e.stopPropagation();
             this.path = null;
         });
+    }
+
+    get useText() { return this.#useText; }
+    set useText(v) {
+        v = !!v;
+        if (this.useText == v) return;
+        this.change("useText", this.useText, this.#useText=v);
+        this.#update();
+    }
+    get text() { return this.#eInput ? this.#eInput.value : null; }
+    set text(v) {
+        if (v == null) return;
+        v = String(v);
+        if (this.#eInput) return this.#eInput.value = v;
+        this.useText = true;
+        this.text = v;
+    }
+
+    get path() { return this.#path; }
+    set path(v) {
+        v = (v == null) ? null : util.generatePath(v);
+        if (this.path == v) return;
+        this.change("path", this.path, this.#path=v);
+        this.#update();
         this.setFrom("*", null);
     }
     hasPath() { return this.path != null; }
@@ -4709,6 +4745,8 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
 
     to() {
         return {
+            useText: this.useText,
+            text: this.text,
             path: this.path,
             toggle: this.toggle.to(),
             toggles: this.toggles.map(toggle => toggle.to()),
@@ -4716,6 +4754,8 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     }
     from(o) {
         o = util.ensure(o, "obj");
+        this.useText = o.useText;
+        this.text = o.text;
         this.path = o.path;
         this.toggle = o.toggle;
         this.toggles = o.toggles;
@@ -5052,7 +5092,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (!node) return v.disable();
                     if (!node.hasField()) return v.disable();
                     if (!node.field.isJustPrimitive) return v.disable();
-                    let log = node.field.getRange(...graphRange);
+                    let log = node.field.getRange(...graphRange).map(log => {
+                        return { ts: log.ts, v: v.execExpr(log.v) };
+                    });
                     if (!util.is(log, "arr")) return v.disable();
                     let start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
                     if (start != null) log.unshift({ ts: graphRange[0], v: start });
@@ -5517,6 +5559,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
         if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (!(data instanceof Source.Node)) return null;
+        if (!data.hasField()) return null;
         for (let i = 0; i < this.eOptionSections.length; i++) {
             let id = this.eOptionSections[i];
             let elem = this.getEOptionSection(id);
@@ -5529,8 +5573,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         let hovered = v.getHovered(data, pos, options);
                         if (hovered) return hovered;
                     }
-                    if (!(data instanceof Source.Node)) return null;
-                    if (!data.hasField()) return null;
                     return {
                         r: r,
                         submit: () => {
@@ -5592,6 +5634,10 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
 
     #shownHook;
 
+    #expr;
+    #exprCompiled;
+    #exprHook;
+
     #elem;
     #eDisplay;
     #eShowBox;
@@ -5618,6 +5664,15 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
         this.shownHook.toggle.show();
         this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
+
+        this.#expr = null;
+        this.#exprCompiled = null;
+        this.#exprHook = new Panel.ToolCanvasTab.Hook("Expression", null);
+        this.exprHook.useText = true;
+        this.exprHook.addHandler("change", () => {
+            const text = this.exprHook.text;
+            this.expr = (text.length > 0) ? text : null;
+        });
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -5659,6 +5714,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         });
 
         this.eContent.appendChild(this.shownHook.elem);
+        this.eContent.appendChild(this.exprHook.elem);
 
         this.eDisplay.addEventListener("contextmenu", e => {
             let itm;
@@ -5705,22 +5761,23 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             this.isOpen = !this.isOpen;
         });
 
-        if (a.length <= 0 || a.length > 4) a = [null];
+        if (a.length <= 0 || a.length > 5) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.shownHook.to()];
+            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.shownHook.to(), a.expr];
             else if (util.is(a, "arr")) {
                 a = new Panel.GraphTab.Variable(...a);
-                a = [a.path, a.shown, a.color, a.shownHook.to()];
+                a = [a.path, a.shown, a.color, a.shownHook.to(), a.expr];
             }
             // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook];
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook, a.expr];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, null];
+        if (a.length == 4) a = [...a, null];
 
-        [this.path, this.shown, this.color, this.shownHook] = a;
+        [this.path, this.shown, this.color, this.shownHook, this.expr] = a;
     }
 
     get tab() { return this.#tab; }
@@ -5779,7 +5836,10 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
 
     get hooks() { return [this.shownHook]; }
     get shownHook() { return this.#shownHook; }
-    set shownHook(o) { this.shownHook.from(o); }
+    set shownHook(o) {
+        this.shownHook.from(o);
+        this.shownHook.useText = false;
+    }
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
@@ -5787,6 +5847,27 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             return !this.shownHook.value;
         return this.shownHook.value;
     }
+
+    get expr() { return this.#expr; }
+    set expr(v) {
+        v = (v == null) ? null : String(v);
+        if (this.expr == v) return;
+        this.change("expr", this.expr, this.#expr=v);
+        this.exprHook.text = this.hasExpr() ? this.expr : "";
+        this.compileExpr();
+    }
+    hasExpr() { return this.expr != null; }
+    get exprCompiled() { return this.#exprCompiled; }
+    compileExpr() {
+        if (!this.hasExpr()) return this.#exprCompiled = null;
+        return this.#exprCompiled = lib.mathjs.compile(this.expr);
+    }
+    execExpr(x) {
+        if (!this.hasExpr()) return x;
+        if (!this.#exprCompiled) return x;
+        return this.exprCompiled.evaluate({ x: x });
+    }
+    get exprHook() { return this.#exprHook; }
     
     getHovered(data, pos, options) {
         pos = new V(pos);
@@ -5851,6 +5932,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             shown: this.shown,
             color: this.color,
             shownHook: this.shownHook.to(),
+            expr: this.expr,
         });
     }
 };
@@ -6241,7 +6323,10 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
 
     get hooks() { return [this.shownHook]; }
     get shownHook() { return this.#shownHook; }
-    set shownHook(o) { this.shownHook.from(o); }
+    set shownHook(o) {
+        this.shownHook.from(o);
+        this.shownHook.useText = false;
+    }
     get isShown() {
         if (!this.shown) return false;
         if (this.shownHook.value == null) return true;
@@ -6802,7 +6887,10 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
     get hooks() { return [this.shownHook, this.ghostHook]; }
     get ghostHook() { return this.#ghostHook; }
-    set ghostHook(o) { this.ghostHook.from(o); }
+    set ghostHook(o) {
+        this.ghostHook.from(o);
+        this.ghostHook.useText = false;
+    }
     get isGhost() {
         if (this.ghost) return true;
         if (this.ghostHook.value == null) return false;
@@ -6846,7 +6934,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         const convertPos = (...v) => {
             v = new V(...v);
             if (!this.hasTab()) return v;
-            v = v.map(v => util.Unit.convert(v, this.tab.lengthUnits, "cm"));
+            v = v.map(v => lib.Unit.convert(v, this.tab.lengthUnits, "cm"));
             if (!this.tab.origin.startsWith("blue")) v.x = this.tab.odometry.w-v.x;
             if (!this.tab.origin.endsWith("+")) v.y = this.tab.odometry.h-v.y;
             return v;
@@ -6854,7 +6942,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         const convertAngle = v => {
             v = util.ensure(v, "num");
             if (!this.hasTab()) return v;
-            v = util.Unit.convert(v, this.tab.angleUnits, "deg");
+            v = lib.Unit.convert(v, this.tab.angleUnits, "deg");
             if (!this.tab.origin.startsWith("blue")) v = 180-v;
             if (!this.tab.origin.endsWith("+")) v = 0-v;
             return v;
@@ -7467,7 +7555,10 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
 
     get hooks() { return [this.shownHook, this.ghostHook, this.solidHook]; }
     get ghostHook() { return this.#ghostHook; }
-    set ghostHook(o) { this.ghostHook.from(o); }
+    set ghostHook(o) {
+        this.ghostHook.from(o);
+        this.ghostHook.useText = false;
+    }
     get isGhost() {
         if (this.ghost) return true;
         if (this.ghostHook.value == null) return false;
@@ -7476,7 +7567,10 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         return this.ghostHook.value;
     }
     get solidHook() { return this.#solidHook; }
-    set solidHook(o) { this.solidHook.from(o); }
+    set solidHook(o) {
+        this.solidHook.from(o);
+        this.solidHook.useText = false;
+    }
     get isSolid() {
         if (this.solid) return true;
         if (this.solidHook.value == null) return false;
@@ -7542,15 +7636,15 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     render.robot = this.pose.type;
                     render.pos =
                         (type == 7) ?
-                            value.slice(0, 3).map(v => util.Unit.convert(v, this.tab.lengthUnits, "m")) :
+                            value.slice(0, 3).map(v => lib.Unit.convert(v, this.tab.lengthUnits, "m")) :
                         (type == 3) ?
-                            [...value.slice(0, 2).map(v => util.Unit.convert(v, this.tab.lengthUnits, "m")), 0] :
+                            [...value.slice(0, 2).map(v => lib.Unit.convert(v, this.tab.lengthUnits, "m")), 0] :
                         [0, 0, 0];
                     render.q = 
                         (type == 7) ?
                             value.slice(3, 7) :
                         (type == 3) ?
-                            (d => [Math.cos(d/2), 0, 0, Math.sin(d/2)])(util.Unit.convert(value[2], this.tab.angleUnits, "rad")) :
+                            (d => [Math.cos(d/2), 0, 0, Math.sin(d/2)])(lib.Unit.convert(value[2], this.tab.angleUnits, "rad")) :
                         [0, 0, 0, 0];
                 }
             } else this.pose.disable();
