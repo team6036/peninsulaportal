@@ -22,7 +22,7 @@ Skip Forward - jumps project timestamp to maximum timestamp available
 Clicking the bottom thumb or dragging the bottom thumb upwards will open the menu partially. Dragging the thumb fully upwards will enable fullscreen browsing of the option menu. Clicking the thumb again will close it.
 
 #### Poses
-Drag topics from the sidebar or the [Browser](../tabs/BROWSER.md) into this area to start graphing them. Clicking on a topic shows a more extensive menu with color selection and display type. Additionally, you can toggle the ghost effect of the pose. Additionally, you can toggle the "solid" of the pose, which turns the model into a solid color. Clicking the eye will toggle the visibility of the line, and clicking the trash icon will remove this topic from the field.  
+Drag topics from the sidebar or the [Browser](../tabs/BROWSER.md) into this area to start graphing them. Clicking on a topic shows a more extensive menu with color selection and display type. Additionally, you can toggle the ghost effect of the pose. Additionally, you can toggle the "solid" of the pose, which turns the model into a solid color. Clicking the eye will toggle the visibility of the line, and clicking the <kbd>x</kbd> icon will remove this topic from the field.  
 
 Available Display Types:
 - Node (Sphere)
