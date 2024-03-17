@@ -7034,7 +7034,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             if (this.value.length % 3 == 0) {
                 let l = this.value.length / 3;
                 while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new core.Odometry2d.Robot(this.tab.odometry.render)));
-                while (renders.length > l) this.tab.odometry.render.remRender(renders.pop());
+                if (renders.length > l) this.tab.odometry.render.remRender(renders.splice(l));
                 let color = this.pose.color.slice(2);
                 let colorH = color+5;
                 for (let i = 0; i < l; i++) {
@@ -7055,7 +7055,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                         trailL = Math.min(trailL, l);
                     });
                     while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
-                    while (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.pop());
+                    if (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.splice(l));
                     for (let i = 0; i < l; i++) {
                         const render = trailRenders[i];
                         render.color = this.pose.color;
@@ -7065,12 +7065,12 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                         for (let j = 0; j < trailL; j++)
                             render.getWaypoint(j).set(convertPos(this.trail[i*3+0][j].v, this.trail[i*3+1][j].v));
                     }
-                }
+                } else if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
                 this.pose.fTrail.isShown = true;
                 this.pose.eDisplayType.disabled = false;
             } else if (this.value.length % 2 == 0) {
                 while (renders.length < 1) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
-                while (renders.length > 1) this.tab.odometry.render.remRender(renders.pop());
+                if (renders.length > 1) this.tab.odometry.render.remRender(renders.splice(1));
                 const render = renders[0];
                 let l = this.value.length/2;
                 if (render.nWaypoints < l) render.addWaypoint(new Array(l-render.nWaypoints).fill(0));
@@ -7085,7 +7085,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                         trailL = Math.min(trailL, l);
                     });
                     while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
-                    while (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.pop());
+                    if (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.splice(l));
                     for (let i = 0; i < l; i++) {
                         const render = trailRenders[i];
                         render.color = this.pose.color;
@@ -7095,12 +7095,12 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                         for (let j = 0; j < trailL; j++)
                             render.getWaypoint(j).set(convertPos(this.trail[i*2+0][j].v, this.trail[i*2+1][j].v));
                     }
-                }
+                } else if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
                 this.pose.fTrail.isShown = false;
                 this.pose.eDisplayType.disabled = true;
             } else {
-                while (renders.length > 0) this.tab.odometry.render.remRender(renders.pop());
-                while (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.pop());
+                if (renders.length > 0) this.tab.odometry.render.remRender(renders.splice(0));
+                if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
                 this.pose.disable();
             }
         });
