@@ -7066,7 +7066,8 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                             render.getWaypoint(j).set(convertPos(this.trail[i*3+0][j].v, this.trail[i*3+1][j].v));
                     }
                 }
-                this.pose.eDisplayType.style.display = "";
+                this.pose.fTrail.isShown = true;
+                this.pose.eDisplayType.disabled = false;
             } else if (this.value.length % 2 == 0) {
                 while (renders.length < 1) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
                 while (renders.length > 1) this.tab.odometry.render.remRender(renders.pop());
@@ -7095,7 +7096,8 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                             render.getWaypoint(j).set(convertPos(this.trail[i*2+0][j].v, this.trail[i*2+1][j].v));
                     }
                 }
-                this.pose.eDisplayType.style.display = "none";
+                this.pose.fTrail.isShown = false;
+                this.pose.eDisplayType.disabled = true;
             } else {
                 while (renders.length > 0) this.tab.odometry.render.remRender(renders.pop());
                 while (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.pop());
