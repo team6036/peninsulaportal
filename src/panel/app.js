@@ -6717,8 +6717,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = node ? this.getValue(node) : null;
-                pose.state.trail = node ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
-                pose.state.trailRange = node ? [source.playback.ts, pose.trail] : 0;
+                pose.state.trail = (pose.useTrail && node) ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
                 pose.state.update(delta);
             });
             this.odometry.update(delta);
@@ -6991,7 +6990,6 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel.OdometryTab.Pose.State {
     #value;
     #trail;
-    #trailRange;
 
     #renders;
     #trailRenders;
@@ -7001,7 +6999,6 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
 
         this.#value = [];
         this.#trail = [];
-        this.#trailRange = new V();
 
         this.#renders = [];
         this.#trailRenders = [];
@@ -7129,8 +7126,6 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         this.#trail = v;
         this.createTrail();
     }
-    get trailRange() { return this.#trailRange; }
-    set trailRange(v) { this.#trailRange.set(v); }
 
     destroy() {
         this.destroyTrail();
