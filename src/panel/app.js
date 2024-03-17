@@ -13,48 +13,86 @@ import { WorkerClient } from "../worker.js";
 
 
 class RLine extends core.Odometry2d.Render {
-    #a; #b;
+    #waypoints;
     #color;
+    #size;
 
-    constructor(odometry, a, b, color) {
+    constructor(odometry, color, size=7.5) {
         super(odometry);
 
-        this.#a = new V();
-        this.#b = new V();
+        this.#waypoints = [];
         this.#color = null;
+        this.#size = 0;
 
-        this.a = a;
-        this.b = b;
         this.color = color;
+        this.size = size;
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             ctx.strokeStyle = this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color;
-            ctx.lineWidth = 7.5*quality;
+            ctx.lineWidth = this.size*quality;
             ctx.lineJoin = "round";
-            ctx.lineCap = "square";
+            ctx.lineCap = "round";
             ctx.beginPath();
-            ctx.moveTo(...this.odometry.worldToCanvas(this.a).xy);
-            ctx.lineTo(...this.odometry.worldToCanvas(this.b).xy);
+            for (let i = 0; i < this.nWaypoints; i++) {
+                if (i > 0) ctx.lineTo(...this.odometry.worldToCanvas(this.#waypoints[i]).xy);
+                else ctx.moveTo(...this.odometry.worldToCanvas(this.#waypoints[i]).xy);
+            }
             ctx.stroke();
         });
     }
 
-    get a() { return this.#a; }
-    set a(v) { this.#a.set(v); }
-    get aX() { return this.a.x; }
-    set aX(v) { this.a.x = v; }
-    get aY() { return this.a.y; }
-    set aY(v) { this.a.y = v; }
-    get b() { return this.#b; }
-    set b(v) { this.#b.set(v); }
-    get bX() { return this.b.x; }
-    set bX(v) { this.b.x = v; }
-    get bY() { return this.b.y; }
-    set bY(v) { this.b.y = v; }
+    get nWaypoints() { return this.#waypoints.length; }
+    get waypoints() { return [...this.#waypoints]; }
+    set waypoints(v) {
+        v = util.ensure(v, "arr");
+        this.clearWaypoints();
+        this.addWaypoint(v);
+    }
+    clearWaypoints() {
+        let waypoints = this.waypoints;
+        this.#waypoints = [];
+        return waypoints;
+    }
+    getWaypoint(i) {
+        i = util.ensure(i, "int");
+        if (i < 0 || i >= this.#waypoints.length) return null;
+        return this.#waypoints[i];
+    }
+    setWaypoint(i, pt) {
+        i = util.ensure(i, "int");
+        if (i < 0 || i >= this.#waypoints.length) return null;
+        pt = (pt instanceof V) ? pt : new V(pt);
+        [pt, this.#waypoints[i]] = [this.#waypoints[i], pt];
+        return pt;
+    }
+    addWaypoint(...pts) {
+        return util.Target.resultingForEach(pts, pt => {
+            pt = (pt instanceof V) ? pt : new V(pt);
+            this.#waypoints.push(pt);
+            return pt;
+        });
+    }
+    remWaypoint(...pts) {
+        return util.Target.resultingForEach(pts, pt => {
+            pt = (pt instanceof V) ? pt : new V(pt);
+            this.#waypoints.splice(this.#waypoints.indexOf(pt), 1);
+            return pt;
+        });
+    }
+    popWaypoint(...is) {
+        return util.Target.resultingForEach(is, i => {
+            i = util.ensure(i, "int");
+            if (i < 0 || i >= this.#waypoints.length) return false;
+            return this.#waypoints.splice(i, 1)[0];
+        });
+    }
 
     get color() { return this.#color; }
     set color(v) { this.#color = String(v); }
+
+    get size() { return this.#size; }
+    set size(v) { this.#size = Math.max(0, util.ensure(v, "num")); }
 }
 
 
@@ -6049,9 +6087,9 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
         const field = node.field;
+        if (field.isArray)
+            return node.nodeObjects.map(node => this.getValue(node)).collapse();
         if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-            if (field.isArray)
-                return node.nodeObjects.map(node => this.getValue(node)).flatten();
             let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
             let range = paths.map(path => {
                 let subnode = node.lookup(path.join("/"));
@@ -6661,8 +6699,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 pose.ghostHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 pose.state.pose = pose.isShown ? pose : null;
                 node = source ? source.tree.lookup(pose.path) : null;
-                pose.state.value = this.getValue(node);
-                // pose.state.trail = this.getValueRange(node);
+                pose.state.value = node ? this.getValue(node) : null;
+                pose.state.trail = node ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
+                pose.state.trailRange = node ? [source.playback.ts, pose.trail] : 0;
                 pose.state.update(delta);
             });
             this.odometry.update(delta);
@@ -6935,16 +6974,20 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel.OdometryTab.Pose.State {
     #value;
     #trail;
+    #trailRange;
 
     #renders;
+    #trailRenders;
 
     constructor() {
         super();
 
         this.#value = [];
         this.#trail = [];
+        this.#trailRange = new V();
 
         this.#renders = [];
+        this.#trailRenders = [];
 
         let templates = {};
         (async () => {
@@ -6972,6 +7015,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             const renders = this.#renders;
+            const trailRenders = this.#trailRenders;
             this.pose.enable();
             if (this.value.length % 3 == 0) {
                 let l = this.value.length / 3;
@@ -6980,7 +7024,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                 let color = this.pose.color.slice(2);
                 let colorH = color+5;
                 for (let i = 0; i < l; i++) {
-                    let render = renders[i];
+                    const render = renders[i];
                     render.color = color;
                     render.colorH = colorH;
                     render.alpha = this.pose.isGhost ? 0.5 : 1;
@@ -6989,20 +7033,60 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     render.heading = convertAngle(this.value[3*i+2]);
                     render.type = this.pose.type;
                 }
+                if (this.trail.length == this.value.length) {
+                    let trailL = 0;
+                    this.trail.forEach((trail, i) => {
+                        let l = trail.length;
+                        if (i <= 0) return trailL = l;
+                        trailL = Math.min(trailL, l);
+                    });
+                    while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
+                    while (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.pop());
+                    for (let i = 0; i < l; i++) {
+                        const render = trailRenders[i];
+                        render.color = this.pose.color;
+                        render.alpha = this.pose.isGhost ? 0.25 : 0.5;
+                        if (render.nWaypoints < trailL) render.addWaypoint(new Array(trailL-render.nWaypoints).fill(0));
+                        if (render.nWaypoints > trailL) render.popWaypoint(Array.from(new Array(render.nWaypoints-trailL).keys()));
+                        for (let j = 0; j < trailL; j++)
+                            render.getWaypoint(j).set(convertPos(this.trail[i*3+0][j].v, this.trail[i*3+1][j].v));
+                    }
+                }
                 this.pose.eDisplayType.style.display = "";
             } else if (this.value.length % 2 == 0) {
-                let l = Math.max(0, (this.value.length/2) - 1);
-                while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
-                while (renders.length > l) this.tab.odometry.render.remRender(renders.pop());
-                for (let i = 0; i < l; i++) {
-                    let render = renders[i];
-                    render.a = convertPos(this.value[i*2+0], this.value[i*2+1]);
-                    render.b = convertPos(this.value[i*2+2], this.value[i*2+3]);
-                    render.color = this.pose.color;
-                    render.alpha = this.pose.isGhost ? 0.5 : 1;
+                while (renders.length < 1) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
+                while (renders.length > 1) this.tab.odometry.render.remRender(renders.pop());
+                const render = renders[0];
+                let l = this.value.length/2;
+                if (render.nWaypoints < l) render.addWaypoint(new Array(l-render.nWaypoints).fill(0));
+                if (render.nWaypoints > l) render.popWaypoint(Array.from(new Array(render.nWaypoints-l).keys()));
+                for (let i = 0; i < l; i++)
+                    render.getWaypoint(i).set(convertPos(this.value[i*2+0], this.value[i*2+1]));
+                if (this.trail.length == this.value.length) {
+                    let trailL = 0;
+                    this.trail.forEach((trail, i) => {
+                        let l = trail.length;
+                        if (i <= 0) return trailL = l;
+                        trailL = Math.min(trailL, l);
+                    });
+                    while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
+                    while (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.pop());
+                    for (let i = 0; i < l; i++) {
+                        const render = trailRenders[i];
+                        render.color = this.pose.color;
+                        render.alpha = this.pose.isGhost ? 0.25 : 0.5;
+                        if (render.nWaypoints < trailL) render.addWaypoint(new Array(trailL-render.nWaypoints).fill(0));
+                        if (render.nWaypoints > trailL) render.popWaypoint(Array.from(new Array(render.nWaypoints-trailL).keys()));
+                        for (let j = 0; j < trailL; j++)
+                            render.getWaypoint(j).set(convertPos(this.trail[i*2+0][j].v, this.trail[i*2+1][j].v));
+                    }
                 }
                 this.pose.eDisplayType.style.display = "none";
-            } else this.pose.disable();
+            } else {
+                while (renders.length > 0) this.tab.odometry.render.remRender(renders.pop());
+                while (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.pop());
+                this.pose.disable();
+            }
         });
     }
 
@@ -7019,17 +7103,39 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
     }
     get trail() { return this.#trail; }
     set trail(v) {
+        v = util.ensure(v, "arr").map(v => util.ensure(v, "arr"));
+        if (this.trail.length == v.length) {
+            this.#trail = v;
+            return;
+        }
+        this.destroyTrail();
+        this.#trail = v;
+        this.createTrail();
     }
+    get trailRange() { return this.#trailRange; }
+    set trailRange(v) { this.#trailRange.set(v); }
 
     destroy() {
+        this.destroyTrail();
         if (!this.hasTab()) return;
         this.#renders.forEach(render => this.tab.odometry.render.remRender(render));
         this.#renders = [];
     }
     create() {
+        this.createTrail();
         if (!this.hasTab()) return;
         if (!this.hasPose()) return;
         this.#renders = [];
+    }
+    destroyTrail() {
+        if (!this.hasTab()) return;
+        this.#trailRenders.forEach(render => this.tab.odometry.render.remRender(render));
+        this.#trailRenders = [];
+    }
+    createTrail() {
+        if (!this.hasTab()) return;
+        if (!this.hasPose()) return;
+        this.#trailRenders = [];
     }
 };
 Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {

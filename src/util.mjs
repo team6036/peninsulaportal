@@ -21,6 +21,13 @@ Array.prototype.flatten = function() {
         return sum;
     }, []);
 };
+Array.prototype.collapse = function() {
+    return this.reduce((sum, x) => {
+        if (!is(x, "arr")) sum.push(x);
+        else sum.push(...x);
+        return sum;
+    }, []);
+};
 Array.prototype.all = function(f) {
     for (let v of this)
         if (!f(v)) return false;
