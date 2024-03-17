@@ -5548,61 +5548,70 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.optionState == 0) return null;
-        let r;
-        r = this.eOptions.getBoundingClientRect();
-        if (pos.x < r.left || pos.x > r.right) return null;
-        if (pos.y < r.top || pos.y > r.bottom) return null;
         if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
         if (!(data instanceof Source.Node)) return null;
         if (!data.hasField()) return null;
-        for (let i = 0; i < this.eOptionSections.length; i++) {
-            let id = this.eOptionSections[i];
-            let elem = this.getEOptionSection(id);
-            r = elem.getBoundingClientRect();
-            if (pos.x < r.left || pos.x > r.right) continue;
-            if (pos.y < r.top || pos.y > r.bottom) continue;
-            let idfs = {
-                _: side => {
-                    for (let v of this[side+"Vars"]) {
-                        let hovered = v.getHovered(data, pos, options);
-                        if (hovered) return hovered;
-                    }
-                    return {
-                        r: r,
-                        submit: () => {
-                            const colors = "rybgpocm";
-                            const addVar = node => {
-                                let pth = node.path;
-                                if (node.hasField() && node.field.isJustPrimitive) {
-                                    let taken = new Array(colors.length).fill(false);
-                                    [...this.lVars, ...this.rVars].forEach(v => {
-                                        colors.split("").forEach((c, i) => {
-                                            if (v.color == "--c"+c) taken[i] = true;
-                                        });
+        const idfs = {
+            _: side => {
+                for (let v of this[side+"Vars"]) {
+                    let hovered = v.getHovered(data, pos, options);
+                    if (hovered) return hovered;
+                }
+                return {
+                    r: r,
+                    submit: () => {
+                        const colors = "rybgpocm";
+                        const addVar = node => {
+                            let pth = node.path;
+                            if (node.hasField() && node.field.isJustPrimitive) {
+                                let taken = new Array(colors.length).fill(false);
+                                [...this.lVars, ...this.rVars].forEach(v => {
+                                    colors.split("").forEach((c, i) => {
+                                        if (v.color == "--c"+c) taken[i] = true;
                                     });
-                                    let nextColor = null;
-                                    taken.forEach((v, i) => {
-                                        if (v) return;
-                                        if (nextColor != null) return;
-                                        nextColor = colors[i];
-                                    });
-                                    if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
-                                    this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
-                                }
-                                node.nodeObjects.forEach(node => addVar(node));
-                            };
-                            addVar(data);
-                        },
-                    };
-                },
-                l: () => idfs._("l"),
-                r: () => idfs._("r"),
-            };
-            if (elem.id in idfs) {
-                let data = idfs[elem.id]();
-                if (util.is(data, "obj")) return data;
+                                });
+                                let nextColor = null;
+                                taken.forEach((v, i) => {
+                                    if (v) return;
+                                    if (nextColor != null) return;
+                                    nextColor = colors[i];
+                                });
+                                if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
+                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
+                            }
+                            node.nodeObjects.forEach(node => addVar(node));
+                        };
+                        addVar(data);
+                    },
+                };
+            },
+            l: () => idfs._("l"),
+            r: () => idfs._("r"),
+        };
+        let r;
+        r = this.eOptions.getBoundingClientRect();
+        if (
+            pos.x >= r.left && pos.x <= r.right &&
+            pos.y >= r.top && pos.y <= r.bottom
+        ) {
+            for (let i = 0; i < this.eOptionSections.length; i++) {
+                let id = this.eOptionSections[i];
+                let elem = this.getEOptionSection(id);
+                r = elem.getBoundingClientRect();
+                if (pos.x < r.left || pos.x > r.right) continue;
+                if (pos.y < r.top || pos.y > r.bottom) continue;
+                if (elem.id in idfs) {
+                    let data = idfs[elem.id]();
+                    if (util.is(data, "obj")) return data;
+                }
             }
+            return null;
         }
+        r = this.elem.getBoundingClientRect();
+        if (
+            pos.x >= r.left && pos.x <= r.right &&
+            pos.y >= r.top && pos.y <= r.bottom
+        ) return idfs.l();
         return null;
     }
 
@@ -6106,55 +6115,63 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.optionState == 0) return null;
+        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        const idfs = {
+            p: () => {
+                for (let pose of this.poses) {
+                    let hovered = pose.getHovered(data, pos, options);
+                    if (hovered) return hovered;
+                }
+                if (!(data instanceof Source.Node)) return null;
+                if (!data.hasField()) return null;
+                return {
+                    r: r,
+                    submit: () => {
+                        const colors = "rybgpocm";
+                        const addPose = pth => {
+                            let taken = new Array(colors.length).fill(false);
+                            this.poses.forEach(pose => {
+                                colors.split("").forEach((c, i) => {
+                                    if (pose.color == "--c"+c) taken[i] = true;
+                                });
+                            });
+                            let nextColor = null;
+                            taken.forEach((v, i) => {
+                                if (v) return;
+                                if (nextColor != null) return;
+                                nextColor = colors[i];
+                            });
+                            if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
+                            this.addPose(new this.constructor.Pose(pth, "--c"+nextColor));
+                        };
+                        addPose(data.path);
+                    },
+                };
+            },
+        };
         let r;
         r = this.eOptions.getBoundingClientRect();
-        if (pos.x < r.left || pos.x > r.right) return null;
-        if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
-        for (let i = 0; i < this.eOptionSections.length; i++) {
-            let id = this.eOptionSections[i];
-            let elem = this.getEOptionSection(id);
-            r = elem.getBoundingClientRect();
-            if (pos.x < r.left || pos.x > r.right) continue;
-            if (pos.y < r.top || pos.y > r.bottom) continue;
-            let idfs = {
-                p: () => {
-                    for (let pose of this.poses) {
-                        let hovered = pose.getHovered(data, pos, options);
-                        if (hovered) return hovered;
-                    }
-                    if (!(data instanceof Source.Node)) return null;
-                    if (!data.hasField()) return null;
-                    return {
-                        r: r,
-                        submit: () => {
-                            const colors = "rybgpocm";
-                            const addPose = pth => {
-                                let taken = new Array(colors.length).fill(false);
-                                this.poses.forEach(pose => {
-                                    colors.split("").forEach((c, i) => {
-                                        if (pose.color == "--c"+c) taken[i] = true;
-                                    });
-                                });
-                                let nextColor = null;
-                                taken.forEach((v, i) => {
-                                    if (v) return;
-                                    if (nextColor != null) return;
-                                    nextColor = colors[i];
-                                });
-                                if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
-                                this.addPose(new this.constructor.Pose(pth, "--c"+nextColor));
-                            };
-                            addPose(data.path);
-                        },
-                    };
-                },
-            };
-            if (elem.id in idfs) {
-                let data = idfs[elem.id]();
-                if (util.is(data, "obj")) return data;
+        if (
+            pos.x >= r.left && pos.x <= r.right &&
+            pos.y >= r.top && pos.y <= r.bottom
+        ) {
+            for (let i = 0; i < this.eOptionSections.length; i++) {
+                let id = this.eOptionSections[i];
+                let elem = this.getEOptionSection(id);
+                r = elem.getBoundingClientRect();
+                if (pos.x < r.left || pos.x > r.right) continue;
+                if (pos.y < r.top || pos.y > r.bottom) continue;
+                if (elem.id in idfs) {
+                    let data = idfs[elem.id]();
+                    if (util.is(data, "obj")) return data;
+                }
             }
         }
+        r = this.elem.getBoundingClientRect();
+        if (
+            pos.x >= r.left && pos.x <= r.right &&
+            pos.y >= r.top && pos.y <= r.bottom
+        ) return idfs.p();
         return null;
     }
 
