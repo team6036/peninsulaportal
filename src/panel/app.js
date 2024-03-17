@@ -6844,7 +6844,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
         this.#trail = null;
         this.#useTrail = null;
-        this.#fTrail = form.addField(new core.Form.Input1d("trail"));
+        this.#fTrail = form.addField(new core.Form.Input1d("trail-duration"));
         this.fTrail.types = ["ms", "s", "min"];
         this.fTrail.baseType = "ms";
         this.fTrail.activeType = "s";
