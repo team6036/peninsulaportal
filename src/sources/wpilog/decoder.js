@@ -124,7 +124,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     isControlMetadata() { return this.isControl() && (this.data.length >= 9) && (this.#getControlType() == CONTROLMETADATA); }
 
     getControlStartData() {
-        if (!this.isControlStart()) return null;
+        if (!this.isControlStart()) throw new Error("getControlStartData: Is not controlStart");
         let entry = this.dataView.getUint32(1, true);
         let r, x = 5;
         r = this.#readStr(x);
@@ -142,7 +142,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     }
     
     getControlFinishData() {
-        if (!this.isControlFinish()) return null;
+        if (!this.isControlFinish()) throw new Error("getControlFinishData: Is not controlFinish");
         let entry = this.dataView.getUint32(1, true);
         return {
             entry: entry,
@@ -150,7 +150,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     }
 
     getControlMetadataData() {
-        if (!this.isControlMetadata()) return null;
+        if (!this.isControlMetadata()) throw new Error("getControlMetadataData: Is not controlMetadata");
         let entry = this.dataView.getUint32(1, true);
         let r, x = 5;
         r = this.#readStr(x);
@@ -162,18 +162,39 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     }
 
     getRaw() { return new Uint8Array(this.data.buffer.slice(this.data.byteOffset, this.data.byteOffset+this.data.byteLength)); }
-    getBool() { return (this.data.length == 1) ? (this.data[0] != 0) : null; }
-    getInt() { return (this.data.length == 8) ? Number(this.dataView.getBigInt64(0, true)) : null; }
-    getFloat() { return (this.data.length == 4) ? this.dataView.getFloat32(0, true) : null; }
-    getDouble() { return (this.data.length == 8) ? this.dataView.getFloat64(0, true) : null; }
+    getBool() {
+        if (this.data.length != 1) throw new Error("getBool: Unexpected length: "+this.data.length);
+        return !!this.data[0];
+    }
+    getInt() {
+        if (this.data.length != 8) throw new Error("getInt: Unexpected length: "+this.data.length);
+        return Number(this.dataView.getBigInt64(0, true));
+    }
+    getFloat() {
+        if (this.data.length != 8) throw new Error("getFloat: Unexpected length: "+this.data.length);
+        return this.dataView.getFloat32(0, true);
+    }
+    getDouble() {
+        if (this.data.length != 8) throw new Error("getDouble: Unexpected length: "+this.data.length);
+        return this.dataView.getFloat64(0, true);
+    }
     getStr() { return lib.TEXTDECODER.decode(this.data); }
     getBoolArr() { return [...this.data.map(x => x != 0)]; }
-    getIntArr() { return (this.data.length%8 == 0) ? Array.from(new Array(this.data.length/8).keys()).map(i => Number(this.dataView.getBigInt64(i*8, true))) : null; }
-    getFloatArr() { return (this.data.length%4 == 0) ? Array.from(new Array(this.data.length/4).keys()).map(i => this.dataView.getFloat32(i*4, true)) : null; }
-    getDoubleArr() { return (this.data.length%8 == 0) ? Array.from(new Array(this.data.length/8).keys()).map(i => this.dataView.getFloat64(i*8, true)) : null; }
+    getIntArr() {
+        if (this.data.length%8 != 0) throw new Error("getIntArr: Unexpected length: "+this.data.length);
+        return Array.from(new Array(this.data.length/8).keys()).map(i => Number(this.dataView.getBigInt64(i*8, true)));
+    }
+    getFloatArr() {
+        if (this.data.length%4 != 0) throw new Error("getFloatArr: Unexpected length: "+this.data.length);
+        return Array.from(new Array(this.data.length/4).keys()).map(i => this.dataView.getFloat32(i*4, true));
+    }
+    getDoubleArr() {
+        if (this.data.length%8 != 0) throw new Error("getDoubleArr: Unexpected length: "+this.data.length);
+        return (this.data.length%8 == 0) ? Array.from(new Array(this.data.length/8).keys()).map(i => this.dataView.getFloat64(i*8, true)) : null;
+    }
     getStrArr() {
         let l = this.dataView.getUint32(0, true);
-        if (l > (this.data.length-4)/4) return null;
+        if (l > (this.data.length-4)/4) throw new Error("getStrArr: Minimum length exceeded: "+l+" > ("+this.data.length+"-4)/4");
         let arr = [], x = 4;
         while (l-- > 0) {
             let r = this.#readStr(x);
@@ -185,7 +206,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
 
     #readStr(x) {
         let l = this.dataView.getUint32(x, true);
-        if (x+4+l > this.data.length) return null;
+        if (x+4+l > this.data.length) throw new Error("readStr: Length exceeded: "+(x+4+l)+" > "+this.data.length);
         return {
             str: lib.TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
             shift: 4+l,
