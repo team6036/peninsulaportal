@@ -62,7 +62,7 @@ class MergeWorker extends WorkerBase {
                             pth = arrPth.join("/");
                         }
                         outputSource.add(pth, field.type);
-                        outputSource.getField(pth).valueLog = field.valueLog;
+                        outputSource.getField(pth).logs = field.logs;
                     });
                 });
                 this.progress(1);

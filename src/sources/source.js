@@ -195,8 +195,8 @@ export default class Source extends util.Target {
         this.fieldObjects.forEach(field => {
             if (!field.name.startsWith("struct:")) return;
             if (field.type != "structschema") return;
-            if (field.valueLog.length <= 0) return;
-            this.createStruct(field.name.slice(7), field.valueLog[0].v);
+            if (field.logs.length <= 0) return;
+            this.createStruct(field.name.slice(7), field.logs[0].v);
         });
     }
 
@@ -247,7 +247,7 @@ Source.Field = class SourceField {
     #isPrimitive;
     #isJustPrimitive;
 
-    #valueLog;
+    #logs;
     #metadataLog;
 
     static TYPES = [
@@ -302,7 +302,7 @@ Source.Field = class SourceField {
         this.#isPrimitive = Source.Field.TYPES.includes(this.baseType);
         this.#isJustPrimitive = this.isPrimitive && !this.isArray;
 
-        this.#valueLog = [];
+        this.#logs = [];
         this.#metadataLog = [];
     }
 
@@ -331,16 +331,16 @@ Source.Field = class SourceField {
     get isPrimitive() { return this.#isPrimitive; }
     get isJustPrimitive() { return this.#isJustPrimitive; }
 
-    get valueLog() { return [...this.#valueLog]; }
-    set valueLog(v) {
-        this.#valueLog = util.ensure(v, "arr").map(log => {
+    get logs() { return [...this.#logs]; }
+    set logs(v) {
+        this.#logs = util.ensure(v, "arr").map(log => {
             log = util.ensure(log, "obj");
             return {
                 ts: util.ensure(log.ts, "num"),
                 v: Source.Field.ensureType(this.type, log.v),
             };
         });
-        this.#valueLog = this.#valueLog.filter((log, i) => (i <= 0 || log.v != this.#valueLog[i-1].v)).sort((a, b) => a.ts-b.ts);
+        this.#logs = this.#logs.filter((log, i) => (i <= 0 || log.v != this.#logs[i-1].v)).sort((a, b) => a.ts-b.ts);
     }
 
     get metadataLog() { return [...this.#metadataLog]; }
@@ -361,13 +361,13 @@ Source.Field = class SourceField {
 
     getIndex(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
-        if (this.#valueLog.length <= 0) return -1;
-        if (ts < this.#valueLog.at(0).ts) return -1;
-        if (ts >= this.#valueLog.at(-1).ts) return this.#valueLog.length-1;
-        let l = 0, r = this.#valueLog.length-2;
+        if (this.#logs.length <= 0) return -1;
+        if (ts < this.#logs.at(0).ts) return -1;
+        if (ts >= this.#logs.at(-1).ts) return this.#logs.length-1;
+        let l = 0, r = this.#logs.length-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
-            let range = [this.#valueLog[m].ts, this.#valueLog[m+1].ts];
+            let range = [this.#logs[m].ts, this.#logs[m+1].ts];
             if (ts < range[0]) r = m-1;
             else if (ts >= range[1]) l = m+1;
             else return m;
@@ -377,15 +377,15 @@ Source.Field = class SourceField {
     get(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
-        if (i < 0 || i >= this.#valueLog.length) return null;
-        return this.#valueLog[i].v;
+        if (i < 0 || i >= this.#logs.length) return null;
+        return this.#logs[i].v;
     }
     getRange(tsStart=null, tsStop=null) {
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart);
         let stop = this.getIndex(tsStop);
-        return this.#valueLog.slice(start+1, stop+1).map(log => {
+        return this.#logs.slice(start+1, stop+1).map(log => {
             let { ts, v } = log;
             return { ts: ts, v: v };
         });
@@ -395,16 +395,16 @@ Source.Field = class SourceField {
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
         if (this.isJustPrimitive) {
-            if (i >= 0 && i < this.#valueLog.length)
-                if (this.#valueLog[i].v == v)
+            if (i >= 0 && i < this.#logs.length)
+                if (this.#logs[i].v == v)
                     return;
-            if (i+2 >= 0 && i+2 < this.#valueLog.length)
-                if (this.#valueLog[i+2].v == v) {
-                    this.#valueLog[i+2].ts = ts;
+            if (i+2 >= 0 && i+2 < this.#logs.length)
+                if (this.#logs[i+2].v == v) {
+                    this.#logs[i+2].ts = ts;
                     return;
                 }
         }
-        this.#valueLog.splice(i+1, 0, { ts: ts, v: v });
+        this.#logs.splice(i+1, 0, { ts: ts, v: v });
         if (this.isStruct) {
             if (this.source.structDecode(this.path, this.baseType, this.isArray, v, ts)) return;
             this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
@@ -421,8 +421,8 @@ Source.Field = class SourceField {
     pop(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
-        if (i >= 0 && i < this.#valueLog.length) return;
-        this.#valueLog.splice(i, 1);
+        if (i >= 0 && i < this.#logs.length) return;
+        this.#logs.splice(i, 1);
         if (this.hasNode())
             this.node.nodeObjects.forEach(node => {
                 if (!node.hasField()) return;
@@ -436,7 +436,7 @@ Source.Field = class SourceField {
         if (this.#metadataLog.length <= 0) return -1;
         if (ts < this.#metadataLog.at(0).ts) return -1;
         if (ts >= this.#metadataLog.at(-1).ts) return this.#metadataLog.length-1;
-        let l = 0, r = this.#valueLog.length-2;
+        let l = 0, r = this.#logs.length-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
             let range = [this.#metadataLog[m].ts, this.#metadataLog[m+1].ts];
@@ -483,7 +483,7 @@ Source.Field = class SourceField {
             real: this.real,
             path: this.path,
             type: this.type,
-            valueLog: this.#valueLog,
+            logs: this.#logs,
             metadataLog: this.#metadataLog,
         };
     }
@@ -491,7 +491,7 @@ Source.Field = class SourceField {
         data = util.ensure(data, "obj");
         let field = new Source.Field(source, data.path, data.type);
         field.real = data.real;
-        field.valueLog = data.valueLog;
+        field.logs = data.logs;
         field.metadataLog = data.metadataLog;
         return field;
     }
