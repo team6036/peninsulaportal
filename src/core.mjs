@@ -935,10 +935,6 @@ export class App extends util.Target {
         await this.postResult("setup");
 
         const updatePage = () => {
-            // Array.from(document.querySelectorAll(".loading")).forEach(elem => {
-            //     if (elem.children.length > 0) return;
-            //     elem.innerHTML = "<div>"+new Array(4).fill("<div></div>").join("")+"</div>";
-            // });
             Array.from(document.querySelectorAll("label.filedialog")).forEach(elem => {
                 if (elem.children.length > 0) return;
                 elem.innerHTML = "<input type='file'><div class='value'></div><button></button>";
