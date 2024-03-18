@@ -18,8 +18,6 @@ class WPILOGDecoderWorker extends WorkerBase {
                 this.progress(0);
                 const decoder = new WPILOGDecoder(data.source);
                 const source = new Source(false);
-                let entryId2Name = {};
-                let entryId2Type = {};
                 let entryId2Field = {};
                 let first = true;
                 decoder.build((record, progress) => {
@@ -28,8 +26,8 @@ class WPILOGDecoderWorker extends WorkerBase {
                         if (record.isControlStart()) {
                             let startData = record.getControlStartData();
                             let id = startData.entry;
-                            let name = entryId2Name[id] = startData.name;
-                            let type = entryId2Type[id] = startData.type;
+                            let name = startData.name;
+                            let type = startData.type;
                             if (type == "int64") type = "int";
                             if (type == "int64[]") type = "int[]";
                             source.add(name, type);
@@ -38,11 +36,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                             let metadataData = record.getControlMetadataData();
                             let id = metadataData.entry;
                             let metadata = metadataData.metadata;
-                            if (!(id in entryId2Name)) return;
-                            if (!(id in entryId2Type)) return;
                             if (!(id in entryId2Field)) return;
-                            let name = entryId2Name[id];
-                            let type = entryId2Type[id];
                             const field = entryId2Field[id];
                             let ts = record.ts / 1000;
                             field.updateMetadata(metadata, ts);
@@ -57,29 +51,22 @@ class WPILOGDecoderWorker extends WorkerBase {
                         return;
                     }
                     let id = record.entryId;
-                    if (!(id in entryId2Name)) return;
-                    if (!(id in entryId2Type)) return;
                     if (!(id in entryId2Field)) return;
-                    let name = entryId2Name[id];
-                    let type = entryId2Type[id];
                     const field = entryId2Field[id];
                     let ts = record.ts / 1000;
                     let typefs = {
                         boolean: () => record.getBool(),
                         int: () => record.getInt(),
-                        int64: () => typefs["int"](),
                         float: () => record.getFloat(),
                         double: () => record.getDouble(),
                         string: () => record.getStr(),
-                        json: () => typefs["string"](),
                         "boolean[]": () => record.getBoolArr(),
                         "int[]": () => record.getIntArr(),
-                        "int64[]": () => typefs["int[]"](),
                         "float[]": () => record.getFloatArr(),
                         "double[]": () => record.getDoubleArr(),
                         "string[]": () => record.getStrArr(),
                     };
-                    let v = (type in typefs) ? typefs[type]() : record.getRaw();
+                    let v = (field.type in typefs) ? typefs[field.type]() : record.getRaw();
                     field.update(v, ts);
                     if (first) {
                         first = false;
