@@ -71,6 +71,50 @@ class PropertyCache extends util.Target {
 export const PROPERTYCACHE = new PropertyCache();
 
 
+export class LoadingElement extends HTMLElement {
+    #type;
+    #axis;
+
+    static observedAttributes = ["type", "axis"];
+
+    constructor() {
+        super();
+
+        this.#type = null;
+        this.#axis = null;
+
+        this.type = "scroll";
+        this.axis = "x";
+    }
+
+    #update() {
+        this.innerHTML = "<div>"+Array.from(new Array(4).keys()).map(i => "<div style='--i:"+i+";'></div>").join("")+"</div>";
+    }
+
+    get type() { return this.#type; }
+    set type(v) {
+        v = String(v);
+        if (!["scroll", "bounce"].includes(v)) return;
+        if (this.type == v) return;
+        this.#type = v;
+        this.setAttribute("type", this.type);
+        return this.#update();
+    }
+    get axis() { return this.#axis; }
+    set axis(v) {
+        v = String(v);
+        if (!["x", "y"].includes(v)) return;
+        if (this.axis == v) return;
+        this.#axis = v;
+        this.setAttribute("axis", this.axis);
+        return this.#update();
+    }
+
+    attributeChangedCallback(name, prev, curr) {  this[name] = curr; }
+}
+window.customElements.define("p-loading", LoadingElement);
+
+
 export class App extends util.Target {
     #setupDone;
 
@@ -891,10 +935,10 @@ export class App extends util.Target {
         await this.postResult("setup");
 
         const updatePage = () => {
-            Array.from(document.querySelectorAll(".loading")).forEach(elem => {
-                if (elem.children.length > 0) return;
-                elem.innerHTML = "<div>"+new Array(4).fill("<div></div>").join("")+"</div>";
-            });
+            // Array.from(document.querySelectorAll(".loading")).forEach(elem => {
+            //     if (elem.children.length > 0) return;
+            //     elem.innerHTML = "<div>"+new Array(4).fill("<div></div>").join("")+"</div>";
+            // });
             Array.from(document.querySelectorAll("label.filedialog")).forEach(elem => {
                 if (elem.children.length > 0) return;
                 elem.innerHTML = "<input type='file'><div class='value'></div><button></button>";
