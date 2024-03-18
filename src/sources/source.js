@@ -248,7 +248,7 @@ Source.Field = class SourceField {
     #isJustPrimitive;
 
     #logs;
-    #metadataLog;
+    #metaLogs;
 
     static TYPES = [
         "boolean", "boolean[]",
@@ -303,7 +303,7 @@ Source.Field = class SourceField {
         this.#isJustPrimitive = this.isPrimitive && !this.isArray;
 
         this.#logs = [];
-        this.#metadataLog = [];
+        this.#metaLogs = [];
     }
 
     get source() { return this.#source; }
@@ -343,9 +343,9 @@ Source.Field = class SourceField {
         this.#logs = this.#logs.filter((log, i) => (i <= 0 || log.v != this.#logs[i-1].v)).sort((a, b) => a.ts-b.ts);
     }
 
-    get metadataLog() { return [...this.#metadataLog]; }
-    set metadataLog(v) {
-        this.#metadataLog = util.ensure(v, "arr").map(log => {
+    get metaLogs() { return [...this.#metaLogs]; }
+    set metaLogs(v) {
+        this.#metaLogs = util.ensure(v, "arr").map(log => {
             log = util.ensure(log, "obj");
             let v = log.v;
             if (!util.is(v, "obj"))
@@ -431,51 +431,51 @@ Source.Field = class SourceField {
         if (this.name.startsWith("struct:") && this.type == "structschema") this.source.structHelper.remPattern(this.name.slice(7));
     }
 
-    getMetadataIndex(ts=null) {
+    getMetaIndex(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
-        if (this.#metadataLog.length <= 0) return -1;
-        if (ts < this.#metadataLog.at(0).ts) return -1;
-        if (ts >= this.#metadataLog.at(-1).ts) return this.#metadataLog.length-1;
+        if (this.#metaLogs.length <= 0) return -1;
+        if (ts < this.#metaLogs.at(0).ts) return -1;
+        if (ts >= this.#metaLogs.at(-1).ts) return this.#metaLogs.length-1;
         let l = 0, r = this.#logs.length-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
-            let range = [this.#metadataLog[m].ts, this.#metadataLog[m+1].ts];
+            let range = [this.#metaLogs[m].ts, this.#metaLogs[m+1].ts];
             if (ts < range[0]) r = m-1;
             else if (ts >= range[1]) l = m+1;
             else return m;
         }
         return -1;
     }
-    getMetadata(ts=null) {
+    getMeta(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
-        let i = this.getMetadataIndex(ts);
-        if (i < 0 || i >= this.#metadataLog.length) return null;
-        return this.#metadataLog[i].v;
+        let i = this.getMetaIndex(ts);
+        if (i < 0 || i >= this.#metaLogs.length) return null;
+        return this.#metaLogs[i].v;
     }
-    getMetadataRange(tsStart=null, tsStop=null) {
+    getMetaRange(tsStart=null, tsStop=null) {
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
-        let start = this.getMetadataIndex(tsStart);
-        let stop = this.getMetadataIndex(tsStop);
-        return this.#metadataLog.slice(start+1, stop+1).map(log => {
+        let start = this.getMetaIndex(tsStart);
+        let stop = this.getMetaIndex(tsStop);
+        return this.#metaLogs.slice(start+1, stop+1).map(log => {
             let { ts, v } = log;
             return { ts: ts, v: v };
         });
     }
-    updateMetadata(v, ts=null) {
+    updateMeta(v, ts=null) {
         if (!util.is(v, "obj"))
             try {
                 v = JSON.parse(String(v));
             } catch (e) {}
         ts = util.ensure(ts, "num", this.source.ts);
-        let i = this.getMetadataIndex(ts);
-        this.#metadataLog.splice(i+1, 0, { ts: ts, v: v });
+        let i = this.getMetaIndex(ts);
+        this.#metaLogs.splice(i+1, 0, { ts: ts, v: v });
     }
-    popMetadata(ts=null) {
+    popMeta(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
-        let i = this.getMetadataIndex(ts);
-        if (i >= 0 && i < this.#metadataLog.length) return;
-        this.#metadataLog.splice(i, 1);
+        let i = this.getMetaIndex(ts);
+        if (i >= 0 && i < this.#metaLogs.length) return;
+        this.#metaLogs.splice(i, 1);
     }
 
     toSerialized() {
@@ -484,7 +484,7 @@ Source.Field = class SourceField {
             path: this.path,
             type: this.type,
             logs: this.#logs,
-            metadataLog: this.#metadataLog,
+            metaLogs: this.#metaLogs,
         };
     }
     static fromSerialized(source, data) {
@@ -492,7 +492,7 @@ Source.Field = class SourceField {
         let field = new Source.Field(source, data.path, data.type);
         field.real = data.real;
         field.logs = data.logs;
-        field.metadataLog = data.metadataLog;
+        field.metaLogs = data.metaLogs;
         return field;
     }
 };
