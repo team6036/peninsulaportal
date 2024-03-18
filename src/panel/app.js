@@ -2331,8 +2331,8 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.vars.forEach(v => {
                 v.node = source ? source.tree.lookup(v.path) : null;
                 if (!v.hasNode() || !v.node.hasField()) return;
-                let valueLog = v.node.field.valueLog;
-                valueLog.forEach(log => ts.add(log.ts));
+                let logs = v.node.field.logs;
+                logs.forEach(log => ts.add(log.ts));
             });
             this.#ts = ts = [...ts].sort((a, b) => a-b);
             this.vars.forEach(v => v.update(delta));
@@ -2583,8 +2583,8 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         let entries = [];
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
-            let valueLog = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.valueLog : [];
-            while (entries.length < valueLog.length) {
+            let logs = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.logs : [];
+            while (entries.length < logs.length) {
                 let entry = {};
                 let elem = entry.elem = document.createElement("div");
                 this.elem.appendChild(elem);
@@ -2598,22 +2598,22 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 value.classList.add("value");
                 entries.push(entry);
             }
-            while (entries.length > valueLog.length) {
+            while (entries.length > logs.length) {
                 let entry = entries.pop();
                 this.elem.removeChild(entry.elem);
             }
-            for (let i = 0; i < valueLog.length; i++) {
+            for (let i = 0; i < logs.length; i++) {
                 let entry = entries[i];
-                let j1 = this.tab.lookupTS(valueLog[i].ts);
+                let j1 = this.tab.lookupTS(logs[i].ts);
                 if (i <= 0) entry.elem.style.marginTop = (j1*30)+"px";
-                let j2 = (i+1 >= valueLog.length) ? this.tab.ts.length : this.tab.lookupTS(valueLog[i+1].ts);
+                let j2 = (i+1 >= logs.length) ? this.tab.ts.length : this.tab.lookupTS(logs[i+1].ts);
                 let j3 = this.tab.lookupTS(this.tab.tsNow);
                 entry.elem.style.height = entry.elem.style.maxHeight = ((j2-j1)*30)+"px";
-                entry.value.textContent = entry.valueTS.textContent = valueLog[i].v;
+                entry.value.textContent = entry.valueTS.textContent = logs[i].v;
                 entry.valueTS.style.top = (Math.max(0, Math.min(j2-j1-1, j3-j1))*30)+"px";
                 let v = (
-                    this.tab.tsNow >= valueLog[i].ts &&
-                    this.tab.tsNow < ((i+1 >= valueLog.length) ? Infinity : valueLog[i+1].ts)
+                    this.tab.tsNow >= logs[i].ts &&
+                    this.tab.tsNow < ((i+1 >= logs.length) ? Infinity : logs[i+1].ts)
                 );
                 if (v == entry.elem.classList.contains("this")) continue;
                 if (v) entry.elem.classList.add("this");

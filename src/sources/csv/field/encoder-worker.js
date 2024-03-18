@@ -25,7 +25,7 @@ class CSVFieldEncoderWorker extends WorkerBase {
                 let fields = source.fieldObjects;
                 fields = fields.filter(field => field.real);
                 fields.forEach(field => {
-                    field.valueLog.forEach(log => tsArr.add(log.ts));
+                    field.logs.forEach(log => tsArr.add(log.ts));
                     nameArr.push(prefix+field.path);
                     typeArr.push(field.type);
                 });
@@ -33,7 +33,7 @@ class CSVFieldEncoderWorker extends WorkerBase {
                 const grid = [["", "", ...tsArr], ...nameArr.map((name, i) => [name, typeArr[i], ...new Array(tsArr.length).fill(JSON.stringify(null))])];
                 fields.forEach((field, i) => {
                     this.progress(util.lerp(0, 0.5, i/fields.length));
-                    field.valueLog.forEach(log => {
+                    field.logs.forEach(log => {
                         let ts = log.ts, v = log.v;
                         if (field.type == "structschema" || field.isStruct) v = [...toUint8Array(v)];
                         grid[1+i][2+tsArr.indexOf(ts)] = JSON.stringify(v);

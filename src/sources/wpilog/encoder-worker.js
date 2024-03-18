@@ -28,12 +28,12 @@ class WPILOGEncoderWorker extends WorkerBase {
                     let type = field.type;
                     if (type == "int") type = "int64";
                     if (type == "int[]") type = "int64[]";
-                    let valueLog = field.valueLog;
+                    let logs = field.logs;
                     let metadataLog = field.metadataLog;
-                    if (valueLog.length <= 0 && metadataLog.length <= 0) return;
+                    if (logs.length <= 0 && metadataLog.length <= 0) return;
                     encoder.addRecord(
                         WPILOGEncoder.Record.makeControlStart(
-                            valueLog[0].ts,
+                            logs[0].ts,
                             {
                                 entry: entryId,
                                 name: prefix+field.path,
@@ -42,7 +42,7 @@ class WPILOGEncoderWorker extends WorkerBase {
                             },
                         ),
                     );
-                    valueLog.forEach((log, i) => {
+                    logs.forEach((log, i) => {
                         let ts = log.ts * 1000, v = log.v;
                         let typefs = {
                             boolean: () => WPILOGEncoder.Record.makeBool(entryId, ts, v),
