@@ -1061,7 +1061,7 @@ article.md.lighter table td {
     --border-hov-c-line-v: var(--border-hov-c-line);
 }
 
-.loading {
+p-loading {
     --size: 10px;
     --color: var(--v8);
 
@@ -1072,41 +1072,93 @@ article.md.lighter table td {
     align-items: center;
     align-content: center;
 }
-.loading > div {
+p-loading > div {
     display: flex;
-    flex-direction: row;
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
     align-content: center;
     gap: calc(var(--size) * 0.5);
 }
-.loading > div > div {
+p-loading[axis="x"] > div {
+    flex-direction: row;
+}
+p-loading[axis="y"] > div {
+    flex-direction: column;
+}
+p-loading > div > div {
+    --i: 0;
+
     width: var(--size);
     aspect-ratio: 1 / 1;
 
     background-color: var(--color);
     border-radius: 100%;
-
-    animation: loading-inter 1s infinite;
 }
-.loading > div > div:first-child {
-    animation: loading-first 1s infinite;
+p-loading[type="scroll"][axis="x"] > div > div {
+    animation: loading-scroll-inter-x 1s infinite;
 }
-.loading > div > div:last-child {
-    animation: loading-last 1s infinite;
+p-loading[type="scroll"][axis="y"] > div > div {
+    animation: loading-scroll-inter-y 1s infinite;
 }
-@keyframes loading-inter {
+p-loading[type="scroll"][axis="x"] > div > div:first-child {
+    animation: loading-scroll-first-x 1s infinite;
+}
+p-loading[type="scroll"][axis="y"] > div > div:first-child {
+    animation: loading-scroll-first-y 1s infinite;
+}
+p-loading[type="scroll"][axis="x"] > div > div:last-child {
+    animation: loading-scroll-last-x 1s infinite;
+}
+p-loading[type="scroll"][axis="y"] > div > div:last-child {
+    animation: loading-scroll-last-y 1s infinite;
+}
+p-loading[type="bounce"][axis="x"] > div > div {
+    animation: loading-bounce-x 1s calc((3 - var(--i)) * -0.25s) infinite linear;
+}
+p-loading[type="bounce"][axis="y"] > div > div {
+    animation: loading-bounce-y 1s calc((3 - var(--i)) * -0.25s) infinite linear;
+}
+p-loading[type="bounce"] > div > div:last-child {
+    display: none;
+}
+@keyframes loading-scroll-inter-x {
     0% { transform: translateX(calc(var(--size) * 1.5 / 2)) translateX(calc(var(--size) * -1.5)); }
     100% { transform: translateX(calc(var(--size) * 1.5 / 2)) translateX(calc(var(--size) * 0)); }
 }
-@keyframes loading-first {
+@keyframes loading-scroll-inter-y {
+    0% { transform: translateY(calc(var(--size) * 1.5 / 2)) translateY(calc(var(--size) * -1.5)); }
+    100% { transform: translateY(calc(var(--size) * 1.5 / 2)) translateY(calc(var(--size) * 0)); }
+}
+@keyframes loading-scroll-first-x {
     0% { transform: translateX(calc(var(--size) * 1.5 / 2)) scale(0%); }
     100% { transform: translateX(calc(var(--size) * 1.5 / 2)) scale(100%); }
 }
-@keyframes loading-last {
+@keyframes loading-scroll-first-y {
+    0% { transform: translateY(calc(var(--size) * 1.5 / 2)) scale(0%); }
+    100% { transform: translateY(calc(var(--size) * 1.5 / 2)) scale(100%); }
+}
+@keyframes loading-scroll-last-x {
     0% { transform: translateX(calc(var(--size) * -1.5 / 2)) scale(100%); }
     100% { transform: translateX(calc(var(--size) * -1.5 / 2)) scale(0%); }
+}
+@keyframes loading-scroll-last-y {
+    0% { transform: translateY(calc(var(--size) * -1.5 / 2)) scale(100%); }
+    100% { transform: translateY(calc(var(--size) * -1.5 / 2)) scale(0%); }
+}
+@keyframes loading-bounce-x {
+    0% { transform: translateY(calc(var(--size) * 0)); }
+    25% { transform: translateY(calc(var(--size) * 0.25)); }
+    50% { transform: translateY(calc(var(--size) * 0)); }
+    75% { transform: translateY(calc(var(--size) * -0.25)); }
+    100% { transform: translateY(calc(var(--size) * 0)); }
+}
+@keyframes loading-bounce-y {
+    0% { transform: translateX(calc(var(--size) * 0)); }
+    25% { transform: translateX(calc(var(--size) * 0.25)); }
+    50% { transform: translateX(calc(var(--size) * 0)); }
+    75% { transform: translateX(calc(var(--size) * -0.25)); }
+    100% { transform: translateX(calc(var(--size) * 0)); }
 }
 .loading-line {
     position: absolute;
