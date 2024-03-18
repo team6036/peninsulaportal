@@ -206,7 +206,7 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
             util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
                 node.info = node.hasField() ? node.field.type : null;
                 node.value = node.hasField() ? node.field.get() : null;
-                node.tooltip = node.hasField() ? stringify(node.field.getMetadata()) : null;
+                node.tooltip = node.hasField() ? stringify(node.field.getMeta()) : null;
                 return node;
             }),
             enodeArr,

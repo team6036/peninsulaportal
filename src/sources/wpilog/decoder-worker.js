@@ -32,14 +32,14 @@ class WPILOGDecoderWorker extends WorkerBase {
                             if (type == "int64[]") type = "int[]";
                             source.add(name, type);
                             entryId2Field[id] = source.getField(name);
-                        } else if (record.isControlMetadata()) {
+                        } else if (record.isControlMeta()) {
                             let metadataData = record.getControlMetadataData();
                             let id = metadataData.entry;
                             let metadata = metadataData.metadata;
                             if (!(id in entryId2Field)) return;
                             const field = entryId2Field[id];
                             let ts = record.ts / 1000;
-                            field.updateMetadata(metadata, ts);
+                            field.updateMeta(metadata, ts);
                             if (first) {
                                 first = false;
                                 source.tsMin = source.tsMax = ts;
