@@ -858,9 +858,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.eDivider.classList.remove("this");
             };
             const mousemove = e => {
-                let parent = this.eDivider.parentElement;
-                if (!parent) return;
-                let r = parent.getBoundingClientRect();
+                let r = this.eMain.getBoundingClientRect();
                 let p = 1-Math.min(0.9, Math.max(0.1, (e.pageX-r.left) / r.width));
                 if (!this.hasProject()) return;
                 this.project.sidePos = p;
