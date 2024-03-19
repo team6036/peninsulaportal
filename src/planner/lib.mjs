@@ -9,6 +9,8 @@ export class Project extends lib.Project {
     #size;
     #robotSize;
     #robotMass;
+    #maximized;
+    #sidePos;
 
     constructor(...a) {
         super();
@@ -18,11 +20,13 @@ export class Project extends lib.Project {
         this.#size = new V();
         this.#robotSize = new V();
         this.#robotMass = 0;
+        this.#maximized = false;
+        this.#sidePos = 0.25;
 
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
         this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
 
-        if (a.length <= 0 || a.length > 8) a = [null];
+        if (a.length <= 0 || a.length > 10) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project) {
@@ -36,7 +40,7 @@ export class Project extends lib.Project {
                     let pth = a.getPath(id);
                     pths[id] = new pth.constructor(pth);
                 });
-                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
+                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.maximized, a.sidePos, a.config, a.meta];
             }
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
@@ -50,18 +54,18 @@ export class Project extends lib.Project {
                     let pth = a.getPath(id);
                     pths[id] = new pth.constructor(pth);
                 });
-                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
+                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.maximized, a.sidePos, a.config, a.meta];
             }
             else if (a instanceof Project.Config) a = [{}, {}, [1000, 1000], [100, 100], 0, a, null];
             else if (a instanceof Project.Meta) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
             else if (util.is(a, "str")) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.config, a.meta];
-            else a = [{}, {}, [1000, 1000], [100, 100], 0, null, null];
+            else if (util.is(a, "obj")) a = [a.id, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.maximized, a.sidePos, a.config, a.meta];
+            else a = [{}, {}];
         }
         if (a.length == 2)
-            a = [...a, [1000, 1000], [100, 100], 0, null, null];
+            a = [...a, [1000, 1000]];
         if (a.length == 3)
-            a = [...a, [100, 100], 0, null, null];
+            a = [...a, [100, 100], null, null];
         if (a.length == 4)
             a = [...a.slice(0, 3), [100, 100], 0, ...((a[3] instanceof Project.Config) ? [a[3], null] : (a[3] instanceof Project.Meta) ? [null, a[3]] : [null, null])];
         if (a.length == 5)
@@ -69,9 +73,13 @@ export class Project extends lib.Project {
         if (a.length == 6)
             a = [...a.slice(0, 4), 0, ...a.slice(4)];
         if (a.length == 7)
+            a = [...a.slice(0, 5), 0.25, ...a.slice(5)];
+        if (a.length == 8)
+            a = [...a.slice(0, 5), false, ...a.slice(5)];
+        if (a.length == 9)
             a = [null, ...a];
 
-        [this.id, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.config, this.meta] = a;
+        [this.id, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.maximized, this.sidePos, this.config, this.meta] = a;
 
         this.addHandler("change", () => {
             let pathNames = new Set();
@@ -218,6 +226,24 @@ export class Project extends lib.Project {
         if (this.robotMass == v) return;
         this.change("robotMass", this.robotMass, this.#robotMass=v);
     }
+
+    get maximized() { return this.#maximized; }
+    set maximized(v) {
+        v = !!v;
+        if (this.maximized == v) return;
+        this.change("maximized", this.maximized, this.#maximized=v);
+    }
+    get minimized() { return !this.maximized; }
+    set minimized(v) { this.maximized = !v; }
+    maximize() { return this.maximized = true; }
+    minimize() { return this.minimized = true; }
+
+    get sidePos() { return this.#sidePos; }
+    set sidePos(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num", 0.25)));
+        if (this.sidePos == v) return;
+        this.change("sidePos", this.sidePos, this.#sidePos=v);
+    }
     
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -226,6 +252,8 @@ export class Project extends lib.Project {
             paths: this.#paths,
             size: this.size,
             robotSize: this.robotSize, robotMass: this.robotMass,
+            maximized: this.maximized,
+            sidePos: this.sidePos,
             config: this.config, meta: this.meta,
         });
     }

@@ -498,9 +498,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #displayPathIndices;
     #displayPathLines;
 
-    #maximized;
-    #divPos;
-
     #panels;
     #panel;
     #objectsPanel;
@@ -606,10 +603,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             });
         });
         this.app.addHandler("cmd-maxmin", () => {
-            this.maximized = !this.maximized;
+            if (!this.hasProject()) return;
+            this.project.maximized = !this.project.maximized;
         });
         this.app.addHandler("cmd-resetdivider", () => {
-            this.divPos = 0.75;
+            if (!this.hasProject()) return;
+            this.project.sidePos = null;
         });
 
         this.#selected = new Set();
@@ -621,9 +620,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.#displayPath = null;
         this.#displayPathIndices = true;
         this.#displayPathLines = true;
-
-        this.#maximized = null;
-        this.#divPos = null;
 
         this.#panels = {};
         this.#panel = null;
@@ -865,7 +861,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let parent = this.eDivider.parentElement;
                 if (!parent) return;
                 let r = parent.getBoundingClientRect();
-                this.divPos = Math.min(0.9, Math.max(0.1, (e.pageX-r.left) / r.width));
+                let p = 1-Math.min(0.9, Math.max(0.1, (e.pageX-r.left) / r.width));
+                if (!this.hasProject()) return;
+                this.project.sidePos = p;
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -898,6 +896,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("change-project", updateSelected);
         this.addHandler("change-project.remItem", updateSelected);
         this.addHandler("change-project.remPath", updateSelected);
+
+        this.addHandler("change-project", () => this.format());
+        this.addHandler("change-project.maximized", () => this.format());
+        this.addHandler("change-project.sidePos", () => this.format());
 
         let timer = 0;
         this.addHandler("update", delta => {
@@ -992,8 +994,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.addHandler("refresh", () => {
             this.panel = "objects";
-            this.maximized = false;
-            this.divPos = 0.75;
             this.choosing = false;
         });
 
@@ -1226,25 +1226,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return true;
     }
 
-    get maximized() { return this.#maximized; }
-    set maximized(v) {
-        v = !!v;
-        if (this.maximized == v) return;
-        this.#maximized = v;
-        this.format();
-    }
-    get minimized() { return !this.maximized; }
-    set minimized(v) { this.maximized = !v; }
-    maximize() { return this.maximized = true; }
-    minimize() { return this.minimized = true; }
-    get divPos() { return this.#divPos; }
-    set divPos(v) {
-        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
-        if (this.divPos == v) return;
-        this.#divPos = v;
-        this.format();
-    }
-
     get panels() { return Object.keys(this.#panels); }
     set panels(v) {
         v = util.ensure(v, "arr");
@@ -1313,18 +1294,19 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     format() {
         if (this.eMaxMinBtn.children[0])
-            this.eMaxMinBtn.children[0].name = this.maximized ? "contract" : "expand";
-        if (this.maximized) {
+            this.eMaxMinBtn.children[0].name = (this.hasProject() && this.project.maximized) ? "contract" : "expand";
+        if (this.hasProject() && this.project.maximized) {
             this.eDisplay.style.width = "100%";
             this.eDisplay.style.maxWidth = "100%";
             this.eEdit.style.display = "none";
             this.eDivider.style.display = "none";
         } else {
-            this.eDisplay.style.width = "calc("+(this.divPos*100)+"% - 1px)";
-            this.eDisplay.style.maxWidth = "calc("+(this.divPos*100)+"% - 1px)";
+            const p = this.hasProject() ? this.project.sidePos : 0;
+            this.eDisplay.style.width = "calc("+((1-p)*100)+"% - 1px)";
+            this.eDisplay.style.maxWidth = "calc("+((1-p)*100)+"% - 1px)";
             this.eEdit.style.display = "";
-            this.eEdit.style.width = "calc("+((1-this.divPos)*100)+"% - 1px)";
-            this.eEdit.style.maxWidth = "calc("+((1-this.divPos)*100)+"% - 1px)";
+            this.eEdit.style.width = "calc("+(p*100)+"% - 1px)";
+            this.eEdit.style.maxWidth = "calc("+(p*100)+"% - 1px)";
             this.eDivider.style.display = "";
         }
     }
