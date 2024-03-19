@@ -150,13 +150,18 @@ const MAIN = async () => {
                 null;
             if (!this.process) throw new Error(`Invalid spawn mode '${mode}'`);
             this.process.stdout.on("data", data => this.post("data", data));
+            let error = "";
             this.process.stderr.on("data", data => {
-                this.post("error", lib.TEXTDECODER.decode(data));
+                error += lib.TEXTDECODER.decode(data);
+            });
+            this.process.on("exit", () => {
+                if (error) this.post("error", error);
+                this.post("exit", this.process.exitCode);
                 this.terminate();
             });
-            this.process.on("exit", code => this.post("exit", code));
             this.process.on("error", e => {
                 this.post("error", e);
+                this.post("exit", this.process.exitCode);
                 this.terminate();
             });
 
