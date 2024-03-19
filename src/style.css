@@ -2281,8 +2281,6 @@ p-loading[type="bounce"] > div > div:last-child {
     --use-o: 1;
 
     flex-basis: 100%;
-
-    outline: 1px solid var(--v3);
 }
 .form > .item.json > .content > .item > input:first-of-type {
     --fg: var(--a);
