@@ -7822,7 +7822,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
     }
 };
 
-class Project extends core.Project {
+class Project extends lib.Project {
     #widgetData;
     #sidePos;
     #sideSectionPos;

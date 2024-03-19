@@ -378,3 +378,148 @@ export class OptionList extends util.Target {
         return null;
     }
 }
+
+export class Project extends util.Target {
+    #id;
+
+    #config;
+    #meta;
+
+    constructor(...a) {
+        super();
+
+        this.#id = null;
+
+        this.#config = null;
+        this.#meta = null;
+
+        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project) a = [a.id, a.config, a.meta];
+            else if (util.is(a, "arr")) {
+                a = new Project(...a);
+                a = [a.id, a.config, a.meta];
+            }
+            else if (a instanceof this.constructor.Config) a = [a, null];
+            else if (a instanceof this.constructor.Meta) a = [null, a];
+            else if (util.is(a, "str")) a = [null, a];
+            else if (util.is(a, "obj")) a = [a.id, a.config, a.meta];
+            else a = [null, null];
+        }
+        if (a.length == 2)
+            a = [null, ...a];
+
+        [this.id, this.config, this.meta] = a;
+    }
+
+    get id() { return this.#id; }
+    set id(v) { this.#id = (v == null) ? null : String(v); }
+
+    get config() { return this.#config; }
+    set config(v) {
+        v = new this.constructor.Config(v);
+        if (this.config == v) return;
+        if (this.config instanceof this.constructor.Config)
+            this.config.clearLinkedHandlers(this, "change");
+        this.change("config", this.config, this.#config=v);
+        if (this.config instanceof this.constructor.Config)
+            this.config.addLinkedHandler(this, "change", (c, f, t) => this.change("config."+c, f, t));
+    }
+
+    get meta() { return this.#meta; }
+    set meta(v) {
+        v = new this.constructor.Meta(v);
+        if (this.meta == v) return;
+        if (this.meta instanceof this.constructor.Meta) {
+            this.meta.clearLinkedHandlers(this, "change");
+            this.meta.clearLinkedHandlers(this, "thumb");
+        }
+        this.change("meta", this.meta, this.#meta=v);
+        if (this.meta instanceof this.constructor.Meta) {
+            this.meta.addLinkedHandler(this, "change", (c, f, t) => this.change("meta."+c, f, t));
+            this.meta.addLinkedHandler(this, "thumb", () => this.post("thumb"));
+        }
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            id: this.id,
+            config: this.config, meta: this.meta,
+        });
+    }
+}
+Project.Config = class ProjectConfig extends util.Target {
+    constructor() {
+        super();
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {});
+    }
+};
+Project.Meta = class ProjectMeta extends util.Target {
+    #name;
+    #modified;
+    #created;
+    #thumb;
+
+    constructor(...a) {
+        super();
+
+        this.#name = "New Project";
+        this.#modified = 0;
+        this.#created = 0;
+        this.#thumb = null;
+
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb];
+            else if (util.is(a, "arr")) {
+                a = new Project.Meta(...a);
+                a = [a.name, a.modified, a.created, a.thumb];
+            }
+            else if (util.is(a, "str")) a = [a, null];
+            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
+            else a = ["New Project", null];
+        }
+        if (a.length == 2) a = [a[0], 0, 0, a[1]];
+        
+        [this.name, this.modified, this.created, this.thumb] = a;
+    }
+
+    get name() { return this.#name; }
+    set name(v) {
+        v = (v == null) ? "New Project" : String(v);
+        if (this.name == v) return;
+        this.change("name", this.name, this.#name=v);
+    }
+    get modified() { return this.#modified; }
+    set modified(v) {
+        v = util.ensure(v, "num");
+        if (this.modified == v) return;
+        this.#modified = v;
+    }
+    get created() { return this.#created; }
+    set created(v) {
+        v = util.ensure(v, "num");
+        if (this.created == v) return;
+        this.change("created", this.created, this.#created=v);
+    }
+    get thumb() { return this.#thumb; }
+    set thumb(v) {
+        v = (v == null) ? null : String(v);
+        if (this.thumb == v) return;
+        this.#thumb = v;
+        this.post("thumb");
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            name: this.name,
+            modified: this.modified, created: this.created,
+            thumb: this.thumb,
+        });
+    }
+};
