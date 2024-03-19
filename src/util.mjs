@@ -675,6 +675,71 @@ export class Target {
     onRem() { return this.post("rem"); }
 }
 
+export class Result extends Target {
+    #successful;
+    #value;
+    #error;
+    #reason;
+
+    constructor(...a) {
+        super();
+
+        this.#successful = null;
+        this.#value = null;
+        this.#error = null;
+        this.#reason = null;
+
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Result) a = [a.successful, a.value, a.error, a.reason];
+            else if (is(a, "arr")) {
+                a = new Result(...a);
+                a = [a.successful, a.value, a.error, a.reason];
+            }
+            else if (is(a, "obj")) a = [a.successful, a.value, a.error, a.reason];
+            else if (is(a, "bool")) a = [a, a];
+            else a = [true, a];
+        }
+        if (a.length == 2) a = [!!a[0], a[1], null, null];
+
+        [this.successful, this.value, this.error, this.reason] = a;
+    }
+
+    get successful() { return this.#successful; }
+    set successful(v) {
+        v = !!v;
+        if (this.successful == v) return;
+        this.change("successful", this.successful, this.#successful=v);
+    }
+    get value() { return this.#value; }
+    set value(v) { this.#value = v; }
+    get error() { return this.#error; }
+    set error(v) {
+        v = (v == null) ? null : String(v);
+        if (this.error == v) return;
+        this.change("error", this.error, this.#error=v);
+    }
+    hasError() { return this.error != null; }
+    get reason() { return this.#reason; }
+    set reason(v) {
+        v = (v == null) ? null : String(v);
+        if (this.reason == v) return;
+        this.change("reason", this.reason, this.#reason=v);
+    }
+    hasReason() { return this.reason != null; }
+
+    toJSON() {
+        return {
+            "%r": true,
+            successful: this.successful,
+            value: this.value,
+            error: this.error,
+            reason: this.reason,
+        };
+    }
+}
+
 export class Color extends Target {
     #r; #g; #b; #a;
     #hsv;
@@ -2062,6 +2127,7 @@ export class Reviver extends Target {
     get f() {
         return (k, v) =>  {
             if (is(v, "obj")) {
+                if (v["%r"]) return new Result(v);
                 if (!("%cstm" in v) && !("%CUSTOM" in v)) return v;
                 let custom = ("%cstm" in v) ? v["%cstm"] : v["%CUSTOM"];
                 if (!("%o" in v) && !("%OBJ" in v)) return v;
