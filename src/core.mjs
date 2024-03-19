@@ -72,7 +72,7 @@ export const PROPERTYCACHE = new PropertyCache();
 
 
 let LoadingElement = null;
-if (window) {
+if (typeof(window) == "object") {
     LoadingElement = class LoadingElement extends HTMLElement {
         #type;
         #axis;
