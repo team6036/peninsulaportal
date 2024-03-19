@@ -4,7 +4,7 @@ import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
 
-import * as subcore from "./core.mjs";
+import * as sublib from "./lib.mjs";
 
 
 class RLabel extends core.Odometry2d.Render {
@@ -57,7 +57,7 @@ class RLabel extends core.Odometry2d.Render {
 
     get item() { return this.#item; }
     set item(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
+        v = (v instanceof sublib.Project.Item) ? v : null;
         if (this.item == v) return;
         this.#item = v;
     }
@@ -98,14 +98,14 @@ class RLine extends core.Odometry2d.Render {
 
     get itemA() { return this.#itemA; }
     set itemA(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
+        v = (v instanceof sublib.Project.Item) ? v : null;
         if (this.item == v) return;
         this.#itemA = v;
     }
     hasItemA() { return !!this.itemA; }
     get itemB() { return this.#itemB; }
     set itemB(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
+        v = (v instanceof sublib.Project.Item) ? v : null;
         if (this.item == v) return;
         this.#itemB = v;
     }
@@ -187,7 +187,7 @@ class RVisual extends core.Odometry2d.Render {
     get nodes() { return [...this.#nodes]; }
     set nodes(v) {
         v = util.ensure(v, "arr");
-        this.#nodes = v.map(v => new subcore.Project.Node(v));
+        this.#nodes = v.map(v => new sublib.Project.Node(v));
     }
 }
 class RVisualItem extends core.Odometry2d.Robot {
@@ -218,7 +218,7 @@ class RVisualItem extends core.Odometry2d.Robot {
                 let j = Math.min(i+1, nodes.length-1);
                 let ni = nodes[i], nj = nodes[j];
                 p = ((nodes.length-1)*p) - i;
-                node = new subcore.Project.Node(
+                node = new sublib.Project.Node(
                     util.lerp(ni.pos, nj.pos, p),
                     ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
                     util.lerp(ni.velocity, nj.velocity),
@@ -302,7 +302,7 @@ class RSelectable extends core.Odometry2d.Render {
         this.addHandler("change-item", () => {
             this.renderObject = null;
             if (!this.hasItem()) return;
-            type = (this.item instanceof subcore.Project.Node) ? "node" : (this.item instanceof subcore.Project.Obstacle) ? "obstacle" : null;
+            type = (this.item instanceof sublib.Project.Node) ? "node" : (this.item instanceof sublib.Project.Obstacle) ? "obstacle" : null;
             if (type == "node") {
                 this.renderObject = new core.Odometry2d.Robot(this);
             } else if (type == "obstacle") {
@@ -332,7 +332,7 @@ class RSelectable extends core.Odometry2d.Render {
 
     get item() { return this.#item; }
     set item(v) {
-        v = (v instanceof subcore.Project.Item) ? v : null;
+        v = (v instanceof sublib.Project.Item) ? v : null;
         if (this.item == v) return;
         this.change("item", this.item, this.#item=v);
     }
@@ -357,13 +357,13 @@ class RSelectable extends core.Odometry2d.Render {
         part = String(part);
         if (!this.hasItem()) return "";
         if (part == "main") return "move";
-        if (this.item instanceof subcore.Project.Node) {
+        if (this.item instanceof sublib.Project.Node) {
             let partfs = {
                 velocity: "grab",
                 heading: "grab",
             };
             if (part in partfs) return partfs[part];
-        } else if (this.item instanceof subcore.Project.Obstacle) {
+        } else if (this.item instanceof sublib.Project.Obstacle) {
             let partfs = {
                 radius: "grab",
             };
@@ -375,7 +375,7 @@ class RSelectable extends core.Odometry2d.Render {
         part = String(part);
         pos = new V(pos);
         if (!this.hasItem()) return "";
-        if (this.item instanceof subcore.Project.Node) {
+        if (this.item instanceof sublib.Project.Node) {
             let partfs = {
                 velocity: () => {
                     this.item.velocity = pos.sub(this.item.pos);
@@ -385,7 +385,7 @@ class RSelectable extends core.Odometry2d.Render {
                 },
             };
             if (part in partfs) partfs[part]();
-        } else if (this.item instanceof subcore.Project.Obstacle) {
+        } else if (this.item instanceof sublib.Project.Obstacle) {
             let partfs = {
                 radius: () => {
                     this.item.radius = this.item.pos.dist(pos);
@@ -399,8 +399,8 @@ class RSelectable extends core.Odometry2d.Render {
 
 export default class App extends core.AppFeature {
     static ICON = "analytics";
-    static PROJECTCLASS = subcore.Project;
-    static REVIVER = subcore.REVIVER;
+    static PROJECTCLASS = sublib.Project;
+    static REVIVER = sublib.REVIVER;
 
     constructor() {
         super();
@@ -541,8 +541,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             let prevOverRender = false;
             let ghostItem = null;
             let item = {
-                node: new subcore.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
-                obstacle: new subcore.Project.Obstacle({ pos: 0, radius: 100 }),
+                node: new sublib.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
+                obstacle: new sublib.Project.Obstacle({ pos: 0, radius: 100 }),
             }[this.app.dragData];
             this.app.dragState.addHandler("move", e => {
                 let pos = new V(e.pageX, e.pageY);
@@ -587,12 +587,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.choosing) return;
             if (!this.hasProject()) return;
             this.choosing = true;
-            this.displayPath = new subcore.Project.Path();
+            this.displayPath = new sublib.Project.Path();
             this.chooseState.addHandler("choose", (itm, shift) => {
                 if (!this.hasDisplayPath()) return;
                 let path = this.displayPath;
                 shift = !!shift;
-                if (!(itm instanceof subcore.Project.Node)) return;
+                if (!(itm instanceof sublib.Project.Node)) return;
                 if (shift) path.remNode(itm);
                 else path.addNode(itm);
             });
@@ -1063,10 +1063,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             templates = util.ensure(util.ensure(templates, "obj").templates, "obj");
             if (this.app.hasProject(data.id)) {
                 this.project = this.app.getProject(data.id);
-            } else if (data.project instanceof subcore.Project) {
+            } else if (data.project instanceof sublib.Project) {
                 this.project = data.project;
             } else {
-                this.project = new subcore.Project();
+                this.project = new sublib.Project();
                 this.project.meta.created = this.project.meta.modified = util.getTime();
                 this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
                 this.editorRefresh();
@@ -1128,14 +1128,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return sels;
     }
     isSelected(id) {
-        if (id instanceof subcore.Project.Item) return this.isSelected(id.id);
+        if (id instanceof sublib.Project.Item) return this.isSelected(id.id);
         if (id instanceof RSelectable) return this.isSelected(id.item);
         return this.#selected.has(String(id));
     }
     addSelected(...ids) {
         let r = util.Target.resultingForEach(ids, id => {
             if (id instanceof RSelectable) id = id.item;
-            if (id instanceof subcore.Project.Item) id = id.id;
+            if (id instanceof sublib.Project.Item) id = id.id;
             if (this.isSelected(id)) return false;
             id = String(id);
             if (!this.hasProject()) return false;
@@ -1149,7 +1149,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     remSelected(...ids) {
         let r = util.Target.resultingForEach(ids, id => {
             if (id instanceof RSelectable) id = id.item;
-            if (id instanceof subcore.Project.Item) id = id.id;
+            if (id instanceof sublib.Project.Item) id = id.id;
             if (!this.isSelected(id)) return false;
             id = String(id);
             this.#selected.delete(id);
@@ -1161,7 +1161,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     
     get selectedPath() { return this.#selectedPath; }
     set selectedPath(v) {
-        if (v instanceof subcore.Project.Path) return this.selectedPath = v.id;
+        if (v instanceof sublib.Project.Path) return this.selectedPath = v.id;
         v = (v == null) ? null : String(v);
         if (!(this.hasProject() && this.project.hasPath(v))) v = null;
         if (this.selectedPath == v) return;
@@ -1184,7 +1184,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     get displayPath() { return this.#displayPath; }
     set displayPath(v) {
-        v = (v instanceof subcore.Project.Path) ? v : null;
+        v = (v instanceof sublib.Project.Path) ? v : null;
         if (this.displayPath == v) return;
         this.#displayPath = v;
     }
@@ -1216,7 +1216,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!text.startsWith(util.MAGIC)) return;
                 text = text.slice(util.MAGIC.length);
                 try {
-                    let data = JSON.parse(text, subcore.REVIVER.f);
+                    let data = JSON.parse(text, sublib.REVIVER.f);
                     if (!util.is(data, "arr")) return;
                     if (!this.hasProject()) return;
                     data.forEach(itm => this.project.addItem(itm));
@@ -1344,7 +1344,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     async determineSame(data) {
         if (this.app.hasProject(data.id)) return this.projectId == data.id;
-        else if (data.project instanceof subcore.Project) return this.project == data.project;
+        else if (data.project instanceof sublib.Project) return this.project == data.project;
         return false;
     }
 };
@@ -1623,7 +1623,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.fRobotHeading.addHandler("change-toggleOn", () => {
             let itms = getSelected();
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) return;
+                if (!(itm instanceof sublib.Project.Node)) return;
                 itm.useHeading = this.fRobotHeading.toggleOn;
             });
             this.page.editorRefresh();
@@ -1632,7 +1632,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             if (!this.fRobotHeading.hasValue()) return;
             let itms = getSelected();
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) return;
+                if (!(itm instanceof sublib.Project.Node)) return;
                 itm.heading = this.fRobotHeading.value * (Math.PI/180);
             });
             this.page.editorRefresh();
@@ -1651,7 +1651,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.fRobotVelocity.addHandler("change-toggleOn", () => {
             let itms = getSelected();
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) return;
+                if (!(itm instanceof sublib.Project.Node)) return;
                 itm.useVelocity = this.fRobotVelocity.toggleOn;
             });
             this.page.editorRefresh();
@@ -1660,7 +1660,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             if (!this.fRobotVelocity.hasValue()) return;
             let itms = getSelected();
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) return;
+                if (!(itm instanceof sublib.Project.Node)) return;
                 if (this.fRobotVelocity.hasValue("x")) itm.velocityX = this.fRobotVelocity.x*100;
                 if (this.fRobotVelocity.hasValue("y")) itm.velocityY = this.fRobotVelocity.y*100;
             });
@@ -1680,7 +1680,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             if (!this.fRobotRotVelocity.hasValue()) return;
             let itms = getSelected();
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) return;
+                if (!(itm instanceof sublib.Project.Node)) return;
                 itm.velocityRot = this.fRobotRotVelocity.value;
             });
             this.page.editorRefresh();
@@ -1688,14 +1688,14 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         this.#fOptions = form.addField(new core.Form.JSONInput("options"));
         this.fOptions.addHandler("set", (k, v0, v1) => {
-            let itms = getSelected().filter(itm => (itm instanceof subcore.Project.Node));
+            let itms = getSelected().filter(itm => (itm instanceof sublib.Project.Node));
             if (itms.length != 1) return;
             let itm = itms[0];
             itm.setOption(k, v1);
             this.page.editorRefresh();
         });
         this.fOptions.addHandler("del", (k, v) => {
-            let itms = getSelected().filter(itm => (itm instanceof subcore.Project.Node));
+            let itms = getSelected().filter(itm => (itm instanceof sublib.Project.Node));
             if (itms.length != 1) return;
             let itm = itms[0];
             itm.delOption(k);
@@ -1716,7 +1716,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             if (!this.fRadius.hasValue()) return;
             let itms = getSelected();
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Obstacle)) return;
+                if (!(itm instanceof sublib.Project.Obstacle)) return;
                 itm.radius = this.fRadius.value*100;
             });
             this.page.editorRefresh();
@@ -1743,8 +1743,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let yCenter = (Math.max(...yList)+Math.min(...yList))/2;
             let allNode = (itms.length > 0), allObstacle = (itms.length > 0);
             itms.forEach(itm => {
-                if (!(itm instanceof subcore.Project.Node)) allNode = false;
-                if (!(itm instanceof subcore.Project.Obstacle)) allObstacle = false;
+                if (!(itm instanceof sublib.Project.Node)) allNode = false;
+                if (!(itm instanceof sublib.Project.Obstacle)) allObstacle = false;
             });
             forAny.forEach(f => (f.isShown = (itms.length > 0)));
             forNode.forEach(f => (f.isShown = allNode));
@@ -1857,12 +1857,12 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (this.page.choosing) return;
             if (!this.page.hasProject()) return;
             this.page.choosing = true;
-            this.page.displayPath = new subcore.Project.Path();
+            this.page.displayPath = new sublib.Project.Path();
             this.page.chooseState.addHandler("choose", (itm, shift) => {
                 if (!this.page.hasDisplayPath()) return;
                 let path = this.page.displayPath;
                 shift = !!shift;
-                if (!(itm instanceof subcore.Project.Node)) return;
+                if (!(itm instanceof sublib.Project.Node)) return;
                 if (shift) path.remNode(itm);
                 else path.addNode(itm);
             });
@@ -1966,7 +1966,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     theVisual.visual.dt = data.dt*1000;
                     theVisual.visual.nodes = util.ensure(data.state, "arr").map(node => {
                         node = util.ensure(node, "obj");
-                        node = new subcore.Project.Node(
+                        node = new sublib.Project.Node(
                             new V(node.x, node.y).mul(100),
                             node.theta, true,
                             new V(node.vx, node.vy).mul(100),
@@ -2117,7 +2117,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     if (!this.page.hasDisplayPath()) return;
                     let path = this.page.displayPath;
                     shift = !!shift;
-                    if (!(itm instanceof subcore.Project.Node)) return;
+                    if (!(itm instanceof sublib.Project.Node)) return;
                     if (shift) path.remNode(itm);
                     else path.addNode(itm);
                 });
@@ -2241,7 +2241,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
 
     get path() { return this.#path; }
     set path(v) {
-        v = (v instanceof subcore.Project.Path) ? v : null;
+        v = (v instanceof sublib.Project.Path) ? v : null;
         if (this.path == v) return;
         if (this.hasPath()) this.path.clearLinkedHandlers(this, "change");
         this.change("path", this.path, this.#path=v);
