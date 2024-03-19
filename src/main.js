@@ -2050,13 +2050,13 @@ const MAIN = async () => {
                         id = String(id);
                         pathId = String(pathId);
 
-                        const subcore = await import("./planner/core.mjs");
+                        const sublib = await import("./planner/lib.mjs");
 
                         let project = null;
                         try {
-                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
+                            project = JSON.parse(await kfs["project-get"](id), sublib.REVIVER.f);
                         } catch (e) {}
-                        if (!(project instanceof subcore.Project)) throw new Error("Invalid project content with id: "+id);
+                        if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
                         if (!project.hasPath(pathId)) throw new Error("Nonexistent path with id: "+pathId+" for project id: "+id);
                         let pth = project.getPath(pathId);
 
@@ -2081,7 +2081,7 @@ const MAIN = async () => {
                         pth.nodes.forEach(id => {
                             if (!project.hasItem(id)) return;
                             let itm = project.getItem(id);
-                            if (!(itm instanceof subcore.Project.Node)) return;
+                            if (!(itm instanceof sublib.Project.Node)) return;
                             let data = {
                                 x: itm.x/100, y: itm.y/100,
                                 vx: itm.useVelocity ? itm.velocityX/100 : null,
@@ -2099,7 +2099,7 @@ const MAIN = async () => {
                         });
                         project.items.forEach(id => {
                             let itm = project.getItem(id);
-                            if (!(itm instanceof subcore.Project.Obstacle)) return;
+                            if (!(itm instanceof sublib.Project.Obstacle)) return;
                             dataIn.obstacles.push({
                                 x: itm.x/100, y: itm.y/100,
                                 radius: itm.radius/100,
@@ -2218,13 +2218,13 @@ const MAIN = async () => {
                     "exec-get": async id => {
                         id = String(id);
 
-                        const subcore = await import("./planner/core.mjs");
+                        const sublib = await import("./planner/core.mjs");
 
                         let project = null;
                         try {
-                            project = JSON.parse(await kfs["project-get"](id), subcore.REVIVER.f);
+                            project = JSON.parse(await kfs["project-get"](id), sublib.REVIVER.f);
                         } catch (e) {}
-                        if (!(project instanceof subcore.Project)) throw new Error("Invalid project content with id: "+id);
+                        if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
 
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
                         if (script == null) return {};
