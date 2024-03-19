@@ -28,14 +28,20 @@ Array.prototype.collapse = function() {
         return sum;
     }, []);
 };
-Array.prototype.all = function(f) {
-    for (let v of this)
-        if (!f(v)) return false;
+Array.prototype.all = function(f=null) {
+    for (let v of this) {
+        if (f == null) {
+            if (!v) return false;
+        } else if (!f(v)) return false;
+    }
     return true;
 };
-Array.prototype.any = function(f) {
-    for (let v of this)
-        if (f(v)) return true;
+Array.prototype.any = function(f=null) {
+    for (let v of this) {
+        if (f == null) {
+            if (v) return true;
+        } else if (f(v)) return true;
+    }
     return false;
 };
 
