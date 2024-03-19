@@ -108,6 +108,8 @@ const MAIN = async () => {
 
     const ytdl = require("ytdl-core");
 
+    const octokit = require("octokit");
+
     const OS = {
         arch: os.arch(),
         platform: os.platform(),
@@ -1443,6 +1445,7 @@ const MAIN = async () => {
             let doLog = true;
             let kfs = {
                 "menu": async () => {
+                    doLog = false;
                     this.#menu = null;
                     try {
                         let signal = new util.Target();
@@ -1574,6 +1577,7 @@ const MAIN = async () => {
                 },
 
                 "size": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     v = new V(v).ceil();
                     let bounds = this.window.getBounds();
@@ -1587,6 +1591,7 @@ const MAIN = async () => {
                     return true;
                 },
                 "width": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
@@ -1600,6 +1605,7 @@ const MAIN = async () => {
                     return true;
                 },
                 "height": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
@@ -1613,42 +1619,50 @@ const MAIN = async () => {
                     return true;
                 },
                 "min-size": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(...new V(v).ceil().xy);
                     return true;
                 },
                 "min-width": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(Math.ceil(util.ensure(v, "num")), this.window.getMinimumSize()[1]);
                     return true;
                 },
                 "min-height": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(this.window.getMinimumSize()[0], Math.ceil(util.ensure(v, "num")));
                     return true;
                 },
                 "max-size": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(...new V(v).ceil().xy);
                     return true;
                 },
                 "max-width": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(Math.ceil(util.ensure(v, "num")), this.window.getMaximumSize()[1]);
                     return true;
                 },
                 "max-height": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(this.window.getMaximumSize()[0], Math.ceil(util.ensure(v, "num")));
                     return true;
                 },
                 "bounds": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setBounds(v);
                     return true;
                 },
 
                 "title-bar-overlay": async () => {
+                    doLog = false;
                     if (!this.hasWindow()) return false;
                     if (this.window.setTitleBarOverlay)
                         this.window.setTitleBarOverlay(v);
@@ -2331,8 +2345,8 @@ const MAIN = async () => {
                     hasR = true;
                 }
             }
-            if (doLog) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
-            if (!hasR) {
+            if (hasR) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            else {
                 try {
                     r = await this.manager.on(k, ...a);
                 } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
@@ -2615,6 +2629,7 @@ const MAIN = async () => {
         async tryLoad() {
             if (this.hasWindow()) return await this.window.manager.tryLoad();
             if (this.isLoading) return false;
+            const log = (...a) => this.log("DB", ...a);
             let version = await this.get("base-version");
             this.#isLoading = true;
             let r = await (async () => {
@@ -2626,50 +2641,50 @@ const MAIN = async () => {
                 }
                 this.clearLoads();
                 let fsVersion = await this.get("fs-version");
-                this.log(`DB fs-version check (${version} ?>= ${fsVersion})`);
+                log(`fs-version check (${version} ?>= ${fsVersion})`);
                 this.addLoad("fs-version");
                 if (!(await this.canFS(version))) {
-                    this.log(`DB fs-version mismatch (${version} !>= ${fsVersion})`);
+                    log(`fs-version mismatch (${version} !>= ${fsVersion})`);
                     this.remLoad("fs-version");
                     this.addLoad("fs-version:"+version+" < "+fsVersion);
                     return false;
                 }
-                this.log(`DB fs-version match (${version} >= ${fsVersion})`);
+                log(`fs-version match (${version} >= ${fsVersion})`);
                 this.remLoad("fs-version");
                 await this.set("fs-version", version);
-                this.log("DB finding host");
+                log("finding host");
                 this.addLoad("find");
                 const host = await this.get("db-host");
                 const doFallback = host == null;
                 const theHost = host + "/api";
                 const isCompMode = await this.get("val-comp-mode");
                 this.remLoad("find");
-                if (doFallback) this.log(`DB poll ( host: FALLBACK )`);
-                else this.log(`DB poll ( host: ${host} )`);
+                if (doFallback) log(`poll ( host: FALLBACK )`);
+                else log(`poll ( host: ${host} )`);
                 if (isCompMode) {
-                    this.log(`DB poll - SKIP (COMP MODE)`);
+                    log(`poll - SKIP (COMP MODE)`);
                     this.addLoad("comp-mode");
                     return true;
                 }
                 if (doFallback) {
-                    this.log(`DB no polling ( FALLBACK )`);
+                    log(`no polling ( FALLBACK )`);
                 } else {
-                    this.log(`DB polling`);
+                    log(`polling`);
                     this.addLoad("poll");
                     try {
                         let resp = await util.timeout(10000, fetch(theHost));
                         if (resp.status != 200) throw resp.status;
                     } catch (e) {
-                        this.log(`DB polling - fail`);
+                        log(`polling - fail`);
                         this.remLoad("poll");
                         this.addLoad("poll:"+e);
                         return false;
                     }
-                    this.log(`DB polling - success`);
+                    log(`polling - success`);
                     this.remLoad("poll");
                 }
                 const fetchAndPipe = async (url, pth) => {
-                    this.log(`DB :: f&p(${url})`);
+                    // log(`:: f&p(${url})`);
                     let fileName = path.basename(pth);
                     let superPth = path.dirname(pth);
                     let thePth = path.join(superPth, fileName);
@@ -2686,7 +2701,7 @@ const MAIN = async () => {
                     });
                     await fs.promises.rename(tmpPth, thePth);
                 };
-                this.log("DB config");
+                log("config");
                 this.addLoad("config");
                 try {
                     if (doFallback) await fs.promises.cp(
@@ -2695,28 +2710,84 @@ const MAIN = async () => {
                         { recursive: true, force: true },
                     );
                     else await fetchAndPipe(theHost+"/config", path.join(this.dataPath, ".config"));
-                    this.log("DB config - success");
+                    log("config - success");
                 } catch (e) {
-                    this.log(`DB config - error - ${e}`);
+                    log(`config - error - ${e}`);
                     this.addLoad("config:"+e);
                 }
                 this.remLoad("config");
-                this.log("DB finding next host");
+                log("finding next host");
                 this.addLoad("find-next");
                 const nextHost = await this.get("db-host");
                 this.remLoad("find-next");
                 if (nextHost != host) {
-                    this.log("DB next host and current host mismatch - retrying");
+                    log("next host and current host mismatch - retrying");
                     this.#isLoading = false;
                     return await this.tryLoad(version);
                 }
-                this.log("DB next host and current host match - continuing");
+                log("next host and current host match - continuing");
                 const assetsHost = String(await this.get("assets-host"));
-                if (doFallback) this.log(`DB poll ( assetsHost: ${assetsHost} )`);
-                else this.log(`DB poll ( host: ${host}, assetsHost: ${assetsHost} )`);
+                const fullConfig = util.ensure(await this.get("_fullconfig"), "obj");
+                const assetsGHUser = fullConfig.assetsGHUser;
+                const assetsGHRepo = fullConfig.assetsGHRepo;
+                const assetsGHRelease = fullConfig.assetsGHRelease;
+                let kit = null, releaseId = null, assets = null;
+                if (false && [assetsGHUser, assetsGHRepo, assetsGHRelease].map(v => util.is(v, "str")).all()) {
+                    kit = new octokit.Octokit({
+                        auth: fullConfig.assetsGHAuth,
+                    });
+                }
+                if (doFallback) log("poll ( SKIP HOST )");
+                else {
+                    log("poll ( USING HOST )");
+                    log(`poll ( host = ${host} )`);
+                }
+                if (kit) {
+                    log("poll ( USING OCTOKIT )");
+                    log(`poll ( assetsGHUser = ${assetsGHUser} )`);
+                    log(`poll ( assetsGHRepo = ${assetsGHRepo} )`);
+                    log(`poll ( assetsGHRelease = ${assetsGHRelease} )`);
+                } else log("poll ( SKIP OCTOKIT )");
+                log(`poll ( assetsHost = ${assetsHost} )`);
+                if (kit) {
+                    try {
+                        log("poll OCTOKIT : find release ID");
+                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases`), 2000);
+                        resp = util.ensure(resp, "obj");
+                        if (resp.status != 200 && resp.status != 302) throw resp.status;
+                        let data = util.ensure(resp.data, "arr");
+                        for (let release of data) {
+                            release = util.ensure(release, "obj");
+                            if (release.tag_name != assetsGHRelease) continue;
+                            releaseId = release.id;
+                            break;
+                        }
+                        log(`poll OCTOKIT : find release ID ( id = ${releaseId} )`);
+                    } catch (e) {
+                        releaseId = null;
+                        log(`poll OCTOKIT : find release ID - error - ${e}`);
+                    }
+                }
+                if (kit && releaseId) {
+                    try {
+                        log("poll OCTOKIT : find assets");
+                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/${releaseId}/assets`), 2000);
+                        resp = util.ensure(resp, "obj");
+                        if (resp.status != 200 && resp.status != 302) throw resp.status;
+                        assets = util.ensure(resp.data, "arr");
+                        let assets2 = {};
+                        assets.forEach(asset => {
+                            asset = util.ensure(asset, "obj");
+                            assets2[asset.name] = asset.id;
+                        });
+                        assets = assets2;
+                    } catch (e) {
+                        log(`poll OCTOKIT : find assets - error - ${e}`);
+                    }
+                }
                 await Promise.all([
                     (async () => {
-                        this.log("DB templates.json");
+                        log("templates.json");
                         this.addLoad("templates.json");
                         try {
                             if (doFallback) await fs.promises.cp(
@@ -2725,20 +2796,20 @@ const MAIN = async () => {
                                 { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/templates", path.join(this.dataPath, "templates", "templates.json"));
-                            this.log("DB templates.json - success");
+                            log("templates.json - success");
                         } catch (e) {
-                            this.log(`DB templates.json - error - ${e}`);
+                            log(`templates.json - error - ${e}`);
                             this.addLoad("templates.json:"+e);
                         }
                         this.remLoad("templates.json");
-                        this.log("DB checking templates.json");
+                        log("checking templates.json");
                         let content = await this.fileRead(["templates", "templates.json"]);
                         let data = null;
                         try {
                             data = JSON.parse(content);
-                            this.log("DB checking templates.json - success");
+                            log("checking templates.json - success");
                         } catch (e) {
-                            log(`DB checking templates.json - error - ${e}`);
+                            log(`checking templates.json - error - ${e}`);
                         }
                         data = util.ensure(data, "obj");
                         let templates = util.ensure(data.templates, "obj");
@@ -2746,19 +2817,43 @@ const MAIN = async () => {
                             name = String(name);
                             const template = templates[name];
                             await Promise.all(["images", "models"].map(async section => {
-                                let tag = { "images": "png", "models": "glb" }[section];
+                                let tag = { images: "png", models: "glb" }[section];
                                 if (section.slice(0, -1) in template)
                                     if (!template[section.slice(0, -1)]) {
-                                        this.log(`DB templates/${name}.${tag} IGNORED`);
+                                        log(`templates/${name}.${tag} IGNORED`);
                                         return;
                                     }
-                                this.log(`DB templates/${name}.${tag}`);
+                                const pth = path.join(this.dataPath, "templates", section, name+"."+tag);
+                                const key = "templates."+name+"."+tag;
+                                if (kit && releaseId && assets && (key in assets)) {
+                                    let successful = false;
+                                    log(`templates/${name}.${tag} using OCTOKIT`);
+                                    this.addLoad(`templates/${name}.${tag}-ok`);
+                                    try {
+                                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/assets/${assets[key]}`, {
+                                            headers: {
+                                                Accept: "application/octet-stream",
+                                            },
+                                        }), 2000);
+                                        resp = util.ensure(resp, "obj");
+                                        if (resp.status != 200 && resp.status != 302) throw resp.status;
+                                        await WindowManager.fileWriteRaw(pth, resp.data);
+                                        successful = true;
+                                        log(`templates/${name}.${tag} using OCTOKIT - success`);
+                                    } catch (e) {
+                                        log(`templates/${name}.${tag} using OCTOKIT - error - ${e}`);
+                                        this.addLoad(`templates/${name}.${tag}-ok:`+e);
+                                    }
+                                    this.remLoad(`templates/${name}.${tag}-ok`);
+                                    if (successful) return;
+                                }
+                                log(`templates/${name}.${tag}`);
                                 this.addLoad(`templates/${name}.${tag}`);
                                 try {
-                                    await fetchAndPipe(assetsHost+"/templates."+name+"."+tag, path.join(this.dataPath, "templates", section, name+"."+tag));
-                                    this.log(`DB templates/${name}.${tag} - success`);
+                                    await fetchAndPipe(assetsHost+"/templates."+name+"."+tag, pth);
+                                    log(`templates/${name}.${tag} - success`);
                                 } catch (e) {
-                                    this.log(`DB templates/${name}.${tag} - error - ${e}`);
+                                    log(`templates/${name}.${tag} - error - ${e}`);
                                     this.addLoad(`templates/${name}.${tag}:`+e);
                                 }
                                 this.remLoad(`templates/${name}.${tag}`);
@@ -2766,7 +2861,7 @@ const MAIN = async () => {
                         }));
                     })(),
                     (async () => {
-                        this.log("DB robots.json");
+                        log("robots.json");
                         this.addLoad("robots.json");
                         try {
                             if (doFallback) await fs.promises.cp(
@@ -2775,34 +2870,58 @@ const MAIN = async () => {
                                 { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/robots", path.join(this.dataPath, "robots", "robots.json"));
-                            this.log("DB robots.json - success");
+                            log("robots.json - success");
                         } catch (e) {
-                            this.log(`DB robots.json - error - ${e}`);
+                            log(`robots.json - error - ${e}`);
                             this.addLoad("robots.json:"+e);
                         }
                         this.remLoad("robots.json");
-                        this.log("DB checking robots.json");
+                        log("checking robots.json");
                         let content = await this.fileRead(["robots", "robots.json"]);
                         let data = null;
                         try {
                             data = JSON.parse(content);
-                            this.log("DB checking robots.json - success");
+                            log("checking robots.json - success");
                         } catch (e) {
-                            log(`DB checking robots.json - error - ${e}`);
+                            log(`checking robots.json - error - ${e}`);
                         }
                         data = util.ensure(data, "obj");
                         let robots = util.ensure(data.robots, "obj");
                         await Promise.all(Object.keys(robots).map(async name => {
                             name = String(name);
                             await Promise.all(["models"].map(async section => {
-                                let tag = { "models": "glb" }[section];
-                                this.log(`DB robots/${name}.${tag}`);
+                                let tag = { images: "png", models: "glb" }[section];
+                                const pth = path.join(this.dataPath, "robots", section, name+"."+tag);
+                                const key = "robots."+name+"."+tag;
+                                if (kit && releaseId && assets && (key in assets)) {
+                                    let successful = false;
+                                    log(`robots/${name}.${tag} using OCTOKIT`);
+                                    this.addLoad(`robots/${name}.${tag}-ok`);
+                                    try {
+                                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/assets/${assets[key]}`, {
+                                            headers: {
+                                                Accept: "application/octet-stream",
+                                            },
+                                        }), 2000);
+                                        resp = util.ensure(resp, "obj");
+                                        if (resp.status != 200 && resp.status != 302) throw resp.status;
+                                        await WindowManager.fileWriteRaw(pth, resp.data);
+                                        successful = true;
+                                        log(`robots/${name}.${tag} using OCTOKIT - success`);
+                                    } catch (e) {
+                                        log(`robots/${name}.${tag} using OCTOKIT - error - ${e}`);
+                                        this.addLoad(`robots/${name}.${tag}-ok:`+e);
+                                    }
+                                    this.remLoad(`robots/${name}.${tag}-ok`);
+                                    if (successful) return;
+                                }
+                                log(`robots/${name}.${tag}`);
                                 this.addLoad(`robots/${name}.${tag}`);
                                 try {
-                                    await fetchAndPipe(assetsHost+"/robots."+name+"."+tag, path.join(this.dataPath, "robots", section, name+"."+tag));
-                                    this.log(`DB robots/${name}.${tag} - success`);
+                                    await fetchAndPipe(assetsHost+"/robots."+name+"."+tag, pth);
+                                    log(`robots/${name}.${tag} - success`);
                                 } catch (e) {
-                                    this.log(`DB robots/${name}.${tag} - error - ${e}`);
+                                    log(`robots/${name}.${tag} - error - ${e}`);
                                     this.addLoad(`robots/${name}.${tag}:`+e);
                                 }
                                 this.remLoad(`robots/${name}.${tag}`);
@@ -2810,7 +2929,7 @@ const MAIN = async () => {
                         }));
                     })(),
                     (async () => {
-                        this.log("DB holidays.json");
+                        log("holidays.json");
                         this.addLoad("holidays.json");
                         try {
                             if (doFallback) await fs.promises.cp(
@@ -2819,20 +2938,20 @@ const MAIN = async () => {
                                 { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/holidays", path.join(this.dataPath, "holidays", "holidays.json"));
-                            this.log("DB holidays.json - success");
+                            log("holidays.json - success");
                         } catch (e) {
-                            this.log(`DB holidays.json - error - ${e}`);
+                            log(`holidays.json - error - ${e}`);
                             this.addLoad("holidays.json:"+e);
                         }
                         this.remLoad("holidays.json");
-                        this.log("DB checking holidays.json");
+                        log("checking holidays.json");
                         let content = await this.fileRead(["holidays", "holidays.json"]);
                         let data = null;
                         try {
                             data = JSON.parse(content);
-                            this.log("DB checking holidays.json - success");
+                            log("checking holidays.json - success");
                         } catch (e) {
-                            log(`DB checking holidays.json - error - ${e}`);
+                            log(`checking holidays.json - error - ${e}`);
                         }
                         data = util.ensure(data, "obj");
                         let holidays = util.ensure(data.holidays, "obj");
@@ -2849,17 +2968,41 @@ const MAIN = async () => {
                                 if (["hat1", "hat2"].includes(tag))
                                     if ("hat" in holiday && !holiday.hat)
                                         return;
-                                let pth = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
-                                this.log(`DB holidays/${pth}`);
-                                this.addLoad(`holidays/${pth}`);
-                                try {
-                                    await fetchAndPipe(assetsHost+"/holidays."+pth, path.join(this.dataPath, "holidays", "icons", pth));
-                                    this.log(`DB holidays/${pth} - success`);
-                                } catch (e) {
-                                    this.log(`DB holidays/${pth} - error - ${e}`);
-                                    this.addLoad(`holidays/${pth}:`+e);
+                                let fullname = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
+                                const pth = path.join(this.dataPath, "holidays", "icons", fullname);
+                                const key = "holidays."+fullname;
+                                if (kit && releaseId && assets && (key in assets)) {
+                                    let successful = false;
+                                    log(`holidays/${name}.${tag} using OCTOKIT`);
+                                    this.addLoad(`holidays/${name}.${tag}-ok`);
+                                    try {
+                                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/assets/${assets[key]}`, {
+                                            headers: {
+                                                Accept: "application/octet-stream",
+                                            },
+                                        }), 2000);
+                                        resp = util.ensure(resp, "obj");
+                                        if (resp.status != 200 && resp.status != 302) throw resp.status;
+                                        await WindowManager.fileWriteRaw(pth, resp.data);
+                                        successful = true;
+                                        log(`holidays/${name}.${tag} using OCTOKIT - success`);
+                                    } catch (e) {
+                                        log(`holidays/${name}.${tag} using OCTOKIT - error - ${e}`);
+                                        this.addLoad(`holidays/${name}.${tag}-ok:`+e);
+                                    }
+                                    this.remLoad(`holidays/${name}.${tag}-ok`);
+                                    if (successful) return;
                                 }
-                                this.remLoad(`holidays/${pth}`);
+                                log(`holidays/${fullname}`);
+                                this.addLoad(`holidays/${fullname}`);
+                                try {
+                                    await fetchAndPipe(assetsHost+"/holidays."+fullname, pth);
+                                    log(`holidays/${fullname} - success`);
+                                } catch (e) {
+                                    log(`holidays/${fullname} - error - ${e}`);
+                                    this.addLoad(`holidays/${fullname}:`+e);
+                                }
+                                this.remLoad(`holidays/${fullname}`);
                             }));
                         }));
                         await Promise.all(Object.keys(holidays).map(async name => {
@@ -2872,7 +3015,7 @@ const MAIN = async () => {
                                 "ico", "icns",
                             ].map(async tag => {
                                 let pth = name+"."+tag;
-                                this.log(`DB holidays/${pth} conversion`);
+                                log(`holidays/${pth} conversion`);
                                 this.addLoad(`holidays/${pth}-conv`);
                                 try {
                                     let output = {
@@ -2880,9 +3023,9 @@ const MAIN = async () => {
                                         icns: () => png2icons.createICNS(input, png2icons.BILINEAR, 0),
                                     }[tag]();
                                     await fs.promises.writeFile(path.join(this.dataPath, "holidays", "icons", pth), output);
-                                    this.log(`DB holidays/${pth} conversion - success`);
+                                    log(`holidays/${pth} conversion - success`);
                                 } catch (e) {
-                                    this.log(`DB holidays/${pth} conversion - error - ${e}`);
+                                    log(`holidays/${pth} conversion - error - ${e}`);
                                     this.addLoad(`holidays/${pth}-conv:`+e);
                                 }
                                 this.remLoad(`holidays/${pth}-conv`);
@@ -2890,7 +3033,7 @@ const MAIN = async () => {
                         }));
                     })(),
                     (async () => {
-                        this.log("DB themes.json");
+                        log("themes.json");
                         this.addLoad("themes.json");
                         try {
                             if (doFallback) await fs.promises.cp(
@@ -2899,9 +3042,9 @@ const MAIN = async () => {
                                 { recursive: true, force: true },
                             );
                             else await fetchAndPipe(theHost+"/themes", path.join(this.dataPath, "themes.json"));
-                            this.log("DB themes.json - success");
+                            log("themes.json - success");
                         } catch (e) {
-                            this.log(`DB themes.json - error - ${e}`);
+                            log(`themes.json - error - ${e}`);
                             this.addLoad("themes.json:"+e);
                         }
                         this.remLoad("themes.json");
@@ -2910,11 +3053,11 @@ const MAIN = async () => {
                     ...FEATURES.map(async name => {
                         let namefs;
                         const subhost = theHost+"/"+name.toLowerCase();
-                        const log = (...a) => this.log(`DB [${name}]`, ...a);
+                        const sublog = (...a) => log(`[${name}]`, ...a);
                         namefs = {
                             PLANNER: async () => {
                                 await Window.affirm(this, name);
-                                log("solver");
+                                sublog("solver");
                                 this.addLoad(name+":solver");
                                 try {
                                     if (await WindowManager.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
@@ -2923,16 +3066,16 @@ const MAIN = async () => {
                                             path.join(Window.getDataPath(this, name), "solver"),
                                             { force: true, recursive: true },
                                         );
-                                    log("solver - success");
+                                    sublog("solver - success");
                                 } catch (e) {
-                                    log(`solver - error - ${e}`);
+                                    sublog(`solver - error - ${e}`);
                                     this.addLoad(name+":solver:"+e);
                                 }
                                 this.remLoad(name+":solver");
                             },
                         };
                         if (name in namefs) await namefs[name]();
-                        log("search");
+                        sublog("search");
                         this.addLoad(name+":search");
                         try {
                             if (doFallback);
@@ -2941,15 +3084,15 @@ const MAIN = async () => {
                                 if (resp.status != 200) throw resp.status;
                             }
                         } catch (e) {
-                            log(`search - not found - ${e}`);
+                            sublog(`search - not found - ${e}`);
                             this.remLoad(name+":search");
                             return;
                         }
-                        log("search - found");
+                        sublog("search - found");
                         this.remLoad(name+":search");
                         namefs = {
                             PLANNER: async () => {
-                                log("templates.json");
+                                sublog("templates.json");
                                 this.addLoad(name+":templates.json");
                                 try {
                                     if (doFallback) await fs.promises.cp(
@@ -2958,9 +3101,9 @@ const MAIN = async () => {
                                         { recursive: true, force: true },
                                     );
                                     else await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
-                                    log("templates.json - success");
+                                    sublog("templates.json - success");
                                 } catch (e) {
-                                    log(`templates.json - error - ${e}`);
+                                    sublog(`templates.json - error - ${e}`);
                                     this.addLoad(name+":templates.json:"+e);
                                 }
                                 this.remLoad(name+":templates.json");
@@ -3958,6 +4101,7 @@ const MAIN = async () => {
         async on(k, ...a) {
             if (this.hasWindow()) return await this.window.manager.on(k, ...a);
             k = String(k);
+            let doLog = true;
             let kfs = {
                 "spawn": async name => {
                     name = String(name);
@@ -3973,6 +4117,7 @@ const MAIN = async () => {
                     notif.show();
                 },
                 "menu-role-label": async role => {
+                    doLog = false;
                     role = String(role);
                     return electron.Menu.buildFromTemplate([{ role: role }]).items[0].label;
                 },
@@ -4013,7 +4158,11 @@ const MAIN = async () => {
                 "cleanup": async () => await this.cleanup(),
                 "try-load": async () => await this.tryLoad(),
             };
-            if (k in kfs) return await kfs[k](...a);
+            if (k in kfs) {
+                let r = await kfs[k](...a);
+                if (doLog) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+                return r;
+            }
             throw "§O No possible \"on\" for key: "+k;
         }
         async onCallback(id, k, ...a) {

@@ -575,35 +575,38 @@ export class App extends util.Target {
                 },
             };
             if (name in namefs) return namefs[name]();
-            if (name.startsWith("templates/") && name.endsWith(".png")) {
-                name = name.slice(10, -4);
+            if (name.startsWith("templates/")) {
+                name = name.slice(10);
+                let source = "";
+                if (name.endsWith("-ok")) {
+                    name = name.slice(0, -3);
+                    source = " using OctoKit";
+                }
+                let type = name.slice(-3);
+                type = { png: "image", glb: "model" }[type];
+                name = name.slice(0, -4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while downloading template image "+name+": "+load.join(":");
-                return elem.textContent += "Downloading template image "+name;
+                if (load.length > 0) return elem.textContent += "Error while downloading template "+type+" "+name+source+": "+load.join(":");
+                return elem.textContent += "Downloading template "+type+" "+name+source;
             }
-            if (name.startsWith("templates/") && name.endsWith(".glb")) {
-                name = name.slice(10, -4);
-                if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while downloading template model "+name+": "+load.join(":");
-                return elem.textContent += "Downloading template model "+name;
-            }
-            if (name.startsWith("robots/") && name.endsWith(".glb")) {
+            if (name.startsWith("robots/")) {
+                let type = name.slice(-3);
+                type = { png: "image", glb: "model" }[type];
                 name = name.slice(7, -4);
                 if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while downloading robot model "+name+": "+load.join(":");
-                return elem.textContent += "Downloading robot model "+name;
+                if (load.length > 0) return elem.textContent += "Error while downloading robot "+type+" "+name+": "+load.join(":");
+                return elem.textContent += "Downloading robot "+type+" "+name;
             }
             if (name.startsWith("holidays/")) {
                 name = name.slice(9);
+                let action = "downloading";
+                if (name.endsWith("-conv")) {
+                    name = name.slice(0, -5);
+                    action = "converting";
+                }
                 if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while downloading holiday icon "+name+": "+load.join(":");
-                return elem.textContent += "Downloading holiday icon "+name;
-            }
-            if (name.startsWith("holidays/") && name.endsWith("-conv")) {
-                name = name.slice(9, -5);
-                if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while converting holiday icon "+name+": "+load.join(":");
-                return elem.textContent += "Converting holiday icon "+name;
+                if (load.length > 0) return elem.textContent += "Error while "+action+" holiday icon "+name+": "+load.join(":");
+                return elem.textContent += action[0].toUpperCase()+action.slice(1)+" holiday icon "+name;
             }
             if (name.toUpperCase() == name) {
                 let fName = name;
@@ -2024,6 +2027,7 @@ App.Error = class AppError extends App.Alert {
 
         this.iconColor = "var(--cr)";
 
+        infos.map(info => console.error(info));
         this.infos = infos;
     }
 };
@@ -2033,6 +2037,7 @@ App.Warn = class AppError extends App.Alert {
 
         this.iconColor = "var(--cy)";
 
+        infos.map(info => console.warn(info));
         this.infos = infos;
     }
 };
