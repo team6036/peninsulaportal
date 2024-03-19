@@ -71,52 +71,48 @@ class PropertyCache extends util.Target {
 export const PROPERTYCACHE = new PropertyCache();
 
 
-let LoadingElement = null;
-if (typeof(window) == "object") {
-    LoadingElement = class LoadingElement extends HTMLElement {
-        #type;
-        #axis;
+export class LoadingElement extends HTMLElement {
+    #type;
+    #axis;
 
-        static observedAttributes = ["type", "axis"];
+    static observedAttributes = ["type", "axis"];
 
-        constructor() {
-            super();
+    constructor() {
+        super();
 
-            this.#type = null;
-            this.#axis = null;
+        this.#type = null;
+        this.#axis = null;
 
-            this.type = "scroll";
-            this.axis = "x";
-        }
-
-        #update() {
-            this.innerHTML = "<div>"+Array.from(new Array(4).keys()).map(i => "<div style='--i:"+i+";'></div>").join("")+"</div>";
-        }
-
-        get type() { return this.#type; }
-        set type(v) {
-            v = String(v);
-            if (!["scroll", "bounce"].includes(v)) return;
-            if (this.type == v) return;
-            this.#type = v;
-            this.setAttribute("type", this.type);
-            return this.#update();
-        }
-        get axis() { return this.#axis; }
-        set axis(v) {
-            v = String(v);
-            if (!["x", "y"].includes(v)) return;
-            if (this.axis == v) return;
-            this.#axis = v;
-            this.setAttribute("axis", this.axis);
-            return this.#update();
-        }
-
-        attributeChangedCallback(name, prev, curr) {  this[name] = curr; }
+        this.type = "scroll";
+        this.axis = "x";
     }
-    window.customElements.define("p-loading", LoadingElement);
+
+    #update() {
+        this.innerHTML = "<div>"+Array.from(new Array(4).keys()).map(i => "<div style='--i:"+i+";'></div>").join("")+"</div>";
+    }
+
+    get type() { return this.#type; }
+    set type(v) {
+        v = String(v);
+        if (!["scroll", "bounce"].includes(v)) return;
+        if (this.type == v) return;
+        this.#type = v;
+        this.setAttribute("type", this.type);
+        return this.#update();
+    }
+    get axis() { return this.#axis; }
+    set axis(v) {
+        v = String(v);
+        if (!["x", "y"].includes(v)) return;
+        if (this.axis == v) return;
+        this.#axis = v;
+        this.setAttribute("axis", this.axis);
+        return this.#update();
+    }
+
+    attributeChangedCallback(name, prev, curr) {  this[name] = curr; }
 }
-export { LoadingElement };
+window.customElements.define("p-loading", LoadingElement);
 
 
 export class App extends util.Target {
@@ -3028,150 +3024,6 @@ export class AppModal extends App {
         });
     }
 }
-export class Project extends util.Target {
-    #id;
-
-    #config;
-    #meta;
-
-    constructor(...a) {
-        super();
-
-        this.#id = null;
-
-        this.#config = null;
-        this.#meta = null;
-
-        if (a.length <= 0 || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project) a = [a.id, a.config, a.meta];
-            else if (util.is(a, "arr")) {
-                a = new Project(...a);
-                a = [a.id, a.config, a.meta];
-            }
-            else if (a instanceof this.constructor.Config) a = [a, null];
-            else if (a instanceof this.constructor.Meta) a = [null, a];
-            else if (util.is(a, "str")) a = [null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.config, a.meta];
-            else a = [null, null];
-        }
-        if (a.length == 2)
-            a = [null, ...a];
-
-        [this.id, this.config, this.meta] = a;
-    }
-
-    get id() { return this.#id; }
-    set id(v) { this.#id = (v == null) ? null : String(v); }
-
-    get config() { return this.#config; }
-    set config(v) {
-        v = new this.constructor.Config(v);
-        if (this.config == v) return;
-        if (this.config instanceof this.constructor.Config)
-            this.config.clearLinkedHandlers(this, "change");
-        this.change("config", this.config, this.#config=v);
-        if (this.config instanceof this.constructor.Config)
-            this.config.addLinkedHandler(this, "change", (c, f, t) => this.change("config."+c, f, t));
-    }
-
-    get meta() { return this.#meta; }
-    set meta(v) {
-        v = new this.constructor.Meta(v);
-        if (this.meta == v) return;
-        if (this.meta instanceof this.constructor.Meta) {
-            this.meta.clearLinkedHandlers(this, "change");
-            this.meta.clearLinkedHandlers(this, "thumb");
-        }
-        this.change("meta", this.meta, this.#meta=v);
-        if (this.meta instanceof this.constructor.Meta) {
-            this.meta.addLinkedHandler(this, "change", (c, f, t) => this.change("meta."+c, f, t));
-            this.meta.addLinkedHandler(this, "thumb", () => this.post("thumb"));
-        }
-    }
-
-    toJSON() {
-        return util.Reviver.revivable(this.constructor, {
-            id: this.id,
-            config: this.config, meta: this.meta,
-        });
-    }
-}
-Project.Config = class ProjectConfig extends util.Target {
-    constructor() {
-        super();
-    }
-
-    toJSON() {
-        return util.Reviver.revivable(this.constructor, {});
-    }
-};
-Project.Meta = class ProjectMeta extends util.Target {
-    #name;
-    #modified;
-    #created;
-    #thumb;
-
-    constructor(...a) {
-        super();
-
-        this.#name = "New Project";
-        this.#modified = 0;
-        this.#created = 0;
-        this.#thumb = null;
-
-        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb];
-            else if (util.is(a, "arr")) {
-                a = new Project.Meta(...a);
-                a = [a.name, a.modified, a.created, a.thumb];
-            }
-            else if (util.is(a, "str")) a = [a, null];
-            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
-            else a = ["New Project", null];
-        }
-        if (a.length == 2) a = [a[0], 0, 0, a[1]];
-        
-        [this.name, this.modified, this.created, this.thumb] = a;
-    }
-
-    get name() { return this.#name; }
-    set name(v) {
-        v = (v == null) ? "New Project" : String(v);
-        if (this.name == v) return;
-        this.change("name", this.name, this.#name=v);
-    }
-    get modified() { return this.#modified; }
-    set modified(v) {
-        v = util.ensure(v, "num");
-        if (this.modified == v) return;
-        this.#modified = v;
-    }
-    get created() { return this.#created; }
-    set created(v) {
-        v = util.ensure(v, "num");
-        if (this.created == v) return;
-        this.change("created", this.created, this.#created=v);
-    }
-    get thumb() { return this.#thumb; }
-    set thumb(v) {
-        v = (v == null) ? null : String(v);
-        if (this.thumb == v) return;
-        this.#thumb = v;
-        this.post("thumb");
-    }
-
-    toJSON() {
-        return util.Reviver.revivable(this.constructor, {
-            name: this.name,
-            modified: this.modified, created: this.created,
-            thumb: this.thumb,
-        });
-    }
-};
 export class AppFeature extends App {
     #changes;
     
@@ -3200,7 +3052,7 @@ export class AppFeature extends App {
     #eSaveBtn;
 
     static ICON = "help-circle";
-    static PROJECTCLASS = Project;
+    static PROJECTCLASS = lib.Project;
     static REVIVER = util.REVIVER;
 
     constructor() {
@@ -3433,10 +3285,10 @@ export class AppFeature extends App {
                     if (perm) continue;
                     return;
                 }
-                if (!((source instanceof Project) && (source instanceof this.constructor.PROJECTCLASS))) source = page.project;
-                if (!((source instanceof Project) && (source instanceof this.constructor.PROJECTCLASS))) return;
+                if (!((source instanceof lib.Project) && (source instanceof this.constructor.PROJECTCLASS))) source = page.project;
+                if (!((source instanceof lib.Project) && (source instanceof this.constructor.PROJECTCLASS))) return;
                 let project = new this.constructor.PROJECTCLASS(source);
-                if (!(project instanceof Project)) return;
+                if (!(project instanceof lib.Project)) return;
                 project.id = null;
                 project.meta.name += " copy";
                 await this.setPage("PROJECT", { project: project });
@@ -3611,7 +3463,7 @@ export class AppFeature extends App {
         return projs;
     }
     hasProject(id) {
-        if ((id instanceof Project) && (id instanceof this.constructor.PROJECTCLASS)) return this.hasProject(id.id);
+        if ((id instanceof lib.Project) && (id instanceof this.constructor.PROJECTCLASS)) return this.hasProject(id.id);
         return id in this.#projects;
     }
     getProject(id) {
@@ -3620,7 +3472,7 @@ export class AppFeature extends App {
     }
     addProject(...projs) {
         return util.Target.resultingForEach(projs, proj => {
-            if (!((proj instanceof Project) && (proj instanceof this.constructor.PROJECTCLASS))) return false;
+            if (!((proj instanceof lib.Project) && (proj instanceof this.constructor.PROJECTCLASS))) return false;
             if (this.hasProject(proj)) return false;
             let id = proj.id;
             while (id == null || this.hasProject(id))
@@ -3636,7 +3488,7 @@ export class AppFeature extends App {
     }
     remProject(...ids) {
         return util.Target.resultingForEach(ids, id => {
-            if ((id instanceof Project) && (id instanceof this.constructor.PROJECTCLASS)) id = id.id;
+            if ((id instanceof lib.Project) && (id instanceof this.constructor.PROJECTCLASS)) id = id.id;
             id = String(id);
             if (!this.hasProject(id)) return false;
             let proj = this.getProject(id);
@@ -4160,7 +4012,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
 
     get project() { return this.#project; }
     set project(v) {
-        v = (v instanceof Project) ? v : null;
+        v = (v instanceof lib.Project) ? v : null;
         if (this.project == v) return;
         if (this.hasProject()) this.project.clearLinkedHandlers(this, "change");
         this.change("project", this.project, this.#project=v);
@@ -4429,14 +4281,14 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     }
     get project() { return this.app.getProject(this.projectId); }
     set project(v) {
-        v = ((v instanceof Project) && (v instanceof this.app.constructor.PROJECTCLASS)) ? v : null;
+        v = ((v instanceof lib.Project) && (v instanceof this.app.constructor.PROJECTCLASS)) ? v : null;
         if (this.project == v) return;
-        if ((v instanceof Project) && (v instanceof this.app.constructor.PROJECTCLASS)) {
+        if ((v instanceof lib.Project) && (v instanceof this.app.constructor.PROJECTCLASS)) {
             if (!this.app.hasProject(v)) this.app.addProject(v);
             this.projectId = v.id;
         } else this.projectId = null;
     }
-    hasProject() { return (this.project instanceof Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
+    hasProject() { return (this.project instanceof lib.Project) && (this.project instanceof this.app.constructor.PROJECTCLASS); }
 
     get progress() { return this.#progress; }
     set progress(v) {
@@ -4523,7 +4375,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
 
     async determineSame(data) {
         if (this.app.hasProject(data.id)) return this.projectId == data.id;
-        else if ((data.project instanceof Project) && (data.project instanceof this.app.constructor.PROJECTCLASS))
+        else if ((data.project instanceof lib.Project) && (data.project instanceof this.app.constructor.PROJECTCLASS))
             return this.project == data.project;
         return false;
     }

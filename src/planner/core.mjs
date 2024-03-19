@@ -2,10 +2,8 @@ import * as util from "../util.mjs";
 import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
-import * as core from "../core.mjs";
 
-
-export class Project extends core.Project {
+export class Project extends lib.Project {
     #items;
     #paths;
     #size;
