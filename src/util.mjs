@@ -2128,12 +2128,12 @@ export class Reviver extends Target {
         return (k, v) =>  {
             if (is(v, "obj")) {
                 if (v["%r"]) return new Result(v);
-                if (!("%cstm" in v) && !("%CUSTOM" in v)) return v;
-                let custom = ("%cstm" in v) ? v["%cstm"] : v["%CUSTOM"];
-                if (!("%o" in v) && !("%OBJ" in v)) return v;
-                let o = ("%o" in v) ? v["%o"] : v["%OBJ"];
-                if (!("%a" in v) && !("%ARGS" in v)) return v;
-                let a = ("%a" in v) ? v["%a"] : v["%ARGS"];
+                if (!("%cstm" in v)) return v;
+                let custom = v["%cstm"];
+                if (!("%o" in v)) return v;
+                let o = v["%o"];
+                if (!("%a" in v)) return v;
+                let a = v["%a"];
                 if (!custom) return v;
                 if (!this.hasRule(o)) return v;
                 let rule = this.getRule(o);
