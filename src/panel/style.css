@@ -90,6 +90,8 @@
     margin: -5px 0px;
     
     cursor: ns-resize;
+
+    pointer-events: none;
 }
 #PROJECTPAGE > .main > .side > .divider::before {
     content: "";
@@ -114,6 +116,8 @@
 
     width: 20px;
     height: 2px;
+
+    display: none;
 
     background-color: var(--v4);
 
