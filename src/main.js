@@ -2218,7 +2218,7 @@ const MAIN = async () => {
                     "exec-get": async id => {
                         id = String(id);
 
-                        const sublib = await import("./planner/core.mjs");
+                        const sublib = await import("./planner/lib.mjs");
 
                         let project = null;
                         try {
