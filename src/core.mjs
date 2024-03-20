@@ -70,6 +70,132 @@ class PropertyCache extends util.Target {
 }
 export const PROPERTYCACHE = new PropertyCache();
 
+export class GlobalState extends util.Target {
+    #properties;
+    #gettingResolver;
+
+    constructor() {
+        super();
+
+        this.#properties = {};
+        this.#gettingResolver = new util.Resolver(0);
+    }
+
+    get properties() { return Object.values(this.#properties); }
+    set properties(v) {
+        v = util.ensure(v, "arr");
+        this.clearProperties();
+        this.addProperty(v);
+    }
+    clearProperties() {
+        let properties = this.properties;
+        this.remProperty(properties);
+        return properties;
+    }
+    hasProperty(prop) {
+        if (prop instanceof GlobalState.Property)
+            return this.hasProperty(prop.name) && this.getProperty(prop.name) == prop;
+        return String(prop) in this.#properties;
+    }
+    getProperty(name) {
+        name = String(name);
+        if (!this.hasProperty(name)) return null;
+        return this.#properties[name];
+    }
+    addProperty(...props) {
+        return util.Target.resultingForEach(props, prop => {
+            if (!(prop instanceof GlobalState.Property)) return false;
+            if (this.hasProperty(prop.name) || this.hasProperty(prop)) return false;
+            this.#properties[prop.name] = prop;
+            return prop;
+        });
+    }
+    remProperty(...props) {
+        return util.Target.resultingForEach(props, prop => {
+            if (!(prop instanceof GlobalState.Property)) prop = this.getProperty(prop);
+            if (!this.hasProperty(prop)) return false;
+            delete this.#properties[prop.name];
+            return prop;
+        });
+    }
+
+    get getting() { return this.#gettingResolver.state > 0; }
+    async whenGetting() { return await this.#gettingResolver.whenNot(0); }
+    async whenNotGetting() { return await this.#gettingResolver.when(0); }
+    async get() {
+        this.#gettingResolver.state++;
+        await Promise.all(this.properties.map(prop => prop.get()));
+        this.#gettingResolver.state--;
+        return this;
+    }
+}
+GlobalState.Property = class GlobalStateProperty extends util.Target {
+    #name;
+    #getter;
+    #value;
+
+    constructor(name, getter) {
+        super();
+
+        this.#name = String(name);
+        this.#getter = () => null;
+        this.#value = null;
+
+        this.getter = getter;
+    }
+
+    get name() { return this.#name; }
+    get getter() { return this.#getter; }
+    set getter(v) {
+        v = util.ensure(v, "func");
+        if (this.getter == v) return;
+        this.change("getter", this.getter, this.#getter=v);
+    }
+    get value() { return this.#value; }
+
+    async get() {
+        this.#value = await this.getter();
+        return this.value;
+    }
+};
+export const GLOBALSTATE = new GlobalState();
+GLOBALSTATE.addProperty(new GlobalState.Property(
+    "templates",
+    async () => util.ensure(await window.api.get("templates"), "obj"),
+));
+GLOBALSTATE.addProperty(new GlobalState.Property(
+    "template-images",
+    async () => util.ensure(await window.api.get("template-images"), "obj"),
+));
+GLOBALSTATE.addProperty(new GlobalState.Property(
+    "template-models",
+    async () => util.ensure(await window.api.get("template-models"), "obj"),
+));
+GLOBALSTATE.addProperty(new GlobalState.Property(
+    "active-template",
+    async () => {
+        let v = await window.api.get("active-template");
+        if (v == null) return null;
+        return String(v);
+    },
+));
+GLOBALSTATE.addProperty(new GlobalState.Property(
+    "robots",
+    async () => util.ensure(await window.api.get("robots"), "obj"),
+));
+GLOBALSTATE.addProperty(new GlobalState.Property(
+    "robot-models",
+    async () => util.ensure(await window.api.get("robot-models"), "obj"),
+));
+GLOBALSTATE.addProperty(new GlobalState.Property(
+    "active-robot",
+    async () => {
+        let v = await window.api.get("active-robot");
+        if (v == null) return null;
+        return String(v);
+    },
+));
+
 
 export class LoadingElement extends HTMLElement {
     #type;
@@ -344,83 +470,82 @@ export class App extends util.Target {
         this.addHandler("start", async () => {
             await window.buildAgent();
             this.menu = App.Menu.buildMenu();
-            let id = setInterval(() => {
+            let id = setInterval(async () => {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
-                (async () => {
-                    await this.postResult("pre-setup");
-                    await this.setup();
-                    await this.postResult("post-setup");
-                    let appState = null;
+                await GLOBALSTATE.get();
+                await this.postResult("pre-setup");
+                await this.setup();
+                await this.postResult("post-setup");
+                let appState = null;
+                try {
+                    appState = await window.api.send("state-get", "app-state");
+                } catch (e) { await this.doError("State Error", "AppState Get", e); }
+                try {
+                    await this.loadState(appState);
+                } catch (e) { await this.doError("Load Error", "AppState", e); }
+                let page = "";
+                try {
+                    page = await window.api.send("state-get", "page");
+                } catch (e) { await this.doError("State Error", "CurrentPage Get", e); }
+                let pageState = null;
+                try {
+                    pageState = await window.api.send("state-get", "page-state");
+                } catch (e) { await this.doError("State Error", "PageState Get", e); }
+                let pagePersistentStates = {};
+                try {
+                    pagePersistentStates = util.ensure(await window.api.send("state-get", "page-persistent-states"), "obj");
+                } catch (e) { await this.doError("State Error", "PagePersistentStates Get", e); }
+                if (this.hasPage(page)) {
                     try {
-                        appState = await window.api.send("state-get", "app-state");
-                    } catch (e) { await this.doError("State Error", "AppState Get", e); }
+                        await this.getPage(page).loadState(util.ensure(pageState, "obj"));
+                    } catch (e) { await this.doError("Load Error", "State, PageName: "+page, e); }
+                    if (this.page != page) this.page = page;
+                }
+                for (let name in pagePersistentStates) {
+                    if (!this.hasPage(name)) continue;
                     try {
-                        await this.loadState(appState);
-                    } catch (e) { await this.doError("Load Error", "AppState", e); }
-                    let page = "";
+                        await this.getPage(name).loadPersistentState(util.ensure(pagePersistentStates[name], "obj"));
+                    } catch (e) { await this.doError("Load Error", "PersistentState, PageName: "+name, e); }
+                }
+                let t0 = null, error = false;
+                let fps = 0, fpst = 0, fpsn = 0;
+                const update = async () => {
+                    window.requestAnimationFrame(update);
+                    let t1 = util.getTime();
+                    if (t0 == null || error) return t0 = t1;
                     try {
-                        page = await window.api.send("state-get", "page");
-                    } catch (e) { await this.doError("State Error", "CurrentPage Get", e); }
-                    let pageState = null;
-                    try {
-                        pageState = await window.api.send("state-get", "page-state");
-                    } catch (e) { await this.doError("State Error", "PageState Get", e); }
-                    let pagePersistentStates = {};
-                    try {
-                        pagePersistentStates = util.ensure(await window.api.send("state-get", "page-persistent-states"), "obj");
-                    } catch (e) { await this.doError("State Error", "PagePersistentStates Get", e); }
-                    if (this.hasPage(page)) {
-                        try {
-                            await this.getPage(page).loadState(util.ensure(pageState, "obj"));
-                        } catch (e) { await this.doError("Load Error", "State, PageName: "+page, e); }
-                        if (this.page != page) this.page = page;
-                    }
-                    for (let name in pagePersistentStates) {
-                        if (!this.hasPage(name)) continue;
-                        try {
-                            await this.getPage(name).loadPersistentState(util.ensure(pagePersistentStates[name], "obj"));
-                        } catch (e) { await this.doError("Load Error", "PersistentState, PageName: "+name, e); }
-                    }
-                    let t0 = null, error = false;
-                    let fps = 0, fpst = 0, fpsn = 0;
-                    const update = async () => {
-                        window.requestAnimationFrame(update);
-                        let t1 = util.getTime();
-                        if (t0 == null || error) return t0 = t1;
-                        try {
-                            if (this.eMount.classList.contains("runinfo"))
-                                this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
-                            fpst += t1-t0; fpsn++;
-                            if (fpst >= 1000) {
-                                fpst -= 1000;
-                                fps = fpsn;
-                                fpsn = 0;
-                            }
-                            this.update(t1-t0);
-                        } catch (e) {
-                            error = true;
-                            await this.doError("Update Error", "", e);
-                            error = false;
-                            return t0 = null;
+                        if (this.eMount.classList.contains("runinfo"))
+                            this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
+                        fpst += t1-t0; fpsn++;
+                        if (fpst >= 1000) {
+                            fpst -= 1000;
+                            fps = fpsn;
+                            fpsn = 0;
                         }
-                        t0 = t1;
-                    };
-                    update();
-                    if (!this.constructor.CLEANUPPROMPT) return;
-                    let cleanups = util.ensure(await window.api.get("cleanup"), "arr").map(pth => {
-                        return [pth].flatten().join("/");
-                    });
-                    if (cleanups.length <= 3) return;
-                    let pop = this.confirm(
-                        "Junk Files Found!",
-                        "We found some unnecessary files in your application data. Would you like to clean up these files?",
-                    );
-                    pop.infos = [cleanups.join("\n")];
-                    let r = await pop.whenResult();
-                    if (!r) return;
-                    await window.api.send("cleanup");
-                })();
+                        this.update(t1-t0);
+                    } catch (e) {
+                        error = true;
+                        await this.doError("Update Error", "", e);
+                        error = false;
+                        return t0 = null;
+                    }
+                    t0 = t1;
+                };
+                update();
+                if (!this.constructor.CLEANUPPROMPT) return;
+                let cleanups = util.ensure(await window.api.get("cleanup"), "arr").map(pth => {
+                    return [pth].flatten().join("/");
+                });
+                if (cleanups.length <= 3) return;
+                let pop = this.confirm(
+                    "Junk Files Found!",
+                    "We found some unnecessary files in your application data. Would you like to clean up these files?",
+                );
+                pop.infos = [cleanups.join("\n")];
+                let r = await pop.whenResult();
+                if (!r) return;
+                await window.api.send("cleanup");
             }, 10);
         });
 
@@ -5088,13 +5213,6 @@ export class Odometry3d extends Odometry {
     static loadedRobots = {};
     static loadingRobots = {};
 
-    static templatesLoad = 0;
-    static templates = {};
-    static templateModels = {};
-    static robotsLoad = 0;
-    static robots = {};
-    static robotModels = {};
-
     #renders;
 
     #scene;
@@ -5156,18 +5274,8 @@ export class Odometry3d extends Odometry {
     static async loadField(name, type) {
         name = String(name);
         type = String(type);
-        let templatesLoad = this.templatesLoad;
-        let templates = {};
-        let templateModels = {};
-        if (templatesLoad < 2) {
-            if (templatesLoad < 1) this.templatesLoad = 1;
-            templates = this.templates = util.ensure(await window.api.get("templates"), "obj");
-            templateModels = this.templateModels = util.ensure(await window.api.get("template-models"), "obj");
-            if (templatesLoad < 1) this.templatesLoad = 2;
-        } else {
-            templates = this.templates;
-            templateModels = this.templateModels;
-        }
+        const templates = GLOBALSTATE.getProperty("templates").value;
+        const templateModels = GLOBALSTATE.getProperty("template-models").value;
         if (!(name in templates)) return null;
         if (!(name in templateModels)) return null;
         if (this.loadedFields[name]) {
@@ -5202,18 +5310,8 @@ export class Odometry3d extends Odometry {
     static async loadRobot(name, type) {
         name = String(name);
         type = String(type);
-        let robotsLoad = this.robotsLoad;
-        let robots = {};
-        let robotModels = {};
-        if (robotsLoad < 2) {
-            if (robotsLoad < 1) this.robotsLoad = 1;
-            robots = this.robots = util.ensure(await window.api.get("robots"), "obj");
-            robotModels = this.robotModels = util.ensure(await window.api.get("robot-models"), "obj");
-            if (robotsLoad < 1) this.robotsLoad = 2;
-        } else {
-            robots = this.robots;
-            robotModels = this.robotModels;
-        }
+        const robots = GLOBALSTATE.getProperty("robots").value;
+        const robotModels = GLOBALSTATE.getProperty("robot-models").value;
         if (!(name in robots)) return null;
         if (!(name in robotModels)) return null;
         if (this.loadedRobots[name]) {

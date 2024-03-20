@@ -494,7 +494,7 @@ TemplateCollection.Item = class TemplateCollectionItem extends TemplateCollectio
         let apply = async () => {
             this.odometry2d.size = this.size;
             this.odometry3d.size = this.size;
-            let templateImages = util.ensure(await window.api.get("template-images"), "obj");
+            const templateImages = core.GLOBALSTATE.getProperty("template-images").value;
             this.odometry2d.imageSrc = templateImages[this.id];
             this.odometry3d.template = this.id;
         };

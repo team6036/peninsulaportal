@@ -5957,17 +5957,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
         this.#template = "§null";
 
-        let ignore = false;
-        let templates = {};
-        (async () => {
-            templates = util.ensure(await window.api.get("templates"), "obj");
-            ignore = true;
-            this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
-            ignore = false;
-            if (this.template != "§null") return;
-            this.template = await window.api.get("active-template");
-        })();
-
         ["p", "f", "o"].forEach(id => {
             const elem = document.createElement("div");
             elem.id = id;
@@ -5994,12 +5983,12 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                     elem.appendChild(form.elem);
                     this.#fTemplate = form.addField(new core.Form.DropdownInput("template", []));
                     const apply = () => {
-                        this.fTemplate.value = (this.template == null) ? "§null" : this.template;
+                        this.fTemplate.value = this.hasTemplate() ? this.template : "§null";
                     };
                     this.fTemplate.addHandler("change-values", apply);
                     this.addHandler("change-template", apply);
                     this.fTemplate.addHandler("change-value", () => {
-                        if (ignore) return;
+                        if (!this.fTemplate.hasValue()) return;
                         this.template = this.fTemplate.value == "§null" ? null : this.fTemplate.value;
                     });
                     this.addHandler("add", () => (this.fTemplate.app = this.app));
@@ -6011,6 +6000,14 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             };
             if (id in idfs) idfs[id]();
         });
+    }
+
+    applyGlobal() {
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const activeTemplate = core.GLOBALSTATE.getProperty("active-template").value;
+        this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
+        if (this.template != "§null") return;
+        this.template = activeTemplate;
     }
 
     compute() {
@@ -6073,6 +6070,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         if (this.template == v) return;
         this.change("template", this.template, this.#template=v);
     }
+    hasTemplate() { return this.template != null; }
 
     getValue(node) {
         if (!(node instanceof Source.Node)) return null;
@@ -6676,14 +6674,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         [this.poses, this.template, this.size, this.robotSize, this.lengthUnits, this.angleUnits, this.origin, this.optionState] = a;
 
-        let templates = {};
-        let templateImages = {};
-        let finished = false;
-        (async () => {
-            templates = util.ensure(await window.api.get("templates"), "obj");
-            templateImages = util.ensure(await window.api.get("template-images"), "obj");
-            finished = true;
-        })();
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const templateImages = core.GLOBALSTATE.getProperty("template-images").value;
 
         const updateSize = () => {
             this.fSize.value = this.size;
@@ -6700,7 +6692,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
-            if (!finished) return;
+            if (core.GLOBALSTATE.getting) return;
 
             this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
             this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
@@ -6722,6 +6714,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             });
             this.odometry.update(delta);
         });
+
+        this.applyGlobal();
     }
 
     addPose(...poses) {
@@ -7003,10 +6997,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         this.#renders = [];
         this.#trailRenders = [];
 
-        let templates = {};
-        (async () => {
-            templates = util.ensure(await window.api.get("templates"), "obj");
-        })();
+        const templates = core.GLOBALSTATE.getProperty("templates").value
 
         const convertPos = (...v) => {
             v = new V(...v);
@@ -7372,12 +7363,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         [this.poses, this.template, this.odometry.renderType, this.odometry.controlType, this.lengthUnits, this.angleUnits, this.odometry.origin, this.optionState] = a;
 
-        let templates = {};
-        let templateModels = {};
-        (async () => {
-            templates = util.ensure(await window.api.get("templates"), "obj");
-            templateModels = util.ensure(await window.api.get("template-models"), "obj");
-        })();
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
 
         this.addHandler("change-lengthUnits", () => {
             this.fCameraPos.activeType = this.lengthUnits;
@@ -7426,6 +7412,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
             this.odometry.update(delta);
         });
+
+        this.applyGlobal();
     }
 
     get odometry() { return this.#odometry; }

@@ -7,6 +7,21 @@ import * as core from "../core.mjs";
 import * as sublib from "./lib.mjs";
 
 
+core.GLOBALSTATE.addProperty(new core.GlobalState.Property(
+    "subtemplates",
+    async () => {
+        let content = "";
+        try {
+            content = await window.api.fileRead("templates.json");
+        } catch (e) {}
+        try {
+            return JSON.parse(content);
+        } catch (e) {}
+        return {};
+    },
+));
+
+
 class RLabel extends core.Odometry2d.Render {
     #item;
 
@@ -461,9 +476,9 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
         this.eTemplates.classList.add("templates");
 
         this.addHandler("refresh", async () => {
-            const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
+            const templates = core.GLOBALSTATE.getProperty("templates").value;
             this.eTemplates.innerHTML = "";
-            for (let name in globalTemplates) {
+            for (let name in templates) {
                 let btn = document.createElement("button");
                 this.eTemplates.appendChild(btn);
                 btn.classList.add("normal");
@@ -900,21 +915,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("change-project.maximized", () => this.format());
         this.addHandler("change-project.sidePos", () => this.format());
 
-        let templates = {};
-        let templateImages = {};
-        let subtemplates = {};
-        (async () => {
-            templates = util.ensure(await window.api.get("templates"), "obj");
-            templateImages = util.ensure(await window.api.get("template-images"), "obj");
-            let content = "";
-            try {
-                content = await window.api.fileRead("templates.json");
-            } catch (e) {}
-            try {
-                subtemplates = JSON.parse(content);
-            } catch (e) {}
-            subtemplates = util.ensure(util.ensure(subtemplates, "obj").templates, "obj");
-        })();
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const templateImages = core.GLOBALSTATE.getProperty("template-images").value;
+        const subtemplates = core.GLOBALSTATE.getProperty("subtemplates").value;
 
         let timer = 0;
         this.addHandler("update", delta => {
@@ -1092,8 +1095,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     async applyTemplate(project, name) {
         if (!(project instanceof sublib.Project)) return false;
-        const templates = util.ensure(await window.api.get("templates"), "obj");
-        const templateImages = util.ensure(await window.api.get("template-images"), "obj");
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
         let content = "";
         try {
             content = await window.api.fileRead("templates.json");
@@ -2268,23 +2270,8 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     constructor(page) {
         super(page, "options", "settings-outline");
 
-        let templates = {};
-        let templateImages = {};
-        let subtemplates = {};
-        (async () => {
-            templates = util.ensure(await window.api.get("templates"), "obj");
-            templateImages = util.ensure(await window.api.get("template-images"), "obj");
-            let content = "";
-            try {
-                content = await window.api.fileRead("templates.json");
-            } catch (e) {}
-            try {
-                subtemplates = JSON.parse(content);
-            } catch (e) {}
-            subtemplates = util.ensure(util.ensure(subtemplates, "obj").templates, "obj");
-            this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
-            this.refresh();
-        })();
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const subtemplates = core.GLOBALSTATE.getProperty("subtemplates").value;
 
         let form = new core.Form();
         this.addItem(form.elem);
@@ -2292,6 +2279,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         this.#fTemplate = form.addField(new core.Form.DropdownInput("template", [], "§null"));
         this.fTemplate.app = this.app;
         this.fTemplate.isSubHeader = false;
+        this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
         this.fTemplate.addHandler("change-value", () => {
             if (!this.fTemplate.hasValue()) return;
             if (this.page.hasProject())
