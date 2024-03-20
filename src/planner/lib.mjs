@@ -4,6 +4,7 @@ import * as lib from "../lib.mjs";
 
 
 export class Project extends lib.Project {
+    #template;
     #items;
     #paths;
     #size;
@@ -15,6 +16,7 @@ export class Project extends lib.Project {
     constructor(...a) {
         super();
 
+        this.#template = null;
         this.#items = {};
         this.#paths = {};
         this.#size = new V();
@@ -26,7 +28,7 @@ export class Project extends lib.Project {
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
         this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
 
-        if (a.length <= 0 || a.length > 10) a = [null];
+        if (a.length <= 0 || a.length > 11) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project) {
@@ -40,7 +42,7 @@ export class Project extends lib.Project {
                     let pth = a.getPath(id);
                     pths[id] = new pth.constructor(pth);
                 });
-                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
+                a = [a.id, a.template, itms, pths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
             }
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
@@ -54,32 +56,34 @@ export class Project extends lib.Project {
                     let pth = a.getPath(id);
                     pths[id] = new pth.constructor(pth);
                 });
-                a = [a.id, itms, pths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
+                a = [a.id, a.template, itms, pths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
             }
-            else if (a instanceof Project.Config) a = [{}, {}, [1000, 1000], [100, 100], 0, a, null];
-            else if (a instanceof Project.Meta) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
-            else if (util.is(a, "str")) a = [{}, {}, [1000, 1000], [100, 100], 0, null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
+            else if (a instanceof Project.Config) a = [null, {}, {}, [1000, 1000], [100, 100], 0, a, null];
+            else if (a instanceof Project.Meta) a = [null, {}, {}, [1000, 1000], [100, 100], 0, null, a];
+            else if (util.is(a, "str")) a = [null, {}, {}, [1000, 1000], [100, 100], 0, null, a];
+            else if (util.is(a, "obj")) a = [a.id, a.template, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
             else a = [{}, {}];
         }
         if (a.length == 2)
-            a = [...a, [1000, 1000]];
+            a = [null, ...a];
         if (a.length == 3)
-            a = [...a, [100, 100], null, null];
+            a = [...a, [1000, 1000]];
         if (a.length == 4)
-            a = [...a.slice(0, 3), [100, 100], 0, ...((a[3] instanceof Project.Config) ? [a[3], null] : (a[3] instanceof Project.Meta) ? [null, a[3]] : [null, null])];
+            a = [...a, [100, 100], null, null];
         if (a.length == 5)
-            a = [...a.slice(0, 3), [100, 100], 0, ...a.slice(3)];
+            a = [...a.slice(0, 4), [100, 100], 0, ...((a[4] instanceof Project.Config) ? [a[4], null] : (a[4] instanceof Project.Meta) ? [null, a[4]] : [null, null])];
         if (a.length == 6)
-            a = [...a.slice(0, 4), 0, ...a.slice(4)];
+            a = [...a.slice(0, 4), [100, 100], 0, ...a.slice(4)];
         if (a.length == 7)
-            a = [...a.slice(0, 5), 0.25, ...a.slice(5)];
+            a = [...a.slice(0, 5), 0, ...a.slice(5)];
         if (a.length == 8)
-            a = [...a.slice(0, 6), false, ...a.slice(6)];
+            a = [...a.slice(0, 6), 0.25, ...a.slice(6)];
         if (a.length == 9)
+            a = [...a.slice(0, 7), false, ...a.slice(7)];
+        if (a.length == 10)
             a = [null, ...a];
 
-        [this.id, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.sidePos, this.maximized, this.config, this.meta] = a;
+        [this.id, this.template, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.sidePos, this.maximized, this.config, this.meta] = a;
 
         this.addHandler("change", () => {
             let pathNames = new Set();
@@ -95,6 +99,14 @@ export class Project extends lib.Project {
             });
         });
     }
+
+    get template() { return this.#template; }
+    set template(v) {
+        v = (v == null) ? null : String(v);
+        if (this.template == v) return;
+        this.change("template", this.template, this.#template=v);
+    }
+    hasTemplate() { return this.template != null; }
 
     get items() { return Object.keys(this.#items); }
     set items(v) {
@@ -248,6 +260,7 @@ export class Project extends lib.Project {
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             id: this.id,
+            template: this.template,
             items: this.#items,
             paths: this.#paths,
             size: this.size,
@@ -355,48 +368,6 @@ Project.Config = class ProjectConfig extends Project.Config {
         });
     }
 };
-Project.Meta = class ProjectMeta extends Project.Meta {
-    #backgroundImage;
-
-    constructor(...a) {
-        super();
-
-        this.#backgroundImage = null;
-
-        if (a.length <= 0 || [3].includes(a.length) || a.length > 5) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage];
-            else if (util.is(a, "arr")) {
-                a = new Project.Meta(...a);
-                a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage];
-            }
-            else if (util.is(a, "str")) a = [a, null];
-            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb, a.backgroundImage];
-            else a = ["New Project", null];
-        }
-        if (a.length == 2) a = [a[0], 0, 0, a[1]];
-        if (a.length == 4) a = [...a, null];
-        
-        [this.name, this.modified, this.created, this.thumb, this.backgroundImage] = a;
-    }
-
-    get backgroundImage() { return this.#backgroundImage; }
-    set backgroundImage(v) {
-        v = (v == null) ? null : String(v);
-        if (this.backgroundImage == v) return;
-        this.change("backgroundImage", this.backgroundImage, this.#backgroundImage=v);
-    }
-
-    toJSON() {
-        return util.Reviver.revivable(this.constructor, {
-            name: this.name,
-            modified: this.modified, created: this.created,
-            thumb: this.thumb,
-            backgroundImage: this.backgroundImage,
-        });
-    }
-}
 Project.Item = class ProjectItem extends util.Target {
     #id;
 

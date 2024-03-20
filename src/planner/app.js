@@ -475,6 +475,7 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
             }
             let btn = document.createElement("button");
             this.eTemplates.appendChild(btn);
+            btn.classList.add("normal");
             btn.textContent = "Blank Project";
             btn.addEventListener("click", e => {
                 e.stopPropagation();
@@ -899,11 +900,27 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("change-project.maximized", () => this.format());
         this.addHandler("change-project.sidePos", () => this.format());
 
+        let templates = {};
+        let templateImages = {};
+        let subtemplates = {};
+        (async () => {
+            templates = util.ensure(await window.api.get("templates"), "obj");
+            templateImages = util.ensure(await window.api.get("template-images"), "obj");
+            let content = "";
+            try {
+                content = await window.api.fileRead("templates.json");
+            } catch (e) {}
+            try {
+                subtemplates = JSON.parse(content);
+            } catch (e) {}
+            subtemplates = util.ensure(util.ensure(subtemplates, "obj").templates, "obj");
+        })();
+
         let timer = 0;
         this.addHandler("update", delta => {
             this.odometry.update(delta);
             this.odometry.size = this.hasProject() ? this.project.size : 0;
-            this.odometry.imageSrc = this.hasProject() ? this.project.meta.backgroundImage : null;
+            this.odometry.imageSrc = (this.hasProject() && this.project.hasTemplate()) ? templateImages[this.project.template] : null;
 
             if (!this.choosing)
                 this.displayPath = (this.hasProject() && this.project.hasPath(this.selectedPath)) ? this.project.getPath(this.selectedPath) : null;
@@ -1047,56 +1064,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             await this.refresh();
             await this.editorRefresh();
             this.odometry.canvas.focus();
-            const globalTemplates = util.ensure(await window.api.get("templates"), "obj");
-            const globalTemplateImages = util.ensure(await window.api.get("template-images"), "obj");
             const activeTemplate = await window.api.get("active-template");
-            let templatesContent = "";
-            try {
-                templatesContent = await window.api.fileRead("templates.json");
-            } catch (e) {}
-            let templates = null;
-            try {
-                templates = JSON.parse(templatesContent);
-            } catch (e) {}
-            templates = util.ensure(util.ensure(templates, "obj").templates, "obj");
             if (this.app.hasProject(data.id)) {
                 this.project = this.app.getProject(data.id);
             } else if (data.project instanceof sublib.Project) {
                 this.project = data.project;
             } else {
                 this.project = new sublib.Project();
+                this.project.template = ("template" in data) ? data.template : activeTemplate;
                 this.project.meta.created = this.project.meta.modified = util.getTime();
-                this.project.meta.backgroundImage = globalTemplateImages[("template" in data) ? data.template : activeTemplate];
+                await this.applyTemplate(this.project, this.project.template);
                 this.editorRefresh();
-                if (this.hasProject()) {
-                    for (let name in globalTemplates) {
-                        if (this.project.meta.backgroundImage != globalTemplateImages[name]) continue;
-                        const globalTemplate = util.ensure(globalTemplates[name], "obj");
-                        let template = util.ensure(templates[name], "obj");
-                        template[".size"] = globalTemplate["size"];
-                        template[".robotW"] = globalTemplate["robotSize"];
-                        template[".robotMass"] = globalTemplate["robotMass"];
-                        template[".meta.backgroundImage"] = globalTemplateImages[name];
-                        for (let k in template) {
-                            let v = template[k];
-                            k = String(k).split(".");
-                            while (k.length > 0 && k.at(0).length <= 0) k.shift();
-                            while (k.length > 0 && k.at(-1).length <= 0) k.pop();
-                            let obj = this.project;
-                            while (k.length > 1) {
-                                if (!util.is(obj, "obj")) {
-                                    obj = null;
-                                    break;
-                                }
-                                obj = obj[k.shift()];
-                            }
-                            if (obj == null || k.length != 1) continue;
-                            obj[k] = v;
-                        }
-                        break;
-                    }
-                    this.editorRefresh();
-                }
             }
         });
         this.addHandler("leave", async data => {
@@ -1110,6 +1088,45 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 itm.exists = false;
             });
         });
+    }
+
+    async applyTemplate(project, name) {
+        if (!(project instanceof sublib.Project)) return false;
+        const templates = util.ensure(await window.api.get("templates"), "obj");
+        const templateImages = util.ensure(await window.api.get("template-images"), "obj");
+        let content = "";
+        try {
+            content = await window.api.fileRead("templates.json");
+        } catch (e) {}
+        let subtemplates = null;
+        try {
+            subtemplates = JSON.parse(content);
+        } catch (e) {}
+        subtemplates = util.ensure(util.ensure(subtemplates, "obj").templates, "obj");
+        name = (name == null) ? null : String(name);
+        if (!(name in templates)) return false;
+        const globalTemplate = util.ensure(templates[name], "obj");
+        const template = util.ensure(subtemplates[name], "obj");
+        template[".size"] = globalTemplate["size"];
+        template[".robotW"] = globalTemplate["robotSize"];
+        template[".robotMass"] = globalTemplate["robotMass"];
+        for (let k in template) {
+            let v = template[k];
+            k = String(k).split(".");
+            while (k.length > 0 && k.at(0).length <= 0) k.shift();
+            while (k.length > 0 && k.at(-1).length <= 0) k.pop();
+            let obj = project;
+            while (k.length > 1) {
+                if (!util.is(obj, "obj")) {
+                    obj = null;
+                    break;
+                }
+                obj = obj[k.shift()];
+            }
+            if (!util.is(obj, "obj") || k.length != 1) continue;
+            obj[k] = v;
+        }
+        return true;
     }
 
     get odometry() { return this.#odometry; }
@@ -2238,6 +2255,8 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     get eRemove() { return this.#eRemove; }
 };
 App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.ProjectPage.Panel {
+    #fTemplate;
+    #fTemplateApply;
     #fSize;
     #fRobotSize;
     #fRobotMass;
@@ -2249,8 +2268,43 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     constructor(page) {
         super(page, "options", "settings-outline");
 
+        let templates = {};
+        let templateImages = {};
+        let subtemplates = {};
+        (async () => {
+            templates = util.ensure(await window.api.get("templates"), "obj");
+            templateImages = util.ensure(await window.api.get("template-images"), "obj");
+            let content = "";
+            try {
+                content = await window.api.fileRead("templates.json");
+            } catch (e) {}
+            try {
+                subtemplates = JSON.parse(content);
+            } catch (e) {}
+            subtemplates = util.ensure(util.ensure(subtemplates, "obj").templates, "obj");
+            this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
+            this.refresh();
+        })();
+
         let form = new core.Form();
         this.addItem(form.elem);
+
+        this.#fTemplate = form.addField(new core.Form.DropdownInput("template", [], "§null"));
+        this.fTemplate.app = this.app;
+        this.fTemplate.isSubHeader = false;
+        this.fTemplate.addHandler("change-value", () => {
+            if (!this.fTemplate.hasValue()) return;
+            if (this.page.hasProject())
+                this.page.project.template = (this.fTemplate.value == "§null") ? null : this.fTemplate.value;
+            this.page.editorRefresh();
+        });
+        this.#fTemplateApply = form.addField(new core.Form.Button("template-apply", "Apply Template", "special"));
+        this.fTemplateApply.showHeader = false;
+        this.fTemplateApply.addHandler("trigger", async e => {
+            if (!this.page.hasProject()) return;
+            await this.page.applyTemplate(this.page.project, this.page.project.template);
+            this.page.editorRefresh();
+        });
 
         form.addField(new core.Form.Header("Map Options"));
 
@@ -2348,6 +2402,10 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         this.addHandler("refresh", () => {
             let has = this.page.hasProject();
             this.btn.disabled = !has;
+            this.fTemplate.disabled = !has;
+            this.fTemplate.value = has ? this.page.project.hasTemplate() ? this.page.project.template : "§null" : null;
+            this.fTemplateApply.disabled = !has || !this.page.project.hasTemplate();
+            this.fSize.isShown = has && !this.page.project.hasTemplate();
             this.fSize.disabled = !has;
             this.fSize.value = has ? this.page.project.size.div(100) : null;
             this.fRobotSize.disabled = !has;
@@ -2373,6 +2431,8 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         });
     }
 
+    get fTemplate() { return this.#fTemplate; }
+    get fTemplateApply() { return this.#fTemplateApply; }
     get fSize() { return this.#fSize; }
     get fRobotSize() { return this.#fRobotSize; }
     get fRobotMass() { return this.#fRobotMass; }
