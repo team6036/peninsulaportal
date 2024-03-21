@@ -843,8 +843,6 @@ const MAIN = async () => {
 
                 show: false,
                 resizable: true,
-                maximizable: false,
-                fullscreenable: true,
 
                 titleBarStyle: "hidden",
                 titleBarOverlay: {
