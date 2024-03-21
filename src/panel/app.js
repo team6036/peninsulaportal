@@ -2458,7 +2458,6 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         if (pos.y < r.top || pos.y > r.bottom) return null;
         if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
         if (!(data instanceof Source.Node)) return null;
-        if (!data.hasField()) return null;
         let y = r.top, h = r.height;
         let at = 0;
         const addVar = node => {
@@ -5550,7 +5549,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         if (this.optionState == 0) return null;
         if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
         if (!(data instanceof Source.Node)) return null;
-        if (!data.hasField()) return null;
         const idfs = {
             _: side => {
                 for (let v of this[side+"Vars"]) {
