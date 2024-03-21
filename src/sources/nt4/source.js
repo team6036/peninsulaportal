@@ -17,6 +17,7 @@ export default class NTSource extends Source {
         this.#clientStorage = {
             startTime: 0,
             stopTime: 0,
+            timeOffset: 0,
         };
 
         this.address = address;
@@ -67,6 +68,9 @@ export default class NTSource extends Source {
                 this.post("disconnected");
                 this.post("connect-state", this.connected);
             },
+            offset => {
+                this.#clientStorage.timeOffset = util.ensure(offset, "num")/1000;
+            },
         );
         if (this.#hasClient()) {
             this.#client.startTime = this.#client.clientTime;
@@ -85,7 +89,7 @@ export default class NTSource extends Source {
     get disconnected() { return !this.connected; }
 
     get clientStartTime() {
-        if (!this.#hasConnectedClient()) return 0;
+        if (!this.#hasConnectedClient()) return NTClient.clientToServer(this.#clientStorage.startTime, this.#clientStorage.timeOffset);
         return this.#client.startTime/1000;
     }
     get serverStartTime() {
@@ -93,7 +97,7 @@ export default class NTSource extends Source {
         return this.#client.clientToServer(this.#client.startTime)/1000;
     }
     get clientStopTime() {
-        if (!this.#hasConnectedClient()) return this.#clientStorage.stopTime-this.#clientStorage.startTime;
+        if (!this.#hasConnectedClient()) return NTClient.clientToServer(this.#clientStorage.stopTime, this.#clientStorage.timeOffset);
         return this.#client.stopTime/1000;
     }
     get serverStopTime() {

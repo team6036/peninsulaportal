@@ -93,6 +93,7 @@ export default class NTClient {
     #onNewTopicData;
     #onConnect;
     #onDisconnect;
+    #onTimestamp;
 
     #baseAddr;
     #ws;
@@ -108,13 +109,14 @@ export default class NTClient {
     #publishedTopics;
     #serverTopics;
 
-    constructor(addr, name, onTopicAnnounce, onTopicUnannounce, onNewTopicData, onConnect, onDisconnect) {
+    constructor(addr, name, onTopicAnnounce, onTopicUnannounce, onNewTopicData, onConnect, onDisconnect, onTimestamp) {
         this.#name = String(name);
         this.#onTopicAnnounce = () => {};
         this.#onTopicUnannounce = () => {};
         this.#onNewTopicData = () => {};
         this.#onConnect = () => {};
         this.#onDisconnect = () => {};
+        this.#onTimestamp = () => {};
 
         this.#baseAddr = "";
         this.#ws = null;
@@ -137,6 +139,7 @@ export default class NTClient {
         this.onNewTopicData = onNewTopicData;
         this.onConnect = onConnect;
         this.onDisconnect = onDisconnect;
+        this.onTimestamp = onTimestamp;
     }
 
     get name() { return this.#name; }
@@ -169,6 +172,12 @@ export default class NTClient {
         v = util.is(v, "func") ? v : (() => {});
         if (this.onDisconnect == v) return;
         this.#onDisconnect = v;
+    }
+    get onTimestamp() { return this.#onTimestamp; }
+    set onTimestamp(v) {
+        v = util.is(v, "func") ? v : (() => {});
+        if (this.onTimestamp == v) return;
+        this.#onTimestamp = v;
     }
 
     get baseAddr() { return this.#baseAddr; }
@@ -299,8 +308,12 @@ export default class NTClient {
 
     get clientTime() { return util.getTime() * 1000; }
     clientToServer(ts=null) {
-        ts = util.ensure(ts, "num", this.clientTime);
-        return ts + this.serverTimeOffset;
+        return NTClient.clientToServer(util.ensure(ts, "num", this.clientTime), this.serverTimeOffset);
+    }
+    static clientToServer(ts, offset) {
+        ts = util.ensure(ts, "num", 0);
+        offset = util.ensure(offset, "num", 0);
+        return ts + offset;
     }
     get serverTime() { return this.clientToServer(); }
     get networkLatency() { return this.#networkLatency; }
@@ -317,6 +330,7 @@ export default class NTClient {
         this.#networkLatency = rtt / 2.0;
         let serverTSAtRx = serverTS + this.#networkLatency;
         this.#serverTimeOffset = serverTSAtRx - rxTime;
+        this.onTimestamp(this.serverTimeOffset);
     }
 
     #ws_subscribe(sub) {
