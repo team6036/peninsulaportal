@@ -8693,6 +8693,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         this.#explorer = new FieldExplorer();
+        this.explorer.addHandler("change-showHidden", (f, t) => this.change("showHidden", f, t));
         this.explorer.addHandler("contextmenu", (e, path) => {
             e = util.ensure(e, "obj");
             let enode = this.explorer.lookup(path);
@@ -8812,6 +8813,19 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     s.eContent = this.explorer.elem;
                     elem.appendChild(s.eContent);
                     s.eContent.classList.add("content");
+                    const eToggle = document.createElement("div");
+                    s.eBtn.appendChild(eToggle);
+                    eToggle.innerHTML = "<ion-icon></ion-icon>";
+                    const eIcon = eToggle.children[0];
+                    const update = () => {
+                        eIcon.name = this.showHidden ? "eye" : "eye-off";
+                    };
+                    this.addHandler("change-showHidden", update);
+                    update();
+                    eToggle.addEventListener("click", e => {
+                        e.stopPropagation();
+                        this.showHidden = !this.showHidden;
+                    });
                 },
             };
             if (elem.id in idfs) idfs[elem.id]();
@@ -9161,6 +9175,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (itm) itm.accelerator = null;
         });
     }
+
+    get showHidden() { return this.explorer.showHidden; }
+    set showHidden(v) { this.explorer.showHidden = v; }
 
     get explorer() { return this.#explorer; }
     get metaExplorer() { return this.#metaExplorer; }

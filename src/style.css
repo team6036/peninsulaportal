@@ -1946,6 +1946,9 @@ p-loading[type="bounce"] > div > div:last-child {
 
     font-style: italic;
 }
+.explorer:not(.hidden) > .node.hidden > button.display {
+    display: none;
+}
 .explorer > .node > button.display > .tooltip,
 .explorernode > button.display > .tooltip {
     text-align: left;
