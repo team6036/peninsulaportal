@@ -7853,10 +7853,19 @@ class Project extends lib.Project {
 
     get sidePos() { return this.#sidePos; }
     set sidePos(v) {
-        v = Math.min(1, Math.max(0, util.ensure(v, "num", 0.15)));
+        v = Math.min(1, Math.max(-1, util.ensure(v, "num", 0.15)));
+        console.log(v);
         if (this.sidePos == v) return;
         this.change("sidePos", this.sidePos, this.#sidePos=v);
     }
+    get isCollapsed() { return this.sidePos < 0; }
+    set isCollapsed(v) {
+        v = !!v;
+        if (this.isCollapsed == v) return;
+        this.sidePos = v ? -Math.abs(this.sidePos) : Math.abs(this.sidePos);
+    }
+    collapse() { return this.isCollapsed = true; }
+    uncollapse() { return this.isCollapsed = false; }
     
     get sideSectionPos() {
         let sideSectionPos = {};
@@ -8121,6 +8130,7 @@ export default class App extends core.AppFeature {
                             { id: "expandcollapse", label: "Toggle Titlebar", accelerator: "Ctrl+Shift+F" },
                             { id: "minmax", label: "Toggle Maximized", accelerator: "Ctrl+Option+F" },
                             { id: "resetdivider", label: "Reset Divider" },
+                            { id: "toggleside", label: "Toggle Side", accelerator: "Ctrl+S" },
                             "separator",
                         ];
                         itms.forEach((data, i) => {
@@ -8525,6 +8535,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-resetdivider", () => {
             if (!this.hasProject()) return;
             this.project.sidePos = null;
+        });
+        this.app.addHandler("cmd-toggleside", () => {
+            if (!this.hasProject()) return;
+            this.project.isCollapsed = !this.project.isCollapsed;
         });
         this.app.addHandler("cmd-source-type", type => {
             if (!this.hasProject()) return;
@@ -9085,7 +9099,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 (...enodes) => this.metaExplorer.rem(...enodes),
             );
 
-            this.eMain.style.setProperty("--side", (100*(this.hasProject() ? this.project.sidePos : 0.15))+"%");
+            this.eMain.style.setProperty("--side", (100*(this.hasProject() ? Math.max(0, this.project.sidePos) : 0))+"%");
 
             if (timer > 0) return timer -= delta;
             timer = 5000;
