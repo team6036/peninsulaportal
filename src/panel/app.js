@@ -7854,7 +7854,6 @@ class Project extends lib.Project {
     get sidePos() { return this.#sidePos; }
     set sidePos(v) {
         v = Math.min(1, Math.max(-1, util.ensure(v, "num", 0.15)));
-        console.log(v);
         if (this.sidePos == v) return;
         this.change("sidePos", this.sidePos, this.#sidePos=v);
     }
