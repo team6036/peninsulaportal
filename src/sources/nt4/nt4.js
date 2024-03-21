@@ -286,7 +286,7 @@ export default class NTClient {
     }
 
     addSample(topic, v) {
-        this.addTimestampedSample(topic, this.serverTime, v);
+        this.addTSSample(topic, this.serverTime, v);
     }
     addTSSample(topic, ts, v) {
         topic = String(topic);
@@ -298,12 +298,13 @@ export default class NTClient {
     }
 
     get clientTime() { return util.getTime() * 1000; }
-    clientToServer(ts) {
+    clientToServer(ts=null) {
         ts = util.ensure(ts, "num", this.clientTime);
-        return ts + this.#serverTimeOffset;
+        return ts + this.serverTimeOffset;
     }
     get serverTime() { return this.clientToServer(); }
     get networkLatency() { return this.#networkLatency; }
+    get serverTimeOffset() { return this.#serverTimeOffset; }
 
     #ws_sendTimestamp() {
         let ts = this.clientTime;
