@@ -79,8 +79,8 @@ button:not(.override) {
     align-content: center;
 }
 button:not(.override):not(.shiny) {
-    background: radial-gradient(
-        circle,
+    background: linear-gradient(
+        105deg,
         var(--bgh) 0%,
         var(--bgh) var(--btn-c-size-v),
         transparent var(--btn-c-size-v),
@@ -1934,8 +1934,6 @@ p-loading[type="bounce"] > div > div:last-child {
     justify-content: flex-start;
     align-items: stretch;
     align-content: stretch;
-
-    border-radius: 5px;
 
     font-size: 14px;
     line-height: 1em;
