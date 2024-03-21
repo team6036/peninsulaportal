@@ -180,10 +180,30 @@
 #PROJECTPAGE > .main > .side > .section > button > ion-icon {
     transform: rotate(0deg);
 
+    min-width: 1em;
+
     transition: transform var(--t);
 }
 #PROJECTPAGE > .main > .side > .section.this > button > ion-icon {
     transform: rotate(90deg);
+}
+#PROJECTPAGE > .main > .side > .section > button > span {
+    flex-basis: 100%;
+}
+#PROJECTPAGE > .main > .side > .section > button > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+
+    color: var(--v6);
+
+    transition: color var(--t);
+}
+#PROJECTPAGE > .main > .side > .section > button > div:hover {
+    color: var(--a);
 }
 #PROJECTPAGE > .main > .side > .section > .content {
     max-width: 100%;

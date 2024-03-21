@@ -6673,6 +6673,15 @@ export class Explorer extends util.Target {
 
     get elem() { return this.#elem; }
 
+    get showHidden() { return this.elem.classList.contains("hidden"); }
+    set showHidden(v) {
+        v = !!v;
+        if (this.showHidden == v) return;
+        if (v) this.elem.classList.add("hidden");
+        else this.elem.classList.remove("hidden");
+        this.change("showHidden", !v, v);
+    }
+
     format() {
         if (this.constructor.SORT) this.#nodeObjects.sort((a, b) => util.compareStr(a.name, b.name));
         this.#nodeObjects.forEach((node, i) => {
