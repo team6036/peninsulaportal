@@ -4888,8 +4888,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         let form = forms[mode] = new core.Form();
                         elem.appendChild(form.elem);
                         let modefs = {
-                            left: () => {
-                                let input = form.addField(new core.Form.Input1d("forwards-view-time"));
+                            _: side => {
+                                let input = form.addField(new core.Form.Input1d({
+                                    l: "forward",
+                                    r: "backward",
+                                }[side]+"-view-time"));
                                 this.addHandler("add", () => (input.app = this.app));
                                 this.addHandler("rem", () => (input.app = this.app));
                                 input.types = ["ms", "s", "min"];
@@ -4907,25 +4910,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 this.addHandler("change-viewParams.time", () => (input.value = this.viewParams.time));
                                 this.change("viewParams.time", null, this.viewParams.time=5000);
                             },
-                            right: () => {
-                                let input = form.addField(new core.Form.Input1d("backwards-view-time"));
-                                this.addHandler("add", () => (input.app = this.app));
-                                this.addHandler("rem", () => (input.app = this.app));
-                                input.types = ["ms", "s", "min"];
-                                input.baseType = "ms";
-                                input.activeType = "s";
-                                input.step = 0.1;
-                                input.inputs.forEach(inp => {
-                                    inp.placeholder = "...";
-                                    inp.min = 0;
-                                });
-                                input.addHandler("change-value", () => {
-                                    let v = Math.max(0, input.value);
-                                    this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
-                                });
-                                this.addHandler("change-viewParams.time", () => (input.value = this.viewParams.time));
-                                this.change("viewParams.time", null, this.viewParams.time=5000);
-                            },
+                            left: () => modefs._("l"),
+                            right: () => modefs._("r"),
                             section: () => {
                                 let startInput = form.addField(new core.Form.Input1d("range-start"));
                                 this.addHandler("add", () => (startInput.app = this.app));
@@ -4962,6 +4948,21 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             },
                         };
                         if (mode in modefs) modefs[mode]();
+                        let fApply = form.addField(new core.Form.Button("apply-all", "Apply To All Graphs"));
+                        fApply.showHeader = false;
+                        fApply.addHandler("trigger", e => {
+                            if (!this.hasPage()) return;
+                            if (!this.page.hasWidget()) return;
+                            const dfs = widget => {
+                                if (widget instanceof Container) return widget.children.forEach(widget => dfs(widget));
+                                widget.tabs.forEach(tab => {
+                                    if (!(tab instanceof Panel.GraphTab)) return;
+                                    tab.viewMode = this.viewMode;
+                                    tab.viewParams = this.viewParams;
+                                });
+                            };
+                            dfs(this.page.widget);
+                        });
                     });
                     const update = () => {
                         fViewMode.value = this.viewMode;
