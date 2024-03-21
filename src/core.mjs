@@ -3193,7 +3193,7 @@ export class AppFeature extends App {
             this.eFeatureStyle.rel = "stylesheet";
             this.eFeatureStyle.href = "../style-feature.css";
 
-            const checkMinWidth = async () => {
+            const checkSizes = async () => {
                 let left = PROPERTYCACHE.get("--LEFT");
                 left = util.ensure(parseFloat(left.slice(0, -2)), "num");
                 let right = PROPERTYCACHE.get("--RIGHT");
@@ -3203,6 +3203,9 @@ export class AppFeature extends App {
                     .map(elem => elem.getBoundingClientRect().width)
                     .sum();
                 await window.api.set("min-width", w);
+                let h = PROPERTYCACHE.get("--TOP");
+                h = util.ensure(parseFloat(h.slice(0, -2)), "num");
+                await window.api.set("min-height", h);
             };
 
             this.#eTitleBtn = document.createElement("button");
@@ -3219,7 +3222,7 @@ export class AppFeature extends App {
                 this.contextMenu = this.bindMenu(App.Menu.buildMainMenu());
                 this.placeContextMenu(e.pageX, e.pageY);
             });
-            new ResizeObserver(checkMinWidth).observe(this.eTitleBtn);
+            new ResizeObserver(checkSizes).observe(this.eTitleBtn);
 
             this.#eFileBtn = document.createElement("button");
             this.eTitleBar.appendChild(this.eFileBtn);
@@ -3234,7 +3237,7 @@ export class AppFeature extends App {
                 let r = this.eFileBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
             });
-            new ResizeObserver(checkMinWidth).observe(this.eFileBtn);
+            new ResizeObserver(checkSizes).observe(this.eFileBtn);
 
             this.#eEditBtn = document.createElement("button");
             this.eTitleBar.appendChild(this.eEditBtn);
@@ -3249,7 +3252,7 @@ export class AppFeature extends App {
                 let r = this.eEditBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
             });
-            new ResizeObserver(checkMinWidth).observe(this.eEditBtn);
+            new ResizeObserver(checkSizes).observe(this.eEditBtn);
 
             this.#eViewBtn = document.createElement("button");
             this.eTitleBar.appendChild(this.eViewBtn);
@@ -3264,13 +3267,13 @@ export class AppFeature extends App {
                 let r = this.eViewBtn.getBoundingClientRect();
                 this.placeContextMenu(r.left, r.bottom);
             });
-            new ResizeObserver(checkMinWidth).observe(this.eViewBtn);
+            new ResizeObserver(checkSizes).observe(this.eViewBtn);
 
             this.#eProjectInfo = document.createElement("div");
             this.eTitleBar.appendChild(this.eProjectInfo);
             this.eProjectInfo.id = "projectinfo";
             this.eProjectInfo.classList.add("forproject");
-            new ResizeObserver(checkMinWidth).observe(this.eProjectInfo);
+            new ResizeObserver(checkSizes).observe(this.eProjectInfo);
 
             this.#eProjectInfoBtn = document.createElement("button");
             this.eProjectInfo.appendChild(this.eProjectInfoBtn);
@@ -3358,7 +3361,7 @@ export class AppFeature extends App {
                 e.stopPropagation();
                 this.post("cmd-save");
             });
-            new ResizeObserver(checkMinWidth).observe(this.eSaveBtn);
+            new ResizeObserver(checkSizes).observe(this.eSaveBtn);
 
             this.#eProjectsBtn = document.createElement("button");
             this.eTitleBar.appendChild(this.eProjectsBtn);
@@ -3368,7 +3371,7 @@ export class AppFeature extends App {
                 e.stopPropagation();
                 this.page = "PROJECTS";
             });
-            new ResizeObserver(checkMinWidth).observe(this.eProjectsBtn);
+            new ResizeObserver(checkSizes).observe(this.eProjectsBtn);
 
             this.#eCreateBtn = document.createElement("button");
             this.eTitleBar.appendChild(this.eCreateBtn);
@@ -3378,7 +3381,7 @@ export class AppFeature extends App {
                 e.stopPropagation();
                 this.page = "PROJECT";
             });
-            new ResizeObserver(checkMinWidth).observe(this.eCreateBtn);
+            new ResizeObserver(checkSizes).observe(this.eCreateBtn);
             
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
 
