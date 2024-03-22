@@ -2041,6 +2041,7 @@ const MAIN = async () => {
                     },
                 },
                 PLANNER: {
+                    "read-data": async pth => await WindowManager.fileRead(pth),
                     "exec": async (id, pathId) => {
                         if (this.processManager.getProcessById("script") instanceof Process)
                             throw new Error("Existing process has not terminated");
