@@ -53,6 +53,7 @@ export default class NTSource extends Source {
                 if (client != this.#client) return client.disconnect();
                 if (connected) return;
                 connected = true;
+                this.clear();
                 this.#client.startTime = this.#client.clientTime;
                 this.#clientStorage.startTime = util.getTime();
                 this.post("connected");
