@@ -136,12 +136,10 @@ export class Project extends lib.Project {
         return util.Target.resultingForEach(itms, itm => {
             if (!(itm instanceof Project.Item)) return false;
             if (this.hasItem(itm)) return false;
-            let id = itm.id;
-            while (id == null || this.hasItem(id))
-                id = util.jargonBase64(10);
-            this.#items[id] = itm;
-            itm.id = id;
-            itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+id+")."+c, f, t));
+            while (itm.id == null || this.hasItem(itm.id))
+                itm.id = util.jargonBase64(10);
+            this.#items[itm.id] = itm;
+            itm.addLinkedHandler(this, "change", (c, f, t) => this.change("getItem("+itm.id+")."+c, f, t));
             this.change("addItem", null, itm);
             itm.onAdd();
             return itm;
@@ -192,13 +190,11 @@ export class Project extends lib.Project {
         return util.Target.resultingForEach(pths, pth => {
             if (!(pth instanceof Project.Path)) return false;
             if (this.hasPath(pth)) return false;
-            let id = pth.id;
-            while (id == null || this.hasPath(id))
-                id = new Array(10).fill(null).map(_ => util.BASE64[Math.floor(Math.random()*64)]).join("");
-            this.#paths[id] = pth;
-            pth.id = id;
+            while (pth.id == null || this.hasPath(pth.id))
+                pth.id = util.jargonBase64(10);
+            this.#paths[pth.id] = pth;
             pth.nodes = pth.nodes.filter(id => this.hasItem(id) && this.getItem(id) instanceof Project.Node);
-            pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+id+")."+c, f, t));
+            pth.addLinkedHandler(this, "change", (c, f, t) => this.change("getPath("+pth.id+")."+c, f, t));
             this.change("addPath", null, pth);
             pth.onAdd();
             return pth;
@@ -385,16 +381,16 @@ Project.Item = class ProjectItem extends util.Target {
         if (a.length <= 0 || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Item) a = a.pos;
+            if (a instanceof Project.Item) a = [a.id, a.pos];
             else if (util.is(a, "arr")) {
                 a = new Project.Item(...a);
-                a = a.pos;
+                a = [a.id, a.pos];
             }
-            else if (util.is(a, "obj")) a = a.pos;
-            else a = new V(a);
+            else if (util.is(a, "obj")) a = [a.id, a.pos];
+            else a = [null, new V(a)];
         }
 
-        this.pos = a;
+        [this.id, this.pos] = a;
     }
 
     get id() { return this.#id; }
@@ -413,6 +409,7 @@ Project.Item = class ProjectItem extends util.Target {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
+            id: this.id,
             pos: this.pos,
         });
     }
@@ -439,16 +436,16 @@ Project.Node = class ProjectNode extends Project.Item {
 
         this.velocity.addHandler("change", (c, f, t) => this.change("velocity."+c, f, t));
 
-        if (a.length <= 0 || a.length > 7) a = [null];
+        if (a.length <= 0 || a.length > 8) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Node) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
-            else if (a instanceof Project.Item) a = [a.pos, 0];
+            if (a instanceof Project.Node) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
+            else if (a instanceof Project.Item) a = [a.id, a.pos, 0];
             else if (util.is(a, "arr")) {
                 a = new Project.Node(...a);
-                a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
+                a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
             }
-            else if (util.is(a, "obj")) a = [a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
+            else if (util.is(a, "obj")) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
             else a = [a, 0];
         }
         if (a.length == 2)
@@ -461,8 +458,10 @@ Project.Node = class ProjectNode extends Project.Item {
             a = [...a.slice(0, 2), true, ...a.slice(2)];
         if (a.length == 6)
             a = [...a, {}];
+        if (a.length == 7)
+            a = [null, ...a];
         
-        [this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity, this.options] = a;
+        [this.id, this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity, this.options] = a;
     }
 
     get heading() { return this.#heading; }
@@ -537,6 +536,7 @@ Project.Node = class ProjectNode extends Project.Item {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
+            id: this.id,
             pos: this.pos,
             heading: this.heading, useHeading: this.useHeading,
             velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
@@ -552,21 +552,22 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
 
         this.#radius = 0;
 
-        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Obstacle) a = [a.pos, a.radius];
-            else if (a instanceof Project.Item) a = [a.pos, 100];
+            if (a instanceof Project.Obstacle) a = [a.id, a.pos, a.radius];
+            else if (a instanceof Project.Item) a = [a.id, a.pos, 100];
             else if (util.is(a, "arr")) {
                 a = new Project.Obstacle(...a);
-                a = [a.pos, a.radius];
+                a = [a.id, a.pos, a.radius];
             }
             else if (a instanceof V) a = [a, 100];
-            else if (util.is(a, "obj")) a = [a.pos, a.radius];
+            else if (util.is(a, "obj")) a = [a.id, a.pos, a.radius];
             else a = [0, a];
         }
+        if (a.length == 2) a = [null, ...a];
 
-        [this.pos, this.radius] = a;
+        [this.id, this.pos, this.radius] = a;
     }
 
     get radius() { return this.#radius; }
@@ -582,6 +583,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
+            id: this.id,
             pos: this.pos,
             radius: this.radius,
         });
@@ -601,7 +603,7 @@ Project.Path = class ProjectPath extends util.Target {
         this.#name = null;
         this.#nodes = [];
 
-        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project.Path) a = [a.name, a.nodes];
@@ -610,11 +612,12 @@ Project.Path = class ProjectPath extends util.Target {
                 a = [a.name, a.nodes];
             }
             else if (util.is(a, "str")) a = [a, []];
-            else if (util.is(a, "obj")) a = [a.name, a.nodes];
+            else if (util.is(a, "obj")) a = [a.id, a.name, a.nodes];
             else a = ["", []];
         }
+        if (a.length == 2) a = [null, ...a];
 
-        [this.name, this.nodes] = a;
+        [this.id, this.name, this.nodes] = a;
     }
 
     get id() { return this.#id; }
@@ -664,6 +667,7 @@ Project.Path = class ProjectPath extends util.Target {
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
+            id: this.id,
             name: this.name,
             nodes: this.nodes,
         });

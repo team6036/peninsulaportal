@@ -1842,6 +1842,56 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             this.page.selectedPath = null;
         });
 
+        new core.DropTarget(this.elem, async e => {
+            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+            items = items.filter(item => item instanceof File);
+            if (items.length <= 0) return;
+            const file = items[0];
+            const path = file.path;
+            let content = null;
+            try {
+                content = await window.api.send("read-data", path);
+            } catch (e) { return this.app.doError("DATA.IN Read Error", path, e); }
+            let data = null;
+            try {
+                data = JSON.parse(content);
+            } catch (e) { return this.app.doError("DATA.IN Parse Error", path, e); }
+            data = util.ensure(data, "obj");
+            const nodes = util.ensure(data.nodes, "arr");
+            const obstacles = util.ensure(data.obstacles, "arr");
+            if (!this.page.hasProject()) return;
+            let ids = [];
+            nodes.forEach(node => {
+                node = util.ensure(node, "obj");
+                const pnode = new sublib.Project.Node();
+                this.page.project.addItem(pnode);
+                ids.push(pnode.id);
+                pnode.pos = new V(node.x, node.y).mul(100);
+                pnode.heading = node.theta;
+                pnode.useHeading = node.theta != null;
+                pnode.velocity = new V(node.vx, node.vy).mul(100);
+                pnode.velocityRot = node.vt;
+                pnode.useVelocity = node.vx != null && node.vy != null && node.vt != null;
+                const blacklist = ["x", "y", "vx", "vy", "vt", "theta"];
+                for (const k in node) {
+                    if (blacklist.includes(k)) continue;
+                    pnode.setOption(k, node[k]);
+                }
+            });
+            obstacles.forEach(obstacle => {
+                obstacle = util.ensure(obstacle, "obj");
+                const pobstacle = new sublib.Project.Obstacle();
+                this.page.project.addItem(pobstacle);
+                pobstacle.pos = new V(obstacle.x, obstacle.y).mul(100);
+                pobstacle.radius = obstacle.radius*100;
+            });
+            const ppath = new sublib.Project.Path();
+            this.page.project.addPath(ppath);
+            ppath.nodes = ids;
+        });
+
         this.#generating = null;
         this.#buttons = new Set();
 
