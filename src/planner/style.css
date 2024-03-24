@@ -118,8 +118,22 @@
     
     pointer-events: auto;
 }
-#PROJECTPAGE > .main > .display > canvas {
+#PROJECTPAGE > .main > .display > .odom {
     z-index: 2;
+
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    width: 100%;
+    height: 100%;
+
+    display: none;
+
+    background-color: transparent;
+}
+#PROJECTPAGE > .main > .display > .odom.this {
+    display: block;
 }
 .global.item {
     position: absolute;

@@ -205,7 +205,7 @@ class RVisual extends core.Odometry2d.Render {
         this.#nodes = v.map(v => new sublib.Project.Node(v));
     }
 }
-class RVisualItem extends core.Odometry2d.Robot {
+class RVisualItem2d extends core.Odometry2d.Robot {
     #visual;
     #interp;
 
@@ -243,6 +243,59 @@ class RVisualItem extends core.Odometry2d.Robot {
             this.pos = node.pos;
             this.velocity = node.velocity;
             this.heading = node.heading * (180/Math.PI);
+        });
+
+        this.visual = visual;
+    }
+
+    get visual() { return this.#visual; }
+    set visual(v) {
+        v = (v instanceof RVisual) ? v : null;
+        if (this.visual == v) return;
+        this.#visual = v;
+    }
+    hasVisual() { return !!this.visual; }
+
+    get interp() { return this.#interp; }
+    set interp(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (this.interp == v) return;
+        this.#interp = v;
+    }
+}
+class RVisualItem3d extends core.Odometry3d.Render {
+    #visual;
+    #interp;
+
+    constructor(odometry, visual) {
+        super(odometry, 0, 0, "KitBot");
+
+        this.#visual = null;
+        this.#interp = 0;
+
+        this.addHandler("update", delta => {
+            if (!this.hasVisual()) return;
+            let p = this.interp;
+            let nodes = this.visual.nodes;
+            if (nodes.length <= 0) {
+                this.pos = 0;
+                return;
+            }
+            let node;
+            if (nodes.length > 1) {
+                let i = Math.floor((nodes.length-1)*p);
+                let j = Math.min(i+1, nodes.length-1);
+                let ni = nodes[i], nj = nodes[j];
+                p = ((nodes.length-1)*p) - i;
+                node = new sublib.Project.Node(
+                    util.lerp(ni.pos, nj.pos, p),
+                    ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
+                    util.lerp(ni.velocity, nj.velocity),
+                    0, true,
+                );
+            } else node = nodes[0];
+            this.pos = node.pos.div(100);
+            this.q = [Math.cos(node.heading/2), 0, 0, Math.sin(node.heading/2)];
         });
 
         this.visual = visual;
@@ -311,7 +364,6 @@ class RSelectable extends core.Odometry2d.Render {
 
         this.#item = null;
         this.#renderObject = null;
-
 
         let type = null;
         this.addHandler("change-item", () => {
@@ -502,7 +554,8 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
     get eTemplates() { return this.#eTemplates; }
 };
 App.ProjectPage = class AppProjectPage extends App.ProjectPage {
-    #odometry;
+    #odometry2d;
+    #odometry3d;
 
     #selected;
     #selectedPath;
@@ -560,22 +613,22 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.dragState.addHandler("move", e => {
                 let pos = new V(e.pageX, e.pageY);
                 let r;
-                r = this.odometry.canvas.getBoundingClientRect();
+                r = this.odometry2d.canvas.getBoundingClientRect();
                 let overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
                 if (prevOverRender != overRender) {
                     prevOverRender = overRender;
                     if (overRender) {
-                        ghostItem = this.odometry.render.addRender(new RSelectable(this.odometry.render, item));
+                        ghostItem = this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, item));
                         ghostItem.ghost = true;
                     } else {
-                        this.odometry.render.remRender(ghostItem);
+                        this.odometry2d.render.remRender(ghostItem);
                         ghostItem = null;
                     }
                 }
                 if (this.app.eDrag.children[0])
                     this.app.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
                 if (ghostItem && ghostItem.hasItem())
-                    ghostItem.item.pos.set(this.odometry.pageToWorld(pos));
+                    ghostItem.item.pos.set(this.odometry2d.pageToWorld(pos));
                 const panel = this.objectsPanel;
                 r = panel.eSpawnDelete.getBoundingClientRect();
                 let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
@@ -583,7 +636,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 else panel.eSpawnDelete.classList.remove("hover");
             });
             const stop = cancel => {
-                this.odometry.render.remRender(ghostItem);
+                this.odometry2d.render.remRender(ghostItem);
                 this.app.eDrag.innerHTML = "";
                 if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
                 const panel = this.objectsPanel;
@@ -648,9 +701,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eDisplay.appendChild(this.eBlockage);
         this.eBlockage.classList.add("blockage");
 
-        this.#odometry = new core.Odometry2d(this.eDisplay);
-        this.odometry.canvas.tabIndex = 1;
-        this.odometry.canvas.addEventListener("keydown", e => {
+        const odometryKeyDown = e => {
             if (this.choosing) return;
             if (!this.hasProject()) return;
             if (["Backspace", "Delete"].includes(e.code)) {
@@ -676,8 +727,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     this.paste();
                 }
             }
-        });
-        this.odometry.canvas.addEventListener("contextmenu", e => {
+        };
+        const odometryContextMenu = e => {
             if (this.choosing) return;
             let itm;
             let menu = new core.App.Menu();
@@ -732,12 +783,21 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             });
             this.app.contextMenu = menu;
             this.app.placeContextMenu(e.pageX, e.pageY);
-        });
-        this.odometry.canvas.addEventListener("mousedown", e => {
+        };
+
+        let cursorOverride = false;
+
+        this.#odometry2d = new core.Odometry2d();
+        this.eDisplay.appendChild(this.odometry2d.elem);
+        this.odometry2d.elem.classList.add("this");
+        this.odometry2d.canvas.tabIndex = 1;
+        this.odometry2d.canvas.addEventListener("keydown", odometryKeyDown);
+        this.odometry2d.canvas.addEventListener("contextmenu", odometryContextMenu);
+        this.odometry2d.canvas.addEventListener("mousedown", e => {
             if (e.button != 0) return;
             e.stopPropagation();
-            const hovered = this.odometry.hovered;
-            const hoveredPart = this.odometry.hoveredPart;
+            const hovered = this.odometry2d.hovered;
+            const hoveredPart = this.odometry2d.hoveredPart;
             if (this.choosing) {
                 if (!(hovered instanceof core.Odometry2d.Render)) return;
                 if (!(hovered.parent instanceof RSelectable)) return;
@@ -746,13 +806,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             }
             if (!(hovered instanceof core.Odometry2d.Render && hovered.parent instanceof RSelectable)) {
                 this.clearSelected();
-                let selectItem = this.odometry.render.addRender(new RSelect(this.odometry.render));
-                selectItem.a = this.odometry.pageToWorld(e.pageX, e.pageY);
+                let selectItem = this.odometry2d.render.addRender(new RSelect(this.odometry2d.render));
+                selectItem.a = this.odometry2d.pageToWorld(e.pageX, e.pageY);
                 selectItem.b = selectItem.a;
                 const mouseup = () => {
                     document.body.removeEventListener("mouseup", mouseup);
                     document.body.removeEventListener("mousemove", mousemove);
-                    this.odometry.render.remRender(selectItem);
+                    this.odometry2d.render.remRender(selectItem);
                     let a = selectItem.a, b = selectItem.b;
                     let r = new util.Rect(a, b.sub(a)).normalize();
                     if (!this.hasProject()) return;
@@ -762,7 +822,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     });
                 };
                 const mousemove = e => {
-                    selectItem.b = this.odometry.pageToWorld(e.pageX, e.pageY);
+                    selectItem.b = this.odometry2d.pageToWorld(e.pageX, e.pageY);
                 };
                 document.body.addEventListener("mouseup", mouseup);
                 document.body.addEventListener("mousemove", mousemove);
@@ -771,10 +831,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     const mouseup = () => {
                         document.body.removeEventListener("mouseup", mouseup);
                         document.body.removeEventListener("mousemove", mousemove);
-                        this.odometry.canvas.style.cursor = "";
+                        cursorOverride = false;
+                        this.odometry2d.canvas.style.cursor = "";
                     };
                     const mousemove = e => {
-                        this.odometry.canvas.style.cursor = hovered.parent.drag(hoveredPart, this.odometry.pageToWorld(e.pageX, e.pageY));
+                        cursorOverride = true;
+                        this.odometry2d.canvas.style.cursor = hovered.parent.drag(hoveredPart, this.odometry2d.pageToWorld(e.pageX, e.pageY));
                         this.editorRefresh();
                     };
                     document.body.addEventListener("mouseup", mouseup);
@@ -790,14 +852,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         this.addSelected(hovered.parent.item);
                     }
                 }
-                let oldPos = this.odometry.pageToWorld(e.pageX, e.pageY);
+                let oldPos = this.odometry2d.pageToWorld(e.pageX, e.pageY);
                 const mouseup = () => {
                     document.body.removeEventListener("mouseup", mouseup);
                     document.body.removeEventListener("mousemove", mousemove);
-                    this.odometry.canvas.style.cursor = "";
+                    cursorOverride = false;
+                    this.odometry2d.canvas.style.cursor = "";
                 };
                 const mousemove = e => {
-                    let newPos = this.odometry.pageToWorld(e.pageX, e.pageY);
+                    let newPos = this.odometry2d.pageToWorld(e.pageX, e.pageY);
                     let rel = newPos.sub(oldPos);
                     this.selected.forEach(id => {
                         if (!this.hasProject() || !this.project.hasItem(id)) return;
@@ -806,12 +869,22 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     });
                     oldPos.set(newPos);
                     this.editorRefresh();
-                    this.odometry.canvas.style.cursor = "move";
+                    cursorOverride = true;
+                    this.odometry2d.canvas.style.cursor = "move";
                 };
                 document.body.addEventListener("mouseup", mouseup);
                 document.body.addEventListener("mousemove", mousemove);
             }
         });
+
+        this.#odometry3d = new core.Odometry3d();
+        this.eDisplay.appendChild(this.odometry3d.elem);
+        this.odometry3d.canvas.tabIndex = 1;
+        this.odometry3d.canvas.addEventListener("keydown", odometryKeyDown);
+        this.odometry3d.canvas.addEventListener("contextmenu", odometryContextMenu);
+        this.odometry3d.controlType = null;
+        this.odometry3d.camera.position.set(0, 10, -0.01);
+        this.odometry3d.camera.lookAt(0, 0, 0);
 
         this.#eMaxMinBtn = document.createElement("button");
         this.eNavPost.appendChild(this.eMaxMinBtn);
@@ -921,9 +994,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         let timer = 0;
         this.addHandler("update", delta => {
-            this.odometry.update(delta);
-            this.odometry.size = this.hasProject() ? this.project.size : 0;
-            this.odometry.imageSrc = (this.hasProject() && this.project.hasTemplate()) ? templateImages[this.project.template] : null;
+            if (this.odometry2d.elem.classList.contains("this")) {
+                this.odometry2d.update(delta);
+                this.odometry2d.size = this.hasProject() ? this.project.size : 0;
+                this.odometry2d.imageSrc = (this.hasProject() && this.project.hasTemplate()) ? templateImages[this.project.template] : null;
+            }
+
+            if (this.odometry3d.elem.classList.contains("this")) {
+                this.odometry3d.update(delta);
+                this.odometry3d.size = this.hasProject() ? this.project.size : 0;
+                this.odometry3d.template = this.hasProject() ? this.project.template : null;
+            }
 
             if (!this.choosing)
                 this.displayPath = (this.hasProject() && this.project.hasPath(this.selectedPath)) ? this.project.getPath(this.selectedPath) : null;
@@ -941,7 +1022,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let node = this.project.getItem(id);
                 if (this.displayPathIndices) {
                     if (!(id in displayPathRenders))
-                        displayPathRenders[id] = this.odometry.render.addRender(new RLabel(this.odometry.render, null));
+                        displayPathRenders[id] = this.odometry2d.render.addRender(new RLabel(this.odometry2d.render, null));
                     delete toDelete[id];
                     let label = displayPathRenders[id];
                     label.item = node;
@@ -954,7 +1035,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 let lid = (i-1)+"~"+i;
                 if (this.displayPathLines) {
                     if (!(lid in displayPathRenders))
-                        displayPathRenders[lid] = this.odometry.render.addRender(new RLine(this.odometry.render, null, null));
+                        displayPathRenders[lid] = this.odometry2d.render.addRender(new RLine(this.odometry2d.render, null, null));
                     delete toDelete[lid];
                     let line = displayPathRenders[lid];
                     line.itemA = node2;
@@ -962,7 +1043,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 }
             }
             for (let id in toDelete) {
-                this.odometry.render.remRender(displayPathRenders[id]);
+                this.odometry2d.render.remRender(displayPathRenders[id]);
                 delete displayPathRenders[id];
             }
 
@@ -971,26 +1052,38 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.project.items.forEach(id => (itms[id] = this.project.getItem(id)));
             for (let id in itemRenders) {
                 if (id in itms) continue;
-                this.odometry.render.remRender(itemRenders[id]);
+                this.odometry2d.render.remRender(itemRenders[id].d2);
+                this.odometry3d.remRender(itemRenders[id].d3);
                 delete itemRenders[id];
             }
             for (let id in itms) {
-                if (!(id in itemRenders))
-                    itemRenders[id] = this.odometry.render.addRender(new RSelectable(this.odometry.render, null));
-                let render = itemRenders[id];
+                if (!(id in itemRenders)) {
+                    itemRenders[id] = {
+                        d2: this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, null)),
+                        d3: this.odometry3d.addRender(new core.Odometry3d.Render(this.odometry3d, 0, 0, "KitBot")),
+                    };
+                    itemRenders[id].d3.color = "--cb";
+                }
+                let render;
+                render = itemRenders[id].d2;
                 render.item = itms[id];
                 render.selected = this.isSelected(render);
                 if (render.renderObject instanceof core.Odometry2d.Robot)
                     render.renderObject.size = this.project.robotW;
+                render = itemRenders[id].d3;
+                render.pos = itms[id].pos.div(100);
+                render.q = [Math.cos(itms[id].heading/2), 0, 0, Math.sin(itms[id].heading/2)];
             }
 
             this.panels.forEach(name => this.getPanel(name).update(delta));
 
-            const hovered = this.odometry.hovered;
-            const hoveredPart = this.odometry.hoveredPart;
-            if (!(hovered instanceof core.Odometry2d.Render)) this.odometry.canvas.style.cursor = "crosshair";
-            else if (!(hovered.source instanceof RSelectable)) this.odometry.canvas.style.cursor = "crosshair";
-            else this.odometry.canvas.style.cursor = hovered.source.hover(hoveredPart);
+            if (!cursorOverride) {
+                const hovered = this.odometry2d.hovered;
+                const hoveredPart = this.odometry2d.hoveredPart;
+                if (!(hovered instanceof core.Odometry2d.Render)) this.odometry2d.canvas.style.cursor = "crosshair";
+                else if (!(hovered.source instanceof RSelectable)) this.odometry2d.canvas.style.cursor = "crosshair";
+                else this.odometry2d.canvas.style.cursor = hovered.source.hover(hoveredPart);
+            }
 
             if (timer > 0) return timer -= delta;
             timer = 1000;
@@ -1024,7 +1117,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 itm.y = Math.min(this.project.h, Math.max(0, itm.y));
             });
             if (this.selected.length > 1) {
-                if (!selectItem) selectItem = this.odometry.render.addRender(new RSelect(this.odometry.render));
+                if (!selectItem) selectItem = this.odometry2d.render.addRender(new RSelect(this.odometry2d.render));
                 let maxPos = new V(), minPos = new V();
                 let first = true;
                 this.selected.forEach(id => {
@@ -1045,7 +1138,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 selectItem.a = minPos;
                 selectItem.b = maxPos;
             } else {
-                this.odometry.render.remRender(selectItem);
+                this.odometry2d.render.remRender(selectItem);
                 selectItem = null;
             }
             this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
@@ -1066,7 +1159,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             });
             await this.refresh();
             await this.editorRefresh();
-            this.odometry.canvas.focus();
+            this.odometry2d.canvas.focus();
             const activeTemplate = await window.api.get("active-template");
             if (this.app.hasProject(data.id)) {
                 this.project = this.app.getProject(data.id);
@@ -1131,7 +1224,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return true;
     }
 
-    get odometry() { return this.#odometry; }
+    get odometry2d() { return this.#odometry2d; }
+    get odometry3d() { return this.#odometry3d; }
 
     get selected() { return [...this.#selected]; }
     set selected(v) {
@@ -1965,8 +2059,9 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
 
         this.addHandler("revisualize", () => {
             if (visual) {
-                this.page.odometry.render.remRender(visual.visual);
-                this.page.odometry.render.remRender(visual.item);
+                this.page.odometry2d.render.remRender(visual.visual);
+                this.page.odometry2d.render.remRender(visual.item.d2);
+                this.page.odometry3d.remRender(visual.item.d3);
             }
             visual = null;
             visualId = null;
@@ -1997,19 +2092,25 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (visualId == this.page.selectedPath) return;
             visualId = this.page.selectedPath;
             if (visual) {
-                this.page.odometry.render.remRender(visual.visual);
-                this.page.odometry.render.remRender(visual.item);
+                this.page.odometry2d.render.remRender(visual.visual);
+                this.page.odometry2d.render.remRender(visual.item.d2);
+                this.page.odometry3d.remRender(visual.item.d3);
             }
             visual = this.page.hasSelectedPath() ? { playback: new util.Playback() } : null;
             if (visual) {
-                visual.visual = this.page.odometry.render.addRender(new RVisual(this.page.odometry.render));
-                visual.item = this.page.odometry.render.addRender(new RVisualItem(this.page.odometry.render, visual.visual));
+                visual.visual = this.page.odometry2d.render.addRender(new RVisual(this.page.odometry2d.render));
+                visual.item = {
+                    d2: this.page.odometry2d.render.addRender(new RVisualItem2d(this.page.odometry2d.render, visual.visual)),
+                    d3: this.page.odometry3d.addRender(new RVisualItem3d(this.page.odometry3d, visual.visual)),
+                };
+                visual.item.d3.color = "--cb";
                 let theVisual = visual, theVisualId = visualId;
                 (async () => {
                     const clear = () => {
                         if (visual) {
-                            this.page.odometry.render.remRender(visual.visual);
-                            this.page.odometry.render.remRender(visual.item);
+                            this.page.odometry2d.render.remRender(visual.visual);
+                            this.page.odometry2d.render.remRender(visual.item.d2);
+                            this.page.odometry3d.remRender(visual.item.d3);
                         }
                         visual = null;
                     };
@@ -2056,8 +2157,9 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             }
             if (!visual) return;
             visual.playback.update(delta);
-            visual.item.interp = visual.playback.progress;
-            visual.item.size = this.page.hasProject() ? this.page.project.robotW : 0;
+            visual.item.d2.interp = visual.playback.progress;
+            visual.item.d3.interp = visual.playback.progress;
+            visual.item.d2.size = this.page.hasProject() ? this.page.project.robotW : 0;
             this.page.progress = visual.playback.progress;
             if (this.page.eNavActionButton.children[0])
                 this.page.eNavActionButton.children[0].name = visual.playback.finished ? "refresh" : visual.playback.paused ? "play" : "pause";
