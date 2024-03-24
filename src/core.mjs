@@ -5884,12 +5884,13 @@ export class Odometry3d extends Odometry {
     }
     get controlType() { return this.#controlType; }
     set controlType(v) {
-        v = String(v);
-        if (!["orbit", "free", "pan"].includes(v)) v = "orbit";
+        v = (v == null) ? null : String(v);
+        if (!["orbit", "free", "pan", null].includes(v)) v = "orbit";
         if (this.controlType == v) return;
         this.change("controlType", this.controlType, this.#controlType=v);
         this.updateControls();
     }
+    hasControlType() { return this.controlType != null; }
     get isCinematic() { return this.#isCinematic; }
     set isCinematic(v) {
         v = !!v;

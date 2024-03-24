@@ -6576,18 +6576,27 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         eOptions.appendChild(optionsForm.elem);
         optionsForm.side = "center";
 
-        this.#fQuality = optionsForm.addField(new core.Form.SelectInput("quality", [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }]));
+        this.#fQuality = optionsForm.addField(new core.Form.SelectInput(
+            "quality",
+            [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }],
+        ));
         this.fQuality.addHandler("change-value", () => {
             this.odometry.quality = this.fQuality.value;
         });
         this.fQuality.value = this.odometry.quality;
 
-        this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }]));
+        this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput(
+            "length-units",
+            [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }],
+        ));
         this.fUnitsLength1.addHandler("change-value", () => {
             if (!this.fUnitsLength1.hasValue()) return;
             this.lengthUnits = this.fUnitsLength1.value;
         });
-        this.#fUnitsLength2 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }]));
+        this.#fUnitsLength2 = optionsForm.addField(new core.Form.SelectInput(
+            "length-units",
+            [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }],
+        ));
         this.fUnitsLength2.showHeader = false;
         this.fUnitsLength2.addHandler("change-value", () => {
             if (!this.fUnitsLength2.hasValue()) return;
@@ -6598,7 +6607,10 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.fUnitsLength2.value = this.lengthUnits;
         });
 
-        this.#fUnitsAngle = optionsForm.addField(new core.Form.SelectInput("angle-units", [{ value: "deg", name: "Degrees" }, { value: "rad", name: "Radians" }, { value: "cycle", name: "Cycles" }]));
+        this.#fUnitsAngle = optionsForm.addField(new core.Form.SelectInput(
+            "angle-units",
+            [{ value: "deg", name: "Degrees" }, { value: "rad", name: "Radians" }, { value: "cycle", name: "Cycles" }],
+        ));
         this.fUnitsAngle.addHandler("change-value", () => {
             this.angleUnits = this.fUnitsAngle.value;
         });
@@ -6606,7 +6618,10 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.fUnitsAngle.value = this.angleUnits;
         });
 
-        this.#fOriginBlue = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }]));
+        this.#fOriginBlue = optionsForm.addField(new core.Form.SelectInput(
+            "origin",
+            [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }],
+        ));
         this.fOriginBlue.addHandler("change-value", () => {
             if (!this.fOriginBlue.hasValue()) return;
             this.origin = this.fOriginBlue.value;
@@ -6615,7 +6630,10 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.fOriginBlue.addHandler("apply", applyBlue);
         applyBlue();
 
-        this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }]));
+        this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput(
+            "origin",
+            [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }],
+        ));
         this.fOriginRed.showHeader = false;
         this.fOriginRed.addHandler("change-value", () => {
             if (!this.fOriginRed.hasValue()) return;
@@ -7208,7 +7226,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         let update;
 
-        this.#fViewRenderType = optionsForm.addField(new core.Form.SelectInput("camera-type", [{ value: "proj", name: "Projection" }, { value: "iso", name: "Isometric" }]));
+        this.#fViewRenderType = optionsForm.addField(new core.Form.SelectInput(
+            "camera-type",
+            [{ value: "proj", name: "Projection" }, { value: "iso", name: "Isometric" }],
+        ));
         this.fViewRenderType.showHeader = false;
         this.fViewRenderType.addHandler("change-value", () => {
             this.odometry.renderType = this.fViewRenderType.value;
@@ -7219,7 +7240,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.addHandler("change-odometry.renderType", update);
         update();
 
-        this.#fViewControlType = optionsForm.addField(new core.Form.SelectInput("movement-type", [{ value: "orbit", name: "Orbit" }, { value: "free", name: "Free" }, { value: "pan", name: "Pan" }]));
+        this.#fViewControlType = optionsForm.addField(new core.Form.SelectInput(
+            "movement-type",
+            [{ value: "orbit", name: "Orbit" }, { value: "free", name: "Free" }, { value: "pan", name: "Pan" }],
+        ));
         this.fViewControlType.showHeader = false;
         this.fViewControlType.addHandler("change-value", () => {
             this.odometry.controlType = this.fViewControlType.value;
@@ -7241,18 +7265,27 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.addHandler("change-odometry.isCinematic", update);
         update();
 
-        this.#fQuality = optionsForm.addField(new core.Form.SelectInput("quality", [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }]));
+        this.#fQuality = optionsForm.addField(new core.Form.SelectInput(
+            "quality",
+            [{ value: 2, name: "High (4x)" }, { value: 1, name: "Low (1x)" }],
+        ));
         this.fQuality.addHandler("change-value", () => {
             this.odometry.quality = this.fQuality.value;
         });
         this.fQuality.value = this.odometry.quality;
 
-        this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }]));
+        this.#fUnitsLength1 = optionsForm.addField(new core.Form.SelectInput(
+            "length-units",
+            [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }],
+        ));
         this.fUnitsLength1.addHandler("change-value", () => {
             if (!this.fUnitsLength1.hasValue()) return;
             this.lengthUnits = this.fUnitsLength1.value;
         });
-        this.#fUnitsLength2 = optionsForm.addField(new core.Form.SelectInput("length-units", [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }]));
+        this.#fUnitsLength2 = optionsForm.addField(new core.Form.SelectInput(
+            "length-units",
+            [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }],
+        ));
         this.fUnitsLength2.showHeader = false;
         this.fUnitsLength2.addHandler("change-value", () => {
             if (!this.fUnitsLength2.hasValue()) return;
@@ -7263,7 +7296,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.fUnitsLength2.value = this.lengthUnits;
         });
 
-        this.#fUnitsAngle = optionsForm.addField(new core.Form.SelectInput("angle-units", [{ value: "deg", name: "Degrees" }, { value: "rad", name: "Radians" }, { value: "cycle", name: "Cycles" }]));
+        this.#fUnitsAngle = optionsForm.addField(new core.Form.SelectInput(
+            "angle-units",
+            [{ value: "deg", name: "Degrees" }, { value: "rad", name: "Radians" }, { value: "cycle", name: "Cycles" }],
+        ));
         this.fUnitsAngle.addHandler("change-value", () => {
             this.angleUnits = this.fUnitsAngle.value;
         });
@@ -7271,7 +7307,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.fUnitsAngle.value = this.angleUnits;
         });
 
-        this.#fOriginBlue = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }]));
+        this.#fOriginBlue = optionsForm.addField(new core.Form.SelectInput(
+            "origin",
+            [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }],
+        ));
         this.fOriginBlue.addHandler("change-value", () => {
             if (!this.fOriginBlue.hasValue()) return;
             this.odometry.origin = this.fOriginBlue.value;
@@ -7280,7 +7319,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.fOriginBlue.addHandler("apply", applyBlue);
         applyBlue();
 
-        this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput("origin", [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }]));
+        this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput(
+            "origin",
+            [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }],
+        ));
         this.fOriginRed.showHeader = false;
         this.fOriginRed.addHandler("change-value", () => {
             if (!this.fOriginRed.hasValue()) return;
@@ -7395,7 +7437,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 node = (source && pose.solidHook.hasPath()) ? source.tree.lookup(pose.solidHook.path) : null;
                 pose.solidHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 pose.state.pose = pose.isShown ? pose : null;
-                [pose.state.offsetX, pose.state.offsetY] = new V(util.ensure(templates[this.template], "obj").size).div(-2).xy;
                 node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.update(delta);
@@ -7722,8 +7763,6 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     }
 };
 Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel.OdometryTab.Pose.State {
-    #offset;
-
     #value;
 
     #renders;
@@ -7731,8 +7770,6 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
     constructor() {
         super();
         
-        this.#offset = new util.V3();
-
         this.#value = [];
 
         this.#renders = [];
@@ -7774,15 +7811,6 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             } else this.pose.disable();
         });
     }
-
-    get offset() { return this.#offset; }
-    set offset(v) { this.#offset.set(v); }
-    get offsetX() { return this.offset.x; }
-    set offsetX(v) { this.offset.x = v; }
-    get offsetY() { return this.offset.y; }
-    set offsetY(v) { this.offset.y = v; }
-    get offsetZ() { return this.offset.z; }
-    set offsetZ(v) { this.offset.z = v; }
 
     get value() { return this.#value; }
     set value(v) {
@@ -8551,7 +8579,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-action", () => {
             if (!this.hasProject() || !this.hasSource()) return;
             if (this.source instanceof NTSource) {
-                // this.source.address = (this.source.address == null) ? this.project.config.source : null;
                 if (this.source.disconnected)
                     this.source.connect();
                 else this.source.disconnect();
