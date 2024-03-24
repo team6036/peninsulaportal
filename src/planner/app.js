@@ -1333,12 +1333,18 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     get state() {
         return {
             id: this.projectId,
+            selected: this.selected,
+            selectedPath: this.selectedPath,
+            panel: this.panel,
         };
     }
     async loadState(state) {
         state = util.ensure(state, "obj");
         await this.app.loadProjects();
         await this.app.setPage(this.name, { id: state.id });
+        this.selected = state.selected;
+        this.selectedPath = state.selectedPath;
+        this.panel = state.panel;
     }
 
     async determineSame(data) {
