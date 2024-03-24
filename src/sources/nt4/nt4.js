@@ -4,7 +4,7 @@ import * as lib from "../../lib.mjs";
 import * as msgpack from "./msgpack.js";
 
 
-const typestrIdxLookup = {
+const TYPEINDEXLOOKUP = {
     "boolean": 0,
     "double": 1,
     "int": 2,
@@ -22,31 +22,75 @@ const typestrIdxLookup = {
     "string[]": 20
 };
 
-class NTSubscription {
-    uid = -1;
-    topics = new Set();
-    options = new NTSubscriptionOptions();
-  
+export class NTSubscription extends util.Target {
+    #ID;
+    #topics;
+    #options;
+
+    constructor(o) {
+        super();
+
+        this.#options = new NTSubscription.Options(o.options);
+        this.set(o);
+    }
+
+    set(o) {
+        o = util.ensure(o, "obj");
+        this.ID = o.ID;
+        this.topics = o.topics;
+        this.options = o.options;
+        return this;
+    }
+
+    get ID() { return this.#ID; }
+    set ID(v) { this.#ID = util.ensure(v, "int", -1); }
+    get topics() { return [...this.#topics]; }
+    set topics(v) { this.#topics = util.ensure(v, "arr").map(topic => String(topic)); }
+    get options() { return this.#options; }
+    set options(v) { this.#options.set(v); }
+
     toSubscribeObj() {
         return {
-            topics: Array.from(this.topics),
-            subuid: this.uid,
+            subuid: this.ID,
+            topics: this.topics,
             options: this.options.toObj(),
         };
     }
-  
     toUnsubscribeObj() {
         return {
-            subuid: this.uid,
+            subuid: this.ID,
         };
     }
 }
+NTSubscription.Options = class NTSubscriptionOptions extends util.Target {
+    #periodic;
+    #all;
+    #topicsOnly;
+    #prefix;
 
-class NTSubscriptionOptions {
-    periodic = 0.1;
-    all = false;
-    topicsOnly = false;
-    prefix = false;
+    constructor(o) {
+        super();
+
+        this.set(o);
+    }
+
+    set(o) {
+        o = util.ensure(o, "obj");
+        this.periodic = o.periodic;
+        this.all = o.all;
+        this.topicsOnly = o.topicsOnly;
+        this.prefix = o.prefix;
+        return this;
+    }
+
+    get periodic() { return this.#periodic; }
+    set periodic(v) { this.#periodic = Math.max(0, util.ensure(v, "num", 0.1)); }
+    get all() { return this.#all; }
+    set all(v) { this.#all = !!v; }
+    get topicsOnly() { return this.#topicsOnly; }
+    set topicsOnly(v) { this.#topicsOnly = !!v; }
+    get prefix() { return this.#prefix; }
+    set prefix(v) { this.#prefix = !!v; }
 
     toObj() {
         return {
@@ -56,415 +100,506 @@ class NTSubscriptionOptions {
             prefix: this.prefix,
         };
     }
-}
+};
 
-export class NTTopic {
-    uid = -1;
-    name = "";
-    type = "";
-    properties = {};
+export class NTTopic extends util.Target {
+    #ID;
+    #name;
+    #type;
+    #properties;
+
+    constructor(o) {
+        super();
+
+        this.#properties = {};
+        this.set(o);
+    }
+
+    set(o) {
+        o = util.ensure(o, "obj");
+        this.ID = o.ID;
+        this.name = o.name;
+        this.type = o.type;
+        this.properties = o.properties;
+        return this;
+    }
+
+    get ID() { return this.#ID; }
+    set ID(v) { this.#ID = util.ensure(v, "int", -1); }
+    get name() { return this.#name; }
+    set name(v) { this.#name = String(v); }
+    get type() { return this.#type; }
+    set type(v) { this.#type = String(v); }
+    get properties() { return this.#properties; }
+    set properties(v) {
+        v = util.ensure(v, "obj");
+        this.#properties = {};
+        for (let k in v) {
+            if (v[k] == null) continue;
+            this.#properties[k] = v[k];
+        }
+    }
+    get typeIndex() {
+        if (this.type in TYPEINDEXLOOKUP)
+            return TYPEINDEXLOOKUP[this.type];
+        return 5;
+    }
 
     toPublishObj() {
         return {
+            pubuid: this.ID,
             name: this.name,
             type: this.type,
-            pubuid: this.uid,
             properties: this.properties,
         };
     }
-
     toUnpublishObj() {
         return {
-            pubuid: this.uid,
+            pubuid: this.ID,
         };
-    }
-
-    getTypeIdx() {
-        if (this.type in typestrIdxLookup)
-            return typestrIdxLookup[this.type];
-        return 5;
     }
 }
 
-export default class NTClient {
-    #name;
-    #onTopicAnnounce;
-    #onTopicUnannounce;
-    #onNewTopicData;
-    #onConnect;
-    #onDisconnect;
-    #onTimestamp;
-
-    #baseAddr;
+export class NTWebSocket extends util.Target {
+    #address;
     #ws;
-    #timestampInterval;
-    #addr;
-    #connectionActive;
-    #connectionRequested;
-    #serverTimeOffset;
-    #networkLatency;
-    #rxLengthCounter;
+
+    #connection;
+    #clientStartTime;
+    #clientStopTime;
+
+    #offset;
+    #latency;
+    #lengthCounter;
+
+    static STATES = {
+        DISCONNECTED: Symbol("DISCONNECTED"),
+        CONNECTING: Symbol("CONNECTING"),
+        CONNECTED: Symbol("CONNECTED"),
+    };
+
+    constructor(address) {
+        super();
+
+        this.#address = String(address);
+        this.#ws = null;
+        this.#clientStartTime = this.#clientStopTime = null;
+
+        this.#connection = NTWebSocket.STATES.DISCONNECTED;
+
+        this.#offset = 0;
+        this.#latency = 0;
+        this.#lengthCounter = 0;
+
+        this.addHandler("change-connection", (f, t) => {
+            if (t == NTWebSocket.STATES.DISCONNECTED) this.post("disconnected");
+            if (t == NTWebSocket.STATES.CONNECTING) this.post("connecting");
+            if (t == NTWebSocket.STATES.CONNECTED) this.post("connected");
+
+            if (t == NTWebSocket.STATES.CONNECTED) {
+                this.post("ws-connect");
+                this.#clientStartTime = this.clientTime;
+                this.#clientStopTime = null;
+            }
+            if (f == NTWebSocket.STATES.CONNECTED && t == NTWebSocket.STATES.DISCONNECTED) {
+                this.post("ws-disconnect");
+                this.#clientStopTime = this.clientTime;
+            }
+        });
+
+        this.addHandler("message", data => {
+            if (util.is(data, "str")) {
+                this.#lengthCounter += data.length;
+                let msgs = JSON.parse(data);
+                if (!util.is(msgs, "arr")) return;
+                msgs.forEach(msg => {
+                    if (!util.is(msg, "obj")) return;
+                    const method = msg["method"];
+                    if (!util.is(method, "str")) return;
+                    const params = msg["params"];
+                    if (!util.is(params, "obj")) return;
+                    let methodfs = {
+                        announce: () => this.post("announce", {
+                            ID: params.id,
+                            name: params.name,
+                            type: params.type,
+                            properties: params.properties,
+                        }),
+                        unannounce: () => this.post("unannounce", params.name),
+                        properties: () => this.post("properties", params.name, params.update),
+                    };
+                    if (method in methodfs) methodfs[method]();
+                });
+                return;
+            }
+            this.#lengthCounter += data.byteLength;
+            data = util.ensure(msgpack.deserialize(data, { multiple: true }), "arr");
+            data.forEach(data => {
+                data = util.ensure(data, "arr");
+                const ID = util.ensure(data[0], "num");
+                const ts = util.ensure(data[1], "num");
+                const typeIndex = util.ensure(data[2], "num");
+                const v = data[3];
+                if (ID < 0) {
+                    this.onTimestamp(ts, v);
+                    return;
+                }
+                this.post("topic", ID, ts, v);
+            });
+        });
+    }
+
+    get address() { return this.#address; }
+
+    get connection() { return this.#connection; }
+    get connected() { return this.connection == NTWebSocket.STATES.CONNECTED; }
+    get connecting() { return this.connection == NTWebSocket.STATES.CONNECTING; }
+    get disconnected() { return this.connection == NTWebSocket.STATES.DISCONNECTED; }
+
+    get offset() { return this.#offset; }
+    get latency() { return this.#latency; }
+
+    get clientTime() { return util.getTime()*1000; }
+    get serverTime() { return this.clientToServer(); }
+    clientToServer(t=null) {
+        t = util.ensure(t, "num", this.clientTime);
+        return t + this.offset;
+    }
+    serverToClient(t=null) {
+        t = util.ensure(t, "num", this.serverTime);
+        return t - this.offset;
+    }
+    get clientStartTime() {
+        if (this.#clientStartTime == null) return 0;
+        return this.#clientStartTime;
+    }
+    get serverStartTime() { return this.clientToServer(this.clientStartTime); }
+    get clientStopTime() {
+        if (this.connected) return this.clientTime;
+        if (this.#clientStopTime == null) return this.clientStartTime;
+        return this.#clientStopTime;
+    }
+    get serverStopTime() { return this.clientToServer(this.clientStopTime); }
+
+    connect() {
+        if (!this.disconnected) return false;
+        this.#offset = 0;
+        this.#latency = 0;
+        this.#lengthCounter = 0;
+        const ws = this.#ws = new WebSocket(this.address, "networktables.first.wpi.edu");
+        ws.binaryType = "arraybuffer";
+        ws.addEventListener("open", () => {
+            if (this.#ws != ws) return ws.close();
+
+            this.change("connection", this.connection, this.#connection=NTWebSocket.STATES.CONNECTED);
+
+            this.sendTimestamp();
+        });
+        ws.addEventListener("close", e => {
+            if (this.#ws != ws) return;
+
+            this.change("connection", this.connection, this.#connection=NTWebSocket.STATES.DISCONNECTED);
+
+            this.#ws = null;
+            if (e.reason) console.error(e.reason);
+        });
+        ws.addEventListener("error", e => {
+            if (this.#ws != ws) return ws.close();
+            
+            console.error(e);
+
+            this.post("error", e);
+
+            ws.close();
+        });
+        ws.addEventListener("message", e => {
+            if (this.#ws != ws) return ws.close();
+
+            this.post("message", e.data);
+        });
+        this.change("connection", this.connection, this.#connection=NTWebSocket.STATES.CONNECTING);
+        return true;
+    }
+    disconnect() {
+        if (this.disconnected) return false;
+        this.#ws.close();
+        return true;
+    }
+
+    sendTimestamp() {
+        let ts = this.clientTime;
+        let txData = msgpack.serialize([-1, 0, TYPEINDEXLOOKUP["int"], ts]);
+        this.sendBinary(txData);
+    }
+    onTimestamp(serverTS, clientTS) {
+        let rxTime = this.clientTime;
+        let rtt = rxTime - clientTS;
+        this.#latency = rtt / 2.0;
+        let serverTSAtRx = serverTS + this.#latency;
+        this.#offset = serverTSAtRx - rxTime;
+    }
+
+    subscribe(subscription) {
+        if (!(subscription instanceof NTSubscription)) return false;
+        return this.sendJSON("subscribe", subscription.toSubscribeObj());
+    }
+    unsubscribe(subscription) {
+        if (!(subscription instanceof NTSubscription)) return false;
+        return this.sendJSON("unsubscribe", subscription.toUnsubscribeObj());
+    }
+    publish(topic) {
+        if (!(topic instanceof NTTopic)) return false;
+        return this.sendJSON("publish", topic.toPublishObj());
+    }
+    unpublish(topic) {
+        if (!(topic instanceof NTTopic)) return false;
+        return this.sendJSON("unpublish", topic.toUnpublishObj());
+    }
+
+    setProperties(topic, properties) {
+        return this.sendJSON("setproperties", {
+            name: String(topic),
+            properties: properties,
+        });
+    }
+
+    sendJSON(method, data) {
+        if (!this.#ws) return false;
+        if (!this.connected) return false;
+        this.#ws.send(JSON.stringify([{ method: method, params: data }]));
+        return true;
+    }
+    sendBinary(data) {
+        if (!this.#ws) return false;
+        if (!this.connected) return false;
+        this.#ws.send(data);
+        return true;
+    }
+}
+
+export default class NTClient extends util.Target {
+    #address;
+    #ws;
+
+    #autoConnect;
 
     #subscriptions;
     #publishedTopics;
     #serverTopics;
 
-    constructor(addr, name, onTopicAnnounce, onTopicUnannounce, onNewTopicData, onConnect, onDisconnect, onTimestamp) {
-        this.#name = String(name);
-        this.#onTopicAnnounce = () => {};
-        this.#onTopicUnannounce = () => {};
-        this.#onNewTopicData = () => {};
-        this.#onConnect = () => {};
-        this.#onDisconnect = () => {};
-        this.#onTimestamp = () => {};
+    static STATES = NTWebSocket.STATES;
 
-        this.#baseAddr = "";
+    static newID() { return Math.floor(1000000000*Math.random()); }
+
+    constructor(address) {
+        super();
+
+        this.#address = null;
         this.#ws = null;
-        this.#timestampInterval = null;
-        this.#addr = "";
-        this.#connectionActive = false;
-        this.#connectionRequested = false;
-        this.#serverTimeOffset = 0;
-        this.#networkLatency = 0;
-        this.#rxLengthCounter = 0;
+        this.#autoConnect = false;
 
         this.#subscriptions = {};
         this.#publishedTopics = {};
         this.#serverTopics = {};
 
-        this.baseAddr = addr;
+        this.addHandler("change-connection", (f, t) => {
+            if (t == NTClient.STATES.DISCONNECTED) this.post("disconnected");
+            if (t == NTClient.STATES.CONNECTING) this.post("connecting");
+            if (t == NTClient.STATES.CONNECTED) this.post("connected");
+        });
+        this.addHandler("connected", () => {
+            Object.values(this.#publishedTopics).forEach(topic => this.#ws.publish(topic));
+            Object.values(this.#subscriptions).forEach(subscription => this.#ws.subscribe(subscription));
+        });
+        this.addHandler("disconnected", () => {
+            this.#serverTopics = {};
+        });
 
-        this.onTopicAnnounce = onTopicAnnounce;
-        this.onTopicUnannounce = onTopicUnannounce;
-        this.onNewTopicData = onNewTopicData;
-        this.onConnect = onConnect;
-        this.onDisconnect = onDisconnect;
-        this.onTimestamp = onTimestamp;
-    }
+        this.address = address;
 
-    get name() { return this.#name; }
-    get onTopicAnnounce() { return this.#onTopicAnnounce; }
-    set onTopicAnnounce(v) {
-        v = util.is(v, "func") ? v : (() => {});
-        if (this.onTopicAnnounce == v) return;
-        this.#onTopicAnnounce = v;
-    }
-    get onTopicUnannounce() { return this.#onTopicUnannounce; }
-    set onTopicUnannounce(v) {
-        v = util.is(v, "func") ? v : (() => {});
-        if (this.onTopicUnannounce == v) return;
-        this.#onTopicUnannounce = v;
-    }
-    get onNewTopicData() { return this.#onNewTopicData; }
-    set onNewTopicData(v) {
-        v = util.is(v, "func") ? v : (() => {});
-        if (this.onNewTopicData == v) return;
-        this.#onNewTopicData = v;
-    }
-    get onConnect() { return this.#onConnect; }
-    set onConnect(v) {
-        v = util.is(v, "func") ? v : (() => {});
-        if (this.onConnect == v) return;
-        this.#onConnect = v;
-    }
-    get onDisconnect() { return this.#onDisconnect; }
-    set onDisconnect(v) {
-        v = util.is(v, "func") ? v : (() => {});
-        if (this.onDisconnect == v) return;
-        this.#onDisconnect = v;
-    }
-    get onTimestamp() { return this.#onTimestamp; }
-    set onTimestamp(v) {
-        v = util.is(v, "func") ? v : (() => {});
-        if (this.onTimestamp == v) return;
-        this.#onTimestamp = v;
+        const timer = new util.Timer();
+        timer.play();
+        this.addHandler("update", delta => {
+            if (this.connected) {
+                if (timer.time < 5000) return;
+                timer.clear();
+                this.#ws.sendTimestamp();
+                return;
+            }
+            if (timer.time < 500) return;
+            timer.clear();
+            if (!this.autoConnect) return;
+            this.connect();
+        });
     }
 
-    get baseAddr() { return this.#baseAddr; }
-    set baseAddr(v) {
-        v = String(v);
-        if (this.baseAddr == v) return;
-        this.#baseAddr = v;
+    get address() { return this.#address; }
+    set address(v) {
+        v = (v == null) ? null : String(v);
+        if (this.address == v) return;
+        this.change("address", this.address, this.#address=v);
+        if (!this.hasAddress()) {
+            this.#ws.disconnect();
+            return this.#ws = null;
+        }
+        const address = this.address;
+        const port = 5810;
+        const name = "PeninsulaPortal-NT4Client";
+        const ws = this.#ws = new NTWebSocket("ws://"+address+":"+port+"/nt/"+name);
+        ws.addHandler("change-connection", (f, t) => this.change("connection", f, t));
+        ws.addHandler("error", e => {
+            if (this.#ws != ws) return ws.disconnect();
+            this.post("error", e);
+        });
+        ws.addHandler("announce", o => {
+            if (this.#ws != ws) return ws.disconnect();
+            const topic = new NTTopic(o);
+            this.#serverTopics[topic.name] = topic;
+            this.post("announce", topic);
+        });
+        ws.addHandler("unannounce", name => {
+            if (this.#ws != ws) return ws.disconnect();
+            const topic = this.#serverTopics[name];
+            if (!topic) return;
+            delete this.#serverTopics[name];
+            this.post("unannounce", topic);
+        });
+        ws.addHandler("properties", (name, properties) => {
+            if (this.#ws != ws) return ws.disconnect();
+            const topic = this.#serverTopics[name];
+            if (!topic) return;
+            for (let k in properties) {
+                let v = properties[k];
+                if (v == null)
+                    delete topic.properties[k];
+                else topic.properties[k] = v;
+            }
+        });
+        ws.addHandler("topic", (ID, ts, v) => {
+            if (this.#ws != ws) return ws.disconnect();
+            for (const topic of Object.values(this.#serverTopics)) {
+                if (ID != topic.ID) continue;
+                this.post("topic", topic, ts, v);
+                break;
+            }
+        });
     }
-    #hasWS() { return !!this.#ws; }
-    get addr() { return this.#addr; }
+    hasAddress() { return this.address != null; }
 
-    get connectionActive() { return this.#connectionActive; }
-    get connectionRequested() { return this.#connectionRequested; }
-    set connectionRequested(v) {
+    get autoConnect() { return this.#autoConnect; }
+    set autoConnect(v) {
         v = !!v;
-        if (this.connectionRequested == v) return;
-        this.#connectionRequested = v;
+        if (this.autoConnect == v) return;
+        this.change("autoConnect", this.autoConnect, this.#autoConnect=v);
     }
+
+    get connection() { return this.#ws ? this.#ws.connection : null; }
+    get connected() { return this.#ws ? this.#ws.connected : false }
+    get connecting() { return this.#ws ? this.#ws.connecting : false; }
+    get disconnected() { return this.#ws ? this.#ws.disconnected : true; }
+
+    get offset() { return this.#ws ? this.#ws.offset : null; }
+    get latency() { return this.#ws ? this.#ws.latency : null; }
+
+    get clientTime() { return this.#ws ? this.#ws.clientTime : 0; }
+    get serverTime() { return this.#ws ? this.#ws.serverTime : 0; }
+    get clientStartTime() { return this.#ws ? this.#ws.clientStartTime : 0; }
+    get serverStartTime() { return this.#ws ? this.#ws.serverStartTime : 0; }
+    get clientStopTime() { return this.#ws ? this.#ws.clientStopTime : 0; }
+    get serverStopTime() { return this.#ws ? this.#ws.serverStopTime : 0; }
 
     connect() {
-        if (this.connectionRequested) return;
-        this.connectionRequested = true;
-        this.#ws_connect();
-        this.#timestampInterval = setInterval(() => {
-            this.#ws_sendTimestamp();
-            let bitrateKbPerSec = ((this.#rxLengthCounter / 1000) * 8) / 5;
-            this.#rxLengthCounter = 0;
-            // console.log("[NT4] Bitrate: " + Math.round(bitrateKbPerSec).toString() + " kb/s");
-        }, 5000);
+        if (!this.#ws) return false;
+        return this.#ws.connect();
     }
-
     disconnect() {
-        if (!this.connectionRequested) return;
-        this.connectionRequested = false;
-        if (this.connectionActive && this.#hasWS()) this.#ws.close();
-        clearInterval(this.#timestampInterval);
+        if (!this.#ws) return false;
+        return this.#ws.disconnect();
     }
 
     subscribe(patterns, prefix, all=false, periodic=0.1) {
-        let sub = new NTSubscription();
-        sub.uid = this.#newUID();
-        sub.topics = new Set(patterns);
-        sub.options.prefix = !!prefix;
-        sub.options.all = !!all;
-        sub.options.periodic = Math.max(0, util.ensure(periodic, "num"));
-        this.#subscriptions[sub.uid] = sub;
-        if (this.connectionActive) this.#ws_subscribe(sub);
-        return sub.uid;
+        let subscription = new NTSubscription({
+            ID: NTClient.newID(),
+            topics: patterns,
+            options: {
+                prefix: prefix,
+                all: all,
+                periodic: periodic,
+            },
+        });
+        this.#subscriptions[subscription.ID] = subscription;
+        if (this.connected) this.#ws.subscribe(subscription);
+        return subscription.ID;
     }
-
     subscribeTopicsOnly(patterns, prefix) {
-        let sub = new NTSubscription();
-        sub.uid = this.#newUID();
-        sub.topics = new Set(patterns);
-        sub.options.prefix = !!prefix;
-        sub.options.topicsOnly = true;
-        this.#subscriptions[sub.uid] = sub;
-        if (this.connectionActive) this.#ws_subscribe(sub);
-        return sub.uid;
+        let subscription = new NTSubscription({
+            ID: NTClient.newID(),
+            topics: patterns,
+            options: {
+                prefix: prefix,
+                topicsOnly: topicsOnly,
+            },
+        });
+        this.#subscriptions[subscription.ID] = subscription;
+        if (this.connected) this.#ws.subscribe(subscription);
+        return subscription.ID;
+    }
+    unsubscribe(ID) {
+        let subscription = this.#subscriptions[ID];
+        if (!subscription) return;
+        delete this.#subscriptions[ID];
+        if (this.connected) this.#ws.unsubscribe(subscription);
+    }
+    unsubscribeAll() {
+        for (let ID in this.#subscriptions)
+            this.unsubscribe(ID);
     }
 
-    unsubscribe(uid) {
-        let sub = this.#subscriptions[uid];
-        if (!sub) return;
-        delete this.#subscriptions[uid];
-        if (this.connectionActive)
-            this.#ws_unsubscribe(subscription);
-    }
-    
-    clearSubscriptions() {
-        for (let uid in this.#subscriptions)
-            this.unsubscribe(uid);
-    }
-
-    setProperties(topic, properties) {
-        topic = String(topic);
+    setProperties(name, properties) {
+        name = String(name);
         properties = util.ensure(properties, "obj");
-
-        let top = (topic in this.#publishedTopics) ? this.#publishedTopics[topic] : (topic in this.#serverTopics) ? this.#serverTopics[topic] : null;
-        if (top) {
+        let topic = (name in this.#publishedTopics) ? this.#publishedTopics[name] : (name in this.#serverTopics) ? this.#serverTopics[name] : null;
+        if (topic) {
             for (let k in properties) {
                 let v = properties[k];
-                if (v == null) delete top.properties[k];
+                if (v == null)
+                    delete top.properties[k];
                 else top.properties[k] = v;
             }
         }
-        if (this.connectionActive)
-            this.#ws_setProperties(topic, properties);
+        if (this.connected) this.#ws.setProperties(name, properties);
     }
-    setPersistent(topic, persistent) {
-        this.setProperties(topic, { persistent: !!persistent });
-    }
-    setRetained(topic, retained) {
-        this.setProperties(topic, { retained: !!retained });
-    }
+    setPersistent(name, persistent) { return this.setProperties(name, { persistent: !!persistent }); }
+    setRetained(name, retained) { return this.setProperties(name, { retained: !!retained }); }
 
-    publishTopic(topic, type) {
-        topic = String(topic);
+    publishTopic(name, type) {
+        name = String(name);
         type = String(type);
-        let top = new NTTopic();
-        top.name = topic;
-        top.uid = this.#newUID();
-        top.type = type;
-        this.#publishedTopics[topic] = top;
-        if (this.connectionActive)
-            this.#ws_publish(top);
-    }
-    unpublishTopic(topic) {
-        topic = String(topic);
-        let top = this.#publishedTopics[topic];
-        if (!top) return;
-        delete this.#publishedTopics[topic];
-        if (this.connectionActive)
-            this.#ws_unpublish(top);
-    }
-
-    addSample(topic, v) {
-        this.addTSSample(topic, this.serverTime, v);
-    }
-    addTSSample(topic, ts, v) {
-        topic = String(topic);
-        ts = util.ensure(ts, "num");
-        let top = this.#publishedTopics[topic];
-        if (!top) return;
-        let txData = msgpack.serialize([top.uid, ts, top.getTypeIdx(), v]);
-        this.#ws_sendBinary(txData);
-    }
-
-    get clientTime() { return util.getTime() * 1000; }
-    clientToServer(ts=null) {
-        return NTClient.clientToServer(util.ensure(ts, "num", this.clientTime), this.serverTimeOffset);
-    }
-    static clientToServer(ts, offset) {
-        ts = util.ensure(ts, "num", 0);
-        offset = util.ensure(offset, "num", 0);
-        return ts + offset;
-    }
-    get serverTime() { return this.clientToServer(); }
-    get networkLatency() { return this.#networkLatency; }
-    get serverTimeOffset() { return this.#serverTimeOffset; }
-
-    #ws_sendTimestamp() {
-        let ts = this.clientTime;
-        let txData = msgpack.serialize([-1, 0, typestrIdxLookup["int"], ts]);
-        this.#ws_sendBinary(txData);
-    }
-    #ws_handleReceiveTimestamp(serverTS, clientTS) {
-        let rxTime = this.clientTime;
-        let rtt = rxTime - clientTS;
-        this.#networkLatency = rtt / 2.0;
-        let serverTSAtRx = serverTS + this.#networkLatency;
-        this.#serverTimeOffset = serverTSAtRx - rxTime;
-        this.onTimestamp(this.serverTimeOffset);
-    }
-
-    #ws_subscribe(sub) {
-        this.#ws_sendJSON("subscribe", sub.toSubscribeObj());
-    }
-    #ws_unsubscribe(sub) {
-        this.#ws_sendJSON("unsubscribe", sub.toUnsubscribeObj());
-    }
-    #ws_publish(topic) {
-        this.#ws_sendJSON("publish", topic.toPublishObj());
-    }
-    #ws_unpublish(topic) {
-        this.#ws_sendJSON("unpublish", topic.toUnpublishObj());
-    }
-    #ws_setProperties(topic, properties) {
-        this.#ws_sendJSON("setproperties", {
-            name: topic,
-            update: properties,
+        let topic = new NTTopic({
+            ID: NTClient.newID(),
+            name: name,
+            type: type,
         });
+        this.#publishedTopics[name] = topic;
+        if (this.connected) this.#ws.publish(topic);
     }
-    #ws_sendJSON(method, params) {
-        if (!this.#hasWS()) return;
-        if (this.#ws.readyState != WebSocket.OPEN) return;
-        this.#ws.send(JSON.stringify([{ method: method, params: params }]));
-    }
-    #ws_sendBinary(data) {
-        if (!this.#hasWS()) return;
-        if (this.#ws.readyState != WebSocket.OPEN) return;
-        this.#ws.send(data);
-    }
-
-    #ws_onOpen() {
-        this.#connectionActive = true;
-        this.#ws_sendTimestamp();
-        Object.values(this.#publishedTopics).forEach(topic => this.#ws_publish(topic));
-        Object.values(this.#subscriptions).forEach(sub => this.#ws_subscribe(sub));
-        this.onConnect();
-    }
-    #ws_onClose(e) {
-        this.#ws = null;
-        this.#connectionActive = false;
-        this.onDisconnect();
-        this.#serverTopics = {};
-        if (this.connectionRequested)
-            setTimeout(() => this.#ws_connect(), 500);
-        if (e.reason != "") throw e.reason;
-    }
-    #ws_onError() {
-        if (!this.#hasWS()) return;
-        this.#ws.close();
-    }
-    #ws_onMessage(e) {
-        if (util.is(e.data, "str")) {
-            this.#rxLengthCounter += e.data.length;
-            let msgData = JSON.parse(e.data);
-            if (!util.is(msgData, "arr")) return;
-            msgData.forEach(msg => {
-                if (!util.is(msg, "obj")) return;
-                if (!("method" in msg) || !("params" in msg)) return;
-                let method = msg["method"];
-                let params = msg["params"];
-                if (!util.is(method, "str")) return;
-                if (!util.is(params, "obj")) return;
-                let methodfs = {
-                    announce: () => {
-                        let top = new NTTopic();
-                        top.uid = params.id;
-                        top.name = params.name;
-                        top.type = params.type;
-                        top.properties = params.properties;
-                        this.#serverTopics[top.name] = top;
-                        this.onTopicAnnounce(top);
-                    },
-                    unannounce: () => {
-                        let top = this.#serverTopics.get(params.name);
-                        if (!top) return;
-                        delete this.#serverTopics[top.name];
-                        this.onTopicUnannounce(top);
-                    },
-                    properties: () => {
-                        let top = this.#serverTopics.get(params.name);
-                        if (!top) return;
-                        for (let k in params.update) {
-                            let v = params.update[k];
-                            if (v == null) delete top.properties[k];
-                            else top.properties[k] = v;
-                        }
-                    },
-                };
-                if (method in methodfs) methodfs[method]();
-            });
-        } else {
-            this.#rxLengthCounter += e.data.byteLength;
-            let rxArray = msgpack.deserialize(e.data, { multiple: true });
-            util.ensure(rxArray, "arr").forEach(data => {
-                data = util.ensure(data, "arr");
-                let uid = util.ensure(data[0], "num");
-                let ts = util.ensure(data[1], "num");
-                let typeIdx = util.ensure(data[2], "num");
-                let v = data[3];
-                if (uid >= 0) {
-                    let topic = null;
-                    for (let thisTopic of Object.values(this.#serverTopics)) {
-                        if (uid != thisTopic.uid) continue;
-                        topic = thisTopic;
-                        break;
-                    }
-                    if (!topic) return;
-                    this.onNewTopicData(topic, ts, v);
-                    return;
-                }
-                if (uid == -1) {
-                    this.#ws_handleReceiveTimestamp(ts, v);
-                    return;
-                }
-            });
-        }
+    unpublishTopic(name) {
+        name = String(name);
+        let topic = this.#publishedTopics[name];
+        if (!topic) return;
+        delete this.#publishedTopics[name];
+        if (this.connected) this.#ws.unpublish(topic);
     }
 
-    #ws_connect() {
-        const port = 5810;
-        const prefix = "ws://";
-
-        this.#addr = prefix + this.#baseAddr + ":" + port + "/nt/" + this.name;
-
-        this.#ws = new WebSocket(this.addr, "networktables.first.wpi.edu");
-        this.#ws.binaryType = "arraybuffer";
-        this.#ws.addEventListener("open", () => this.#ws_onOpen());
-        this.#ws.addEventListener("message", e => this.#ws_onMessage(e));
-        this.#ws.addEventListener("close", e => this.#ws_onClose(e));
-        this.#ws.addEventListener("error", () => this.#ws_onError());
+    addSampleWithTS(name, ts, v) {
+        name = String(name);
+        ts = util.ensure(ts, "num");
+        let topic = this.#publishedTopics[name];
+        if (!topic) return;
+        let data = msgpack.serialize([topic.ID, ts, topic.typeIndex, v]);
+        if (this.connected) this.#ws.sendBinary(data);
     }
+    addSample(name, v) { return this.addSampleWithTS(name, this.serverTime, v); }
 
-    #newUID() {
-        return Math.floor(Math.random() * 100000000);
-    }
+    update(delta) { this.post("update", delta); }
 }
