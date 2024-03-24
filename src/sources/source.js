@@ -388,10 +388,7 @@ Source.Field = class SourceField {
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart);
         let stop = this.getIndex(tsStop);
-        return this.#logs.slice(start+1, stop+1).map(log => {
-            let { ts, v } = log;
-            return { ts: ts, v: v };
-        });
+        return this.#logs.slice(start+1, stop+1);
     }
     update(v, ts=null) {
         v = Source.Field.ensureType(this.type, v);
@@ -408,6 +405,7 @@ Source.Field = class SourceField {
                 }
         }
         this.#logs.splice(i+1, 0, { ts: ts, v: v });
+        for (let j = i+1; j < this.#logs.length; j++) this.#logs[j].i = j;
         if (this.isStruct) {
             if (this.source.structDecode(this.path, this.baseType, this.isArray, v, ts)) return;
             this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);

@@ -5087,12 +5087,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (!node.hasField()) return v.disable();
                     if (!node.field.isJustPrimitive) return v.disable();
                     let log = node.field.getRange(...graphRange).map(log => {
-                        return { ts: log.ts, v: v.execExpr(log.v) };
+                        return { i: log.i, ts: log.ts, v: v.execExpr(log.v) };
                     });
                     if (!util.is(log, "arr")) return v.disable();
                     let start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
-                    if (start != null) log.unshift({ ts: graphRange[0], v: start });
-                    if (stop != null) log.push({ ts: graphRange[1], v: stop });
+                    if (start != null) log.unshift({ i: ((log.length > 0) ? log.at(0).i-1 : node.field.getIndex()), ts: graphRange[0], v: start });
+                    if (stop != null) log.push({ i: ((log.length > 0) ? log.at(-1).i+1 : node.field.getIndex()), ts: graphRange[1], v: stop });
                     if (log.length <= 0) return v.disable();
                     if (v.isShown) {
                         logs[v.path] = log;
@@ -5210,16 +5210,17 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             return p.v != log[i-1].v;
                         });
                         log.forEach((p, i) => {
+                            const odd = ((p.i%2)+2)%2 == 0;
                             let pts = p.ts, pv = p.v;
                             let npts = (i+1 >= log.length) ? graphRange[1] : log[i+1].ts;
                             let x = util.lerp(mnx, mxx, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             let nx = util.lerp(mnx, mxx, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
-                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color+(i%2==0?"2":"")) : v.color : "#fff";
+                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color+(odd?"2":"")) : v.color : "#fff";
                             ctx.fillRect(
                                 x, (padding+10+20*nDiscrete)*quality,
                                 Math.max(0, nx-x), 15*quality,
                             );
-                            ctx.fillStyle = core.PROPERTYCACHE.get("--v"+(i%2==0?"8":"1"));
+                            ctx.fillStyle = core.PROPERTYCACHE.get("--v"+(odd?"8":"1"));
                             ctx.font = (12*quality)+"px monospace";
                             ctx.textAlign = "left";
                             ctx.textBaseline = "middle";
@@ -6365,7 +6366,6 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.isClosed) return null;
-        console.log(this.hooks);
         for (let hook of this.hooks) {
             let r = hook.eBox.getBoundingClientRect();
             if (pos.x < r.left || pos.x > r.right) continue;
