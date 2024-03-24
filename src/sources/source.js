@@ -44,6 +44,8 @@ export default class Source extends util.Target {
 
         this.#playback = new util.Playback();
         this.playback.signal = this;
+
+        this.addHandler("update", delta => this.playback.update(delta));
     }
 
     get fields() { return Object.keys(this.#fields); }
@@ -139,6 +141,7 @@ export default class Source extends util.Target {
         return this.remField(path);
     }
     update(path, v, ts=null) {
+        if (arguments.length == 1) return this.post("update", arguments[0]);
         if (!this.hasField(path)) return false;
         return this.getField(path).update(v, ts);
     }

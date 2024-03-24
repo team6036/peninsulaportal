@@ -8551,7 +8551,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-action", () => {
             if (!this.hasProject() || !this.hasSource()) return;
             if (this.source instanceof NTSource) {
-                this.source.address = (this.source.address == null) ? this.project.config.source : null;
+                // this.source.address = (this.source.address == null) ? this.project.config.source : null;
+                if (this.source.disconnected)
+                    this.source.connect();
+                else this.source.disconnect();
                 return;
             }
             if (
@@ -8957,18 +8960,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     "csv-field": CSVFieldSource,
                 }[this.project.config.sourceType];
                 if (!util.is(constructor, "func")) this.source = null;
-                else {
-                    if (!(this.source instanceof constructor)) this.source = {
+                else if (!(this.source instanceof constructor)) {
+                    this.source = {
                         nt: () => new NTSource(null),
                         wpilog: () => new WPILOGSource(null),
                         "csv-time": () => new CSVTimeSource(null),
                         "csv-field": () => new CSVFieldSource(null),
                     }[this.project.config.sourceType]();
+                } else {
                     let typefs = {
                         nt: () => {
-                            if (this.source.address == null) return;
-                            if (this.source.address == this.project.config.source) return;
-                            this.source.address = null;
+                            this.source.address = this.project.config.source;
                         },
                     };
                     if (this.project.config.sourceType in typefs) typefs[this.project.config.sourceType]();
@@ -8976,7 +8978,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             } else this.source = null;
 
             if (this.hasSource())
-                this.source.playback.update(delta);
+                this.source.update(delta);
 
             this.app.eProjectInfoSourceTypes.forEach(type => {
                 let elem = this.app.getEProjectInfoSourceType(type);
