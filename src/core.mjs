@@ -4673,7 +4673,14 @@ export class Odometry2d extends Odometry {
 
         this.unit = "m";
 
+        const timer = new util.Timer();
+        timer.play();
         this.addHandler("render", delta => {
+            if (timer.time >= 250) {
+                timer.clear();
+                update();
+            }
+
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             const mnx = (ctx.canvas.width - this.w*scale*quality)/2, mxx = (ctx.canvas.width + this.w*scale*quality)/2;
@@ -5584,13 +5591,17 @@ export class Odometry3d extends Odometry {
 
         let fieldLock = false;
 
-        const timer = new util.Timer();
-        timer.play();
-
+        const timer1 = new util.Timer();
+        timer1.play();
+        const timer2 = new util.Timer();
+        timer2.play();
         this.addHandler("render", delta => {
-
-            if (contextLost && timer.time >= 500) {
-                timer.clear();
+            if (timer1.time >= 250) {
+                timer1.clear();
+                update();
+            }
+            if (contextLost && timer2.time >= 500) {
+                timer2.clear();
                 this.renderer.forceContextRestore();
             }
 
