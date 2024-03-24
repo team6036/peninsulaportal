@@ -5098,8 +5098,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         logs[v.path] = log;
                         nodes[v.path] = node;
                     }
-                    if (!["double", "float", "int"].includes(node.field.type)) return v.disable();
                     v.enable();
+                    if (!["double", "float", "int"].includes(node.field.type)) return;
                     let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
                     if (range[0] == null || range[1] == null) return range = subrange;
                     range[0] = Math.min(range[0], subrange[0]);
