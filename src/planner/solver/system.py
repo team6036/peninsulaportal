@@ -44,7 +44,7 @@ def apply_dynamics(X, U, dt, i, opti):
 m_dx = [-l * math.sqrt(2), l * math.sqrt(2), -l * math.sqrt(2), l * math.sqrt(2)]
 m_dy = [l * math.sqrt(2), l * math.sqrt(2), -l * math.sqrt(2), -l * math.sqrt(2)]
 
-def apply_kinematics(X, U, dt, i, opti):
+def apply_kinematics(X, U, dt, i, opti, percent=1):
 
     cosi = ca.cos(X[i+1, 2]) - ca.cos(X[i, 2]) #DONE TWICE BECAUSE REPEATED METHOD
     sini = ca.sin(X[i, 2]) - ca.sin(X[i+1, 2])
@@ -72,7 +72,7 @@ def apply_kinematics(X, U, dt, i, opti):
 
         v = vx**2 + vy**2
 
-        opti.subject_to(v < (cs.max_module_ground_speed * cs.free_speed_percent) ** 2)
+        opti.subject_to(v < (cs.max_module_ground_speed * cs.free_speed_percent * percent) ** 2)
 
         c = get_current(ca.sqrt(v) / cs.wheel_radius, 12)
         t = get_torque(c)
