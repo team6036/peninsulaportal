@@ -46,6 +46,8 @@ def override_velo(i, vx, vy, vt):
 way_i = np.linspace(0, N, len(w_x))
 way_i = way_i.astype(int)
 
+percents = []
+
 i = 0
 for node in data['nodes']:
     if node['vx'] is not None and node['vy'] is not None:
@@ -59,6 +61,11 @@ for node in data['nodes']:
 
     if 'theta_v' in node:
         opti.subject_to(X[way_i[i], 5] == 0)
+
+    if 'percent' in node:
+        percents.append(node['percent'])
+    else:
+        percents.append(1)
     i+=1
 
 
@@ -84,6 +91,7 @@ initDt = 5.0/ct
 for i in range(1, len(way_i)):
     from_i = way_i[i - 1]
     to_i = way_i[i]
+    percent = percents[i]
 
     dts.append(opti.variable())
 
@@ -94,7 +102,7 @@ for i in range(1, len(way_i)):
 
     for j in range(from_i, to_i):
         apply_dynamics(X, U, dts[i-1], j, opti)
-        apply_kinematics(X, U, dts[i-1], j, opti)
+        apply_kinematics(X, U, dts[i-1], j, opti, percent)
 
 
 xSpace = []
