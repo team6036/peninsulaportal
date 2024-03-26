@@ -895,13 +895,7 @@ export class App extends util.Target {
             } catch (e) { await this.doError("Spawn Error", "SpawnName: "+name, e); }
         });
         this.addHandler("cmd-reload", async () => await window.api.send("reload"));
-        this.addHandler("cmd-helpurl", async id => {
-            let url;
-            if (id == "ionicons") url = "https://ionic.io/ionicons";
-            else if (id == "electronjs") url = "https://www.electronjs.org/";
-            else url = await window.api.get(id);
-            await window.api.send("open", url);
-        });
+        this.addHandler("cmd-helpurl", async id => await window.api.send("open", await window.api.get(id)));
         this.addHandler("cmd-win-fullscreen", async v => {
             this.fullscreen = v;
         });
@@ -1573,7 +1567,7 @@ export class App extends util.Target {
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
         });
-        ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
+        ["repo", "db-host", "assets-host", "scout-url"].forEach(id => {
             let itm = menu.getItemById(id);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-helpurl", id));
@@ -1596,7 +1590,7 @@ export class App extends util.Target {
             if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
         });
-        ["ionicons", "electronjs", "repo", "db-host"].forEach(id => {
+        ["repo", "db-host", "assets-host", "scout-url"].forEach(id => {
             let itm = menu.getItemById(id);
             if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
@@ -2542,9 +2536,9 @@ App.Menu = class AppMenu extends util.Target {
         let itm = new App.Menu.Item("Documentation...", "document-text-outline");
         itms.push(itm);
         itm.id = "documentation";
-        itms.push(...["Ionicons", "Electron.js", "Github Repository", "Open Database"].map((label, i) => {
+        itms.push(...["Github Repository", "Open Database", "Assets Host", "Scout URL"].map((label, i) => {
             let itm = new App.Menu.Item(label);
-            itm.id = ["ionicons", "electronjs", "repo", "db-host"][i];
+            itm.id = ["repo", "db-host", "assets-host", "scout-url"][i];
             return itm;
         }));
         return itms;
