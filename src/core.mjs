@@ -5598,7 +5598,7 @@ export class Odometry3d extends Odometry {
         this.addHandler("render", delta => {
             if (timer1.time >= 250) {
                 timer1.clear();
-                update();
+                updateScene();
             }
             if (contextLost && timer2.time >= 500) {
                 timer2.clear();
