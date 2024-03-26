@@ -374,6 +374,9 @@ export default class App extends core.App {
                 putAgent();
                 window.onBuildAgent(putAgent);
                 setInterval(async () => {
+                    const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
+                    if (repoAnchor instanceof HTMLAnchorElement)
+                        repoAnchor.href = await window.api.get("val-repo");
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)
                         dbHostAnchor.href = await window.api.get("db-host");
@@ -383,9 +386,6 @@ export default class App extends core.App {
                     const scoutURLAnchor = this.eInfo.querySelector(":scope > .nav > a#scout-url");
                     if (scoutURLAnchor instanceof HTMLAnchorElement)
                         scoutURLAnchor.href = await window.api.get("scout-url");
-                    const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
-                    if (repoAnchor instanceof HTMLAnchorElement)
-                        repoAnchor.href = await window.api.get("val-repo");
                 }, 250);
             }
             this.#eLoads = document.querySelector("#PAGE > .content > .loads");
