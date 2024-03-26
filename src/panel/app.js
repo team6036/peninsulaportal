@@ -2023,6 +2023,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #explorer;
 
     #ePath;
+    #eShowToggle;
     #eDisplay;
 
     constructor(...a) {
@@ -2033,6 +2034,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         this.#path = null;
 
         this.#explorer = new FieldExplorer();
+        this.explorer.addHandler("change-showHidden", (f, t) => this.change("explorer.showHidden", f, t));
         this.explorer.addHandler("trigger2", (e, path) => (this.path += "/"+path));
         this.explorer.addHandler("contextmenu", (e, path) => {
             e = util.ensure(e, "obj");
@@ -2069,6 +2071,19 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         this.#ePath = document.createElement("div");
         this.elem.appendChild(this.ePath);
         this.ePath.classList.add("path");
+        this.#eShowToggle = document.createElement("button");
+        this.eShowToggle.classList.add("icon");
+        this.eShowToggle.innerHTML = "<ion-icon></ion-icon>";
+        const update = () => {
+            if (this.eShowToggle.children[0])
+                this.eShowToggle.children[0].name = this.explorer.showHidden ? "eye" : "eye-off";
+        };
+        this.addHandler("change-explorer.showHidden", update);
+        update();
+        this.eShowToggle.addEventListener("click", e => {
+            e.stopPropagation();
+            this.explorer.showHidden = !this.explorer.showHidden;
+        });
         this.elem.appendChild(this.explorer.elem);
         this.#eDisplay = document.createElement("div");
         this.elem.appendChild(this.eDisplay);
@@ -2077,16 +2092,16 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         if (a.length <= 0 || a.length > 1) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.BrowserTab) a = [a.path];
+            if (a instanceof Panel.BrowserTab) a = [a.path, a.explorer.showHidden];
             else if (util.is(a, "arr")) {
                 a = new Panel.BrowserTab(...a);
-                a = [a.path];
+                a = [a.path, a.explorer.showHidden];
             }
-            else if (util.is(a, "obj")) a = [a.path];
-            else a = [a];
+            else if (util.is(a, "obj")) a = [a.path, a.showHidden];
+            else a = [a, false];
         }
 
-        [this.path] = a;
+        [this.path, this.explorer.showHidden] = a;
 
         let prevNode = 0;
         let state = {};
@@ -2179,11 +2194,11 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         if (this.path == v) return;
         this.change("path", this.path, this.#path=v);
         this.ePath.innerHTML = "";
+        this.ePath.appendChild(this.eShowToggle);
         let path = this.path.split("/").filter(part => part.length > 0);
         if (path.length > 0) {
             let btn = document.createElement("button");
             this.ePath.appendChild(btn);
-            btn.classList.add("back");
             btn.classList.add("icon");
             btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
             btn.addEventListener("click", e => {
@@ -2215,11 +2230,13 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     get explorer() { return this.#explorer; }
 
     get ePath() { return this.#ePath; }
+    get eShowToggle() { return this.#eShowToggle; }
     get eDisplay() { return this.#eDisplay; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             path: this.path,
+            showHidden: this.explorer.showHidden,
         });
     }
 };

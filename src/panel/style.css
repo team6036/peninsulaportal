@@ -582,7 +582,7 @@
     font-size: 12px;
     user-select: none;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.back {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.icon {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
