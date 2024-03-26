@@ -1729,7 +1729,11 @@ export class App extends util.Target {
 
         if (this.hasPage(this.page)) await this.getPage(this.page).enter(data);
 
-        this.pages.forEach(name => this.getPage(name).elem.classList[(name == this.page ? "add" : "remove")]("this"));
+        this.pages.forEach(name => {
+            if (name == this.page)
+                this.getPage(name).elem.classList.add("this");
+            else this.getPage(name).elem.classList.remove("this");
+        });
     }
 
     get title() { return this.#title; }
@@ -4385,7 +4389,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             if (itm) itm.accelerator = null;
             this.app.markChange("*all");
             await this.app.post("cmd-save");
-            this.project = null;
+            // this.project = null;
             await this.postResult("post-leave", data);
         });
     }
