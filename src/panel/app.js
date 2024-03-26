@@ -8106,40 +8106,24 @@ export default class App extends core.AppFeature {
                             { id: "action", label: "?", accelerator: "CmdOrCtrl+K" },
                             {
                                 id: "source", label: "Select Source...", click: () => {},
-                                submenu: [
-                                    {
-                                        id: "source:nt", label: "NT4", type: "radio",
+                                submenu: ["nt", "wpilog", "csv-time", "csv-field"].map((name, i) => {
+                                    return {
+                                        id: "source:"+name,
+                                        label: {
+                                            nt: "NT4",
+                                            wpilog: "WPILOG",
+                                            "csv-time": "CSV-Time",
+                                            "csv-field": "CSV-Field",
+                                        }[name],
+                                        accelerator: "CmdOrCtrl+Shift+"+(i+1),
+                                        type: "radio",
                                         click: () => {
                                             const page = this.projectPage;
                                             if (!page.hasProject()) return;
-                                            page.project.config.sourceType = "nt";
+                                            page.project.config.sourceType = name;
                                         },
-                                    },
-                                    {
-                                        id: "source:wpilog", label: "WPILOG", type: "radio",
-                                        click: () => {
-                                            const page = this.projectPage;
-                                            if (!page.hasProject()) return;
-                                            page.project.config.sourceType = "wpilog";
-                                        },
-                                    },
-                                    {
-                                        id: "source:csv-time", label: "CSV-Time", type: "radio",
-                                        click: () => {
-                                            const page = this.projectPage;
-                                            if (!page.hasProject()) return;
-                                            page.project.config.sourceType = "csv-time";
-                                        },
-                                    },
-                                    {
-                                        id: "source:csv-field", label: "CSV-Field", type: "radio",
-                                        click: () => {
-                                            const page = this.projectPage;
-                                            if (!page.hasProject()) return;
-                                            page.project.config.sourceType = "csv-field";
-                                        },
-                                    },
-                                ],
+                                    };
+                                }),
                             },
                             "separator",
                         ];
