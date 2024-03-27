@@ -6757,6 +6757,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
                     (...en) => enode.explorer.rem(...en),
                     dumpFunc,
                 );
+            else enode.explorer.clear();
             enode.value = node.value;
             enode.tooltip = node.tooltip;
             if (util.is(node.dump, "func")) node.dump(enode);

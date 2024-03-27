@@ -17,7 +17,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                 const opt = util.ensure(data.opt, "obj");
                 this.progress(0);
                 const decoder = new WPILOGDecoder(data.source);
-                const source = new Source(false);
+                const source = new Source(true);
                 let entryId2Field = {};
                 let first = true;
                 decoder.build((record, progress) => {
@@ -67,7 +67,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                         "string[]": () => record.getStrArr(),
                     };
                     let v = (field.type in typefs) ? typefs[field.type]() : record.getRaw();
-                    field.update(v, ts);
+                    field.update(v, ts, true);
                     if (first) {
                         first = false;
                         source.tsMin = source.tsMax = ts;
