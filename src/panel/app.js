@@ -2178,7 +2178,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                             eType.textContent = node.field.type;
                             let display = getDisplay(node.field.type, value);
                             eValue.style.color = (display == null) ? "" : util.ensure(display.color, "str");
-                            eValue.style.fontSize = (["double", "float", "int"].includes(node.field.baseType) ? 32 : 16)+"px";
+                            eValue.style.fontSize = (node.field.isNumerical ? 32 : 16)+"px";
                             eValue.textContent = getRepresentation(value, node.field.type == "structschema");
                         }
                     };
@@ -5085,63 +5085,89 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 },
                 all: () => [minTime, maxTime],
             }[this.viewMode]();
-            let graphVars = [
-                { vars: this.lVars },
-                { vars: this.rVars },
-            ];
-            graphVars.forEach((o, i) => {
-                let vars = o.vars;
-                let range = [null, null];
-                let logs = {}, nodes = {};
+            let graphVars = [this.lVars, this.rVars].map(vars => {
+                return {
+                    vars: vars,
+                    nodes: {}, logs: {}, ranges: {},
+                    range: [null, null], step: 0,
+                };
+            });
+            graphVars.forEach(o => {
+                const { vars, nodes, logs, ranges, range } = o;
                 vars.forEach(v => {
                     let node;
+
                     node = v.shownHook.hasPath() ? source.tree.lookup(v.shownHook.path) : null;
                     v.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+
                     if (!v.shown) return;
-                    node = source.tree.lookup(v.path);
-                    if (!node) return v.disable();
-                    if (!node.hasField()) return v.disable();
-                    if (!node.field.isJustPrimitive) return v.disable();
-                    let log = node.field.getRange(...graphRange).map(log => {
-                        return { i: log.i, ts: log.ts, v: v.execExpr(log.v) };
-                    });
-                    let start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
-                    if (start != null) log.unshift({ i: ((log.length > 0) ? log.at(0).i-1 : node.field.getIndex(graphRange[0])), ts: graphRange[0], v: v.execExpr(start) });
-                    if (stop != null) log.push({ i: ((log.length > 0) ? log.at(-1).i+1 : node.field.getIndex(graphRange[1])), ts: graphRange[1], v: v.execExpr(stop) });
-                    if (log.length <= 0) return v.disable();
-                    if (v.isShown) {
-                        logs[v.path] = log;
+
+                    if (v.path in nodes) node = nodes[v.path];
+                    else {
+                        node = source.tree.lookup(v.path);
+                        if (!node) return v.disable();
+                        if (!node.hasField()) return v.disable();
+                        if (!node.field.isJustPrimitive) return v.disable();
                         nodes[v.path] = node;
                     }
+
+                    let log, subrange;
+                    if (v.path in logs) {
+                        log = logs[v.path];
+                        subrange = ranges[v.path];
+                    } else {
+                        subrange = [null, null];
+                        log = node.field.getRange(...graphRange).map(log => {
+                            let v2 = log.v;
+                            if (node.field.isNumerical) {
+                                v2 = v.execExpr(v2);
+                                if (subrange[0] == null) subrange[0] = v2;
+                                else subrange[0] = Math.min(subrange[0], v2);
+                                if (subrange[1] == null) subrange[1] = v2;
+                                else subrange[1] = Math.max(subrange[1], v2);
+                            }
+                            return { i: log.i, ts: log.ts, v: v2 };
+                        });
+                        const start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
+                        if (start != null) log.unshift({
+                            i: ((log.length > 0) ? log.at(0).i-1 : node.field.getIndex(graphRange[0])),
+                            ts: graphRange[0],
+                            v: v.execExpr(start),
+                        });
+                        if (stop != null) log.push({
+                            i: ((log.length > 0) ? log.at(-1).i+1 : node.field.getIndex(graphRange[1])),
+                            ts: graphRange[1],
+                            v: v.execExpr(stop),
+                        });
+                        if (log.length <= 0) return v.disable();
+                        logs[v.path] = log;
+                        ranges[v.path] = subrange;
+                    }
+
                     v.enable();
-                    if (!["double", "float", "int"].includes(node.field.type)) return;
-                    let subrange = [Math.min(...log.map(p => p.v)), Math.max(...log.map(p => p.v))];
-                    if (range[0] == null || range[1] == null) return range = subrange;
-                    range[0] = Math.min(range[0], subrange[0]);
-                    range[1] = Math.max(range[1], subrange[1]);
+
+                    if (!node.field.isNumerical) return;
+
+                    if (range[0] == null) range[0] = subrange[0];
+                    else range[0] = Math.min(range[0], subrange[0]);
+                    if (range[1] == null) range[1] = subrange[1];
+                    else range[1] = Math.min(range[1], subrange[1]);
                 });
-                range = range.map(v => util.ensure(v, "num"));
+                range[0] = util.ensure(range[0], "num");
+                range[1] = util.ensure(range[1], "num");
                 let step = lib.findStep(range[1]-range[0], 5);
                 range[0] = Math.floor(range[0]/step) - 1;
                 range[1] = Math.ceil(range[1]/step) + 1;
-                o.range = range;
                 o.step = step;
-                o.logs = logs;
-                o.nodes = nodes;
             });
-            let maxNSteps = 0;
+            const nStepsMax = Math.max(...graphVars.map(o => o.range[1]-o.range[0]));
             graphVars.forEach(o => {
-                let range = o.range;
-                maxNSteps = Math.max(maxNSteps, range[1]-range[0]);
-            });
-            graphVars.forEach(o => {
-                let range = o.range;
-                let nSteps = range[1]-range[0];
-                let addAbove = Math.ceil((maxNSteps-nSteps) / 2);
-                let addBelow = (maxNSteps-nSteps) - addAbove;
+                const { range } = o;
+                const nSteps = range[1]-range[0];
+                let addAbove = Math.ceil((nStepsMax-nSteps) / 2);
+                let addBelow = (nStepsMax-nSteps) - addAbove;
                 range[0] -= addBelow;
                 range[1] += addAbove;
-                o.range = range;
             });
             const timeStep = lib.findStep(graphRange[1]-graphRange[0], 10);
             const mnx = qpadding, mxx = ctx.canvas.width-qpadding;
@@ -5177,8 +5203,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 ctx.stroke();
             }
             ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
-            for (let i = 0; i <= maxNSteps; i++) {
-                let y = i / maxNSteps;
+            for (let i = 0; i <= nStepsMax; i++) {
+                let y = i / nStepsMax;
                 y = util.lerp(mny, mxy, 1-y);
                 ctx.beginPath();
                 ctx.moveTo(mnx, y);
@@ -5190,11 +5216,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             let foundTooltips = [];
             let nDiscrete = 0;
             graphVars.forEach((o, i) => {
-                let vars = o.vars;
-                let range = o.range;
-                let step = o.step;
-                let logs = o.logs;
-                let nodes = o.nodes;
+                const { vars, nodes, logs, range, step } = o;
                 let x1 = [mnx, mxx][i];
                 let x2 = [mnx - 5*quality, mxx + 5*quality][i];
                 let x3 = [mnx - 10*quality, mxx + 10*quality][i];
@@ -5217,9 +5239,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 vars.forEach(v => {
                     if (!(v.path in logs)) return;
                     if (!(v.path in nodes)) return;
-                    let log = logs[v.path];
-                    let node = nodes[v.path];
-                    if (!["double", "float", "int"].includes(node.field.type)) {
+                    const log = logs[v.path];
+                    const node = nodes[v.path];
+                    if (!node.field.isNumerical) {
                         log.forEach((p, i) => {
                             const odd = ((p.i%2)+2)%2 == 0;
                             let pts = p.ts, pv = p.v;
@@ -5240,7 +5262,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         nDiscrete++;
                         return;
                     }
-                    let ranges = [];
+                    const ranges = [];
                     for (let i = 0; i < log.length; i++) {
                         let p = log[i];
                         let ts = p.ts, v = p.v;
@@ -5305,7 +5327,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.font = (12*quality)+"px monospace";
             ctx.textBaseline = "top";
             ctx.textAlign = "left";
-            let ranges = [];
+            const ranges = [];
             [
                 {
                     value: (this.hasPage() && this.page.hasSource()) ? this.page.source.ts : 0,

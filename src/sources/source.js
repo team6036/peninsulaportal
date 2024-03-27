@@ -261,6 +261,7 @@ Source.Field = class SourceField {
     #baseType;
     #isPrimitive;
     #isJustPrimitive;
+    #isNumerical;
 
     #logs;
     #metaLogs;
@@ -316,6 +317,7 @@ Source.Field = class SourceField {
         this.#baseType = this.type.slice(this.isStruct ? 7 : 0, this.type.length - (this.isArray ? 2 : 0));
         this.#isPrimitive = Source.Field.TYPES.includes(this.baseType);
         this.#isJustPrimitive = this.isPrimitive && !this.isArray;
+        this.#isNumerical = this.isJustPrimitive && ["double", "float", "int"].includes(this.baseType);
 
         this.#logs = [];
         this.#metaLogs = [];
@@ -346,6 +348,7 @@ Source.Field = class SourceField {
     get baseType() { return this.#baseType; }
     get isPrimitive() { return this.#isPrimitive; }
     get isJustPrimitive() { return this.#isJustPrimitive; }
+    get isNumerical() { return this.#isNumerical; }
 
     get logs() { return [...this.#logs]; }
     set logs(v) { this.#logs = util.ensure(v, "arr"); }
