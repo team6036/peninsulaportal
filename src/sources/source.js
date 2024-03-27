@@ -77,7 +77,7 @@ export default class Source extends util.Target {
             if (this.hasField(field)) return false;
             this.#fields[field.path] = field;
             if (this.buildTree) {
-                let path = field.path.split("/").filter(part => part.length > 0);
+                let path = field.path.split("/");
                 let node = this.tree;
                 while (path.length > 0) {
                     let name = path.shift();
@@ -140,10 +140,10 @@ export default class Source extends util.Target {
     rem(path) {
         return this.remField(path);
     }
-    update(path, v, ts=null) {
+    update(path, v, ts=null, volatile=false) {
         if (arguments.length == 1) return this.post("update", arguments[0]);
         if (!this.hasField(path)) return false;
-        return this.getField(path).update(v, ts);
+        return this.getField(path).update(v, ts, volatile);
     }
     clear() {
         this.clearFields();
@@ -204,10 +204,13 @@ export default class Source extends util.Target {
     }
 
     toSerialized() {
+        const fields = {};
+        for (let name in this.#fields)
+            fields[name] = this.#fields[name].toSerialized();
         return {
             ts: this.ts,
             tsMin: this.tsMin, tsMax: this.tsMax,
-            fields: this.fieldObjects.map(field => field.toSerialized()),
+            fields: fields,
             tree: this.tree.toSerialized(),
             structDecodes: this.#structDecodes,
         };
@@ -224,7 +227,16 @@ export default class Source extends util.Target {
             decode.ts = util.ensure(decode.ts, "num");
             return decode;
         });
-        this.addField(util.ensure(data.fields, "arr").map(data => Source.Field.fromSerialized(this, data)));
+        this.#tree = Source.Node.fromSerialized(this, data.tree);
+        const fields = util.ensure(data.fields, "obj");
+        for (let name in fields) {
+            fields[name] = Source.Field.fromSerialized(this, fields[name]);
+            // relinking nodes and fields
+            const node = this.tree.lookup(name);
+            fields[name].node = node;
+            node.field = fields[name];
+        }
+        this.#fields = fields;
         this.createAllStructs();
         this.ts = data.ts;
         this.tsMin = data.tsMin;
@@ -240,6 +252,7 @@ Source.Field = class SourceField {
     #real;
 
     #path;
+    #pathArray;
     #name;
     #isHidden;
     #type;
@@ -292,7 +305,8 @@ Source.Field = class SourceField {
         this.#real = true;
 
         this.#path = util.generatePath(path);
-        path = this.path.split("/").filter(part => part.length > 0);
+        this.#pathArray = this.path.split("/");
+        path = this.path.split("/");
         this.#name = (path.length > 0) ? path.at(-1) : "";
         this.#isHidden = this.name.startsWith(".");
         if (type == null) throw new Error("Type is null");
@@ -321,6 +335,7 @@ Source.Field = class SourceField {
     set real(v) { this.#real = !!v; }
 
     get path() { return this.#path; }
+    get pathArray() { return this.#pathArray; }
 
     get name() { return this.#name; }
     get isHidden() { return this.#isHidden; }
@@ -333,16 +348,7 @@ Source.Field = class SourceField {
     get isJustPrimitive() { return this.#isJustPrimitive; }
 
     get logs() { return [...this.#logs]; }
-    set logs(v) {
-        this.#logs = util.ensure(v, "arr").map(log => {
-            log = util.ensure(log, "obj");
-            return {
-                ts: util.ensure(log.ts, "num"),
-                v: Source.Field.ensureType(this.type, log.v),
-            };
-        });
-        this.#logs.sort((a, b) => a.ts-b.ts);
-    }
+    set logs(v) { this.#logs = util.ensure(v, "arr"); }
 
     get metaLogs() { return [...this.#metaLogs]; }
     set metaLogs(v) {
@@ -358,7 +364,6 @@ Source.Field = class SourceField {
                 v: v,
             };
         });
-        this.#metaLogs.sort((a, b) => a.ts-b.ts);
     }
 
     getIndex(ts=null) {
@@ -392,8 +397,8 @@ Source.Field = class SourceField {
             return log;
         });
     }
-    update(v, ts=null) {
-        v = Source.Field.ensureType(this.type, v);
+    update(v, ts=null, volatile=false) {
+        if (!volatile) v = Source.Field.ensureType(this.type, v);
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getIndex(ts);
         if (this.isJustPrimitive) {
@@ -611,7 +616,8 @@ Source.Node = class SourceNode {
     }
     static fromSerialized(parent, data) {
         data = util.ensure(data, "obj");
-        let node = new Source.Node(parent, null, data.name, data.nodes);
+        let node = new Source.Node(parent, data.name, []);
+        node.nodes = util.ensure(data.nodes, "arr").map(data => this.fromSerialized(node, data));
         return node;
     }
 };
