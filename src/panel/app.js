@@ -2348,8 +2348,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.vars.forEach(v => {
                 v.node = source ? source.tree.lookup(v.path) : null;
                 if (!v.hasNode() || !v.node.hasField()) return;
-                let logs = v.node.field.logs;
-                logs.forEach(log => ts.add(log.ts));
+                v.node.field.logs.map(log => ts.add(log.ts));
             });
             this.#ts = ts = [...ts].sort((a, b) => a-b);
             this.vars.forEach(v => v.update(delta));
@@ -5106,10 +5105,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     let log = node.field.getRange(...graphRange).map(log => {
                         return { i: log.i, ts: log.ts, v: v.execExpr(log.v) };
                     });
-                    if (!util.is(log, "arr")) return v.disable();
                     let start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
-                    if (start != null) log.unshift({ i: ((log.length > 0) ? log.at(0).i-1 : node.field.getIndex()), ts: graphRange[0], v: start });
-                    if (stop != null) log.push({ i: ((log.length > 0) ? log.at(-1).i+1 : node.field.getIndex()), ts: graphRange[1], v: stop });
+                    if (start != null) log.unshift({ i: ((log.length > 0) ? log.at(0).i-1 : node.field.getIndex(graphRange[0])), ts: graphRange[0], v: v.execExpr(start) });
+                    if (stop != null) log.push({ i: ((log.length > 0) ? log.at(-1).i+1 : node.field.getIndex(graphRange[1])), ts: graphRange[1], v: v.execExpr(stop) });
                     if (log.length <= 0) return v.disable();
                     if (v.isShown) {
                         logs[v.path] = log;
@@ -5222,10 +5220,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     let log = logs[v.path];
                     let node = nodes[v.path];
                     if (!["double", "float", "int"].includes(node.field.type)) {
-                        log = log.filter((p, i) => {
-                            if (i <= 0) return true;
-                            return p.v != log[i-1].v;
-                        });
                         log.forEach((p, i) => {
                             const odd = ((p.i%2)+2)%2 == 0;
                             let pts = p.ts, pv = p.v;
@@ -6107,24 +6101,24 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         }
         return field.get();
     }
-    getValueRange(node, tsStart=null, tsStop=null) {
-        if (!(node instanceof Source.Node)) return null;
-        if (!node.hasField()) return null;
-        const field = node.field;
-        if (field.isArray)
-            return node.nodeObjects.map(node => this.getValue(node)).collapse();
-        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
-            let range = paths.map(path => {
-                let subnode = node.lookup(path.join("/"));
-                if (!(subnode instanceof Source.Node)) return null;
-                if (!subnode.hasField()) return null;
-                return subnode.field.getRange(tsStart, tsStop);
-            });
-            return range;
-        }
-        return field.get(tsStart, tsStop);
-    }
+    // getValueRange(node, tsStart=null, tsStop=null) {
+    //     if (!(node instanceof Source.Node)) return null;
+    //     if (!node.hasField()) return null;
+    //     const field = node.field;
+    //     if (field.isArray)
+    //         return node.nodeObjects.map(node => this.getValue(node)).collapse();
+    //     if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+    //         let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+    //         let range = paths.map(path => {
+    //             let subnode = node.lookup(path.join("/"));
+    //             if (!(subnode instanceof Source.Node)) return null;
+    //             if (!subnode.hasField()) return null;
+    //             return subnode.field.getRange(tsStart, tsStop);
+    //         });
+    //         return range;
+    //     }
+    //     return field.get(tsStart, tsStop);
+    // }
 
     getHovered(data, pos, options) {
         pos = new V(pos);
@@ -8605,7 +8599,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         source.shortFile = file.slice(i+1);
                         const progress = v => (this.app.progress = v);
                         source.addHandler("progress", progress);
+                        const t0 = util.getTime();
                         await source.import(file);
+                        const t1 = util.getTime();
+                        console.log(t1-t0);
                         source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
