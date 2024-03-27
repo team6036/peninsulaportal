@@ -6101,24 +6101,24 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         }
         return field.get();
     }
-    // getValueRange(node, tsStart=null, tsStop=null) {
-    //     if (!(node instanceof Source.Node)) return null;
-    //     if (!node.hasField()) return null;
-    //     const field = node.field;
-    //     if (field.isArray)
-    //         return node.nodeObjects.map(node => this.getValue(node)).collapse();
-    //     if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-    //         let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
-    //         let range = paths.map(path => {
-    //             let subnode = node.lookup(path.join("/"));
-    //             if (!(subnode instanceof Source.Node)) return null;
-    //             if (!subnode.hasField()) return null;
-    //             return subnode.field.getRange(tsStart, tsStop);
-    //         });
-    //         return range;
-    //     }
-    //     return field.get(tsStart, tsStop);
-    // }
+    getValueRange(node, tsStart=null, tsStop=null) {
+        if (!(node instanceof Source.Node)) return null;
+        if (!node.hasField()) return null;
+        const field = node.field;
+        if (field.isArray)
+            return node.nodeObjects.map(node => this.getValue(node)).collapse();
+        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+            let range = paths.map(path => {
+                let subnode = node.lookup(path.join("/"));
+                if (!(subnode instanceof Source.Node)) return null;
+                if (!subnode.hasField()) return null;
+                return subnode.field.getRange(tsStart, tsStop);
+            });
+            return range;
+        }
+        return field.getRange(tsStart, tsStop);
+    }
 
     getHovered(data, pos, options) {
         pos = new V(pos);
