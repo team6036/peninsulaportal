@@ -232,7 +232,6 @@ export default class Source extends util.Target {
         return this;
     }
 }
-// Source.Field = class SourceField extends util.Target {
 Source.Field = class SourceField {
     #source;
 
@@ -266,12 +265,6 @@ Source.Field = class SourceField {
 
     static ensureType(t, v) {
         t = String(t);
-        if (t.startsWith("struct:")) return v;
-        if (t.endsWith("[]")) {
-            t = t.slice(0, -2);
-            return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
-        }
-        if (t == "structschema") return toUint8Array(v);
         const map = {
             boolean: "bool",
             double: "float",
@@ -280,12 +273,17 @@ Source.Field = class SourceField {
             string: "str",
             null: "null",
         };
-        return (t in map) ? util.ensure(v, map[t]) : v;
+        if (t in map) return util.ensure(v, map[t]);
+        if (t.startsWith("struct:")) return v;
+        if (t.endsWith("[]")) {
+            t = t.slice(0, -2);
+            return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
+        }
+        if (t == "structschema") return toUint8Array(v);
+        return v;
     }
 
     constructor(source, path, type) {
-        // super();
-
         if (!(source instanceof Source)) throw new Error("Source is not of class Source");
         this.#source = source;
 
@@ -343,7 +341,7 @@ Source.Field = class SourceField {
                 v: Source.Field.ensureType(this.type, log.v),
             };
         });
-        this.#logs = this.#logs.filter((log, i) => (i <= 0 || log.v != this.#logs[i-1].v)).sort((a, b) => a.ts-b.ts);
+        this.#logs.sort((a, b) => a.ts-b.ts);
     }
 
     get metaLogs() { return [...this.#metaLogs]; }
@@ -360,6 +358,7 @@ Source.Field = class SourceField {
                 v: v,
             };
         });
+        this.#metaLogs.sort((a, b) => a.ts-b.ts);
     }
 
     getIndex(ts=null) {
@@ -388,7 +387,10 @@ Source.Field = class SourceField {
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart);
         let stop = this.getIndex(tsStop);
-        return this.#logs.slice(start+1, stop+1);
+        return this.#logs.slice(start+1, stop+1).map((log, i) => {
+            log.i = start+1+i;
+            return log;
+        });
     }
     update(v, ts=null) {
         v = Source.Field.ensureType(this.type, v);
@@ -405,7 +407,6 @@ Source.Field = class SourceField {
                 }
         }
         this.#logs.splice(i+1, 0, { ts: ts, v: v });
-        for (let j = i+1; j < this.#logs.length; j++) this.#logs[j].i = j;
         if (this.isStruct) {
             if (this.source.structDecode(this.path, this.baseType, this.isArray, v, ts)) return;
             this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
@@ -417,7 +418,9 @@ Source.Field = class SourceField {
                 this.source.getField(path).update(v, ts);
             });
         }
-        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.createStruct(this.name.slice(7), v);
+        if (this.#logs.length == 1)
+            if (this.name.startsWith("struct:") && this.type == "structschema")
+                this.source.createStruct(this.name.slice(7), v);
     }
     pop(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
@@ -429,7 +432,9 @@ Source.Field = class SourceField {
                 if (!node.hasField()) return;
                 node.field.pop(ts);
             });
-        if (this.name.startsWith("struct:") && this.type == "structschema") this.source.structHelper.remPattern(this.name.slice(7));
+        if (this.#logs.length == 0)
+            if (this.name.startsWith("struct:") && this.type == "structschema")
+                this.source.structHelper.remPattern(this.name.slice(7));
     }
 
     getMetaIndex(ts=null) {
@@ -458,9 +463,9 @@ Source.Field = class SourceField {
         tsStop = util.ensure(tsStop, "num");
         let start = this.getMetaIndex(tsStart);
         let stop = this.getMetaIndex(tsStop);
-        return this.#metaLogs.slice(start+1, stop+1).map(log => {
-            let { ts, v } = log;
-            return { ts: ts, v: v };
+        return this.#metaLogs.slice(start+1, stop+1).map((log, i) => {
+            log.i = start+1+i;
+            return log;
         });
     }
     updateMeta(v, ts=null) {
@@ -497,7 +502,6 @@ Source.Field = class SourceField {
         return field;
     }
 };
-// Source.Node = class SourceNode extends util.Target {
 Source.Node = class SourceNode {
     #parent;
 
@@ -509,8 +513,6 @@ Source.Node = class SourceNode {
     #nodes;
 
     constructor(parent, name, nodes) {
-        // super();
-
         if (!(parent instanceof Source || parent instanceof Source.Node)) throw new Error("Parent is not of class Source nor of class SourceNode");
         this.#parent = parent;
 
