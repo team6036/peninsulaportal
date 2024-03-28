@@ -1820,6 +1820,51 @@
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .form > .item > .header > .name {
     text-transform: uppercase;
 }
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section .hook {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section .hook > .name {
+    flex-basis: 100%;
+
+    min-width: 0px;
+    overflow: auto;
+
+    color: var(--v8);
+
+    font-size: 12px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section .hook > button {
+    align-self: stretch;
+
+    padding: 5px 10px;
+
+    border-radius: 5px;
+    opacity: 50%;
+
+    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), border var(--t), opacity var(--t);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section .hook > button:not(.this) {
+    display: none;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section .hook > button.on {
+    opacity: 100%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section .hook > .box {
+    flex-basis: 100%;
+
+    min-height: 30px;
+    margin: 1px;
+
+    background-color: var(--v1);
+    border-radius: 5px;
+    outline: 1px solid var(--v4);
+}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.odometry > .content > .info {
     position: absolute;
     bottom: 10px;
@@ -1981,53 +2026,6 @@
     top: 50%;
     right: 5px;
     transform: translateY(-50%);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook {
-    overflow: auto;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-    gap: 5px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > .name {
-    flex-basis: 100%;
-
-    min-width: 0px;
-    overflow: auto;
-
-    color: var(--v8);
-
-    font-size: 12px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > button {
-    align-self: stretch;
-
-    padding: 5px 10px;
-
-    border-radius: 5px;
-    opacity: 50%;
-
-    transition: --btn-c-size-v var(--t), background var(--t), color var(--t), border var(--t), opacity var(--t);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > button:not(.this) {
-    display: none;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > button.on {
-    opacity: 100%;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .hook > .box {
-    flex-basis: 100%;
-
-    min-height: 30px;
-    margin: 1px;
-
-    background-color: var(--v1);
-    border-radius: 5px;
-    outline: 1px solid var(--v4);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content .form {
     padding: 0px;

@@ -12,6 +12,25 @@ import CSVFieldSource from "../sources/csv/field/source.js";
 import { WorkerClient } from "../worker.js";
 
 
+function generatePositioning(value, lengthUnits, angleUnits, z2d=0) {
+    value = util.ensure(value, "arr").map(v => util.ensure(v, "num"));
+    if (value.length == 7)
+        return {
+            pos: value.slice(0, 3).map(v => lib.Unit.convert(v, lengthUnits, "m")),
+            q: value.slice(3, 7),
+        };
+    if (value.length == 3)
+        return {
+            pos: [...value.slice(0, 2).map(v => lib.Unit.convert(v, lengthUnits, "m")), util.ensure(z2d, "num")],
+            q: (d => [Math.cos(d/2), 0, 0, Math.sin(d/2)])(lib.Unit.convert(value[2], angleUnits, "rad")),
+        };
+    return {
+        pos: [0, 0, 0],
+        q: [0, 0, 0, 0],
+    };
+}
+
+
 class RLine extends core.Odometry2d.Render {
     #waypoints;
     #color;
@@ -4552,14 +4571,16 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         });
 
         if (this.constructor.CREATECTX) {
-            new ResizeObserver(() => {
+            const updateResize = () => {
                 let r = this.eContent.getBoundingClientRect();
                 this.canvas.width = r.width * this.quality;
                 this.canvas.height = r.height * this.quality;
                 this.canvas.style.width = r.width+"px";
                 this.canvas.style.height = r.height+"px";
                 this.update(0);
-            }).observe(this.eContent);
+            };
+            new ResizeObserver(updateResize).observe(this.eContent);
+            this.addHandler("add", updateResize);
         }
 
         let optionState = null;
@@ -4881,7 +4902,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     let fViewMode = form.addField(new core.Form.SelectInput("view-mode", viewModes));
                     fViewMode.showHeader = false;
                     fViewMode.addHandler("change-value", () => (this.viewMode = fViewMode.value));
-                    new ResizeObserver(() => {
+                    const updateResize = () => {
                         let r = fViewMode.elem.getBoundingClientRect();
                         let small = r.width < 250;
                         fViewMode.values = fViewMode.values.map(data => {
@@ -4897,7 +4918,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 return data;
                             }
                         });
-                    }).observe(fViewMode.elem);
+                    };
+                    new ResizeObserver(updateResize).observe(fViewMode.elem);
+                    this.addHandler("add", updateResize);
                     form.addField(new core.Form.Line());
                     let forms = {};
                     viewModes.forEach(mode => {
@@ -5095,13 +5118,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             graphVars.forEach(o => {
                 const { vars, nodes, logs, ranges, range } = o;
                 vars.forEach(v => {
-                    let node;
-
-                    node = v.shownHook.hasPath() ? source.tree.lookup(v.shownHook.path) : null;
-                    v.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                    v.hooks.forEach(hook => {
+                        let node = hook.hasPath() ? source.tree.lookup(hook.path) : null;
+                        hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                    });
 
                     if (!v.shown) return;
 
+                    let node;
                     if (v.path in nodes) node = nodes[v.path];
                     else {
                         node = source.tree.lookup(v.path);
@@ -6033,6 +6057,14 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             };
             if (id in idfs) idfs[id]();
         });
+
+        this.addHandler("update", delta => {
+            const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
+            this.hooks.forEach(hook => {
+                let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
+                hook.setFrom((node && node.hasField()) ? node.field.type : "*", this.getValue(node));
+            });
+        });
     }
 
     applyGlobal() {
@@ -6142,19 +6174,32 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         return field.getRange(tsStart, tsStop);
     }
 
+    get hooks() { return []; }
+
     getHovered(data, pos, options) {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.optionState == 0) return null;
         if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (!(data instanceof Source.Node)) return null;
+        if (!data.hasField()) return null;
+        for (let hook of this.hooks) {
+            let r = hook.eBox.getBoundingClientRect();
+            if (pos.x < r.left || pos.x > r.right) continue;
+            if (pos.y < r.top || pos.y > r.bottom) continue;
+            return {
+                r: r,
+                submit: () => {
+                    hook.path = data.path;
+                },
+            };
+        }
         const idfs = {
             p: () => {
                 for (let pose of this.poses) {
                     let hovered = pose.getHovered(data, pos, options);
                     if (hovered) return hovered;
                 }
-                if (!(data instanceof Source.Node)) return null;
-                if (!data.hasField()) return null;
                 return {
                     r: r,
                     submit: () => {
@@ -6681,7 +6726,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.fOriginRed.value = this.origin;
         });
 
-        new ResizeObserver(() => {
+        const updateResize = () => {
             let r = optionsForm.elem.getBoundingClientRect();
             let small = r.width < 250;
             const makeMapValue = f => {
@@ -6699,7 +6744,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsAngle.values = this.fUnitsAngle.values.map(makeMapValue(v => v.toUpperCase()));
-        }).observe(optionsForm.elem);
+        };
+        new ResizeObserver(updateResize).observe(optionsForm.elem);
+        this.addHandler("add", updateResize);
 
         this.quality = this.odometry.quality;
 
@@ -6751,13 +6798,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
                 pose.fTrail.app = this.app;
-                let node;
-                node = (source && pose.shownHook.hasPath()) ? source.tree.lookup(pose.shownHook.path) : null;
-                pose.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
-                node = (source && pose.ghostHook.hasPath()) ? source.tree.lookup(pose.ghostHook.path) : null;
-                pose.ghostHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                pose.hooks.forEach(hook => {
+                    let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
+                    hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                });
                 pose.state.pose = pose.isShown ? pose : null;
-                node = source ? source.tree.lookup(pose.path) : null;
+                let node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = node ? this.getValue(node) : null;
                 pose.state.trail = (pose.useTrail && node) ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
                 pose.state.update(delta);
@@ -7210,6 +7256,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     #fOriginRed;
     #fCameraPos;
 
+    #cameraHook;
+
     static CREATECTX = false;
 
     static PATTERNS = {
@@ -7397,7 +7445,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.fCameraPos.activeType = this.lengthUnits;
         });
 
-        new ResizeObserver(() => {
+        this.#cameraHook = new Panel.ToolCanvasTab.Hook("Camera Position Hook");
+        eOptions.appendChild(this.cameraHook.elem);
+        this.cameraHook.addHandler("change", (c, f, t) => this.change("cameraHook."+c, f, t));
+
+        const updateResize = () => {
             let r = optionsForm.elem.getBoundingClientRect();
             let small = r.width < 250;
             const makeMapValue = f => {
@@ -7416,42 +7468,39 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.fUnitsLength1.values = this.fUnitsLength1.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsLength2.values = this.fUnitsLength2.values.map(makeMapValue(v => v.toUpperCase()));
             this.fUnitsAngle.values = this.fUnitsAngle.values.map(makeMapValue(v => v.toUpperCase()));
-        }).observe(optionsForm.elem);
+        };
+        new ResizeObserver(updateResize).observe(optionsForm.elem);
+        this.addHandler("add", updateResize);
 
-        if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 8) a = [null];
+        if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 9) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.optionState];
+            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.cameraHook.to(), a.optionState];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof this.constructor.Pose) a = [a, null];
                 else {
                     a = new Panel.Odometry3dTab(...a);
-                    a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.optionState];
+                    a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.cameraHook.to(), a.optionState];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.renderType, a.controlType, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
+            else if (util.is(a, "obj")) a = [a.poses, a.template, a.renderType, a.controlType, a.lengthUnits, a.angleUnits, a.origin, a.cameraHook, a.optionState];
             else a = [[], "§null"];
         }
         if (a.length == 2) a = [...a, 0.5];
         if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, "blue+", a[2]];
+        if (a.length == 8) a = [...a.slice(0, 7), null, a[7]];
 
-        [this.poses, this.template, this.odometry.renderType, this.odometry.controlType, this.lengthUnits, this.angleUnits, this.odometry.origin, this.optionState] = a;
+        [this.poses, this.template, this.odometry.renderType, this.odometry.controlType, this.lengthUnits, this.angleUnits, this.odometry.origin, this.cameraHook, this.optionState] = a;
 
         const templates = core.GLOBALSTATE.getProperty("templates").value;
 
         this.addHandler("change-lengthUnits", () => {
             this.fCameraPos.activeType = this.lengthUnits;
         });
-        const updateField = () => {
-            this.wpilibGroup.scale.x = this.origin.startsWith("blue") ? 1 : -1;
-            this.wpilibGroup.scale.y = this.origin.endsWith("+") ? 1 : -1;
-            if (!this.theField) return;
-            this.theField.scale.x = this.origin.startsWith("blue") ? 1 : -1;
-            if (this.field._builtin) this.theField.scale.y = this.origin.endsWith("+") ? 1 : -1;
-            else this.theField.scale.z = this.origin.endsWith("+") ? 1 : -1;
-        };
-        this.addHandler("change-field", updateField);
-        this.addHandler("change-origin", updateField);
+
+        const render = this.odometry.addRender(new core.Odometry3d.Render(this.odometry, 0, "", "§cube"));
+        render.showObject = false;
+        const vector3 = new core.THREE.Vector3();
 
         this.addHandler("update", delta => {
             if (this.isClosed) {
@@ -7462,18 +7511,38 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             this.poses.forEach(pose => {
-                let node;
-                node = (source && pose.shownHook.hasPath()) ? source.tree.lookup(pose.shownHook.path) : null;
-                pose.shownHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
-                node = (source && pose.ghostHook.hasPath()) ? source.tree.lookup(pose.ghostHook.path) : null;
-                pose.ghostHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
-                node = (source && pose.solidHook.hasPath()) ? source.tree.lookup(pose.solidHook.path) : null;
-                pose.solidHook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                pose.hooks.forEach(hook => {
+                    let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
+                    hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                });
                 pose.state.pose = pose.isShown ? pose : null;
-                node = source ? source.tree.lookup(pose.path) : null;
+                let node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.update(delta);
             });
+
+            if (util.is(this.cameraHook.value, "arr")) {
+                let value = this.cameraHook.value;
+                const positioning = generatePositioning(value, this.lengthUnits, this.angleUnits);
+                render.pos = positioning.pos;
+                render.q = positioning.q;
+                let [x0, y0, z0] = [vector3.x, vector3.y, vector3.z];
+                render.theObject.getWorldPosition(vector3);
+                let [x1, y1, z1] = [vector3.x, vector3.y, vector3.z];
+                this.odometry.camera.position.set(
+                    this.odometry.camera.position.x + (x1-x0),
+                    this.odometry.camera.position.y + (y1-y0),
+                    this.odometry.camera.position.z + (z1-z0),
+                );
+                if (this.odometry.controlType == "orbit")
+                    this.odometry.controls.target.set(x1, y1, z1);
+                if (this.odometry.controlType == "pan")
+                    this.odometry.controls.target.set(
+                        this.odometry.controls.target.x + (x1-x0),
+                        this.odometry.controls.target.y + (y1-y0),
+                        this.odometry.controls.target.z + (z1-z0),
+                    );
+            }
 
             ignore = true;
             for (let i = 0; i < 3; i++)
@@ -7577,6 +7646,10 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     get fOriginRed() { return this.#fOriginRed; }
     get fCameraPos() { return this.#fCameraPos; }
 
+    get hooks() { return [this.cameraHook]; }
+    get cameraHook() { return this.#cameraHook; }
+    set cameraHook(o) { this.cameraHook.from(o); }
+
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             poses: this.poses,
@@ -7586,6 +7659,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             lengthUnits: this.lengthUnits,
             angleUnits: this.angleUnits,
             origin: this.odometry.origin,
+            cameraHook: this.cameraHook.to(),
             optionState: this.optionState,
         });
     }
@@ -7828,18 +7902,9 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     render.display.type = type;
                     render.display.data = value;
                     render.robot = this.pose.type;
-                    render.pos =
-                        (type == 7) ?
-                            value.slice(0, 3).map(v => lib.Unit.convert(v, this.tab.lengthUnits, "m")) :
-                        (type == 3) ?
-                            [...value.slice(0, 2).map(v => lib.Unit.convert(v, this.tab.lengthUnits, "m")), 0] :
-                        [0, 0, 0];
-                    render.q = 
-                        (type == 7) ?
-                            value.slice(3, 7) :
-                        (type == 3) ?
-                            (d => [Math.cos(d/2), 0, 0, Math.sin(d/2)])(lib.Unit.convert(value[2], this.tab.angleUnits, "rad")) :
-                        [0, 0, 0, 0];
+                    const positioning = generatePositioning(value, this.tab.lengthUnits, this.tab.angleUnits);
+                    render.pos = positioning.pos;
+                    render.q = positioning.q;
                 }
             } else this.pose.disable();
         });

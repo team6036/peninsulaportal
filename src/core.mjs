@@ -8,6 +8,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 
+export { THREE }
 
 export const LOADER = new GLTFLoader();
 
@@ -5603,10 +5604,7 @@ export class Odometry3d extends Odometry {
                 this.renderer.forceContextRestore();
             }
 
-            this.renders.forEach(render => {
-                [render.offsetX, render.offsetY] = this.size.div(-2).xy;
-                render.update(delta);
-            });
+            this.renders.forEach(render => render.update(delta));
 
             let colorR = PROPERTYCACHE.getColor("--cr");
             let colorG = PROPERTYCACHE.getColor("--cg");
@@ -5919,7 +5917,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     #odometry;
     
     #pos;
-    #offset;
     #q;
 
     #name;
@@ -5932,6 +5929,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
     #object;
     #theObject;
+    #showObject;
 
     #loadedObjects;
     
@@ -5943,8 +5941,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
         this.#pos = new util.V3();
         this.pos.addHandler("change", (c, f, t) => this.change("pos."+c, f, t));
-        this.#offset = new util.V3();
-        this.pos.addHandler("change", (c, f, t) => this.change("offset."+c, f, t));
         this.#q = new util.V4();
         this.q.addHandler("change", (c, f, t) => this.change("q."+c, f, t));
         this.addHandler("change", (c, f, t) => this.odometry.requestRedraw());
@@ -5959,6 +5955,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
         this.#object = null;
         this.#theObject = null;
+        this.#showObject = true;
 
         this.#loadedObjects = {};
         const node = new THREE.Mesh(
@@ -6115,9 +6112,9 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             }
             let r = this.odometry.canvas.getBoundingClientRect();
             this.theObject.position.set(
-                this.x + this.offsetX/100,
-                this.y + this.offsetY/100,
-                this.z + this.offsetZ/100,
+                this.x - this.odometry.size.x/200,
+                this.y - this.odometry.size.y/200,
+                this.z,
             );
             this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
             let hovered = false;
@@ -6186,15 +6183,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     set y(v) { this.pos.y = v; }
     get z() { return this.pos.z; }
     set z(v) { this.pos.z = v; }
-
-    get offset() { return this.#offset; }
-    set offset(v) { this.#offset.set(v); }
-    get offsetX() { return this.offset.x; }
-    set offsetX(v) { this.offset.x = v; }
-    get offsetY() { return this.offset.y; }
-    set offsetY(v) { this.offset.y = v; }
-    get offsetZ() { return this.offset.z; }
-    set offsetZ(v) { this.offset.z = v; }
 
     get q() { return this.#q; }
     set q(v) { this.q.set(v); }
@@ -6267,11 +6255,22 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 obj.material = obj.material.clone();
                 obj.material._allianceMaterial = allianceMaterial;
             });
+            if (this.showObject) this.theObject.scale.set(1, 1, 1);
+            else this.theObject.scale.set(0, 0, 0);
             this.odometry.wpilibGroup.add(this.theObject);
         }
         this.odometry.requestRedraw();
     }
     hasObject() { return !!this.object; }
+    get showObject() { return this.#showObject; }
+    set showObject(v) {
+        v = !!v;
+        if (this.showObject == v) return;
+        this.change("showObject", this.showObject, this.#showObject=v);
+        if (!this.hasObject()) return;
+        if (this.showObject) this.theObject.scale.set(1, 1, 1);
+        else this.theObject.scale.set(0, 0, 0);
+    }
 
     update(delta) { this.post("update", delta); }
 };
