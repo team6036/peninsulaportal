@@ -273,7 +273,6 @@ Source.Field = class SourceField {
         "int", "int[]",
         "raw",
         "string", "string[]",
-        "null",
         "structschema",
     ];
 
@@ -285,7 +284,6 @@ Source.Field = class SourceField {
             float: "float",
             int: "int",
             string: "str",
-            null: "null",
         };
         if (t in map) return util.ensure(v, map[t]);
         if (t.startsWith("struct:")) return v;
