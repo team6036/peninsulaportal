@@ -4394,7 +4394,6 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             if (itm) itm.accelerator = null;
             this.app.markChange("*all");
             await this.app.post("cmd-save");
-            // this.project = null;
             await this.postResult("post-leave", data);
         });
     }
@@ -4674,7 +4673,7 @@ export class Odometry2d extends Odometry {
         this.#image = new Image();
         this.#imageShow = null;
 
-        this.#padding = 0;
+        this.#padding = new util.V4();
 
         this.#unit = null;
 
@@ -4692,8 +4691,10 @@ export class Odometry2d extends Odometry {
 
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            const mnx = (ctx.canvas.width - this.w*scale*quality)/2, mxx = (ctx.canvas.width + this.w*scale*quality)/2;
-            const mny = (ctx.canvas.height - this.h*scale*quality)/2, mxy = (ctx.canvas.height + this.h*scale*quality)/2;
+            const cx = (ctx.canvas.width - quality*(padding.l+padding.r))/2 + quality*padding.l;
+            const cy = (ctx.canvas.height - quality*(padding.t+padding.b))/2 + quality*padding.t;
+            const mnx = cx - this.w*scale*quality/2, mxx = cx + this.w*scale*quality/2;
+            const mny = cy - this.h*scale*quality/2, mxy = cy + this.h*scale*quality/2;
             
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
@@ -4810,13 +4811,24 @@ export class Odometry2d extends Odometry {
     }
 
     get padding() { return this.#padding; }
-    set padding(v) { this.#padding = Math.max(0, util.ensure(v, "num")); }
+    set padding(v) { this.#padding.set(v); }
+    get paddingTop() { return this.padding.t; }
+    set paddingTop(v) { this.padding.t = v; }
+    get paddingBottom() { return this.padding.b; }
+    set paddingBottom(v) { this.padding.b = v; }
+    get paddingLeft() { return this.padding.l; }
+    set paddingLeft(v) { this.padding.l = v; }
+    get paddingRight() { return this.padding.r; }
+    set paddingRight(v) { this.padding.r = v; }
 
     get unit() { return this.#unit; }
     set unit(v) { this.#unit = String(v); }
 
     get scale() {
-        return Math.min(((this.canvas.width/this.quality) - 2*this.padding)/this.w, ((this.canvas.height/this.quality) - 2*this.padding)/this.h);
+        return Math.min(
+            ((this.canvas.width/this.quality) - (this.padding.l+this.padding.r))/this.w,
+            ((this.canvas.height/this.quality) - (this.padding.t+this.padding.b))/this.h,
+        );
     }
 
     get hovered() { return this.render.theHovered; }
@@ -5362,7 +5374,6 @@ export class Odometry3d extends Odometry {
                     obj.position.set(
                         obj.position.x - (bbox.max.x+bbox.min.x)/2,
                         obj.position.y - (bbox.max.y+bbox.min.y)/2,
-                        // obj.position.z - (bbox.max.z+bbox.min.z)/2,
                         obj.position.z - bbox.min.z,
                     );
                     [obj, pobj] = [new THREE.Object3D(), obj];
