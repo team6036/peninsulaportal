@@ -5992,16 +5992,16 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 obj.add(pobj);
                 pobj.quaternion.copy(THREE.Quaternion.fromRotationSequence([
                     [
-                        [{ axis:"z", angle:-90 }],
-                        [{ axis:"z", angle:90 }],
+                        [{ axis: "z", angle: -90 }],
+                        [{ axis: "z", angle: 90 }],
                     ],
                     [
                         [],
-                        [{ axis:"z", angle:180 }],
+                        [{ axis: "z", angle: 180 }],
                     ],
                     [
-                        [{ axis:"x", angle:90}],
-                        [{ axis:"x", angle:-90}],
+                        [{ axis: "x", angle: 90 }],
+                        [{ axis: "x", angle: -90 }],
                     ],
                 ][j][i]));
                 this.#loadedObjects["§arrow"+"+-"[i]+"xyz"[j]] = obj;
