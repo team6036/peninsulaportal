@@ -1379,6 +1379,17 @@ export class V4 extends Target {
     get wxyz() { return [this.w, this.x, this.y, this.z]; }
     set wxyz(v) { [this.w, this.x, this.y, this.z] = new V4(v).wxyz; }
 
+    get t() { return this.w; }
+    set t(v) { this.w = v; }
+    get b() { return this.x; }
+    set b(v) { this.x = v; }
+    get l() { return this.y; }
+    set l(v) { this.y = v; }
+    get r() { return this.z; }
+    set r(v) { this.z = v; }
+    get tblr() { return [this.t, this.b, this.l, this.r]; }
+    set tblr(v) { [this.t, this.b, this.l, this.r] = new V4(v).tblr; }
+
     set(...a) { this.wxyz = a; return this; }
 
     add(...a) {
@@ -1440,6 +1451,7 @@ export class V4 extends Target {
 
     toJSON() {
         return Reviver.revivable(this.constructor, {
+            w: this.w,
             x: this.x,
             y: this.y,
             z: this.z,

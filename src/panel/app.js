@@ -4856,6 +4856,8 @@ Panel.ToolCanvasTab.Hook.Toggle = class PanelToolCanvasTabHookToggle extends uti
     }
 };
 Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
+    #padding;
+
     #lVars; #rVars;
 
     #viewMode;
@@ -4866,11 +4868,15 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 
         this.elem.classList.add("graph");
 
+        this.#padding = new util.V4();
+
         this.#lVars = new Set();
         this.#rVars = new Set();
 
         this.#viewMode = "all";
         this.#viewParams = {};
+
+        this.padding = 40;
 
         ["l", "v", "r"].forEach(id => {
             const elem = document.createElement("div");
@@ -5021,9 +5027,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (id in idfs) idfs[id]();
         });
 
-        const quality = this.quality = 2;
-        const padding = 40;
-        const qpadding = padding*quality;
+        this.quality = 2;
 
         let mouseX = 0, mouseY = 0, mouseDown = false, mouseAlt = false;
         this.canvas.addEventListener("mousemove", e => {
@@ -5031,12 +5035,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             eGraphTooltip.style.top = e.pageY+"px";
             let r = this.canvas.getBoundingClientRect();
             let x = e.pageX;
-            x -= r.left + padding;
-            x /= r.width - 2*padding;
+            x -= r.left + this.paddingLeft;
+            x /= r.width - (this.paddingLeft+this.paddingRight);
             mouseX = x;
             let y = e.pageY;
-            y -= r.top + padding;
-            y /= r.height - 2*padding;
+            y -= r.top + this.paddingTop;
+            y /= r.height - (this.paddingTop+this.paddingBottom);
             mouseY = y;
         });
         this.canvas.addEventListener("mouseenter", e => {
@@ -5090,7 +5094,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         this.addHandler("update", delta => {
             if (this.isClosed) return;
             
-            const ctx = this.ctx;
+            const ctx = this.ctx, quality = this.quality;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             if (!this.hasPage() || !this.page.hasSource()) return;
             const source = this.page.source;
@@ -5181,7 +5185,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (range[0] == null) range[0] = subrange[0];
                     else range[0] = Math.min(range[0], subrange[0]);
                     if (range[1] == null) range[1] = subrange[1];
-                    else range[1] = Math.min(range[1], subrange[1]);
+                    else range[1] = Math.max(range[1], subrange[1]);
                 });
                 range[0] = util.ensure(range[0], "num");
                 range[1] = util.ensure(range[1], "num");
@@ -5200,8 +5204,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 range[1] += addAbove;
             });
             const timeStep = lib.findStep(graphRange[1]-graphRange[0], 10);
-            const mnx = qpadding, mxx = ctx.canvas.width-qpadding;
-            const mny = qpadding, mxy = ctx.canvas.height-qpadding;
+            const mnx = this.paddingLeft*quality, mxx = ctx.canvas.width - this.paddingRight*quality;
+            const mny = this.paddingTop*quality, mxy = ctx.canvas.height - this.paddingBottom*quality;
             let y0 = mny, y1 = mxy;
             let y2 = mxy + 5*quality;
             let y3 = mxy + 10*quality;
@@ -5280,14 +5284,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             let nx = util.lerp(mnx, mxx, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color+(odd?"2":"")) : v.color : "#fff";
                             ctx.fillRect(
-                                x, (padding+10+20*nDiscrete)*quality,
+                                x, mnx+(10+20*nDiscrete)*quality,
                                 Math.max(0, nx-x), 15*quality,
                             );
                             ctx.fillStyle = core.PROPERTYCACHE.get("--v"+(odd?"8":"1"));
                             ctx.font = (12*quality)+"px monospace";
                             ctx.textAlign = "left";
                             ctx.textBaseline = "middle";
-                            ctx.fillText(pv, x+5*quality, (padding+10+20*nDiscrete+7.5)*quality);
+                            ctx.fillText(pv, x+5*quality, mnx+(10+20*nDiscrete+7.5)*quality);
                         });
                         nDiscrete++;
                         return;
@@ -5495,6 +5499,17 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             this.rVars.forEach(v => v.compute());
         } catch (e) {}
     }
+
+    get padding() { return this.#padding; }
+    set padding(v) { this.#padding.set(v); }
+    get paddingTop() { return this.padding.t; }
+    set paddingTop(v) { this.padding.t = v; }
+    get paddingBottom() { return this.padding.b; }
+    set paddingBottom(v) { this.padding.b = v; }
+    get paddingLeft() { return this.padding.l; }
+    set paddingLeft(v) { this.padding.l = v; }
+    get paddingRight() { return this.padding.r; }
+    set paddingRight(v) { this.padding.r = v; }
 
     get lVars() { return [...this.#lVars]; }
     set lVars(v) {
