@@ -4747,7 +4747,7 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     }
     addToggle(...toggles) {
         return util.Target.resultingForEach(toggles, toggle => {
-            if (!(toggle instanceof Panel.ToolCanvasTab.Hook.Toggle)) toggle = Panel.ToolCanvasTab.Hook.Toggle.from(toggle);
+            if (!(toggle instanceof Panel.ToolCanvasTab.Hook.Toggle)) return;
             if (toggle == this.toggle) return false;
             if (this.hasToggle(toggle)) return false;
             this.#toggles.add(toggle);
@@ -4759,7 +4759,7 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
     }
     remToggle(...toggles) {
         return util.Target.resultingForEach(toggles, toggle => {
-            if (!(toggle instanceof Panel.ToolCanvasTab.Hook.Toggle)) toggle = Panel.ToolCanvasTab.Hook.Toggle.from(toggle);
+            if (!(toggle instanceof Panel.ToolCanvasTab.Hook.Toggle)) return;
             if (toggle == this.toggle) return false;
             if (!this.hasToggle(toggle)) return false;
             this.#toggles.delete(toggle);
@@ -4788,7 +4788,11 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
         o = util.ensure(o, "obj");
         this.path = o.path;
         this.toggle = o.toggle;
-        this.toggles = o.toggles;
+        util.ensure(o.toggles, "arr").forEach(toggle => {
+            toggle = util.ensure(toggle, "obj");
+            if (!this.getToggleByName(toggle.name)) return;
+            this.getToggleByName(toggle.name).from(toggle);
+        });
         return this;
     }
 };
@@ -7445,9 +7449,11 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.fCameraPos.activeType = this.lengthUnits;
         });
 
-        this.#cameraHook = new Panel.ToolCanvasTab.Hook("Camera Position Hook");
-        eOptions.appendChild(this.cameraHook.elem);
+        this.#cameraHook = new Panel.ToolCanvasTab.Hook("Camera Hook");
         this.cameraHook.addHandler("change", (c, f, t) => this.change("cameraHook."+c, f, t));
+        const cameraHookLock = this.cameraHook.addToggle(new Panel.ToolCanvasTab.Hook.Toggle("Lock", false));
+        cameraHookLock.show();
+        eOptions.appendChild(this.cameraHook.elem);
 
         const updateResize = () => {
             let r = optionsForm.elem.getBoundingClientRect();
@@ -7500,7 +7506,12 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         const render = this.odometry.addRender(new core.Odometry3d.Render(this.odometry, 0, "", "§cube"));
         render.showObject = false;
-        const vector3 = new core.THREE.Vector3();
+        const position = new core.THREE.Vector3();
+        const quaternion = new core.THREE.Quaternion();
+        const rotationQuaternion = core.THREE.Quaternion.fromRotationSequence([
+            { axis: "x", angle: -90 },
+            { axis: "z", angle: -90 },
+        ]);
 
         this.addHandler("update", delta => {
             if (this.isClosed) {
@@ -7523,25 +7534,35 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
             if (util.is(this.cameraHook.value, "arr")) {
                 let value = this.cameraHook.value;
-                const positioning = generatePositioning(value, this.lengthUnits, this.angleUnits);
+                const positioning = generatePositioning(value, this.lengthUnits, this.angleUnits, cameraHookLock.value ? 0.5 : 0);
                 render.pos = positioning.pos;
                 render.q = positioning.q;
-                let [x0, y0, z0] = [vector3.x, vector3.y, vector3.z];
-                render.theObject.getWorldPosition(vector3);
-                let [x1, y1, z1] = [vector3.x, vector3.y, vector3.z];
-                this.odometry.camera.position.set(
-                    this.odometry.camera.position.x + (x1-x0),
-                    this.odometry.camera.position.y + (y1-y0),
-                    this.odometry.camera.position.z + (z1-z0),
-                );
-                if (this.odometry.controlType == "orbit")
-                    this.odometry.controls.target.set(x1, y1, z1);
-                if (this.odometry.controlType == "pan")
-                    this.odometry.controls.target.set(
-                        this.odometry.controls.target.x + (x1-x0),
-                        this.odometry.controls.target.y + (y1-y0),
-                        this.odometry.controls.target.z + (z1-z0),
+                if (cameraHookLock.value) {
+                    this.odometry.controlType = null;
+                    render.theObject.getWorldPosition(position);
+                    quaternion.copy(render.theObject.quaternion);
+                    quaternion.multiply(core.THREE2WPILIB);
+                    quaternion.premultiply(rotationQuaternion);
+                    this.odometry.camera.position.copy(position);
+                    this.odometry.camera.quaternion.copy(quaternion);
+                } else {
+                    let [x0, y0, z0] = [position.x, position.y, position.z];
+                    render.theObject.getWorldPosition(position);
+                    let [x1, y1, z1] = [position.x, position.y, position.z];
+                    this.odometry.camera.position.set(
+                        this.odometry.camera.position.x + (x1-x0),
+                        this.odometry.camera.position.y + (y1-y0),
+                        this.odometry.camera.position.z + (z1-z0),
                     );
+                    if (this.odometry.controlType == "orbit")
+                        this.odometry.controls.target.set(x1, y1, z1);
+                    if (this.odometry.controlType == "pan")
+                        this.odometry.controls.target.set(
+                            this.odometry.controls.target.x + (x1-x0),
+                            this.odometry.controls.target.y + (y1-y0),
+                            this.odometry.controls.target.z + (z1-z0),
+                        );
+                }
             }
 
             ignore = true;
