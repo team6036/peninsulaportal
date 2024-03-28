@@ -1716,7 +1716,14 @@ export class App extends util.Target {
         }
         if (!this.hasPage(name)) return;
 
-        this.pages.forEach(name => this.getPage(name).elem.classList.remove("this"));
+        let ids = {};
+
+        this.pages.forEach(name => {
+            const page = this.getPage(name);
+            page.elem.classList.remove("this");
+            page.post("pre-hide");
+            ids[name] = setTimeout(() => page.post("post-hide"), 250);
+        });
 
         if (this.hasPage(this.page)) await this.getPage(this.page).leave(data);
 
@@ -1725,9 +1732,12 @@ export class App extends util.Target {
         if (this.hasPage(this.page)) await this.getPage(this.page).enter(data);
 
         this.pages.forEach(name => {
-            if (name == this.page)
-                this.getPage(name).elem.classList.add("this");
-            else this.getPage(name).elem.classList.remove("this");
+            const page = this.getPage(name);
+            if (name != this.page) return;
+            clearTimeout(ids[name]);
+            page.elem.classList.add("this");
+            page.post("pre-show");
+            setTimeout(() => page.post("post-show"), 250);
         });
     }
 
