@@ -609,7 +609,7 @@ class Widget extends util.Target {
 
     contains(v) { return v == this; }
 
-    format() {}
+    format() { this.post("format"); }
     collapse() {}
 
     update(delta) { this.post("update", delta); }
@@ -787,6 +787,7 @@ class Container extends Widget {
     }
 
     format() {
+        super.format();
         this.elem.classList.remove("x");
         this.elem.classList.remove("y");
         this.elem.classList.add(this.axis);
@@ -1135,6 +1136,7 @@ class Panel extends Widget {
     }
 
     format() {
+        super.format();
         this.tabs.forEach((tab, i) => {
             tab.eTab.style.order = i;
             tab.format();
@@ -9055,6 +9057,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.source = null;
 
         this.format();
+        this.addHandler("post-show", () => this.format());
 
         let requestCollapse = false;
         this.addHandler("change-widget", () => (requestCollapse = true));
