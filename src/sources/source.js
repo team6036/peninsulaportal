@@ -161,31 +161,39 @@ export default class Source extends util.Target {
             return !this.structDecode(path, type, array, v, ts);
         });
     }
-    structDecode(path, type, array, v, ts) {
+    structDecode(path, type, array, v, ts, updateDecoded=true) {
         path = util.generatePath(path);
         type = String(type);
         array = !!array;
         v = toUint8Array(v);
         ts = util.ensure(ts, "num");
-        if (!this.structHelper.hasPattern(type)) return false;
-        let pattern = this.structHelper.getPattern(type);
-        if (pattern.length == null) return false;
+        if (!this.hasField(path)) return null;
+        const field = this.getField(path);
+        if (!this.structHelper.hasPattern(type)) return null;
+        const pattern = this.structHelper.getPattern(type);
+        if (pattern.length == null) return null;
+        let decoded = null;
         if (array) {
             let datas = util.ensure(pattern.splitData(v), "arr");
-            datas.forEach((data, i) => {
+            decoded = datas.map((data, i) => {
                 let path2 = path+"/"+i;
-                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, "struct:"+type)).real = false;
-                this.getField(path2).update(data, ts);
+                let f = this.getField(path2);
+                if (!f) (f = this.addField(new this.constructor.Field(this, path2, "struct:"+type))).real = false;
+                return f.update(data, ts);
             });
+            if (updateDecoded) field.updateDecoded(decoded, ts);
         } else {
             let data = util.ensure(pattern.decode(v), "obj");
+            decoded = {};
             pattern.fields.forEach(field => {
                 let path2 = path+"/"+field.name;
-                if (!this.hasField(path2)) this.addField(new this.constructor.Field(this, path2, field.isStruct ? ("struct:"+field.type) : field.type)).real = false;
-                this.getField(path2).update(data[field.name], ts);
+                let f = this.getField(path2);
+                if (!f) (f = this.addField(new this.constructor.Field(this, path2, field.isStruct ? ("struct:"+field.type) : field.type))).real = false;
+                decoded[field.name] = f.update(data[field.name], ts);
             });
+            if (updateDecoded) field.updateDecoded(decoded, ts);
         }
-        return true;
+        return decoded;
     }
     createStruct(name, data) {
         name = String(name);
@@ -265,6 +273,7 @@ Source.Field = class SourceField {
 
     #logsTS;
     #logsV;
+    #logsDec;
     #metaLogsTS;
     #metaLogsV;
 
@@ -321,6 +330,7 @@ Source.Field = class SourceField {
 
         this.#logsTS = [];
         this.#logsV = [];
+        this.#logsDec = [];
         this.#metaLogsTS = [];
         this.#metaLogsV = [];
     }
@@ -352,11 +362,13 @@ Source.Field = class SourceField {
     get isJustPrimitive() { return this.#isJustPrimitive; }
     get isNumerical() { return this.#isNumerical; }
 
-    get logsN() { return Math.min(this.#logsTS.length, this.#logsV.length); }
+    get logsN() { return Math.min(this.#logsTS.length, this.#logsV.length, this.#logsDec.length); }
     get logsTS() { return [...this.#logsTS]; }
     set logsTS(v) { this.#logsTS = util.ensure(v, "arr"); }
     get logsV() { return [...this.#logsV]; }
     set logsV(v) { this.#logsV = util.ensure(v, "arr"); }
+    get logsDec() { return [...this.#logsDec]; }
+    set logsDec(v) { this.#logsDec = util.ensure(v, "arr"); }
 
     get metaLogsN() { return Math.min(this.#metaLogsTS.length, this.#metaLogsV.length); }
     get metaLogsTS() { return [...this.#metaLogsTS]; }
@@ -373,9 +385,8 @@ Source.Field = class SourceField {
         let l = 0, r = n-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
-            let range = [this.#logsTS[m], this.#logsTS[m+1]];
-            if (ts < range[0]) r = m-1;
-            else if (ts >= range[1]) l = m+1;
+            if (ts < this.#logsTS[m]) r = m-1;
+            else if (ts >= this.#logsTS[m+1]) l = m+1;
             else return m;
         }
         return -1;
@@ -398,6 +409,24 @@ Source.Field = class SourceField {
             v: this.#logsV.slice(start, stop),
         };
     }
+    getDecoded(ts=null) {
+        ts = util.ensure(ts, "num", this.source.ts);
+        const n = this.logsN;
+        let i = this.getIndex(ts);
+        if (i < 0 || i >= n) return null;
+        return this.#logsDec[i];
+    }
+    getDecodedRange(tsStart=null, tsStop=null) {
+        tsStart = util.ensure(tsStart, "num");
+        tsStop = util.ensure(tsStop, "num");
+        let start = this.getIndex(tsStart)+1;
+        let stop = this.getIndex(tsStop)+1;
+        return {
+            start: start, stop: stop, n: stop-start,
+            ts: this.#logsTS.slice(start, stop),
+            v: this.#logsDec.slice(start, stop),
+        };
+    }
     update(v, ts=null, volatile=false) {
         if (!volatile) v = Source.Field.ensureType(this.type, v);
         ts = util.ensure(ts, "num", this.source.ts);
@@ -406,17 +435,22 @@ Source.Field = class SourceField {
         if (this.isJustPrimitive) {
             if (i >= 0 && i < n)
                 if (this.#logsV[i] == v)
-                    return;
+                    return this.#logsDec[i];
             if (i+2 >= 0 && i+2 < n)
                 if (this.#logsV[i+2] == v) {
                     this.#logsTS[i+2] = ts;
-                    return;
+                    return this.#logsDec[i+2];
                 }
         }
         this.#logsTS.splice(i+1, 0, ts);
         this.#logsV.splice(i+1, 0, v);
+        this.#logsDec.splice(i+1, 0, { r: this.isStruct ? null : v });
         if (this.isStruct) {
-            if (this.source.structDecode(this.path, this.baseType, this.isArray, v, ts)) return;
+            const decoded = this.source.structDecode(this.path, this.baseType, this.isArray, v, ts, false);
+            if (decoded != null) {
+                this.#logsDec[i+1].r = decoded;
+                return this.#logsDec[i+1];
+            }
             this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
         } else if (this.isArray) {
             v.forEach((v, i) => {
@@ -429,22 +463,15 @@ Source.Field = class SourceField {
         if (n == 0)
             if (this.name.startsWith("struct:") && this.type == "structschema")
                 this.source.createStruct(this.name.slice(7), v);
+        return this.#logsDec[i+1];
     }
-    pop(ts=null) {
+    updateDecoded(dec, ts=null) {
+        dec = util.ensure(dec, "obj");
         ts = util.ensure(ts, "num", this.source.ts);
         const n = this.logsN;
         let i = this.getIndex(ts);
-        if (i >= 0 && i < n) return;
-        this.#logsTS.splice(i, 1);
-        this.#logsV.splice(i, 1);
-        if (this.hasNode())
-            this.node.nodeObjects.forEach(node => {
-                if (!node.hasField()) return;
-                node.field.pop(ts);
-            });
-        if (n == 1)
-            if (this.name.startsWith("struct:") && this.type == "structschema")
-                this.source.structHelper.remPattern(this.name.slice(7));
+        if (i < 0 || i >= n) return;
+        this.#logsDec[i].r = dec;
     }
 
     getMetaIndex(ts=null) {
@@ -456,9 +483,8 @@ Source.Field = class SourceField {
         let l = 0, r = n-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
-            let range = [this.#metaLogsTS[m], this.#metaLogsTS[m+1]];
-            if (ts < range[0]) r = m-1;
-            else if (ts >= range[1]) l = m+1;
+            if (ts < this.#metaLogsTS[m]) r = m-1;
+            else if (ts >= this.#metaLogsTS[m+1]) l = m+1;
             else return m;
         }
         return -1;
@@ -494,14 +520,6 @@ Source.Field = class SourceField {
         this.#metaLogsTS.splice(i+1, ts);
         this.#metaLogsV.splice(i+1, v);
     }
-    popMeta(ts=null) {
-        ts = util.ensure(ts, "num", this.source.ts);
-        let i = this.getMetaIndex(ts);
-        const n = this.metaLogsN;
-        if (i >= 0 && i < n) return;
-        this.#metaLogsTS.splice(i, 1);
-        this.#metaLogsV.splice(i, 1);
-    }
 
     toSerialized() {
         return {
@@ -510,6 +528,7 @@ Source.Field = class SourceField {
             type: this.type,
             logsTS: this.#logsTS,
             logsV: this.#logsV,
+            logsDec: this.#logsDec,
             metaLogsTS: this.#metaLogsTS,
             metaLogsV: this.#metaLogsV,
         };
@@ -520,6 +539,7 @@ Source.Field = class SourceField {
         field.real = data.real;
         field.logsTS = data.logsTS;
         field.logsV = data.logsV;
+        field.logsDec = data.logsDec;
         field.metaLogsTS = data.metaLogsTS;
         field.metaLogsV = data.metaLogsV;
         return field;

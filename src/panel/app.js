@@ -6156,36 +6156,45 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         const field = node.field;
         if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
             if (field.isArray)
-                return node.nodeObjects.map(node => this.getValue(node)).flatten();
+                return node.nodeObjects.map(node => this.getValue(node)).collapse();
+            const decoded = util.ensure(field.getDecoded(), "obj");
             let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
-            let value = paths.map(path => {
-                let subnode = node.lookup(path.join("/"));
-                if (!(subnode instanceof Source.Node)) return null;
-                if (!subnode.hasField()) return null;
-                return subnode.field.get();
+            return paths.map(path => {
+                let o = decoded;
+                for (let i = 0; i < path.length; i++) {
+                    if (!util.is(o.r, "obj")) return null;
+                    o = o.r[path[i]];
+                }
+                return o.r;
             });
-            return value;
         }
+        if (field.isStruct) return Object.values(util.ensure(util.ensure(field.getDecoded(), "obj").r, "obj"));
         return field.get();
     }
-    // getValueRange(node, tsStart=null, tsStop=null) {
-    //     if (!(node instanceof Source.Node)) return null;
-    //     if (!node.hasField()) return null;
-    //     const field = node.field;
-    //     if (field.isArray)
-    //         return node.nodeObjects.map(node => this.getValue(node)).collapse();
-    //     if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-    //         let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
-    //         let range = paths.map(path => {
-    //             let subnode = node.lookup(path.join("/"));
-    //             if (!(subnode instanceof Source.Node)) return null;
-    //             if (!subnode.hasField()) return null;
-    //             return subnode.field.getRange(tsStart, tsStop);
-    //         });
-    //         return range;
-    //     }
-    //     return field.getRange(tsStart, tsStop);
-    // }
+    getValueRange(node, tsStart=null, tsStop=null) {
+        if (!(node instanceof Source.Node)) return null;
+        if (!node.hasField()) return null;
+        const field = node.field;
+        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+            if (field.isArray)
+                return node.nodeObjects.map(node => this.getValue(node)).collapse();
+            const range = field.getDecodedRange(tsStart, tsStop);
+            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+            range.v = range.v.map(decoded => {
+                return paths.map(path => {
+                    let o = decoded;
+                    for (let i = 0; i < path.length; i++) {
+                        if (!util.is(o.r, "obj")) return null;
+                        o = o.r[path[i]];
+                    }
+                    return o.r;
+                });
+            });
+            return range;
+        }
+        if (field.isStruct) return field.getDecodedRange(tsStart, tsStop);
+        return field.getRange(tsStart, tsStop);
+    }
 
     get hooks() { return []; }
 
@@ -6818,8 +6827,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 let node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = node ? this.getValue(node) : null;
-                // pose.state.trail = (pose.useTrail && node) ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
-                pose.state.trail = null;
+                pose.state.trail = (pose.useTrail && node) ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
                 pose.state.update(delta);
             });
             this.odometry.update(delta);
@@ -7148,23 +7156,25 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     render.heading = convertAngle(this.value[3*i+2]);
                     render.type = this.pose.type;
                 }
-                if (this.trail.length == this.value.length) {
-                    let trailL = 0;
-                    this.trail.forEach((trail, i) => {
-                        let l = trail.length;
-                        if (i <= 0) return trailL = l;
-                        trailL = Math.min(trailL, l);
-                    });
+                const n = util.ensure(this.trail.n, "int");
+                let m = 0;
+                const v = util.ensure(this.trail.v, "arr").map((pose, i) => {
+                    pose = util.ensure(pose, "arr");
+                    if (i > 0) m = Math.min(m, pose.length);
+                    else m = pose.length;
+                    return pose;
+                });;
+                if (m == this.value.length) {
                     while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
                     if (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.splice(l));
                     for (let i = 0; i < l; i++) {
                         const render = trailRenders[i];
                         render.color = this.pose.color;
                         render.alpha = this.pose.isGhost ? 0.25 : 0.5;
-                        if (render.nWaypoints < trailL) render.addWaypoint(new Array(trailL-render.nWaypoints).fill(0));
-                        if (render.nWaypoints > trailL) render.popWaypoint(Array.from(new Array(render.nWaypoints-trailL).keys()));
-                        for (let j = 0; j < trailL; j++)
-                            render.getWaypoint(j).set(convertPos(this.trail[i*3+0][j].v, this.trail[i*3+1][j].v));
+                        if (render.nWaypoints < n) render.addWaypoint(new Array(n-render.nWaypoints).fill(0));
+                        if (render.nWaypoints > n) render.popWaypoint(Array.from(new Array(render.nWaypoints-n).keys()));
+                        for (let j = 0; j < n; j++)
+                            render.getWaypoint(j).set(convertPos(v[j][i*3+0], v[j][i*3+1]));
                     }
                 } else if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
                 this.pose.fTrail.isShown = true;
@@ -7219,16 +7229,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         this.create();
     }
     get trail() { return this.#trail; }
-    set trail(v) {
-        v = util.ensure(v, "arr").map(v => util.ensure(v, "arr"));
-        if (this.trail.length == v.length) {
-            this.#trail = v;
-            return;
-        }
-        this.destroyTrail();
-        this.#trail = v;
-        this.createTrail();
-    }
+    set trail(v) { this.#trail = util.ensure(v, "obj"); }
 
     destroy() {
         this.destroyTrail();
