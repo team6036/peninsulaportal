@@ -21,7 +21,7 @@ w_x = [node['x'] for node in data['nodes']]
 w_y = [node['y'] for node in data['nodes']]
 w_theta = []
 
-ct = 30
+ct = 25
 
 config = data['config']
 map_w = config['map_w']
@@ -86,7 +86,7 @@ for i in range(0, len(w_x)):
     opti.subject_to(X[way_i[i], 1] == w_y[i])
 
 dts = []
-initDt = 5.0/ct
+initDt = 4.95/ct
 
 for i in range(1, len(way_i)):
     from_i = way_i[i - 1]
