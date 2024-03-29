@@ -389,12 +389,8 @@ class LoggerContext extends util.Target {
         timer1.play();
         timer2.play();
         this.addHandler("update", delta => {
-            if (timer1.time >= 1000) {
-                timer1.clear();
-                this.pollServer();
-            }
-            if (timer2.time >= 100) {
-                timer2.clear();
+            if (timer1.dequeueAll(1000)) this.pollServer();
+            if (timer2.dequeueAll(100)) {
                 this.pollClient();
                 (async () => (this.#location = await window.api.get("client-location")))();
                 (async () => (this.#connected = await window.api.get("client-connected")))();
@@ -4329,8 +4325,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                 if (desync >= 5)
                     this.eVideo.currentTime = time;
             } else desync = 0;
-            if (timer.time < 1000) return;
-            timer.clear();
+            if (!timer.dequeueAll(1000)) return;
             const videos = util.ensure(await window.api.send("videos"), "arr").map(name => String(name));
             videos.forEach(name => {
                 if (name in elems) return;

@@ -4347,8 +4347,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         let lock = false;
         this.addHandler("update", async () => {
             if (lock) return;
-            if (timer.time < 10000) return;
-            timer.clear();
+            if (!timer.dequeueAll(10000)) return;
             lock = true;
             await this.app.post("cmd-save");
             lock = false;
@@ -4684,10 +4683,7 @@ export class Odometry2d extends Odometry {
         const timer = new util.Timer();
         timer.play();
         this.addHandler("render", delta => {
-            if (timer.time >= 250) {
-                timer.clear();
-                update();
-            }
+            if (timer.dequeueAll(250)) update();
 
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -5612,18 +5608,12 @@ export class Odometry3d extends Odometry {
         let fieldLock = false;
 
         const timer1 = new util.Timer();
-        timer1.play();
         const timer2 = new util.Timer();
+        timer1.play();
         timer2.play();
         this.addHandler("render", delta => {
-            if (timer1.time >= 250) {
-                timer1.clear();
-                updateScene();
-            }
-            if (contextLost && timer2.time >= 500) {
-                timer2.clear();
-                this.renderer.forceContextRestore();
-            }
+            if (timer1.dequeueAll(250)) updateScene();
+            if (contextLost && timer2.dequeueAll(500)) this.renderer.forceContextRestore();
 
             this.renders.forEach(render => render.update(delta));
 

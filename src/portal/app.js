@@ -217,8 +217,7 @@ export default class App extends core.App {
                 const timer = new util.Timer();
                 timer.play();
                 this.addHandler("update", async () => {
-                    if (timer.time < 250) return;
-                    timer.clear();
+                    if (!timer.dequeueAll(250)) return;
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
                     if (repoAnchor instanceof HTMLAnchorElement)
                         repoAnchor.href = await window.api.get("val-repo");
