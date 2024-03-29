@@ -9467,7 +9467,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     get sourceInfo() {
         if (!this.hasSource()) return "No source";
         if (this.source instanceof NTSource) {
-            if (!this.source.connecting && !this.source.connected) return "Disconnected";
+            if (this.source.disconnected) return "Disconnected";
             if (this.source.connecting) return "Connecting to "+this.source.address;
             return this.source.address;
         }
