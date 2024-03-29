@@ -31,8 +31,10 @@ class WPILOGEncoderWorker extends WorkerBase {
                     const logsN = field.logsN;
                     const logsTS = field.logsTS;
                     const logsV = field.logsV;
-                    let metaLogs = field.metaLogs;
-                    if (logs.length <= 0 && metaLogs.length <= 0) return;
+                    const metaLogsN = field.metaLogsN;
+                    const metaLogsTS = field.metaLogsTS;
+                    const metaLogsV = field.metaLogsV;
+                    if (logsN <= 0 && metaLogsN <= 0) return;
                     encoder.addRecord(
                         WPILOGEncoder.Record.makeControlStart(
                             logs[0].ts,
@@ -62,8 +64,8 @@ class WPILOGEncoderWorker extends WorkerBase {
                         if (type in typefs) encoder.addRecord(typefs[type]());
                         else encoder.addRecord(WPILOGEncoder.Record.makeRaw(entryId, ts, v));
                     }
-                    metaLogs.forEach((log, i) => {
-                        let ts = log.ts * 1000, v = log.v;
+                    for (let i = 0; i < metaLogsN; i++) {
+                        let ts = metaLogsTS[i]*1000, v = metaLogsV[i];
                         if (!util.is(v, "str"))
                             try {
                                 v = JSON.stringify(v);
@@ -72,7 +74,7 @@ class WPILOGEncoderWorker extends WorkerBase {
                             entry: entryId,
                             v: v,
                         }));
-                    });
+                    }
                     this.progress(util.lerp(0, 0.5, (i+1)/fields.length));
                 });
                 data = encoder.build(progress => this.progress(util.lerp(0.5, 1, progress)));
