@@ -8244,7 +8244,7 @@ export default class App extends core.AppFeature {
                                             "csv-time": "CSV-Time",
                                             "csv-field": "CSV-Field",
                                         }[name],
-                                        accelerator: "CmdOrCtrl+Shift+"+(i+1),
+                                        accelerator: "Ctrl+Shift+"+(i+1),
                                         type: "radio",
                                         click: () => {
                                             const page = this.projectPage;
