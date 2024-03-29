@@ -28,7 +28,9 @@ class WPILOGEncoderWorker extends WorkerBase {
                     let type = field.type;
                     if (type == "int") type = "int64";
                     if (type == "int[]") type = "int64[]";
-                    let logs = field.logs;
+                    const logsN = field.logsN;
+                    const logsTS = field.logsTS;
+                    const logsV = field.logsV;
                     let metaLogs = field.metaLogs;
                     if (logs.length <= 0 && metaLogs.length <= 0) return;
                     encoder.addRecord(
@@ -42,8 +44,8 @@ class WPILOGEncoderWorker extends WorkerBase {
                             },
                         ),
                     );
-                    logs.forEach((log, i) => {
-                        let ts = log.ts * 1000, v = log.v;
+                    for (let i = 0; i < logsN; i++) {
+                        let ts = logsTS[i]*1000, v = logsV[i];
                         let typefs = {
                             boolean: () => WPILOGEncoder.Record.makeBool(entryId, ts, v),
                             int64: () => WPILOGEncoder.Record.makeInt(entryId, ts, v),
@@ -59,7 +61,7 @@ class WPILOGEncoderWorker extends WorkerBase {
                         };
                         if (type in typefs) encoder.addRecord(typefs[type]());
                         else encoder.addRecord(WPILOGEncoder.Record.makeRaw(entryId, ts, v));
-                    });
+                    }
                     metaLogs.forEach((log, i) => {
                         let ts = log.ts * 1000, v = log.v;
                         if (!util.is(v, "str"))

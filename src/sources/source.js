@@ -198,8 +198,8 @@ export default class Source extends util.Target {
         this.fieldObjects.forEach(field => {
             if (!field.name.startsWith("struct:")) return;
             if (field.type != "structschema") return;
-            if (field.logs.length <= 0) return;
-            this.createStruct(field.name.slice(7), field.logs[0].v);
+            if (field.logsN <= 0) return;
+            this.createStruct(field.name.slice(7), field.logsV[0]);
         });
     }
 
@@ -263,7 +263,9 @@ Source.Field = class SourceField {
     #isJustPrimitive;
     #isNumerical;
 
-    #logs;
+    // #logs;
+    #logsTS;
+    #logsV;
     #metaLogs;
 
     static TYPES = [
@@ -317,7 +319,9 @@ Source.Field = class SourceField {
         this.#isJustPrimitive = this.isPrimitive && !this.isArray;
         this.#isNumerical = this.isJustPrimitive && ["double", "float", "int"].includes(this.baseType);
 
-        this.#logs = [];
+        // this.#logs = [];
+        this.#logsTS = [];
+        this.#logsV = [];
         this.#metaLogs = [];
     }
 
@@ -348,34 +352,32 @@ Source.Field = class SourceField {
     get isJustPrimitive() { return this.#isJustPrimitive; }
     get isNumerical() { return this.#isNumerical; }
 
-    get logs() { return [...this.#logs]; }
-    set logs(v) { this.#logs = util.ensure(v, "arr"); }
+    // get logs() { return [...this.#logs]; }
+    // set logs(v) { this.#logs = util.ensure(v, "arr"); }
+    get logsN() { return Math.min(this.#logsTS.length, this.#logsV.length); }
+    get logsTS() { return [...this.#logsTS]; }
+    set logsTS(v) { this.#logsTS = util.ensure(v, "arr"); }
+    get logsV() { return [...this.#logsV]; }
+    set logsV(v) { this.#logsV = util.ensure(v, "arr"); }
 
     get metaLogs() { return [...this.#metaLogs]; }
-    set metaLogs(v) {
-        this.#metaLogs = util.ensure(v, "arr").map(log => {
-            log = util.ensure(log, "obj");
-            let v = log.v;
-            if (!util.is(v, "obj"))
-                try {
-                    v = JSON.parse(String(v));
-                } catch (e) {}
-            return {
-                ts: util.ensure(log.ts, "num"),
-                v: v,
-            };
-        });
-    }
+    set metaLogs(v) { this.#metaLogs = util.ensure(v, "arr"); }
 
     getIndex(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
-        if (this.#logs.length <= 0) return -1;
-        if (ts < this.#logs.at(0).ts) return -1;
-        if (ts >= this.#logs.at(-1).ts) return this.#logs.length-1;
-        let l = 0, r = this.#logs.length-2;
+        const n = this.logsN;
+        // if (this.#logs.length <= 0) return -1;
+        if (n <= 0) return -1;
+        // if (ts < this.#logs.at(0).ts) return -1;
+        if (ts < this.#logsTS[0]) return -1;
+        // if (ts >= this.#logs.at(-1).ts) return this.#logs.length-1;
+        if (ts >= this.#logsTS[n-1]) return n-1;
+        // let l = 0, r = this.#logs.length-2;
+        let l = 0, r = n-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
-            let range = [this.#logs[m].ts, this.#logs[m+1].ts];
+            // let range = [this.#logs[m].ts, this.#logs[m+1].ts];
+            let range = [this.#logsTS[m], this.#logsTS[m+1]];
             if (ts < range[0]) r = m-1;
             else if (ts >= range[1]) l = m+1;
             else return m;
@@ -384,35 +386,54 @@ Source.Field = class SourceField {
     }
     get(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
+        const n = this.logsN;
         let i = this.getIndex(ts);
-        if (i < 0 || i >= this.#logs.length) return null;
-        return this.#logs[i].v;
+        // if (i < 0 || i >= this.#logs.length) return null;
+        if (i < 0 || i >= n) return null;
+        // return this.#logs[i].v;
+        return this.#logsV[i];
     }
     getRange(tsStart=null, tsStop=null) {
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart);
         let stop = this.getIndex(tsStop);
-        return this.#logs.slice(start+1, stop+1).map((log, i) => {
-            log.i = start+1+i;
-            return log;
+        // return this.#logs.slice(start+1, stop+1).map((log, i) => {
+        //     log.i = start+1+i;
+        //     return log;
+        // });
+        return Array.from(new Array(stop-start).keys()).map(i => {
+            i += start+1;
+            return {
+                i: i,
+                ts: this.#logsTS[i],
+                v: this.#logsV[i],
+            };
         });
     }
     update(v, ts=null, volatile=false) {
         if (!volatile) v = Source.Field.ensureType(this.type, v);
         ts = util.ensure(ts, "num", this.source.ts);
+        const n = this.logsN;
         let i = this.getIndex(ts);
         if (this.isJustPrimitive) {
-            if (i >= 0 && i < this.#logs.length)
-                if (this.#logs[i].v == v)
+            // if (i >= 0 && i < this.#logs.length)
+            if (i >= 0 && i < n)
+                // if (this.#logs[i].v == v)
+                if (this.#logsV[i] == v)
                     return;
-            if (i+2 >= 0 && i+2 < this.#logs.length)
-                if (this.#logs[i+2].v == v) {
-                    this.#logs[i+2].ts = ts;
+            // if (i+2 >= 0 && i+2 < this.#logs.length)
+            if (i+2 >= 0 && i+2 < n)
+                // if (this.#logs[i+2].v == v) {
+                if (this.#logsV[i+2] == v) {
+                    // this.#logs[i+2].ts = ts;
+                    this.#logsTS[i+2] = ts;
                     return;
                 }
         }
-        this.#logs.splice(i+1, 0, { ts: ts, v: v });
+        // this.#logs.splice(i+1, 0, { ts: ts, v: v });
+        this.#logsTS.splice(i+1, 0, ts);
+        this.#logsV.splice(i+1, 0, v);
         if (this.isStruct) {
             if (this.source.structDecode(this.path, this.baseType, this.isArray, v, ts)) return;
             this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
@@ -424,21 +445,27 @@ Source.Field = class SourceField {
                 this.source.getField(path).update(v, ts);
             });
         }
-        if (this.#logs.length == 1)
+        // if (this.#logs.length == 1)
+        if (n == 0)
             if (this.name.startsWith("struct:") && this.type == "structschema")
                 this.source.createStruct(this.name.slice(7), v);
     }
     pop(ts=null) {
         ts = util.ensure(ts, "num", this.source.ts);
+        const n = this.logsN;
         let i = this.getIndex(ts);
-        if (i >= 0 && i < this.#logs.length) return;
-        this.#logs.splice(i, 1);
+        // if (i >= 0 && i < this.#logs.length) return;
+        if (i >= 0 && i < n) return;
+        // this.#logs.splice(i, 1);
+        this.#logsTS.splice(i, 1);
+        this.#logsV.splice(i, 1);
         if (this.hasNode())
             this.node.nodeObjects.forEach(node => {
                 if (!node.hasField()) return;
                 node.field.pop(ts);
             });
-        if (this.#logs.length == 0)
+        // if (this.#logs.length == 0)
+        if (n == 1)
             if (this.name.startsWith("struct:") && this.type == "structschema")
                 this.source.structHelper.remPattern(this.name.slice(7));
     }
@@ -448,7 +475,7 @@ Source.Field = class SourceField {
         if (this.#metaLogs.length <= 0) return -1;
         if (ts < this.#metaLogs.at(0).ts) return -1;
         if (ts >= this.#metaLogs.at(-1).ts) return this.#metaLogs.length-1;
-        let l = 0, r = this.#logs.length-2;
+        let l = 0, r = this.#metaLogs.length-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
             let range = [this.#metaLogs[m].ts, this.#metaLogs[m+1].ts];
@@ -495,7 +522,8 @@ Source.Field = class SourceField {
             real: this.real,
             path: this.path,
             type: this.type,
-            logs: this.#logs,
+            logsTS: this.#logsTS,
+            logsV: this.#logsV,
             metaLogs: this.#metaLogs,
         };
     }
@@ -503,7 +531,8 @@ Source.Field = class SourceField {
         data = util.ensure(data, "obj");
         let field = new Source.Field(source, data.path, data.type);
         field.real = data.real;
-        field.logs = data.logs;
+        field.logsTS = data.logsTS;
+        field.logsV = data.logsV;
         field.metaLogs = data.metaLogs;
         return field;
     }
