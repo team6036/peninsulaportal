@@ -390,16 +390,13 @@ Source.Field = class SourceField {
     getRange(tsStart=null, tsStop=null) {
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
-        let start = this.getIndex(tsStart);
-        let stop = this.getIndex(tsStop);
-        return Array.from(new Array(stop-start).keys()).map(i => {
-            i += start+1;
-            return {
-                i: i,
-                ts: this.#logsTS[i],
-                v: this.#logsV[i],
-            };
-        });
+        let start = this.getIndex(tsStart)+1;
+        let stop = this.getIndex(tsStop)+1;
+        return {
+            start: start, stop: stop, n: stop-start,
+            ts: this.#logsTS.slice(start, stop),
+            v: this.#logsV.slice(start, stop),
+        };
     }
     update(v, ts=null, volatile=false) {
         if (!volatile) v = Source.Field.ensureType(this.type, v);

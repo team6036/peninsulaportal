@@ -5145,28 +5145,27 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         subrange = ranges[v.path];
                     } else {
                         subrange = [null, null];
-                        log = node.field.getRange(...graphRange).map(log => {
-                            let v2 = log.v;
-                            if (node.field.isNumerical) {
+                        log = node.field.getRange(...graphRange);
+                        if (node.field.isNumerical)
+                            log.v = log.v.map(v2 => {
                                 v2 = v.execExpr(v2);
                                 if (subrange[0] == null) subrange[0] = v2;
                                 else subrange[0] = Math.min(subrange[0], v2);
                                 if (subrange[1] == null) subrange[1] = v2;
                                 else subrange[1] = Math.max(subrange[1], v2);
-                            }
-                            return { i: log.i, ts: log.ts, v: v2 };
-                        });
+                                return v2;
+                            });
                         const start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
-                        if (start != null) log.unshift({
-                            i: ((log.length > 0) ? log.at(0).i-1 : node.field.getIndex(graphRange[0])),
-                            ts: graphRange[0],
-                            v: v.execExpr(start),
-                        });
-                        if (stop != null) log.push({
-                            i: ((log.length > 0) ? log.at(-1).i+1 : node.field.getIndex(graphRange[1])),
-                            ts: graphRange[1],
-                            v: v.execExpr(stop),
-                        });
+                        if (start != null) {
+                            log.start--;
+                            log.ts.unshift(graphRange[0]);
+                            log.v.unshift(v.execExpr(start));
+                        }
+                        if (stop != null) {
+                            log.stop++;
+                            log.ts.push(graphRange[1]);
+                            log.v.push(v.execExpr(stop));
+                        }
                         if (log.length <= 0) return v.disable();
                         logs[v.path] = log;
                         ranges[v.path] = subrange;
@@ -5270,10 +5269,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     const log = logs[v.path];
                     const node = nodes[v.path];
                     if (!node.field.isNumerical) {
-                        log.forEach((p, i) => {
-                            const odd = ((p.i%2)+2)%2 == 0;
-                            let pts = p.ts, pv = p.v;
-                            let npts = (i+1 >= log.length) ? graphRange[1] : log[i+1].ts;
+                        for (let i = 0; i < log.n; i++) {
+                            const odd = (((log.start+i)%2)+2)%2 == 0;
+                            let pts = log.ts[i], pv = log.v[i];
+                            let npts = (i+1 >= log.n) ? graphRange[1] : log.ts[i+1];
                             let x = util.lerp(mnx, mxx, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             let nx = util.lerp(mnx, mxx, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color+(odd?"2":"")) : v.color : "#fff";
@@ -5286,14 +5285,13 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             ctx.textAlign = "left";
                             ctx.textBaseline = "middle";
                             ctx.fillText(pv, x+5*quality, mnx+(10+20*nDiscrete+7.5)*quality);
-                        });
+                        }
                         nDiscrete++;
                         return;
                     }
                     const ranges = [];
-                    for (let i = 0; i < log.length; i++) {
-                        let p = log[i];
-                        let ts = p.ts, v = p.v;
+                    for (let i = 0; i < log.n; i++) {
+                        let ts = log.ts[i], v = log.v[i];
                         let x = util.lerp(mnx, mxx, (ts-graphRange[0])/(graphRange[1]-graphRange[0]));
                         if (ranges.length > 0) {
                             let px = ranges.at(-1).x;
@@ -6170,24 +6168,24 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         }
         return field.get();
     }
-    getValueRange(node, tsStart=null, tsStop=null) {
-        if (!(node instanceof Source.Node)) return null;
-        if (!node.hasField()) return null;
-        const field = node.field;
-        if (field.isArray)
-            return node.nodeObjects.map(node => this.getValue(node)).collapse();
-        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
-            let range = paths.map(path => {
-                let subnode = node.lookup(path.join("/"));
-                if (!(subnode instanceof Source.Node)) return null;
-                if (!subnode.hasField()) return null;
-                return subnode.field.getRange(tsStart, tsStop);
-            });
-            return range;
-        }
-        return field.getRange(tsStart, tsStop);
-    }
+    // getValueRange(node, tsStart=null, tsStop=null) {
+    //     if (!(node instanceof Source.Node)) return null;
+    //     if (!node.hasField()) return null;
+    //     const field = node.field;
+    //     if (field.isArray)
+    //         return node.nodeObjects.map(node => this.getValue(node)).collapse();
+    //     if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+    //         let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+    //         let range = paths.map(path => {
+    //             let subnode = node.lookup(path.join("/"));
+    //             if (!(subnode instanceof Source.Node)) return null;
+    //             if (!subnode.hasField()) return null;
+    //             return subnode.field.getRange(tsStart, tsStop);
+    //         });
+    //         return range;
+    //     }
+    //     return field.getRange(tsStart, tsStop);
+    // }
 
     get hooks() { return []; }
 
@@ -6820,7 +6818,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 pose.state.pose = pose.isShown ? pose : null;
                 let node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = node ? this.getValue(node) : null;
-                pose.state.trail = (pose.useTrail && node) ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
+                // pose.state.trail = (pose.useTrail && node) ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
+                pose.state.trail = null;
                 pose.state.update(delta);
             });
             this.odometry.update(delta);
