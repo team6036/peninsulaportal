@@ -2322,7 +2322,28 @@ export class Timer extends Target {
         return this;
     }
     get time() { return this.#tSum + this.playing*(getTime()-this.#t); }
+    set time(t) {
+        t = Math.max(0, ensure(t, "num"));
+        let tSub = Math.min(this.#tSum, t);
+        this.#tSum -= tSub;
+        t -= tSub;
+        if (!this.playing) return;
+        this.#t = getTime()-t;
+    }
 
     pauseAndClear() { this.pause(); return this.clear(); }
     playAndClear() { this.play(); return this.clear(); }
+
+    dequeue(t) {
+        t = Math.max(0, ensure(t, "num"));
+        if (t > this.time) return false;
+        this.time -= t;
+        return true;
+    }
+    dequeueAll(t) {
+        t = Math.max(0, ensure(t, "num"));
+        let n = Math.floor(this.time/t);
+        if (n > 0) this.time -= n*t;
+        return n;
+    }
 }

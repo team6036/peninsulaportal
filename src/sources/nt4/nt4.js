@@ -421,13 +421,11 @@ export default class NTClient extends util.Target {
         timer.play();
         this.addHandler("update", delta => {
             if (this.connected) {
-                if (timer.time < 5000) return;
-                timer.clear();
+                if (!timer.dequeueAll(5000)) return;
                 this.#ws.sendTimestamp();
                 return;
             }
-            if (timer.time < 500) return;
-            timer.clear();
+            if (!timer.dequeueAll(500)) return;
             if (!this.autoConnect) return;
             this.connect();
         });
