@@ -214,8 +214,7 @@ export default class App extends core.App {
                         e.stopPropagation();
                         this.post("cmd-spawn", "PRESETS");
                     });
-                const timer = new util.Timer();
-                timer.play();
+                const timer = new util.Timer(true);
                 this.addHandler("update", async () => {
                     if (!timer.dequeueAll(250)) return;
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");

@@ -2274,12 +2274,14 @@ export class Timer extends Target {
     #t;
     #paused;
 
-    constructor() {
+    constructor(autoStart=false) {
         super();
 
         this.#tSum = 0;
         this.#t = 0;
         this.#paused = true;
+
+        if (autoStart) this.play();
     }
 
     get paused() { return this.#paused; }
