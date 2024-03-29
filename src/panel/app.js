@@ -384,10 +384,8 @@ class LoggerContext extends util.Target {
 
         this.#loading = {};
 
-        const timer1 = new util.Timer();
-        const timer2 = new util.Timer();
-        timer1.play();
-        timer2.play();
+        const timer1 = new util.Timer(true);
+        const timer2 = new util.Timer(true);
         this.addHandler("update", delta => {
             if (timer1.dequeueAll(1000)) this.pollServer();
             if (timer2.dequeueAll(100)) {
@@ -4269,8 +4267,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
 
         let elems = {};
 
-        const timer = new util.Timer();
-        timer.play();
+        const timer = new util.Timer(true);
         this.addHandler("change", () => timer.set(1000));
         let desync = 0;
         this.#duration = 0;

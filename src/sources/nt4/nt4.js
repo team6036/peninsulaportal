@@ -417,8 +417,7 @@ export default class NTClient extends util.Target {
 
         this.address = address;
 
-        const timer = new util.Timer();
-        timer.play();
+        const timer = new util.Timer(true);
         this.addHandler("update", delta => {
             if (this.connected) {
                 if (!timer.dequeueAll(5000)) return;

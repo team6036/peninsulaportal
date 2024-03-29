@@ -4342,8 +4342,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             return await this.app.saveProjectsClean();
         });
 
-        const timer = new util.Timer();
-        timer.play();
+        const timer = new util.Timer(true);
         let lock = false;
         this.addHandler("update", async () => {
             if (lock) return;
@@ -4680,8 +4679,7 @@ export class Odometry2d extends Odometry {
 
         this.unit = "m";
 
-        const timer = new util.Timer();
-        timer.play();
+        const timer = new util.Timer(true);
         this.addHandler("render", delta => {
             if (timer.dequeueAll(250)) update();
 
@@ -5607,10 +5605,8 @@ export class Odometry3d extends Odometry {
 
         let fieldLock = false;
 
-        const timer1 = new util.Timer();
-        const timer2 = new util.Timer();
-        timer1.play();
-        timer2.play();
+        const timer1 = new util.Timer(true);
+        const timer2 = new util.Timer(true);
         this.addHandler("render", delta => {
             if (timer1.dequeueAll(250)) updateScene();
             if (contextLost && timer2.dequeueAll(500)) this.renderer.forceContextRestore();
