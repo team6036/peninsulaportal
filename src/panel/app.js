@@ -2644,7 +2644,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 entry.value.textContent = entry.valueTS.textContent = logsV[i];
                 entry.valueTS.style.top = (Math.max(0, Math.min(j2-j1-1, j3-j1))*30)+"px";
                 let v = (
-                    this.tab.tsNow >= logs[i].ts &&
+                    this.tab.tsNow >= logsTS[i] &&
                     this.tab.tsNow < ((i+1 >= logsN) ? Infinity : logsTS[i+1])
                 );
                 if (v == entry.elem.classList.contains("this")) continue;
