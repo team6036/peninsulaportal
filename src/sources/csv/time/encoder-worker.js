@@ -25,7 +25,7 @@ class CSVTimeEncoderWorker extends WorkerBase {
                 let fields = source.fieldObjects;
                 fields = fields.filter(field => field.real);
                 fields.forEach(field => {
-                    field.logs.forEach(log => tsArr.add(log.ts));
+                    field.logsTS.forEach(ts => tsArr.add(ts));
                     nameArr.push(prefix+field.path);
                     typeArr.push(field.type);
                 });
@@ -33,11 +33,14 @@ class CSVTimeEncoderWorker extends WorkerBase {
                 const grid = [["", ...nameArr], ["", ...typeArr], ...tsArr.map(ts => [ts, ...new Array(nameArr.length).fill(JSON.stringify(null))])];
                 fields.forEach((field, i) => {
                     this.progress(util.lerp(0, 0.5, i/fields.length));
-                    field.logs.forEach(log => {
-                        let ts = log.ts, v = log.v;
+                    const logsN = field.logsN;
+                    const logsTS = field.logsTS;
+                    const logsV = field.logsV;
+                    for (let i = 0; i < logsN; i++) {
+                        let ts = logsTS[i], v = logsV[i];
                         if (field.type == "structschema" || field.isStruct) v = [...toUint8Array(v)];
                         grid[2+tsArr.indexOf(ts)][1+i] = JSON.stringify(v);
-                    });
+                    }
                 });
                 encoder.grid = grid;
                 data = encoder.build(p => util.lerp(0.5, 1, p));
