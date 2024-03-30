@@ -5029,8 +5029,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 
         let mouseX = 0, mouseY = 0, mouseDown = false, mouseAlt = false;
         this.canvas.addEventListener("mousemove", e => {
-            eGraphTooltip.style.left = e.pageX+"px";
-            eGraphTooltip.style.top = e.pageY+"px";
+            hint.place(e.pageX, e.pageY);
             let r = this.canvas.getBoundingClientRect();
             let x = e.pageX;
             x -= r.left + this.paddingLeft;
@@ -5041,11 +5040,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             y /= r.height - (this.paddingTop+this.paddingBottom);
             mouseY = y;
         });
-        this.canvas.addEventListener("mouseenter", e => {
-            if (!(overlay instanceof HTMLDivElement)) return;
-            overlay.appendChild(eGraphTooltip);
+        this.canvas.addEventListener("mouseleave", e => {
+            hintWanted = false;
+            this.update(0);
         });
-        this.canvas.addEventListener("mouseleave", e => eGraphTooltip.remove());
         this.canvas.addEventListener("mousedown", e => {
             e.preventDefault();
             e.stopPropagation();
@@ -5062,31 +5060,25 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             scrollY += e.deltaY;
         });
 
-        const overlay = document.getElementById("overlay");
-        let eGraphTooltip = document.createElement("div");
-        eGraphTooltip.id = "graphtooltip";
-        let eName = eGraphTooltip.eName = document.createElement("div");
-        eGraphTooltip.appendChild(eName);
-        eName.classList.add("name");
-        eName.textContent = "Tooltip Name";
-        let eContent = eGraphTooltip.eContent = document.createElement("div");
-        eGraphTooltip.appendChild(eContent);
-        eContent.classList.add("content");
-        eContent.innerHTML = "<ion-icon name='return-down-forward'></ion-icon>";
-        let eValue = eGraphTooltip.eValue = document.createElement("div");
-        eContent.appendChild(eValue);
-        eValue.classList.add("value");
-        eValue.textContent = "0.1";
+        const hint = new core.App.Hint();
+        const hName = hint.addEntry(new core.App.Hint.NameEntry("Name"));
+        const hValue = hint.addEntry(new core.App.Hint.ValueEntry("Value"));
 
-        let tooltipCycle = 0;
+        let hintWanted = false, hintCycle = 0;
         const onKeyDown = e => {
             if (e.code != "Tab") return;
             e.preventDefault();
             e.stopPropagation();
-            tooltipCycle++;
+            hintCycle++;
         };
-        this.addHandler("add", () => document.body.addEventListener("keydown", onKeyDown));
-        this.addHandler("rem", () => document.body.removeEventListener("keydown", onKeyDown));
+        this.addHandler("add", () => {
+            document.body.addEventListener("keydown", onKeyDown);
+        });
+        this.addHandler("rem", () => {
+            document.body.removeEventListener("keydown", onKeyDown);
+            hintWanted = false;
+            this.update(0);
+        });
 
         let t0 = null;
         this.addHandler("update", delta => {
@@ -5244,7 +5236,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             }
             let mouseXCanv = util.lerp(mnx, mxx, mouseX);
             let mouseYCanv = util.lerp(mny, mxy, mouseY);
-            let foundTooltips = [];
+            let foundHints = [];
             let nDiscrete = 0;
             graphVars.forEach((o, i) => {
                 const { vars, nodes, logs, range, step } = o;
@@ -5330,7 +5322,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         py = (y1+y2)/2
                         if (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x)) {
                             if (Math.abs(py-mouseYCanv) < 2*quality) {
-                                foundTooltips.push({
+                                foundHints.push({
                                     name: node.path,
                                     color: ctx.strokeStyle,
                                     value: v,
@@ -5341,13 +5333,17 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ctx.stroke();
                 });
             });
-            if (foundTooltips.length > 0) {
-                tooltipCycle %= foundTooltips.length;
-                eGraphTooltip.classList.add("this");
-                eName.textContent = foundTooltips[tooltipCycle].name;
-                eName.style.color = foundTooltips[tooltipCycle].color;
-                eValue.textContent = foundTooltips[tooltipCycle].value;
-            } else eGraphTooltip.classList.remove("this");
+            if (foundHints.length > 0) {
+                hintCycle %= foundHints.length;
+                hintWanted = true;
+                hName.name = foundHints[hintCycle].name;
+                hName.eName.style.color = foundHints[hintCycle].color;
+                hValue.value = foundHints[hintCycle].value;
+            } else hintWanted = false;
+            if (this.hasApp()) {
+                if (hintWanted) this.app.addHint(hint);
+                else this.app.remHint(hint);
+            }
             ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";

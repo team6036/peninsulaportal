@@ -251,6 +251,8 @@ export class App extends util.Target {
 
     #popups;
 
+    #hints;
+
     #menu;
     #contextMenu;
 
@@ -276,6 +278,7 @@ export class App extends util.Target {
     #eLoading;
     #eLoadingTo;
     #eMount;
+    #eOverlay;
     #eRunInfo;
 
     static CLEANUPPROMPT = true;
@@ -289,7 +292,9 @@ export class App extends util.Target {
         this.#devMode = null;
         this.#holiday = null;
 
-        this.#popups = [];
+        this.#popups = new Set();
+
+        this.#hints = new Set();
 
         this.#menu = null;
         this.#contextMenu = null;
@@ -318,155 +323,6 @@ export class App extends util.Target {
                 window.api.sendPerm(true);
             } catch (e) { await this.doError("Permission Send Error", "", e); }
         });
-
-        let today = new Date();
-        if (today.getMonth() == 3 && today.getDate() == 1) {
-            if (localStorage.getItem("funny") == null) {
-                localStorage.setItem("funny", "notnull");
-                let elem = document.createElement("div");
-                document.body.appendChild(elem);
-                elem.style.zIndex = 1000000;
-                elem.style.position = "absolute";
-                elem.style.top = elem.style.left = "0px";
-                elem.style.width = elem.style.height = "100%";
-                const funnyFunction = async () => {
-                    let t = 0;
-                    let t1 = 5000, t2 = 6000, t3 = 6500, t4 = 9500, t5 = 10000;
-                    let glitchT = [50, 100];
-                    let pos = new V(), brightness = 1, hue = 0, T = 0;
-                    let facePos = new V(), faceSize = 1, faceT = 0;
-                    let percentPos = new V(), percentT = 0;
-                    const funnyUpdate = delta => {
-                        t += delta;
-                        T += delta;
-                        if (T > util.lerp(...glitchT, Math.random())) {
-                            T = 0;
-                            pos.set(util.lerp(-15, 15, Math.random()), util.lerp(-15, 15, Math.random()));
-                            brightness = util.lerp(0.75, 1.25, Math.random());
-                            hue = util.lerp(-30, 30, Math.random());
-                        }
-                        let y = (t < t4 ? 0 : util.lerp(0, window.innerHeight, util.ease.sinI((t-t4)/(t5-t4))));
-                        theElem.style.transform = (
-                            (t < t2) ? "" :
-                            (t < t3) ? "translate("+pos.xy.map(v => v+"px").join(",")+")" :
-                            "translate("+V.dir(360*Math.random(), 5*Math.random()).add(0, y).xy.map(v => v+"px").join(",")+")"
-                        );
-                        theElem.style.filter = (
-                            (t < t2) ? "" :
-                            (t < t3) ? "brightness("+brightness+") hue-rotate("+hue+"deg)" :
-                            ""
-                        );
-                        theElem.style.background = (
-                            (t < t3) ?
-                            "#357EC7" :
-                            "radial-gradient(circle,#8000,#8004), #357EC7"
-                        );
-                        theSadFace.textContent = (
-                            (t < t2) ? ":(" :
-                            (t < t3) ? util.choose([":)", ":P", ":|", ":3"]) :
-                            ">:)"
-                        );
-                        faceT += delta;
-                        if (faceT > util.lerp(...glitchT, Math.random())) {
-                            faceT = 0;
-                            facePos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
-                            faceSize = util.lerp(0.5, 1.5, Math.random());
-                        }
-                        theSadFace.style.transform = (
-                            (t < t2) ? "" :
-                            (t < t3) ? "translate("+facePos.xy.map(v => v+"px").join(",")+") scale("+faceSize+")" :
-                            ""
-                        );
-                        thePercentage.textContent = Math.round(100*(
-                            (t < t1) ? ((t-0)/t1) :
-                            (t < t2) ? 1 :
-                            (1+(t-t3)/2500)
-                        ))+"% complete";
-                        percentT += delta;
-                        if (percentT > util.lerp(...glitchT, Math.random())) {
-                            percentT = 0;
-                            percentPos.set(util.lerp(-25, 25, Math.random()), util.lerp(-25, 25, Math.random()));
-                        }
-                        thePercentage.style.transform = (
-                            (t < t2) ? "" :
-                            (t < t3) ? "translate("+percentPos.xy.map(v => v+"px").join(",")+")" :
-                            ""
-                        );
-                        let url = (t < t3) ? "https://www.windows.com/stopcode" : "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
-                        let code = (t < t3) ? "CRITICAL_PROCESS_DIED" : "CRITICAL_PROCESS_CHILLING";
-                        theInfo.innerHTML = `For more information about the issue and possible fixes, visit ${url}<br><br>If you call a support person, give them this info:<br>Stop code: ${code}`;
-                    };
-                    await util.wait(1000);
-                    await window.api.set("fullscreen", true);
-                    await util.wait(1000);
-                    elem.style.backgroundColor = "#000";
-                    await util.wait(500);
-                    elem.style.backgroundColor = "";
-                    elem.style.cursor = "none";
-                    elem.innerHTML = `
-    <div
-        style="
-            width: 100%;
-            height: 100%;
-            padding: 150px;
-            display: flex;
-            flex-direction: column;
-            flex-wrap: nowrap;
-            justify-content: flex-start;
-            align-items: stretch;
-            align-content: center;
-            gap: 20px;
-            color:#fff;
-        "
-    >
-        <div id="thesadface" style="font-family:Roboto;font-size:160px;">:(</div>
-        <div style="font-family:Roboto;font-size:32px;">
-            Your PC ran into a problem and needs to restart as soon as we're finished collecting some error info
-            <br><br>
-            <span id="thepercentage" style="display:inline-block;font-family:Roboto;"></span>
-        </div>
-        <div
-            style="
-                margin-top: 40px;
-                display: flex;
-                flex-direction: row;
-                flex-wrap: nowrap;
-                justify-content: flex-start;
-                align-items: flex-start;
-                align-content: flex-start;
-                gap:20px;
-            "
-        >
-            <div id="thecanvas" style="border:10px solid #fff;"></div>
-            <div id="theinfo" style="font-family:Roboto;font-size:16px;text-align:left;line-height:1.75;"></div>
-        </div>
-    </div>
-                    `;
-                    let theElem = elem.children[0];
-                    let theSadFace = document.getElementById("thesadface");
-                    let thePercentage = document.getElementById("thepercentage");
-                    let theCanvas = document.getElementById("thecanvas");
-                    let theInfo = document.getElementById("theinfo");
-                    new QRCode(theCanvas, {
-                        text: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                        width: 500,
-                        height: 500,
-                        colorDark : "#0000",
-                        colorLight : "#fff",
-                        correctLevel : QRCode.CorrectLevel.H,
-                    });
-                    Array.from(theCanvas.children).forEach(elem => (elem.style.width = elem.style.height = "100px"));
-                    this.addHandler("update", funnyUpdate);
-                    await util.wait(t5);
-                    this.remHandler("update", funnyUpdate);
-                    await window.api.set("fullscreen", false);
-                    elem.remove();
-                };
-                funnyFunction();
-            }
-        } else {
-            localStorage.removeItem("funny");
-        }
 
         this.addHandler("start", async () => {
             await window.buildAgent();
@@ -943,6 +799,13 @@ export class App extends util.Target {
             document.body.insertBefore(this.eMount, document.body.children[0]);
         else document.body.appendChild(this.eMount);
         this.eMount.id = "mount";
+
+        this.#eOverlay = document.getElementById("overlay");
+        if (!(this.#eOverlay instanceof HTMLDivElement)) this.#eOverlay = document.createElement("div");
+        this.eOverlay.remove();
+        if (document.body.children[1] instanceof HTMLElement)
+            document.body.insertBefore(this.eOverlay, document.body.children[1]);
+        else document.body.appendChild(this.eOverlay);
 
         this.#eRunInfo = document.getElementById("runinfo");
         if (!(this.#eRunInfo instanceof HTMLDivElement)) this.#eRunInfo = document.createElement("div");
@@ -1512,13 +1375,13 @@ export class App extends util.Target {
     }
     hasPopup(pop) {
         if (!(pop instanceof App.PopupBase)) return false;
-        return this.#popups.includes(pop);
+        return this.#popups.has(pop);
     }
     addPopup(...pops) {
         return util.Target.resultingForEach(pops, pop => {
             if (!(pop instanceof App.PopupBase)) return false;
             if (this.hasPopup(pop)) this.remPopup(pop);
-            this.#popups.push(pop);
+            this.#popups.add(pop);
             pop.addLinkedHandler(this, "result", () => this.remPopup(pop));
             window.api.set("closeable", this.popups.length <= 0);
             pop.onAdd();
@@ -1530,7 +1393,7 @@ export class App extends util.Target {
             if (!(pop instanceof App.PopupBase)) return false;
             if (!this.hasPopup(pop)) return false;
             pop.onRem();
-            this.#popups.splice(this.#popups.indexOf(pop), 1);
+            this.#popups.delete(pop);
             pop.clearLinkedHandlers(this, "result");
             window.api.set("closeable", this.popups.length <= 0);
             return pop;
@@ -1548,6 +1411,40 @@ export class App extends util.Target {
     async doSuccess(...a) { return await this.success(...a).whenResult(); }
     async doConfirm(...a) { return await this.confirm(...a).whenResult(); }
     async doPrompt(...a) { return await this.prompt(...a).whenResult(); }
+
+    get hints() { return [...this.#hints]; }
+    set hints(v) {
+        v = util.ensure(v, "arr");
+        this.clearHints();
+        this.addHint(v);
+    }
+    clearHints() {
+        let hints = this.hints;
+        this.remHint(hints);
+        return hints;
+    }
+    hasHint(hint) {
+        if (!(hint instanceof App.Hint)) return false;
+        return this.#hints.has(hint);
+    }
+    addHint(...hints) {
+        return util.Target.resultingForEach(hints, hint => {
+            if (!(hint instanceof App.Hint)) return false;
+            if (this.hasHint(hint)) return false;
+            this.#hints.add(hint);
+            this.eOverlay.appendChild(hint.elem);
+            return hint;
+        });
+    }
+    remHint(...hints) {
+        return util.Target.resultingForEach(hints, hint => {
+            if (!(hint instanceof App.Hint)) return false;
+            if (!this.hasHint(hint)) return false;
+            this.#hints.delete(hint);
+            this.eOverlay.removeChild(hint.elem);
+            return hint;
+        });
+    }
 
     get menu() { return this.#menu; }
     set menu(v) {
@@ -1766,6 +1663,7 @@ export class App extends util.Target {
     }
     hasELoadingTo() { return this.eLoadingTo instanceof HTMLElement; }
     get eMount() { return this.#eMount; }
+    get eOverlay() { return this.#eOverlay; }
     get eRunInfo() { return this.#eRunInfo; }
     get runInfoShown() { return this.eMount.classList.contains("runinfo"); }
     set runInfoShown(v) {
@@ -2397,6 +2295,137 @@ App.Progress = class AppProgress extends App.CorePopup {
         this.change("value", this.value, this.#value=v);
         this.eProgress.style.setProperty("--progress", (100*this.value)+"%");
     }
+};
+App.Hint = class AppHint extends util.Target {
+    #elem;
+
+    #entries;
+
+    constructor() {
+        super();
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("hint");
+
+        this.#entries = new Set();
+    }
+
+    get elem() { return this.#elem; }
+
+    get entries() { return [...this.#entries]; }
+    set entries(v) {
+        v = util.ensure(v, "arr");
+        this.clearEntries();
+        this.addEntry(v);
+    }
+    clearEntries() {
+        let entries = this.entries;
+        this.remEntry(entries);
+        return entries;
+    }
+    hasEntry(entry) {
+        if (!(entry instanceof App.Hint.Entry)) return false;
+        return this.#entries.has(entry);
+    }
+    addEntry(...entries) {
+        return util.Target.resultingForEach(entries, entry => {
+            if (!(entry instanceof App.Hint.Entry)) return false;
+            if (this.hasEntry(entry)) return false;
+            this.#entries.add(entry);
+            this.elem.appendChild(entry.elem);
+            return entry;
+        });
+    }
+    remEntry(...entries) {
+        return util.Target.resultingForEach(entries, entry => {
+            if (!(entry instanceof App.Hint.Entry)) return false;
+            if (!this.hasEntry(entry)) return false;
+            this.#entries.delete(entry);
+            this.elem.removeChild(entry.elem);
+            return entry;
+        });
+    }
+
+    place(...v) {
+        v = new V(...v);
+        this.elem.style.transform = "translate("+v.xy.map(v => v+"px").join(",")+")";
+        return this;
+    }
+};
+App.Hint.Entry = class AppHintEntry extends util.Target {
+    #elem;
+
+    constructor() {
+        super();
+
+        this.#elem = document.createElement("div");
+        this.elem.classList.add("entry");
+    }
+
+    get elem() { return this.#elem; }
+};
+App.Hint.NameEntry = class AppHintNameEntry extends App.Hint.Entry {
+    #eName;
+
+    constructor(name) {
+        super();
+
+        this.#eName = document.createElement("div");
+        this.elem.appendChild(this.eName);
+        
+        this.name = name;
+    }
+
+    get eName() { return this.#eName; }
+    
+    get name() { return this.eName.textContent; }
+    set name(v) { this.eName.textContent = v; }
+};
+App.Hint.ValueEntry = class AppHintValueEntry extends App.Hint.Entry {
+    #eValue;
+
+    constructor(value) {
+        super();
+
+        const eIcon = document.createElement("ion-icon");
+        this.elem.appendChild(eIcon);
+        eIcon.name = "return-down-forward";
+
+        this.#eValue = document.createElement("div");
+        this.elem.appendChild(this.eValue);
+
+        this.value = value;
+    }
+
+    get eValue() { return this.#eValue; }
+
+    get value() { return this.eValue.textContent; }
+    set value(v) { this.eValue.textContent = v; }
+};
+App.Hint.KeyValueEntry = class AppHintKeyValueEntry extends App.Hint.Entry {
+    #eKey;
+    #eValue;
+
+    constructor(key, value) {
+        super();
+
+        this.#eKey = document.createElement("div");
+        this.elem.appendChild(this.eKey);
+
+        this.#eValue = document.createElement("div");
+        this.elem.appendChild(this.eValue);
+
+        this.key = key;
+        this.value = value;
+    }
+
+    get eKey() { return this.#eKey; }
+    get eValue() { return this.#eValue; }
+
+    get key() { return this.eKey.textContent; }
+    set key(v) { this.eKey.textContent = v; }
+    get value() { return this.eValue.textContent; }
+    set value(v) { this.eValue.textContent = v; }
 };
 App.Menu = class AppMenu extends util.Target {
     #items;
