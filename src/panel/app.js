@@ -5029,7 +5029,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 
         let mouseX = 0, mouseY = 0, mouseDown = false, mouseAlt = false;
         this.canvas.addEventListener("mousemove", e => {
-            hint.place(e.pageX, e.pageY);
             let r = this.canvas.getBoundingClientRect();
             let x = e.pageX;
             x -= r.left + this.paddingLeft;
@@ -5041,8 +5040,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             mouseY = y;
         });
         this.canvas.addEventListener("mouseleave", e => {
-            hintWanted = false;
-            this.update(0);
+            if (!this.hasApp()) return;
+            this.app.remHint(hints);
         });
         this.canvas.addEventListener("mousedown", e => {
             e.preventDefault();
@@ -5060,24 +5059,36 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             scrollY += e.deltaY;
         });
 
-        const hint = new core.App.Hint();
-        const hName = hint.addEntry(new core.App.Hint.NameEntry(""));
-        const hValue = hint.addEntry(new core.App.Hint.ValueEntry(""));
+        let hints = [];
 
-        let hintWanted = false, hintCycle = 0;
+        let hintCycle = 0, hintAlt = false;
         const onKeyDown = e => {
-            if (e.code != "Tab") return;
-            e.preventDefault();
-            e.stopPropagation();
-            hintCycle++;
+            console.log(e.code);
+            if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
+                hintAlt = true;
+            }
+            if (e.code == "Tab") {
+                e.preventDefault();
+                e.stopPropagation();
+                hintCycle++;
+            }
+        };
+        const onKeyUp = e => {
+            if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
+                hintAlt = false;
+            }
         };
         this.addHandler("add", () => {
             document.body.addEventListener("keydown", onKeyDown);
+            document.body.addEventListener("keyup", onKeyUp);
+            if (!this.hasApp()) return;
+            this.app.addHint(hints.map(hint => hint.hint));
         });
         this.addHandler("rem", () => {
             document.body.removeEventListener("keydown", onKeyDown);
-            hintWanted = false;
-            this.update(0);
+            document.body.removeEventListener("keyup", onKeyUp);
+            if (!this.hasApp()) return;
+            this.app.remHint(hints.map(hint => hint.hint));
         });
 
         let t0 = null;
@@ -5321,8 +5332,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         ctx.lineTo(x, (y1+y2)/2);
                         py = (y1+y2)/2
                         if (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x)) {
-                            if (Math.abs(py-mouseYCanv) < 2*quality) {
+                            if (hintAlt || (mouseYCanv > y1-2*quality && mouseYCanv < y2+5*quality)) {
                                 foundHints.push({
+                                    x: mouseXCanv, y: py,
                                     name: node.path,
                                     color: ctx.strokeStyle,
                                     value: v,
@@ -5333,16 +5345,50 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ctx.stroke();
                 });
             });
-            if (foundHints.length > 0) {
-                hintCycle %= foundHints.length;
-                hintWanted = true;
-                hName.name = foundHints[hintCycle].name;
-                hName.eName.style.color = foundHints[hintCycle].color;
-                hValue.value = foundHints[hintCycle].value;
-            } else hintWanted = false;
-            if (this.hasApp()) {
-                if (hintWanted) this.app.addHint(hint);
-                else this.app.remHint(hint);
+            let r = ctx.canvas.getBoundingClientRect();
+            if (hintAlt) {
+                if (hints.length > foundHints.length) this.app.remHint(hints.splice(1).map(hint => hint.hint));
+                while (hints.length < foundHints.length) {
+                    let hint = this.app.addHint(new core.App.Hint());
+                    let hName = hint.addEntry(new core.App.Hint.NameEntry(""));
+                    let hValue = hint.addEntry(new core.App.Hint.ValueEntry(0));
+                    hints.push({
+                        hint: hint,
+                        hName: hName,
+                        hValue: hValue,
+                    });
+                }
+                for (let i = 0; i < foundHints.length; i++) {
+                    let foundHint = foundHints[i];
+                    const hint = hints[i];
+                    hint.hName.name = foundHint.name;
+                    hint.hName.eName.style.color = foundHint.color;
+                    hint.hValue.value = foundHint.value;
+                    hint.hint.place(r.left+foundHint.x/quality, r.top+foundHint.y/quality);
+                }
+            } else {
+                if (foundHints.length > 0) {
+                    hintCycle %= foundHints.length;
+                    let foundHint = foundHints[hintCycle];
+                    if (this.hasApp()) {
+                        if (hints.length > 1) this.app.remHint(hints.splice(1).map(hint => hint.hint));
+                        while (hints.length < 1) {
+                            let hint = this.app.addHint(new core.App.Hint());
+                            let hName = hint.addEntry(new core.App.Hint.NameEntry(""));
+                            let hValue = hint.addEntry(new core.App.Hint.ValueEntry(0));
+                            hints.push({
+                                hint: hint,
+                                hName: hName,
+                                hValue: hValue,
+                            });
+                        }
+                        const hint = hints[0];
+                        hint.hName.name = foundHint.name;
+                        hint.hName.eName.style.color = foundHint.color;
+                        hint.hValue.value = foundHint.value;
+                        hint.hint.place(r.left+foundHint.x/quality, r.top+foundHint.y/quality);
+                    }
+                } else if (this.hasApp() && hints.length > 0) this.app.remHint(hints.splice(0).map(hint => hint.hint));
             }
             ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
             ctx.lineWidth = 1*quality;
