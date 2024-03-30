@@ -2295,7 +2295,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
 
         this.#vars = [];
         this.#ts = [];
-        this.#n = this.#visibleN = this.#scrollN = 0;
+        this.#visibleN = this.#scrollN = 0;
         this.#tsNow = 0;
 
         this.#eSide = document.createElement("div");
