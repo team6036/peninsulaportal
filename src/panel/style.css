@@ -2049,10 +2049,12 @@
 
     background-color: var(--a-4);
     border: 1px solid var(--a);
-    border-radius: 5px;
     visibility: hidden;
 
     user-select: none;
+}
+#overlay > #block.round {
+    border-radius: 5px;
 }
 #overlay > #block.this {
     visibility: inherit;
