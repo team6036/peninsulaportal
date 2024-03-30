@@ -1897,57 +1897,6 @@ p-loading[type="bounce"] > div > div:last-child {
 
     font-size: 12px;
 }
-.odom > .overlay > * {
-    pointer-events: auto;
-}
-.odom > .overlay > .label > div {
-    padding: 7.5px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 7.5px;
-
-    background-color: var(--v1-a);
-    color: var(--v8);
-    border: 1px solid var(--v3);
-}
-.odom > .overlay > .label > div > .info {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: stretch;
-    align-content: center;
-    gap: 7.5px;
-}
-.odom > .overlay > .label > div > .info:has(> .pos:empty):has(> .pos:empty) {
-    display: none;
-}
-.odom > .overlay > .label > div > .info > div {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-    gap: 7.5px;
-}
-.odom > .overlay > .label > div > .info > .dir {
-    flex-direction: column;
-    align-items: stretch;
-}
-.odom > .overlay > .label > div > .info > div > div {
-    flex-basis: 100%;
-
-    font-family: monospace;
-}
-.odom > .overlay > .label > div > .info > div.dir > div {
-    flex-basis: auto;
-}
 
 .explorer {
     display: flex;
