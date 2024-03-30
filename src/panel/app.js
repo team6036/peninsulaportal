@@ -2506,6 +2506,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 r = vars.at(0).elem.getBoundingClientRect();
                 if (pos.x < r.left+r.width/2) return {
                     r: [[r.left, y], [0, h]],
+                    round: false,
                     submit: () => {
                         at = i;
                         addVar(data);
@@ -2517,6 +2518,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 r = vars.at(-1).elem.getBoundingClientRect();
                 if (pos.x >= r.left+r.width/2) return {
                     r: [[r.right, y], [0, h]],
+                    round: false,
                     submit: () => {
                         at = i;
                         addVar(data);
@@ -2529,6 +2531,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             if (pos.x >= ri.left+ri.width/2) continue;
             return {
                 r: [[ri.left, y], [0, h]],
+                round: false,
                 submit: () => {
                     at = i;
                     addVar(data);
@@ -2538,6 +2541,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         r = this.eSide.getBoundingClientRect();
         return {
             r: [[r.right, y], [0, h]],
+            round: false,
             submit: () => {
                 at = 0;
                 addVar(data);
@@ -5633,6 +5637,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 }
                 return {
                     r: r,
+                    round: round,
                     submit: () => {
                         const colors = "rybgpocm";
                         const addVar = node => {
@@ -5662,8 +5667,9 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             l: () => idfs._("l"),
             r: () => idfs._("r"),
         };
-        let r;
+        let r, round;
         r = this.eOptions.getBoundingClientRect();
+        round = true;
         if (
             pos.x >= r.left && pos.x <= r.right &&
             pos.y >= r.top && pos.y <= r.bottom
@@ -5682,6 +5688,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             return null;
         }
         r = this.elem.getBoundingClientRect();
+        round = false;
         if (
             pos.x >= r.left && pos.x <= r.right &&
             pos.y >= r.top && pos.y <= r.bottom
@@ -5960,6 +5967,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             return {
                 r: r,
+                round: true,
                 submit: () => {
                     hook.path = data.path;
                 },
@@ -6215,6 +6223,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             return {
                 r: r,
+                round: true,
                 submit: () => {
                     hook.path = data.path;
                 },
@@ -6228,6 +6237,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 }
                 return {
                     r: r,
+                    round: round,
                     submit: () => {
                         const colors = "rybgpocm";
                         const addPose = pth => {
@@ -6251,8 +6261,9 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 };
             },
         };
-        let r;
+        let r, round;
         r = this.eOptions.getBoundingClientRect();
+        round = true;
         if (
             pos.x >= r.left && pos.x <= r.right &&
             pos.y >= r.top && pos.y <= r.bottom
@@ -6270,6 +6281,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             }
         }
         r = this.elem.getBoundingClientRect();
+        round = false;
         if (
             pos.x >= r.left && pos.x <= r.right &&
             pos.y >= r.top && pos.y <= r.bottom
@@ -6476,6 +6488,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             if (pos.y < r.top || pos.y > r.bottom) continue;
             return {
                 r: r,
+                round: true,
                 submit: () => {
                     hook.path = data.path;
                 },
@@ -8525,13 +8538,17 @@ export default class App extends core.AppFeature {
                     r.w /= at.includes("x") ? 2 : 1;
                     r.h /= at.includes("y") ? 2 : 1;
                     this.placeBlock(r);
+                    this.eBlock.classList.remove("round");
                 } else if (util.is(at, "int")) {
                     let r = new util.Rect(hovered.widget.eTop.getBoundingClientRect());
                     let x = (at >= hovered.widget.tabs.length) ? hovered.widget.getTab(hovered.widget.tabs.length-1).eTab.getBoundingClientRect().right : hovered.widget.getTab(at).eTab.getBoundingClientRect().left;
                     this.placeBlock(new util.Rect(x, r.y+5, 0, r.h-10));
+                    this.eBlock.classList.remove("round");
                 } else if (at == "custom") {
                     let data = util.ensure(hovered.data, "obj");
                     this.placeBlock(new util.Rect(data.r));
+                    if (data.round) this.eBlock.classList.add("round");
+                    else this.eBlock.classList.remove("round");
                 }
             });
             this.addHandler("drag-submit", e => {
