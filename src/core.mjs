@@ -4601,6 +4601,8 @@ export class Odometry extends util.Target {
 
     #size;
 
+    #hints;
+
     constructor(elem) {
         super();
 
@@ -4619,6 +4621,8 @@ export class Odometry extends util.Target {
         this.#doRender = true;
 
         this.#size = new V();
+
+        this.#hints = new Set();
 
         this.canvas.addEventListener("mousemove", e => this.mouse.set(e.pageX, e.pageY));
 
@@ -4654,6 +4658,40 @@ export class Odometry extends util.Target {
     set w(v) { this.size.x = v; }
     get h() { return this.size.y; }
     set h(v) { this.size.y = v; }
+
+    get hints() { return [...this.#hints]; }
+    set hints(v) {
+        v = util.ensure(v, "arr");
+        this.clearHints();
+        this.addHint(v);
+    }
+    clearHints() {
+        let hints = this.hints;
+        this.remHint(hints);
+        return hints;
+    }
+    hasHint(hint) {
+        if (!(hint instanceof App.Hint)) return false;
+        return this.#hints.has(hint);
+    }
+    addHint(...hints) {
+        return util.Target.resultingForEach(hints, hint => {
+            if (!(hint instanceof App.Hint)) return false;
+            if (this.hasHint(hint)) return false;
+            this.#hints.add(hint);
+            this.change("addHint", null, hint);
+            return hint;
+        });
+    }
+    remHint(...hints) {
+        return util.Target.resultingForEach(hints, hint => {
+            if (!(hint instanceof App.Hint)) return false;
+            if (!this.hasHint(hint)) return false;
+            this.#hints.delete(hint);
+            this.change("remHint", hint, null);
+            return hint;
+        });
+    }
 
     update(delta) { this.post("update", delta); }
 }
@@ -6076,7 +6114,22 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         let robotLock = false;
         let modelObject = null, theModelObject = null;
 
-        this.addHandler("rem", () => (this.object = null));
+        const hint = new App.Hint();
+        let hintType = null;
+        const hName = hint.addEntry(new App.Hint.NameEntry(""));
+        const hPosX = new App.Hint.KeyValueEntry("X", 0);
+        const hPosY = new App.Hint.KeyValueEntry("Y", 0);
+        const hPosZ = new App.Hint.KeyValueEntry("Z", 0);
+        const hDirD = new App.Hint.KeyValueEntry("Dir", 0);
+        const hDirW = new App.Hint.KeyValueEntry("QW", 0);
+        const hDirX = new App.Hint.KeyValueEntry("QX", 0);
+        const hDirY = new App.Hint.KeyValueEntry("QY", 0);
+        const hDirZ = new App.Hint.KeyValueEntry("QZ", 0);
+
+        this.addHandler("rem", () => {
+            this.object = null;
+            this.odometry.remHint(hint);
+        });
 
         this.addHandler("update", delta => {
             let color =
@@ -6101,13 +6154,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 if (this.hasObject()) {
                     let elem = document.createElement("div");
                     this.theObject.add(new CSS2DObject(elem));
-                    elem.classList.add("label");
-                    elem.innerHTML = "<div><div class='title'></div><div class='info'><div class='pos'></div><div class='dir'></div></div></div>";
-                    elem.elem = elem.querySelector(":scope > div");
-                    elem.eTitle = elem.querySelector(":scope > div > .title");
-                    elem.eInfo = elem.querySelector(":scope > div > .info");
-                    elem.ePos = elem.querySelector(":scope > div > .info > .pos");
-                    elem.eDir = elem.querySelector(":scope > div > .info > .dir");
                     this.theObject.traverse(obj => {
                         if (!obj.isMesh) return;
                         if (!(obj.material instanceof THREE.Material)) return;
@@ -6154,13 +6200,15 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             );
             this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
             let hovered = false;
-            let css2dObjects = [];
+            let cssObj = null;
             this.theObject.traverse(obj => {
-                if (obj instanceof CSS2DObject)
-                    css2dObjects.push(obj);
-                if (this.odometry.raycastIntersections[0])
-                    if (obj == this.odometry.raycastIntersections[0].object)
-                        hovered = true;
+                if (!cssObj)
+                    if (obj instanceof CSS2DObject)
+                        cssObj = obj;
+                if (!hovered)
+                    if (this.odometry.raycastIntersections[0])
+                        if (obj == this.odometry.raycastIntersections[0].object)
+                            hovered = true;
                 if (!obj.isMesh) return;
                 if (!obj.material._allianceMaterial) {
                     if (!this.hasRobot()) return;
@@ -6169,37 +6217,46 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 }
                 obj.material.color.set(color.toHex(false));
             });
-            css2dObjects.forEach(obj => {
-                obj.element.style.visibility = hovered ? "" : "hidden";
-                if (!hovered) return;
-                let r2 = obj.element.getBoundingClientRect();
-                let x = 1, y = 1;
-                if (r2.right > r.right) x *= -1;
-                if (r2.bottom > r.bottom) y *= -1;
-                obj.element.elem.style.transform = "translate("+(50*x)+"%, "+(50*y)+"%)";
-                obj.element.eTitle.style.color = color.toRGBA();
-                obj.element.eTitle.textContent = this.name;
-                let type = this.display.type;
-                let data = util.ensure(this.display.data, "arr");
-                if (type == 7) {
-                    while (obj.element.ePos.children.length < 3) obj.element.ePos.appendChild(document.createElement("div"));
-                    while (obj.element.ePos.children.length > 3) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
-                    while (obj.element.eDir.children.length < 4) obj.element.eDir.appendChild(document.createElement("div"));
-                    while (obj.element.eDir.children.length > 4) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
-                    for (let i = 0; i < 3; i++) obj.element.ePos.children[i].textContent = data[i];
-                    for (let i = 0; i < 4; i++) obj.element.eDir.children[i].textContent = "wxyz"[i]+": "+data[3+i];
-                } else if (type == 3) {
-                    while (obj.element.ePos.children.length < 2) obj.element.ePos.appendChild(document.createElement("div"));
-                    while (obj.element.ePos.children.length > 2) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
-                    while (obj.element.eDir.children.length < 1) obj.element.eDir.appendChild(document.createElement("div"));
-                    while (obj.element.eDir.children.length > 1) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
-                    for (let i = 0; i < 2; i++) obj.element.ePos.children[i].textContent = data[i];
-                    for (let i = 0; i < 1; i++) obj.element.eDir.children[i].textContent = "d"[i]+": "+data[2+i];
-                } else {
-                    while (obj.element.ePos.children.length > 0) obj.element.ePos.removeChild(obj.element.ePos.lastChild);
-                    while (obj.element.eDir.children.length > 0) obj.element.eDir.removeChild(obj.element.eDir.lastChild);
+            let type = this.display.type;
+            let data = util.ensure(this.display.data, "arr");
+            if (hovered) {
+                this.odometry.addHint(hint);
+                if (hintType != type) {
+                    hintType = type;
+                    if (hintType == 7) {
+                        hint.remEntry(hDirD);
+                        hint.addEntry(hPosX, hPosY, hPosZ, hDirW, hDirX, hDirY, hDirZ);
+                    } else if (hintType == 3) {
+                        hint.remEntry(hPosZ, hDirW, hDirX, hDirY, hDirZ);
+                        hint.addEntry(hPosX, hPosY, hDirD);
+                    } else {
+                        hint.remEntry(hPosX, hPosY, hPosZ, hDirD, hDirW, hDirX, hDirY, hDirZ);
+                    }
                 }
-            });
+                hName.name = this.name;
+                hName.eName.style.color = color.toRGBA();
+                if (hintType == 7) {
+                    [
+                        hPosX.value,
+                        hPosY.value,
+                        hPosZ.value,
+                        hDirW.value,
+                        hDirX.value,
+                        hDirY.value,
+                        hDirZ.value,
+                    ] = data;
+                } else if (hintType == 3) {
+                    [
+                        hPosX.value,
+                        hPosY.value,
+                        hDirD.value,
+                    ] = data;
+                }
+                if (cssObj) {
+                    let r = cssObj.element.getBoundingClientRect();
+                    hint.place(r.left, r.top);
+                }
+            } else this.odometry.remHint(hint);
         });
 
         this.pos = pos;

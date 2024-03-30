@@ -5061,8 +5061,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         });
 
         const hint = new core.App.Hint();
-        const hName = hint.addEntry(new core.App.Hint.NameEntry("Name"));
-        const hValue = hint.addEntry(new core.App.Hint.ValueEntry("Value"));
+        const hName = hint.addEntry(new core.App.Hint.NameEntry(""));
+        const hValue = hint.addEntry(new core.App.Hint.ValueEntry(""));
 
         let hintWanted = false, hintCycle = 0;
         const onKeyDown = e => {
@@ -6173,7 +6173,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                     if (!util.is(o.r, "obj")) return null;
                     o = o.r[path[i]];
                 }
-                return o.r;
+                return o;
             });
         }
         if (field.isStruct) return Object.values(util.ensure(util.ensure(field.getDecoded(), "obj").r, "obj"));
@@ -6195,7 +6195,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         if (!util.is(o.r, "obj")) return null;
                         o = o.r[path[i]];
                     }
-                    return o.r;
+                    return o;
                 });
             });
             return range;
@@ -7319,6 +7319,22 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         this.#odometry = new core.Odometry3d(this.eContent);
         this.odometry.addHandler("change", (c, f, t) => this.change("odometry."+c, f, t));
+        this.addHandler("add", () => {
+            if (!this.hasApp()) return;
+            this.app.addHint(this.odometry.hints);
+        });
+        this.addHandler("rem", () => {
+            if (!this.hasApp()) return;
+            this.app.remHint(this.odometry.hints);
+        });
+        this.odometry.addHandler("change-addHint", (_, hint) => {
+            if (!this.hasApp()) return;
+            this.app.addHint(hint);
+        });
+        this.odometry.addHandler("change-remHint", (hint, _) => {
+            if (!this.hasApp()) return;
+            this.app.remHint(hint);
+        });
 
         this.quality = this.odometry.quality = 2;
 
@@ -7561,31 +7577,33 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 const positioning = generatePositioning(value, this.lengthUnits, this.angleUnits, cameraHookLock.value ? 0.5 : 0);
                 render.pos = positioning.pos;
                 render.q = positioning.q;
-                if (cameraHookLock.value) {
-                    this.odometry.controlType = null;
-                    render.theObject.getWorldPosition(position);
-                    quaternion.copy(render.theObject.quaternion);
-                    quaternion.multiply(core.THREE2WPILIB);
-                    quaternion.premultiply(rotationQuaternion);
-                    this.odometry.camera.position.copy(position);
-                    this.odometry.camera.quaternion.copy(quaternion);
-                } else {
-                    let [x0, y0, z0] = [position.x, position.y, position.z];
-                    render.theObject.getWorldPosition(position);
-                    let [x1, y1, z1] = [position.x, position.y, position.z];
-                    this.odometry.camera.position.set(
-                        this.odometry.camera.position.x + (x1-x0),
-                        this.odometry.camera.position.y + (y1-y0),
-                        this.odometry.camera.position.z + (z1-z0),
-                    );
-                    if (this.odometry.controlType == "orbit")
-                        this.odometry.controls.target.set(x1, y1, z1);
-                    if (this.odometry.controlType == "pan")
-                        this.odometry.controls.target.set(
-                            this.odometry.controls.target.x + (x1-x0),
-                            this.odometry.controls.target.y + (y1-y0),
-                            this.odometry.controls.target.z + (z1-z0),
+                if (render.theObject) {
+                    if (cameraHookLock.value) {
+                        this.odometry.controlType = null;
+                        render.theObject.getWorldPosition(position);
+                        quaternion.copy(render.theObject.quaternion);
+                        quaternion.multiply(core.THREE2WPILIB);
+                        quaternion.premultiply(rotationQuaternion);
+                        this.odometry.camera.position.copy(position);
+                        this.odometry.camera.quaternion.copy(quaternion);
+                    } else {
+                        let [x0, y0, z0] = [position.x, position.y, position.z];
+                        render.theObject.getWorldPosition(position);
+                        let [x1, y1, z1] = [position.x, position.y, position.z];
+                        this.odometry.camera.position.set(
+                            this.odometry.camera.position.x + (x1-x0),
+                            this.odometry.camera.position.y + (y1-y0),
+                            this.odometry.camera.position.z + (z1-z0),
                         );
+                        if (this.odometry.controlType == "orbit")
+                            this.odometry.controls.target.set(x1, y1, z1);
+                        if (this.odometry.controlType == "pan")
+                            this.odometry.controls.target.set(
+                                this.odometry.controls.target.x + (x1-x0),
+                                this.odometry.controls.target.y + (y1-y0),
+                                this.odometry.controls.target.z + (z1-z0),
+                            );
+                    }
                 }
             }
 
@@ -7939,7 +7957,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                 while (renders.length > l) this.tab.odometry.remRender(renders.pop());
                 for (let i = 0; i < l; i++) {
                     let value = this.value.slice(i*type, (i+1)*type);
-                    let render = renders[i];
+                    const render = renders[i];
                     render.name = this.pose.path;
                     render.color = this.pose.color;
                     render.isGhost = this.pose.isGhost;
