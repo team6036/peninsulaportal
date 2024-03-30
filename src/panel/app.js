@@ -5047,7 +5047,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             e.preventDefault();
             e.stopPropagation();
             mouseDown = true;
-            mouseAlt = e.shiftKey || e.button != 0;
+            mouseAlt = e.button != 0;
         });
         this.canvas.addEventListener("mouseup", e => {
             mouseDown = false;
@@ -5063,7 +5063,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 
         let hintCycle = 0, hintAlt = false;
         const onKeyDown = e => {
-            console.log(e.code);
             if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
                 hintAlt = true;
             }
@@ -5091,7 +5090,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             this.app.remHint(hints.map(hint => hint.hint));
         });
 
-        let t0 = null;
+        let mouseX0 = null, t0 = null;
         this.addHandler("update", delta => {
             if (this.isClosed) return;
             
@@ -5247,6 +5246,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             }
             let mouseXCanv = util.lerp(mnx, mxx, mouseX);
             let mouseYCanv = util.lerp(mny, mxy, mouseY);
+            let mouseXCanv0 = (mouseX0 == null) ? null : util.lerp(mnx, mxx, mouseX0);
             let foundHints = [];
             let nDiscrete = 0;
             graphVars.forEach((o, i) => {
@@ -5316,6 +5316,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     ctx.lineCap = "square";
                     ctx.beginPath();
                     let py = null;
+                    let potentialFoundHints = [], usePotential = false;
                     ranges.forEach((p, i) => {
                         let x = p.x, r = p.r, v = p.v;
                         let y1 = r[0], y2 = r[1];
@@ -5331,7 +5332,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         ctx.lineTo(x, y2);
                         ctx.lineTo(x, (y1+y2)/2);
                         py = (y1+y2)/2
-                        if (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x)) {
+                        if (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x))
                             if (hintAlt || (mouseYCanv > y1-2*quality && mouseYCanv < y2+5*quality)) {
                                 foundHints.push({
                                     x: mouseXCanv, y: py,
@@ -5339,56 +5340,46 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     color: ctx.strokeStyle,
                                     value: v,
                                 });
+                                usePotential = true;
                             }
-                        }
+                        if (mouseXCanv0 != null)
+                            if (mouseXCanv0 >= x && (i+1 >= ranges.length || mouseXCanv0 < ranges[i+1].x))
+                                potentialFoundHints.push({
+                                    x: mouseXCanv0, y: py,
+                                    name: node.path,
+                                    color: ctx.strokeStyle,
+                                    value: v,
+                                });
                     });
+                    if (usePotential) foundHints.push(...potentialFoundHints);
                     ctx.stroke();
                 });
             });
-            let r = ctx.canvas.getBoundingClientRect();
-            if (hintAlt) {
-                if (hints.length > foundHints.length) this.app.remHint(hints.splice(1).map(hint => hint.hint));
-                while (hints.length < foundHints.length) {
-                    let hint = this.app.addHint(new core.App.Hint());
-                    let hName = hint.addEntry(new core.App.Hint.NameEntry(""));
-                    let hValue = hint.addEntry(new core.App.Hint.ValueEntry(0));
-                    hints.push({
-                        hint: hint,
-                        hName: hName,
-                        hValue: hValue,
-                    });
-                }
-                for (let i = 0; i < foundHints.length; i++) {
-                    let foundHint = foundHints[i];
-                    const hint = hints[i];
-                    hint.hName.name = foundHint.name;
-                    hint.hName.eName.style.color = foundHint.color;
-                    hint.hValue.value = foundHint.value;
-                    hint.hint.place(r.left+foundHint.x/quality, r.top+foundHint.y/quality);
-                }
-            } else {
+            if (!mouseAlt && !hintAlt) {
                 if (foundHints.length > 0) {
                     hintCycle %= foundHints.length;
-                    let foundHint = foundHints[hintCycle];
-                    if (this.hasApp()) {
-                        if (hints.length > 1) this.app.remHint(hints.splice(1).map(hint => hint.hint));
-                        while (hints.length < 1) {
-                            let hint = this.app.addHint(new core.App.Hint());
-                            let hName = hint.addEntry(new core.App.Hint.NameEntry(""));
-                            let hValue = hint.addEntry(new core.App.Hint.ValueEntry(0));
-                            hints.push({
-                                hint: hint,
-                                hName: hName,
-                                hValue: hValue,
-                            });
-                        }
-                        const hint = hints[0];
-                        hint.hName.name = foundHint.name;
-                        hint.hName.eName.style.color = foundHint.color;
-                        hint.hValue.value = foundHint.value;
-                        hint.hint.place(r.left+foundHint.x/quality, r.top+foundHint.y/quality);
-                    }
-                } else if (this.hasApp() && hints.length > 0) this.app.remHint(hints.splice(0).map(hint => hint.hint));
+                    foundHints = [foundHints[hintCycle]];
+                }
+            }
+            let r = ctx.canvas.getBoundingClientRect();
+            if (hints.length > foundHints.length) this.app.remHint(hints.splice(foundHints.length).map(hint => hint.hint));
+            while (hints.length < foundHints.length) {
+                let hint = this.app.addHint(new core.App.Hint());
+                let hName = hint.addEntry(new core.App.Hint.NameEntry(""));
+                let hValue = hint.addEntry(new core.App.Hint.ValueEntry(0));
+                hints.push({
+                    hint: hint,
+                    hName: hName,
+                    hValue: hValue,
+                });
+            }
+            for (let i = 0; i < foundHints.length; i++) {
+                let foundHint = foundHints[i];
+                const hint = hints[i];
+                hint.hName.name = foundHint.name;
+                hint.hName.eName.style.color = foundHint.color;
+                hint.hValue.value = foundHint.value;
+                hint.hint.place(r.left+foundHint.x/quality, r.top+foundHint.y/quality);
             }
             ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
             ctx.lineWidth = 1*quality;
@@ -5450,9 +5441,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 if (this.hasPage() && this.page.hasSource())
                     this.page.source.ts = util.lerp(...graphRange, mouseX);
             if (mouseAlt) {
-                if (t0 == null)
-                    t0 = util.lerp(...graphRange, mouseX);
-            } else t0 = null;
+                if (mouseX0 == null) {
+                    mouseX0 = mouseX;
+                    t0 = util.lerp(...graphRange, mouseX0);
+                }
+            } else mouseX0 = null;
             if (mouseAlt) {
                 let t1 = util.lerp(...graphRange, mouseX);
                 let t0Value = Math.min(graphRange[1], Math.max(graphRange[0], t0));
