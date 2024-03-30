@@ -831,106 +831,35 @@
     align-content: center;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table {
+    --tw: 250px;
+    --tw2: 150px;
+    --th: 30px;
+    --height: 0;
+
     padding: 0px;
 
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    align-items: flex-start;
+    align-items: stretch;
     align-content: flex-start;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column {
-    min-width: 250px;
-    max-width: 250px;
+    min-width: var(--tw);
+    max-width: var(--tw);
+    min-height: calc(var(--th) * (var(--height) + 1));
+    max-height: calc(var(--th) * (var(--height) + 1));
 
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    align-items: flex-start;
+    align-items: stretch;
     align-content: flex-start;
 
-    background-color: var(--v2);
-    border-right: 1px solid var(--v2);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header {
-    z-index: 1;
-
-    position: sticky;
-    top: 0px;
-
-    min-width: 100%;
-    max-width: 100%;
-    min-height: 30px;
-    max-height: 30px;
-    padding: 5px;
-
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    align-items: center;
-    align-content: center;
-
     background-color: var(--v1);
-    border-bottom: 1px solid var(--v2);
-    color: var(--v6);
-
-    font-size: 12px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header > div {
-    flex-basis: 100%;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header > button {
-    --bg: transparent;
-    --bgh: transparent;
-    --bgd: transparent;
-
-    min-width: max-content;
-    padding: 0px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry {
-    position: relative;
-
-    min-width: 100%;
-    max-width: 100%;
-
-    background-color: var(--v1);
-    color: var(--v8);
-    border-bottom: 1px solid var(--v2);
-
-    font-size: 12px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry:hover,
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry.this {
-    background-color: var(--v1-8);
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry > .value {
-    position: sticky;
-    top: 30px;
-    left: 150px;
-
-    min-width: 100%;
-    max-width: 100%;
-    min-height: 30px;
-    max-height: 30px;
-    padding: 5px;
-
-    font-family: monospace;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry > .value.ts {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-
-    color: var(--v6);
-
-    background-color: var(--v2-8);
-    visibility: hidden;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .entry.this > .value.ts {
-    visibility: inherit;
+    border-right: 1px solid var(--v3);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side {
     z-index: 2;
@@ -938,40 +867,112 @@
     position: sticky;
     left: 0px;
 
-    min-width: 150px;
-    max-width: 150px;
+    min-width: var(--tw2);
+    max-width: var(--tw2);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > div {
+    --top: 0;
+    --h: 1;
+
+    min-height: calc(var(--th) * var(--h));
+    max-height: calc(var(--th) * var(--h));
+    margin-top: calc(var(--th) * var(--top));
+    padding: 5px 10px;
+
+    border-bottom: 1px solid var(--v3);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header {
+    z-index: 1;
+
+    position: sticky;
+    top: 0px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    background-color: var(--v1);
+    color: var(--v8);
+
+    font-size: 12px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header {
-    padding: 0px;
-    
     align-items: stretch;
+
+    padding: 0px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > input {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header > * {
+    min-width: max-content;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header > :first-child {
     flex-basis: 100%;
+
+    min-width: 0px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > button {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header > button {
     --bg: transparent;
     --bgh: transparent;
     --bgd: transparent;
+
+    padding: 0px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > input {
+    padding: 5px 10px;
+
+    font-family: monospace;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > button {
+    --bg: var(--v2);
+    --bgh: var(--v4);
+    --bgd: var(--v2-8);
 
     padding: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header > button.this {
     --bg: var(--cg3);
-    --bgh: var(--cg3);
-    --bgd: var(--cg3);
+    --fg: var(--v8);
+    --bgh: var(--cg);
+    --fgh: var(--v8);
+    --bgd: var(--cg1);
+    --fgd: var(--v6);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .entry {
-    min-height: 30px;
-    max-height: 30px;
-    padding: 5px;
-
-    color: var(--cg);
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header) {
+    --i: 0;
 
     font-family: monospace;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .entry:hover {
-    background-color: var(--v1) !important;
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header) > div {
+    position: sticky;
+    top: calc(5px + var(--th));
+
+    font-family: inherit;
+    font-size: inherit;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header):hover {
+    background-color: var(--v2-8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header).this {
+    background-color: var(--v2-8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header).this:hover {
+    background-color: var(--v2);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column:not(.side) > :not(.header) {
+    color: var(--v8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > :not(.header) {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+
+    color: var(--cg);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.webview > .nav {
     width: 100%;
