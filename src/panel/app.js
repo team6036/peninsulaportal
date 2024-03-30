@@ -5447,14 +5447,18 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     let ts = util.lerp(...graphRange, mouseX);
                     newGraphRange = newGraphRange.map(v => util.lerp(v, ts, scrollMag));
                 }
-                this.viewMode = "section";
                 if (newGraphRange[1]-newGraphRange[0] <= 0) newGraphRange[1] = newGraphRange[0]+0.001;
                 if (newGraphRange[1]-newGraphRange[0] > maxTime-minTime) newGraphRange[1] = newGraphRange[0]+(maxTime-minTime);
                 if (newGraphRange[0] < minTime) newGraphRange = newGraphRange.map(v => v+(minTime-newGraphRange[0]));
                 if (newGraphRange[1] > maxTime) newGraphRange = newGraphRange.map(v => v+(maxTime-newGraphRange[1]));
                 newGraphRange = newGraphRange.map(v => Math.min(maxTime, Math.max(minTime, Math.round(v*1000000)/1000000)));
-                this.change("viewParams.start", this.viewParams.start, this.viewParams.start=newGraphRange[0]);
-                this.change("viewPrams.stop", this.viewParams.stop, this.viewParams.stop=newGraphRange[1]);
+                if (newGraphRange[0] <= minTime && newGraphRange[1] >= maxTime)
+                    this.viewMode = "all";
+                else {
+                    this.viewMode = "section";
+                    this.change("viewParams.start", this.viewParams.start, this.viewParams.start=newGraphRange[0]);
+                    this.change("viewPrams.stop", this.viewParams.stop, this.viewParams.stop=newGraphRange[1]);
+                }
             } else scrollAxis = null;
             scrollX = scrollY = 0;
         });
