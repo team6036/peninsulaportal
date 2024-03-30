@@ -755,6 +755,54 @@ article.md.lighter table td {
     display: block;
 }
 
+#overlay {
+    position: absolute;
+    top: 0%;
+    left: 0%;
+
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+
+    pointer-events: none;
+}
+#overlay > .hint {
+    position: absolute;
+    padding: 5px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+
+    background-color: var(--v1-a);
+    color: var(--v8);
+    border: 1px solid var(--v3);
+
+    font-size: 12px;
+}
+#overlay > .hint > .entry {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#overlay > .hint > .entry > * {
+    min-width: max-content;
+}
+#overlay > .hint > .entry > div {
+    flex-basis: 100%;
+}
+#overlay > .hint > .entry > div:nth-child(2) {
+    font-family: monospace;
+}
+
 :has(> .tooltip) {
     position: relative;
 }
