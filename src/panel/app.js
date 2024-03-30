@@ -2275,6 +2275,7 @@ Panel.ToolTab = class PanelToolTab extends Panel.Tab {
 Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
     #vars;
     #ts;
+    #visibleN; #scrollN;
     #tsNow;
     #tsOverride;
 
@@ -2283,6 +2284,10 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
     #eTSInput;
     #eFollowBtn;
 
+    static TW = 250;
+    static TW2 = 150;
+    static TH = 30;
+
     constructor(...a) {
         super("Table", "table");
 
@@ -2290,6 +2295,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
 
         this.#vars = [];
         this.#ts = [];
+        this.#n = this.#visibleN = this.#scrollN = 0;
         this.#tsNow = 0;
 
         this.#eSide = document.createElement("div");
@@ -2343,18 +2349,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.tsOverride = !this.tsOverride;
         });
 
-        const bSearch = (arr, v) => {
-            let l = 0, r = arr.length-1;
-            while (l <= r) {
-                let m = Math.floor((l+r)/2);
-                if (arr[m] == v) return m;
-                if (arr[m] > v) r = m-1;
-                else l = m+1;
-            }
-            return -1;
-        };
-
-        let entries = [];
+        let entries = [], tsI = null;
         this.addHandler("update", delta => {
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
@@ -2365,29 +2360,42 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
                 if (!v.hasNode() || !v.node.hasField()) return;
                 v.node.field.logsTS.map(t => ts.add(t));
             });
-            this.#ts = ts = [...ts].sort((a, b) => a-b);
-            this.vars.forEach(v => v.update(delta));
-            while (entries.length < ts.length) {
+            this.#ts = [...ts].sort((a, b) => a-b);
+            this.elem.style.setProperty("--height", this.n);
+            this.#visibleN = Math.ceil(this.elem.offsetHeight/Panel.TableTab.TH)+2;
+            this.#scrollN = Math.floor(this.elem.scrollTop/Panel.TableTab.TH)-1;
+            this.#visibleN = Math.min(this.n, this.visibleN);
+            this.#scrollN = Math.min(this.n-this.visibleN, Math.max(0, this.scrollN));
+            this.#visibleN = Math.min(this.n-this.scrollN, this.visibleN);
+            while (entries.length < this.visibleN) {
                 let elem = document.createElement("div");
                 this.eSide.appendChild(elem);
-                elem.classList.add("entry");
-                entries.push(elem);
+                let content = document.createElement("div");
+                elem.appendChild(content);
+                entries.push({
+                    elem: elem,
+                    content: content,
+                });
             }
-            while (entries.length > ts.length) {
-                let elem = entries.pop();
-                this.eSide.removeChild(elem);
+            while (entries.length > this.visibleN) {
+                let entry = entries.pop();
+                this.eSide.removeChild(entry.elem);
             }
-            for (let i = 0; i < ts.length; i++) {
-                let elem = entries[i];
-                elem.textContent = ts[i];
-                let v = (
-                    this.tsNow >= ts[i] &&
-                    this.tsNow < ((i+1 >= ts.length) ? Infinity : ts[i+1])
-                );
-                if (v == elem.classList.contains("this")) continue;
-                if (v) elem.classList.add("this");
+            if (entries.length > 0)
+                entries[0].elem.style.setProperty("--top", this.scrollN);
+            let tsI2 = Math.max(0, this.lookupTS());
+            if (tsI != tsI2) {
+                tsI = tsI2;
+                this.elem.scrollTop = tsI*Panel.TableTab.TH;
+            }
+            for (let i = 0; i < this.visibleN; i++) {
+                let { elem, content } = entries[i];
+                content.textContent = this.ts[this.scrollN+i];
+                if (this.scrollN+i == tsI)
+                    elem.classList.add("this");
                 else elem.classList.remove("this");
             }
+            this.vars.forEach(v => v.update(delta));
         });
     }
 
@@ -2442,22 +2450,38 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         return v;
     }
 
-    get ts() { return [...this.#ts]; }
-    lookupTS(ts) {
-        ts = util.ensure(ts, "num");
-        if (this.#ts.length <= 0) return -1;
-        if (ts < this.#ts.at(0)) return -1;
-        if (ts >= this.#ts.at(-1)) return this.#ts.length-1;
-        let l = 0, r = this.#ts.length-2;
+    get ts() { return this.#ts; }
+    lookupTS(ts=null) {
+        ts = util.ensure(ts, "num", this.tsNow);
+        if (this.ts.length <= 0) return -1;
+        if (ts < this.ts.at(0)) return -1;
+        if (ts >= this.ts.at(-1)) return this.ts.length-1;
+        let l = 0, r = this.ts.length-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
-            let range = [this.#ts[m], this.#ts[m+1]];
-            if (ts < range[0]) r = m-1;
-            else if (ts >= range[1]) l = m+1;
+            if (ts < this.ts[m]) r = m-1;
+            else if (ts >= this.ts[m+1]) l = m+1;
             else return m;
         }
         return -1;
     }
+    lookupTSExact(ts=null) {
+        ts = util.ensure(ts, "num", this.tsNow);
+        if (this.ts.length <= 0) return -1;
+        if (ts < this.ts.at(0)) return -1;
+        if (ts > this.ts.at(-1)) return -1;
+        let l = 0, r = this.ts.length-1;
+        while (l <= r) {
+            let m = Math.floor((l+r)/2);
+            if (ts < this.ts[m]) r = m-1;
+            else if (ts > this.ts[m]) l = m+1;
+            else return m;
+        }
+        return -1;
+    }
+    get n() { return this.ts.length; }
+    get visibleN() { return this.#visibleN; }
+    get scrollN() { return this.#scrollN; }
     get tsNow() { return this.#tsNow; }
     set tsNow(v) {
         v = util.ensure(v, "num");
@@ -2615,46 +2639,53 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         [this.path] = a;
 
         let entries = [];
+        let y0 = 0;
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
-            let logsN = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.logsN : 0;
-            let logsTS = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.logsTS : [];
-            let logsV = (this.hasNode() && this.node.hasField() && this.node.field.isJustPrimitive) ? this.node.field.logsV : [];
-            while (entries.length < logsN) {
-                let entry = {};
-                let elem = entry.elem = document.createElement("div");
-                this.elem.appendChild(elem);
-                elem.classList.add("entry");
-                let valueTS = entry.valueTS = document.createElement("div");
-                elem.appendChild(valueTS);
-                valueTS.classList.add("value");
-                valueTS.classList.add("ts");
-                let value = entry.value = document.createElement("div");
-                elem.appendChild(value);
-                value.classList.add("value");
-                entries.push(entry);
+            let n = this.tab.ts.length;
+            if (!this.hasNode() || !this.node.hasField() || !this.node.field.isJustPrimitive || this.node.field.logsN <= 0) {
+                while (entries.length > 0) {
+                    let entry = entries.pop();
+                    this.elem.remChild(entry.elem);
+                }
+                return;
             }
-            while (entries.length > logsN) {
+            let logsN = this.node.field.logsN;
+            let logsTS = this.node.field.logsTS;
+            let logsV = this.node.field.logsV;
+            let start = this.node.field.getIndex(this.tab.ts[Math.min(n, Math.max(0, this.tab.scrollN))])-1;
+            let stop = this.node.field.getIndex(this.tab.ts[Math.min(n, Math.max(0, this.tab.scrollN+this.tab.visibleN))])+1;
+            start = Math.min(logsN-1, Math.max(0, start));
+            stop = Math.min(logsN-1, Math.max(0, stop));
+            let len = stop-start+1;
+            while (entries.length < len) {
+                let elem = document.createElement("div");
+                this.elem.appendChild(elem);
+                elem.innerHTML = "<div></div>";
+                let content = elem.children[0];
+                entries.push({
+                    elem: elem,
+                    content: content,
+                });
+            }
+            while (entries.length > len) {
                 let entry = entries.pop();
                 this.elem.removeChild(entry.elem);
             }
-            for (let i = 0; i < logsN; i++) {
-                let entry = entries[i];
-                let j1 = this.tab.lookupTS(logsTS[i]);
-                if (i <= 0) entry.elem.style.marginTop = (j1*30)+"px";
-                let j2 = (i+1 >= logsN) ? this.tab.ts.length : this.tab.lookupTS(logsTS[i+1]);
-                let j3 = this.tab.lookupTS(this.tab.tsNow);
-                entry.elem.style.height = entry.elem.style.maxHeight = ((j2-j1)*30)+"px";
-                entry.value.textContent = entry.valueTS.textContent = logsV[i];
-                entry.valueTS.style.top = (Math.max(0, Math.min(j2-j1-1, j3-j1))*30)+"px";
-                let v = (
-                    this.tab.tsNow >= logsTS[i] &&
-                    this.tab.tsNow < ((i+1 >= logsN) ? Infinity : logsTS[i+1])
-                );
-                if (v == entry.elem.classList.contains("this")) continue;
-                if (v) entry.elem.classList.add("this");
-                else entry.elem.classList.remove("this");
+            let scrollTop = this.tab.elem.scrollTop;
+            entries[0].elem.style.setProperty("--top", this.tab.lookupTSExact(logsTS[start]));
+            for (let i = start; i <= stop; i++) {
+                let ts = logsTS[i], v = logsV[i];
+                let { elem, content } = entries[i-start];
+                let i0 = this.tab.lookupTSExact(ts);
+                let i1 = (i+1 < logsN) ? this.tab.lookupTSExact(logsTS[i+1]) : n;
+                elem.style.setProperty("--h", i1-i0);
+                content.textContent = String(v);
+                if (this.tab.tsNow >= ts && (i+1 >= logsN || this.tab.tsNow < logsTS[i+1]))
+                    elem.classList.add("this");
+                else elem.classList.remove("this");
             }
+            this.tab.elem.scrollTop = scrollTop;
         });
     }
 
@@ -2681,7 +2712,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         tooltip.classList.add("tooltip");
         tooltip.classList.add("hov");
         tooltip.classList.add("swx");
-        tooltip.textContent = "/"+this.path;
+        tooltip.textContent = this.path;
         let removeBtn = document.createElement("button");
         this.eHeader.appendChild(removeBtn);
         removeBtn.innerHTML = "<ion-icon name='close'></ion-icon>";
