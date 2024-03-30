@@ -362,7 +362,10 @@ Source.Field = class SourceField {
     get isJustPrimitive() { return this.#isJustPrimitive; }
     get isNumerical() { return this.#isNumerical; }
 
-    get logsN() { return Math.min(this.#logsTS.length, this.#logsV.length, this.#logsDec.length); }
+    get logsN() {
+        if (!this.isStruct) return Math.min(this.#logsTS.length, this.#logsV.length);
+        return Math.min(this.#logsTS.length, this.#logsV.length, this.#logsDec.length);
+    }
     get logsTS() { return [...this.#logsTS]; }
     set logsTS(v) { this.#logsTS = util.ensure(v, "arr"); }
     get logsV() { return [...this.#logsV]; }
@@ -410,6 +413,7 @@ Source.Field = class SourceField {
         };
     }
     getDecoded(ts=null) {
+        if (!this.isStruct) return this.get(ts);
         ts = util.ensure(ts, "num", this.source.ts);
         const n = this.logsN;
         let i = this.getIndex(ts);
@@ -417,6 +421,7 @@ Source.Field = class SourceField {
         return this.#logsDec[i];
     }
     getDecodedRange(tsStart=null, tsStop=null) {
+        if (!this.isStruct) return this.getDecodedRange(ts);
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart)+1;
@@ -435,17 +440,17 @@ Source.Field = class SourceField {
         if (this.isJustPrimitive) {
             if (i >= 0 && i < n)
                 if (this.#logsV[i] == v)
-                    return this.#logsDec[i];
+                    return v;
             if (i+2 >= 0 && i+2 < n)
                 if (this.#logsV[i+2] == v) {
                     this.#logsTS[i+2] = ts;
-                    return this.#logsDec[i+2];
+                    return v;
                 }
         }
         this.#logsTS.splice(i+1, 0, ts);
         this.#logsV.splice(i+1, 0, v);
-        this.#logsDec.splice(i+1, 0, { r: this.isStruct ? null : v });
         if (this.isStruct) {
+            this.#logsDec.splice(i+1, 0, { r: null });
             const decoded = this.source.structDecode(this.path, this.baseType, this.isArray, v, ts, false);
             if (decoded != null) {
                 this.#logsDec[i+1].r = decoded;
@@ -463,9 +468,10 @@ Source.Field = class SourceField {
         if (n == 0)
             if (this.name.startsWith("struct:") && this.type == "structschema")
                 this.source.createStruct(this.name.slice(7), v);
-        return this.#logsDec[i+1];
+        return this.isStruct ? this.#logsDec[i+1] : v;
     }
     updateDecoded(dec, ts=null) {
+        if (!this.isStruct) return this.update(dec, ts);
         dec = util.ensure(dec, "obj");
         ts = util.ensure(ts, "num", this.source.ts);
         const n = this.logsN;
@@ -522,16 +528,17 @@ Source.Field = class SourceField {
     }
 
     toSerialized() {
-        return {
+        const data = {
             real: this.real,
             path: this.path,
             type: this.type,
             logsTS: this.#logsTS,
             logsV: this.#logsV,
-            logsDec: this.#logsDec,
             metaLogsTS: this.#metaLogsTS,
             metaLogsV: this.#metaLogsV,
         };
+        if (this.isStruct) data.logsDec = this.#logsDec;
+        return data;
     }
     static fromSerialized(source, data) {
         data = util.ensure(data, "obj");
@@ -539,7 +546,7 @@ Source.Field = class SourceField {
         field.real = data.real;
         field.logsTS = data.logsTS;
         field.logsV = data.logsV;
-        field.logsDec = data.logsDec;
+        if (field.isStruct) field.logsDec = data.logsDec;
         field.metaLogsTS = data.metaLogsTS;
         field.metaLogsV = data.metaLogsV;
         return field;
