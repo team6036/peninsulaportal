@@ -802,8 +802,11 @@ article.md.lighter table td {
 }
 #overlay > .hint > .entry > div:nth-child(1) {
     min-width: 20px;
+
+    text-align: left;
 }
 #overlay > .hint > .entry > div:nth-child(2) {
+    text-align: right;
     font-family: monospace;
 }
 

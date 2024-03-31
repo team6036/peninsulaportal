@@ -210,7 +210,7 @@ class RVisualItem2d extends core.Odometry2d.Robot {
     #interp;
 
     constructor(odometry, visual) {
-        super(odometry);
+        super(odometry, 0, "Path Playback");
 
         this.z2 = -1;
 
@@ -371,7 +371,7 @@ class RSelectable extends core.Odometry2d.Render {
             if (!this.hasItem()) return;
             type = (this.item instanceof sublib.Project.Node) ? "node" : (this.item instanceof sublib.Project.Obstacle) ? "obstacle" : null;
             if (type == "node") {
-                this.renderObject = new core.Odometry2d.Robot(this);
+                this.renderObject = new core.Odometry2d.Robot(this, 0, "Waypoint");
             } else if (type == "obstacle") {
                 this.renderObject = new core.Odometry2d.Obstacle(this);
             }
@@ -885,6 +885,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.odometry3d.controlType = null;
         this.odometry3d.camera.position.set(0, 10, -0.01);
         this.odometry3d.camera.lookAt(0, 0, 0);
+
+        this.odometry2d.addHandler("change-addHint", (_, hint) => this.app.addHint(hint));
+        this.odometry2d.addHandler("change-remHint", (hint, _) => this.app.remHint(hint));
 
         this.#eMaxMinBtn = document.createElement("button");
         this.eNavPost.appendChild(this.eMaxMinBtn);
