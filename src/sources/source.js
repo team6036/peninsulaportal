@@ -433,8 +433,10 @@ Source.Field = class SourceField {
         };
     }
     update(v, ts=null, volatile=false) {
-        if (!volatile) v = Source.Field.ensureType(this.type, v);
-        ts = util.ensure(ts, "num", this.source.ts);
+        if (!volatile) {
+            v = Source.Field.ensureType(this.type, v);
+            ts = util.ensure(ts, "num", this.source.ts);
+        }
         const n = this.logsN;
         let i = this.getIndex(ts);
         if (this.isJustPrimitive) {
@@ -476,8 +478,9 @@ Source.Field = class SourceField {
         ts = util.ensure(ts, "num", this.source.ts);
         const n = this.logsN;
         let i = this.getIndex(ts);
-        if (i < 0 || i >= n) return;
+        if (i < 0 || i >= n) return null;
         this.#logsDec[i].r = dec;
+        return dec;
     }
 
     getMetaIndex(ts=null) {
@@ -523,8 +526,9 @@ Source.Field = class SourceField {
             } catch (e) {}
         ts = util.ensure(ts, "num", this.source.ts);
         let i = this.getMetaIndex(ts);
-        this.#metaLogsTS.splice(i+1, ts);
-        this.#metaLogsV.splice(i+1, v);
+        this.#metaLogsTS.splice(i+1, 0, ts);
+        this.#metaLogsV.splice(i+1, 0, v);
+        return v;
     }
 
     toSerialized() {
