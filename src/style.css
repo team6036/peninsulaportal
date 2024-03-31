@@ -800,6 +800,9 @@ article.md.lighter table td {
 #overlay > .hint > .entry > div {
     flex-basis: 100%;
 }
+#overlay > .hint > .entry > div:nth-child(1) {
+    min-width: 20px;
+}
 #overlay > .hint > .entry > div:nth-child(2) {
     font-family: monospace;
 }
