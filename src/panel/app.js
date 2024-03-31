@@ -2639,7 +2639,6 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         [this.path] = a;
 
         let entries = [];
-        let y0 = 0;
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             let n = this.tab.ts.length;
@@ -2661,29 +2660,33 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
             while (entries.length < len) {
                 let elem = document.createElement("div");
                 this.elem.appendChild(elem);
-                elem.innerHTML = "<div></div>";
+                elem.innerHTML = "<div></div><div></div>";
                 let content = elem.children[0];
+                let value = elem.children[1];
                 entries.push({
                     elem: elem,
                     content: content,
+                    value: value,
                 });
             }
             while (entries.length > len) {
                 let entry = entries.pop();
                 this.elem.removeChild(entry.elem);
             }
+            let its = this.tab.lookupTS();
             let scrollTop = this.tab.elem.scrollTop;
             entries[0].elem.style.setProperty("--top", this.tab.lookupTSExact(logsTS[start]));
             for (let i = start; i <= stop; i++) {
                 let ts = logsTS[i], v = logsV[i];
-                let { elem, content } = entries[i-start];
+                let { elem, content, value } = entries[i-start];
                 let i0 = this.tab.lookupTSExact(ts);
                 let i1 = (i+1 < logsN) ? this.tab.lookupTSExact(logsTS[i+1]) : n;
                 elem.style.setProperty("--h", i1-i0);
-                content.textContent = String(v);
-                if (this.tab.tsNow >= ts && (i+1 >= logsN || this.tab.tsNow < logsTS[i+1]))
+                content.textContent = value.textContent = String(v);
+                if (its >= i0 && its < i1) {
                     elem.classList.add("this");
-                else elem.classList.remove("this");
+                    value.style.setProperty("--shift", its-i0);
+                } else elem.classList.remove("this");
             }
             this.tab.elem.scrollTop = scrollTop;
         });
