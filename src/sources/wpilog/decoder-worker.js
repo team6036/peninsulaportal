@@ -20,6 +20,14 @@ class WPILOGDecoderWorker extends WorkerBase {
                 const source = new Source(true);
                 let entryId2Field = {};
                 let first = true;
+                const updateTime = ts => {
+                    if (first) {
+                        first = false;
+                        return source.tsMin = source.tsMax = ts;
+                    }
+                    source.tsMin = Math.min(source.tsMin, ts);
+                    source.tsMax = Math.max(source.tsMax, ts);
+                };
                 decoder.build((record, progress) => {
                     this.progress(progress);
                     if (record.isControl()) {
@@ -40,13 +48,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                             const field = entryId2Field[id];
                             let ts = record.ts / 1000;
                             field.updateMeta(metadata, ts);
-                            if (first) {
-                                first = false;
-                                source.tsMin = source.tsMax = ts;
-                            } else {
-                                source.tsMin = Math.min(source.tsMin, ts);
-                                source.tsMax = Math.max(source.tsMax, ts);
-                            }
+                            updateTime(ts);
                         }
                         return;
                     }
@@ -68,13 +70,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                     };
                     let v = (field.type in typefs) ? typefs[field.type]() : record.getRaw();
                     field.update(v, ts, true);
-                    if (first) {
-                        first = false;
-                        source.tsMin = source.tsMax = ts;
-                    } else {
-                        source.tsMin = Math.min(source.tsMin, ts);
-                        source.tsMax = Math.max(source.tsMax, ts);
-                    }
+                    updateTime(ts);
                 });
                 this.progress(1);
                 this.send("finish", source.toSerialized());
