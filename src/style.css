@@ -682,6 +682,7 @@ article.md.lighter table td {
     position: absolute;
     top: 100%;
     left: 0px;
+    transform: translateY(-50%);
 
     width: var(--progress);
     height: 2px;

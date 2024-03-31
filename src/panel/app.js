@@ -5186,6 +5186,19 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     } else {
                         subrange = [null, null];
                         log = node.field.getRange(...graphRange);
+                        const start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
+                        if (start != null) {
+                            log.start--;
+                            log.n++;
+                            log.ts.unshift(graphRange[0]);
+                            log.v.unshift(node.field.isNumerical ? v.execExpr(start) : start);
+                        }
+                        if (stop != null) {
+                            log.stop++;
+                            log.n++;
+                            log.ts.push(graphRange[1]);
+                            log.v.push(node.field.isNumerical ? v.execExpr(stop) : stop);
+                        }
                         if (node.field.isNumerical)
                             log.v = log.v.map(v2 => {
                                 v2 = v.execExpr(v2);
@@ -5195,17 +5208,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 else subrange[1] = Math.max(subrange[1], v2);
                                 return v2;
                             });
-                        const start = node.field.get(graphRange[0]), stop = node.field.get(graphRange[1]);
-                        if (start != null) {
-                            log.start--;
-                            log.ts.unshift(graphRange[0]);
-                            log.v.unshift(v.execExpr(start));
-                        }
-                        if (stop != null) {
-                            log.stop++;
-                            log.ts.push(graphRange[1]);
-                            log.v.push(v.execExpr(stop));
-                        }
                         if (log.length <= 0) return v.disable();
                         logs[v.path] = log;
                         ranges[v.path] = subrange;
