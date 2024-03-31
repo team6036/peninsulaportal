@@ -4705,6 +4705,8 @@ export class Odometry2d extends Odometry {
     #imageShow;
 
     #padding;
+    #axisInteriorX;
+    #axisInteriorY;
 
     #unit;
 
@@ -4739,6 +4741,8 @@ export class Odometry2d extends Odometry {
         this.#imageShow = null;
 
         this.#padding = new util.V4();
+        this.#axisInteriorX = false;
+        this.#axisInteriorY = false;
 
         this.#unit = null;
 
@@ -4772,43 +4776,43 @@ export class Odometry2d extends Odometry {
             ctx.fillStyle = PROPERTYCACHE.get("--v6");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
-            ctx.textBaseline = "top";
+            ctx.textBaseline = this.axisInteriorX ? "bottom" : "top";
             let y0 = mny;
             let y1 = mxy;
-            let y2 = mxy + 5*quality;
-            let y3 = mxy + 10*quality;
-            for (let i = 0; i <= w; i += step) {
+            let y2 = mxy + 5*quality*(this.axisInteriorX ? -1 : 1);
+            let y3 = mxy + 10*quality*(this.axisInteriorX ? -1 : 1);
+            for (let i = +this.axisInteriorX; i <= w; i += step) {
                 let x = util.lerp(mnx, mxx, lib.Unit.convert(i, this.unit, "cm") / this.w);
-                ctx.strokeStyle = PROPERTYCACHE.get("--v6");
-                ctx.beginPath();
-                ctx.moveTo(x, y1);
-                ctx.lineTo(x, y2);
-                ctx.stroke();
                 ctx.strokeStyle = PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x, y0);
                 ctx.lineTo(x, y1);
                 ctx.stroke();
+                ctx.strokeStyle = PROPERTYCACHE.get("--v6");
+                ctx.beginPath();
+                ctx.moveTo(x, y1);
+                ctx.lineTo(x, y2);
+                ctx.stroke();
                 if (i%2 == 1 && i < w) continue;
                 ctx.fillText(i, x, y3);
             }
-            ctx.textAlign = "right";
+            ctx.textAlign = this.axisInteriorY ? "left" : "right";
             ctx.textBaseline = "middle";
             let x0 = mxx;
             let x1 = mnx;
-            let x2 = mnx - 5*quality;
-            let x3 = mnx - 10*quality;
-            for (let i = 0; i <= h; i += step) {
+            let x2 = mnx - 5*quality*(this.axisInteriorY ? -1 : 1);
+            let x3 = mnx - 10*quality*(this.axisInteriorY ? -1 : 1);
+            for (let i = +this.axisInteriorY; i <= h; i += step) {
                 let y = util.lerp(mxy, mny, lib.Unit.convert(i, this.unit, "cm") / this.h);
-                ctx.strokeStyle = PROPERTYCACHE.get("--v6");
-                ctx.beginPath();
-                ctx.moveTo(x1, y);
-                ctx.lineTo(x2, y);
-                ctx.stroke();
                 ctx.strokeStyle = PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x0, y);
                 ctx.lineTo(x1, y);
+                ctx.stroke();
+                ctx.strokeStyle = PROPERTYCACHE.get("--v6");
+                ctx.beginPath();
+                ctx.moveTo(x1, y);
+                ctx.lineTo(x2, y);
                 ctx.stroke();
                 if (i%2 == 1 && i < h) continue;
                 ctx.fillText(i, x3, y);
@@ -4881,6 +4885,23 @@ export class Odometry2d extends Odometry {
     set paddingLeft(v) { this.padding.l = v; }
     get paddingRight() { return this.padding.r; }
     set paddingRight(v) { this.padding.r = v; }
+
+    get axisInteriorX() { return this.#axisInteriorX; }
+    set axisInteriorX(v) {
+        v = !!v;
+        if (this.axisInteriorX == v) return;
+        this.#axisInteriorX = v;
+    }
+    get axisExteriorX() { return !this.axisInteriorX; }
+    set axisExteriorX(v) { this.axisInteriorX = !v; }
+    get axisInteriorY() { return this.#axisInteriorY; }
+    set axisInteriorY(v) {
+        v = !!v;
+        if (this.axisInteriorY == v) return;
+        this.#axisInteriorY = v;
+    }
+    get axisExteriorY() { return !this.axisInteriorY; }
+    set axisExteriorY(v) { this.axisInteriorY = !v; }
 
     get unit() { return this.#unit; }
     set unit(v) { this.#unit = String(v); }
@@ -5074,6 +5095,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
 Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
     #type;
 
+    #name;
     #size;
     #velocity;
     #showVelocity;
@@ -5097,11 +5119,12 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         return null;
     }
 
-    constructor(parent, pos, size, heading, velocity) {
+    constructor(parent, pos, name, size, heading, velocity) {
         super(parent, pos);
 
         this.#type = null;
 
+        this.#name = null;
         this.#size = new V();
         this.#velocity = new V();
         this.#showVelocity = true;
@@ -5112,12 +5135,22 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
         this.type = Odometry2d.Robot.TYPES.DEFAULT;
 
+        this.name = name;
         this.size = size;
         this.heading = heading;
         this.velocity = velocity;
 
+        const hint = new App.Hint();
+        const hName = hint.addEntry(new App.Hint.NameEntry(""));
+        const hPosX = hint.addEntry(new App.Hint.KeyValueEntry("X", 0));
+        const hPosY = hint.addEntry(new App.Hint.KeyValueEntry("Y", 0));
+        const hDir = hint.addEntry(new App.Hint.KeyValueEntry("Dir", 0));
+
+        this.addHandler("rem", () => this.odometry.remHint(hint));
+
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            const hovered = this.hovered;
             if (![Odometry2d.Robot.TYPES.NODE, Odometry2d.Robot.TYPES.ARROW].includes(this.type)) {
                 ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
                 ctx.lineWidth = 7.5*quality;
@@ -5151,7 +5184,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.stroke();
             }
             if (this.type == Odometry2d.Robot.TYPES.ARROW) {
-                ctx.strokeStyle = PROPERTYCACHE.get("--"+((this.hovered == "heading") ? this.colorH : this.color));
+                ctx.strokeStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? this.colorH : this.color));
                 ctx.lineWidth = 5*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
@@ -5166,7 +5199,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(15)))).xy);
                 ctx.stroke();
             } else {
-                ctx.fillStyle = PROPERTYCACHE.get("--"+((this.hovered == "heading") ? "v8" : "v8-8"));
+                ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? "v8" : "v8-8"));
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "square";
@@ -5175,7 +5208,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.fill();
             }
             if (![Odometry2d.Robot.TYPES.BOX, Odometry2d.Robot.TYPES.ARROW].includes(this.type)) {
-                ctx.fillStyle = PROPERTYCACHE.get("--"+((this.hovered == "main") ? this.colorH : this.color));
+                ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "main") ? this.colorH : this.color));
                 ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "round";
@@ -5186,7 +5219,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 if (this.selected) ctx.stroke();
             }
             if (this.showVelocity) {
-                ctx.strokeStyle = PROPERTYCACHE.get("--"+((this.hovered == "velocity") ? "v8" : "v8-8"));
+                ctx.strokeStyle = PROPERTYCACHE.get("--"+((hovered == "velocity") ? "v8" : "v8-8"));
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "round";
                 ctx.lineCap = "round";
@@ -5201,6 +5234,15 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(5)))).xy);
                 ctx.stroke();
             }
+            hName.name = this.name;
+            hName.eName.style.color = "var(--"+this.color+")";
+            hPosX.value = this.x;
+            hPosY.value = this.y;
+            hDir.value = this.heading;
+            if (hovered) {
+                this.odometry.addHint(hint);
+                hint.place(this.odometry.worldToPage(this.pos));
+            } else this.odometry.remHint(hint);
         });
     }
 
@@ -5209,7 +5251,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         let m = this.odometry.worldMouse;
         if (this.showVelocity && this.rPos.add(this.velocity).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "velocity";
         if (this.rPos.add(V.dir(this.heading, this.w/2)).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "heading";
-        if (this.rPos.distSquared(m) < this.odometry.pageLenToWorld(7.5)**2) return "main";
+        let d = this.rPos.distSquared(m);
+        if (d < this.odometry.pageLenToWorld(7.5)**2) return "main";
+        if (d < this.odometry.pageLenToWorld((this.w+this.h)/4)**2) return "body";
         return null;
     }
 
@@ -5219,6 +5263,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         if (!Object.values(Odometry2d.Robot.TYPES).includes(v)) v = Odometry2d.Robot.TYPES.DEFAULT;
         this.#type = v;
     }
+
+    get name() { return this.#name; }
+    set name(v) { this.#name = String(v); }
 
     get size() { return this.#size; }
     set size(v) { this.#size.set(v); }

@@ -6699,6 +6699,22 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         super("2d");
 
         this.#odometry = new core.Odometry2d(this.eContent);
+        this.addHandler("add", () => {
+            if (!this.hasApp()) return;
+            this.app.addHint(this.odometry.hints);
+        });
+        this.addHandler("rem", () => {
+            if (!this.hasApp()) return;
+            this.app.remHint(this.odometry.hints);
+        });
+        this.odometry.addHandler("change-addHint", (_, hint) => {
+            if (!this.hasApp()) return;
+            this.app.addHint(hint);
+        });
+        this.odometry.addHandler("change-remHint", (hint, _) => {
+            if (!this.hasApp()) return;
+            this.app.remHint(hint);
+        });
         this.addHandler("change-lengthUnits", () => {
             this.odometry.unit = this.lengthUnits;
         });
@@ -7236,6 +7252,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                 let colorH = color+5;
                 for (let i = 0; i < l; i++) {
                     const render = renders[i];
+                    render.name = this.pose.path;
                     render.color = color;
                     render.colorH = colorH;
                     render.alpha = this.pose.isGhost ? 0.5 : 1;
