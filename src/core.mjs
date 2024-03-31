@@ -806,6 +806,7 @@ export class App extends util.Target {
         if (document.body.children[1] instanceof HTMLElement)
             document.body.insertBefore(this.eOverlay, document.body.children[1]);
         else document.body.appendChild(this.eOverlay);
+        this.eOverlay.id = "overlay";
 
         this.#eRunInfo = document.getElementById("runinfo");
         if (!(this.#eRunInfo instanceof HTMLDivElement)) this.#eRunInfo = document.createElement("div");
@@ -5145,6 +5146,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         const hPosX = hint.addEntry(new App.Hint.KeyValueEntry("X", 0));
         const hPosY = hint.addEntry(new App.Hint.KeyValueEntry("Y", 0));
         const hDir = hint.addEntry(new App.Hint.KeyValueEntry("Dir", 0));
+        let useVelocity = null;
+        const hVelX = new App.Hint.KeyValueEntry("VX", 0);
+        const hVelY = new App.Hint.KeyValueEntry("VY", 0);
 
         this.addHandler("rem", () => this.odometry.remHint(hint));
 
@@ -5234,12 +5238,21 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(5)))).xy);
                 ctx.stroke();
             }
-            hName.name = this.name;
-            hName.eName.style.color = "var(--"+this.color+")";
-            hPosX.value = this.x;
-            hPosY.value = this.y;
-            hDir.value = this.heading;
             if (hovered) {
+                hName.name = this.name;
+                hName.eName.style.color = "var(--"+this.color+")";
+                hPosX.value = this.x;
+                hPosY.value = this.y;
+                hDir.value = this.heading;
+                if (useVelocity != this.useVelocity) {
+                    useVelocity = this.useVelocity;
+                    if (useVelocity) hint.addEntry(hVelX, hVelY);
+                    else hint.remEntry(hVelX, hVelY);
+                }
+                if (useVelocity) {
+                    hVelX.value = this.velocityX;
+                    hVelY.value = this.velocityY;
+                }
                 this.odometry.addHint(hint);
                 hint.place(this.odometry.worldToPage(this.pos));
             } else this.odometry.remHint(hint);
