@@ -862,7 +862,7 @@
     border-right: 1px solid var(--v3);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side {
-    z-index: 2;
+    z-index: 3;
 
     position: sticky;
     left: 0px;
@@ -882,7 +882,7 @@
     border-bottom: 1px solid var(--v3);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header {
-    z-index: 1;
+    z-index: 2;
 
     position: sticky;
     top: 0px;
@@ -946,11 +946,14 @@
     font-family: monospace;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header) > div {
-    position: sticky;
-    top: calc(5px + var(--th));
-
     font-family: inherit;
     font-size: inherit;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header) > div:first-child {
+    z-index: 1;
+
+    position: sticky;
+    top: calc(5px + var(--th));
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header):hover {
     background-color: var(--v2-8);
@@ -962,7 +965,27 @@
     background-color: var(--v2);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column:not(.side) > :not(.header) {
+    position: relative;
+
     color: var(--v8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column:not(.side) > :not(.header) > div:last-child {
+    --shift: 0;
+
+    position: absolute;
+    top: calc(var(--th) * var(--shift));
+    left: 0px;
+
+    width: 100%;
+    min-height: var(--th);
+    max-height: var(--th);
+    padding: 5px 10px;
+
+    background-color: var(--v3-8);
+    color: var(--v6);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column:not(.side) > :not(.header):not(.this) > div:last-child {
+    display: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > :not(.header) {
     display: flex;
