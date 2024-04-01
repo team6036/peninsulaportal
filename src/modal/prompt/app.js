@@ -31,21 +31,36 @@ export default class App extends core.AppModal {
             this.iinner.appendChild(this.ieCancel);
             this.ieCancel.classList.add("heavy");
 
-            this.ieInput.addEventListener("change", e => {
-                this.cast();
+            this.ieInput.addEventListener("change", async e => {
+                await this.doModify({
+                    props: {
+                        value: this.ieInput.value,
+                    },
+                });
             });
-            this.ieInput.addEventListener("keydown", e => {
+            this.ieInput.addEventListener("keydown", async e => {
                 if (e.code != "Enter" && e.code != "Return") return;
                 e.preventDefault();
-                this.ieConfirm.click();
+                await this.doModify({
+                    props: {
+                        value: this.ieInput.value,
+                    },
+                });
+                await this.doModify({
+                    cmds: ["confirm"],
+                });
             });
-            this.ieConfirm.addEventListener("click", e => {
+            this.ieConfirm.addEventListener("click", async e => {
                 e.stopPropagation();
-                this.result(this.ivalue);
+                await this.doModify({
+                    cmds: ["confirm"],
+                });
             });
-            this.ieCancel.addEventListener("click", e => {
+            this.ieCancel.addEventListener("click", async e => {
                 e.stopPropagation();
-                this.result(null);
+                await this.doModify({
+                    cmds: ["cancel"],
+                });
             });
 
             this.ivalue = "";
@@ -67,7 +82,6 @@ export default class App extends core.AppModal {
         this.ieInput.type = ["any_num", "num", "float", "int"].includes(this.itype) ? "number" : "text";
         if (["int"].includes(this.itype)) this.ieInput.step = 1;
         else this.ieInput.removeAttribute("step");
-        this.cast();
     }
     customType() { return this.itype == null; }
 
@@ -85,22 +99,8 @@ export default class App extends core.AppModal {
         v = String(v);
         if (this.ivalue == v) return;
         this.ieInput.value = v;
-        this.cast();
     }
 
     get iplaceholder() { return this.ieInput.placeholder; }
     set iplaceholder(v) { this.ieInput.placeholder = v; }
-
-    async cast() {
-        if (this.customType()) {
-            await window.modal.cast(this.ivalue);
-            return this.ivalue;
-        }
-        let v = this.ivalue;
-        if (["any_num", "num", "float"].includes(this.itype)) v = util.ensure(parseFloat(v), this.itype);
-        else if (["int"].includes(this.itype)) v = util.ensure(parseInt(v), this.itype);
-        else v = util.ensure(v, this.itype);
-        this.ivalue = v;
-        return v;
-    }
 }
