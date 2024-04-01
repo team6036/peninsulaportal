@@ -5127,6 +5127,47 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     #selected;
 
+    static getTypeName(type) {
+        let names = {
+            "§default": "Default",
+            "§node": "Node",
+            "§box": "Box",
+            "§arrow": "Arrow",
+        };
+        if (type in names) return names[type];
+        return String(type);
+    }
+    static menuStructure = [
+        "§default",
+        "§node",
+        "§box",
+        "§arrow",
+    ];
+    static buildMenu(menu, current, signal) {
+        if (!(menu instanceof App.Menu)) return null;
+        if (!(signal instanceof util.Target)) signal = new util.Target();
+        const dfs = (menu, structs) => {
+            util.ensure(structs, "arr").forEach(struct => {
+                if (struct == null) return menu.addItem(new App.Menu.Divider());
+                if (util.is(struct, "obj")) {
+                    let itm = menu.addItem(new App.Menu.Item(struct.name, (struct.key == current) ? "checkmark" : ""));
+                    itm.addHandler("trigger", e => {
+                        if (!struct.key) return;
+                        signal.post("type", struct.key);
+                    });
+                    dfs(itm.menu, struct.sub);
+                    return;
+                }
+                let itm = menu.addItem(new App.Menu.Item(this.getTypeName(struct), (struct == current) ? "checkmark" : ""));
+                itm.addHandler("trigger", e => {
+                    signal.post("type", struct);
+                });
+            });
+        };
+        dfs(menu, this.menuStructure);
+        return signal;
+    }
+
     constructor(parent, pos, name, size, heading, velocity) {
         super(parent, pos);
 
@@ -6084,6 +6125,79 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     #showObject;
 
     #loadedObjects;
+
+    static getTypeName(type) {
+        let names = {
+            "§node": "Node",
+            "§cube": "Cube",
+            "§arrow+x": "Arrow (+X)",
+            "§arrow-x": "Arrow (-X)",
+            "§arrow+y": "Arrow (+Y)",
+            "§arrow-y": "Arrow (-Y)",
+            "§arrow+z": "Arrow (+Z)",
+            "§arrow-z": "Arrow (-Z)",
+            "§axes": "Axes",
+            "§2023-cone": "2023 Cone",
+            "§2023-cube": "2023 Cube",
+            "§2024-note": "2024 Note",
+        };
+        if (type in names) return names[type];
+        return String(type);
+    }
+    static menuStructure = [
+        "§node",
+        "§cube",
+        {
+            name: "Arrows", key: "§arrow+x",
+            sub: [
+                "§arrow+x",
+                "§arrow-x",
+                "§arrow+y",
+                "§arrow-y",
+                "§arrow+z",
+                "§arrow-z",
+            ],
+        },
+        "§axes",
+        null,
+        {
+            name: "2023",
+            sub: [
+                "§2023-cone",
+                "§2023-cube",
+            ],
+        },
+        {
+            name: "2024", key: "§2024-note",
+            sub: [
+                "§2024-note",
+            ],
+        },
+    ];
+    static buildMenu(menu, current, signal) {
+        if (!(menu instanceof App.Menu)) return null;
+        if (!(signal instanceof util.Target)) signal = new util.Target();
+        const dfs = (menu, structs) => {
+            util.ensure(structs, "arr").forEach(struct => {
+                if (struct == null) return menu.addItem(new App.Menu.Divider());
+                if (util.is(struct, "obj")) {
+                    let itm = menu.addItem(new App.Menu.Item(struct.name, (struct.key == current) ? "checkmark" : ""));
+                    itm.addHandler("trigger", e => {
+                        if (!struct.key) return;
+                        signal.post("type", struct.key);
+                    });
+                    dfs(itm.menu, struct.sub);
+                    return;
+                }
+                let itm = menu.addItem(new App.Menu.Item(this.getTypeName(struct), (struct == current) ? "checkmark" : ""));
+                itm.addHandler("trigger", e => {
+                    signal.post("type", struct);
+                });
+            });
+        };
+        dfs(menu, this.menuStructure);
+        return signal;
+    }
     
     constructor(odometry, pos, name, type) {
         super();
