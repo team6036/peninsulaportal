@@ -5610,6 +5610,8 @@ export class Odometry3d extends Odometry {
 
         const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
 
+        // TODO: fix mem leak w these scenes vvv
+
         this.#axisScene = new THREE.Group();
         this.axisScene._builtin = "axis-scene";
         axes = this.axisScene.axes = new THREE.Group();
@@ -6110,6 +6112,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#theObject = null;
         this.#showObject = true;
 
+        // TODO: fix mem leak w loadedObjects
         this.#loadedObjects = {};
         const node = new THREE.Mesh(
             new THREE.SphereGeometry(0.1, 8, 8),
@@ -6189,6 +6192,43 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         axes.add(zAxis);
         axes.zAxis = zAxis;
         this.#loadedObjects["§axes"] = axes;
+        {
+            // 2023
+            const cone = new THREE.Object3D();
+            cone.castShadow = cone.receiveShadow = true;
+            const r = 0.105, h = 0.33;
+            const coneInner = new THREE.Mesh(
+                new THREE.ConeGeometry(r, h, 12),
+                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            );
+            coneInner.position.set(0, 0, h/2);
+            coneInner.rotateX(Math.PI/2);
+            cone.add(coneInner);
+            this.#loadedObjects["§2023-cone"] = cone;
+            const cube = new THREE.Object3D();
+            cube.castShadow = cube.receiveShadow = true;
+            const s = 0.24;
+            const cubeInner = new THREE.Mesh(
+                new THREE.BoxGeometry(s, s, s),
+                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            );
+            cubeInner.position.set(0, 0, s/2);
+            cube.add(cubeInner);
+            this.#loadedObjects["§2023-cube"] = cube;
+        }
+        {
+            // 2024
+            const note = new THREE.Object3D();
+            note.castShadow = note.receiveShadow = false;
+            const r1 = 0.18, r2 = 0.125;
+            const noteInner = new THREE.Mesh(
+                new THREE.TorusGeometry(r1-(r1-r2)/2, (r1-r2)/2, 8, 12),
+                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            );
+            noteInner.position.set(0, 0, (r1-r2)/2);
+            note.add(noteInner);
+            this.#loadedObjects["§2024-note"] = note;
+        }
 
         let robotLock = false;
         let modelObject = null, theModelObject = null;
@@ -6235,43 +6275,41 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                     this.theObject.add(new CSS2DObject(elem));
                     this.theObject.traverse(obj => {
                         if (!obj.isMesh) return;
-                        if (!(obj.material instanceof THREE.Material)) return;
-                        obj.material._transparent = obj.material.transparent;
-                        obj.material._opacity = obj.material.opacity;
-                        obj.material._color = obj.material.color.clone();
+                        obj.material.transparent = true;
+                        if (!("_opacity" in obj.material))
+                            obj.material._opacity = obj.material.opacity;
+                        if (!("_color" in obj.material))
+                            obj.material._color = obj.material.color.clone();
                     });
                     this.theObject.isGhost = this.theObject.isSolid = null;
-                    this.odometry.requestRedraw();
                 }
+                this.odometry.requestRedraw();
             }
             if (!this.hasObject()) return;
             if (this.theObject.isGhost != this.isGhost) {
                 this.theObject.isGhost = this.isGhost;
                 this.theObject.traverse(obj => {
                     if (!obj.isMesh) return;
-                    if (!(obj.material instanceof THREE.Material)) return;
                     if (this.isGhost) {
-                        obj.material.transparent = true;
                         obj.material.opacity = obj.material._opacity * 0.25;
                     } else {
-                        obj.material.transparent = obj.material._transparent;
                         obj.material.opacity = obj.material._opacity;
                     }
                 });
+                this.odometry.requestRedraw();
             }
             if (this.theObject.isSolid != this.isSolid) {
                 this.theObject.isSolid = this.isSolid;
                 this.theObject.traverse(obj => {
                     if (!obj.isMesh) return;
-                    if (!(obj.material instanceof THREE.Material)) return;
                     if (this.isSolid) {
                         obj.material.color.set(color.toHex(false));
                     } else {
                         obj.material.color.set(obj.material._color);
                     }
                 });
+                this.odometry.requestRedraw();
             }
-            let r = this.odometry.canvas.getBoundingClientRect();
             this.theObject.position.set(
                 this.x - this.odometry.size.x/200,
                 this.y - this.odometry.size.y/200,
