@@ -5135,7 +5135,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             "§default": "Default",
             "§node": "Node",
             "§box": "Box",
-            "§arrow": "Arrow",
+            "§arrow": "Arrow (Centered)",
+            "§arrow-h": "Arrow (Head Centered)",
+            "§arrow-t": "Arrow (Tail Centered)",
             "§2023-cone": "2023 Cone",
             "§2023-cube": "2023 Cube",
             "§2024-note": "2024 Note",
@@ -5147,7 +5149,14 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         "§default",
         "§node",
         "§box",
-        "§arrow",
+        {
+            name: "Arrow", key: "§arrow",
+            sub: [
+                "§arrow",
+                "§arrow-h",
+                "§arrow-t",
+            ],
+        },
         null,
         {
             name: "2023",
@@ -5226,8 +5235,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             const hovered = this.hovered;
             if (this.hasType() && this.hasBuiltinType()) {
                 const builtinType = this.builtinType;
-                if (["default", "node", "box", "arrow"].includes(builtinType)) {
-                    if (!["node", "arrow"].includes(builtinType)) {
+                if (["default", "node", "box", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
+                    if (!["node", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
                         ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
                         ctx.lineWidth = 7.5*quality;
                         ctx.lineJoin = "round";
@@ -5257,14 +5266,24 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.closePath();
                         ctx.stroke();
                     }
-                    if (builtinType == "arrow") {
+                    if (["arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
                         ctx.strokeStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? this.colorH : this.color));
                         ctx.lineWidth = 5*quality;
                         ctx.lineJoin = "round";
                         ctx.lineCap = "round";
                         let dir = this.heading;
-                        let tail = this.rPos.add(V.dir(dir, -this.w/2));
-                        let head = this.rPos.add(V.dir(dir, +this.w/2));
+                        let tail =
+                            (builtinType == "arrow-h") ?
+                                this.rPos.add(V.dir(dir, -this.w)) :
+                            (builtinType == "arrow-t") ?
+                                this.rPos :
+                            this.rPos.add(V.dir(dir, -this.w/2));
+                        let head =
+                            (builtinType == "arrow-h") ?
+                                this.rPos :
+                            (builtinType == "arrow-t") ?
+                                this.rPos.add(V.dir(dir, +this.w)) :
+                            this.rPos.add(V.dir(dir, +this.w/2));
                         ctx.beginPath();
                         ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
                         ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
@@ -5281,7 +5300,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.closePath();
                         ctx.fill();
                     }
-                    if (!["box", "arrow"].includes(builtinType)) {
+                    if (!["box", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
                         ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "main") ? this.colorH : this.color));
                         ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                         ctx.lineWidth = 1*quality;
