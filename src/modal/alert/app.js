@@ -18,9 +18,11 @@ export default class App extends core.AppModal {
             this.iinner.appendChild(this.ieButton);
             this.ieButton.classList.add("special");
 
-            this.ieButton.addEventListener("click", e => {
+            this.ieButton.addEventListener("click", async e => {
                 e.stopPropagation();
-                this.result(null);
+                await this.doModify({
+                    cmds: ["button"],
+                });
             });
 
             this.iicon = "alert-circle";

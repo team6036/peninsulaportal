@@ -22,13 +22,17 @@ export default class App extends core.AppModal {
             this.iinner.appendChild(this.ieCancel);
             this.ieCancel.classList.add("heavy");
 
-            this.ieConfirm.addEventListener("click", e => {
+            this.ieConfirm.addEventListener("click", async e => {
                 e.stopPropagation();
-                this.result(true);
+                await this.doModify({
+                    cmds: ["confirm"],
+                });
             });
-            this.ieCancel.addEventListener("click", e => {
+            this.ieCancel.addEventListener("click", async e => {
                 e.stopPropagation();
-                this.result(false);
+                await this.doModify({
+                    cmds: ["cancel"],
+                });
             });
 
             this.iicon = "help-circle";

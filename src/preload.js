@@ -60,27 +60,15 @@ contextBridge.exposeInMainWorld("api", {
     dirList: path => ipcRenderer.invoke("dir-list", path),
     dirMake: path => ipcRenderer.invoke("dir-make", path),
     dirDelete: path => ipcRenderer.invoke("dir-delete", path),
+
+    sendMessage: (id, name, ...a) => ipcRenderer.invoke("message", id, name, ...a),
+    onMessage: f => {
+        ipcRenderer.on("message", f);
+        return () => ipcRenderer.removeListener("message", f);
+    },
 });
 
 contextBridge.exposeInMainWorld("modal", {
-    result: r => ipcRenderer.invoke("modal-result", r),
-    onResult: f => {
-        ipcRenderer.on("modal-result", f);
-        return () => ipcRenderer.removeListener("modal-result", f);
-    },
-
-    cast: v => ipcRenderer.invoke("modal-cast", v),
-    onCast: f => {
-        ipcRenderer.on("modal-cast", f);
-        return () => ipcRenderer.removeListener("modal-cast", f);
-    },
-
-    modify: (id, params) => ipcRenderer.invoke("modal-modify", id, params),
-    onModify: f => {
-        ipcRenderer.on("modal-modify", f);
-        return () => ipcRenderer.removeListener("modal-modify", f);
-    },
-
     spawnAlert: params => ipcRenderer.invoke("modal-spawn", "ALERT", params),
     spawnConfirm: params => ipcRenderer.invoke("modal-spawn", "CONFIRM", params),
     spawnPrompt: params => ipcRenderer.invoke("modal-spawn", "PROMPT", params),

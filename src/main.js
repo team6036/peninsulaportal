@@ -1014,19 +1014,19 @@ const MAIN = async () => {
 
             if (namefs[this.name]) namefs[this.name]();
 
-            let finished = false, modifyQueue = [params];
-            const checkModify = () => {
-                if (!this.isModal) return;
+            let finished = false, messageQueue = [["init", params]];
+            const checkMessages = () => {
                 if (!finished) return;
                 if (!this.hasWindow()) return;
-                while (modifyQueue.length > 0)
-                    this.window.webContents.send("modal-modify", modifyQueue.shift());
+                while (messageQueue.length > 0)
+                    this.window.webContents.send("message", ...messageQueue.shift());
             };
-            const addModify = params => {
-                modifyQueue.push(params);
-                checkModify();
+            const addMessage = (name, ...a) => {
+                name = String(name);
+                messageQueue.push([name, ...a]);
+                checkMessages();
             };
-            this.addHandler("modal-modify", addModify);
+            this.addHandler("message", addMessage);
             
             (async () => {
                 await this.whenPartiallyReady();
@@ -1060,7 +1060,7 @@ const MAIN = async () => {
                     this.window.show();
                     this.window.setSize(...size);
                     finished = true;
-                    checkModify();
+                    checkMessages();
                 };
                 if (!this.canOperate) return finishAndShow();
                 let bounds = util.ensure(await this.on("state-get", "bounds"), "obj");
@@ -1197,30 +1197,16 @@ const MAIN = async () => {
         async dirMake(pth) { return Window.dirMake(this.manager, this.name, pth, this.started); }
         async dirDelete(pth) { return Window.dirDelete(this.manager, this.name, pth, this.started); }
 
-        modalResult(r) { this.post("modal-result", r); }
-        async whenModalResult() { return await new Promise((res, rej) => this.addHandler("modal-result", r => res(r))); }
-        modalCast(v) { this.post("modal-cast", v); }
-        modalModify(id, params) {
-            for (let win of this.windowManager.windows) {
-                if (win.id != id) continue;
-                if (!win.hasWindow()) continue;
-                win.post("modal-modify", params);
-                return true;
-            }
-            return false;
+        receiveMessage(name, ...a) {
+            name = String(name);
+            this.post("message", name, ...a);
+            return true;
         }
+        sendMessage(id, name, ...a) { return this.manager.sendMessage(id, name, ...a); }
 
         modalSpawn(name, params) {
             let win = this.windowManager.modalSpawn(name, params);
             if (!win) return null;
-            win.addHandler("modal-result", async r => {
-                if (!this.hasWindow()) return;
-                this.window.webContents.send("modal-result", win.id, r);
-            });
-            win.addHandler("modal-cast", async v => {
-                if (!this.hasWindow()) return;
-                this.window.webContents.send("modal-cast", win.id, v);
-            });
             return win.id;
         }
         modalAlert(params) { return this.modalSpawn("ALERT", params); }
@@ -1261,6 +1247,8 @@ const MAIN = async () => {
             } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
             let doLog = true;
             let kfs = {
+                "id": async () => this.id,
+
                 "name": async () => {
                     return this.name;
                 },
@@ -1303,7 +1291,7 @@ const MAIN = async () => {
 
                 "modal": async () => {
                     if (!this.hasWindow()) return null;
-                    return this.window.isModal();
+                    return this.window.isModal;
                 },
 
                 "maximized": async () => {
@@ -1694,7 +1682,10 @@ const MAIN = async () => {
                     manager.remWindow(this);
                     manager.addWindow(new this.constructor(manager, name));
                 },
-                "close": async () => await this.stop(),
+                "close": async () => {
+                    console.log(this.name, "stop");
+                    await this.stop();
+                },
                 "_config": async () => {
                     await this.affirm();
                     let content = "";
@@ -3215,18 +3206,11 @@ const MAIN = async () => {
                 return await win.dirDelete(pth);
             }));
 
-            ipc.handle("modal-result", decorate(async (e, r) => {
+            ipc.handle("message", decorate(async (e, id, name, ...a) => {
                 let win = identify(e);
-                return win.modalResult(r);
+                return await win.sendMessage(id, name, ...a);
             }));
-            ipc.handle("modal-cast", decorate(async (e, v) => {
-                let win = identify(e);
-                return win.modalCast(v);
-            }));
-            ipc.handle("modal-modify", decorate(async (e, id, params) => {
-                let win = identify(e);
-                return win.modalModify(id, params);
-            }));
+
             ipc.handle("modal-spawn", decorate(async (e, name, params) => {
                 let win = identify(e);
                 return win.modalSpawn(name, params);
@@ -3689,15 +3673,19 @@ const MAIN = async () => {
             to = String(to);
         }
 
-        modalModify(id, params) {
-            for (let win of this.windowManager.windows) {
-                if (win.id != id) continue;
-                if (!win.hasWindow()) continue;
-                win.post("modal-modify", params);
-                return true;
-            }
-            return false;
+        sendMessage(id, name, ...a) {
+            if (this.hasWindow()) return this.window.sendMessage(id, name, ...a);
+            id = String(id);
+            name = String(name);
+            const dfs = manager => {
+                if (manager.hasWindow())
+                    if (manager.window.id == id)
+                        return manager.window.receiveMessage(name, ...a);
+                manager.windows.forEach(win => dfs(win.windowManager));
+            };
+            return dfs(this);
         }
+
         modalSpawn(name, params) {
             name = String(name);
             if (!MODALS.includes(name)) return null;
@@ -4283,21 +4271,29 @@ const MAIN = async () => {
     }
 
     showError = this.showError = async (name, type, e) => await manager.modalAlert({
-        icon: "warning", iconColor: "var(--cr)",
-        title: name, content: type, infos: (e == null) ? [] : [e],
+        props: {
+            icon: "warning", iconColor: "var(--cr)",
+            title: name, content: type, infos: (e == null) ? [] : [e],
+        },
     }).whenModalResult();
     showWarn = async (name, type, e) => await manager.modalAlert({
-        icon: "warning", iconColor: "var(--cy)",
-        title: name, content: type, infos: (e == null) ? [] : [e],
+        props: {
+            icon: "warning", iconColor: "var(--cy)",
+            title: name, content: type, infos: (e == null) ? [] : [e],
+        },
     }).whenModalResult();
     showSuccess = async (name, type, e) => await manager.modalAlert({
-        icon: "checkmark-circle", iconColor: "var(--cg)",
-        title: name, content: type, infos: (e == null) ? [] : [e],
+        props: {
+            icon: "checkmark-circle", iconColor: "var(--cg)",
+            title: name, content: type, infos: (e == null) ? [] : [e],
+        },
     }).whenModalResult();
     showConfirm = async (name, type, e, ok="OK", cancel="Cancel") => await manager.modalConfirm({
-        icon: "help-circle",
-        title: name, content: type, infos: (e == null) ? [] : [e],
-        confirm: ok, cancel: cancel,
+        props: {
+            icon: "help-circle",
+            title: name, content: type, infos: (e == null) ? [] : [e],
+            confirm: ok, cancel: cancel,
+        },
     }).whenModalResult();
 
     manager.start();

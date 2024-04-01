@@ -4054,8 +4054,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
 };
 Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     #video;
-    #offsets;
-    #locked;
 
     #duration;
 
@@ -4084,8 +4082,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.elem.classList.add("videosync");
 
         this.#video = null;
-        this.#offsets = {};
-        this.#locked = false;
 
         this.#duration = 0;
 
@@ -4209,7 +4205,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                 const slen = playback.tsMax-playback.tsMin;
                 const blen = slen+2*len;
                 let t = blen*p - len;
-                this.setOffset(this.video, -t);
+                this.offset = -t;
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -4225,12 +4221,12 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavEdit.addEventListener("click", async e => {
             e.stopPropagation();
             if (!this.hasApp()) return;
-            let pop = this.app.prompt("Time Offset", "Shift video this many seconds", String(-util.ensure(this.getOffset(this.video), "num")/1000), "time");
+            let pop = this.app.prompt("Time Offset", "Shift video this many seconds", String(-this.offset/1000), "time");
             pop.type = "num";
             let result = await pop.whenResult();
             if (result == null) return;
             result = util.ensure(parseFloat(result), "num");
-            this.setOffset(this.video, -result*1000);
+            this.offset = -result*1000;
         });
 
         this.#eTimeNavZeroLeft = document.createElement("button");
@@ -4238,7 +4234,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavZeroLeft.innerHTML = "<ion-icon name='arrow-back'></ion-icon>";
         this.eTimeNavZeroLeft.addEventListener("click", e => {
             e.stopPropagation();
-            this.setOffset(this.video, 0);
+            this.offset = 0;
         });
 
         this.#eTimeNavBack = document.createElement("button");
@@ -4249,7 +4245,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             if (!this.hasPage()) return;
             if (!this.page.hasSource()) return;
             const playback = this.page.source.playback;
-            playback.ts = playback.tsMin - util.ensure(this.getOffset(this.video), "num");
+            playback.ts = playback.tsMin - this.offset;
         });
 
         this.#eTimeNavAction = document.createElement("button");
@@ -4270,7 +4266,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             if (!this.hasPage()) return;
             if (!this.page.hasSource()) return;
             const playback = this.page.source.playback;
-            playback.ts = this.duration*1000 + playback.tsMin - util.ensure(this.getOffset(this.video), "num");
+            playback.ts = this.duration*1000 + playback.tsMin - this.offset;
         });
 
         this.#eTimeNavZeroRight = document.createElement("button");
@@ -4283,7 +4279,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             const len = this.duration * 1000;
             const playback = this.page.source.playback;
             const slen = playback.tsMax-playback.tsMin;
-            this.setOffset(this.video, len-slen);
+            this.offset = len-slen;
         });
 
         this.#eTimeNavLock = document.createElement("button");
@@ -4295,7 +4291,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         });
         const lockIcon = this.eTimeNavLock.children[0];
 
-        this.addHandler("change", () => {
+        const updateLocked = () => {
             if (this.locked)
                 this.eTimeBox.classList.add("disabled");
             else this.eTimeBox.classList.remove("disabled");
@@ -4303,7 +4299,10 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             this.eTimeNavZeroRight.disabled = this.locked;
             this.eTimeNavEdit.disabled = this.locked;
             lockIcon.name = this.locked ? "lock-closed" : "lock-open";
-        });
+        };
+        this.addHandler("change", updateLocked);
+        this.addHandler("add", updateLocked);
+        this.addHandler("rem", updateLocked);
 
         let elems = {};
 
@@ -4320,7 +4319,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             let time = 0;
             let thresh = 0.05;
             if (this.hasPage() && this.page.hasSource()) {
-                const offset = util.ensure(this.getOffset(this.video), "num");
+                const offset = this.offset;
                 const playback = this.page.source.playback;
                 const slen = playback.tsMax-playback.tsMin;
                 let stime = playback.ts-playback.tsMin;
@@ -4447,50 +4446,43 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     }
     hasVideo() { return this.video != null; }
 
-    get offsetKeys() { return Object.keys(this.#offsets); }
-    get offsetValues() { return Object.values(this.#offsets); }
-    get offsets() {
-        let offsets = {};
-        this.offsetKeys.forEach(k => (offsets[k] = this.getOffset(k)));
-        return offsets;
+    get offset() {
+        if (!this.hasVideo()) return 0;
+        if (!this.hasPage()) return 0;
+        if (!this.page.hasProject()) return 0;
+        const k = "vidsync:"+this.video;
+        if (!this.page.project.hasProfile(k)) return 0;
+        return util.ensure(this.page.project.getProfile(k).value, "num");
     }
-    set offsets(v) {
-        v = util.ensure(v, "obj");
-        this.clearOffsets();
-        for (let k in v) this.setOffset(k, v[k]);
-    }
-    clearOffsets() {
-        let offsets = this.offsets;
-        for (let k in offsets) this.delOffset(k);
-        return offsets;
-    }
-    hasOffset(k) { return String(k) in this.#offsets }
-    getOffset(k) {
-        if (!this.hasOffset(k)) return null;
-        return this.#offsets[String(k)];
-    }
-    setOffset(k, v) {
-        k = String(k);
+    set offset(v) {
+        if (!this.hasVideo()) return;
         v = util.ensure(v, "num");
-        let v2 = this.getOffset(k);
-        if (v == v2) return v2;
-        this.#offsets[k] = v;
-        this.change("setOffset", v2, v);
-        return v;
-    }
-    delOffset(k) {
-        let v = this.getOption(k);
-        if (v == null) return v;
-        delete this.#offsets[String(k)];
-        this.change("delOffset", v, null);
-        return v;
+        if (!this.hasPage()) return;
+        if (!this.page.hasProject()) return;
+        const k = "vidsync:"+this.video;
+        if (!this.page.project.hasProfile(k))
+            this.page.project.addProfile(new Project.Profile(k));
+        this.page.project.getProfile(k).value = v;
     }
 
-    get locked() { return this.#locked; }
+    get locked() {
+        if (!this.hasVideo()) return true;
+        if (!this.hasPage()) return true;
+        if (!this.page.hasProject()) return true;
+        const k = "vidsync:"+this.video+":lock";
+        if (!this.page.project.hasProfile(k)) return false;
+        return !!this.page.project.getProfile(k).value;
+    }
     set locked(v) {
+        if (!this.hasVideo()) return;
         v = !!v;
-        if (this.locked == v) return;
-        this.change("locked", this.locked, this.#locked=v);
+        if (!this.hasPage()) return;
+        if (!this.page.hasProject()) return;
+        const k = "vidsync:"+this.video+":lock";
+        if (!v) return this.page.project.remProfile(k);
+        if (!this.page.project.hasProfile(k))
+            this.page.project.addProfile(new Project.Profile(k));
+        this.page.project.getProfile(k).value = v;
     }
     get unlocked() { return !this.locked; }
     set unlocked(v) { this.locked = !v; }
@@ -8092,6 +8084,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
 
 class Project extends lib.Project {
     #widgetData;
+    #profiles;
     #sidePos;
     #sideSectionPos;
 
@@ -8099,31 +8092,33 @@ class Project extends lib.Project {
         super();
 
         this.#widgetData = "";
+        this.#profiles = {};
         this.#sidePos = 0.15;
         this.#sideSectionPos = {};
 
-        if (a.length <= 0 || a.length == 4 || a.length > 6) a = [null];
+        if (a.length <= 0 || [5].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project) a = [a.id, a.widgetData, a.sidePos, a.sideSectionPos, a.config, a.meta];
+            if (a instanceof Project) a = [a.id, a.widgetData, a.profiles, a.sidePos, a.sideSectionPos, a.config, a.meta];
             else if (util.is(a, "arr")) {
                 a = new Project(...a);
-                a = [a.id, a.widgetData, a.sidePos, a.sideSectionPos, a.config, a.meta];
+                a = [a.id, a.widgetData, a.profiles, a.sidePos, a.sideSectionPos, a.config, a.meta];
             }
             else if (a instanceof Project.Config) a = ["", a, null];
             else if (a instanceof Project.Meta) a = ["", null, a];
             else if (util.is(a, "str")) a = ["", null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.widgetData, a.sidePos, a.sideSectionPos, a.config, a.meta];
+            else if (util.is(a, "obj")) a = [a.id, a.widgetData, a.profiles, a.sidePos, a.sideSectionPos, a.config, a.meta];
             else a = ["", null, null];
         }
         if (a.length == 2) {
             if (a[0] instanceof Project.Config && a[1] instanceof Project.Meta) a = ["", ...a];
             else a = ["", null, null];
         }
-        if (a.length == 3) a = [a[0], 0.15, { source: 0, browser: 1, tools: 0 }, ...a.slice(1)];
-        if (a.length == 5) a = [null, ...a];
+        if (a.length == 3) a = [a[0], {}, ...a.slice(1)];
+        if (a.length == 4) a = [...a.slice(0, 2), 0.15, { source: 0, browser: 1, tools: 0 }, ...a.slice(2)];
+        if (a.length == 6) a = [null, ...a];
 
-        [this.id, this.widgetData, this.sidePos, this.sideSectionPos, this.config, this.meta] = a;
+        [this.id, this.widgetData, this.profiles, this.sidePos, this.sideSectionPos, this.config, this.meta] = a;
     }
 
     get widgetData() { return this.#widgetData; }
@@ -8131,6 +8126,64 @@ class Project extends lib.Project {
         v = String(v);
         if (this.widgetData == v) return;
         this.change("widgetData", this.widgetData, this.#widgetData=v);
+    }
+
+    get profileKeys() { return Object.keys(this.#profiles); }
+    get profileObjects() { return Object.values(this.#profiles); }
+    get profiles() {
+        let profiles = {};
+        this.profileKeys.forEach(k => (profiles[k] = this.getProfile(k)));
+        return profiles;
+    }
+    set profiles(v) {
+        this.clearProfiles();
+        if (util.is(v, "arr"))
+            return this.addProfile(v);
+        v = util.ensure(v, "obj");
+        for (let k in v) {
+            if (!(v[k] instanceof Project.Profile)) continue;
+            v[k].key = k;
+            this.addProfile(v[k]);
+        }
+    }
+    clearProfiles() {
+        let profiles = this.profiles;
+        this.remProfile(Object.values(profiles));
+        return profiles;
+    }
+    hasProfile(k) {
+        if (k instanceof Project.Profile) return this.hasProfile(k.key);
+        return String(k) in this.#profiles;
+    }
+    getProfile(k) {
+        k = String(k);
+        if (!this.hasProfile(k)) return null;
+        return this.#profiles[k];
+    }
+    addProfile(...profiles) {
+        return util.Target.resultingForEach(profiles, profile => {
+            if (!(profile instanceof Project.Profile)) return false;
+            if (this.hasProfile(profile)) return false;
+            while (profile.key == null || this.hasProfile(profile.key))
+                profile.key = util.jargonBase64(10);
+            this.#profiles[profile.key] = profile;
+            profile.addLinkedHandler(this, "change", (c, f, t) => this.change("getProfile("+profile.key+")."+c, f, t));
+            this.change("addProfile", null, profile);
+            profile.onAdd();
+            return profile;
+        });
+    }
+    remProfile(...ks) {
+        return util.Target.resultingForEach(ks, k => {
+            if (k instanceof Project.Profile) k = k.key;
+            if (!this.hasProfile(k)) return false;
+            let profile = this.getProfile(k);
+            profile.onRem();
+            profile.clearLinkedHandlers(this, "change");
+            delete this.#profiles[k];
+            this.change("remProfile", profile, null);
+            return profile;
+        });
     }
 
     get sidePos() { return this.#sidePos; }
@@ -8215,6 +8268,7 @@ class Project extends lib.Project {
         return util.Reviver.revivable(this.constructor, {
             id: this.id,
             widgetData: this.widgetData,
+            profiles: this.profiles,
             sidePos: this.sidePos,
             sideSectionPos: this.sideSectionPos,
             config: this.config, meta: this.meta,
@@ -8304,6 +8358,50 @@ Project.Config = class ProjectConfig extends Project.Config {
         return util.Reviver.revivable(this.constructor, {
             sources: this.sources,
             sourceType: this.sourceType,
+        });
+    }
+};
+Project.Profile = class ProjectProfile extends util.Target {
+    #key;
+    #value;
+
+    constructor(...a) {
+        super();
+
+        this.#key = null;
+        this.#value = null;
+
+        if (a.length <= 0 || a.length > 2) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Project.Profile) a = [a.key, a.value];
+            else if (util.is(a, "arr")) {
+                a = new Project.Profile(...a);
+                a = [a.key, a.value];
+            }
+            else if (util.is(a, "obj")) a = [a.key, a.value];
+            else a = [a, null];
+        }
+        
+        [this.key, this.value] = a;
+    }
+
+    get key() { return this.#key; }
+    set key(v) { this.#key = (v == null) ? null : String(v); }
+
+    get value() { return this.#value; }
+    set value(v) {
+        if (util.is(this.value, "arr") && util.is(v, "arr"))
+            if (util.arrEquals(this.value, v))
+                return;
+        if (this.value == v) return;
+        this.change("value", this.value, this.#value=v);
+    }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            key: this.key,
+            value: this.value,
         });
     }
 };
@@ -8919,6 +9017,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!this.hasSource()) return;
                 this.source.ts = parseFloat(result)*1000;
                 // 199.461
+                // 95.75
             });
             subitm = itm.menu.addItem(new core.App.Menu.Item("Time since beginning"));
             subitm.addHandler("trigger", async e => {
@@ -9273,7 +9372,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         const tab = widget.tabs[widget.tabIndex];
                         if (!(tab instanceof Panel.VideoSyncTab)) return;
                         if (!tab.hasVideo()) return;
-                        const offset = util.ensure(tab.getOffset(tab.video), "num");
+                        const offset = tab.offset;
                         const len = util.ensure(tab.duration, "num") * 1000;
                         const buffered = tab.eVideo.buffered;
                         while (this.sections.length < n+buffered.length+1)

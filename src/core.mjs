@@ -693,6 +693,11 @@ export class App extends util.Target {
             this.post("cmd", cmd, ...a);
             this.post("cmd-"+cmd, ...a);
         });
+        window.api.onMessage((_, name, ...a) => {
+            name = String(name);
+            this.post("msg", name, ...a);
+            this.post("msg-"+name, ...a);
+        });
         this.addHandler("perm", async () => {
             try {
                 await window.api.send("state-set", "app-state", this.state);
@@ -1383,6 +1388,7 @@ export class App extends util.Target {
             if (!(pop instanceof App.PopupBase)) return false;
             if (this.hasPopup(pop)) this.remPopup(pop);
             this.#popups.add(pop);
+            pop.app = this;
             pop.addLinkedHandler(this, "result", () => this.remPopup(pop));
             window.api.set("closeable", this.popups.length <= 0);
             pop.onAdd();
@@ -1397,6 +1403,7 @@ export class App extends util.Target {
             this.#popups.delete(pop);
             pop.clearLinkedHandlers(this, "result");
             window.api.set("closeable", this.popups.length <= 0);
+            pop.app = null;
             return pop;
         });
     }
@@ -1697,6 +1704,8 @@ export class App extends util.Target {
     async loadState(state) {}
 }
 App.PopupBase = class AppPopupBase extends util.Target {
+    #app;
+
     #id;
     #result;
 
@@ -1711,6 +1720,8 @@ App.PopupBase = class AppPopupBase extends util.Target {
     constructor() {
         super();
 
+        this.#app = null;
+
         this.#id = null;
         this.#result = null;
 
@@ -1722,39 +1733,41 @@ App.PopupBase = class AppPopupBase extends util.Target {
         this.elem.appendChild(this.inner);
         this.inner.classList.add("inner");
 
-        let remove = null;
+        const onModify = data => {
+            data = util.ensure(data, "obj");
+            const props = util.ensure(data.props, "obj");
+            const cmds = util.ensure(data.cmds, "arr");
+            for (let k in props)
+                this[k] = props[k];
+            cmds.forEach(cmd => this.post("cmd-"+cmd));
+        };
+
         this.addHandler("add", async () => {
             let agent = window.agent();
             this.#id = null;
             if (util.is(agent, "obj") && agent.os.platform == "darwin")
-                this.#id = await window.modal.spawn(this.constructor.NAME, this.generateParams());
+                this.#id = await window.modal.spawn(this.constructor.NAME, {
+                    id: await window.api.get("id"),
+                    props: this.generateParams(),
+                });
             if (this.id == null) {
                 document.body.appendChild(this.elem);
                 setTimeout(() => {
                     this.elem.classList.add("in");
                 }, 10);
             } else {
-                const onChange = () => window.modal.modify(this.id, this.generateParams());
+                const onChange = async () => await this.doModify({ props: this.generateParams() });
                 this.addHandler("change", onChange);
                 onChange();
-                remove = window.modal.onResult((_, id2, r) => {
-                    if (id2 != this.id) return;
-                    if (util.is(remove, "func")) {
-                        remove();
-                        remove = null;
-                    }
-                    this.value = r;
-                    this.result(this.value);
-                    this.remHandler("change", onChange);
-                });
+                if (this.hasApp()) this.app.addLinkedHandler(this, "msg-modify", onModify);
                 this.post("post-add");
             }
         });
         this.addHandler("rem", async () => {
-            if (util.is(remove, "func")) {
-                remove();
-                remove = null;
-            }
+            if (this.hasApp()) this.app.clearLinkedHandlers(this, "msg-modify");
+            await this.doModify({
+                cmds: ["close"],
+            });
             if (document.body.contains(this.elem)) {
                 this.elem.classList.remove("in");
                 setTimeout(() => {
@@ -1773,7 +1786,19 @@ App.PopupBase = class AppPopupBase extends util.Target {
         return params;
     }
 
+    get app() { return this.#app; }
+    set app(v) {
+        v = (v instanceof App) ? v : null;
+        if (this.app == v) return;
+        this.change("app", this.app, this.#app=v);
+    }
+    hasApp() { return !!this.app; }
+
     get id() { return this.#id; }
+    async doModify(data) {
+        if (this.id == null) return null;
+        return await window.api.sendMessage(this.id, "modify", data);
+    }
 
     get hasResult() { return this.#resolver.state; }
     get theResult() { return this.#result; }
@@ -1787,9 +1812,11 @@ App.PopupBase = class AppPopupBase extends util.Target {
     get inner() { return this.#inner; }
 
     result(r) {
+        if (this.#resolver.state) return false;
         this.#resolver.state = true;
         this.#result = r;
         this.post("result", r);
+        return true;
     }
 };
 App.Popup = class AppPopup extends App.PopupBase {
@@ -2032,6 +2059,8 @@ App.Alert = class AppAlert extends App.CorePopup {
     constructor(title, content, icon="alert-circle", button="OK") {
         super(title, content, icon);
 
+        this.addHandler("cmd-button", () => this.eButton.click());
+
         this.elem.classList.add("alert");
 
         this.#eButton = document.createElement("button");
@@ -2096,6 +2125,9 @@ App.Confirm = class AppConfirm extends App.CorePopup {
     constructor(title, content, icon="help-circle", confirm="OK", cancel="Cancel") {
         super(title, content, icon);
 
+        this.addHandler("cmd-confirm", () => this.eConfirm.click());
+        this.addHandler("cmd-cancel", () => this.eCancel.click());
+
         this.elem.classList.add("confirm");
 
         this.#eConfirm = document.createElement("button");
@@ -2113,6 +2145,7 @@ App.Confirm = class AppConfirm extends App.CorePopup {
             e.stopPropagation();
             this.result(false);
         });
+        this.addHandler("pre-result", r => this.result((r == null) ? null : !!r));
 
         this.confirm = confirm;
         this.cancel = cancel;
@@ -2135,6 +2168,7 @@ App.Confirm = class AppConfirm extends App.CorePopup {
 App.Prompt = class AppPrompt extends App.CorePopup {
     #type;
     #doCast;
+    #value;
 
     #eInput;
     #eConfirm;
@@ -2149,10 +2183,14 @@ App.Prompt = class AppPrompt extends App.CorePopup {
     constructor(title, content, value="", icon="pencil", confirm="OK", cancel="Cancel", placeholder="...") {
         super(title, content, icon);
 
+        this.addHandler("cmd-confirm", () => this.eConfirm.click());
+        this.addHandler("cmd-cancel", () => this.eCancel.click());
+
         this.elem.classList.add("prompt");
 
         this.#type = "str";
         this.#doCast = v => v;
+        this.#value = null;
 
         this.#eInput = document.createElement("input");
         this.inner.appendChild(this.eInput);
@@ -2166,32 +2204,25 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.eCancel.classList.add("heavy");
 
         this.eInput.addEventListener("change", e => {
-            this.cast();
+            this.value = this.eInput.value;
         });
         this.eInput.addEventListener("keydown", e => {
             if (e.code != "Enter" && e.code != "Return") return;
             e.preventDefault();
+            this.value = this.eInput.value;
             this.eConfirm.click();
         });
         this.eConfirm.addEventListener("click", e => {
             e.stopPropagation();
-            this.result(this.cast());
+            this.result(this.value);
         });
         this.eCancel.addEventListener("click", e => {
             e.stopPropagation();
             this.result(null);
         });
-
-        let remove = null;
-        this.addHandler("post-add", async () => {
-            remove = window.modal.onCast((_, id2, v) => {
-                if (id2 != this.id) return;
-                this.value = v;
-                return this.value;
-            });
-        });
-        this.addHandler("post-rem", async () => {
-            if (util.is(remove, "func")) remove();
+        this.addHandler("pre-result", r => {
+            this.value = r;
+            this.result(this.value);
         });
 
         this.value = value;
@@ -2208,7 +2239,7 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.eInput.type = ["any_num", "num", "float", "int"].includes(this.type) ? "number" : "text";
         if (["int"].includes(this.type)) this.eInput.step = 1;
         else this.eInput.removeAttribute("step");
-        this.cast();
+        this.value = this.cast(this.value);
     }
     customType() { return this.type == null; }
     get doCast() { return this.#doCast; }
@@ -2216,7 +2247,7 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         v = util.ensure(v, "func");
         if (this.doCast == v) return;
         this.change("doCast", this.doCast, this.#doCast=v);
-        this.cast();
+        this.value = this.cast(this.value);
     }
 
     get eInput() { return this.#eInput; }
@@ -2234,13 +2265,11 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.change("cancel", v, this.cancel);
     }
 
-    get value() { return this.eInput.value; }
+    get value() { return this.#value; }
     set value(v) {
-        v = String(v);
+        v = this.cast(v);
         if (this.value == v) return;
-        [v, this.eInput.value] = [this.value, v];
-        this.cast();
-        this.change("value", v, this.value);
+        this.change("value", this.value, this.#value=v);
     }
 
     get placeholder() { return this.eInput.placeholder; }
@@ -2249,14 +2278,13 @@ App.Prompt = class AppPrompt extends App.CorePopup {
         this.change("placeholder", v, this.placeholder);
     }
 
-    cast() {
+    cast(v) {
+        if (v == null) return null;
         if (this.customType())
-            return this.value = this.doCast(this.value);
-        let v = this.value;
+            return this.doCast(v);
         if (["any_num", "num", "float"].includes(this.type)) v = util.ensure(parseFloat(v), this.type);
         else if (["int"].includes(this.type)) v = util.ensure(parseInt(v), this.type);
         else v = util.ensure(v, this.type);
-        this.value = v;
         return v;
     }
 };
@@ -3018,11 +3046,9 @@ App.Page = class AppPage extends util.Target {
     update(delta) { this.post("update", delta); }
 };
 export class AppModal extends App {
-    #result;
+    #id;
 
     #iinfos;
-
-    #resolver;
 
     #eModalStyle;
 
@@ -3039,34 +3065,36 @@ export class AppModal extends App {
     constructor() {
         super();
 
-        this.#result = null;
+        this.#id = null;
 
         let finished = false, modifyQueue = [];
         const checkModify = () => {
             if (!finished) return;
             while (modifyQueue.length > 0) {
-                let params = modifyQueue.shift();
-                for (let param in params)
-                    this["i"+param] = params[param];
+                const data = util.ensure(modifyQueue.shift(), "obj");
+                if ("id" in data) this.#id = String(data.id);
+                const props = util.ensure(data.props, "obj");
+                const cmds = util.ensure(data.cmds, "arr");
+                for (let k in props)
+                    this["i"+k] = props[k];
+                cmds.forEach(cmd => this.post("modal-cmd-"+cmd));
             }
             this.resize();
             this.post("modify");
         };
 
-        this.#resolver = new util.Resolver(false);
-        window.modal.onModify((_, params) => {
-            params = util.ensure(params, "obj");
-            modifyQueue.push(params);
-            checkModify();
-        });
-        (async () => {
-            await window.modal.result(await this.whenResult());
-            await window.api.send("close");
-        })();
+        this.addHandler("modal-cmd-close", async () => await window.api.send("close"));
 
         this.addHandler("setup", async () => {
             this.menu.getItemById("reload").disabled = true;
             this.menu.getItemById("spawn").disabled = true;
+
+            const addModify = data => {
+                modifyQueue.push(data);
+                checkModify();
+            };
+            this.addHandler("msg-init", addModify);
+            this.addHandler("msg-modify", addModify);
 
             this.#eModalStyle = document.createElement("link");
             document.head.appendChild(this.eModalStyle);
@@ -3107,8 +3135,6 @@ export class AppModal extends App {
             finished = true;
             checkModify();
         });
-
-        this.addHandler("perm", async () => this.hasResult);
     }
 
     async resize() {
@@ -3117,17 +3143,10 @@ export class AppModal extends App {
         await window.api.set("size", [r.width, r.height]);
     }
 
-    get hasResult() { return this.#resolver.state; }
-    get theResult() { return this.#result; }
-    async whenResult() {
-        if (this.hasResult) return this.theResult;
-        await this.#resolver.whenTrue();
-        return this.theResult;
-    }
-
-    async result(r) {
-        this.#resolver.state = true;
-        this.#result = r;
+    get id() { return this.#id; }
+    async doModify(data) {
+        if (this.id == null) return null;
+        return await window.api.sendMessage(this.id, "modify", data);
     }
 
     get eModalStyle() { return this.#eModalStyle; }

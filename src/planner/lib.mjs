@@ -110,8 +110,10 @@ export class Project extends lib.Project {
 
     get items() { return Object.keys(this.#items); }
     set items(v) {
-        v = util.ensure(v, "obj");
         this.clearItems();
+        if (util.is(v, "arr"))
+            return this.addItem(v);
+        v = util.ensure(v, "obj");
         for (let id in v) {
             if (!(v[id] instanceof Project.Item)) continue;
             v[id].id = id;
@@ -125,7 +127,7 @@ export class Project extends lib.Project {
     }
     hasItem(id) {
         if (id instanceof Project.Item) return this.hasItem(id.id);
-        return id in this.#items;
+        return String(id) in this.#items;
     }
     getItem(id) {
         id = String(id);
@@ -152,7 +154,7 @@ export class Project extends lib.Project {
             let itm = this.getItem(id);
             itm.onRem();
             itm.clearLinkedHandlers(this, "change");
-            itm.id = null;
+            // itm.id = null;
             delete this.#items[id];
             this.paths.forEach(id => {
                 let pth = this.getPath(id);
@@ -164,8 +166,10 @@ export class Project extends lib.Project {
     }
     get paths() { return Object.keys(this.#paths); }
     set paths(v) {
-        v = util.ensure(v, "obj");
         this.clearPaths();
+        if (util.is(v, "arr"))
+            return this.addPath(v);
+        v = util.ensure(v, "obj");
         for (let id in v) {
             if (!(v[id] instanceof Project.Path)) continue;
             v[id].id = id;
@@ -179,7 +183,7 @@ export class Project extends lib.Project {
     }
     hasPath(id) {
         if (id instanceof Project.Path) return this.hasPath(id.id);
-        return id in this.#paths;
+        return String(id) in this.#paths;
     }
     getPath(id) {
         id = String(id);
@@ -207,7 +211,7 @@ export class Project extends lib.Project {
             let pth = this.getPath(id);
             pth.onRem();
             pth.clearLinkedHandlers(this, "change");
-            pth.id = null;
+            // pth.id = null;
             delete this.#paths[id];
             this.change("remPath", pth, null);
             return pth;
