@@ -6937,17 +6937,18 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         let r2 = [r].flatten();
         r2.forEach(r => {
             const onType = () => {
-                let current = core.Odometry2d.Robot.lookupTypeName(r.type);
+                let current = r.type;
                 if (!this.hasApp()) return;
                 let itm;
                 let menu = new core.App.Menu();
-                for (let k in core.Odometry2d.Robot.TYPES) {
+                ["default", "node", "box", "arrow"].forEach(k => {
                     let name = util.formatText(k);
+                    k = "§"+k;
                     itm = menu.addItem(new core.App.Menu.Item(name, (current == k) ? "checkmark" : ""));
                     itm.addHandler("trigger", e => {
                         r.type = k;
                     });
-                };
+                });
                 this.app.contextMenu = menu;
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
@@ -7100,12 +7101,12 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
                 }
             }
             // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.type, a.shownHook, a.ghostHook, a.trail, a.useTrail];
+            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, (["default", "node", "box", "arrow"].includes(a.type) ? ("§"+a.type) : a.type), a.shownHook, a.ghostHook, a.trail, a.useTrail];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, false];
-        if (a.length == 4) a = [...a, core.Odometry2d.Robot.TYPES.DEFAULT];
+        if (a.length == 4) a = [...a, "default"];
         if (a.length == 5) a = [...a, null, null];
         if (a.length == 7) a = [...a, 0];
         if (a.length == 8) a = [...a, false];
@@ -7118,12 +7119,14 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         let menu = await super.makeContextMenu();
         itm = menu.addItem(new core.App.Menu.Item("Types"));
         let submenu = itm.menu;
-        for (let name in core.Odometry2d.Robot.TYPES) {
-            itm = submenu.addItem(new core.App.Menu.Item(util.formatText(name), (this.type == core.Odometry2d.Robot.TYPES[name]) ? "checkmark" : ""));
+        ["default", "node", "box", "arrow"].forEach(k => {
+            let name = util.formatText(k);
+            k = "§"+k;
+            itm = submenu.addItem(new core.App.Menu.Item(name, (this.type == k) ? "checkmark" : ""));
             itm.addHandler("trigger", e => {
-                this.type = core.Odometry2d.Robot.TYPES[name];
+                this.type = k;
             });
-        }
+        });
         itm = menu.addItem(new core.App.Menu.Item("Ghost", this.ghost ? "checkmark" : ""));
         itm.addHandler("trigger", e => {
             this.ghost = !this.ghost;
@@ -7142,12 +7145,16 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     }
     get type() { return this.#type; }
     set type(v) {
-        if (v in core.Odometry2d.Robot.TYPES) v = core.Odometry2d.Robot.TYPES[v];
-        if (!Object.values(core.Odometry2d.Robot.TYPES).includes(v)) v = core.Odometry2d.Robot.TYPES.DEFAULT;
+        v = (v == null) ? null : String(v);
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
-            this.eDisplayType.children[0].textContent = util.formatText(core.Odometry2d.Robot.lookupTypeName(this.type));
+            this.eDisplayType.children[0].textContent = {
+                "§default": "Default",
+                "§node": "Node",
+                "§box": "Box",
+                "§arrow": "Arrow",
+            }[this.type];
     }
 
     get hooks() { return [this.shownHook, this.ghostHook]; }
@@ -7187,7 +7194,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             shown: this.shown,
             color: this.color,
             ghost: this.ghost,
-            type: core.Odometry2d.Robot.lookupTypeName(this.type),
+            type: this.type,
             shownHook: this.shownHook.to(),
             ghostHook: this.ghostHook.to(),
             trail: this.trail,
@@ -8097,7 +8104,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     render.isSolid = this.pose.isSolid;
                     render.display.type = type;
                     render.display.data = value;
-                    render.robot = this.pose.type;
+                    render.type = this.pose.type;
                     const positioning = generatePositioning(value, this.tab.lengthUnits, this.tab.angleUnits);
                     render.pos = positioning.pos;
                     render.q = positioning.q;
