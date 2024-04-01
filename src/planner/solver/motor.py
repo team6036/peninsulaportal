@@ -15,7 +15,7 @@ FOC = config['FOC']
 nominal_voltage = 12
 
 drive_gr_falcon = 6.75
-drive_gr_kraken = 1.0 / ((16.0 / 50) * (27.0 / 17) * (15.0 / 45))
+drive_gr_kraken = 1.0 / ((16.0 / 50) * (28.0 / 16) * (15.0 / 45))
 
 stall_torque = 7.09 * drive_gr_kraken * efficiency_tweak
 
