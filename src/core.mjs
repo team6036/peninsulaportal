@@ -5136,6 +5136,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             "§node": "Node",
             "§box": "Box",
             "§arrow": "Arrow",
+            "§2023-cone": "2023 Cone",
+            "§2023-cube": "2023 Cube",
+            "§2024-note": "2024 Note",
         };
         if (type in names) return names[type];
         return String(type);
@@ -5145,6 +5148,20 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         "§node",
         "§box",
         "§arrow",
+        null,
+        {
+            name: "2023",
+            sub: [
+                "§2023-cone",
+                "§2023-cube",
+            ],
+        },
+        {
+            name: "2024", key: "§2024-note",
+            sub: [
+                "§2024-note",
+            ],
+        },
     ];
     static buildMenu(menu, current, signal) {
         if (!(menu instanceof App.Menu)) return null;
@@ -5209,72 +5226,132 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             const hovered = this.hovered;
             if (this.hasType() && this.hasBuiltinType()) {
                 const builtinType = this.builtinType;
-                if (!["node", "arrow"].includes(builtinType)) {
-                    ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
-                    ctx.lineWidth = 7.5*quality;
-                    ctx.lineJoin = "round";
-                    ctx.lineCap = "square";
-                    ctx.beginPath();
-                    let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
-                        .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
-                        .map(v => v.rotateOrigin(this.heading));
-                    for (let i = 0; i <= path.length; i++) {
-                        let j = i%path.length;
-                        let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
-                        if (i > 0) ctx.lineTo(...p.xy);
-                        else ctx.moveTo(...p.xy);
+                if (["default", "node", "box", "arrow"].includes(builtinType)) {
+                    if (!["node", "arrow"].includes(builtinType)) {
+                        ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
+                        ctx.lineWidth = 7.5*quality;
+                        ctx.lineJoin = "round";
+                        ctx.beginPath();
+                        let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                            .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
+                            .map(v => v.rotateOrigin(this.heading));
+                        for (let i = 0; i <= path.length; i++) {
+                            let j = i%path.length;
+                            let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                            if (i > 0) ctx.lineTo(...p.xy);
+                            else ctx.moveTo(...p.xy);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+                        ctx.strokeStyle = PROPERTYCACHE.get("--v8");
+                        ctx.lineWidth = 1*quality;
+                        ctx.lineJoin = "round";
+                        ctx.beginPath();
+                        path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+                        for (let i = 0; i <= path.length; i++) {
+                            let j = i%path.length;
+                            let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                            if (i > 0) ctx.lineTo(...p.xy);
+                            else ctx.moveTo(...p.xy);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
                     }
-                    ctx.closePath();
-                    ctx.stroke();
-                    ctx.strokeStyle = PROPERTYCACHE.get("--v8");
-                    ctx.lineWidth = 1*quality;
-                    ctx.lineJoin = "round";
-                    ctx.lineCap = "square";
-                    ctx.beginPath();
-                    path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
-                    for (let i = 0; i <= path.length; i++) {
-                        let j = i%path.length;
-                        let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
-                        if (i > 0) ctx.lineTo(...p.xy);
-                        else ctx.moveTo(...p.xy);
+                    if (builtinType == "arrow") {
+                        ctx.strokeStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? this.colorH : this.color));
+                        ctx.lineWidth = 5*quality;
+                        ctx.lineJoin = "round";
+                        ctx.lineCap = "round";
+                        let dir = this.heading;
+                        let tail = this.rPos.add(V.dir(dir, -this.w/2));
+                        let head = this.rPos.add(V.dir(dir, +this.w/2));
+                        ctx.beginPath();
+                        ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
+                        ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
+                        ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir-135, this.odometry.pageLenToWorld(15)))).xy);
+                        ctx.moveTo(...this.odometry.worldToCanvas(head).xy);
+                        ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(15)))).xy);
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? "v8" : "v8-8"));
+                        ctx.lineWidth = 1*quality;
+                        ctx.lineJoin = "round";
+                        ctx.beginPath();
+                        ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
+                        ctx.closePath();
+                        ctx.fill();
                     }
-                    ctx.closePath();
-                    ctx.stroke();
-                }
-                if (builtinType == "arrow") {
-                    ctx.strokeStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? this.colorH : this.color));
-                    ctx.lineWidth = 5*quality;
-                    ctx.lineJoin = "round";
-                    ctx.lineCap = "round";
-                    let dir = this.heading;
-                    let tail = this.rPos.add(V.dir(dir, -this.w/2));
-                    let head = this.rPos.add(V.dir(dir, +this.w/2));
-                    ctx.beginPath();
-                    ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
-                    ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
-                    ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir-135, this.odometry.pageLenToWorld(15)))).xy);
-                    ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
-                    ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(15)))).xy);
-                    ctx.stroke();
+                    if (!["box", "arrow"].includes(builtinType)) {
+                        ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "main") ? this.colorH : this.color));
+                        ctx.strokeStyle = PROPERTYCACHE.get("--v8");
+                        ctx.lineWidth = 1*quality;
+                        ctx.lineJoin = "round";
+                        ctx.beginPath();
+                        ctx.arc(...this.odometry.worldToCanvas(this.rPos).xy, 7.5*quality, 0, 2*Math.PI);
+                        ctx.closePath();
+                        ctx.fill();
+                        if (this.selected) ctx.stroke();
+                    }
                 } else {
-                    ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? "v8" : "v8-8"));
-                    ctx.lineWidth = 1*quality;
-                    ctx.lineJoin = "round";
-                    ctx.lineCap = "square";
-                    ctx.beginPath();
-                    ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
-                    ctx.fill();
-                }
-                if (!["box", "arrow"].includes(builtinType)) {
-                    ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "main") ? this.colorH : this.color));
-                    ctx.strokeStyle = PROPERTYCACHE.get("--v8");
-                    ctx.lineWidth = 1*quality;
-                    ctx.lineJoin = "round";
-                    ctx.lineCap = "square";
-                    ctx.beginPath();
-                    ctx.arc(...this.odometry.worldToCanvas(this.rPos).xy, 7.5*quality, 0, 2*Math.PI);
-                    ctx.fill();
-                    if (this.selected) ctx.stroke();
+                    let typefs = {
+                        "2023-cone": () => {
+                            ctx.fillStyle = PROPERTYCACHE.get("--"+(hovered ? this.colorH : this.color));
+                            ctx.strokeStyle = PROPERTYCACHE.get("--v8");
+                            ctx.lineWidth = 1*quality;
+                            ctx.lineJoin = "round";
+                            ctx.beginPath();
+                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                                .map(v => new V(10.5).mul(v))
+                                .map(v => v.rotateOrigin(this.heading));
+                            for (let i = 0; i <= path.length; i++) {
+                                let j = i%path.length;
+                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                                if (i > 0) ctx.lineTo(...p.xy);
+                                else ctx.moveTo(...p.xy);
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            if (this.selected) ctx.stroke();
+                            ctx.fillStyle = "#00000044";
+                            ctx.beginPath();
+                            ctx.arc(...this.odometry.worldToCanvas(this.rPos).xy, this.odometry.worldLenToCanvas(8.5), 0, 2*Math.PI);
+                            ctx.fill();
+                        },
+                        "2023-cube": () => {
+                            ctx.fillStyle = PROPERTYCACHE.get("--"+(hovered ? this.colorH : this.color));
+                            ctx.strokeStyle = PROPERTYCACHE.get("--v8");
+                            ctx.lineWidth = 1*quality;
+                            ctx.lineJoin = "round";
+                            ctx.beginPath();
+                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                                .map(v => new V(12).mul(v))
+                                .map(v => v.rotateOrigin(this.heading));
+                            for (let i = 0; i <= path.length; i++) {
+                                let j = i%path.length;
+                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                                if (i > 0) ctx.lineTo(...p.xy);
+                                else ctx.moveTo(...p.xy);
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            if (this.selected) ctx.stroke();
+                        },
+                        "2024-note": () => {
+                            ctx.beginPath();
+                            ctx.arc(...this.odometry.worldToCanvas(this.rPos).xy, this.odometry.worldLenToCanvas(15.25), 0, 2*Math.PI);
+                            ctx.closePath();
+                            ctx.lineJoin = "round";
+                            if (this.selected) {
+                                ctx.strokeStyle = PROPERTYCACHE.get("--v8");
+                                ctx.lineWidth = 2*quality + this.odometry.worldLenToCanvas(5.5);
+                                ctx.stroke();
+                            }
+                            ctx.strokeStyle = PROPERTYCACHE.get("--"+(hovered ? this.colorH : this.color));
+                            ctx.lineWidth = this.odometry.worldLenToCanvas(5.5);
+                            ctx.stroke();
+                        },
+                    };
+                    if (builtinType in typefs) typefs[builtinType]();
                 }
             }
             if (this.showVelocity) {
@@ -5317,11 +5394,30 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
     get hovered() {
         if (!this.canHover) return null;
         let m = this.odometry.worldMouse;
-        if (this.showVelocity && this.rPos.add(this.velocity).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "velocity";
-        if (this.rPos.add(V.dir(this.heading, this.w/2)).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "heading";
-        let d = this.rPos.distSquared(m);
-        if (d < this.odometry.pageLenToWorld(7.5)**2) return "main";
-        if (d < this.odometry.pageLenToWorld((this.w+this.h)/4)**2) return "body";
+        if (this.hasType() && this.hasBuiltinType()) {
+            if (this.showVelocity && this.rPos.add(this.velocity).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "velocity";
+            if (this.rPos.add(V.dir(this.heading, this.w/2)).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "heading";
+            let d = this.rPos.distSquared(m);
+            if (d < this.odometry.pageLenToWorld(7.5)**2) return "main";
+            if (d < this.odometry.pageLenToWorld((this.w+this.h)/4)**2) return "body";
+        } else if (this.hasType()) {
+            let d = this.rPos.distSquared(m);
+            let typefs = {
+                "2023-cone": () => {
+                    if (d < this.odometry.pageLenToWorld(10.5*(Math.sqrt(2)+1)/2)) return "main";
+                    return null;
+                },
+                "2023-cube": () => {
+                    if (d < this.odometry.pageLenToWorld(12*(Math.sqrt(2)+1)/2)) return "main";
+                    return null;
+                },
+                "2024-note": () => {
+                    if (d > this.odometry.pageLenToWorld(7.5) && d < this.odometry.pageLenToWorld(18)) return "main";
+                    return null;
+                },
+            };
+            if (this.type in typefs) return typefs[this.type]();
+        }
         return null;
     }
 

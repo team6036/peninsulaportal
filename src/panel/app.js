@@ -6941,14 +6941,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                 if (!this.hasApp()) return;
                 let itm;
                 let menu = new core.App.Menu();
-                ["default", "node", "box", "arrow"].forEach(k => {
-                    let name = util.formatText(k);
-                    k = "§"+k;
-                    itm = menu.addItem(new core.App.Menu.Item(name, (current == k) ? "checkmark" : ""));
-                    itm.addHandler("trigger", e => {
-                        r.type = k;
-                    });
-                });
+                core.Odometry2d.Robot.buildMenu(menu, r.type).addHandler("type", k => (r.type = k));
                 this.app.contextMenu = menu;
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
