@@ -5026,6 +5026,9 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
         this.pos = pos;
         this.z = Odometry2d.AFTERIMAGE;
         this.z2 = 0;
+
+        this.addHandler("add", () => this.renders.forEach(render => render.onAdd()));
+        this.addHandler("rem", () => this.renders.forEach(render => render.onRem()));
     }
 
     get parent() { return this.#parent; }
