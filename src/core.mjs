@@ -5510,15 +5510,15 @@ export class Odometry3d extends Odometry {
                         if (score*s < 0.5) return;
                         obj.material._allianceMaterial = true;
                     });
+                    obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[name], "obj").rotations));
+                    [obj, pobj] = [new THREE.Object3D(), obj];
+                    obj.add(pobj);
                     bbox = new THREE.Box3().setFromObject(obj);
                     obj.position.set(
                         obj.position.x - (bbox.max.x+bbox.min.x)/2,
                         obj.position.y - (bbox.max.y+bbox.min.y)/2,
                         obj.position.z - bbox.min.z,
                     );
-                    [obj, pobj] = [new THREE.Object3D(), obj];
-                    obj.add(pobj);
-                    obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[name], "obj").rotations));
                     [obj, pobj] = [new THREE.Object3D(), obj];
                     obj.add(pobj);
                     this.loadedRobots[name][type] = obj;
