@@ -5296,8 +5296,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             if (hovered) {
                 hName.name = this.name;
                 hName.eName.style.color = "var(--"+this.color+")";
-                hPosX.value = this.x;
-                hPosY.value = this.y;
+                hPosX.value = this.x/100;
+                hPosY.value = this.y/100;
                 hDir.value = this.heading;
                 if (useVelocity != this.useVelocity) {
                     useVelocity = this.useVelocity;
@@ -5305,8 +5305,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                     else hint.remEntry(hVelX, hVelY);
                 }
                 if (useVelocity) {
-                    hVelX.value = this.velocityX;
-                    hVelY.value = this.velocityY;
+                    hVelX.value = this.velocityX/100;
+                    hVelY.value = this.velocityY/100;
                 }
                 this.odometry.addHint(hint);
                 hint.place(this.odometry.worldToPage(this.pos));
