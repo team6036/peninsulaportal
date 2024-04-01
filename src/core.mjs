@@ -6124,7 +6124,124 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     #theObject;
     #showObject;
 
-    #loadedObjects;
+    static LOADEDOBJECTS = {};
+    static {
+        const node = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        );
+        node.castShadow = node.receiveShadow = true;
+        this.LOADEDOBJECTS["node"] = node;
+        const cube = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        );
+        cube.castShadow = cube.receiveShadow = true;
+        this.LOADEDOBJECTS["cube"] = cube;
+        const radius = 0.05, arrowLength = 0.25, arrowRadius = 0.1;
+        const arrow = new THREE.Object3D();
+        const tip = new THREE.Mesh(
+            new THREE.ConeGeometry(arrowRadius, arrowLength, 8),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        );
+        arrow.castShadow = arrow.receiveShadow = true;
+        tip.position.set(0, (1-arrowLength)/2, 0);
+        arrow.add(tip);
+        const line = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius, 1-arrowLength, 8),
+            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        );
+        line.position.set(0, -arrowLength/2, 0);
+        arrow.add(line);
+        for (let i = 0; i < 2; i++) {
+            for (let j = 0; j < 3; j++) {
+                let pobj, obj = arrow.clone();
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                pobj.quaternion.copy(THREE.Quaternion.fromRotationSequence([
+                    [
+                        [{ axis: "z", angle: -90 }],
+                        [{ axis: "z", angle: 90 }],
+                    ],
+                    [
+                        [],
+                        [{ axis: "z", angle: 180 }],
+                    ],
+                    [
+                        [{ axis: "x", angle: 90 }],
+                        [{ axis: "x", angle: -90 }],
+                    ],
+                ][j][i]));
+                this.LOADEDOBJECTS["arrow"+"+-"[i]+"xyz"[j]] = obj;
+            }
+        }
+        const axes = new THREE.Object3D();
+        axes.castShadow = axes.receiveShadow = true;
+        const length = 1;
+        const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
+        let xAxis, yAxis, zAxis;
+        xAxis = new THREE.Mesh(
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0xff0000 }),
+        );
+        xAxis.position.set(length/2, 0, 0);
+        xAxis.rotateZ(Math.PI/2);
+        axes.add(xAxis);
+        axes.xAxis = xAxis;
+        yAxis = new THREE.Mesh(
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0x00ff00 }),
+        );
+        yAxis.position.set(0, length/2, 0);
+        axes.add(yAxis);
+        axes.yAxis = yAxis;
+        zAxis = new THREE.Mesh(
+            geometry,
+            new THREE.MeshLambertMaterial({ color: 0x0000ff }),
+        );
+        zAxis.position.set(0, 0, length/2);
+        zAxis.rotateX(Math.PI/2);
+        axes.add(zAxis);
+        axes.zAxis = zAxis;
+        this.LOADEDOBJECTS["axes"] = axes;
+        {
+            // 2023
+            const cone = new THREE.Object3D();
+            cone.castShadow = cone.receiveShadow = true;
+            const r = 0.105, h = 0.33;
+            const coneInner = new THREE.Mesh(
+                new THREE.ConeGeometry(r, h, 12),
+                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            );
+            coneInner.position.set(0, 0, h/2);
+            coneInner.rotateX(Math.PI/2);
+            cone.add(coneInner);
+            this.LOADEDOBJECTS["2023-cone"] = cone;
+            const cube = new THREE.Object3D();
+            cube.castShadow = cube.receiveShadow = true;
+            const s = 0.24;
+            const cubeInner = new THREE.Mesh(
+                new THREE.BoxGeometry(s, s, s),
+                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            );
+            cubeInner.position.set(0, 0, s/2);
+            cube.add(cubeInner);
+            this.LOADEDOBJECTS["2023-cube"] = cube;
+        }
+        {
+            // 2024
+            const note = new THREE.Object3D();
+            note.castShadow = note.receiveShadow = false;
+            const r1 = 0.18, r2 = 0.125;
+            const noteInner = new THREE.Mesh(
+                new THREE.TorusGeometry(r1-(r1-r2)/2, (r1-r2)/2, 8, 12),
+                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            );
+            noteInner.position.set(0, 0, (r1-r2)/2);
+            note.add(noteInner);
+            this.LOADEDOBJECTS["2024-note"] = note;
+        }
+    }
 
     static getTypeName(type) {
         let names = {
@@ -6224,124 +6341,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#theObject = null;
         this.#showObject = true;
 
-        // TODO: fix mem leak w loadedObjects
-        this.#loadedObjects = {};
-        const node = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
-        );
-        node.castShadow = node.receiveShadow = true;
-        this.#loadedObjects["node"] = node;
-        const cube = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
-        );
-        cube.castShadow = cube.receiveShadow = true;
-        this.#loadedObjects["cube"] = cube;
-        const radius = 0.05, arrowLength = 0.25, arrowRadius = 0.1;
-        const arrow = new THREE.Object3D();
-        const tip = new THREE.Mesh(
-            new THREE.ConeGeometry(arrowRadius, arrowLength, 8),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
-        );
-        arrow.castShadow = arrow.receiveShadow = true;
-        tip.position.set(0, (1-arrowLength)/2, 0);
-        arrow.add(tip);
-        const line = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius, 1-arrowLength, 8),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
-        );
-        line.position.set(0, -arrowLength/2, 0);
-        arrow.add(line);
-        for (let i = 0; i < 2; i++) {
-            for (let j = 0; j < 3; j++) {
-                let pobj, obj = arrow.clone();
-                [obj, pobj] = [new THREE.Object3D(), obj];
-                obj.add(pobj);
-                pobj.quaternion.copy(THREE.Quaternion.fromRotationSequence([
-                    [
-                        [{ axis: "z", angle: -90 }],
-                        [{ axis: "z", angle: 90 }],
-                    ],
-                    [
-                        [],
-                        [{ axis: "z", angle: 180 }],
-                    ],
-                    [
-                        [{ axis: "x", angle: 90 }],
-                        [{ axis: "x", angle: -90 }],
-                    ],
-                ][j][i]));
-                this.#loadedObjects["arrow"+"+-"[i]+"xyz"[j]] = obj;
-            }
-        }
-        const axes = new THREE.Object3D();
-        axes.castShadow = axes.receiveShadow = true;
-        const length = 1;
-        const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
-        let xAxis, yAxis, zAxis;
-        xAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0xff0000 }),
-        );
-        xAxis.position.set(length/2, 0, 0);
-        xAxis.rotateZ(Math.PI/2);
-        axes.add(xAxis);
-        axes.xAxis = xAxis;
-        yAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0x00ff00 }),
-        );
-        yAxis.position.set(0, length/2, 0);
-        axes.add(yAxis);
-        axes.yAxis = yAxis;
-        zAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0x0000ff }),
-        );
-        zAxis.position.set(0, 0, length/2);
-        zAxis.rotateX(Math.PI/2);
-        axes.add(zAxis);
-        axes.zAxis = zAxis;
-        this.#loadedObjects["axes"] = axes;
-        {
-            // 2023
-            const cone = new THREE.Object3D();
-            cone.castShadow = cone.receiveShadow = true;
-            const r = 0.105, h = 0.33;
-            const coneInner = new THREE.Mesh(
-                new THREE.ConeGeometry(r, h, 12),
-                new THREE.MeshLambertMaterial({ color: 0xffffff }),
-            );
-            coneInner.position.set(0, 0, h/2);
-            coneInner.rotateX(Math.PI/2);
-            cone.add(coneInner);
-            this.#loadedObjects["2023-cone"] = cone;
-            const cube = new THREE.Object3D();
-            cube.castShadow = cube.receiveShadow = true;
-            const s = 0.24;
-            const cubeInner = new THREE.Mesh(
-                new THREE.BoxGeometry(s, s, s),
-                new THREE.MeshLambertMaterial({ color: 0xffffff }),
-            );
-            cubeInner.position.set(0, 0, s/2);
-            cube.add(cubeInner);
-            this.#loadedObjects["2023-cube"] = cube;
-        }
-        {
-            // 2024
-            const note = new THREE.Object3D();
-            note.castShadow = note.receiveShadow = false;
-            const r1 = 0.18, r2 = 0.125;
-            const noteInner = new THREE.Mesh(
-                new THREE.TorusGeometry(r1-(r1-r2)/2, (r1-r2)/2, 8, 12),
-                new THREE.MeshLambertMaterial({ color: 0xffffff }),
-            );
-            noteInner.position.set(0, 0, (r1-r2)/2);
-            note.add(noteInner);
-            this.#loadedObjects["2024-note"] = note;
-        }
-
         let robotLock = false;
         let modelObject = null, theModelObject = null;
 
@@ -6368,7 +6367,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                     PROPERTYCACHE.getColor(this.color) :
                 new util.Color(this.color);
             if (this.hasType()) {
-                if (this.hasBuiltinType()) theModelObject = this.#loadedObjects[this.builtinType];
+                if (this.hasBuiltinType()) theModelObject = this.constructor.LOADEDOBJECTS[this.builtinType];
                 else if (!robotLock)
                     (async () => {
                         robotLock = true;
