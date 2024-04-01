@@ -7717,31 +7717,54 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 if (!this.hasApp()) return;
                 let itm;
                 let menu = new core.App.Menu();
-                let menuData = {
-                    "§node": "Node",
-                    "§cube": "Cube",
-                    "Arrows": {
-                        "§arrow+x": "Arrow (+X)",
-                        "§arrow-x": "Arrow (-X)",
-                        "§arrow+y": "Arrow (+Y)",
-                        "§arrow-y": "Arrow (-Y)",
-                        "§arrow+z": "Arrow (+Z)",
-                        "§arrow-z": "Arrow (-Z)",
+                let menuData = [
+                    { key: "§node", name: "Node" },
+                    { key: "§cube", name: "Cube" },
+                    {
+                        key: "§arrow+x", name: "Arrows",
+                        sub: [
+                            { key: "§arrow+x", name: "Arrow (+X)" },
+                            { key: "§arrow-x", name: "Arrow (-X)" },
+                            { key: "§arrow+y", name: "Arrow (+Y)" },
+                            { key: "§arrow-y", name: "Arrow (-Y)" },
+                            { key: "§arrow+z", name: "Arrow (+Z)" },
+                            { key: "§arrow-z", name: "Arrow (-Z)" },
+                        ],
                     },
-                    "§axes": "Axes",
-                };
-                const dfs = (menu, k, v) => {
-                    if (util.is(v, "obj")) {
-                        let itm = menu.addItem(new core.App.Menu.Item(k));
-                        for (let k2 in v) dfs(itm.menu, k2, v[k2]);
-                        return;
-                    }
-                    let itm = menu.addItem(new core.App.Menu.Item(v, (current == k) ? "checkmark" : ""));
-                    itm.addHandler("trigger", e => {
-                        r.type = k;
+                    { key: "§axes", name: "Axes" },
+                    null,
+                    {
+                        key: "§2023-cone", name: "2023",
+                        sub: [
+                            { key: "§2023-cone", name: "Cone" },
+                            { key: "§2023-cube", name: "Cube" },
+                        ],
+                    },
+                    {
+                        key: "§2024-note", name: "2024",
+                        sub: [
+                            { key: "§2024-note", name: "Note" },
+                        ],
+                    },
+                ];
+                const dfs = (menu, ditms) => {
+                    util.ensure(ditms, "arr").forEach(ditm => {
+                        if (ditm == null)
+                            return menu.addItem(new core.App.Menu.Divider());
+                        ditm = util.ensure(ditm, "obj");
+                        let name = null;
+                        if ("name" in ditm) name = ditm.name;
+                        else if ("key" in ditm) name = ditm.key;
+                        else name = "?";
+                        let itm = menu.addItem(new core.App.Menu.Item(name, (current == ditm.key) ? "checkmark" : ""));
+                        itm.addHandler("trigger", e => {
+                            if (!ditm.key) return;
+                            r.type = ditm.key;
+                        });
+                        dfs(itm.menu, ditm.sub);
                     });
                 };
-                for (let k in menuData) dfs(menu, k, menuData[k]);
+                dfs(menu, menuData);
                 menu.addItem(new core.App.Menu.Divider());
                 Object.keys(robots).forEach(k => {
                     itm = menu.addItem(new core.App.Menu.Item(k, (current == k) ? "checkmark" : ""));
@@ -7894,31 +7917,54 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         let menu = await super.makeContextMenu();
         itm = menu.addItem(new core.App.Menu.Item("Types"));
         let submenu = itm.menu;
-        let menuData = {
-            "§node": "Node",
-            "§cube": "Cube",
-            "Arrows": {
-                "§arrow+x": "Arrow (+X)",
-                "§arrow-x": "Arrow (-X)",
-                "§arrow+y": "Arrow (+Y)",
-                "§arrow-y": "Arrow (-Y)",
-                "§arrow+z": "Arrow (+Z)",
-                "§arrow-z": "Arrow (-Z)",
+        let menuData = [
+            { key: "§node", name: "Node" },
+            { key: "§cube", name: "Cube" },
+            {
+                key: "§arrow+x", name: "Arrows",
+                sub: [
+                    { key: "§arrow+x", name: "Arrow (+X)" },
+                    { key: "§arrow-x", name: "Arrow (-X)" },
+                    { key: "§arrow+y", name: "Arrow (+Y)" },
+                    { key: "§arrow-y", name: "Arrow (-Y)" },
+                    { key: "§arrow+z", name: "Arrow (+Z)" },
+                    { key: "§arrow-z", name: "Arrow (-Z)" },
+                ],
             },
-            "§axes": "Axes",
-        };
-        const dfs = (menu, k, v) => {
-            if (util.is(v, "obj")) {
-                let itm = menu.addItem(new core.App.Menu.Item(k));
-                for (let k2 in v) dfs(itm.menu, k2, v[k2]);
-                return;
-            }
-            let itm = menu.addItem(new core.App.Menu.Item(v, (this.type == k) ? "checkmark" : ""));
-            itm.addHandler("trigger", e => {
-                this.type = k;
+            { key: "§axes", name: "Axes" },
+            null,
+            {
+                key: "§2023-cone", name: "2023",
+                sub: [
+                    { key: "§2023-cone", name: "Cone" },
+                    { key: "§2023-cube", name: "Cube" },
+                ],
+            },
+            {
+                key: "§2024-note", name: "2024",
+                sub: [
+                    { key: "§2024-note", name: "Note" },
+                ],
+            },
+        ];
+        const dfs = (menu, ditms) => {
+            util.ensure(ditms, "arr").forEach(ditm => {
+                if (ditm == null)
+                    return menu.addItem(new core.App.Menu.Divider());
+                ditm = util.ensure(ditm, "obj");
+                let name = null;
+                if ("name" in ditm) name = ditm.name;
+                else if ("key" in ditm) name = ditm.key;
+                else name = "?";
+                let itm = menu.addItem(new core.App.Menu.Item(name, (this.type == ditm.key) ? "checkmark" : ""));
+                itm.addHandler("trigger", e => {
+                    if (!ditm.key) return;
+                    this.type = ditm.key;
+                });
+                dfs(itm.menu, ditm.sub);
             });
         };
-        for (let k in menuData) dfs(submenu, k, menuData[k]);
+        dfs(submenu, menuData);
         submenu.addItem(new core.App.Menu.Divider());
         let robots = util.ensure(await window.api.get("robots"), "obj");
         Object.keys(robots).forEach(k => {
@@ -7964,16 +8010,19 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         let type = this.type;
         if (type.startsWith("§"))
             type = {
-                "§node": "Node",
-                "§cube": "Cube",
-                "§arrow+x": "Arrow (+X)",
-                "§arrow-x": "Arrow (-X)",
-                "§arrow+y": "Arrow (+Y)",
-                "§arrow-y": "Arrow (-Y)",
-                "§arrow+z": "Arrow (+Z)",
-                "§arrow-z": "Arrow (-Z)",
-                "§axes": "Axes",
-            }[type];
+                "node": "Node",
+                "cube": "Cube",
+                "arrow+x": "Arrow (+X)",
+                "arrow-x": "Arrow (-X)",
+                "arrow+y": "Arrow (+Y)",
+                "arrow-y": "Arrow (-Y)",
+                "arrow+z": "Arrow (+Z)",
+                "arrow-z": "Arrow (-Z)",
+                "axes": "Axes",
+                "2023-cone": "2023 Cone",
+                "2023-cube": "2023 Cube",
+                "2024-note": "2024 Note",
+            }[type.slice(1)];
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
             this.eDisplayType.children[0].textContent = type;
     }
