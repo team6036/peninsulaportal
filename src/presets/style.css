@@ -166,9 +166,9 @@ button:not(.override) {
     background-color: var(--v1-8);
     color: var(--v8);
 }
-#PAGE > .content > .info * {
+/* #PAGE > .content > .info * {
     font-family: monospace;
-}
+} */
 #PAGE > .content > .info > .nav {
     margin-bottom: 5px;
 
@@ -207,8 +207,5 @@ button:not(.override) {
     color: var(--v2);
 
     font-size: 12px;
-    font-family: monospace;
-}
-#PAGE > .content > .loads * {
     font-family: monospace;
 }

@@ -946,7 +946,6 @@
     font-family: monospace;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header) > div {
-    font-family: inherit;
     font-size: inherit;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > :not(.header) > div:first-child {
