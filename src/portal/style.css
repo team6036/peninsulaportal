@@ -225,9 +225,9 @@ body {
 #PAGE > .info:has(> div:not(.nav):hover) {
     color: var(--v8);
 }
-#PAGE > .info * {
+/* #PAGE > .info * {
     font-family: monospace;
-}
+} */
 #PAGE > .info > .nav {
     margin-bottom: 5px;
 
@@ -264,8 +264,5 @@ body {
     color: var(--v2);
 
     font-size: 12px;
-    font-family: monospace;
-}
-#PAGE > .loads * {
     font-family: monospace;
 }
