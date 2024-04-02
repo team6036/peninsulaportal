@@ -6764,7 +6764,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.addHandler("change-robotSize.y", apply);
 
         this.addHandler("change-template", () => {
-            fieldForm.isShown = this.template == null;
+            this.fSize.isShown = this.template == null;
         });
 
         const eOptions = this.getEOptionSection("o");
