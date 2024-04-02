@@ -172,12 +172,6 @@ export class NTWebSocket extends util.Target {
     #latency;
     #lengthCounter;
 
-    static STATES = {
-        DISCONNECTED: Symbol("DISCONNECTED"),
-        CONNECTING: Symbol("CONNECTING"),
-        CONNECTED: Symbol("CONNECTED"),
-    };
-
     constructor(address) {
         super();
 
@@ -185,25 +179,25 @@ export class NTWebSocket extends util.Target {
         this.#ws = null;
         this.#clientStartTime = this.#clientStopTime = null;
 
-        this.#connection = NTWebSocket.STATES.DISCONNECTED;
+        this.#connection = 0;
 
         this.#offset = 0;
         this.#latency = 0;
         this.#lengthCounter = 0;
 
         this.addHandler("change-connection", (f, t) => {
-            if (t == NTWebSocket.STATES.DISCONNECTED) this.post("disconnected");
-            if (t == NTWebSocket.STATES.CONNECTING) this.post("connecting");
-            if (t == NTWebSocket.STATES.CONNECTED) this.post("connected");
+            if (t == 0) this.post("disconnected");
+            if (t == 1) this.post("connecting");
+            if (t == 2) this.post("connected");
 
-            if (t == NTWebSocket.STATES.CONNECTED) {
+            if (f == 2) {
+                this.post("ws-disconnect");
+                this.#clientStopTime = this.clientTime;
+            }
+            if (t == 2) {
                 this.post("ws-connect");
                 this.#clientStartTime = this.clientTime;
                 this.#clientStopTime = null;
-            }
-            if (f == NTWebSocket.STATES.CONNECTED && t == NTWebSocket.STATES.DISCONNECTED) {
-                this.post("ws-disconnect");
-                this.#clientStopTime = this.clientTime;
             }
         });
 
@@ -252,9 +246,9 @@ export class NTWebSocket extends util.Target {
     get address() { return this.#address; }
 
     get connection() { return this.#connection; }
-    get connected() { return this.connection == NTWebSocket.STATES.CONNECTED; }
-    get connecting() { return this.connection == NTWebSocket.STATES.CONNECTING; }
-    get disconnected() { return this.connection == NTWebSocket.STATES.DISCONNECTED; }
+    get disconnected() { return this.connection == 0; }
+    get connecting() { return this.connection == 1; }
+    get connected() { return this.connection == 2; }
 
     get offset() { return this.#offset; }
     get latency() { return this.#latency; }
@@ -291,14 +285,14 @@ export class NTWebSocket extends util.Target {
         ws.addEventListener("open", () => {
             if (this.#ws != ws) return ws.close();
 
-            this.change("connection", this.connection, this.#connection=NTWebSocket.STATES.CONNECTED);
+            this.change("connection", this.connection, this.#connection=2);
 
             this.sendTimestamp();
         });
         ws.addEventListener("close", e => {
             if (this.#ws != ws) return;
 
-            this.change("connection", this.connection, this.#connection=NTWebSocket.STATES.DISCONNECTED);
+            this.change("connection", this.connection, this.#connection=0);
 
             this.#ws = null;
             if (e.reason) console.error(e.reason);
@@ -317,7 +311,7 @@ export class NTWebSocket extends util.Target {
 
             this.post("message", e.data);
         });
-        this.change("connection", this.connection, this.#connection=NTWebSocket.STATES.CONNECTING);
+        this.change("connection", this.connection, this.#connection=1);
         return true;
     }
     disconnect() {
@@ -387,8 +381,6 @@ export default class NTClient extends util.Target {
     #publishedTopics;
     #serverTopics;
 
-    static STATES = NTWebSocket.STATES;
-
     static newID() { return Math.floor(1000000000*Math.random()); }
 
     constructor(address) {
@@ -402,16 +394,11 @@ export default class NTClient extends util.Target {
         this.#publishedTopics = {};
         this.#serverTopics = {};
 
-        this.addHandler("change-connection", (f, t) => {
-            if (t == NTClient.STATES.DISCONNECTED) this.post("disconnected");
-            if (t == NTClient.STATES.CONNECTING) this.post("connecting");
-            if (t == NTClient.STATES.CONNECTED) this.post("connected");
-        });
-        this.addHandler("connected", () => {
+        this.addHandler("ws-connect", () => {
             Object.values(this.#publishedTopics).forEach(topic => this.#ws.publish(topic));
             Object.values(this.#subscriptions).forEach(subscription => this.#ws.subscribe(subscription));
         });
-        this.addHandler("disconnected", () => {
+        this.addHandler("ws-disconnect", () => {
             this.#serverTopics = {};
         });
 
@@ -444,6 +431,11 @@ export default class NTClient extends util.Target {
         const name = "PeninsulaPortal-NT4Client";
         const ws = this.#ws = new NTWebSocket("ws://"+address+":"+port+"/nt/"+name);
         ws.addHandler("change-connection", (f, t) => this.change("connection", f, t));
+        ws.addHandler("disconnected", () => this.post("disconnected"));
+        ws.addHandler("connecting", () => this.post("connecting"));
+        ws.addHandler("connected", () => this.post("connected"));
+        ws.addHandler("ws-disconnect", () => this.post("ws-disconnect"));
+        ws.addHandler("ws-connect", () => this.post("ws-connect"));
         ws.addHandler("error", e => {
             if (this.#ws != ws) return ws.disconnect();
             this.post("error", e);
