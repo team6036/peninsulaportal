@@ -7099,7 +7099,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         }
         if (a.length == 2) a = [a[0], true, a[1]];
         if (a.length == 3) a = [...a, false];
-        if (a.length == 4) a = [...a, "default"];
+        if (a.length == 4) a = [...a, "§default"];
         if (a.length == 5) a = [...a, null, null];
         if (a.length == 7) a = [...a, 0];
         if (a.length == 8) a = [...a, false];
