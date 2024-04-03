@@ -8344,36 +8344,6 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
             btn.disabled = v;
     }
 };
-Form.ToggleInput = class FormToggleInput extends Form.SelectInput {
-    #disabled;
-
-    constructor(name, toggleName, value) {
-        // gross might migrate over to BooleanInput
-        let changed = false;
-        super(name, [{ value: true, name: toggleName, click: () => {
-            this.value = (changed ? value : !value);
-            changed = false;
-        }}], !!value);
-        this.addHandler("change-value", (f, t) => {
-            changed = true;
-            value = this.value;
-        });
-        value = this.value;
-        this.#disabled = true;
-    }
-
-    get values() { return super.values; }
-    set values(v) {
-        try {
-            if (this.#disabled)
-                return;
-        } catch (e) {}
-        super.values = v;
-    }
-
-    get value() { return !!super.value; }
-    set value(v) { super.value = !!v; }
-};
 Form.BooleanInput = class FormBooleanInput extends Form.Field {
     constructor(name, value) {
         super(name);
@@ -8391,6 +8361,42 @@ Form.BooleanInput = class FormBooleanInput extends Form.Field {
 
     get disabled() { return this.eToggleInput.disabled; }
     set disabled(v) { this.eToggleInput.disabled = v; }
+};
+Form.ToggleInput = class FormToggleInput extends Form.BooleanInput {
+    #eBtn;
+
+    constructor(name, toggleName, value) {
+        super(name, value);
+        
+        this.showToggle = false;
+        this.showContent = true;
+
+        this.elem.classList.add("enum");
+        this.elem.classList.add("select");
+
+        this.#eBtn = document.createElement("button");
+        this.eContent.appendChild(this.eBtn);
+        this.eBtn.style.setProperty("--n", 1);
+        this.eBtn.addEventListener("click", e => {
+            this.value = !this.value;
+        });
+
+        const update = () => {
+            this.eBtn.disabled = this.disabled;
+            if (this.value) this.eBtn.classList.add("this");
+            else this.eBtn.classList.remove("this");
+        };
+        // TODO: doesnt work for disabling...
+        this.addHandler("change-toggleOn", update);
+        update();
+
+        this.toggleName = toggleName;
+    }
+
+    get eBtn() { return this.#eBtn; }
+
+    get toggleName() { return this.eBtn.textContent; }
+    set toggleName(v) { this.eBtn.textContent = v; }
 };
 Form.JSONInput = class FormJSONInput extends Form.Field {
     #map;

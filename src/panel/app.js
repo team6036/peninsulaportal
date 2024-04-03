@@ -1080,7 +1080,6 @@ class Panel extends Widget {
         this.format();
         if (this.tabs[this.tabIndex])
             this.eTop.scrollTo({ left: this.tabs[this.tabIndex].eTab.offsetLeft, behavior: "smooth" });
-        this.format();
     }
     clearTabs() {
         let tabs = this.tabs;
@@ -5858,6 +5857,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             let btn = document.createElement("button");
             this.eColorPicker.appendChild(btn);
             this.#eColorPickerColors.push(btn);
+            btn.classList.add("color");
             btn.color = "--"+colors._;
             btn.style.setProperty("--bg", "var(--"+colors._+")");
             btn.style.setProperty("--bgh", "var(--"+colors.h+")");
@@ -6418,6 +6418,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             let btn = document.createElement("button");
             this.eColorPicker.appendChild(btn);
             this.#eColorPickerColors.push(btn);
+            btn.classList.add("color");
             btn.color = "--"+colors._;
             btn.style.setProperty("--bg", "var(--"+colors._+")");
             btn.style.setProperty("--bgh", "var(--"+colors.h+")");
@@ -7068,7 +7069,6 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
         this.#eGhostBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eGhostBtn);
-        this.eGhostBtn.classList.add("custom");
         this.eGhostBtn.textContent = "Ghost";
         this.eGhostBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -7807,7 +7807,6 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
 
         this.#eGhostBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eGhostBtn);
-        this.eGhostBtn.classList.add("custom");
         this.eGhostBtn.textContent = "Ghost";
         this.eGhostBtn.addEventListener("click", e => {
             e.stopPropagation();
@@ -7816,7 +7815,6 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
 
         this.#eSolidBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eSolidBtn);
-        this.eSolidBtn.classList.add("custom");
         this.eSolidBtn.textContent = "Solid";
         this.eSolidBtn.addEventListener("click", e => {
             e.stopPropagation();

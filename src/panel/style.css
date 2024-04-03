@@ -2013,24 +2013,29 @@
     align-content: center;
     gap: 5px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button:not(.custom) {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button.color {
     height: 15px;
+    min-height: 15px;
     aspect-ratio: 1 / 1;
 
     border: 1px solid transparent;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button:not(.custom).this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button.color.this {
     border: 1px solid var(--v8);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button.custom {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button:not(.color) {
     --bg: transparent;
     --fg: var(--cr);
-    --bgh: transparent;
+    --bgh: var(--v2);
     --fgh: var(--cr5);
     --bgd: transparent;
     --fgd: var(--cr2);
+
+    padding: 2.5px 5px;
+
+    border-radius: 5px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button.custom.this {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > .colorpicker > button:not(.color).this {
     --fg: var(--cg);
     --fgh: var(--cg5);
     --fgd: var(--cg2);
