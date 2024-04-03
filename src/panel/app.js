@@ -6100,7 +6100,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
         this.#poses = new Set();
 
-        this.#template = "§null";
+        this.#template = null;
 
         ["p", "f", "o"].forEach(id => {
             const elem = document.createElement("div");
@@ -6873,14 +6873,14 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             a = a[0];
             if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof this.constructor.Pose) a = [a, null];
+                if (a[0] instanceof this.constructor.Pose) a = [a, core.GLOBALSTATE.getProperty("active-template").value];
                 else {
                     a = new Panel.Odometry2dTab(...a);
                     a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
                 }
             }
             else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
-            else a = [[], "§null"];
+            else a = [[], core.GLOBALSTATE.getProperty("active-template").value];
         }
         if (a.length == 2) a = [...a, 1000];
         if (a.length == 3) a = [...a, 100];
@@ -7594,14 +7594,14 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             a = a[0];
             if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.cameraHook.to(), a.optionState];
             else if (util.is(a, "arr")) {
-                if (a[0] instanceof this.constructor.Pose) a = [a, null];
+                if (a[0] instanceof this.constructor.Pose) a = [a, core.GLOBALSTATE.getProperty("active-template").value];
                 else {
                     a = new Panel.Odometry3dTab(...a);
                     a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.cameraHook.to(), a.optionState];
                 }
             }
             else if (util.is(a, "obj")) a = [a.poses, a.template, a.renderType, a.controlType, a.lengthUnits, a.angleUnits, a.origin, a.cameraHook, a.optionState];
-            else a = [[], "§null"];
+            else a = [[], core.GLOBALSTATE.getProperty("active-template").value];
         }
         if (a.length == 2) a = [...a, 0.5];
         if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, "blue+", a[2]];
@@ -9293,6 +9293,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     const sstart = this.source.tsMin, sstop = this.source.tsMax, slen = sstop-sstart;
                     let n = 0;
                     const dfs = widget => {
+                        if (!(widget instanceof Widget)) return;
                         if (widget instanceof Container)
                             return widget.children.forEach(widget => dfs(widget));
                         const tab = widget.tabs[widget.tabIndex];
