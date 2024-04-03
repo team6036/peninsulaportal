@@ -1202,7 +1202,25 @@ const MAIN = async () => {
             this.post("message", name, ...a);
             return true;
         }
-        sendMessage(id, name, ...a) { return this.manager.sendMessage(id, name, ...a); }
+        sendMessage(id, name, ...a) {
+            this.post("sent-message", id, name, ...a);
+            return this.manager.sendMessage(id, name, ...a);
+        }
+        async whenModalResult() {
+            return new Promise((res, rej) => {
+                this.addHandler("sent-message", (id, name, data) => {
+                    if (id != null) return;
+                    if (name != "modify") return;
+                    data = util.ensure(data, "obj");
+                    const cmds = util.ensure(data.cmds, "arr");
+                    for (const cmd of cmds) {
+                        if (cmd == "button") return res(null);
+                        if (cmd == "confirm") return res(true);
+                        if (cmd == "cancel") return res(false);
+                    }
+                });
+            });
+        }
 
         modalSpawn(name, params) {
             let win = this.windowManager.modalSpawn(name, params);

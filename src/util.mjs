@@ -936,6 +936,15 @@ export class Color extends Target {
         this.hsva = hsva;
     }
 
+    equals(...v) {
+        v = new Color(...v);
+        if (this.r != v.r) return false;
+        if (this.g != v.g) return false;
+        if (this.b != v.b) return false;
+        if (this.a != v.a) return false;
+        return true;
+    }
+
     toHex(a=true) {
         let v = a ? this.#hex : this.#hexNoAlpha;
         if (v == null) {
@@ -1037,6 +1046,15 @@ export class Range extends Target {
         return lerp(this.l, this.r, v);
     }
 
+    equals(...v) {
+        v = new Range(...v);
+        if (this.l != v.l) return false;
+        if (this.r != v.r) return false;
+        if (this.lInclude != v.lInclude) return false;
+        if (this.rInclude != v.rInclude) return false;
+        return true;
+    }
+
     toString() { return (this.lInclude ? "[" : "(") + this.l + ", " + this.r + (this.rInclude ? "]" : ")"); }
 
     toJSON() {
@@ -1066,7 +1084,18 @@ export class V extends Target {
         }
 
         [this.x, this.y] = a;
+
+        Object.defineProperty(this, "0", {
+            get: () => this.x,
+            set: v => (this.x = v),
+        });
+        Object.defineProperty(this, "1", {
+            get: () => this.y,
+            set: v => (this.y = v),
+        });
     }
+
+    get length() { return 2; }
 
     get x() { return this.#x; }
     set x(v) {
@@ -1213,7 +1242,22 @@ export class V3 extends Target {
         if (a.length == 2) a = [...a, 0];
 
         [this.x, this.y, this.z] = a;
+
+        Object.defineProperty(this, "0", {
+            get: () => this.x,
+            set: v => (this.x = v),
+        });
+        Object.defineProperty(this, "1", {
+            get: () => this.y,
+            set: v => (this.y = v),
+        });
+        Object.defineProperty(this, "2", {
+            get: () => this.z,
+            set: v => (this.z = v),
+        });
     }
+
+    get length() { return 3; }
 
     get x() { return this.#x; }
     set x(v) {
@@ -1354,7 +1398,26 @@ export class V4 extends Target {
         if (a.length == 3) a = [0, ...a];
 
         [this.w, this.x, this.y, this.z] = a;
+
+        Object.defineProperty(this, "0", {
+            get: () => this.w,
+            set: v => (this.w = v),
+        });
+        Object.defineProperty(this, "1", {
+            get: () => this.x,
+            set: v => (this.x = v),
+        });
+        Object.defineProperty(this, "2", {
+            get: () => this.y,
+            set: v => (this.y = v),
+        });
+        Object.defineProperty(this, "3", {
+            get: () => this.z,
+            set: v => (this.z = v),
+        });
     }
+
+    get length() { return 4; }
 
     get w() { return this.#w; }
     set w(v) {
