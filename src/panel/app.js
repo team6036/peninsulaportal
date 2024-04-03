@@ -12,6 +12,14 @@ import CSVFieldSource from "../sources/csv/field/source.js";
 import { WorkerClient } from "../worker.js";
 
 
+window.f = () => {
+    Array.from(document.querySelectorAll("*")).forEach(elem => {
+        if (elem.scrollTop <= 0) return;
+        console.log(elem, elem.scrollTop);
+    });
+};
+
+
 function generatePositioning(value, lengthUnits, angleUnits, z2d=0) {
     value = util.ensure(value, "arr").map(v => util.ensure(v, "num"));
     if (value.length == 7)
@@ -1069,7 +1077,9 @@ class Panel extends Widget {
         v = Math.min(this.#tabs.length-1, Math.max(0, util.ensure(v, "int")));
         this.change("tabIndex", this.tabIndex, this.#tabIndex=v);
         this.#tabs.forEach((tab, i) => (i == this.tabIndex) ? tab.open() : tab.close());
-        if (this.tabs[this.tabIndex]) this.tabs[this.tabIndex].eTab.scrollIntoView({ behavior: "smooth" });
+        this.format();
+        if (this.tabs[this.tabIndex])
+            this.eTop.scrollTo({ left: this.tabs[this.tabIndex].eTab.offsetLeft, behavior: "smooth" });
         this.format();
     }
     clearTabs() {
