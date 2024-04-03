@@ -287,7 +287,7 @@ Project.Config = class ProjectConfig extends Project.Config {
 
         this.#options = {};
 
-        if (a.length <= 0 || ![1, 4].includes(a.length)) a = [null];
+        if (a.length <= 0 || ![1, 3, 4].includes(a.length)) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
@@ -295,10 +295,11 @@ Project.Config = class ProjectConfig extends Project.Config {
                 a = new Project.Config(...a);
                 a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
             }
-            else if (util.is(a, "str")) a = [a, 0, 0, false];
+            else if (util.is(a, "str")) a = [a, "python3", true];
             else if (util.is(a, "obj")) a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
-            else a = [null, 0, 0, null];
+            else a = [null, "python3", true];
         }
+        if (a.length == 3) a = [...a, null];
 
         [this.script, this.scriptPython, this.scriptUseDefault, this.options] = a;
     }
