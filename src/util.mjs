@@ -755,7 +755,7 @@ export class Color extends Target {
         this.#r = this.#g = this.#b = this.#a = null;
         this.#hsv = null;
 
-        if (a.length <= 0 || a.length == 2 || a.length > 4) a = [null];
+        if (a.length <= 0 || [2].includes(a.length) || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Color) a = a.rgba;
@@ -987,6 +987,7 @@ export class Range extends Target {
             else a = [-Infinity, Infinity];
         }
         if (a.length == 2) a = [...a, true, true];
+
         [this.l, this.r, this.lInclude, this.rInclude] = a;
     }
 
@@ -1063,6 +1064,7 @@ export class V extends Target {
             else if (is(a, "num")) a = [a, a];
             else a = [0, 0];
         }
+
         [this.x, this.y] = a;
     }
 
@@ -1209,6 +1211,7 @@ export class V3 extends Target {
             else a = [0, 0, 0];
         }
         if (a.length == 2) a = [...a, 0];
+
         [this.x, this.y, this.z] = a;
     }
 
@@ -1349,6 +1352,7 @@ export class V4 extends Target {
         }
         if (a.length == 2) a = [...a, 0];
         if (a.length == 3) a = [0, ...a];
+
         [this.w, this.x, this.y, this.z] = a;
     }
 
@@ -1483,6 +1487,11 @@ export class Line extends Shape {
     constructor(...a) {
         super();
 
+        this.#p1 = new V();
+        this.#p2 = new V();
+        this.p1.addHandler("change", (c, f, t) => this.change("p1."+c, f, t));
+        this.p2.addHandler("change", (c, f, t) => this.change("p2."+c, f, t));
+
         if (a.length <= 0 || a.length == 3 || a.length > 4) a = [0];
         if (a.length == 1) {
             a = a[0];
@@ -1496,14 +1505,7 @@ export class Line extends Shape {
             else if (is(a, "num")) a = [[a, a], [a, a]];
             else a = [0, 0];
         }
-        if (a.length == 2) {
-            a = [...new V(a[0]).xy, ...new V(a[1]).xy];
-        }
-
-        this.#p1 = new V();
-        this.#p2 = new V();
-        this.p1.addHandler("change", (c, f, t) => this.change("p1."+c, f, t));
-        this.p2.addHandler("change", (c, f, t) => this.change("p2."+c, f, t));
+        if (a.length == 2) a = [...new V(a[0]).xy, ...new V(a[1]).xy];
 
         [this.x1, this.y1, this.x2, this.y2] = a;
     }
@@ -1586,6 +1588,10 @@ export class Circle extends Shape {
     constructor(...a) {
         super();
 
+        this.#p = new V();
+        this.p.addHandler("change", (c, f, t) => this.change("p."+c, f, t));
+        this.#r = 0;
+
         if (a.length <= 0 || a.length > 3) a = [0];
         if (a.length == 1) {
             a = a[0];
@@ -1599,13 +1605,7 @@ export class Circle extends Shape {
             else if (is(a, "num")) a = [0, a];
             else a = [0, 0];
         }
-        if (a.length == 2) {
-            a = [...new V(a[0]).xy, a[1]];
-        }
-
-        this.#p = new V();
-        this.p.addHandler("change", (c, f, t) => this.change("p."+c, f, t));
-        this.#r = 0;
+        if (a.length == 2) a = [...new V(a[0]).xy, a[1]];
 
         [this.x, this.y, this.r] = a;
     }
@@ -1676,6 +1676,11 @@ export class Rect extends Shape {
     constructor(...a) {
         super();
 
+        this.#xy = new V();
+        this.#wh = new V();
+        this.xy.addHandler("change", (c, f, t) => this.change("xy."+c, f, t));
+        this.wh.addHandler("change", (c, f, t) => this.change("wh."+c, f, t));
+
         if (a.length <= 0 || a.length == 3 || a.length > 4) a = [0];
         if (a.length == 1) {
             a = a[0];
@@ -1698,11 +1703,6 @@ export class Rect extends Shape {
             if (is(a[0], "num") && is(a[1], "num")) a = [0, 0, ...a];
             else a = [...new V(a[0]).xy, ...new V(a[1]).xy];
         }
-
-        this.#xy = new V();
-        this.#wh = new V();
-        this.xy.addHandler("change", (c, f, t) => this.change("xy."+c, f, t));
-        this.wh.addHandler("change", (c, f, t) => this.change("wh."+c, f, t));
 
         [this.x, this.y, this.w, this.h] = a;
     }
@@ -1874,6 +1874,15 @@ export class Polygon extends Shape {
     #pointsmx; #pointsmn;
 
     constructor(...a) {
+        super();
+
+        this.#p = new V();
+        this.p.addHandler("change", (c, f, t) => this.change("p."+c, f, t));
+        this.#d = 0;
+        this.#points = [];
+        this.#pointsmx = new V();
+        this.#pointsmn = new V();
+
         if (a.length <= 0) a = [0];
         if (a.length == 1) {
             a = a[0];
@@ -1894,13 +1903,6 @@ export class Polygon extends Shape {
             else if (is(a[1], "arr") && a[1].length >= 3) a = [a[0], ...a[1]];
         }
         a = a.map(v => new V(v));
-        
-        this.#p = new V();
-        this.p.addHandler("change", (c, f, t) => this.change("p."+c, f, t));
-        this.#d = 0;
-        this.#points = [];
-        this.#pointsmx = new V();
-        this.#pointsmn = new V();
 
         this.p = a.shift();
         this.points = a;
@@ -2189,6 +2191,14 @@ export class Playback extends Target {
 
         this.#signal = null;
 
+        this.addHandler("update", delta => {
+            if (this.paused) return;
+            this.ts += delta;
+            if (this.ts < this.tsMax) return this.#restartTimer = 0;
+            if (this.#restartTimer >= 10) return;
+            this.#restartTimer++;
+        });
+
         if (a.length <= 0 || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
@@ -2205,14 +2215,6 @@ export class Playback extends Target {
         if (a.length == 3) a = [...a, false];
 
         [this.ts, this.tsMin, this.tsMax, this.paused] = a;
-
-        this.addHandler("update", delta => {
-            if (this.paused) return;
-            this.ts += delta;
-            if (this.ts < this.tsMax) return this.#restartTimer = 0;
-            if (this.#restartTimer >= 10) return;
-            this.#restartTimer++;
-        });
     }
 
     get ts() { return this.hasSignal() ? this.signal.ts : this.#ts; }

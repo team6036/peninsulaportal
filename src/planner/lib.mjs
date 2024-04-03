@@ -28,7 +28,7 @@ export class Project extends lib.Project {
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
         this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
 
-        if (a.length <= 0 || a.length > 11) a = [null];
+        if (a.length <= 0 || [5, 7, 9].includes(a.length) || a.length > 11) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project) {
@@ -64,24 +64,12 @@ export class Project extends lib.Project {
             else if (util.is(a, "obj")) a = [a.id, a.template, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
             else a = [{}, {}];
         }
-        if (a.length == 2)
-            a = [null, ...a];
-        if (a.length == 3)
-            a = [...a, [1000, 1000]];
-        if (a.length == 4)
-            a = [...a, [100, 100], null, null];
-        if (a.length == 5)
-            a = [...a.slice(0, 4), [100, 100], 0, ...((a[4] instanceof Project.Config) ? [a[4], null] : (a[4] instanceof Project.Meta) ? [null, a[4]] : [null, null])];
-        if (a.length == 6)
-            a = [...a.slice(0, 4), [100, 100], 0, ...a.slice(4)];
-        if (a.length == 7)
-            a = [...a.slice(0, 5), 0, ...a.slice(5)];
-        if (a.length == 8)
-            a = [...a.slice(0, 6), 0.25, ...a.slice(6)];
-        if (a.length == 9)
-            a = [...a.slice(0, 7), false, ...a.slice(7)];
-        if (a.length == 10)
-            a = [null, ...a];
+        if (a.length == 2) a = [null, ...a];
+        if (a.length == 3) a = [...a, [1000, 1000]];
+        if (a.length == 4) a = [...a, [100, 100], 100];
+        if (a.length == 6) a = [...a, null, false];
+        if (a.length == 8) a = [...a, null, null];
+        if (a.length == 10) a = [null, ...a];
 
         [this.id, this.template, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.sidePos, this.maximized, this.config, this.meta] = a;
 
@@ -287,7 +275,7 @@ Project.Config = class ProjectConfig extends Project.Config {
 
         this.#options = {};
 
-        if (a.length <= 0 || ![1, 3, 4].includes(a.length)) a = [null];
+        if (a.length <= 0 || [2].includes(a.length) || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
@@ -453,18 +441,12 @@ Project.Node = class ProjectNode extends Project.Item {
             else if (util.is(a, "obj")) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
             else a = [a, 0];
         }
-        if (a.length == 2)
-            a = [...a, 100];
-        if (a.length == 3)
-            a = [...a, true];
-        if (a.length == 4)
-            a = [...a.slice(0, 3), 0, ...a.slice(3)];
-        if (a.length == 5)
-            a = [...a.slice(0, 2), true, ...a.slice(2)];
-        if (a.length == 6)
-            a = [...a, {}];
-        if (a.length == 7)
-            a = [null, ...a];
+        if (a.length == 2) a = [...a, 100];
+        if (a.length == 3) a = [...a, true];
+        if (a.length == 4) a = [...a.slice(0, 3), 0, ...a.slice(3)];
+        if (a.length == 5) a = [...a.slice(0, 2), true, ...a.slice(2)];
+        if (a.length == 6) a = [...a, {}];
+        if (a.length == 7) a = [null, ...a];
         
         [this.id, this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity, this.options] = a;
     }
