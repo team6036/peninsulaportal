@@ -249,16 +249,24 @@ export class Unit extends util.Target {
 
     convert(to) {
         to = String(to).toLowerCase();
-        if (this.unit == "#" || to == "#" || !math) return new Unit(this.value, to);
-        return new Unit(math.unit(this.value, this.unit).toNumber(to), to);
+        if (this.unit != "#" && to != "#" && math) {
+            try {
+                return new Unit(math.unit(this.value, this.unit).toNumber(to), to);
+            } catch (e) {}
+        }
+        return new Unit(this.value, to);
     }
 
     static convert(v, u1, u2) {
         v = util.ensure(v, "num");
         u1 = String(u1).toLowerCase();
         u2 = String(u2).toLowerCase();
-        if (u1 == "#" || u2 == "#" || !math) return v;
-        return math.unit(v, u1).toNumber(u2);
+        if (u1 != "#" && u2 != "#" && math) {
+            try {
+                return math.unit(v, u1).toNumber(u2);
+            } catch (e) {}
+        }
+        return v;
     }
 }
 

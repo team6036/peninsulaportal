@@ -6731,7 +6731,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         eField.appendChild(fieldForm.elem);
         this.#fSize = fieldForm.addField(new core.Form.Input2d("map-size"));
         this.addHandler("add", () => (this.fSize.app = this.app));
-        this.addHandler("rem", () => (this.fSize.app = this.app));
+        this.addHandler("rem", () => (this.fSize.app = null));
         this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fSize.baseType = "cm";
         this.fSize.step = 0.1;
@@ -6740,16 +6740,16 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             inp.min = 0;
         });
         this.fSize.addHandler("change-value", () => {
-            this.size.set(this.fSize.value);
+            this.size = this.fSize.value;
         });
         apply = () => {
-            this.fSize.value.set(this.size);
+            this.fSize.value = this.size;
         };
         this.addHandler("change-size.x", apply);
         this.addHandler("change-size.y", apply);
         this.#fRobotSize = fieldForm.addField(new core.Form.Input2d("robot-size"));
         this.addHandler("add", () => (this.fRobotSize.app = this.app));
-        this.addHandler("rem", () => (this.fRobotSize.app = this.app));
+        this.addHandler("rem", () => (this.fRobotSize.app = null));
         this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fRobotSize.baseType = "cm";
         this.fRobotSize.step = 0.1;
@@ -6758,16 +6758,16 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             inp.min = 0;
         });
         this.fRobotSize.addHandler("change-value", () => {
-            this.robotSize.set(this.fRobotSize.value);
+            this.robotSize = this.fRobotSize.value;
         });
         apply = () => {
-            this.fRobotSize.value.set(this.robotSize);
+            this.fRobotSize.value = this.robotSize;
         };
         this.addHandler("change-robotSize.x", apply);
         this.addHandler("change-robotSize.y", apply);
 
         this.addHandler("change-template", () => {
-            this.fSize.isShown = this.template == null;
+            this.fSize.isShown = this.fRobotSize.isShown = this.template == null;
         });
 
         const eOptions = this.getEOptionSection("o");
@@ -6826,7 +6826,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.origin = this.fOriginBlue.value;
         });
         const applyBlue = () => Array.from(this.fOriginBlue.eContent.children).forEach(elem => (elem.style.color = "var(--cb)"));
-        this.fOriginBlue.addHandler("apply", applyBlue);
+        this.fOriginBlue.addHandler("change", applyBlue);
         applyBlue();
 
         this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput(
@@ -6839,7 +6839,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.origin = this.fOriginRed.value;
         });
         const applyRed = () => Array.from(this.fOriginRed.eContent.children).forEach(elem => (elem.style.color = "var(--cr)"));
-        this.fOriginRed.addHandler("apply", applyRed);
+        this.fOriginRed.addHandler("change", applyRed);
         applyRed();
 
         this.addHandler("change-origin", () => {
@@ -7514,7 +7514,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.odometry.origin = this.fOriginBlue.value;
         });
         const applyBlue = () => Array.from(this.fOriginBlue.eContent.children).forEach(elem => (elem.style.color = "var(--cb)"));
-        this.fOriginBlue.addHandler("apply", applyBlue);
+        this.fOriginBlue.addHandler("change", applyBlue);
         applyBlue();
 
         this.#fOriginRed = optionsForm.addField(new core.Form.SelectInput(
@@ -7527,7 +7527,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.odometry.origin = this.fOriginRed.value;
         });
         const applyRed = () => Array.from(this.fOriginRed.eContent.children).forEach(elem => (elem.style.color = "var(--cr)"));
-        this.fOriginRed.addHandler("apply", applyRed);
+        this.fOriginRed.addHandler("change", applyRed);
         applyRed();
 
         update = () => {

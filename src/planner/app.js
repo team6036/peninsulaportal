@@ -1698,12 +1698,17 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         });
         this.fPosition.addHandler("change-value", () => {
             if (!this.fPosition.hasValue()) return;
+            const hasX = this.fPosition.hasValue("x");
+            const hasY = this.fPosition.hasValue("y");
             let itms = getSelected();
-            let xList = itms.map(itm => itm.x);
-            let yList = itms.map(itm => itm.y);
-            let newCenterX = this.fPosition.value.x*100, newCenterY = this.fPosition.value.y*100;
-            let oldCenterX = (Math.max(...xList)+Math.min(...xList))/2, oldCenterY = (Math.max(...yList)+Math.min(...yList))/2;
-            let relX = newCenterX - oldCenterX, relY = newCenterY - oldCenterY;
+            let xList = hasX ? itms.map(itm => itm.x) : null;
+            let yList = hasY ? itms.map(itm => itm.y) : null;
+            let newCenterX = hasX ? this.fPosition.value.x*100 : null;
+            let newCenterY = hasY ? this.fPosition.value.y*100 : null;
+            let oldCenterX = hasX ? (Math.max(...xList)+Math.min(...xList))/2 : null;
+            let oldCenterY = hasY ? (Math.max(...yList)+Math.min(...yList))/2 : null;
+            let relX = hasX ? newCenterX - oldCenterX : 0;
+            let relY = hasY ? newCenterY - oldCenterY : 0;
             itms.forEach(itm => {
                 itm.x += relX;
                 itm.y += relY;
@@ -1760,11 +1765,13 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         });
         this.fRobotVelocity.addHandler("change-value", () => {
             if (!this.fRobotVelocity.hasValue()) return;
+            const hasX = this.fRobotVelocity.hasValue("x");
+            const hasY = this.fRobotVelocity.hasValue("y");
             let itms = getSelected();
             itms.forEach(itm => {
                 if (!(itm instanceof sublib.Project.Node)) return;
-                if (this.fRobotVelocity.hasValue("x")) itm.velocityX = this.fRobotVelocity.x*100;
-                if (this.fRobotVelocity.hasValue("y")) itm.velocityY = this.fRobotVelocity.y*100;
+                if (hasX) itm.velocityX = this.fRobotVelocity.x*100;
+                if (hasY) itm.velocityY = this.fRobotVelocity.y*100;
             });
             this.page.editorRefresh();
         });
@@ -2468,8 +2475,12 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         });
         this.fSize.addHandler("change-value", () => {
             if (!this.fSize.hasValue()) return;
-            if (this.page.hasProject())
-                this.page.project.size = this.fSize.value.mul(100);
+            const hasX = this.fSize.hasValue("x");
+            const hasY = this.fSize.hasValue("y");
+            if (this.page.hasProject()) {
+                if (hasX) this.page.project.x = this.fSize.x;
+                if (hasY) this.page.project.y = this.fSize.y;
+            }
             this.page.editorRefresh();
         });
 

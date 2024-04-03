@@ -7472,7 +7472,11 @@ export class Form extends util.Target {
 Form.Field = class FormField extends util.Target {
     #name;
 
+    #value;
     #toggleOn;
+
+    #disabled;
+    #toggleDisabled;
 
     #elem;
     #eHeader;
@@ -7487,7 +7491,11 @@ Form.Field = class FormField extends util.Target {
 
         this.#name = String(name);
 
+        this.#value = null;
         this.#toggleOn = null;
+
+        this.#disabled = null;
+        this.#toggleDisabled = null;
 
         this.#elem = document.createElement("div");
         this.elem.classList.add("item");
@@ -7505,24 +7513,37 @@ Form.Field = class FormField extends util.Target {
         this.eToggle.classList.add("switch");
         this.eToggle.innerHTML = "<input type='checkbox'><span><ion-icon name='checkmark'></ion-icon></span>";
         this.#eToggleInput = this.eToggle.children[0];
-        this.eToggleInput.addEventListener("change", e => (this.toggleOn = this.eToggleInput.checked));
+        this.eToggleInput.addEventListener("change", e => {
+            if (this.toggleDisabled) return;
+            this.toggleOn = this.eToggleInput.checked;
+        });
         this.#eContent = document.createElement("div");
         this.elem.appendChild(this.eContent);
         this.eContent.classList.add("content");
 
         this.addHandler("change-toggleOn", () => (this.eToggleInput.checked = this.toggleOn));
+        this.addHandler("change-toggleDisabled", () => (this.eToggleInput.disabled = this.toggleDisabled));
 
         this.isShown = this.showHeader = this.showContent = true;
         this.showToggle = false;
+
         this.isSwitch = true;
+
         this.toggleOn = false;
+        this.disabled = false;
+        this.toggleDisabled = false;
+
         this.isSubHeader = true;
+
         this.header = util.formatText(this.name);
+
         this.type = "";
     }
 
     get name() { return this.#name; }
 
+    get value() { return this.#value; }
+    set value(v) { this.change("value", this.#value, this.#value=v); }
     get toggleOn() { return this.#toggleOn; }
     set toggleOn(v) {
         v = !!v;
@@ -7531,6 +7552,27 @@ Form.Field = class FormField extends util.Target {
     }
     get toggleOff() { return !this.toggleOn; }
     set toggleOff(v) { this.toggleOn = !v; }
+
+    get disabled() { return this.#disabled; }
+    set disabled(v) {
+        v = !!v;
+        if (this.disabled == v) return;
+        this.change("disabled", this.disabled, this.#disabled=v);
+    }
+    get enabled() { return !this.disabled; }
+    set enabled(v) { this.disabled = !v; }
+    disable() { return this.disabled = true; }
+    enable() { return this.enabled = true; }
+    get toggleDisabled() { return this.#toggleDisabled; }
+    set toggleDisabled(v) {
+        v = !!v;
+        if (this.toggleDisabled == v) return;
+        this.change("toggleDisabled", this.toggleDisabled, this.#toggleDisabled=v);
+    }
+    get toggleEnabled() { return !this.toggleDisabled; }
+    set toggleEnabled(v) { this.toggleDisabled = !v; }
+    disableToggle() { return this.toggleDisabled = true; }
+    enableToggle() { return this.toggleEnabled = true; }
 
     get elem() { return this.#elem; }
     get eHeader() { return this.#eHeader; }
@@ -7578,6 +7620,8 @@ Form.Field = class FormField extends util.Target {
         if (v) this.eHeader.classList.add("sub");
         else this.eHeader.classList.remove("sub");
     }
+    get isHeader() { return !this.isSubHeader; }
+    set isHeader(v) { this.isSubHeader = !v; }
 
     get isSwitch() { return this.eToggle.classList.contains("switch"); }
     set isSwitch(v) {
@@ -7594,85 +7638,251 @@ Form.Field = class FormField extends util.Target {
 
     get type() { return this.eType.textContent; }
     set type(v) { this.eType.textContent = v; }
-
-    get toggleDisabled() { return this.eToggleInput.disabled; }
-    set toggleDisabled(v) { this.eToggleInput.disabled = v; }
 };
 Form.Header = class FormHeader extends Form.Field {
     constructor(name) {
-        super("§");
+        super("§header");
 
         this.showContent = false;
+
         this.header = name;
-        this.isSubHeader = false;
+
+        this.isHeader = true;
     }
+
+    get value() { return null; }
+    set value(v) {}
 };
 Form.SubHeader = class FormHeader extends Form.Field {
     constructor(name) {
-        super("§");
+        super("§subheader");
 
         this.showContent = false;
+
         this.header = name;
+        
         this.isSubHeader = true;
     }
-};
-Form.GenericInput = class FormGenericInput extends Form.Field {
-    #inputs;
 
-    constructor(name, n) {
+    get value() { return null; }
+    set value(v) {}
+};
+Form.NInput = class FormNInput extends Form.Field {
+    #inputs;
+    #hooks;
+    #realHooks;
+
+    #inputType;
+
+    constructor(name, n, inputType) {
         super(name);
 
-        this.#inputs = [];
+        super.value = { value: [], has: [] };
 
         this.elem.classList.add("input");
 
+        this.#inputs = [];
+        this.#hooks = [new Set()];
+        this.#realHooks = [];
+
+        this.#inputType = null;
+
+        this.addHandler("change-disabled", () => {
+            this.inputs.forEach(inp => {
+                inp.disabled = this.disabled;
+            });
+        });
+
+        this.addHandler("hook", () => {
+            for (let i = 0; i < this.n; i++) {
+                let hooks = [...this.#hooks[0], ...this.#hooks[i+1]];
+                hooks.forEach(f => {
+                    let realf = e => f(e, i);
+                    this.#realHooks.push({ inp: this.#inputs[i], f: realf });
+                    this.#inputs[i].addEventListener("change", realf);
+                });
+            }
+        });
+        this.addHandler("unhook", () => {
+            this.#realHooks.forEach(({ inp, f }) => {
+                inp.removeEventListener("change", f);
+            });
+        });
+
+        this.addHandler("apply", () => {
+            for (let i = 0; i < this.n; i++) {
+                this.inputs[i].type = this.inputType;
+                if (this.hasValue(i)) this.setInputValue(i, this.getValue(i));
+                else this.inputs[i].value = "";
+            }
+        });
+        this.addHandler("change", () => this.apply());
+
         this.n = n;
+        this.inputType = inputType;
+    }
+
+    get value() { return Array.from(new Array(this.n).keys()).map(i => this.getValue(i)); }
+    set value(v) {
+        v = util.ensure(v, "arr");
+        if (v.length > this.n) v.splice(this.n);
+        if (v.length < this.n) v.push(...new Array(this.n-v.length).fill(null));
+        for (let i = 0; i < this.n; i++) this.setValue(i, v[i]);
     }
 
     get n() { return this.#inputs.length; }
     set n(v) {
         v = Math.max(0, util.ensure(v, "int"));
         if (this.n == v) return;
+        let n = this.n;
         this.unhook();
         this.#inputs.forEach(inp => inp.remove());
+        this.#inputs = [];
+        this.#hooks = [new Set()];
+        super.value.value = [];
+        super.value.has = [];
         for (let i = 0; i < v; i++) {
             let inp = document.createElement("input");
             this.eContent.appendChild(inp);
             this.#inputs.push(inp);
+            this.#hooks.push(new Set());
+            super.value.value.push(this.cast(null));
+            super.value.has.push(true);
         }
         this.hook();
-        this.apply();
+        this.change("n", n, this.n);
     }
     get inputs() { return [...this.#inputs]; }
 
-    unhook() {}
-    hook() {}
-    apply() {}
+    unhook() { this.post("unhook"); }
+    hook() { this.post("hook"); }
+    apply() { this.post("apply"); }
 
-    unhookSingle(inp) {
-        if (!(inp instanceof HTMLInputElement)) return false;
-        inp.removeEventListener("change", inp.change);
-        return true;
+    cast(v) {
+        if (this.isBool) return !!v;
+        if (this.isColor) return new util.Color(v);
+        if (this.isDate) return new Date(v);
+        if (this.isText) return String(v);
+        if (this.isFile) return [...util.ensure(v, "arr").map(v => String(v))];
+        if (this.isNum) return util.ensure(v, "num");
+        return null;
     }
-    hookSingle(inp, f) {
-        if (!(inp instanceof HTMLInputElement)) return false;
-        if (!util.is(f, "func")) return false;
-        Object.defineProperty(inp, "change", { value: f, writable: false });
-        inp.addEventListener("change", inp.change);
-        return true;
+    castAll() {
+        for (let i = 0; i < this.n; i++)
+            this.setValue(i, this.getValue(i));
+    }
+    getValue(i) {
+        i = util.ensure(i, "int", -1);
+        if (i < 0 || i >= this.n) return null;
+        return this.cast(super.value.value[i]);
+    }
+    setValue(i, v) {
+        i = util.ensure(i, "int", -1);
+        if (i < 0 || i >= this.n) return null;
+        let v0 = this.getValue(i);
+        v = this.cast(v);
+        if (this.isBool || this.isText || this.isNum)
+            if (v == super.value.value[i])
+                return v;
+        if (this.isColor)
+            if (v.equals(super.value.value[i]))
+                return v;
+        if (this.isDate)
+            if (v.getTime() == this.cast(super.value.value[i]).getTime())
+                return v;
+        if (this.isFile)
+            if (util.arrEquals(v, super.value.value[i]))
+                return v;
+        super.value.value[i] = v;
+        this.change("value", v0, v);
+        return v0;
+    }
+    hasValue(i) {
+        if (arguments.length == 0) {
+            for (let i = 0; i < this.n; i++)
+                if (this.hasValue(i)) return true;
+            return false;
+        }
+        i = util.ensure(i, "int", -1);
+        if (i < 0 || i >= this.n) return null;
+        return !!super.value.has[i];
+    }
+    setHasValue(i, v) {
+        if (arguments.length == 1) {
+            for (let i = 0; i < this.n; i++)
+                this.setHasValue(i, arguments[0]);
+            return !!arguments[0];
+        }
+        i = util.ensure(i, "int", -1);
+        if (i < 0 || i >= this.n) return null;
+        v = !!v;
+        if (super.value.has[i] == v) return null;
+        this.change("hasValue", super.value.has[i], super.value.has[i]=v);
+        return v;
+    }
+    getInputValue(i) {
+        i = util.ensure(i, "int", -1);
+        if (i < 0 || i >= this.n) return null;
+        let inp = this.#inputs[i];
+        let v = null;
+        if (this.isBool) v = inp.checked;
+        if (this.isColor) v = inp.value;
+        if (this.isDate) v = inp.valueAsDate;
+        if (this.isText) v = inp.value;
+        if (this.isFile) v = inp.files;
+        if (this.isNum) v = inp.valueAsNumber;
+        return this.cast(v);
+    }
+    setInputValue(i, v) {
+        i = util.ensure(i, "int", -1);
+        if (i < 0 || i >= this.n) return null;
+        let inp = this.#inputs[i];
+        v = this.cast(v);
+        if (this.isBool) inp.checked = v;
+        if (this.isColor) inp.value = v.toHex();
+        if (this.isDate) inp.valueAsDate = v;
+        if (this.isText) inp.value = v;
+        if (this.isFile) inp.files = v;
+        if (this.isNum) inp.valueAsNumber = v;
+        return v;
     }
 
-    get disabled() {
-        for (let inp of this.#inputs)
-            if (inp.disabled)
-                return true;
-        return false;
+    defineHook(i, f) {
+        i = util.ensure(i, "int", -1);
+        if (i < -1 || i >= this.n) return null;
+        f = util.ensure(f, "func");
+        if (this.#hooks[i+1].has(f)) return f;
+        this.unhook();
+        this.#hooks[i+1].add(f);
+        this.hook();
+        return f;
     }
-    set disabled(v) {
-        this.#inputs.forEach(inp => (inp.disabled = !!v));
+    undefineHook(i, f) {
+        i = util.ensure(i, "int", -1);
+        if (i < -1 || i >= this.n) return null;
+        f = util.ensure(f, "func");
+        if (!this.#hooks[i+1].has(f)) return null;
+        this.unhook();
+        this.#hooks[i+1].delete(f);
+        this.hook();
+        return f;
     }
+
+    get inputType() { return this.#inputType; }
+    set inputType(v) {
+        v = String(v);
+        if (this.inputType == v) return;
+        this.change("inputType", this.inputType, this.#inputType=v);
+        this.castAll();
+    }
+    get isBool() { return ["checkbox", "radio"].includes(this.inputType); }
+    get isColor() { return ["color"].includes(this.inputType); }
+    get isDate() { return ["date", "datetime-local", "month", "time", "week"].includes(this.inputType); }
+    get isText() { return ["email", "password", "search", "tel", "text", "url"].includes(this.inputType); }
+    get isFile() { return ["file"].includes(this.inputType); }
+    get isNum() { return ["number", "range"].includes(this.inputType); }
 };
-Form.NumberInput = class FormNumberInput extends Form.GenericInput {
+Form.NNumberInput = class FormNNumberInput extends Form.NInput {
     #app;
 
     #step;
@@ -7684,7 +7894,7 @@ Form.NumberInput = class FormNumberInput extends Form.GenericInput {
     #eTypeBtn;
 
     constructor(name, n) {
-        super(name, n);
+        super(name, n, "number");
 
         this.#app = null;
 
@@ -7694,11 +7904,33 @@ Form.NumberInput = class FormNumberInput extends Form.GenericInput {
         this.#baseType = null;
         this.#activeType = null;
 
+        const fix = v => Math.floor(v*(10**6))/(10**6);
+
+        this.defineHook(-1, (e, i) => {
+            this.setValue(i, fix(lib.Unit.convert(this.getInputValue(i), this.activeType || "#", this.baseType || "#")));
+        });
+
+        this.addHandler("apply", () => {
+            for (let i = 0; i < this.n; i++) {
+                if (this.hasStep()) this.inputs[i].step = this.step;
+                else this.inputs[i].removeAttribute("step");
+                if (this.hasValue(i))
+                    this.setInputValue(i, fix(lib.Unit.convert(this.getValue(i), this.baseType || "#", this.activeType || "#")));
+                else this.inputs[i].value = "";
+            }
+        });
+
         this.step = null;
 
         this.types = ["#"];
         this.baseType = "#";
         this.activeType = "#";
+    }
+
+    get inputType() { return super.inputType; }
+    set inputType(v) {
+        if (this.inputType != null) return;
+        super.inputType = v;
     }
 
     get app() { return this.#app; }
@@ -7713,8 +7945,7 @@ Form.NumberInput = class FormNumberInput extends Form.GenericInput {
     set step(v) {
         v = (v == null) ? null : Math.max(0, util.ensure(v, "num"));
         if (this.step == v) return;
-        this.#step = v;
-        this.apply();
+        this.change("step", this.step, this.#step=v);
     }
     hasStep() { return this.step != null; }
 
@@ -7752,28 +7983,16 @@ Form.NumberInput = class FormNumberInput extends Form.GenericInput {
     set baseType(v) {
         v = String(v);
         if (this.baseType == v) return;
-        this.#baseType = v;
-        this.apply();
+        this.change("baseType", this.baseType, this.#baseType=v);
     }
     get activeType() { return this.#activeType; }
     set activeType(v) {
         v = String(v);
         if (this.activeType == v) return;
-        this.#activeType = v;
+        this.change("activeType", this.activeType, this.#activeType=v);
         this.applyType();
-        this.apply();
     }
 
-    apply() {
-        super.apply();
-        try {
-            this.inputs.forEach(inp => {
-                inp.type = "number";
-                if (this.hasStep()) inp.step = this.step;
-                else inp.removeAttribute("step");
-            });
-        } catch (e) {}
-    }
     applyType() {
         this.eType.innerHTML = "";
         this.#eTypeBtn = document.createElement("button");
@@ -7801,263 +8020,167 @@ Form.NumberInput = class FormNumberInput extends Form.GenericInput {
     fix(v) { return Math.round(util.ensure(v, "num")*1000000)/1000000; }
 
     get eTypeBtn() { return this.#eTypeBtn; }
-
-    get typeDisabled() { return this.eTypeBtn.disabled; }
-    set typeDisabled(v) { this.eTypeBtn.disabled = v; }
 };
-Form.Input1d = class FormInput1d extends Form.NumberInput {
-    #value;
-
+Form.Input1d = class FormInput1d extends Form.NNumberInput {
     constructor(name, value) {
         super(name, 1);
 
-        this.#value = 0;
-
-        this.addHandler("change-value", () => this.apply());
-
         this.value = value;
-
-        this.apply();
     }
 
-    unhook() {
-        super.unhook();
-        this.inputs.forEach(inp => this.unhookSingle(inp));
-    }
-    hook() {
-        super.hook();
-        this.inputs.forEach(inp => {
-            this.hookSingle(inp, () => {
-                if (inp.value.length <= 0) return this.apply();
-                this.value = lib.Unit.convert(parseFloat(inp.value), this.activeType, this.baseType);
-            });
-        });
-    }
-    apply() {
-        super.apply();
-        try {
-            this.inputs.forEach(inp => {
-                inp.value = this.hasValue() ? this.fix(lib.Unit.convert(this.value, this.baseType, this.activeType)) : "";
-            });
-        } catch (e) {}
+    get n() { return super.n ;}
+    set n(v) {
+        if (this.n != 0) return;
+        super.n = v;
     }
 
-    get value() { return this.#value; }
+    get value() { return super.value[0]; }
     set value(v) {
-        v = (v == null) ? null : util.ensure(v, "num");
-        if (this.value == v) return;
-        this.change("value", this.value, this.#value=v);
+        if (v != null) super.setValue(0, v);
+        this.setHasValue(0, v != null);
     }
-    hasValue() { return this.value != null; }
+    hasValue() { return super.hasValue(0); }
 };
-Form.Input2d = class FormInput2d extends Form.NumberInput {
+Form.Input2d = class FormInput2d extends Form.NNumberInput {
     #value;
-    #hasValue;
 
     constructor(name, value) {
         super(name, 2);
 
+        let ignore = false;
+
+        super.addHandler("change-value", () => {
+            ignore = true;
+            for (let i = 0; i < this.n; i++)
+                this.value["xy"[i]] = this.getValue(i);
+            ignore = false;
+        });
+
         this.#value = new V();
         this.value.addHandler("change", (c, f, t) => {
-            this.setHasValue(c, true);
-            this.apply();
-            this.change("value", null, this.value);
+            if (!ignore) super.setValue("xy".indexOf(c), t);
+            super.setHasValue("xy".indexOf(c), true);
         });
-        this.#hasValue = new V();
 
         this.value = value;
-
-        this.apply();
     }
 
-    unhook() {
-        super.unhook();
-        this.inputs.forEach(inp => this.unhookSingle(inp));
-    }
-    hook() {
-        super.hook();
-        this.inputs.forEach((inp, i) => {
-            this.hookSingle(inp, () => {
-                if (inp.value.length <= 0) return this.apply();
-                this["xy"[i]] = lib.Unit.convert(parseFloat(inp.value), this.activeType, this.baseType);
-            });
-        });
-    }
-    apply() {
-        super.apply();
-        try {
-            this.inputs.forEach((inp, i) => {
-                inp.value = this.hasValue("xy"[i]) ? this.fix(lib.Unit.convert(this["xy"[i]], this.baseType, this.activeType)) : "";
-            });
-        } catch (e) {}
+    get n() { return super.n ;}
+    set n(v) {
+        if (this.n != 0) return;
+        super.n = v;
     }
 
     get value() { return this.#value; }
     set value(v) {
         if (v != null) this.#value.set(v);
-        this.setHasValue("x", v != null);
-        this.setHasValue("y", v != null);
-    }
-    setHasValue(k, v) {
-        if (!["x", "y"].includes(k)) return false;
-        if (this.#hasValue[k] == +!!v) return true;
-        this.#hasValue[k] = +!!v;
-        this.apply();
-        this.change("value", null, this.value);
-        return true;
-    }
-    hasValue(k) {
-        if (arguments.length == 0) {
-            for (let k of ["x", "y"])
-                if (this.hasValue(k))
-                    return true;
-            return false;
-        }
-        if (!["x", "y"].includes(k)) return false;
-        return !!this.#hasValue[k];
+        this.setHasValue(v != null);
     }
     get x() { return this.value.x; }
     set x(v) {
         if (v != null) this.value.x = v;
-        this.setHasValue("x", v != null);
+        this.setHasValue(0, v != null);
     }
     get y() { return this.value.y; }
     set y(v) {
         if (v != null) this.value.y = v;
-        this.setHasValue("y", v != null);
+        this.setHasValue(1, v != null);
+    }
+    hasValue(i) {
+        if (i == "x") return super.hasValue(0);
+        if (i == "y") return super.hasValue(1);
+        return super.hasValue(...arguments);
     }
 };
-Form.Input3d = class FormInput3d extends Form.NumberInput {
+Form.Input3d = class FormInput3d extends Form.NNumberInput {
     #value;
-    #hasValue;
 
     constructor(name, value) {
         super(name, 3);
 
+        super.addHandler("change-value", () => {
+            for (let i = 0; i < this.n; i++)
+                this.value["xyz"[i]] = this.getValue(i);
+        });
+
         this.#value = new util.V3();
         this.value.addHandler("change", (c, f, t) => {
-            this.setHasValue(c, true);
-            this.apply();
-            this.change("value", null, this.value);
+            super.setValue("xyz".indexOf(c), t);
+            super.setHasValue("xyz".indexOf(c), true);
         });
-        this.#hasValue = new util.V3();
 
         this.value = value;
-
-        this.apply();
     }
 
-    unhook() {
-        super.unhook();
-        this.inputs.forEach(inp => this.unhookSingle(inp));
-    }
-    hook() {
-        super.hook();
-        this.inputs.forEach((inp, i) => {
-            this.hookSingle(inp, () => {
-                if (inp.value.length <= 0) return this.apply();
-                this["xyz"[i]] = lib.Unit.convert(parseFloat(inp.value), this.activeType, this.baseType);
-            });
-        });
-    }
-    apply() {
-        super.apply();
-        try {
-            this.inputs.forEach((inp, i) => {
-                inp.value = this.hasValue("xyz"[i]) ? this.fix(lib.Unit.convert(this["xyz"[i]], this.baseType, this.activeType)) : "";
-            });
-        } catch (e) {}
+    get n() { return super.n ;}
+    set n(v) {
+        if (this.n != 0) return;
+        super.n = v;
     }
 
     get value() { return this.#value; }
     set value(v) {
         if (v != null) this.#value.set(v);
-        this.setHasValue("x", v != null);
-        this.setHasValue("y", v != null);
-        this.setHasValue("z", v != null);
-    }
-    setHasValue(k, v) {
-        if (!["x", "y", "z"].includes(k)) return false;
-        this.#hasValue[k] = +!!v;
-        if (this.#hasValue[k] == +!!v) return true;
-        this.apply();
-        this.change("value", null, this.value);
-        return true;
-    }
-    hasValue(k) {
-        if (arguments.length == 0) {
-            for (let k of ["x", "y", "z"])
-                if (this.hasValue(k))
-                    return true;
-            return false;
-        }
-        if (!["x", "y", "z"].includes(k)) return false;
-        return !!this.#hasValue[k];
+        this.setHasValue(v != null);
     }
     get x() { return this.value.x; }
     set x(v) {
         if (v != null) this.value.x = v;
-        this.setHasValue("x", v != null);
+        this.setHasValue(0, v != null);
     }
     get y() { return this.value.y; }
     set y(v) {
         if (v != null) this.value.y = v;
-        this.setHasValue("y", v != null);
+        this.setHasValue(1, v != null);
     }
     get z() { return this.value.z; }
     set z(v) {
         if (v != null) this.value.z = v;
-        this.setHasValue("z", v != null);
+        this.setHasValue(2, v != null);
+    }
+    hasValue(i) {
+        if (i == "x") return super.hasValue(0);
+        if (i == "y") return super.hasValue(1);
+        if (i == "z") return super.hasValue(2);
+        return super.hasValue(...arguments);
     }
 };
-Form.TextInput = class FormTextInput extends Form.GenericInput {
-    #value;
-
+Form.TextInput = class FormTextInput extends Form.NInput {
     constructor(name) {
-        super(name, 1);
+        super(name, 1, "text");
 
-        this.#value = null;
-        this.addHandler("change-value", () => this.apply());
+        this.inputs.forEach(inp => {
+            inp.autocomplete = "off";
+            inp.spellcheck = false;
+        });
 
         this.value = "";
 
         this.type = "str";
     }
 
-    unhook() {
-        super.unhook();
-        this.inputs.forEach(inp => this.unhookSingle(inp));
-    }
-    hook() {
-        super.hook();
-        this.inputs.forEach(inp => {
-            this.hookSingle(inp, () => {
-                this.value = inp.value;
-            });
-        });
-    }
-    apply() {
-        super.apply();
-        try {
-            this.inputs.forEach(inp => {
-                inp.type = "text";
-                inp.autocomplete = "off";
-                inp.spellcheck = false;
-                inp.value = this.value;
-            });
-        } catch (e) {}
+    get inputType() { return super.inputType; }
+    set inputType(v) {
+        if (this.inputType != null) return;
+        super.inputType = v;
     }
 
-    get value() { return this.#value; }
-    set value(v) {
-        v = util.ensure(v, "str");
-        if (this.value == v) return;
-        this.change("value", this.value, this.#value=v);
+    get value() { return super.getValue(0); }
+    set value(v) { super.setValue(0, v); }
+
+    get n() { return super.n; }
+    set n(v) {
+        if (this.n != 0) return;
+        super.n = v;
+    }
+
+    get inputType() { return super.inputType; }
+    set inputType(v) {
+        if (this.inputType != null) return;
+        super.inputType = v;
     }
 };
-Form.DirentInput = class FormDirentInput extends Form.GenericInput {
-    #value;
-
+Form.DirentInput = class FormDirentInput extends Form.Field {
     #dialogTitle;
     #dialogFilters;
     #dialogProperties;
@@ -8066,11 +8189,11 @@ Form.DirentInput = class FormDirentInput extends Form.GenericInput {
     #eBtn;
 
     constructor(name, value) {
-        super(name, 0);
+        super(name, 0, "");
 
         this.elem.classList.add("dirent");
 
-        this.#value = null;
+        super.value = null;
 
         this.dialogTitle = "Choose a dirent";
         this.dialogFilters = [];
@@ -8099,26 +8222,28 @@ Form.DirentInput = class FormDirentInput extends Form.GenericInput {
             this.value = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
         });
 
-        this.addHandler("change-value", () => (this.eInput.value = (this.value == null) ? "" : this.value));
+        this.addHandler("change", () => {
+            this.eInput.value = (this.value == null) ? "" : this.value;
+        });
 
         this.value = value;
 
         this.type = ".*";
     }
 
+    get n() { return super.n; }
+    set n(v) {}
+
     get eInput() { return this.#eInput; }
     get eBtn() { return this.#eBtn; }
 
-    get value() { return this.#value; }
+    get value() { return super.value; }
     set value(v) {
         v = (v == null) ? null : util.ensure(v, "str");
         if (this.value == v) return;
-        this.change("value", this.value, this.#value=v);
+        super.value = v;
     }
     hasValue() { return this.value != null; }
-
-    get disabled() { return this.eInput.disabled || this.eBtn.disabled; }
-    set disabled(v) { this.eInput.disabled = this.eBtn.disabled = !!v; }
 
     get dialogTitle() { return this.#dialogTitle; }
     set dialogTitle(v) { this.#dialogTitle = String(v); }
@@ -8128,7 +8253,6 @@ Form.DirentInput = class FormDirentInput extends Form.GenericInput {
     set dialogProperties(v) { this.#dialogProperties = util.ensure(v, "arr"); }
 };
 Form.ColorInput = class FormColorInput extends Form.Field {
-    #value;
     #useAlpha;
 
     #eColorbox;
@@ -8139,8 +8263,13 @@ Form.ColorInput = class FormColorInput extends Form.Field {
 
         this.elem.classList.add("color");
         
-        this.#value = new util.Color();
-        this.value.addHandler("change", (c, f, t) => this.change("value."+c, f, t));
+        super.value = new util.Color();
+
+        this.addHandler("change-disabled", () => {
+            this.eInput.disabled = this.eColorbox.disabled = this.disabled;
+        });
+        
+        this.value.addHandler("change", (c, f, t) => this.change("value", null, this.value));
         this.#useAlpha = null;
 
         this.eContent.innerHTML = "<div class='tooltip tog swx color'></div>";
@@ -8184,18 +8313,14 @@ Form.ColorInput = class FormColorInput extends Form.Field {
             colorPicker.useAlpha = this.useAlpha;
             ignore = false;
         };
-        this.addHandler("change-value.r", apply);
-        this.addHandler("change-value.g", apply);
-        this.addHandler("change-value.b", apply);
-        this.addHandler("change-value.a", apply);
-        this.addHandler("change-useAlpha", apply);
+        this.addHandler("change", apply);
 
         this.value = value;
         this.useAlpha = true;
     }
 
-    get value() { return this.#value; }
-    set value(v) { this.#value.set(v); }
+    get value() { return super.value; }
+    set value(v) { super.value.set(v); }
     get useAlpha() { return this.#useAlpha; }
     set useAlpha(v) {
         v = !!v;
@@ -8203,24 +8328,18 @@ Form.ColorInput = class FormColorInput extends Form.Field {
         this.change("useAlpha", this.useAlpha, this.#useAlpha=v);
     }
     
-    get disabled() { return this.eInput.disabled; }
-    set disabled(v) { this.eInput.disabled = this.eColorbox.disabled = v; }
-
     get eColorbox() { return this.#eColorbox; }
     get eInput() { return this.#eInput; }
 };
 Form.EnumInput = class FormEnumInput extends Form.Field {
     #values;
-    #value;
 
     constructor(name, values, value) {
-        super(name, 0);
+        super(name);
 
         this.elem.classList.add("enum");
 
         this.#values = [];
-        this.#value = null;
-        this.addHandler("change-values", () => (this.value = this.value));
 
         this.values = values;
         this.value = value;
@@ -8231,13 +8350,12 @@ Form.EnumInput = class FormEnumInput extends Form.Field {
         this.#values = util.ensure(v, "arr");
         this.change("values", null, this.values);
     }
-    get value() { return this.#value; }
+    get value() { return super.value; }
     set value(v) {
-        v = this.#values.map(data => (util.is(data, "obj") ? data.value : data)).includes(v) ? v : null;
         if (this.value == v) return;
-        this.change("value", this.value, this.#value=v);
+        super.value = v;
     }
-    hasValue() { return this.value != null; }
+    hasValue() { return this.#values.map(data => (util.is(data, "obj") ? data.value : data)).includes(this.value); }
 };
 Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
     #app;
@@ -8272,6 +8390,10 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
             menu.elem.style.minWidth = r.width+"px";
         });
 
+        this.addHandler("change-disabled", () => {
+            this.eBtn.disabled = this.disabled;
+        });
+
         const apply = () => {
             this.eBtn.innerHTML = "";
             this.eBtn.appendChild(document.createElement("div"));
@@ -8288,7 +8410,7 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
                 break;
             }
         };
-        this.addHandler("change-value", apply);
+        this.addHandler("change", apply);
         apply();
     }
 
@@ -8301,15 +8423,17 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
     hasApp() { return !!this.app; }
 
     get eBtn() { return this.#eBtn; }
-
-    get disabled() { return this.eBtn.disabled; }
-    set disabled(v) { this.eBtn.disabled = v; }
 };
 Form.SelectInput = class FormSelectInput extends Form.EnumInput {
     constructor(name, values, value) {
         super(name, values, value);
 
         this.elem.classList.add("select");
+
+        this.addHandler("change-disabled", () => {
+            for (let btn of this.eContent.children)
+                btn.disabled = this.disabled;
+        });
 
         const apply = () => {
             this.eContent.innerHTML = "";
@@ -8326,22 +8450,9 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
                 });
                 btn.style.setProperty("--n", this.values.length);
             });
-            this.post("apply");
         };
-        this.addHandler("change-values", apply);
-        this.addHandler("change-value", apply);
+        this.addHandler("change", apply);
         apply();
-    }
-
-    get disabled() {
-        for (let btn of this.eContent.children)
-            if (btn.disabled)
-                return true;
-        return false;
-    }
-    set disabled(v) {
-        for (let btn of this.eContent.children)
-            btn.disabled = v;
     }
 };
 Form.BooleanInput = class FormBooleanInput extends Form.Field {
@@ -8351,16 +8462,17 @@ Form.BooleanInput = class FormBooleanInput extends Form.Field {
         this.showToggle = true;
         this.showContent = false;
 
-        this.addHandler("change-toggleOn", () => this.change("value", !this.value, this.value));
+        this.addHandler("change-toggleOn", () => (super.value = this.toggleOn));
+        this.addHandler("change-toggleDisabled", () => (super.disabled = this.toggleDisabled));
 
         this.value = value;
     }
 
-    get value() { return this.toggleOn; }
+    get value() { return super.value; }
     set value(v) { this.toggleOn = v; }
 
-    get disabled() { return this.eToggleInput.disabled; }
-    set disabled(v) { this.eToggleInput.disabled = v; }
+    get disabled() { return super.disabled; }
+    set disabled(v) { this.toggleDisabled = v; }
 };
 Form.ToggleInput = class FormToggleInput extends Form.BooleanInput {
     #eBtn;
@@ -8381,14 +8493,13 @@ Form.ToggleInput = class FormToggleInput extends Form.BooleanInput {
             this.value = !this.value;
         });
 
-        const update = () => {
+        const apply = () => {
             this.eBtn.disabled = this.disabled;
             if (this.value) this.eBtn.classList.add("this");
             else this.eBtn.classList.remove("this");
         };
-        // TODO: doesnt work for disabling...
-        this.addHandler("change-toggleOn", update);
-        update();
+        this.addHandler("change", apply);
+        apply();
 
         this.toggleName = toggleName;
     }
@@ -8427,6 +8538,11 @@ Form.JSONInput = class FormJSONInput extends Form.Field {
                 k += "-"+n;
             }
             this.set(k, "null");
+        });
+
+        this.addHandler("change-disabled", () => {
+            this.eAdd.disabled = this.disabled;
+            Array.from(this.eContent.querySelectorAll("input")).forEach(inp => (inp.disabled = this.disabled));
         });
 
         this.addHandler("change", () => {
@@ -8526,12 +8642,6 @@ Form.JSONInput = class FormJSONInput extends Form.Field {
         return v;
     }
 
-    get disabled() { return this.eAdd.disabled; }
-    set disabled(v) {
-        this.eAdd.disabled = v;
-        Array.from(this.eContent.querySelectorAll("input")).forEach(inp => (inp.disabled = v));
-    }
-
     get eAdd() { return this.#eAdd; }
 };
 Form.Button = class FormButton extends Form.Field {
@@ -8541,6 +8651,8 @@ Form.Button = class FormButton extends Form.Field {
         super(name);
 
         this.elem.classList.add("button");
+
+        this.addHandler("change-disabled", () => (this.eBtn.disabled = this.disabled));
 
         this.#eBtn = document.createElement("button");
         this.eContent.appendChild(this.eBtn);
@@ -8571,9 +8683,6 @@ Form.Button = class FormButton extends Form.Field {
             else this.eBtn.classList.remove(name);
         });
     }
-
-    get disabled() { return this.eBtn.disabled; }
-    set disabled(v) { this.eBtn.disabled = v; }
 };
 Form.Line = class FormLine extends Form.Field {
     constructor(color="var(--v2)") {
