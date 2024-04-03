@@ -6,6 +6,9 @@ button:not(.override) {
 
     border-radius: 5px;
 }
+input:not(.override) {
+    --od: transparent;
+}
 
 #titlebar {
     gap: 0px;
