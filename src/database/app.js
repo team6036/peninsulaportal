@@ -622,7 +622,7 @@ RobotCollection.Item = class RobotCollectionItem extends RobotCollection.Item {
 
         let apply = async () => {
             robot.name = this.id;
-            robot.robot = this.id;
+            robot.type = this.id;
         };
         this.addHandler("change-id", apply);
 
