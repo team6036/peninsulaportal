@@ -407,8 +407,7 @@ export class Project extends util.Target {
             else if (util.is(a, "obj")) a = [a.id, a.config, a.meta];
             else a = [null, null];
         }
-        if (a.length == 2)
-            a = [null, ...a];
+        if (a.length == 2) a = [null, ...a];
 
         [this.id, this.config, this.meta] = a;
     }
