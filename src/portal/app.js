@@ -255,6 +255,11 @@ export default class App extends core.App {
             btn = this.addUpperFeatureButton(new UpperFeatureButton("build"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PIT"));
 
+            btn = this.addFeatureButton(new FeatureButton("PTK", "logo-python"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PTK"));
+            btn = this.addUpperFeatureButton(new UpperFeatureButton("logo-python"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PTK"));
+
             let prevLoads = [];
             let lock = false;
             this.addHandler("update", async delta => {

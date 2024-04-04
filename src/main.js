@@ -123,7 +123,7 @@ const MAIN = async () => {
         return s;
     }
 
-    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT"];
+    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PTK"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
     class Process extends util.Target {
@@ -1208,17 +1208,22 @@ const MAIN = async () => {
         }
         async whenModalResult() {
             return new Promise((res, rej) => {
-                this.addHandler("sent-message", (id, name, data) => {
+                const r = v => {
+                    this.remHandler("sent-message", f);
+                    res(v);
+                };
+                const f = (id, name, data) => {
                     if (id != null) return;
                     if (name != "modify") return;
                     data = util.ensure(data, "obj");
                     const cmds = util.ensure(data.cmds, "arr");
                     for (const cmd of cmds) {
-                        if (cmd == "button") return res(null);
-                        if (cmd == "confirm") return res(true);
-                        if (cmd == "cancel") return res(false);
+                        if (cmd == "button") return r(null);
+                        if (cmd == "confirm") return r(true);
+                        if (cmd == "cancel") return r(false);
                     }
-                });
+                };
+                this.addHandler("sent-message", f);
             });
         }
 
@@ -4288,31 +4293,51 @@ const MAIN = async () => {
         return;
     }
 
-    showError = this.showError = async (name, type, e) => await manager.modalAlert({
-        props: {
-            icon: "warning", iconColor: "var(--cr)",
-            title: name, content: type, infos: (e == null) ? [] : [e],
-        },
-    }).whenModalResult();
-    showWarn = async (name, type, e) => await manager.modalAlert({
-        props: {
-            icon: "warning", iconColor: "var(--cy)",
-            title: name, content: type, infos: (e == null) ? [] : [e],
-        },
-    }).whenModalResult();
-    showSuccess = async (name, type, e) => await manager.modalAlert({
-        props: {
-            icon: "checkmark-circle", iconColor: "var(--cg)",
-            title: name, content: type, infos: (e == null) ? [] : [e],
-        },
-    }).whenModalResult();
-    showConfirm = async (name, type, e, ok="OK", cancel="Cancel") => await manager.modalConfirm({
-        props: {
-            icon: "help-circle",
-            title: name, content: type, infos: (e == null) ? [] : [e],
-            confirm: ok, cancel: cancel,
-        },
-    }).whenModalResult();
+    showError = this.showError = async (name, type, e) => {
+        const win = manager.modalAlert({
+            props: {
+                icon: "warning", iconColor: "var(--cr)",
+                title: name, content: type, infos: (e == null) ? [] : [e],
+            },
+        });
+        let r = await win.whenModalResult();
+        win.stop();
+        return r;
+    }
+    showWarn = async (name, type, e) => {
+        const win = manager.modalAlert({
+            props: {
+                icon: "warning", iconColor: "var(--cy)",
+                title: name, content: type, infos: (e == null) ? [] : [e],
+            },
+        });
+        let r = await win.whenModalResult();
+        win.stop();
+        return r;
+    }
+    showSuccess = async (name, type, e) => {
+        const win = manager.modalAlert({
+            props: {
+                icon: "checkmark-circle", iconColor: "var(--cg)",
+                title: name, content: type, infos: (e == null) ? [] : [e],
+            },
+        });
+        let r = await win.whenModalResult();
+        win.stop();
+        return r;
+    };
+    showConfirm = async (name, type, e, ok="OK", cancel="Cancel") => {
+        const win = manager.modalConfirm({
+            props: {
+                icon: "help-circle",
+                title: name, content: type, infos: (e == null) ? [] : [e],
+                confirm: ok, cancel: cancel,
+            },
+        });
+        let r = await win.whenModalResult();
+        win.stop();
+        return r;
+    };
 
     manager.start();
     initializeResolver.state = true;
