@@ -478,7 +478,7 @@ const MAIN = async () => {
             return this.clients.filter(client => client.hasTag(tag));
         }
     }
-    class TbaClient extends util.Target {
+    class TBAClient extends util.Target {
         #id;
         #tags;
 
@@ -619,7 +619,7 @@ const MAIN = async () => {
             });
         }
     }
-    class TbaClientManager extends util.Target {
+    class TBAClientManager extends util.Target {
         #clients;
 
         constructor() {
@@ -640,12 +640,12 @@ const MAIN = async () => {
             return clients;
         }
         hasClient(client) {
-            if (!(client instanceof TbaClient)) return false;
+            if (!(client instanceof TBAClient)) return false;
             return this.#clients.has(client);
         }
         addClient(...clients) {
             return util.Target.resultingForEach(clients, client => {
-                if (!(client instanceof TbaClient)) return false;
+                if (!(client instanceof TBAClient)) return false;
                 if (this.hasClient(client)) return false;
                 this.#clients.add(client);
                 client.onAdd();
@@ -654,7 +654,7 @@ const MAIN = async () => {
         }
         remClient(...clients) {
             return util.Target.resultingForEach(clients, client => {
-                if (!(client instanceof TbaClient)) return false;
+                if (!(client instanceof TBAClient)) return false;
                 if (!this.hasClient(client)) return false;
                 client.onRem();
                 this.#clients.delete(client);
@@ -740,7 +740,7 @@ const MAIN = async () => {
 
             this.#processManager = new ProcessManager();
             this.#clientManager = new ClientManager();
-            this.#tbaClientManager = new TbaClientManager();
+            this.#tbaClientManager = new TBAClientManager();
 
             this.#windowManager = new WindowManager(this);
 
@@ -1239,18 +1239,18 @@ const MAIN = async () => {
             return client;
         }
         async tbaClientDestroy(id) {
-            return await this.manager.tbaClientDestroy((id instanceof TbaClient) ? id : (this.name+":"+id));
+            return await this.manager.tbaClientDestroy((id instanceof TBAClient) ? id : (this.name+":"+id));
         }
         async tbaClientHas(id) {
-            if (!(await this.manager.tbaClientHas((id instanceof TbaClient) ? id : (this.name+":"+id)))) return false;
-            return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(this.name+":"+id) instanceof TbaClient);
+            if (!(await this.manager.tbaClientHas((id instanceof TBAClient) ? id : (this.name+":"+id)))) return false;
+            return (id instanceof TBAClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(this.name+":"+id) instanceof TBAClient);
         }
         async tbaClientGet(id) {
             if (!(await this.tbaClientHas(id))) return null;
-            return (id instanceof TbaClient) ? id : this.manager.tbaClientGet(this.name+":"+id);
+            return (id instanceof TBAClient) ? id : this.manager.tbaClientGet(this.name+":"+id);
         }
         async tbaClientInvoke(id, invoke, ...a) {
-            return await this.manager.tbaClientInvoke((id instanceof TbaClient) ? id : (this.name+":"+id), invoke, ...a);
+            return await this.manager.tbaClientInvoke((id instanceof TBAClient) ? id : (this.name+":"+id), invoke, ...a);
         }
 
         async ytdlDownload(url, options) {
@@ -2433,7 +2433,7 @@ const MAIN = async () => {
 
             this.#processManager = new ProcessManager();
             this.#clientManager = new ClientManager();
-            this.#tbaClientManager = new TbaClientManager();
+            this.#tbaClientManager = new TBAClientManager();
 
             this.#windows = new Set();
 
@@ -3720,7 +3720,7 @@ const MAIN = async () => {
             if (this.hasWindow()) return await this.window.tbaClientMake(id);
             if (await this.tbaClientHas(id)) return null;
             this.log(`TBACLIENT:make - ${id}`);
-            let client = this.tbaClientManager.addClient(new TbaClient());
+            let client = this.tbaClientManager.addClient(new TBAClient());
             client.id = id;
             return client;
         }
@@ -3728,22 +3728,22 @@ const MAIN = async () => {
             if (this.hasWindow()) return await this.window.tbaClientDestroy(id);
             if (!(await this.tbaClientHas(id))) return null;
             this.log(`TBACLIENT:destroy - ${id}`);
-            let client = this.tbaClientDestroy.remClient((id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id));
+            let client = this.tbaClientDestroy.remClient((id instanceof TBAClient) ? id : this.tbaClientManager.getClientById(id));
             return client;
         }
         async tbaClientHas(id) {
             if (this.hasWindow()) return await this.window.tbaClientHas(id);
-            return (id instanceof TbaClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(id) instanceof TbaClient);
+            return (id instanceof TBAClient) ? this.tbaClientManager.clients.includes(id) : (this.tbaClientManager.getClientById(id) instanceof TBAClient);
         }
         async tbaClientGet(id) {
             if (this.hasWindow()) return await this.window.tbaClientGet(id);
             if (!(await this.tbaClientHas(id))) return null;
-            return (id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id);
+            return (id instanceof TBAClient) ? id : this.tbaClientManager.getClientById(id);
         }
         async tbaClientInvoke(id, invoke, ...a) {
             if (this.hasWindow()) return await this.window.tbaClientInvoke(id, invoke, ...a);
             if (!(await this.tbaClientHas(id))) return null;
-            let client = (id instanceof TbaClient) ? id : this.tbaClientManager.getClientById(id);
+            let client = (id instanceof TBAClient) ? id : this.tbaClientManager.getClientById(id);
             this.log(`TBACLIENT:emit - ${client.id} > ${invoke}`);
             return await client.invoke(invoke, ...a);
         }
