@@ -1,7 +1,7 @@
 {
 	"main": "app/main.js",
 	"scripts": {
-		"start": "npm install && electron app/main.js"
+		"start": "electron app/main.js"
 	},
 	"dependencies": {
 		"ionicons": "^7.1.2",
