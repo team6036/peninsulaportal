@@ -12,4 +12,4 @@ robot.color = "o"
 while True:
     odom2d.update()
     time.sleep(1/60)
-    robot.pos = (math.cos(math.pi*time.time())*1+4, math.sin(math.pi*time.time())*2+3)
+    robot.pos = (math.cos(math.pi*time.time()/10)*1+4, math.sin(math.pi*time.time()/10)*2+3)

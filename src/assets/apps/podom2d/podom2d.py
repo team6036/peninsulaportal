@@ -101,7 +101,7 @@ class POdometry2d:
             return False
         self.log("opening pipe")
         try:
-            self._pipe = os.open("podom2d_"+self.ID, os.O_WRONLY)
+            self._pipe = os.open(os.path.join(os.path.split(os.path.abspath(__file__))[0], "podom2d_"+self.ID), os.O_WRONLY)
             self.log("opened pipe")
         except Exception as e:
             self.log("opening pipe", "ERROR", e)
@@ -114,7 +114,7 @@ class POdometry2d:
         self.log("closing pipe")
         try:
             os.close(self._pipe)
-            os.remove("podom2d_"+self.ID)
+            os.remove(os.path.join(os.path.split(os.path.abspath(__file__))[0], "podom2d_"+self.ID))
             self.log("closed pipe")
         except Exception as e:
             self.log("closing pipe", "ERROR", e)
