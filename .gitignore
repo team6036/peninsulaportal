@@ -1,11 +1,10 @@
 .DS_Store
+.idea
 
 node_modules
-
 __pycache__
-src/assets/apps/**/package-lock.json
 
-.idea
+apps/**/package-lock.json
 
 build
 dist
