@@ -255,10 +255,10 @@ export default class App extends core.App {
             btn = this.addUpperFeatureButton(new UpperFeatureButton("build"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PIT"));
 
-            btn = this.addFeatureButton(new FeatureButton("PTK", "logo-python"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PTK"));
+            btn = this.addFeatureButton(new FeatureButton("PyTK", "logo-python"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PYTHONTK"));
             btn = this.addUpperFeatureButton(new UpperFeatureButton("logo-python"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PTK"));
+            btn.addHandler("trigger", e => this.post("cmd-spawn", "PYTHONTK"));
 
             let prevLoads = [];
             let lock = false;

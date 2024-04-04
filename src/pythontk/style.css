@@ -1,0 +1,28 @@
+#titlebar {
+    gap: 0px;
+}
+#titlebar > .logo {
+    padding: 10px;
+
+    font-size: 16px;
+
+    background-color: transparent;
+
+    cursor: pointer;
+}
+#titlebar > .space {
+    flex-basis: 100%;
+}
+
+#mount > .page {
+    padding: 10px;
+}
+
+#PAGE {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+}

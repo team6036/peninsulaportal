@@ -78,6 +78,31 @@ export function findStep(v, n=10) {
     return factors[0].f;
 }
 
+export function getName(name) {
+    name = String(name);
+    let namefs = {
+        PORTAL: "Portal",
+        PRESETS: "Presets",
+        PANEL: "Panel",
+        PLANNER: "Planner",
+        DATABASE: "Database",
+        PIT: "Pit",
+        PYTHONTK: "PythonTK",
+    };
+    if (name in namefs) return namefs[name];
+    if (name.startsWith("modal:")) {
+        name = name.slice(6);
+        let namefs = {
+            ALERT: "Alert",
+            CONFIRM: "Confirm",
+            PROMPT: "Prompt",
+            PROGRESS: "Progress",
+        };
+        if (name in namefs) return namefs[name];
+    }
+    return name;
+}
+
 let FS = null, PATH = null, FSLOGFUNC = null;
 export class FSOperator extends util.Target {
     #root;
