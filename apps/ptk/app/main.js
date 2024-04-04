@@ -1,19 +1,8 @@
-const path = require("path");
-const fs = require("fs");
-
-const cp = require("child_process");
-
-const electron = require("electron");
-
-
 (async () => {
+    const path = require("path");
+    const fs = require("fs");
 
-    // force npm install
-    await new Promise((res, rej) => {
-        const child = cp.spawn("npm", ["install"]);
-        child.on("exit", res);
-        child.on('error', rej);
-    });
+    const cp = require("child_process");
 
     const TEXTDECODER = new TextDecoder();
 
@@ -28,6 +17,8 @@ const electron = require("electron");
     const KEY = findArg("key");
     const ID = findArg("id");
 
+    const electron = require("electron");
+    
     const app = electron.app;
     const ipc = electron.ipcMain;
 
