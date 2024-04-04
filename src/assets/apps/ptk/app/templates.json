@@ -1,0 +1,42 @@
+{
+	"templates": {
+		"2018": {
+			"model": false,
+			"size": [
+				1646,
+				823
+			],
+			"robotSize": 80,
+			"robotMass": 75
+		},
+		"2022": {
+			"size": [
+				1646,
+				823
+			],
+			"robotSize": 80,
+			"robotMass": 75
+		},
+		"2023": {
+			"size": [
+				1654,
+				802
+			],
+			"robotSize": 80,
+			"robotMass": 75
+		},
+		"2024": {
+			"size": [
+				1654,
+				821
+			],
+			"robotSize": 84,
+			"robotMass": 60,
+			"options": {
+				"free_percent": 1,
+				"FOC": true
+			}
+		}
+	},
+	"active": "2024"
+}
