@@ -81,8 +81,6 @@ window.customElements.define("p-loading", LoadingElement);
 export default class App extends util.Target {
     #setupDone;
 
-    #hints;
-
     #base;
     #colors;
     #accent;
@@ -91,8 +89,6 @@ export default class App extends util.Target {
         super();
 
         this.#setupDone = false;
-
-        this.#hints = new Set();
 
         this.#base = [];
         this.#colors = {};
@@ -327,172 +323,7 @@ export default class App extends util.Target {
         PROPERTYCACHE.clear();
         this.post("update-dynamic-style");
     }
-
-    get hints() { return [...this.#hints]; }
-    set hints(v) {
-        v = util.ensure(v, "arr");
-        this.clearHints();
-        this.addHint(v);
-    }
-    clearHints() {
-        let hints = this.hints;
-        this.remHint(hints);
-        return hints;
-    }
-    hasHint(hint) {
-        if (!(hint instanceof App.Hint)) return false;
-        return this.#hints.has(hint);
-    }
-    addHint(...hints) {
-        return util.Target.resultingForEach(hints, hint => {
-            if (!(hint instanceof App.Hint)) return false;
-            if (this.hasHint(hint)) return false;
-            this.#hints.add(hint);
-            this.eOverlay.appendChild(hint.elem);
-            return hint;
-        });
-    }
-    remHint(...hints) {
-        return util.Target.resultingForEach(hints, hint => {
-            if (!(hint instanceof App.Hint)) return false;
-            if (!this.hasHint(hint)) return false;
-            this.#hints.delete(hint);
-            this.eOverlay.removeChild(hint.elem);
-            return hint;
-        });
-    }
 }
-App.Hint = class AppHint extends util.Target {
-    #elem;
-
-    #entries;
-
-    constructor() {
-        super();
-
-        this.#elem = document.createElement("div");
-        this.elem.classList.add("hint");
-
-        this.#entries = new Set();
-    }
-
-    get elem() { return this.#elem; }
-
-    get entries() { return [...this.#entries]; }
-    set entries(v) {
-        v = util.ensure(v, "arr");
-        this.clearEntries();
-        this.addEntry(v);
-    }
-    clearEntries() {
-        let entries = this.entries;
-        this.remEntry(entries);
-        return entries;
-    }
-    hasEntry(entry) {
-        if (!(entry instanceof App.Hint.Entry)) return false;
-        return this.#entries.has(entry);
-    }
-    addEntry(...entries) {
-        return util.Target.resultingForEach(entries, entry => {
-            if (!(entry instanceof App.Hint.Entry)) return false;
-            if (this.hasEntry(entry)) return false;
-            this.#entries.add(entry);
-            this.elem.appendChild(entry.elem);
-            return entry;
-        });
-    }
-    remEntry(...entries) {
-        return util.Target.resultingForEach(entries, entry => {
-            if (!(entry instanceof App.Hint.Entry)) return false;
-            if (!this.hasEntry(entry)) return false;
-            this.#entries.delete(entry);
-            this.elem.removeChild(entry.elem);
-            return entry;
-        });
-    }
-
-    place(...v) {
-        v = new V(...v);
-        this.elem.style.transform = "translate("+v.xy.map(v => v+"px").join(",")+")";
-        return this;
-    }
-};
-App.Hint.Entry = class AppHintEntry extends util.Target {
-    #elem;
-
-    constructor() {
-        super();
-
-        this.#elem = document.createElement("div");
-        this.elem.classList.add("entry");
-    }
-
-    get elem() { return this.#elem; }
-};
-App.Hint.NameEntry = class AppHintNameEntry extends App.Hint.Entry {
-    #eName;
-
-    constructor(name) {
-        super();
-
-        this.#eName = document.createElement("div");
-        this.elem.appendChild(this.eName);
-        
-        this.name = name;
-    }
-
-    get eName() { return this.#eName; }
-    
-    get name() { return this.eName.textContent; }
-    set name(v) { this.eName.textContent = v; }
-};
-App.Hint.ValueEntry = class AppHintValueEntry extends App.Hint.Entry {
-    #eValue;
-
-    constructor(value) {
-        super();
-
-        const eIcon = document.createElement("ion-icon");
-        this.elem.appendChild(eIcon);
-        eIcon.name = "return-down-forward";
-
-        this.#eValue = document.createElement("div");
-        this.elem.appendChild(this.eValue);
-
-        this.value = value;
-    }
-
-    get eValue() { return this.#eValue; }
-
-    get value() { return this.eValue.textContent; }
-    set value(v) { this.eValue.textContent = v; }
-};
-App.Hint.KeyValueEntry = class AppHintKeyValueEntry extends App.Hint.Entry {
-    #eKey;
-    #eValue;
-
-    constructor(key, value) {
-        super();
-
-        this.#eKey = document.createElement("div");
-        this.elem.appendChild(this.eKey);
-
-        this.#eValue = document.createElement("div");
-        this.elem.appendChild(this.eValue);
-
-        this.key = key;
-        this.value = value;
-    }
-
-    get eKey() { return this.#eKey; }
-    get eValue() { return this.#eValue; }
-
-    get key() { return this.eKey.textContent; }
-    set key(v) { this.eKey.textContent = v; }
-    get value() { return this.eValue.textContent; }
-    set value(v) { this.eValue.textContent = v; }
-};
 
 
 export class Odometry extends util.Target {
@@ -505,8 +336,6 @@ export class Odometry extends util.Target {
     #doRender;
 
     #size;
-
-    #hints;
 
     constructor(elem) {
         super();
@@ -526,8 +355,6 @@ export class Odometry extends util.Target {
         this.#doRender = true;
 
         this.#size = new V();
-
-        this.#hints = new Set();
 
         this.canvas.addEventListener("mousemove", e => this.mouse.set(e.pageX, e.pageY));
 
@@ -563,40 +390,6 @@ export class Odometry extends util.Target {
     set w(v) { this.size.x = v; }
     get h() { return this.size.y; }
     set h(v) { this.size.y = v; }
-
-    get hints() { return [...this.#hints]; }
-    set hints(v) {
-        v = util.ensure(v, "arr");
-        this.clearHints();
-        this.addHint(v);
-    }
-    clearHints() {
-        let hints = this.hints;
-        this.remHint(hints);
-        return hints;
-    }
-    hasHint(hint) {
-        if (!(hint instanceof App.Hint)) return false;
-        return this.#hints.has(hint);
-    }
-    addHint(...hints) {
-        return util.Target.resultingForEach(hints, hint => {
-            if (!(hint instanceof App.Hint)) return false;
-            if (this.hasHint(hint)) return false;
-            this.#hints.add(hint);
-            this.change("addHint", null, hint);
-            return hint;
-        });
-    }
-    remHint(...hints) {
-        return util.Target.resultingForEach(hints, hint => {
-            if (!(hint instanceof App.Hint)) return false;
-            if (!this.hasHint(hint)) return false;
-            this.#hints.delete(hint);
-            this.change("remHint", hint, null);
-            return hint;
-        });
-    }
 
     update(delta) { this.post("update", delta); }
 }
@@ -1104,17 +897,6 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         this.velocity = velocity;
         this.heading = heading;
 
-        const hint = new App.Hint();
-        const hName = hint.addEntry(new App.Hint.NameEntry(""));
-        const hPosX = hint.addEntry(new App.Hint.KeyValueEntry("X", 0));
-        const hPosY = hint.addEntry(new App.Hint.KeyValueEntry("Y", 0));
-        const hDir = hint.addEntry(new App.Hint.KeyValueEntry("Dir", 0));
-        let useVelocity = null;
-        const hVelX = new App.Hint.KeyValueEntry("VX", 0);
-        const hVelY = new App.Hint.KeyValueEntry("VY", 0);
-
-        this.addHandler("rem", () => this.odometry.remHint(hint));
-
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             const hovered = this.hovered;
@@ -1274,24 +1056,6 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(5)))).xy);
                 ctx.stroke();
             }
-            if (hovered) {
-                hName.name = this.name;
-                hName.eName.style.color = "var(--"+this.color+")";
-                hPosX.value = this.x/100;
-                hPosY.value = this.y/100;
-                hDir.value = this.heading;
-                if (useVelocity != this.useVelocity) {
-                    useVelocity = this.useVelocity;
-                    if (useVelocity) hint.addEntry(hVelX, hVelY);
-                    else hint.remEntry(hVelX, hVelY);
-                }
-                if (useVelocity) {
-                    hVelX.value = this.velocityX/100;
-                    hVelY.value = this.velocityY/100;
-                }
-                this.odometry.addHint(hint);
-                hint.place(this.odometry.worldToPage(this.pos));
-            } else this.odometry.remHint(hint);
         });
     }
 
