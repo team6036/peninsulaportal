@@ -7,7 +7,7 @@ import subprocess
 import json
 
 
-CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_="
 def random_id(l=10):
     return "".join(CHARS[math.floor(random.random()*len(CHARS))] for _ in range(l))
 
@@ -95,8 +95,9 @@ class Process:
         if t - self._process_periodic < 3:
             return False
         self._process_periodic = t
-        if not self.has_active_process:
-            self.start_process()
+        if self.has_active_process:
+            return False
+        self.start_process()
         return True
 
     @property
@@ -136,18 +137,14 @@ class Process:
         if t - self._pipe_periodic < 1:
             return False
         self._pipe_periodic = t
-        if not self.has_active_pipe:
-            self.open_pipe()
+        if self.has_active_pipe:
+            return False
+        self.open_pipe()
         return True
-
-    def update(self):
-        self.update_process()
-        self.update_pipe()
-        self.attempt_dequeue()
 
     def queue(self, data):
         self._queue.append(data)
-        self.attempt_dequeue()
+        return self.attempt_dequeue()
     def attempt_dequeue(self):
         if not self.has_active_pipe:
             return False
@@ -155,3 +152,8 @@ class Process:
             os.write(self._pipe, (json.dumps(self._queue)+"§§§").encode("utf-8"))
             self._queue.clear()
         return True
+    
+    def update(self):
+        self.update_process()
+        self.update_pipe()
+        self.attempt_dequeue()

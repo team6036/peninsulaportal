@@ -195,9 +195,9 @@ body {
     display: none;
 }
 #PAGE > .content > article {
+    min-height: calc(100vh - var(--TOP));
     max-width: min(calc(100vw - 100px), 750px);
     margin-top: calc(125vh + 100px);
-    margin-bottom: 100px;
 }
 #PAGE > button {
     position: absolute;

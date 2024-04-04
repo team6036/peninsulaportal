@@ -15,6 +15,14 @@ export default class App extends core.App {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
         this.addHandler("post-setup", async () => {
+            (async () => {
+                let resp = await fetch("./doc.md");
+                let text = await resp.text();
+                let signal = new util.Target();
+                signal.addHandler("nav", (e, href) => this.addPopup(new App.MarkdownPopup(href)));
+                document.querySelector("#PAGE > .content").appendChild(await this.createMarkdown(text, signal));
+            })();
+
             this.#eInstall = document.getElementById("install");
             if (this.hasEInstall())
                 this.eInstall.addEventListener("click", async e => {
