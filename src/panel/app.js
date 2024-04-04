@@ -8761,7 +8761,7 @@ export default class App extends core.AppFeature {
     }
 }
 App.TitlePage = class AppTitlePage extends App.TitlePage {
-    static DESCRIPTION = "The tool for debugging network tables";
+    static DESCRIPTION = "The tool for debugging WPILOG and network tables";
 };
 App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #explorer;

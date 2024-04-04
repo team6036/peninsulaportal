@@ -744,7 +744,7 @@ export class App extends util.Target {
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
             let isDevMode = await window.api.get("devmode");
-            if (!isDevMode && ["DATABASE", "PIT"].includes(name)) {
+            if (!isDevMode && ["DATABASE", "PTK"].includes(name)) {
                 let pop = this.confirm(
                     "Open "+util.formatText(name),
                     "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs",
@@ -1795,10 +1795,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
     hasApp() { return !!this.app; }
 
     get id() { return this.#id; }
-    async doModify(data) {
-        if (this.id == null) return null;
-        return await window.api.sendMessage(this.id, "modify", data);
-    }
+    async doModify(data) { return await window.api.sendMessage(this.id, "modify", data); }
 
     get hasResult() { return this.#resolver.state; }
     get theResult() { return this.#result; }
@@ -3144,10 +3141,7 @@ export class AppModal extends App {
     }
 
     get id() { return this.#id; }
-    async doModify(data) {
-        if (this.id == null) return null;
-        return await window.api.sendMessage(this.id, "modify", data);
-    }
+    async doModify(data) { return await window.api.sendMessage(this.id, "modify", data); }
 
     get eModalStyle() { return this.#eModalStyle; }
 
