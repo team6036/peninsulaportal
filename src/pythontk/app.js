@@ -6,8 +6,7 @@ import * as core from "../core.mjs";
 
 
 export default class App extends core.App {
-    #eInfo;
-    #eLoads;
+    #eInstall;
 
     constructor() {
         super();
@@ -16,11 +15,28 @@ export default class App extends core.App {
             this.eLoadingTo = document.querySelector("#titlebar > .logo > .title");
         });
         this.addHandler("post-setup", async () => {
+            this.#eInstall = document.getElementById("install");
+            if (this.hasEInstall())
+                this.eInstall.addEventListener("click", async e => {
+                    e.stopPropagation();
+                    const result = util.ensure(await App.fileOpenDialog({
+                        title: "Install PTK in...",
+                        buttonLabel: "Install",
+                        properties: [
+                            "openDirectory",
+                        ],
+                    }), "obj");
+                    if (result.canceled) return;
+                    const pths = util.ensure(result.filePaths, "arr").map(pth => String(pth));
+                    if (pths.length != 1) return;
+                    const pth = pths[0];
+                    try {
+                        await window.api.send("install", pth);
+                    } catch (e) { this.doError("Installation Error", "", e); }
+                });
         });
     }
 
-    get eInfo() { return this.#eInfo; }
-    hasEInfo() { return this.eInfo instanceof HTMLDivElement; }
-    get eLoads() { return this.#eLoads; }
-    hasELoads() { return this.eLoads instanceof HTMLDivElement; }
+    get eInstall() { return this.#eInstall; }
+    hasEInstall() { return this.eInstall instanceof HTMLButtonElement; }
 }

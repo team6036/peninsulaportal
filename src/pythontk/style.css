@@ -20,9 +20,40 @@
 
 #PAGE {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+}
+#PAGE > .title {
+    height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PAGE > .title > .super {
+    color: var(--a);
+
+    font-size: 20px;
+}
+#PAGE > .title > .main {
+    color: var(--v8);
+
+    font-size: 50px;
+    font-weight: 500;
+}
+#PAGE > .title > button {
+    min-width: 300px;
+    margin-top: 40px;
+    padding: 10px 30px;
+
+    border-radius: 5px;
+
+    font-size: 16px;
 }

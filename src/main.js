@@ -1895,6 +1895,83 @@ const MAIN = async () => {
             if (k in kfs)
                 return await kfs[k](...a);
             let namefs = {
+                PRESETS: {
+                    "cmd-open-app-data-dir": async () => {
+                        await new Promise((res, rej) => {
+                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.manager.dataPath }));
+                            process.addHandler("exit", code => res(code));
+                            process.addHandler("error", e => rej(e));
+                        });
+                    },
+                    "cmd-cleanup-app-data-dir": async () => {
+                        await this.on("cleanup");
+                    },
+                    "cmd-open-app-log-dir": async () => {
+                        await new Promise((res, rej) => {
+                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: WindowManager.makePath(this.manager.dataPath, "logs") }));
+                            process.addHandler("exit", code => res(code));
+                            process.addHandler("error", e => rej(e));
+                        });
+                    },
+                    "cmd-clear-app-log-dir": async () => {
+                        let dirents = await this.manager.dirList("logs");
+                        let n = 0, nTotal = dirents.length;
+                        await Promise.all(dirents.map(async dirent => {
+                            await this.manager.fileDelete(["logs", dirent.name]);
+                            n++;
+                            this.cacheSet("clear-app-log-dir-progress", n/nTotal);
+                        }));
+                        this.cacheSet("clear-app-log-dir-progress", 1);
+                    },
+                    "cmd-poll-db-host": async () => {
+                        this.on("try-load");
+                    },
+                    "feature": async (name, cmd, k, ...a) => {
+                        let cmdfs = {
+                            get: {
+                                "root": async () => {
+                                    let content = "";
+                                    try {
+                                        content = await Window.fileRead(this.manager, name, [".config"]);
+                                    } catch (e) {}
+                                    let data = null;
+                                    try {
+                                        data = JSON.parse(content);
+                                    } catch (e) {}
+                                    data = util.ensure(data, "obj");
+                                    return util.ensure(data.root, "str", Window.getDataPath(this.manager, name));
+                                },
+                            },
+                            set: {
+                                "root": async v => {
+                                    let content = "";
+                                    try {
+                                        content = await Window.fileRead(this.manager, name, [".config"]);
+                                    } catch (e) {}
+                                    let data = null;
+                                    try {
+                                        data = JSON.parse(content);
+                                    } catch (e) {}
+                                    data = util.ensure(data, "obj");
+                                    data.root = util.ensure(v, "str", Window.getDataPath(this.manager, name));
+                                    if (data.root == Window.getDataPath(this.manager, name)) delete data.root;
+                                    content = JSON.stringify(data);
+                                    await Window.fileWrite(this.manager, name, [".config"], content);
+                                },
+                            },
+                        };
+                        let namefs = {
+                        };
+                        if (cmd in cmdfs)
+                            if (k in cmdfs[cmd])
+                                return await cmdfs[cmd][k](...a);
+                        if (name in namefs)
+                            if (cmd in namefs[name])
+                                if (k in namefs[name][cmd])
+                                    return await namefs[name][cmd][k](...a);
+                        return null;
+                    },
+                },
                 PANEL: {
                     "log-cache": async pth => {
                         pth = String(pth);
@@ -2278,81 +2355,22 @@ const MAIN = async () => {
                         return datas;
                     },
                 },
-                PRESETS: {
-                    "cmd-open-app-data-dir": async () => {
-                        await new Promise((res, rej) => {
-                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.manager.dataPath }));
-                            process.addHandler("exit", code => res(code));
-                            process.addHandler("error", e => rej(e));
-                        });
-                    },
-                    "cmd-cleanup-app-data-dir": async () => {
-                        await this.on("cleanup");
-                    },
-                    "cmd-open-app-log-dir": async () => {
-                        await new Promise((res, rej) => {
-                            const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: WindowManager.makePath(this.manager.dataPath, "logs") }));
-                            process.addHandler("exit", code => res(code));
-                            process.addHandler("error", e => rej(e));
-                        });
-                    },
-                    "cmd-clear-app-log-dir": async () => {
-                        let dirents = await this.manager.dirList("logs");
-                        let n = 0, nTotal = dirents.length;
-                        await Promise.all(dirents.map(async dirent => {
-                            await this.manager.fileDelete(["logs", dirent.name]);
-                            n++;
-                            this.cacheSet("clear-app-log-dir-progress", n/nTotal);
-                        }));
-                        this.cacheSet("clear-app-log-dir-progress", 1);
-                    },
-                    "cmd-poll-db-host": async () => {
-                        this.on("try-load");
-                    },
-                    "feature": async (name, cmd, k, ...a) => {
-                        let cmdfs = {
-                            get: {
-                                "root": async () => {
-                                    let content = "";
-                                    try {
-                                        content = await Window.fileRead(this.manager, name, [".config"]);
-                                    } catch (e) {}
-                                    let data = null;
-                                    try {
-                                        data = JSON.parse(content);
-                                    } catch (e) {}
-                                    data = util.ensure(data, "obj");
-                                    return util.ensure(data.root, "str", Window.getDataPath(this.manager, name));
+                PYTHONTK: {
+                    "install": async pth => {
+                        const blacklist = ["__pycache__", "node_modules", "package-lock.json"];
+                        await fs.promises.cp(
+                            path.join(__dirname, "..", "apps", "ptk"),
+                            path.join(pth, "ptk"),
+                            {
+                                recursive: true, force: true,
+                                filter: (src, dest) => {
+                                    const name = path.basename(src);
+                                    if (name.startsWith(".")) return false;
+                                    if (blacklist.includes(name)) return false;
+                                    return true;
                                 },
                             },
-                            set: {
-                                "root": async v => {
-                                    let content = "";
-                                    try {
-                                        content = await Window.fileRead(this.manager, name, [".config"]);
-                                    } catch (e) {}
-                                    let data = null;
-                                    try {
-                                        data = JSON.parse(content);
-                                    } catch (e) {}
-                                    data = util.ensure(data, "obj");
-                                    data.root = util.ensure(v, "str", Window.getDataPath(this.manager, name));
-                                    if (data.root == Window.getDataPath(this.manager, name)) delete data.root;
-                                    content = JSON.stringify(data);
-                                    await Window.fileWrite(this.manager, name, [".config"], content);
-                                },
-                            },
-                        };
-                        let namefs = {
-                        };
-                        if (cmd in cmdfs)
-                            if (k in cmdfs[cmd])
-                                return await cmdfs[cmd][k](...a);
-                        if (name in namefs)
-                            if (cmd in namefs[name])
-                                if (k in namefs[name][cmd])
-                                    return await namefs[name][cmd][k](...a);
-                        return null;
+                        );
                     },
                 },
             };
