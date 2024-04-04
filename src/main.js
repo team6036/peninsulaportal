@@ -2371,6 +2371,11 @@ const MAIN = async () => {
                                 },
                             },
                         );
+                        await new Promise((res, rej) => {
+                            const process = this.processManager.addProcess(new Process("spawn", "npm", ["install"], { cwd: path.join(pth, "ptk") }));
+                            process.addHandler("exit", code => res(code));
+                            process.addHandler("error", e => rej(e));
+                        });
                     },
                 },
             };

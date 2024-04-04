@@ -77,7 +77,7 @@ class Odometry2d(util.Process):
             P_2023_CUBE = "§2023-cube"
             P_2024_NOTE = "§2024-note"
 
-        def __init__(self, odometry, pos=(0, 0), name="Robot", size=(1, 1), velocity=(0, 0), heading=0):
+        def __init__(self, odometry, *, pos=(0, 0), size=(1, 1), velocity=(0, 0), heading=0):
             self._ID = util.random_id()
             if not isinstance(odometry, Odometry2d):
                 raise Exception("Odometry parameter is not of class Odometry2d")
@@ -86,7 +86,7 @@ class Odometry2d(util.Process):
             self._type = self.__class__.Types.DEFAULT
 
             self._x = self._y = 0
-            self._name = ""
+            # self._name = ""
             self._w = self._h = 0
             self._velocity_x = self._velocity_y = 0
             self._show_velocity = False
@@ -95,7 +95,7 @@ class Odometry2d(util.Process):
             self._color = "b"
 
             self.pos = pos
-            self.name = name
+            # self.name = name
             self.size = size
             self.heading = heading
             self.velocity = velocity
@@ -150,16 +150,16 @@ class Odometry2d(util.Process):
             self.x, self.y = v
         
         # NAME
-        @property
-        def name(self):
-            return self._name
-        @name.setter
-        def name(self, v):
-            v = str(v)
-            if self.name == v:
-                return
-            self._name = v
-            self.queue_change("name")
+        # @property
+        # def name(self):
+        #     return self._name
+        # @name.setter
+        # def name(self, v):
+        #     v = str(v)
+        #     if self.name == v:
+        #         return
+        #     self._name = v
+        #     self.queue_change("name")
         
         # SIZE
         @property
@@ -263,7 +263,7 @@ class Odometry2d(util.Process):
             [self.queue_change(k) for k in [
                 "type",
                 "x", "y",
-                "name",
+                # "name",
                 "w", "h",
                 "velocity_x", "velocity_y",
                 "show_velocity",
