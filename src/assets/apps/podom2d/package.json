@@ -1,0 +1,15 @@
+{
+	"main": "app/main.js",
+	"scripts": {
+		"start": "electron app/main.js"
+	},
+	"dependencies": {
+		"ionicons": "^7.1.2",
+		"mathjs": "^12.3.0",
+		"three": "^0.160.0"
+	},
+	"devDependencies": {
+		"electron": "^28.2.0",
+		"electron-builder": "^24.9.1"
+	}
+}

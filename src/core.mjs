@@ -5197,7 +5197,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         return signal;
     }
 
-    constructor(parent, pos, name, size, heading, velocity) {
+    constructor(parent, pos, name, size, velocity, heading) {
         super(parent, pos);
 
         this.#type = null;
@@ -5216,8 +5216,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
         this.name = name;
         this.size = size;
-        this.heading = heading;
         this.velocity = velocity;
+        this.heading = heading;
 
         const hint = new App.Hint();
         const hName = hint.addEntry(new App.Hint.NameEntry(""));
