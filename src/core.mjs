@@ -414,6 +414,8 @@ export class App extends util.Target {
     start() { this.post("start"); }
     update(delta) { this.post("update", delta); }
 
+    async getName() { return lib.getName(await window.api.get("name")); }
+
     getAgent() {
         let agent = window.agent();
         if (agent.os == "web") {
@@ -593,7 +595,7 @@ export class App extends util.Target {
             if (name.toUpperCase() == name) {
                 let fName = name;
                 name = load.shift();
-                elem.textContent += "["+util.formatText(fName)+"] ";
+                elem.textContent += "["+lib.getName(fName)+"] ";
                 let namefs = {
                     PLANNER: () => {
                         let namefs = {
@@ -729,7 +731,7 @@ export class App extends util.Target {
                 util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
-            pop.title = "Peninsula "+util.formatText(name);
+            pop.title = "Peninsula "+lib.getName(name);
             pop.infos = [this.getAgent().join("\n")];
             let r = await pop.whenResult();
             if (r) return;
@@ -744,9 +746,9 @@ export class App extends util.Target {
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
             let isDevMode = await window.api.get("devmode");
-            if (!isDevMode && ["DATABASE", "PTK"].includes(name)) {
+            if (!isDevMode && ["DATABASE", "PYTHONTK"].includes(name)) {
                 let pop = this.confirm(
-                    "Open "+util.formatText(name),
+                    "Open "+lib.getName(name),
                     "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs",
                 );
                 let result = await pop.whenResult();
@@ -950,7 +952,7 @@ export class App extends util.Target {
             Array.from(document.querySelectorAll(".introtitle")).forEach(async elem => {
                 if (elem.children.length <= 0) {
                     elem.innerHTML = "<div><div>p</div><div>eninsula</div></div><div></div>";
-                    elem.children[1].textContent = util.formatText(await window.api.get("name"));
+                    elem.children[1].textContent = await this.getName();
                 }
                 let both = 0;
                 if (!(elem.querySelector(".special.back") instanceof HTMLImageElement)) {
@@ -1652,7 +1654,7 @@ export class App extends util.Target {
         if (this.title == v) return;
         this.#title = v;
         (async () => {
-            let name = util.formatText(await window.api.get("name"));
+            let name = await this.getName();
             this.eTitle.textContent = (v.length > 0) ? (v+" — "+name) : name;
         })();
     }
@@ -2619,7 +2621,7 @@ App.Menu = class AppMenu extends util.Target {
         let itm = new App.Menu.Item("Features...");
         itm.id = "spawn";
         ["PANEL", "PLANNER", "DATABASE", "PIT"].forEach((name, i) => {
-            let subitm = new App.Menu.Item(util.formatText(name));
+            let subitm = new App.Menu.Item(lib.getName(name));
             subitm.id = "spawn:"+name;
             subitm.accelerator = "CmdOrCtrl+"+(i+1);
             itm.menu.addItem(subitm);
@@ -3749,7 +3751,7 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
         });
 
         (async () => {
-            const name = util.formatText(String(await window.api.get("name")));
+            const name = await this.app.getName();
             this.eTitle.innerHTML = "<span>Peninsula</span><span></span>";
             this.eTitle.children[1].textContent = name;
         })();

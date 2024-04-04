@@ -123,7 +123,7 @@ const MAIN = async () => {
         return s;
     }
 
-    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PTK"];
+    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
     class Process extends util.Target {
@@ -678,12 +678,12 @@ const MAIN = async () => {
         name = String(name);
         return [
             {
-                label: (name.length > 0) ? util.formatText(name).replaceAll(":", " ") : "Portal",
+                label: (name.length > 0) ? lib.getName(name) : "Portal",
                 submenu: [
                     {
                         label:
                             (name.length > 0) ?
-                                ("About Peninsula "+util.formatText(name).replaceAll(":", " ")) :
+                                ("About Peninsula "+lib.getName(name)) :
                             "About Peninsula",
                         enabled: !!("about" in signal ? signal.about : true),
                         click: () => signal.post("about"),
@@ -2486,7 +2486,7 @@ const MAIN = async () => {
                         label: "Features...",
                         submenu: ["PANEL", "PLANNER", "DATABASE", "PIT"].map((name, i) => {
                             return {
-                                label: util.formatText(name),
+                                label: lib.getName(name),
                                 accelerator: "CmdOrCtrl+"+(i+1),
                                 click: () => this.on("spawn", name),
                             };

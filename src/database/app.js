@@ -97,7 +97,7 @@ class Collection extends util.Target {
             let resp = await fetch(this.host+"/api/"+this.name);
             if (resp.status != 200) throw resp.status;
             return await resp.json();
-        } catch (e) { this.app.doError(util.formatText(this.name)+" Get Error", "", e); }
+        } catch (e) { this.app.doError(lib.getName(this.name)+" Get Error", "", e); }
         return null;
     }
     async put(k, v, ignoreIgnore=false) {
@@ -116,7 +116,7 @@ class Collection extends util.Target {
             });
             if (resp.status != 200) throw resp.status;
             return true;
-        } catch (e) { this.app.doError(util.formatText(this.name)+" Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
+        } catch (e) { this.app.doError(lib.getName(this.name)+" Update Error", "Put "+k+" = "+JSON.stringify(v), e); }
         return false;
     }
     async del(k, ignoreIgnore=false) {
@@ -134,7 +134,7 @@ class Collection extends util.Target {
             });
             if (resp.status != 200) throw resp.status;
             return true;
-        } catch (e) { this.app.doError(util.formatText(this.name)+" Update Error", "Delete "+k, e); }
+        } catch (e) { this.app.doError(lib.getName(this.name)+" Update Error", "Delete "+k, e); }
         return false;
     }
 
