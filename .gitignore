@@ -5,6 +5,8 @@ node_modules
 __pycache__
 src/assets/apps/**/package-lock.json
 
+.idea
+
 build
 dist
 temp

@@ -2,10 +2,18 @@
 <html>
     <head>
 		<meta charset="UTF-8">
-		<title>Peninsula Odometry2d Widget</title>
+		<title id="title"></title>
 		<style id="dynamic-style"></style>
 		<link rel="stylesheet" href="./style.css">
 		<link rel="stylesheet" href="./style2.css">
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../node_modules/three/build/three.module.min.js",
+					"three/addons/": "../node_modules/three/examples/jsm/"
+				}
+			}
+		</script>
 		<script type="module">
 			import App from "./core.mjs";
 			const app = new App();

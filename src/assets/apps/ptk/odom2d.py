@@ -1,138 +1,25 @@
-import math, random, time
-
-import os, subprocess, json
+import time
 
 import enum
 
-
-CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-def random_id():
-    return "".join(CHARS[math.floor(random.random()*len(CHARS))] for _ in range(10))
+import ptk.util as util
 
 
-class POdometry2d:
+class Odometry2d(util.Process):
     def __init__(self, *, wordy=False):
-        self._wordy = wordy
-
-        self._ID = random_id()
-
-        self._process = None
-        self._process_periodic = time.time()
-
-        self._pipe = None
-        self._pipe_periodic = time.time()
+        super().__init__(name="Odometry2d", key="ptk_odom2d", wordy=wordy)
 
         self._robots = []
-        self._queue = []
-
-        self.start_process()
-
-        self.open_pipe()
-    
-    def __del__(self):
-        self.kill_process()
-        self.close_pipe()
-    
-    @property
-    def ID(self):
-        return self._ID
-
-    @property
-    def wordy(self):
-        return self._wordy
-    @wordy.setter
-    def wordy(self, v):
-        self._wordy = not not v
-    def log(self, *a):
-        if not self.wordy:
-            return
-        print(f"[POdometry2d@{self.ID}]", *a)
-    
-    @property
-    def has_active_process(self):
-        return isinstance(self._process, subprocess.Popen) and self._process.poll() is None
-    
-    def start_process(self):
-        if self.has_active_process:
-            self.log("starting process", "PREEXISTING")
-            return False
-        self.log("starting process")
-        try:
-            self._process = subprocess.Popen(
-                ["npm", "start", "--id", self.ID],
-                cwd=os.path.split(os.path.abspath(__file__))[0],
-            )
-            self.log("started process")
-        except Exception as e:
-            self.log("starting process", "ERROR", e)
-            return False
-        return True
-    def kill_process(self):
-        if not self.has_active_process:
-            self.log("killing process", "NONEXISTENT")
-            return False
-        self.log("killing process")
-        try:
-            self._process.kill()
-            self.log("killed process")
-        except Exception as e:
-            self.log("killing process", "ERROR", e)
-            return False
-        return True
-    def update_process(self):
-        t = time.time()
-        if t - self._process_periodic < 3:
-            return False
-        self._process_periodic = t
-        if not self.has_active_process:
-            self.start_process()
-        return True
-    
-    @property
-    def has_active_pipe(self):
-        return isinstance(self._pipe, int)
-
-    def open_pipe(self):
-        if not self.has_active_process:
-            self.log("opening pipe", "NOPROCESS")
-            return False
-        if self.has_active_pipe:
-            self.log("opening pipe", "PREEXISTING")
-            return False
-        self.log("opening pipe")
-        try:
-            self._pipe = os.open(os.path.join(os.path.split(os.path.abspath(__file__))[0], "podom2d_"+self.ID), os.O_WRONLY)
-            self.log("opened pipe")
-        except Exception as e:
-            self.log("opening pipe", "ERROR", e)
-            return False
-        return True
-    def close_pipe(self):
-        if not self.has_active_pipe:
-            self.log("closing pipe", "NONEXISTENT")
-            return False
-        self.log("closing pipe")
-        try:
-            os.close(self._pipe)
-            os.remove(os.path.join(os.path.split(os.path.abspath(__file__))[0], "podom2d_"+self.ID))
-            self.log("closed pipe")
-        except Exception as e:
-            self.log("closing pipe", "ERROR", e)
-            return False
-        return True
-    def update_pipe(self):
-        t = time.time()
-        if t - self._pipe_periodic < 1:
-            return False
-        self._pipe_periodic = t
-        if not self.has_active_pipe:
-            self.open_pipe()
-        return True
+        self._robots_periodic = time.time()
     
     def update(self):
-        self.update_process()
-        self.update_pipe()
-        self.attempt_dequeue()
+        super().update()
+        t = time.time()
+        if t - self._robots_periodic < 1:
+            return
+        self.log("flash")
+        self._robots_periodic = t
+        self.queue_change_all()
     
     @property
     def robots(self):
@@ -157,6 +44,7 @@ class POdometry2d:
             if self.has(robot):
                 continue
             self._robots.append(robot)
+            self.queue_command("add", robot.ID)
             robot.queue_change_all()
     def remove(self, *robots):
         for robot in robots:
@@ -167,18 +55,15 @@ class POdometry2d:
             if not self.has(robot):
                 continue
             self._robots.remove(robot)
-            self.queue_change(robot.ID, "rem", None)
+            self.queue_command("rem", robot.ID)
     
-    def queue_change(self, id, k, v):
-        self._queue.append([id, k, v])
-        self.attempt_dequeue()
-    def attempt_dequeue(self):
-        if not self.has_active_pipe:
-            return False
-        if len(self._queue) > 0:
-            os.write(self._pipe, (json.dumps(self._queue)+"§§§").encode("utf-8"))
-            self._queue.clear()
-        return True
+    def queue_command(self, name, *a):
+        self.queue([name, *a])
+    def queue_change(self, id_, k, v):
+        self.queue_command("c", id_, k, v)
+    def queue_change_all(self):
+        for robot in self._robots:
+            robot.queue_change_all()
     
     class Robot:
         class Types(enum.Enum):
@@ -193,9 +78,9 @@ class POdometry2d:
             P_2024_NOTE = "§2024-note"
 
         def __init__(self, odometry, pos=(0, 0), name="Robot", size=(1, 1), velocity=(0, 0), heading=0):
-            self._ID = random_id()
-            if not isinstance(odometry, POdometry2d):
-                raise Exception("Odometry parameter is not of class POdometry2d")
+            self._ID = util.random_id()
+            if not isinstance(odometry, Odometry2d):
+                raise Exception("Odometry parameter is not of class Odometry2d")
             self._odometry = odometry
 
             self._type = self.__class__.Types.DEFAULT
@@ -233,7 +118,7 @@ class POdometry2d:
             if not isinstance(v, self.__class__.Types):
                 v = self.__class__.Types.DEFAULT
             self._type = v
-            self.queue_change("type", self.type.value)
+            self.queue_change("type")
         
         # POS
         @property
@@ -245,7 +130,7 @@ class POdometry2d:
             if self.x == v:
                 return
             self._x = v
-            self.queue_change("x", self.x)
+            self.queue_change("x")
         @property
         def y(self):
             return self._y
@@ -255,10 +140,10 @@ class POdometry2d:
             if self.y == v:
                 return
             self._y = v
-            self.queue_change("y", self.y)
+            self.queue_change("y")
         @property
         def pos(self):
-            return (self.x, self.y)
+            return self.x, self.y
         @pos.setter
         def pos(self, v):
             v = v if isinstance(v, tuple) and len(v) == 2 else (0, 0)
@@ -274,7 +159,7 @@ class POdometry2d:
             if self.name == v:
                 return
             self._name = v
-            self.queue_change("name", self.name)
+            self.queue_change("name")
         
         # SIZE
         @property
@@ -286,7 +171,7 @@ class POdometry2d:
             if self.w == v:
                 return
             self._w = v
-            self.queue_change("w", self.w)
+            self.queue_change("w")
         @property
         def h(self):
             return self._h
@@ -296,10 +181,10 @@ class POdometry2d:
             if self.h == v:
                 return
             self._h = v
-            self.queue_change("h", self.h)
+            self.queue_change("h")
         @property
         def size(self):
-            return (self.w, self.h)
+            return self.w, self.h
         @size.setter
         def size(self, v):
             v = v if isinstance(v, tuple) and len(v) == 2 else (0, 0)
@@ -315,7 +200,7 @@ class POdometry2d:
             if self.velocity_x == v:
                 return
             self._velocity_x = v
-            self.queue_change("velocity_x", self.velocity_x)
+            self.queue_change("velocity_x")
         @property
         def velocity_y(self):
             return self._velocity_y
@@ -325,10 +210,10 @@ class POdometry2d:
             if self.velocity_y == v:
                 return
             self._velocity_y = v
-            self.queue_change("velocity_y", self.velocity_y)
+            self.queue_change("velocity_y")
         @property
         def velocity(self):
-            return (self.velocity_x, self.velocity_y)
+            return self.velocity_x, self.velocity_y
         @velocity.setter
         def velocity(self, v):
             v = v if isinstance(v, tuple) and len(v) == 2 else (0, 0)
@@ -342,7 +227,7 @@ class POdometry2d:
             if self.show_velocity == v:
                 return
             self._show_velocity = v
-            self.queue_change("show_velocity", self.show_velocity)
+            self.queue_change("show_velocity")
 
         # HEADING
         @property
@@ -354,7 +239,7 @@ class POdometry2d:
             if self.heading == v:
                 return
             self._heading = v
-            self.queue_change("heading", self.heading)
+            self.queue_change("heading")
         
         # COLOR
         @property
@@ -366,19 +251,22 @@ class POdometry2d:
             if self.color == v:
                 return
             self._color = v
-            self.queue_change("color", self.color)
+            self.queue_change("color")
 
-        def queue_change(self, k, v):
+        def queue_change(self, k):
+            k = str(k)
+            v = getattr(self, k)
+            if isinstance(v, enum.Enum):
+                v = v.value
             self.odometry.queue_change(self.ID, k, v)
         def queue_change_all(self):
-            self.queue_change("type", self.type.value)
-            self.queue_change("x", self.x)
-            self.queue_change("y", self.y)
-            self.queue_change("name", self.name)
-            self.queue_change("w", self.w)
-            self.queue_change("h", self.h)
-            self.queue_change("velocity_x", self.velocity_x)
-            self.queue_change("velocity_y", self.velocity_y)
-            self.queue_change("show_velocity", self.show_velocity)
-            self.queue_change("heading", self.heading)
-            self.queue_change("color", self.color)
+            [self.queue_change(k) for k in [
+                "type",
+                "x", "y",
+                "name",
+                "w", "h",
+                "velocity_x", "velocity_y",
+                "show_velocity",
+                "heading",
+                "color",
+            ]]
