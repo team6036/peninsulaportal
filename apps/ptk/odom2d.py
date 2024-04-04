@@ -12,15 +12,6 @@ class Odometry2d(util.Process):
         self._robots = []
         self._robots_periodic = time.time()
     
-    def update(self):
-        super().update()
-        t = time.time()
-        if t - self._robots_periodic < 1:
-            return
-        self.log("flash")
-        self._robots_periodic = t
-        self.queue_change_all()
-    
     @property
     def robots(self):
         return [*self._robots]
@@ -58,12 +49,21 @@ class Odometry2d(util.Process):
             self.queue_command("rem", robot.ID)
     
     def queue_command(self, name, *a):
-        self.queue([name, *a])
+        return self.queue([name, *a])
     def queue_change(self, id_, k, v):
-        self.queue_command("c", id_, k, v)
+        return self.queue_command("c", id_, k, v)
     def queue_change_all(self):
         for robot in self._robots:
             robot.queue_change_all()
+        
+    def update(self):
+        super().update()
+        t = time.time()
+        if t - self._robots_periodic < 1:
+            return
+        self.log("flash")
+        self._robots_periodic = t
+        self.queue_change_all()
     
     class Robot:
         class Types(enum.Enum):
@@ -71,8 +71,8 @@ class Odometry2d(util.Process):
             NODE = "§node"
             BOX = "§box"
             ARROW = "§arrow"
-            ARROW_HEAD = "§head"
-            ARROW_TAIL = "§tail"
+            ARROW_HEAD = "§arrow-h"
+            ARROW_TAIL = "§arrow-t"
             P_2023_CONE = "§2023-cone"
             P_2023_CUBE = "§2023-cube"
             P_2024_NOTE = "§2024-note"
@@ -258,7 +258,7 @@ class Odometry2d(util.Process):
             v = getattr(self, k)
             if isinstance(v, enum.Enum):
                 v = v.value
-            self.odometry.queue_change(self.ID, k, v)
+            return self.odometry.queue_change(self.ID, k, v)
         def queue_change_all(self):
             [self.queue_change(k) for k in [
                 "type",
