@@ -5171,7 +5171,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                     });
 
-                    if (!v.shown) return;
+                    if (!v.isShown) return;
 
                     let node;
                     if (v.path in nodes) node = nodes[v.path];
@@ -5313,6 +5313,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 vars.forEach(v => {
                     if (!(v.path in logs)) return;
                     if (!(v.path in nodes)) return;
+                    ctx.globalAlpha = v.isGhost ? 0.5 : 1;
                     const log = logs[v.path];
                     const node = nodes[v.path];
                     if (!node.field.isNumerical) {
@@ -5394,6 +5395,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     if (usePotential) foundHints.push(...potentialFoundHints);
                     ctx.stroke();
                 });
+                ctx.globalAlpha = 1;
             });
             if (!mouseAlt && !hintAlt) {
                 if (foundHints.length > 0) {
@@ -5789,8 +5791,10 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     #path;
     #shown;
     #color;
+    #ghost;
 
     #shownHook;
+    #ghostHook;
 
     #expr;
     #exprCompiled;
@@ -5806,6 +5810,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     #eContent;
     #eColorPicker;
     #eColorPickerColors;
+    #eGhostBtn;
 
     constructor(...a) {
         super();
@@ -5818,10 +5823,14 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#path = "";
         this.#shown = null;
         this.#color = null;
+        this.#ghost = null;
 
         this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
         this.shownHook.toggle.show();
         this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
+        this.#ghostHook = new Panel.ToolCanvasTab.Hook("Ghost Hook", null);
+        this.ghostHook.toggle.show();
+        this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
 
         const form = new core.Form();
 
@@ -5874,8 +5883,16 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
                 this.color = btn.color;
             });
         });
+        this.#eGhostBtn = document.createElement("button");
+        this.eColorPicker.appendChild(this.eGhostBtn);
+        this.eGhostBtn.textContent = "Ghost";
+        this.eGhostBtn.addEventListener("click", e => {
+            e.stopPropagation();
+            this.ghost = !this.ghost;
+        });
 
         this.eContent.appendChild(this.shownHook.elem);
+        this.eContent.appendChild(this.ghostHook.elem);
         this.eContent.appendChild(form.elem);
 
         this.eDisplay.addEventListener("contextmenu", e => {
@@ -5923,23 +5940,23 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             this.isOpen = !this.isOpen;
         });
 
-        if (a.length <= 0 || a.length > 5) a = [null];
+        if (a.length <= 0 || [5].includes(a.length) || a.length > 7) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.shownHook.to(), a.expr];
+            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.ghost, a.shownHook.to(), a.ghostHook.to(), a.expr];
             else if (util.is(a, "arr")) {
                 a = new Panel.GraphTab.Variable(...a);
-                a = [a.path, a.shown, a.color, a.shownHook.to(), a.expr];
+                a = [a.path, a.shown, a.color, a.ghost, a.shownHook.to(), a.ghostHook.to(), a.expr];
             }
-            // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook, a.expr];
+            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost, a.shownHook, a.ghostHook, a.expr];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
-        if (a.length == 3) a = [...a, null];
-        if (a.length == 4) a = [...a, null];
+        if (a.length == 3) a = [...a, false];
+        if (a.length == 4) a = [...a, null, null];
+        if (a.length == 6) a = [...a, null];
 
-        [this.path, this.shown, this.color, this.shownHook, this.expr] = a;
+        [this.path, this.shown, this.color, this.ghost, this.shownHook, this.ghostHook, this.expr] = a;
     }
 
     get tab() { return this.#tab; }
@@ -5995,8 +6012,17 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         });
     }
     hasColor() { return this.color != null; }
+    get ghost() { return this.#ghost; }
+    set ghost(v) {
+        v = !!v;
+        if (this.ghost == v) return;
+        this.change("ghost", this.ghost, this.#ghost=v);
+        if (this.ghost)
+            this.eGhostBtn.classList.add("this");
+        else this.eGhostBtn.classList.remove("this");
+    }
 
-    get hooks() { return [this.shownHook]; }
+    get hooks() { return [this.shownHook, this.ghostHook]; }
     get shownHook() { return this.#shownHook; }
     set shownHook(o) { this.shownHook.from(o); }
     get isShown() {
@@ -6005,6 +6031,15 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         if (this.shownHook.toggle.value)
             return !this.shownHook.value;
         return this.shownHook.value;
+    }
+    get ghostHook() { return this.#ghostHook; }
+    set ghostHook(o) { this.ghostHook.from(o); }
+    get isGhost() {
+        if (this.ghost) return true;
+        if (this.ghostHook.value == null) return false;
+        if (this.ghostHook.toggle.value)
+            return !this.ghostHook.value;
+        return this.ghostHook.value;
     }
 
     get expr() { return this.#expr; }
@@ -6061,6 +6096,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     get eContent() { return this.#eContent; }
     get eColorPicker() { return this.#eColorPicker; }
     get eColorPickerColors() { return [...this.#eColorPickerColors]; }
+    get eGhostBtn() { return this.#eGhostBtn; }
 
     get isOpen() { return this.elem.classList.contains("open"); }
     set isOpen(v) {
@@ -6091,7 +6127,9 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             path: this.path,
             shown: this.shown,
             color: this.color,
+            ghost: this.ghost,
             shownHook: this.shownHook.to(),
+            ghostHook: this.ghostHook.to(),
             expr: this.expr,
         });
     }
@@ -6468,8 +6506,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
                 a = new this.constructor(...a);
                 a = [a.path, a.shown, a.color, a.shownHook.to()];
             }
-            // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.shownHook];
+            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.shownHook];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
@@ -7102,8 +7139,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
                     a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to(), a.trail, a.useTrail];
                 }
             }
-            // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, (["default", "node", "box", "arrow"].includes(a.type) ? ("§"+a.type) : a.type), a.shownHook, a.ghostHook, a.trail, a.useTrail];
+            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost || a.isGhost, (["default", "node", "box", "arrow"].includes(a.type) ? ("§"+a.type) : a.type), a.shownHook, a.ghostHook, a.trail, a.useTrail];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
@@ -7848,8 +7884,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
                     a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.to(), a.ghostHook.to(), a.solidHook.to()];
                 }
             }
-            // TODO: remove when fixed
-            else if (util.is(a, "obj")) a = [a.path, a.shown || a.isShown, a.color, a.ghost || a.isGhost, a.solid || a.isSolid, a.type, a.shownHook, a.ghostHook, a.solidHook];
+            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost || a.isGhost, a.solid || a.isSolid, a.type, a.shownHook, a.ghostHook, a.solidHook];
             else a = [null, null];
         }
         if (a.length == 2) a = [a[0], true, a[1], false, false];
