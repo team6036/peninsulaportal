@@ -37,7 +37,7 @@ class WPILOGEncoderWorker extends WorkerBase {
                     if (logsN <= 0 && metaLogsN <= 0) return;
                     encoder.addRecord(
                         WPILOGEncoder.Record.makeControlStart(
-                            logs[0].ts,
+                            logsTS[0],
                             {
                                 entry: entryId,
                                 name: prefix+field.path,

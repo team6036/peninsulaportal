@@ -36,8 +36,8 @@ class CSVFieldEncoderWorker extends WorkerBase {
                     const logsN = field.logsN;
                     const logsTS = field.logsTS;
                     const logsV = field.logsV;
-                    for (let i = 0; i < logsN; i++) {
-                        let ts = logsTS[i], v = logsV[i];
+                    for (let j = 0; j < logsN; j++) {
+                        let ts = logsTS[j], v = logsV[j];
                         if (field.type == "structschema" || field.isStruct) v = [...toUint8Array(v)];
                         grid[1+i][2+tsArr.indexOf(ts)] = JSON.stringify(v);
                     }
