@@ -4632,7 +4632,7 @@ export class Odometry extends util.Target {
         this.elem.appendChild(this.overlay);
         this.overlay.classList.add("overlay");
         this.#quality = 0;
-        this.#mouse = new V();
+        this.#mouse = new V(-1);
 
         this.#doRender = true;
 
@@ -4641,6 +4641,7 @@ export class Odometry extends util.Target {
         this.#hints = new Set();
 
         this.canvas.addEventListener("mousemove", e => this.mouse.set(e.pageX, e.pageY));
+        this.canvas.addEventListener("mouseleave", e => this.mouse.set(-1));
 
         this.quality = 2;
 
@@ -4748,8 +4749,11 @@ export class Odometry2d extends Odometry {
         this.addHandler("change-quality", update);
 
         this.#ctx = this.canvas.getContext("2d");
-        this.#worldMouse = new V();
-        this.mouse.addHandler("change", () => this.worldMouse.set(this.pageToWorld(this.mouse)));
+        this.#worldMouse = new V(-(10**9));
+        this.mouse.addHandler("change", () => {
+            if (this.mouse.x < 0 && this.mouse.y < 0 )return this.worldMouse.set(-(10**9));
+            this.worldMouse.set(this.pageToWorld(this.mouse));
+        });
 
         this.#render = new Odometry2d.Render(this, 0);
 
