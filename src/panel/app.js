@@ -4893,6 +4893,8 @@ Panel.ToolCanvasTab.Hook.Toggle = class PanelToolCanvasTabHookToggle extends uti
 };
 Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #padding;
+    #axisInteriorX;
+    #axisInteriorY;
 
     #lVars; #rVars;
 
@@ -4905,6 +4907,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         this.elem.classList.add("graph");
 
         this.#padding = new util.V4();
+        this.#axisInteriorX = false;
+        this.#axisInteriorY = false;
 
         this.#lVars = new Set();
         this.#rVars = new Set();
@@ -5246,18 +5250,23 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             const mnx = this.paddingLeft*quality, mxx = ctx.canvas.width - this.paddingRight*quality;
             const mny = this.paddingTop*quality, mxy = ctx.canvas.height - this.paddingBottom*quality;
             let y0 = mny, y1 = mxy;
-            let y2 = mxy + 5*quality;
-            let y3 = mxy + 10*quality;
+            let y2 = mxy + 5*quality * (this.axisInteriorX ? -1 : 1);
+            let y3 = mxy + 10*quality * (this.axisInteriorX ? -1 : 1);
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
             ctx.fillStyle = core.PROPERTYCACHE.get("--v6");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
-            ctx.textBaseline = "top";
+            ctx.textBaseline = this.axisInteriorX ? "bottom" : "top";
             for (let i = Math.ceil(graphRange[0]/timeStep); i <= Math.floor(graphRange[1]/timeStep); i++) {
                 let x = (i*timeStep - graphRange[0]) / (graphRange[1]-graphRange[0]);
                 x = util.lerp(mnx, mxx, x);
+                ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
+                ctx.beginPath();
+                ctx.moveTo(x, y0);
+                ctx.lineTo(x, y1);
+                ctx.stroke();
                 ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
@@ -5269,11 +5278,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     unit = "s";
                 }
                 ctx.fillText(t+unit, x, y3);
-                ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
-                ctx.beginPath();
-                ctx.moveTo(x, y0);
-                ctx.lineTo(x, y1);
-                ctx.stroke();
             }
             ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
             for (let i = 0; i <= nStepsMax; i++) {
@@ -5291,17 +5295,19 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             let nDiscrete = 0;
             graphVars.forEach((o, i) => {
                 const { vars, nodes, logs, range, step } = o;
+                let v = this.axisInteriorY ? -1 : 1;
                 let x1 = [mnx, mxx][i];
-                let x2 = [mnx - 5*quality, mxx + 5*quality][i];
-                let x3 = [mnx - 10*quality, mxx + 10*quality][i];
+                let x2 = [mnx - 5*quality*v, mxx + 5*quality*v][i];
+                let x3 = [mnx - 10*quality*v, mxx + 10*quality*v][i];
                 ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--v6");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "miter";
                 ctx.lineCap = "square";
                 ctx.font = (12*quality)+"px monospace";
-                ctx.textAlign = ["right", "left"][i];
+                ctx.textAlign = ["right", "left"][this.axisInteriorY ? 1-i : i];
                 ctx.textBaseline = "middle";
                 for (let j = range[0]; j <= range[1]; j++) {
+                    if (this.axisInteriorX && (j == range[0] || j == range[1])) continue;
                     let y = (j-range[0]) / (range[1]-range[0]);
                     y = util.lerp(mny, mxy, 1-y);
                     ctx.beginPath();
@@ -5586,6 +5592,23 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     set paddingLeft(v) { this.padding.l = v; }
     get paddingRight() { return this.padding.r; }
     set paddingRight(v) { this.padding.r = v; }
+
+    get axisInteriorX() { return this.#axisInteriorX; }
+    set axisInteriorX(v) {
+        v = !!v;
+        if (this.axisInteriorX == v) return;
+        this.#axisInteriorX = v;
+    }
+    get axisExteriorX() { return !this.axisInteriorX; }
+    set axisExteriorX(v) { this.axisInteriorX = !v; }
+    get axisInteriorY() { return this.#axisInteriorY; }
+    set axisInteriorY(v) {
+        v = !!v;
+        if (this.axisInteriorY == v) return;
+        this.#axisInteriorY = v;
+    }
+    get axisExteriorY() { return !this.axisInteriorY; }
+    set axisExteriorY(v) { this.axisInteriorY = !v; }
 
     get lVars() { return [...this.#lVars]; }
     set lVars(v) {
