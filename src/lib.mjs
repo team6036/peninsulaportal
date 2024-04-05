@@ -1,3 +1,4 @@
+/*.lw{*/
 import * as util from "./util.mjs";
 
 
@@ -26,7 +27,8 @@ if (typeof(window) != "undefined") {
         }
     }
 }
-export { math as mathjs }
+export { math as mathjs };
+/*.lw}*/
 
 
 export const TEXTENCODER = new TextEncoder();
@@ -57,6 +59,7 @@ export function search(items, keys, query) {
     return fuse.search(query);
 }
 
+/*.lw{*/
 export function findStep(v, n=10) {
     v = Math.max(0, util.ensure(v, "num"));
     n = Math.max(0, util.ensure(n, "int"));
@@ -77,6 +80,7 @@ export function findStep(v, n=10) {
     factors.sort((a, b) => a.v-b.v);
     return factors[0].f;
 }
+/*.lw}*/
 
 export function getName(name) {
     name = String(name);
@@ -233,6 +237,7 @@ export class FSOperator extends util.Target {
     static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
 }
 
+/*.lw{*/
 export class Unit extends util.Target {
     #value;
     #unit;
@@ -294,6 +299,7 @@ export class Unit extends util.Target {
         return v;
     }
 }
+/*.lw}*/
 
 export class Option extends util.Target {
     #name;

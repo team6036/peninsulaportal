@@ -8,7 +8,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 
-export { THREE }
+export { THREE };
 
 export const LOADER = new GLTFLoader();
 
@@ -866,73 +866,6 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
     #colorH;
 
     #selected;
-
-    static getTypeName(type) {
-        let names = {
-            "§default": "Default",
-            "§node": "Node",
-            "§box": "Box",
-            "§arrow": "Arrow (Centered)",
-            "§arrow-h": "Arrow (Head Centered)",
-            "§arrow-t": "Arrow (Tail Centered)",
-            "§2023-cone": "2023 Cone",
-            "§2023-cube": "2023 Cube",
-            "§2024-note": "2024 Note",
-        };
-        if (type in names) return names[type];
-        return String(type);
-    }
-    static menuStructure = [
-        "§default",
-        "§node",
-        "§box",
-        {
-            name: "Arrow", key: "§arrow",
-            sub: [
-                "§arrow",
-                "§arrow-h",
-                "§arrow-t",
-            ],
-        },
-        null,
-        {
-            name: "2023",
-            sub: [
-                "§2023-cone",
-                "§2023-cube",
-            ],
-        },
-        {
-            name: "2024", key: "§2024-note",
-            sub: [
-                "§2024-note",
-            ],
-        },
-    ];
-    static buildMenu(menu, current, signal) {
-        if (!(menu instanceof App.Menu)) return null;
-        if (!(signal instanceof util.Target)) signal = new util.Target();
-        const dfs = (menu, structs) => {
-            util.ensure(structs, "arr").forEach(struct => {
-                if (struct == null) return menu.addItem(new App.Menu.Divider());
-                if (util.is(struct, "obj")) {
-                    let itm = menu.addItem(new App.Menu.Item(struct.name, (struct.key == current) ? "checkmark" : ""));
-                    itm.addHandler("trigger", e => {
-                        if (!struct.key) return;
-                        signal.post("type", struct.key);
-                    });
-                    dfs(itm.menu, struct.sub);
-                    return;
-                }
-                let itm = menu.addItem(new App.Menu.Item(this.getTypeName(struct), (struct == current) ? "checkmark" : ""));
-                itm.addHandler("trigger", e => {
-                    signal.post("type", struct);
-                });
-            });
-        };
-        dfs(menu, this.menuStructure);
-        return signal;
-    }
 
     constructor(parent, pos, name, size, velocity, heading) {
         super(parent, pos);
@@ -2066,79 +1999,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             this.LOADEDOBJECTS["2024-note"] = note;
         }
     }
-
-    static getTypeName(type) {
-        let names = {
-            "§node": "Node",
-            "§cube": "Cube",
-            "§arrow+x": "Arrow (+X)",
-            "§arrow-x": "Arrow (-X)",
-            "§arrow+y": "Arrow (+Y)",
-            "§arrow-y": "Arrow (-Y)",
-            "§arrow+z": "Arrow (+Z)",
-            "§arrow-z": "Arrow (-Z)",
-            "§axes": "Axes",
-            "§2023-cone": "2023 Cone",
-            "§2023-cube": "2023 Cube",
-            "§2024-note": "2024 Note",
-        };
-        if (type in names) return names[type];
-        return String(type);
-    }
-    static menuStructure = [
-        "§node",
-        "§cube",
-        {
-            name: "Arrows", key: "§arrow+x",
-            sub: [
-                "§arrow+x",
-                "§arrow-x",
-                "§arrow+y",
-                "§arrow-y",
-                "§arrow+z",
-                "§arrow-z",
-            ],
-        },
-        "§axes",
-        null,
-        {
-            name: "2023",
-            sub: [
-                "§2023-cone",
-                "§2023-cube",
-            ],
-        },
-        {
-            name: "2024", key: "§2024-note",
-            sub: [
-                "§2024-note",
-            ],
-        },
-    ];
-    static buildMenu(menu, current, signal) {
-        if (!(menu instanceof App.Menu)) return null;
-        if (!(signal instanceof util.Target)) signal = new util.Target();
-        const dfs = (menu, structs) => {
-            util.ensure(structs, "arr").forEach(struct => {
-                if (struct == null) return menu.addItem(new App.Menu.Divider());
-                if (util.is(struct, "obj")) {
-                    let itm = menu.addItem(new App.Menu.Item(struct.name, (struct.key == current) ? "checkmark" : ""));
-                    itm.addHandler("trigger", e => {
-                        if (!struct.key) return;
-                        signal.post("type", struct.key);
-                    });
-                    dfs(itm.menu, struct.sub);
-                    return;
-                }
-                let itm = menu.addItem(new App.Menu.Item(this.getTypeName(struct), (struct == current) ? "checkmark" : ""));
-                itm.addHandler("trigger", e => {
-                    signal.post("type", struct);
-                });
-            });
-        };
-        dfs(menu, this.menuStructure);
-        return signal;
-    }
     
     constructor(odometry, pos, name, type) {
         super();
@@ -2167,18 +2027,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
         let robotLock = false;
         let modelObject = null, theModelObject = null;
-
-        const hint = new App.Hint();
-        let hintType = null;
-        const hName = hint.addEntry(new App.Hint.NameEntry(""));
-        const hPosX = new App.Hint.KeyValueEntry("X", 0);
-        const hPosY = new App.Hint.KeyValueEntry("Y", 0);
-        const hPosZ = new App.Hint.KeyValueEntry("Z", 0);
-        const hDirD = new App.Hint.KeyValueEntry("Dir", 0);
-        const hDirW = new App.Hint.KeyValueEntry("QW", 0);
-        const hDirX = new App.Hint.KeyValueEntry("QX", 0);
-        const hDirY = new App.Hint.KeyValueEntry("QY", 0);
-        const hDirZ = new App.Hint.KeyValueEntry("QZ", 0);
 
         this.addHandler("rem", () => {
             this.object = null;

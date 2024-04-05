@@ -2371,6 +2371,91 @@ const MAIN = async () => {
                                 },
                             },
                         );
+                        const splitByDelimiters = (start, stop, data) => {
+                            start = String(start);
+                            stop = String(stop);
+                            data = String(data);
+                            let include = "", exclude = "";
+                            while (true) {
+                                let i;
+                                i = data.indexOf(start);
+                                if (i < 0) {
+                                    exclude += data;
+                                    break;
+                                }
+                                exclude += data.slice(0, i);
+                                data = data.slice(i+start.length);
+                                i = data.indexOf(stop);
+                                if (i < 0) {
+                                    include += data;
+                                    break;
+                                }
+                                include += data.slice(0, i);
+                                data = data.slice(i+stop.length);
+                            }
+                            return [include, exclude];
+                        };
+                        const splitByLWDelimiters = data => splitByDelimiters("/*.lw{*/", "/*.lw}*/", data);
+                        const removeComments = data => {
+                            data = String(data).split("\n").map(line => {
+                                if (!line.trim().startsWith("//")) return line;
+                                return line.split("//")[0];
+                            }).join("\n");
+                            return splitByDelimiters("/*", "*/", data)[1];
+                        };
+                        const simplify = data => {
+                            data = String(data).replaceAll("\n", " ");
+                            while (data.includes("  ")) data = data.replaceAll("  ", " ");
+                            const ignoresWSChars = [];
+                            ignoresWSChars.push(...",.;:()[]{}".split(""));
+                            ignoresWSChars.push("==", "<", "<=", ">", ">=", "!=", "!");
+                            ignoresWSChars.push("=>", "...");
+                            const operators = ["+", "-", "/", "*", "**", "^", "~", "&", "|", "<<", ">>", "&&", "||"];
+                            ignoresWSChars.push("=", ...operators, ...operators.map(op => op+"="), "--", "++");
+                            for (let c of ignoresWSChars) data = data.replaceAll(" "+c, c).replaceAll(c+" ", c);
+                            const finalItemChars = ")]}";
+                            for (let c of finalItemChars) data = data.replaceAll(","+c, c);
+                            data = data.replaceAll(";}", "}");
+                            return data.trim();
+                        };
+                        const makeMini = data => simplify(removeComments(data));
+                        const makeLW = data => makeMini(splitByLWDelimiters(data)[0]);
+                        const writeMini = async (src, dest=null, f=null) => {
+                            if (dest == null) dest = src;
+                            let r = makeMini(await WindowManager.fileRead(src));
+                            r = util.ensure(f, "func", r => r)(r);
+                            await WindowManager.fileWrite(dest, r);
+                        };
+                        const writeLW = async (src, dest=null, f=null) => {
+                            if (dest == null) dest = src;
+                            let r = makeLW(await WindowManager.fileRead(src));
+                            r = util.ensure(f, "func", r => r)(r);
+                            await WindowManager.fileWrite(dest, r);
+                        };
+
+                        await writeLW(
+                            path.join(__dirname, "style.css"),
+                            path.join(path.join(pth, "ptk", "app", "style.css")),
+                        );
+                        await writeMini(path.join(pth, "ptk", "app", "style2.css"));
+
+                        await writeMini(
+                            path.join(__dirname, "util.mjs"),
+                            path.join(path.join(pth, "ptk", "app", "util.mjs")),
+                        );
+                        await writeLW(
+                            path.join(__dirname, "lib.mjs"),
+                            path.join(pth, "ptk", "app", "lib.mjs"),
+                            r => r.replaceAll(
+                                "new URL(\"node_modules/mathjs/lib/browser/math.js\",\"file://\"+String(await window.api.getAppRoot()))",
+                                "\"../node_modules/mathjs/lib/browser/math.js\"",
+                            ),
+                        );
+                        await writeMini(path.join(pth, "ptk", "app", "core.mjs"));
+
+                        await writeMini(path.join(pth, "ptk", "app", "main.js"));
+                        await writeMini(path.join(pth, "ptk", "app", "preload.js"));
+
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "npm", ["install"], { cwd: path.join(pth, "ptk") }));
                             process.addHandler("exit", code => res(code));
