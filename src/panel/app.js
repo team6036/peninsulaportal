@@ -5069,7 +5069,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 
         this.quality = 2;
 
-        let mouseX = 0, mouseY = 0, mouseDown = false, mouseAlt = false;
+        let mouseX = null, mouseY = null, mouseDown = false, mouseAlt = false;
         this.canvas.addEventListener("mousemove", e => {
             let r = this.canvas.getBoundingClientRect();
             let x = e.pageX;
@@ -5084,6 +5084,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         this.canvas.addEventListener("mouseleave", e => {
             if (!this.hasApp()) return;
             this.app.remHint(hints);
+            mouseX = null;
+            mouseY = null;
         });
         this.canvas.addEventListener("mousedown", e => {
             e.preventDefault();
@@ -5288,8 +5290,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 ctx.lineTo(mxx, y);
                 ctx.stroke();
             }
-            let mouseXCanv = util.lerp(mnx, mxx, mouseX);
-            let mouseYCanv = util.lerp(mny, mxy, mouseY);
+            let mouseXCanv = (mouseX == null) ? null : util.lerp(mnx, mxx, mouseX);
+            let mouseYCanv = (mouseY == null) ? null : util.lerp(mny, mxy, mouseY);
             let mouseXCanv0 = (mouseX0 == null) ? null : util.lerp(mnx, mxx, mouseX0);
             let foundHints = [];
             let nDiscrete = 0;
@@ -5379,24 +5381,31 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         ctx.lineTo(x, y2);
                         ctx.lineTo(x, (y1+y2)/2);
                         py = (y1+y2)/2
-                        if (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x))
-                            if (hintAlt || (mouseYCanv > y1-2*quality && mouseYCanv < y2+5*quality)) {
-                                foundHints.push({
-                                    x: mouseXCanv, y: py,
-                                    name: node.path,
-                                    color: ctx.strokeStyle,
-                                    value: v,
-                                });
-                                usePotential = true;
-                            }
-                        if (mouseXCanv0 != null)
-                            if (mouseXCanv0 >= x && (i+1 >= ranges.length || mouseXCanv0 < ranges[i+1].x))
-                                potentialFoundHints.push({
-                                    x: mouseXCanv0, y: py,
-                                    name: node.path,
-                                    color: ctx.strokeStyle,
-                                    value: v,
-                                });
+                        if (
+                            (mouseXCanv != null) &&
+                            (mouseYCanv != null) &&
+                            (mouseXCanv >= x && (i+1 >= ranges.length || mouseXCanv < ranges[i+1].x)) &&
+                            (hintAlt || (mouseYCanv > y1-2*quality && mouseYCanv < y2+5*quality))
+                        ) {
+                            foundHints.push({
+                                x: mouseXCanv, y: py,
+                                name: node.path,
+                                color: ctx.strokeStyle,
+                                value: v,
+                            });
+                            usePotential = true;
+                        }
+                        if (
+                            (mouseXCanv0 != null) &&
+                            (mouseXCanv0 >= x && (i+1 >= ranges.length || mouseXCanv0 < ranges[i+1].x))
+                        ) {
+                            potentialFoundHints.push({
+                                x: mouseXCanv0, y: py,
+                                name: node.path,
+                                color: ctx.strokeStyle,
+                                value: v,
+                            });
+                        }
                     });
                     if (usePotential) foundHints.push(...potentialFoundHints);
                     ctx.stroke();
@@ -5447,7 +5456,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 {
                     value: util.lerp(...graphRange, mouseX),
                     color: "v4-8",
-                    show: !mouseDown || mouseAlt,
+                    show: mouseX != null && (!mouseDown || mouseAlt),
                 },
                 {
                     value: t0,
@@ -5455,46 +5464,49 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     show: mouseAlt,
                 },
             ].forEach(data => {
+                if (("show" in data) && !data.show) return;
                 ctx.fillStyle = ctx.strokeStyle = core.PROPERTYCACHE.get("--"+data.color);
                 let progress = (data.value-graphRange[0]) / (graphRange[1]-graphRange[0]);
+                if (progress < 0) return;
+                if (progress > 1) return;
                 let x = util.lerp(mnx, mxx, progress);
-                if ((!("show" in data) || data.show) && progress >= 0 && progress <= 1) {
-                    ctx.setLineDash([5*quality, 5*quality]);
-                    ctx.beginPath();
-                    ctx.moveTo(x, mny);
-                    ctx.lineTo(x, mxy);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    let text = util.formatTime(data.value);
-                    let newRange = [x, x+ctx.measureText(text).width+10*quality];
-                    if (newRange[1] > mxx) newRange = [newRange[0]-(newRange[1]-newRange[0]), newRange[1]-(newRange[1]-newRange[0])];
-                    let rangeY = 0;
-                    while (true) {
-                        let any = false;
-                        while (ranges.length <= rangeY) ranges.push([]);
-                        for (let range of ranges[rangeY]) {
-                            if (newRange[1] < range[0]) continue;
-                            if (newRange[0] > range[1]) continue;
-                            any = true;
-                            break;
-                        }
-                        if (!any) break;
-                        rangeY++;
+                ctx.setLineDash([5*quality, 5*quality]);
+                ctx.beginPath();
+                ctx.moveTo(x, mny);
+                ctx.lineTo(x, mxy);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                let text = util.formatTime(data.value);
+                let newRange = [x, x+ctx.measureText(text).width+10*quality];
+                if (newRange[1] > mxx) newRange = [newRange[0]-(newRange[1]-newRange[0]), newRange[1]-(newRange[1]-newRange[0])];
+                let rangeY = 0;
+                while (true) {
+                    let any = false;
+                    while (ranges.length <= rangeY) ranges.push([]);
+                    for (let range of ranges[rangeY]) {
+                        if (newRange[1] < range[0]) continue;
+                        if (newRange[0] > range[1]) continue;
+                        any = true;
+                        break;
                     }
-                    ranges[rangeY].push(newRange);
-                    ctx.fillText(text, newRange[0]+5*quality, mny + 10*quality + 20*quality*nDiscrete + (12+5)*rangeY*quality);
+                    if (!any) break;
+                    rangeY++;
                 }
+                ranges[rangeY].push(newRange);
+                ctx.fillText(text, newRange[0]+5*quality, mny + 10*quality + 20*quality*nDiscrete + (12+5)*rangeY*quality);
             });
-            if (mouseDown && !mouseAlt)
-                if (this.hasPage() && this.page.hasSource())
-                    this.page.source.ts = util.lerp(...graphRange, mouseX);
+            if (
+                (mouseX != null) &&
+                (mouseDown && !mouseAlt) &&
+                (this.hasPage() && this.page.hasSource())
+            ) this.page.source.ts = util.lerp(...graphRange, mouseX);
             if (mouseAlt) {
                 if (mouseX0 == null) {
                     mouseX0 = mouseX;
-                    t0 = util.lerp(...graphRange, mouseX0);
+                    if (mouseX0 != null) t0 = util.lerp(...graphRange, mouseX0);
                 }
             } else mouseX0 = null;
-            if (mouseAlt) {
+            if (mouseX != null && mouseAlt) {
                 let t1 = util.lerp(...graphRange, mouseX);
                 let t0Value = Math.min(graphRange[1], Math.max(graphRange[0], t0));
                 let t1Value = Math.min(graphRange[1], Math.max(graphRange[0], t1));
@@ -5531,8 +5543,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     let shift = (newGraphRange[1]-newGraphRange[0]) * scrollMag;
                     newGraphRange = newGraphRange.map(v => v+shift);
                 } else {
-                    let ts = util.lerp(...graphRange, mouseX);
-                    newGraphRange = newGraphRange.map(v => util.lerp(v, ts, scrollMag));
+                    if (mouseX != null) {
+                        let ts = util.lerp(...graphRange, mouseX);
+                        newGraphRange = newGraphRange.map(v => util.lerp(v, ts, scrollMag));
+                    }
                 }
                 if (newGraphRange[1]-newGraphRange[0] <= 0) newGraphRange[1] = newGraphRange[0]+0.001;
                 if (newGraphRange[1]-newGraphRange[0] > maxTime-minTime) newGraphRange[1] = newGraphRange[0]+(maxTime-minTime);
