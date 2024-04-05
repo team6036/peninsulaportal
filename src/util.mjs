@@ -566,7 +566,7 @@ export const ease = {
         if (e in ease) return ease[e](t, m);
         return t;
     },
-}
+};
 
 export class Target {
     #handlers;

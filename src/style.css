@@ -1,3 +1,4 @@
+/*.lw{*/
 :root {
     --WIN32: 0;
     --DARWIN: 0;
@@ -12,6 +13,7 @@
 
     --gradient: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
 }
+/*.lw}*/
 
 @font-face {
     font-family: REM;
@@ -26,6 +28,7 @@
     src: url("./assets/Roboto.ttf");
 }
 
+/*.lw{*/
 * {
     font-family: inherit;
     box-sizing: border-box;
@@ -40,8 +43,10 @@ body {
 
     background-color: #000;
 
-    /* font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; */
+    font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    /*.lw}*/
     font-family: REM, Arial, Helvetica, sans-serif;
+    /*.lw{*/
 }
 
 ::selection {
@@ -308,9 +313,6 @@ a:not(:disabled):hover {
 ::-webkit-scrollbar-track {
     background-color: var(--v1-8);
 }
-/* :not(:hover)::-webkit-scrollbar-track {
-    background-color: transparent;
-} */
 ::-webkit-scrollbar-thumb {
     background-color: var(--v2);
     border-radius: 5px;
@@ -318,12 +320,10 @@ a:not(:disabled):hover {
 ::-webkit-scrollbar-thumb:hover {
     background-color: var(--v3);
 }
-/* :not(:hover)::-webkit-scrollbar-thumb {
-    background-color: transparent !important;
-} */
 ::-webkit-scrollbar-corner {
     background-color: transparent;
 }
+/*.lw}*/
 
 label.filedialog {
     display: flex;
@@ -361,6 +361,7 @@ label.filedialog > button::before {
     content: "Browse";
 }
 
+/*.lw{*/
 label.checkbox {
     --size: 20px;
     --bg: var(--v3);
@@ -527,6 +528,7 @@ label.switch > input[type="checkbox"]:checked + span::before {
 label.switch > span > ion-icon {
     display: none;
 }
+/*.lw}*/
 
 article.md {
     color: var(--v7);
@@ -1121,6 +1123,7 @@ article.md.lighter table td {
     --border-hov-c-line-v: var(--border-hov-c-line);
 }
 
+/*.lw{*/
 p-loading {
     --size: 10px;
     --color: var(--v8);
@@ -1232,6 +1235,7 @@ p-loading[type="bounce"] > div > div:last-child {
 
     animation: loading-line 1s linear infinite;
 }
+/*.lw}*/
 
 .introtitle {
     position: relative;
@@ -1873,6 +1877,7 @@ p-loading[type="bounce"] > div > div:last-child {
     display: none;
 }
 
+/*.lw{*/
 .odom {
     position: relative;
 
@@ -1902,6 +1907,7 @@ p-loading[type="bounce"] > div > div:last-child {
 
     font-size: 12px;
 }
+/*.lw}*/
 
 .explorer {
     display: flex;
