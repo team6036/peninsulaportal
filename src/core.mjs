@@ -6244,15 +6244,16 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
     static LOADEDOBJECTS = {};
     static {
+        const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
         const node = new THREE.Mesh(
             new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            material,
         );
         node.castShadow = node.receiveShadow = true;
         this.LOADEDOBJECTS["node"] = node;
         const cube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            material,
         );
         cube.castShadow = cube.receiveShadow = true;
         this.LOADEDOBJECTS["cube"] = cube;
@@ -6260,14 +6261,14 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         const arrow = new THREE.Object3D();
         const tip = new THREE.Mesh(
             new THREE.ConeGeometry(arrowRadius, arrowLength, 8),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            material,
         );
         arrow.castShadow = arrow.receiveShadow = true;
         tip.position.set(0, (1-arrowLength)/2, 0);
         arrow.add(tip);
         const line = new THREE.Mesh(
             new THREE.CylinderGeometry(radius, radius, 1-arrowLength, 8),
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            material,
         );
         line.position.set(0, -arrowLength/2, 0);
         arrow.add(line);
@@ -6300,7 +6301,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         let xAxis, yAxis, zAxis;
         xAxis = new THREE.Mesh(
             geometry,
-            new THREE.MeshLambertMaterial({ color: 0xff0000 }),
+            material,
         );
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
@@ -6308,14 +6309,14 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         axes.xAxis = xAxis;
         yAxis = new THREE.Mesh(
             geometry,
-            new THREE.MeshLambertMaterial({ color: 0x00ff00 }),
+            material,
         );
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         axes.yAxis = yAxis;
         zAxis = new THREE.Mesh(
             geometry,
-            new THREE.MeshLambertMaterial({ color: 0x0000ff }),
+            material,
         );
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
@@ -6329,7 +6330,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             const r = 0.105, h = 0.33;
             const coneInner = new THREE.Mesh(
                 new THREE.ConeGeometry(r, h, 12),
-                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+                material,
             );
             coneInner.position.set(0, 0, h/2);
             coneInner.rotateX(Math.PI/2);
@@ -6340,7 +6341,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             const s = 0.24;
             const cubeInner = new THREE.Mesh(
                 new THREE.BoxGeometry(s, s, s),
-                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+                material,
             );
             cubeInner.position.set(0, 0, s/2);
             cube.add(cubeInner);
@@ -6353,7 +6354,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             const r1 = 0.18, r2 = 0.125;
             const noteInner = new THREE.Mesh(
                 new THREE.TorusGeometry(r1-(r1-r2)/2, (r1-r2)/2, 8, 12),
-                new THREE.MeshLambertMaterial({ color: 0xffffff }),
+                material,
             );
             noteInner.position.set(0, 0, (r1-r2)/2);
             note.add(noteInner);
