@@ -2410,7 +2410,7 @@ const MAIN = async () => {
                             ignoresWSChars.push(...",.;:()[]{}".split(""));
                             ignoresWSChars.push("==", "<", "<=", ">", ">=", "!=", "!");
                             ignoresWSChars.push("=>", "...");
-                            const operators = ["+", "-", "/", "*", "**", "^", "~", "&", "|", "<<", ">>", "&&", "||"];
+                            const operators = ["+", "-", "/", "*", "**", "%", "^", "~", "&", "|", "<<", ">>", "&&", "||"];
                             ignoresWSChars.push("=", ...operators, ...operators.map(op => op+"="), "--", "++");
                             for (let c of ignoresWSChars) data = data.replaceAll(" "+c, c).replaceAll(c+" ", c);
                             const finalItemChars = ")]}";
