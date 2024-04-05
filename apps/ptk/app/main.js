@@ -25,14 +25,17 @@
     await app.whenReady();
 
     // queue data until when window is ready, then dequeue
-    let ready = false;
+    let ready = false, t0 = new Date().getTime()+1500;
     const queue = [];
     const queueData = data => {
-        queue.push(data);
+        t0 = Math.max(t0, new Date().getTime());
+        if (data != "poll") queue.push(data);
         dequeueData();
     };
     const dequeueData = () => {
         if (!ready) return;
+        if (window.isDestroyed()) return;
+        if (window.webContents.isDestroyed()) return;
         while (queue.length > 0) window.webContents.send("data", queue.shift());
     };
     ipc.on("ready", () => {
@@ -42,8 +45,6 @@
     const window = new electron.BrowserWindow({
         width: 1250,
         height: 750,
-
-        closable: false,
 
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
@@ -79,6 +80,20 @@
                 queueData(data);
             });
         });
+    });
+
+    // disconnection detection
+    const id = setInterval(() => {
+        let t1 = new Date().getTime();
+        if (t1-t0 < 1000) return;
+        clearInterval(id);
+        if (window.isDestroyed()) return;
+        window.close();
+    }, 500);
+
+    // quit
+    app.on("window-all-closed", () => {
+        app.quit();
     });
 
 })();

@@ -7,7 +7,7 @@ import subprocess
 import json
 
 
-CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_="
+CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 def random_id(l=10):
     return "".join(CHARS[math.floor(random.random()*len(CHARS))] for _ in range(l))
 
@@ -26,6 +26,7 @@ class Process:
 
         self._pipe = None
         self._pipe_periodic = time.time()
+        self._pipe_poll_periodic = time.time()
 
         self._queue = []
 
@@ -127,6 +128,7 @@ class Process:
         try:
             os.close(self._pipe)
             os.remove(os.path.join(os.path.split(os.path.abspath(__file__))[0], f"._{self.key}_{self.ID}"))
+            self._pipe = None
             self.log("closed pipe")
         except Exception as e:
             self.log("closing pipe", "ERROR", e)
@@ -141,6 +143,15 @@ class Process:
             return False
         self.open_pipe()
         return True
+    def update_pipe_poll(self):
+        t = time.time()
+        if t - self._pipe_poll_periodic < 0.5:
+            return False
+        self._pipe_poll_periodic = t
+        if not self.has_active_pipe:
+            return False
+        self.queue("poll")
+        return True
 
     def queue(self, data):
         self._queue.append(data)
@@ -149,11 +160,16 @@ class Process:
         if not self.has_active_pipe:
             return False
         if len(self._queue) > 0:
-            os.write(self._pipe, (json.dumps(self._queue)+"§§§").encode("utf-8"))
-            self._queue.clear()
+            try:
+                os.write(self._pipe, (json.dumps(self._queue)+"§§§").encode("utf-8"))
+                self._queue.clear()
+            except Exception as e:
+                self.log("attempt_dequeue", "ERROR", e)
+                self.close_pipe()
         return True
     
     def update(self):
         self.update_process()
         self.update_pipe()
+        self.update_pipe_poll()
         self.attempt_dequeue()
