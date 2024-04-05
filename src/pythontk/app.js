@@ -27,6 +27,20 @@ export default class App extends core.App {
                 let signal = new util.Target();
                 signal.addHandler("nav", (e, href) => this.addPopup(new App.MarkdownPopup(href)));
                 const eArticle = await this.createMarkdown(text, signal);
+                if (!this.hasESide()) return;
+                if (!this.hasEArticle()) return;
+                const dfsArticle = elem => {
+                    if (
+                        elem.tagName == "KBD" &&
+                        ["get", "set"].includes(elem.textContent)
+                    ) {
+                        elem.style.backgroundColor = "var(--a)";
+                        elem.style.filter = "none";
+                        return;
+                    }
+                    Array.from(elem.children).map(dfsArticle);
+                };
+                dfsArticle(eArticle);
                 const articleMap = {};
                 let active = null;
                 Array.from(eArticle.children).forEach(elem => {
@@ -36,31 +50,70 @@ export default class App extends core.App {
                         elem.tagName == "H1" &&
                         elem.hasAttribute("id")
                     ) {
-                        let id = String(elem.id).split(".");
-                        if (id.length > 3) id[2] += "."+id.splice(3).join(".");
+                        let id = String(elem.id);
+                        let parts = id.split(".");
+                        if (parts.length > 3) parts[2] += "."+parts.splice(3).join(".");
                         let i = 0, o = articleMap;
-                        while (id.length > 0) {
-                            let k = id.shift();
-                            if (i < 2) {
-                                if (!(k in o)) {
-                                    o[k] = {};
-                                    active = null;
-                                }
-                            } else {
-                                if (!(k in o)) {
-                                    o[k] = [];
-                                    active = o[k];
-                                }
+                        while (parts.length > 0) {
+                            let k = parts.shift();
+                            if (!(k in o)) {
+                                o[k] = {
+                                    id: id,
+                                    name: elem.textContent,
+                                    children: {},
+                                    article: [elem],
+                                };
                             }
                             i++;
                             o = o[k];
+                            active = o.article;
+                            o = o.children;
                         }
                         return;
                     }
                     if (!util.is(active, "arr")) return;
                     active.push(elem);
                 });
-                // if (this.hasEDocsPage()) this.eDocsPage.appendChild(eArticle);
+                let first = null;
+                const dfsMap = (children, elem, from) => {
+                    children = util.ensure(children, "obj");
+                    let n = 0;
+                    for (let id in children) {
+                        let child = children[id];
+                        n++;
+
+                        let elem2 = document.createElement("div");
+                        elem.appendChild(elem2);
+                        elem2.classList.add("item");
+
+                        let btn = document.createElement("button");
+                        elem2.appendChild(btn);
+                        btn.textContent = child.name;
+
+                        let content = document.createElement("div");
+                        elem2.appendChild(content);
+                        content.classList.add("content");
+
+                        btn.addEventListener("click", e => {
+                            e.stopPropagation();
+                            if (from && from.parentElement && !from.parentElement.classList.contains("this")) from.click();
+                            if (m <= 0) {
+                                this.eArticle.innerHTML = "";
+                                util.ensure(child.article, "arr").forEach(elem => this.eArticle.appendChild(elem));
+                                return;
+                            }
+                            if (elem2.classList.contains("this"))
+                                elem2.classList.remove("this");
+                            else elem2.classList.add("this");
+                        });
+
+                        let m = dfsMap(child.children, content, btn);
+                        if (!first && m <= 0) first = btn;
+                    }
+                    return n;
+                };
+                dfsMap(articleMap, this.eSide, null);
+                if (first) first.click();
             })();
 
             this.#eTitlePage = document.getElementById("TITLEPAGE");
@@ -92,6 +145,7 @@ export default class App extends core.App {
                     if (this.hasETitlePage()) this.eTitlePage.classList.remove("this");
                     if (this.hasEDocsPage()) this.eDocsPage.classList.add("this");
                 });
+            this.#eSide = document.getElementById("side");
             this.#eArticle = document.getElementById("article");
         });
     }
