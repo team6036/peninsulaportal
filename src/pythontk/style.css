@@ -96,6 +96,23 @@
     align-items: stretch;
     align-content: center;
 }
+#DOCSPAGE > div > .nav {
+    margin-bottom: 10px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#DOCSPAGE > div > .nav > button {
+    padding: 5px;
+    aspect-ratio: 1 / 1;
+
+    border-radius: 5px;
+}
 #DOCSPAGE > div .item {
     display: flex;
     flex-direction: column;
@@ -112,6 +129,8 @@
     padding: 5px 10px;
 
     justify-content: flex-start;
+
+    border-radius: 5px;
 
     font-size: 14px;
 }

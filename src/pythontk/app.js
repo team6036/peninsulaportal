@@ -12,6 +12,7 @@ export default class App extends core.App {
     #eInstall;
     #eDocumentation;
     #eSide;
+    #eBack;
     #eArticle;
 
     constructor() {
@@ -146,6 +147,13 @@ export default class App extends core.App {
                     if (this.hasEDocsPage()) this.eDocsPage.classList.add("this");
                 });
             this.#eSide = document.getElementById("side");
+            this.#eBack = document.getElementById("back");
+            if (this.hasEBack())
+                this.eBack.addEventListener("click", async e => {
+                    e.stopPropagation();
+                    if (this.hasETitlePage()) this.eTitlePage.classList.add("this");
+                    if (this.hasEDocsPage()) this.eDocsPage.classList.remove("this");
+                });
             this.#eArticle = document.getElementById("article");
         });
     }
@@ -160,6 +168,32 @@ export default class App extends core.App {
     hasEDocumentation() { return this.eDocumentation instanceof HTMLButtonElement; }
     get eSide() { return this.#eSide; }
     hasESide() { return this.eSide instanceof HTMLElement; }
+    get eBack() { return this.#eBack; }
+    hasEBack() { return this.eBack instanceof HTMLButtonElement; }
     get eArticle() { return this.#eArticle; }
     hasEArticle() { return this.eArticle instanceof HTMLElement; }
+
+    get state() {
+        return {
+            page:
+                (this.hasETitlePage() && this.eTitlePage.classList.contains("this")) ?
+                    "title" :
+                (this.hasEDocsPage() && this.eDocsPage.classList.contains("this")) ?
+                    "docs" :
+                null,
+        };
+    }
+    async loadState(state) {
+        state = util.ensure(state, "obj");
+        let page = state.page;
+        if (!["title", "docs"].includes(page)) page = "title";
+        if (this.hasETitlePage()) {
+            if (page == "title") this.eTitlePage.classList.add("this");
+            else this.eTitlePage.classList.remove("this");
+        }
+        if (this.hasEDocsPage()) {
+            if (page == "docs") this.eDocsPage.classList.add("this");
+            else this.eDocsPage.classList.remove("this");
+        }
+    }
 }
