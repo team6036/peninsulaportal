@@ -17,7 +17,7 @@ class CSVTimeDecoderWorker extends WorkerBase {
                 const opt = util.ensure(data.opt, "obj");
                 this.progress(0);
                 const decoder = new CSVDecoder(data.source);
-                const source = new Source(false);
+                const source = new Source();
                 decoder.build(p => this.progress(util.lerp(0, 1/3, p)));
                 const grid = decoder.grid;
                 const h = grid.length;

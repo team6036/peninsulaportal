@@ -32,12 +32,12 @@ class CSVTimeEncoderWorker extends WorkerBase {
                 tsArr = [...tsArr].sort((a, b) => a-b);
                 const grid = [["", ...nameArr], ["", ...typeArr], ...tsArr.map(ts => [ts, ...new Array(nameArr.length).fill(JSON.stringify(null))])];
                 fields.forEach((field, i) => {
-                    this.progress(util.lerp(0, 0.5, i/fields.length));
                     const logsN = field.logsN;
                     const logsTS = field.logsTS;
                     const logsV = field.logsV;
-                    for (let i = 0; i < logsN; i++) {
-                        let ts = logsTS[i], v = logsV[i];
+                    for (let j = 0; j < logsN; j++) {
+                        this.progress(util.lerp(0, 0.5, (i + j/logsN)/fields.length));
+                        let ts = logsTS[j], v = logsV[j];
                         if (field.type == "structschema" || field.isStruct) v = [...toUint8Array(v)];
                         grid[2+tsArr.indexOf(ts)][1+i] = JSON.stringify(v);
                     }

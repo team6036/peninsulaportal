@@ -67,7 +67,7 @@ export default class CSVDecoder extends util.Target {
         let i = 0;
         for (let row of grid) {
             if (row.length != w)
-                throw new Error("Invalid row length for row "+i);
+                throw new Error("Invalid row length for row "+i+" (expected "+w+", got "+row.length+")");
             i++;
         }
         this.#grid = grid;

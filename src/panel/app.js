@@ -2638,7 +2638,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
             if (!this.hasNode() || !this.node.hasField() || !this.node.field.isJustPrimitive || this.node.field.logsN <= 0) {
                 while (entries.length > 0) {
                     let entry = entries.pop();
-                    this.elem.remChild(entry.elem);
+                    this.elem.removeChild(entry.elem);
                 }
                 return;
             }
@@ -3914,12 +3914,12 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         const sources = 
                             ((state.importFrom == "session") ?
                                 [this.hasPage() ? { pth: null, source: this.page.source } : null] :
-                            (await Promise.all(state.logs.map(async (log, i) => {
+                            (await Promise.all(state.logs.map(async (pth, i) => {
                                 sum.push(0);
                                 updateSum();
-                                let source = null;
+                                let data = null;
                                 try {
-                                    source = new portMap[state.importFrom].source(null);
+                                    const source = new portMap[state.importFrom].source(null);
                                     const progress = v => {
                                         sum[i] = v;
                                         updateSum();
@@ -3927,28 +3927,35 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                     source.addHandler("progress", progress);
                                     await source.import(log);
                                     source.remHandler("progress", progress);
-                                    source = { pth: log, source: source };
-                                } catch (e) {}
+                                    data = { pth: pth, source: source };
+                                } catch (e) {
+                                    if (this.hasApp())
+                                        await this.app.doError("Source Import Error", pth, e);
+                                }
                                 sum[i] = 1;
                                 updateSum();
-                                return source;
+                                return data;
                             }))))
                             .filter(source => !!source);
                         [sum, a, b] = [[], 0.5, 1];
-                        const datas = (await Promise.all(sources.map(async (source, i) => {
+                        const datas = (await Promise.all(sources.map(async (data, i) => {
+                            const { pth, source } = data;
                             sum.push(0);
                             updateSum();
-                            let data = null;
+                            data = null;
                             try {
                                 const progress = v => {
                                     sum[i] = v;
                                     updateSum();
                                 };
-                                source.source.addHandler("progress", progress);
-                                data = await portMap[state.exportTo].source.export(source.source, state.ePrefixInput.value);
-                                source.source.remHandler("progress", progress);
-                                data = { pth: source.pth, source: source, data: data };
-                            } catch (e) {}
+                                source.addHandler("progress", progress);
+                                data = await portMap[state.exportTo].source.export(source, state.ePrefixInput.value);
+                                source.remHandler("progress", progress);
+                                data = { pth: pth, source: source, data: data };
+                            } catch (e) {
+                                if (this.hasApp())
+                                    await this.app.doError("Source Export Error", pth, e);
+                            }
                             sum[i] = 1;
                             updateSum();
                             return data;
