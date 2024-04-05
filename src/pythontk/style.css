@@ -15,10 +15,12 @@
 }
 
 #mount > .page {
-    padding: 10px;
+    padding: 30px;
+
+    background: var(--gradient);
 }
 
-#PAGE {
+#TITLEPAGE {
     overflow: auto !important;
 
     display: flex;
@@ -28,7 +30,7 @@
     align-items: stretch;
     align-content: center;
 }
-#PAGE > .title {
+#TITLEPAGE > .title {
     min-height: calc(100vh - var(--TOP));
 
     display: flex;
@@ -39,18 +41,20 @@
     align-content: center;
     gap: 10px;
 }
-#PAGE > .title > .super {
+#TITLEPAGE > .title > .super {
+    margin-top: -60px;
+
     color: var(--a);
 
     font-size: 20px;
 }
-#PAGE > .title > .main {
+#TITLEPAGE > .title > .main {
     color: var(--v8);
 
     font-size: 50px;
     font-weight: 500;
 }
-#PAGE > .title > .nav {
+#TITLEPAGE > .title > .nav {
     width: min(300px, 100%);
     margin-top: 40px;
 
@@ -60,42 +64,29 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 5px;
+    gap: 10px;
 }
-#PAGE > .title > .nav > button {
+#TITLEPAGE > .title > .nav > button {
     padding: 10px 30px;
 
     border-radius: 5px;
 
     font-size: 16px;
 }
-#PAGE > .title > button {
-    --bg: transparent;
-    --bgh: transparent;
-    --bgd: transparent;
 
-    padding: 10px;
-
+#DOCSPAGE {
     display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-
-    font-size: 32px;
-
-    pointer-events: auto;
-}
-#PAGE > .content {
-    display: flex;
-    flex-direction: column;
+    flex-direction: row;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    align-items: center;
+    align-items: stretch;
     align-content: center;
 }
-#PAGE > .content > article {
-    min-height: calc(100vh - var(--TOP));
-    max-width: min(calc(100vw - 100px), 750px);
+#DOCSPAGE > div {
+    min-width: 25%;
+    max-width: 25%;
+}
+#DOCSPAGE > article {
+    min-width: 75%;
+    max-width: 75%;
 }

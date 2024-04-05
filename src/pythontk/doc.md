@@ -1,10 +1,8 @@
-<h1 skip align="center">Documentation</h1>
+<h1 id="util">ptk.util</h1>
 
-<h1 s0 id="utils">Utils</h1>
+<h1 id="util.classes">Classes</h1>
 
-<h1 s1 id="utils.classes">Classes</h1>
-
-<h1 s2 id="utils.classes.Process">Class: <code>Process</code></h1>
+<h1 id="util.classes.Process">Class: <code>Process</code></h1>
 
 > Initiate one-way interprocess communications with a JS script
 
@@ -88,9 +86,9 @@ Updates all internal processes. Run this somewhat frequently within your program
 
 <br>
 
-<h1 s1 id="utils.methods">Methods</h1>
+<h1 id="util.methods">Methods</h1>
 
-<h1 s2 id="utils.methods.random_id">Method: <code>random_id</code></h1>
+<h1 id="util.methods.random_id">Method: <code>random_id</code></h1>
 
 **`random_id(l=10) -> str`**
 - `l` (`int`) - length of the output id
@@ -99,11 +97,11 @@ Generates a string of length `l` full of random alphanumeric characters. This in
 
 <br>
 
-<h1 s0 id="odom2d">Odometry2d</h1>
+<h1 s0 id="odom2d">ptk.Odometry2d</h1>
 
-<h1 s1 id="odom2d.classes">Classes</h1>
+<h1 id="odom2d.classes">Classes</h1>
 
-<h1 s2 id="odom2d.classes.Odometry2d">Class: <code>Odometry2d</code></h1>
+<h1 id="odom2d.classes.Odometry2d">Class: <code>Odometry2d</code></h1>
 
 *Child of `util.Process`*
 
@@ -168,7 +166,7 @@ Updates the superclass and also does periodic flashing of the existing robots. E
 
 <br>
 
-<h1 s2 id="odom2d.classes.Odometry2d.Robot">Class: <code>Odometry2d.Robot</code></h1>
+<h1 id="odom2d.classes.Odometry2d.Robot">Class: <code>Odometry2d.Robot</code></h1>
 
 > Robot of the Odometry2d display API
 
