@@ -1862,9 +1862,9 @@ const MAIN = async () => {
                     await WindowManager.fileWrite([root, "projects.json"], content);
                 },
                 "read": async (type, pth) => {
-                    if (type == "wpilog")
+                    if (["wpilog", "ds", "dslog", "dsevents"].includes(type))
                         return await WindowManager.fileReadRaw(pth);
-                    if (type == "csv")
+                    if (["csv", "csv-time", "csv-field"].includes(type))
                         return await WindowManager.fileRead(pth);
                     return null;
                 },

@@ -1,14 +1,10 @@
 import * as util from "../../util.mjs";
 import * as lib from "../../lib.mjs";
 
+import { HEADERSTRING, HEADERVERSION, CONTROLENTRY, CONTROLSTART, CONTROLFINISH, CONTROLMETADATA } from "./util.js";
 
-const HEADERSTRING = "WPILOG";
-const HEADERVERSION = 0x0100;
-const CONTROLENTRY = 0;
-const CONTROLSTART = 0;
-const CONTROLFINISH = 1;
-const CONTROLMETADATA = 2;
 
+// Rework of: https://github.com/Mechanical-Advantage/AdvantageScope/blob/main/src/hub/dataSources/wpilog/WPILOGDecoder.ts
 
 export default class WPILOGDecoder extends util.Target {
     #data;
@@ -56,10 +52,10 @@ export default class WPILOGDecoder extends util.Target {
     }
 
     build(callback) {
-        if (!this.isValid()) return;
+        if (!this.isValid()) throw new Error("Unsupported version: "+this.version);
         let extraHeaderL = this.dataView.getUint32(8, true);
         let x = 12 + extraHeaderL;
-        while (1) {
+        while (true) {
             if (this.data.length < x+4) break;
             let entryL = (this.data[x] & 0x3) + 1;
             let sizeL = ((this.data[x] >> 2) & 0x3) + 1;
@@ -70,10 +66,10 @@ export default class WPILOGDecoder extends util.Target {
             let size = this.#readInt(x+1+entryL, sizeL);
             let ts = this.#readInt(x+1+entryL+sizeL, tsL);
             if (this.data.length < x+headerL+size || entry < 0 || size < 0) break;
-            const record = new WPILOGDecoder.Record(
-                entry, ts,
-                this.data.subarray(x+headerL, x+headerL+size),
-            );
+            const record = new WPILOGDecoder.Record({
+                entryId: entry, ts: ts,
+                data: this.data.subarray(x+headerL, x+headerL+size),
+            });
             x += headerL+size;
             if (util.is(callback, "func"))
                 callback(record, x/this.data.byteLength);
@@ -86,26 +82,13 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     #data;
     #dataView;
 
-    constructor(...a) {
+    constructor(o) {
         super();
 
-        if (a.length <= 0 || [2].includes(a.length) || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof WPILOGDecoder.Record) a = [a.entryId, a.ts, a.data];
-            else if (util.is(a, "arr")) {
-                a = new WPILOGDecoder.Record(...a);
-                a = [a.entryId, a.ts, a.data];
-            }
-            else if (util.is(a, "obj")) a = [a.entryId, a.ts, a.data];
-            else a = [0, 0, null];
-        }
-
-        a[0] = util.ensure(a[0], "int");
-        a[1] = util.ensure(a[1], "num");
-        a[2] = util.toUint8Array(a[2]);
-
-        [this.#entryId, this.#ts, this.#data] = a;
+        o = util.ensure(o, "obj");
+        this.#entryId = util.ensure(o.entryId, "int");
+        this.#ts = util.ensure(o.ts, "num");
+        this.#data = util.toUint8Array(o.data);
 
         this.#dataView = new DataView(this.data.buffer.slice(this.data.byteOffset, this.data.byteOffset+this.data.byteLength));
     }
@@ -208,14 +191,6 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         return {
             str: lib.TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
             shift: 4+l,
-        };
-    }
-
-    toJSON() {
-        return {
-            entryId: this.entryId,
-            ts: this.ts,
-            data: [...this.data],
         };
     }
 };

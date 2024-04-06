@@ -1,14 +1,10 @@
 import * as util from "../../util.mjs";
 import * as lib from "../../lib.mjs";
 
+import { HEADERSTRING, HEADERVERSION, CONTROLENTRY, CONTROLSTART, CONTROLFINISH, CONTROLMETADATA } from "./util.js";
 
-const HEADERSTRING = "WPILOG";
-const HEADERVERSION = 0x0100;
-const CONTROLENTRY = 0;
-const CONTROLSTART = 0;
-const CONTROLFINISH = 1;
-const CONTROLMETADATA = 2;
 
+// Rework of: https://github.com/Mechanical-Advantage/AdvantageScope/blob/main/src/hub/dataSources/wpilog/WPILOGEncoder.ts
 
 export default class WPILOGEncoder extends util.Target {
     #extraHeader;
@@ -94,26 +90,13 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
     #ts;
     #data;
 
-    constructor(...a) {
+    constructor(o) {
         super();
 
-        if (a.length <= 0 || [2].includes(a.length) || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof WPILOGEncoder.Record) a = [a.entryId, a.ts, a.data];
-            else if (util.is(a, "arr")) {
-                a = new WPILOGEncoder.Record(...a);
-                a = [a.entryId, a.ts, a.data];
-            }
-            else if (util.is(a, "obj")) a = [a.entryId, a.ts, a.data];
-            else a = [0, 0, null];
-        }
-
-        a[0] = util.ensure(a[0], "int");
-        a[1] = util.ensure(a[1], "num");
-        a[2] = util.toUint8Array(a[2]);
-
-        [this.#entryId, this.#ts, this.#data] = a;
+        o = util.ensure(o, "obj");
+        this.#entryId = util.ensure(o.entryId, "int");
+        this.#ts = util.ensure(o.ts, "num");
+        this.#data = util.toUint8Array(o.data);
     }
 
     get entryId() { return this.#entryId; }
@@ -167,7 +150,10 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
 
         return this.makeRaw(CONTROLENTRY, ts, data);
     }
-    static makeRaw(entry, ts, data) { return new WPILOGEncoder.Record(entry, ts, data); }
+    static makeRaw(entry, ts, data) { return new WPILOGEncoder.Record({
+        entryId: entry,
+        ts: ts, data: data,
+    }); }
     static makeBool(entry, ts, v) {
         let data = new Uint8Array(1);
         data[0] = v ? 1 : 0;
@@ -270,13 +256,5 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
         arr.set(ts, 1+entry.length+payloadSize.length);
         arr.set(this.data, 1+entry.length+payloadSize.length+ts.length);
         return arr;
-    }
-
-    toJSON() {
-        return {
-            entryId: this.entryId,
-            ts: this.ts,
-            data: [...this.data],
-        };
     }
 };
