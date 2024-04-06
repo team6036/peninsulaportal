@@ -2592,7 +2592,7 @@ const MAIN = async () => {
                 app.dock.setMenu(electron.Menu.buildFromTemplate([
                     {
                         label: "Features...",
-                        submenu: ["PANEL", "PLANNER", "DATABASE", "PIT"].map((name, i) => {
+                        submenu: ["PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"].map((name, i) => {
                             return {
                                 label: lib.getName(name),
                                 accelerator: "CmdOrCtrl+"+(i+1),
