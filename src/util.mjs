@@ -61,13 +61,25 @@ Array.prototype.any = function(f=null) {
 };
 
 
+function isNum(o) {
+    if (typeof(o) == "number")
+        return !Number.isNaN(o) && Number.isFinite(o);
+    return typeof(o) == "bigint";
+}
+function isInt(o) {
+    if (typeof(o) == "number")
+        return !Number.isNaN(o) && Number.isFinite(o) && (o%1 == 0);
+    return typeof(o) == "bigint";
+}
+function isAnyNum(o) {
+    if (typeof(o) == "number")
+        return !Number.isNaN(o);
+    return typeof(o) == "bigint";
+}
 export function is(o, type) {
-    if (type == "num" || type == "float")
-        return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o);
-    if (type == "int")
-        return (typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o % 1 == 0);
-    if (type == "any_num")
-        return (typeof(o) == "number") && !Number.isNaN(o);
+    if (type == "num" || type == "float") return isNum(o);
+    if (type == "int") return isInt(o);
+    if (type == "any_num") return isAnyNum(o);
     let typefs = {
         bool: () => {
             return typeof(o) == "boolean";
@@ -106,11 +118,11 @@ export function ensure(o, type) {
     let useDef = arguments.length != 3;
     let def = arguments[2];
     if (type == "num" || type == "float")
-        return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? o : useDef ? 0 : def;
+        return isNum(o) ? Number(o) : useDef ? 0 : def;
     if (type == "int")
-        return ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) ? Math.round(o) : useDef ? 0 : def;
+        return isNum(o) ? Math.round(Number(o)) : useDef ? 0 : def;
     if (type == "any_num")
-        return ((typeof(o) == "number") && !Number.isNaN(o)) ? o : useDef ? 0 : def;
+        return isAnyNum(o) ? Number(o) : useDef ? 0 : def;
     let typefs = {
         bool: () => {
             return !!o;
@@ -320,7 +332,7 @@ export function generatePath(...path) { return generateArrayPath(...path).join("
 
 export function toUint8Array(v) {
     if (v instanceof Uint8Array) return v;
-    if (is(v, "str")) return lib.TEXTENCODER.encode(v);
+    if (is(v, "str")) return new TextEncoder().encode(v);
     try {
         return Uint8Array.from(v);
     } catch (e) {}

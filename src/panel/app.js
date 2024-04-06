@@ -3628,13 +3628,13 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             sum.push(0);
                             let source = null;
                             try {
-                                source = new WPILOGSource(null);
+                                source = new WPILOGSource();
                                 const progress = v => {
                                     sum[i] = v;
                                     updateSum();
                                 };
                                 source.addHandler("progress", progress);
-                                await source.import(log);
+                                await source.importFrom(log);
                                 source.remHandler("progress", progress);
                             } catch (e) {}
                             sum[i] = 1;
@@ -3658,7 +3658,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 sources: sources.map(source => source.toSerialized()),
                             });
                         });
-                        const source = new WPILOGSource(null);
+                        const source = new WPILOGSource();
                         source.fromSerialized(sourceData);
                         progress(null);
                         const result = util.ensure(await App.fileSaveDialog({
@@ -3927,7 +3927,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                         updateSum();
                                     };
                                     source.addHandler("progress", progress);
-                                    await source.import(log);
+                                    await source.importFrom(pth);
                                     source.remHandler("progress", progress);
                                     data = { pth: pth, source: source };
                                 } catch (e) {
@@ -8955,7 +8955,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         const progress = v => (this.app.progress = v);
                         source.addHandler("progress", progress);
                         const t0 = util.getTime();
-                        await source.import(file);
+                        await source.importFrom(file);
                         const t1 = util.getTime();
                         console.log(t1-t0);
                         source.remHandler("progress", progress);
@@ -9345,7 +9345,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 else if (!(this.source instanceof constructor)) {
                     this.source = {
                         nt: () => new NTSource(null),
-                        wpilog: () => new WPILOGSource(null),
+                        wpilog: () => new WPILOGSource(),
                         "csv-time": () => new CSVTimeSource(null),
                         "csv-field": () => new CSVFieldSource(null),
                     }[this.project.config.sourceType]();
@@ -9714,8 +9714,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             (this.source instanceof CSVTimeSource) ||
             (this.source instanceof CSVFieldSource)
         ) {
-            if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
-            if (this.source.importing) return "Importing from "+this.source.shortFile;
+            // if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
+            // if (this.source.importing) return "Importing from "+this.source.shortFile;
             return this.source.shortFile;
         }
         return "Unknown source: "+this.source.constructor.name;
@@ -9759,7 +9759,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 },
                 {
                     name: "State",
-                    value: ((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
+                    // value: ((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
+                    value: "TEMP",
                     icon: "cube-outline",
                 },
             );
