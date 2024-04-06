@@ -2,11 +2,9 @@ import * as util from "../util.mjs";
 import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
-import { toUint8Array } from "./source.js";
-
 
 function Uint82BoolArray(v) {
-    v = toUint8Array(v);
+    v = util.toUint8Array(v);
     let arr = [];
     v.forEach(v => {
         for (let i = 0; i < 8; i++)
@@ -293,7 +291,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
         return output;
     }
     splitData(data) {
-        data = toUint8Array(data);
+        data = util.toUint8Array(data);
         let datas = [];
         let patternL = this.length / 8;
         let l = data.length / patternL;
@@ -303,7 +301,7 @@ StructHelper.Pattern = class StructHelperPattern extends util.Target {
     }
 
     static decodeData(data, type, enums) {
-        data = toUint8Array(data);
+        data = util.toUint8Array(data);
         type = String(type);
         enums = (enums == null) ? null : util.ensure(enums, "obj");
         if (!StructHelper.TYPES.includes(type)) throw new Error(`Invalid type '${type}'`);

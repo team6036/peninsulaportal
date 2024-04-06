@@ -4,16 +4,6 @@ import * as lib from "../lib.mjs";
 import StructHelper from "./struct-helper.js";
 
 
-export function toUint8Array(v) {
-    if (v instanceof Uint8Array) return v;
-    if (util.is(v, "str")) return lib.TEXTENCODER.encode(v);
-    try {
-        return Uint8Array.from(v);
-    } catch (e) {}
-    return new Uint8Array();
-}
-
-
 export default class Source extends util.Target {
     #fields;
     #tree;
@@ -165,7 +155,7 @@ export default class Source extends util.Target {
         path = util.generatePath(path);
         type = String(type);
         array = !!array;
-        v = toUint8Array(v);
+        v = util.toUint8Array(v);
         ts = util.ensure(ts, "num");
         if (!this.hasField(path)) return null;
         const field = this.getField(path);
@@ -198,7 +188,7 @@ export default class Source extends util.Target {
     createStruct(name, data) {
         name = String(name);
         if (this.structHelper.hasPattern(name)) return false;
-        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, lib.TEXTDECODER.decode(toUint8Array(data))));
+        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, lib.TEXTDECODER.decode(util.toUint8Array(data))));
         pattern.build();
         return pattern;
     }
@@ -231,7 +221,7 @@ export default class Source extends util.Target {
             decode.path = util.generatePath(decode.path);
             decode.type = String(decode.type);
             decode.array = !!decode.array;
-            decode.v = toUint8Array(decode.v);
+            decode.v = util.toUint8Array(decode.v);
             decode.ts = util.ensure(decode.ts, "num");
             return decode;
         });
@@ -302,7 +292,7 @@ Source.Field = class SourceField {
             t = t.slice(0, -2);
             return util.ensure(v, "arr").map(v => Source.Field.ensureType(t, v));
         }
-        if (t == "structschema") return toUint8Array(v);
+        if (t == "structschema") return util.toUint8Array(v);
         return v;
     }
 

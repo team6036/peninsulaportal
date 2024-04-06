@@ -4,7 +4,6 @@ import * as lib from "../../lib.mjs";
 import { WorkerClient } from "../../worker.js";
 
 import Source from "../source.js";
-import { toUint8Array } from "../source.js";
 
 
 export default class WPILOGSource extends Source {
@@ -20,7 +19,7 @@ export default class WPILOGSource extends Source {
 
     get data() { return this.#data; }
     set data(v) {
-        v = (v == null) ? null : toUint8Array(v);
+        v = (v == null) ? null : util.toUint8Array(v);
         if (this.data == v) return;
         this.#data = v;
     }

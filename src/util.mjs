@@ -6,6 +6,21 @@ export const ALPHABETLOWER = ALPHABETUPPER.toLowerCase();
 export const ALPHABETALL = ALPHABETLOWER+ALPHABETUPPER;
 export const BASE16 = NUMBERS+ALPHABETLOWER.slice(0, 6);
 export const BASE64 = NUMBERS+ALPHABETALL+"-_";
+export const BASE256 = [
+    ...BASE64.split("").map(c => c.charCodeAt(0)),
+    192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,
+    208,209,210,211,212,213,214,216,217,218,219,220,221,222,223,224,
+    225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,
+    241,242,243,244,245,246,248,249,250,251,252,253,254,255,256,257,
+    258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,
+    274,275,276,277,278,279,280,281,282,283,284,285,286,287,288,289,
+    290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,
+    306,307,308,309,310,311,312,313,314,315,316,317,318,319,320,321,
+    322,323,324,325,326,327,328,329,330,331,332,333,334,335,336,337,
+    338,339,340,341,342,343,344,345,346,347,348,349,350,351,352,353,
+    354,355,356,357,358,359,360,361,362,363,364,365,366,367,368,369,
+    370,371,372,373,374,375,376,377,378,379,380,381,382,383,384,385,
+].map(c => String.fromCharCode(c)).join("");
 export const VARIABLE = NUMBERS+ALPHABETALL+"_";
 
 export const MAGIC = "_*[[;ƒ";
@@ -302,6 +317,25 @@ export async function timeout(t, v) {
 
 export function generateArrayPath(...path) { return path.flatten().join("/").split("/").filter(part => part.length > 0); }
 export function generatePath(...path) { return generateArrayPath(...path).join("/"); }
+
+export function toUint8Array(v) {
+    if (v instanceof Uint8Array) return v;
+    if (is(v, "str")) return lib.TEXTENCODER.encode(v);
+    try {
+        return Uint8Array.from(v);
+    } catch (e) {}
+    return new Uint8Array();
+}
+export function encodeUint8Array(v) {
+    v = toUint8Array(v);
+    return Array.from(new Array(v.length).keys()).map(i => BASE256[v[i]]).join("");
+}
+export function decodeUint8Array(v) {
+    v = String(v);
+    let out = new Uint8Array(v.length);
+    for (let i = 0; i < v.length; i++) out[i] = BASE256.indexOf(v[i]);
+    return out;
+}
 
 export function compareStr(s1, s2) {
     s1 = String(s1).toLowerCase();
