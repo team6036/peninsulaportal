@@ -5212,6 +5212,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             log.v.push(node.field.isNumerical ? v.execExpr(stop) : stop);
                         }
                         if (node.field.isNumerical)
+                            // TODO: fix performance
                             log.v = log.v.map(v2 => {
                                 v2 = v.execExpr(v2);
                                 if (subrange[0] == null) subrange[0] = v2;
@@ -5220,6 +5221,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 else subrange[1] = Math.max(subrange[1], v2);
                                 return v2;
                             });
+                            // end todo
                         if (log.length <= 0) return v.disable();
                         logs[v.path] = log;
                         ranges[v.path] = subrange;
@@ -5347,6 +5349,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         nDiscrete++;
                         return;
                     }
+                    // TODO: fix performance
                     const ranges = [];
                     for (let i = 0; i < log.n; i++) {
                         let ts = log.ts[i], v = log.v[i];
@@ -5361,6 +5364,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             }
                         } else ranges.push({ x: x, r: [v, v], v: v });
                     }
+                    // end todo
                     ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color) : v.color : "#fff";
                     ctx.lineWidth = 1*quality;
                     ctx.lineJoin = "round";
