@@ -5,10 +5,12 @@ import * as lib from "../lib.mjs";
 import * as core from "../core.mjs";
 
 import Source from "../sources/source.js";
+import HistoricalSource from "../sources/historical-source.js";
 import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
 import CSVTimeSource from "../sources/csv/time/source.js";
 import CSVFieldSource from "../sources/csv/field/source.js";
+
 import { WorkerClient } from "../worker.js";
 
 
@@ -8934,11 +8936,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 else this.source.disconnect();
                 return;
             }
-            if (
-                (this.source instanceof WPILOGSource) ||
-                (this.source instanceof CSVTimeSource) ||
-                (this.source instanceof CSVFieldSource)
-            ) {
+            if (this.source instanceof HistoricalSource) {
                 if (this.source.importing) return;
                 if (this.project.config.source == null) return;
                 (async () => {
@@ -9422,11 +9420,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!on) this.app.eProjectInfoActionBtn.classList.add("off");
                 else this.app.eProjectInfoActionBtn.classList.remove("off");
                 this.app.eProjectInfoActionBtn.textContent = on ? "Connect" : "Disconnect";
-            } else if (
-                (this.source instanceof WPILOGSource) ||
-                (this.source instanceof CSVTimeSource) ||
-                (this.source instanceof CSVFieldSource)
-            ) {
+            } else if (this.source instanceof HistoricalSource) {
                 this.app.eProjectInfoActionBtn.disabled = this.source.importing;
             }
 
@@ -9439,11 +9433,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     let on = !this.source.connecting && !this.source.connected;
                     itm.enabled = true;
                     itm.label = on ? "Connect" : "Disconnect";
-                } else if (
-                    (this.source instanceof WPILOGSource) ||
-                    (this.source instanceof CSVTimeSource) ||
-                    (this.source instanceof CSVFieldSource)
-                ) {
+                } else if (this.source instanceof HistoricalSource) {
                     itm.enabled = true;
                     itm.label = "Import";
                 }
@@ -9707,11 +9697,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.source.connecting) return "Connecting to "+this.source.address;
             return this.source.address;
         }
-        if (
-            (this.source instanceof WPILOGSource) ||
-            (this.source instanceof CSVTimeSource) ||
-            (this.source instanceof CSVFieldSource)
-        ) {
+        if (this.source instanceof HistoricalSource) {
             if (this.source.importing) return "Importing from "+this.source.shortFile;
             if (this.source.fieldObjects.length <= 0) return "Nothing imported";
             return this.source.shortFile;
