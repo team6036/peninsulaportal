@@ -8943,7 +8943,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (this.project.config.source == null) return;
                 (async () => {
                     const source = this.source;
-                    source.importing = true;
                     this.app.progress = 0;
                     try {
                         let file = this.project.config.source;
@@ -8969,7 +8968,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         }[source.constructor.name]+" Load Error", "File: "+this.project.config.source, e);
                     }
                     this.app.progress = null;
-                    delete source.importing;
                 })();
                 return;
             }
@@ -9714,8 +9712,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             (this.source instanceof CSVTimeSource) ||
             (this.source instanceof CSVFieldSource)
         ) {
-            // if (!this.source.importing && !this.source.hasData()) return "Nothing imported";
-            // if (this.source.importing) return "Importing from "+this.source.shortFile;
+            if (this.source.importing) return "Importing from "+this.source.shortFile;
+            if (this.source.fieldObjects.length <= 0) return "Nothing imported";
             return this.source.shortFile;
         }
         return "Unknown source: "+this.source.constructor.name;
@@ -9759,7 +9757,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 },
                 {
                     name: "State",
-                    // value: ((!this.source.importing && !this.source.hasData()) ? "Not imported" : (this.source.importing) ? "Importing" : "Imported"),
+                    value: (this.source.importing ? "Not imported" : (this.source.fieldObjects.length <= 0) ? "Importing" : "Imported"),
                     value: "TEMP",
                     icon: "cube-outline",
                 },
