@@ -5,7 +5,7 @@ import { WorkerBase } from "../../../worker.js";
 
 import CSVEncoder from "../encoder.js";
 
-import Source, { toUint8Array } from "../../source.js";
+import Source from "../../source.js";
 
 
 class CSVTimeEncoderWorker extends WorkerBase {
@@ -38,7 +38,7 @@ class CSVTimeEncoderWorker extends WorkerBase {
                     for (let j = 0; j < logsN; j++) {
                         this.progress(util.lerp(0, 0.5, (i + j/logsN)/fields.length));
                         let ts = logsTS[j], v = logsV[j];
-                        if (field.type == "structschema" || field.isStruct) v = [...toUint8Array(v)];
+                        if (field.type == "structschema" || field.isStruct) v = [...util.toUint8Array(v)];
                         grid[2+tsArr.indexOf(ts)][1+i] = JSON.stringify(v);
                     }
                 });

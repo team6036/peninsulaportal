@@ -1,8 +1,6 @@
 import * as util from "../../util.mjs";
 import * as lib from "../../lib.mjs";
 
-import { toUint8Array } from "../source.js";
-
 
 const HEADERSTRING = "WPILOG";
 const HEADERVERSION = 0x0100;
@@ -19,7 +17,7 @@ export default class WPILOGDecoder extends util.Target {
     constructor(data) {
         super();
 
-        this.#data = toUint8Array(data);
+        this.#data = util.toUint8Array(data);
         this.#dataView = new DataView(this.data.buffer);
     }
 
@@ -105,7 +103,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
 
         a[0] = util.ensure(a[0], "int");
         a[1] = util.ensure(a[1], "num");
-        a[2] = toUint8Array(a[2]);
+        a[2] = util.toUint8Array(a[2]);
 
         [this.#entryId, this.#ts, this.#data] = a;
 

@@ -5,7 +5,7 @@ import { WorkerBase } from "../../../worker.js";
 
 import CSVDecoder from "../decoder.js";
 
-import Source, { toUint8Array } from "../../source.js";
+import Source from "../../source.js";
 
 
 class CSVTimeDecoderWorker extends WorkerBase {
@@ -51,7 +51,7 @@ class CSVTimeDecoderWorker extends WorkerBase {
                         if (!util.is(ts, "num")) continue;
                         let v = grid[j][i];
                         if (v == null) continue;
-                        if (field.type == "structschema" || field.isStruct) v = toUint8Array(v);
+                        if (field.type == "structschema" || field.isStruct) v = util.toUint8Array(v);
                         field.update(v, ts);
                         if (first) {
                             first = false;
