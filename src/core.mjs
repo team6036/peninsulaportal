@@ -648,22 +648,9 @@ export class App extends util.Target {
         if (v) {
             window.app = this;
             window.util = util;
-            window.colors = () => {
-                "roygbpm_".split("").forEach(c => {
-                    let out = [new Array(9).fill("%c...").join("")];
-                    for (let i = 0; i <= 8; i++) {
-                        let rgb;
-                        if (c == "_") rgb = PROPERTYCACHE.get("--v"+i);
-                        else rgb = PROPERTYCACHE.get("--c"+c+i);
-                        out.push("padding:10px;background:"+rgb+";");
-                    }
-                    console.log(...out);
-                });
-            };
         } else { 
             delete window.app;
             delete window.util;
-            delete window.colors;
         }
         let itm = this.menu.getItemById("toggledevtools");
         if (!itm) return;
