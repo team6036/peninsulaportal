@@ -45,6 +45,11 @@ export function stringifyError(e, nl="") {
     if (lines[0] == lines[1]) lines.shift();
     return lines.map(line => nl+line).join("\n");
 }
+export function getStack() {
+    try {
+        throw new Error("stack-get");
+    } catch (e) { return e.stack; }
+}
 
 export function search(items, keys, query) {
     items = util.ensure(items, "arr");

@@ -337,13 +337,31 @@ export function decodeUint8Array(v) {
     return out;
 }
 
+function splitString(s) {
+    let parts = [];
+    for (let i = 0; i < s.length; i++) {
+        let c = s[i];
+        if (NUMBERS.includes(c)) {
+            c = NUMBERS.indexOf(c);
+            if (typeof(parts.at(-1)) != "number") parts.push(c);
+            else parts[parts.length-1] = parts[parts.length-1]*10 + c;
+            continue;
+        }
+        if (typeof(parts.at(-1)) != "string") parts.push(c);
+        else parts[parts.length-1] += c;
+    }
+    return parts;
+}
 export function compareStr(s1, s2) {
     s1 = String(s1).toLowerCase();
     s2 = String(s2).toLowerCase();
-    if (is(parseInt(s1), "int") && is(parseInt(s2), "int")) return s1 - s2;
-    if (s1 < s2) return -1;
-    if (s1 > s2) return +1;
-    return 0;
+    let s1parts = splitString(s1);
+    let s2parts = splitString(s2);
+    for (let i = 0; i < Math.min(s1parts.length, s2parts.length); i++) {
+        if (s1parts[i] < s2parts[i]) return -1;
+        if (s1parts[i] > s2parts[i]) return +1;
+    }
+    return s1parts.length-s2parts.length;
 }
 
 export function choose(source) {
