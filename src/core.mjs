@@ -7077,6 +7077,7 @@ export class Explorer extends util.Target {
         return this.#nodes[name];
     }
     add(...nodes) {
+        let rr = false;
         let r = util.Target.resultingForEach(nodes, node => {
             if (!(node instanceof Explorer.Node)) return false;
             if (this.has(node)) return false;
@@ -7089,12 +7090,14 @@ export class Explorer extends util.Target {
             node.addLinkedHandler(this, "drag", (e, path) => this.post("drag", e, path));
             this.elem.appendChild(node.elem);
             node.onAdd();
+            rr = true;
             return node;
         });
-        this.format();
+        if (rr) this.format();
         return r;
     }
     rem(...nodes) {
+        let rr = false;
         let r = util.Target.resultingForEach(nodes, node => {
             if (!(node instanceof Explorer.Node)) return false;
             if (!this.has(node)) return false;
@@ -7105,9 +7108,10 @@ export class Explorer extends util.Target {
             node.clearLinkedHandlers(this, "trigger");
             node.clearLinkedHandlers(this, "drag");
             this.elem.removeChild(node.elem);
+            rr = true;
             return node;
         });
-        this.format();
+        if (rr) this.format();
         return r;
     }
     lookup(path) {
@@ -7163,6 +7167,8 @@ Explorer.Node = class ExplorerNode extends util.Target {
     #eValue;
     #eSide;
 
+    static EXPLORER = Explorer;
+
     static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc=null) {
         let nodeMap = {}, enodeMap = {};
         util.ensure(nodeArr, "arr").forEach(node => {
@@ -7210,7 +7216,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
     constructor(name, info) {
         super();
 
-        this.#explorer = new Explorer();
+        this.#explorer = new this.constructor.EXPLORER();
         this.explorer.addHandler("trigger", (e, path) => {
             path = util.generatePath(path);
             if (this.name.length > 0) path = this.name+"/"+path;

@@ -228,6 +228,8 @@ class FieldExplorer extends core.Explorer {
 FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     #canShowValue;
 
+    static EXPLORER = FieldExplorer;
+
     static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc=null) {
         return super.doubleTraverse(
             util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
