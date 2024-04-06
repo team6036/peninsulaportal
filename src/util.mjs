@@ -1136,15 +1136,6 @@ export class V extends Target {
         }
 
         [this.x, this.y] = a;
-
-        Object.defineProperty(this, "0", {
-            get: () => this.x,
-            set: v => (this.x = v),
-        });
-        Object.defineProperty(this, "1", {
-            get: () => this.y,
-            set: v => (this.y = v),
-        });
     }
 
     get length() { return 2; }
@@ -1273,6 +1264,14 @@ export class V extends Target {
         });
     }
 }
+Object.defineProperty(V.prototype, "0", {
+    get: function() { return this.x; },
+    set: function(v) { this.x = v; },
+});
+Object.defineProperty(V.prototype, "1", {
+    get: function() { return this.y; },
+    set: function(v) { this.y = v; },
+});
 
 export class V3 extends Target {
     #x; #y; #z;
@@ -1294,19 +1293,6 @@ export class V3 extends Target {
         if (a.length == 2) a = [...a, 0];
 
         [this.x, this.y, this.z] = a;
-
-        Object.defineProperty(this, "0", {
-            get: () => this.x,
-            set: v => (this.x = v),
-        });
-        Object.defineProperty(this, "1", {
-            get: () => this.y,
-            set: v => (this.y = v),
-        });
-        Object.defineProperty(this, "2", {
-            get: () => this.z,
-            set: v => (this.z = v),
-        });
     }
 
     get length() { return 3; }
@@ -1428,6 +1414,18 @@ export class V3 extends Target {
         });
     }
 }
+Object.defineProperty(V3.prototype, "0", {
+    get: function() { return this.x; },
+    set: function(v) { this.x = v; },
+});
+Object.defineProperty(V3.prototype, "1", {
+    get: function() { return this.y; },
+    set: function(v) { this.y = v; },
+});
+Object.defineProperty(V3.prototype, "2", {
+    get: function() { return this.z; },
+    set: function(v) { this.z = v; },
+});
 
 export class V4 extends Target {
     #w; #x; #y; #z;
@@ -1450,23 +1448,6 @@ export class V4 extends Target {
         if (a.length == 3) a = [0, ...a];
 
         [this.w, this.x, this.y, this.z] = a;
-
-        Object.defineProperty(this, "0", {
-            get: () => this.w,
-            set: v => (this.w = v),
-        });
-        Object.defineProperty(this, "1", {
-            get: () => this.x,
-            set: v => (this.x = v),
-        });
-        Object.defineProperty(this, "2", {
-            get: () => this.y,
-            set: v => (this.y = v),
-        });
-        Object.defineProperty(this, "3", {
-            get: () => this.z,
-            set: v => (this.z = v),
-        });
     }
 
     get length() { return 4; }
@@ -1577,6 +1558,22 @@ export class V4 extends Target {
         });
     }
 }
+Object.defineProperty(V4.prototype, "0", {
+    get: function() { return this.w; },
+    set: function(v) { this.w = v; },
+});
+Object.defineProperty(V4.prototype, "1", {
+    get: function() { return this.x; },
+    set: function(v) { this.x = v; },
+});
+Object.defineProperty(V4.prototype, "2", {
+    get: function() { return this.y; },
+    set: function(v) { this.y = v; },
+});
+Object.defineProperty(V4.prototype, "3", {
+    get: function() { return this.z; },
+    set: function(v) { this.z = v; },
+});
 
 export class Shape extends Target {
     get p() { return new V(); }
