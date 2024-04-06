@@ -1470,7 +1470,7 @@ export class App extends util.Target {
     }
     bindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
-        ["PANEL", "PLANNER", "DATABASE", "PIT"].forEach(name => {
+        ["PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"].forEach(name => {
             let itm = menu.getItemById("spawn:"+name);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
@@ -2620,7 +2620,7 @@ App.Menu = class AppMenu extends util.Target {
     static buildSpawnItems() {
         let itm = new App.Menu.Item("Features...");
         itm.id = "spawn";
-        ["PANEL", "PLANNER", "DATABASE", "PIT"].forEach((name, i) => {
+        ["PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"].forEach((name, i) => {
             let subitm = new App.Menu.Item(lib.getName(name));
             subitm.id = "spawn:"+name;
             subitm.accelerator = "CmdOrCtrl+"+(i+1);
