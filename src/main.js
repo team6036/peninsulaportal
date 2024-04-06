@@ -2407,7 +2407,7 @@ const MAIN = async () => {
                             data = String(data).replaceAll("\n", " ");
                             while (data.includes("  ")) data = data.replaceAll("  ", " ");
                             const ignoresWSChars = [];
-                            ignoresWSChars.push(...",.;:()[]{}".split(""));
+                            ignoresWSChars.push(...",.;:?()[]{}".split(""));
                             ignoresWSChars.push("==", "<", "<=", ">", ">=", "!=", "!");
                             ignoresWSChars.push("=>", "...");
                             const operators = ["+", "-", "/", "*", "**", "%", "^", "~", "&", "|", "<<", ">>", "&&", "||"];
