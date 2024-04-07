@@ -1712,6 +1712,7 @@ p-loading[type="bounce"] > div > div:last-child {
     
     text-align: center;
     font-size: 14px;
+    font-weight: 600;
 }
 .popup.core > .inner > .content {
     width: 100%;
