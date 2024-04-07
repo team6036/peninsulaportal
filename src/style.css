@@ -541,12 +541,25 @@ article.md a {
     text-decoration: none;
 }
 article.md blockquote {
+    --color: var(--v2);
+
     margin-left: 0px;
     margin-right: 0px;
     padding: 0px 16px;
 
     color: var(--v6);
-    border-left: 5px solid var(--v2);
+    border-left: 5px solid var(--color);
+}
+article.md blockquote > p.header {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    color: var(--color);
 }
 article.md code.hljs {
     background-color: var(--v2);
