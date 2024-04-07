@@ -593,6 +593,12 @@ article.md h5,
 article.md h6 {
     color: var(--v8);
 }
+article.md hr {
+    height: 2px;
+
+    background-color: var(--v4);
+    border: none;
+}
 article.md pre:not(:has(> code.hljs)) {
     padding: 15px;
 
