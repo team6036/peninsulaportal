@@ -6878,6 +6878,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             "length-units",
             [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }],
         ));
+        this.fUnitsLength1.mergeBottom = true;
         this.fUnitsLength1.addHandler("change-value", () => {
             if (!this.fUnitsLength1.hasValue()) return;
             this.lengthUnits = this.fUnitsLength1.value;
@@ -6887,6 +6888,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }],
         ));
         this.fUnitsLength2.showHeader = false;
+        this.fUnitsLength2.mergeTop = true;
         this.fUnitsLength2.addHandler("change-value", () => {
             if (!this.fUnitsLength2.hasValue()) return;
             this.lengthUnits = this.fUnitsLength2.value;
@@ -6911,6 +6913,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             "origin",
             [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }],
         ));
+        this.fOriginBlue.mergeBottom = true;
         this.fOriginBlue.addHandler("change-value", () => {
             if (!this.fOriginBlue.hasValue()) return;
             this.origin = this.fOriginBlue.value;
@@ -6924,6 +6927,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }],
         ));
         this.fOriginRed.showHeader = false;
+        this.fOriginRed.mergeTop = true;
         this.fOriginRed.addHandler("change-value", () => {
             if (!this.fOriginRed.hasValue()) return;
             this.origin = this.fOriginRed.value;
@@ -7565,6 +7569,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             "length-units",
             [{ value: "m", name: "Meters" }, { value: "cm", name: "Centimeters" }],
         ));
+        this.fUnitsLength1.mergeBottom = true;
         this.fUnitsLength1.addHandler("change-value", () => {
             if (!this.fUnitsLength1.hasValue()) return;
             this.lengthUnits = this.fUnitsLength1.value;
@@ -7574,6 +7579,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             [{ value: "yd", name: "Yards" }, { value: "ft", name: "Feet" }],
         ));
         this.fUnitsLength2.showHeader = false;
+        this.fUnitsLength2.mergeTop = true;
         this.fUnitsLength2.addHandler("change-value", () => {
             if (!this.fUnitsLength2.hasValue()) return;
             this.lengthUnits = this.fUnitsLength2.value;
@@ -7598,6 +7604,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             "origin",
             [{ value: "blue+", name: "+Blue" }, { value: "blue-", name: "-Blue" }],
         ));
+        this.fOriginBlue.mergeBottom = true;
         this.fOriginBlue.addHandler("change-value", () => {
             if (!this.fOriginBlue.hasValue()) return;
             this.odometry.origin = this.fOriginBlue.value;
@@ -7611,6 +7618,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             [{ value: "red+", name: "+Red" }, { value: "red-", name: "-Red" }],
         ));
         this.fOriginRed.showHeader = false;
+        this.fOriginRed.mergeTop = true;
         this.fOriginRed.addHandler("change-value", () => {
             if (!this.fOriginRed.hasValue()) return;
             this.odometry.origin = this.fOriginRed.value;

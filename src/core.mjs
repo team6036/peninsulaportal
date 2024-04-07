@@ -5872,8 +5872,8 @@ export class Odometry3d extends Odometry {
                 [[0, 10, 0], [0, 0, 0], 0xffffff],
                 // [[+5, 10, 0], [+2, 0, 0], 0xffffff],
                 // [[-5, 10, 0], [-2, 0, 0], 0xffffff],
-                [[+5, 10, 0], [+5, 0, 0], 0xff0000],
-                [[-5, 10, 0], [-5, 0, 0], 0x0000ff],
+                [[+5, 10, 0], [+5, 0, 0], 0x0000ff],
+                [[-5, 10, 0], [-5, 0, 0], 0xff0000],
             ];
             for (const [[x0, y0, z0], [x1, y1, z1], color] of data) {
                 const light = new THREE.SpotLight(color, 150, 0, 60*(Math.PI/180), 0.25, 2);
@@ -8454,6 +8454,8 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
 };
 Form.SelectInput = class FormSelectInput extends Form.EnumInput {
     #useOutline;
+    #mergeTop;
+    #mergeBottom;
 
     constructor(name, values, value) {
         super(name, values, value);
@@ -8461,7 +8463,11 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
         this.elem.classList.add("select");
 
         this.#useOutline = null;
+        this.#mergeTop = null;
+        this.#mergeBottom = null;
         this.useOutline = true;
+        this.mergeTop = false;
+        this.mergeBottom = false;
 
         this.addHandler("change-disabled", () => {
             for (let btn of this.eContent.children)
@@ -8491,7 +8497,18 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
     get useOutline() { return this.#useOutline; }
     set useOutline(v) {
         this.#useOutline = !!v;
-        this.eContent.style.setProperty("--use-o", +this.useOutline);
+        this.elem.style.setProperty("--use-o", +this.useOutline);
+    }
+
+    get mergeTop() { return this.#mergeTop; }
+    set mergeTop(v) {
+        this.#mergeTop = !!v;
+        this.elem.style.setProperty("--merge-t", +this.mergeTop);
+    }
+    get mergeBottom() { return this.#mergeBottom; }
+    set mergeBottom(v) {
+        this.#mergeBottom = !!v;
+        this.elem.style.setProperty("--merge-b", +this.mergeBottom);
     }
 };
 Form.BooleanInput = class FormBooleanInput extends Form.Field {

@@ -1833,9 +1833,9 @@
     gap: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .form {
-    padding: 0px;
+    --gap: 5px;
 
-    gap: 5px;
+    padding: 0px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section > .form > .item > .header {
     font-size: 12px;
