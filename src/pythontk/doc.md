@@ -51,7 +51,8 @@ Attempts to start the internal process. Will return `False` if there exists an i
 
 Attempts to kill the internal process. Will return `False` if there doesn't exists an internal (based on `process.has_active_pipe`) or an error occured when killing the process. Will return `True` if the process died successfully.  
 
-*Note: this method is run when the object is out of scope, aka the `__del__` dunder method is called, to avoid memory leaks*
+> [!NOTE]
+> This method is run when the object is out of scope, aka the `__del__` dunder method is called, to avoid memory leaks*
 
 **`process.update_process()` → `bool`**
 
@@ -65,11 +66,16 @@ Attempts to open the IPC pipe. Will return `False` if there exists an open pipe 
 
 Attempts to close the IPC pipe. Will return `False` if there doesn't exists an open pipe (based on `process.has_active_pipe`) or an error occured when closing. Will return `True` if the pipe closed successfully.  
 
-*Note: this method is run when the object is out of scope, aka the `__del__` dunder method is called, to avoid memory leaks*
+> [!NOTE]
+> This method is run when the object is out of scope, aka the `__del__` dunder method is called, to avoid memory leaks
 
 **`process.update_pipe()` → `bool`**
 
 Runs the automatic pipe reopen if necessary. Using an internal timer, every second, it will check whether or not the pipe has closed. If so, it will attempt to reopen it. Will return `True` if an attempted reopen was done, and `False` otherwise.
+
+**`process.update_pipe_poll()` → `bool`**
+
+Runs the automatic pipe polling if possible. Using an internal timer, every 0.5s, it send a `"poll"` message packet through the pipe. Returns `True` if attempted poll, and `False` otherwise.
 
 **`process.queue(data)` → `bool`**
 - `data` (`any`) - the queued data packet
@@ -134,14 +140,16 @@ Checks whether or not `robot` exists in the robot list.
 
 Adds the robots to the robot list if possible.  
 
-*Note: attempting to use `odometry.robots.append(robot)` will not work*
+> [!IMPORTANT]
+> Attempting to use `odometry.robots.append(robot)` will not work*
 
 **`odometry.remove(*robots)` → `None`**
 - `robots` (`list[Odometry2d.Robot]`) - the arguments passed in, which must all be robots
 
 Removes the robots from the robot list if possible.  
 
-*Note: attempting to use `odometry.robots.remove(robot)` will not work*
+> [!IMPORTANT]
+> Attempting to use `odometry.robots.remove(robot)` will not work*
 
 **`odometry.queue_command(name, *a)` → `bool`**
 - `name` (`str`) - the command name to be sent
