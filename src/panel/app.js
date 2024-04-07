@@ -3923,7 +3923,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 updateSum();
                                 let data = null;
                                 try {
-                                    const source = new portMap[state.importFrom].source(null);
+                                    const source = new portMap[state.importFrom].source();
                                     const progress = v => {
                                         sum[i] = v;
                                         updateSum();
@@ -9343,8 +9343,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     this.source = {
                         nt: () => new NTSource(null),
                         wpilog: () => new WPILOGSource(),
-                        "csv-time": () => new CSVTimeSource(null),
-                        "csv-field": () => new CSVFieldSource(null),
+                        "csv-time": () => new CSVTimeSource(),
+                        "csv-field": () => new CSVFieldSource(),
                     }[this.project.config.sourceType]();
                 } else {
                     let typefs = {

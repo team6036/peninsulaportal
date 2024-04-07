@@ -7,7 +7,6 @@ import StructHelper from "./struct-helper.js";
 export default class Source extends util.Target {
     #fields;
     #tree;
-    #buildTree;
 
     #ts;
     #tsMin;
@@ -18,12 +17,11 @@ export default class Source extends util.Target {
 
     #playback;
 
-    constructor(buildTree=true) {
+    constructor() {
         super();
 
         this.#fields = {};
         this.#tree = new Source.Node(this, "");
-        this.#buildTree = !!buildTree;
 
         this.#ts = 0;
         this.#tsMin = this.#tsMax = 0;
@@ -66,18 +64,16 @@ export default class Source extends util.Target {
             if (field.source != this) return false;
             if (this.hasField(field)) return false;
             this.#fields[field.path] = field;
-            if (this.buildTree) {
-                let path = field.path.split("/");
-                let node = this.tree;
-                while (path.length > 0) {
-                    let name = path.shift();
-                    if (!node.hasNode(name))
-                        node.addNode(new Source.Node(node, name));
-                    node = node.getNode(name);
-                }
-                node.field = field;
-                field.node = node;
+            let path = field.path.split("/");
+            let node = this.tree;
+            while (path.length > 0) {
+                let name = path.shift();
+                if (!node.hasNode(name))
+                    node.addNode(new Source.Node(node, name));
+                node = node.getNode(name);
             }
+            node.field = field;
+            field.node = node;
             return field;
         });
     }
@@ -87,29 +83,26 @@ export default class Source extends util.Target {
             if (field.source != this) return false;
             if (!this.hasField(field)) return false;
             delete this.#fields[field.path];
-            if (this.buildTree) {
-                let path = field.path.split("/").filter(part => part.length > 0);
-                let node = this.tree;
-                while (path.length > 0) {
-                    let name = path.shift();
-                    if (!node.hasNode(name)) {
-                        node = null;
-                        break;
-                    }
-                    node = node.getNode(name);
+            let path = field.path.split("/").filter(part => part.length > 0);
+            let node = this.tree;
+            while (path.length > 0) {
+                let name = path.shift();
+                if (!node.hasNode(name)) {
+                    node = null;
+                    break;
                 }
-                if (node instanceof Source.Node && node.parent instanceof Source.Node)
-                    node.parent.remNode(node);
-                if (node instanceof Source.Node)
-                    node.field = null;
-                field.node = null;
+                node = node.getNode(name);
             }
+            if (node instanceof Source.Node && node.parent instanceof Source.Node)
+                node.parent.remNode(node);
+            if (node instanceof Source.Node)
+                node.field = null;
+            field.node = null;
             return field;
         });
     }
 
     get tree() { return this.#tree; }
-    get buildTree() { return this.#buildTree; }
 
     get ts() { return this.#ts; }
     set ts(v) { this.#ts = Math.min(this.tsMax, Math.max(this.tsMin, util.ensure(v, "num"))); }

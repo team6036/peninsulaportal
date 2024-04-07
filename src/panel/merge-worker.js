@@ -47,7 +47,7 @@ class MergeWorker extends WorkerBase {
                         existing.add(pth);
                     });
                 });
-                const outputSource = new Source(false);
+                const outputSource = new Source();
                 sources.forEach((source, i) => {
                     let fields = source.fieldObjects.filter(field => field.real);
                     fields.forEach((field, j) => {
