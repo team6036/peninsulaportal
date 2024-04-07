@@ -4957,6 +4957,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                     const viewModes = ["left", "right", "section", "all"];
                     let fViewMode = form.addField(new core.Form.SelectInput("view-mode", viewModes));
                     fViewMode.showHeader = false;
+                    fViewMode.useOutline = false;
                     fViewMode.addHandler("change-value", () => (this.viewMode = fViewMode.value));
                     const updateResize = () => {
                         let r = fViewMode.elem.getBoundingClientRect();

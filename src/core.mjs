@@ -8419,10 +8419,15 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
     get eBtn() { return this.#eBtn; }
 };
 Form.SelectInput = class FormSelectInput extends Form.EnumInput {
+    #useOutline;
+
     constructor(name, values, value) {
         super(name, values, value);
 
         this.elem.classList.add("select");
+
+        this.#useOutline = null;
+        this.useOutline = true;
 
         this.addHandler("change-disabled", () => {
             for (let btn of this.eContent.children)
@@ -8447,6 +8452,12 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
         };
         this.addHandler("change", apply);
         apply();
+    }
+
+    get useOutline() { return this.#useOutline; }
+    set useOutline(v) {
+        this.#useOutline = !!v;
+        this.eContent.style.setProperty("--use-o", +this.useOutline);
     }
 };
 Form.BooleanInput = class FormBooleanInput extends Form.Field {

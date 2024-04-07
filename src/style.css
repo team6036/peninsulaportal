@@ -2268,18 +2268,20 @@ p-loading[type="bounce"] > div > div:last-child {
     flex-basis: 100%;
 }
 .form > .item.enum.select > .content {
+    --use-o: 1;
+
     overflow: hidden;
 
     gap: 0px;
 
     background-color: var(--v2-8);
-    border: 1px solid var(--v3);
+    border: calc(var(--use-o) * 1px) solid var(--v3);
     border-radius: 5px;
 
     transition: border var(--t);
 }
 .form > .item.enum.select > .content:has(> button.this:hover) {
-    border: 1px solid var(--v4);
+    border: calc(var(--use-o) * 1px) solid var(--v4);
 }
 .form > .item.enum.select > .content > button {
     --n: 0;
