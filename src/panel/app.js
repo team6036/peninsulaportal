@@ -4478,7 +4478,8 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         const k = "vidsync:"+this.video;
         if (!this.page.project.hasProfile(k))
             this.page.project.addProfile(new Project.Profile(k));
-        this.page.project.getProfile(k).value = v;
+        [v, this.page.project.getProfile(k).value] = [this.page.getProfile(k).value, v];
+        this.change("offset", v, this.offset);
     }
 
     get locked() {
@@ -4491,14 +4492,17 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     }
     set locked(v) {
         if (!this.hasVideo()) return;
-        v = !!v;
         if (!this.hasPage()) return;
         if (!this.page.hasProject()) return;
         const k = "vidsync:"+this.video+":lock";
-        if (!v) return this.page.project.remProfile(k);
+        if (!v) {
+            this.page.project.remProfile(k);
+            return this.change("locked", true, false);
+        }
         if (!this.page.project.hasProfile(k))
             this.page.project.addProfile(new Project.Profile(k));
-        this.page.project.getProfile(k).value = v;
+        this.page.project.getProfile(k).value = true;
+        this.change("locked", false, true);
     }
     get unlocked() { return !this.locked; }
     set unlocked(v) { this.locked = !v; }
