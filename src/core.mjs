@@ -487,6 +487,40 @@ export class App extends util.Target {
                         e.stopPropagation();
                         signal.post("nav", e, String(new URL(href, new URL(pth, url))).slice(url.length));
                     });
+                    return;
+                }
+                if (elem.tagName == "BLOCKQUOTE") {
+                    if (elem.children.length != 1) return;
+                    let p = elem.children[0];
+                    if (!(p instanceof HTMLParagraphElement)) return;
+                    let text = p.childNodes[0];
+                    if (!(text instanceof Text)) return;
+                    const tags = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"];
+                    const trueTags = tags.map(tag => "[!"+tag+"]");
+                    if (!trueTags.includes(text.textContent)) return;
+                    const tag = tags[trueTags.indexOf(text.textContent)];
+                    elem.style.setProperty("--color", "var(--"+{
+                        NOTE: "a",
+                        TIP: "cg",
+                        IMPORTANT: "cp",
+                        WARNING: "cy",
+                        CAUTION: "cr",
+                    }[tag]+"5)");
+                    if (text.nextElementSibling instanceof HTMLBRElement) text.nextElementSibling.remove();
+                    text.remove();
+                    let header = document.createElement("p");
+                    elem.insertBefore(header, p);
+                    header.classList.add("header");
+                    header.innerHTML = "<ion-icon></ion-icon>";
+                    header.children[0].name = {
+                        NOTE: "information-circle-outline",
+                        TIP: "bulb-outline",
+                        IMPORTANT: "alert-circle-outline",
+                        WARNING: "warning-outline",
+                        CAUTION: "warning-outline",
+                    }[tag];
+                    header.appendChild(document.createTextNode(util.formatText(tag)));
+                    return;
                 }
             })();
             ["href", "src"].forEach(attr => {
