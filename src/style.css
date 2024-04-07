@@ -2107,6 +2107,8 @@ p-loading[type="bounce"] > div > div:last-child {
 }
 
 .form {
+    --gap: 10px;
+
     padding: 10px;
 
     display: none;
@@ -2115,7 +2117,7 @@ p-loading[type="bounce"] > div > div:last-child {
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 10px;
+    gap: var(--gap);
 
     font-size: 14px;
 }
@@ -2286,16 +2288,24 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item.enum.dropdown > .content > button > div {
     flex-basis: 100%;
 }
-.form > .item.enum.select > .content {
+.form > .item.enum.select {
     --use-o: 1;
+    --merge-t: 0;
+    --merge-b: 0;
 
+    margin-top: calc(var(--merge-t) * calc(var(--gap) / -2));
+    margin-bottom: calc(var(--merge-b) * calc(var(--gap) / -2));
+}
+.form > .item.enum.select > .content {
     overflow: hidden;
 
     gap: 0px;
 
     background-color: var(--v2-8);
     border: calc(var(--use-o) * 1px) solid var(--v3);
-    border-radius: 5px;
+    border-top-width: calc((1 - var(--merge-t)) * 1px) !important;
+    border-bottom-width: calc((1 - var(--merge-b)) * 1px) !important;
+    border-radius: calc((1 - var(--merge-t)) * 5px) calc((1 - var(--merge-t)) * 5px) calc((1 - var(--merge-b)) * 5px) calc((1 - var(--merge-b)) * 5px);
 
     transition: border var(--t);
 }
