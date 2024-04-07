@@ -17,7 +17,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                 const opt = util.ensure(data.opt, "obj");
                 this.progress(0);
                 const decoder = new WPILOGDecoder(data.source);
-                const source = new Source(true);
+                const source = new Source();
                 let entryId2Field = {};
                 let first = true;
                 const updateTime = ts => {

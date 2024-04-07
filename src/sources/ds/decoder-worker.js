@@ -20,7 +20,7 @@ class DSDecoderWorker extends WorkerBase {
                 const dataSource = util.ensure(data.source, "obj");
                 const logDecoder = new DSLogDecoder(dataSource.logData);
                 const eventsDecoder = new DSEventsDecoder(dataSource.eventsData);
-                const source = new Source(true);
+                const source = new Source();
                 let first = true;
                 const updateTime = ts => {
                     if (first) {
