@@ -15,8 +15,6 @@
 
 ## Instance Properties
 
----
-
 **`process.ID` (`str`) — <kbd>get</kbd>**
 
 A unique 10-long string made up of alphanumeric characters (uppercase, lowercase, and numbers), specific to each process. There is no checking for whether any overlapping ids will be generated, but the probability of collision is low
@@ -54,8 +52,6 @@ Whether or not the process has an active `os.open` pipe. Does not matter whether
 <br>
 
 ## Instance Methods
-
----
 
 **`process.start_process()` → `bool`**
 
@@ -152,15 +148,11 @@ Generates a string of length `l` full of random alphanumeric characters. This in
 
 ## Instance Properties
 
----
-
 **`odometry.robots` (`list[Odometry2d.Robot]`) — <kbd>get</kbd> <kbd>set</kbd>**
 
 The currently listed robots to be displayed by the odometry widget.
 
 ## Instance Methods
-
----
 
 **`odometry.clear()` → `list[Odometry2d.Robot]`**
 
@@ -239,8 +231,6 @@ Updates the superclass and also does periodic flashing of the existing robots. E
 
 ## Static Properties
 
----
-
 **`Odometry2d.Robot.Types` (`Enum`)**
 - `DEFAULT` - default display
 - `NODE` - node display (only the center of `DEFAULT`)
@@ -253,8 +243,6 @@ Updates the superclass and also does periodic flashing of the existing robots. E
 - `P_2024_NOTE` - 2024's note piece
 
 ## Instance Properties
-
----
 
 **`robot.ID` (`str`) — <kbd>get</kbd>**
 
@@ -339,8 +327,6 @@ The color of the robot. This can be from any of the strings below:
 - `"m"` - magenta
 
 ## Instance Methods
-
----
 
 **`robot.queue_change(k)` → `bool`**
 - `k` (`str`) - the attribute to be changed
