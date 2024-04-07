@@ -2048,14 +2048,14 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
 
     get infos() { return [...this.#infos]; }
     set infos(v) {
-        this.#infos = util.ensure(v, "arr").map(v => String(v));
+        this.#infos = util.ensure(v, "arr").map(v => lib.stringifyError(v));
         Array.from(this.inner.querySelectorAll(":scope > .info")).forEach(elem => elem.remove());
         let sibling = this.eContent.nextElementSibling;
         this.infos.forEach(info => {
             let elem = document.createElement("div");
             this.inner.insertBefore(elem, sibling);
             elem.classList.add("info");
-            elem.innerHTML = String(info).replaceAll("<", "&lt").replaceAll(">", "&gt");
+            elem.innerHTML = info.replaceAll("<", "&lt").replaceAll(">", "&gt");
             let btn = document.createElement("button");
             elem.appendChild(btn);
             btn.innerHTML = "<ion-icon name='copy-outline'></ion-icon>";
@@ -2129,6 +2129,7 @@ App.Success = class AppError extends App.Alert {
 
         this.iconColor = "var(--cg)";
 
+        infos.map(info => console.log(info));
         this.infos = infos;
     }
 };
