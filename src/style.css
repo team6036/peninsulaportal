@@ -192,9 +192,12 @@ button:not(.override).special {
     --bg: var(--a);
     --fg: var(--v8);
     --o: var(--a6);
-    --bgh: var(--v8);
+    /* --bgh: var(--v8);
     --fgh: var(--v1);
-    --oh: var(--v8);
+    --oh: var(--v8); */
+    --bgh: var(--a5);
+    --fgh: var(--v8);
+    --oh: var(--a7);
     --bgd: var(--a2);
     --fgd: var(--v6);
     --od: var(--a3);
@@ -205,9 +208,12 @@ button:not(.override).on {
     --bg: var(--cg3);
     --fg: var(--v8);
     --o: var(--cg5);
-    --bgh: var(--v8);
+    /* --bgh: var(--v8);
     --fgh: var(--v1);
-    --oh: var(--v8);
+    --oh: var(--v8); */
+    --bgh: var(--cg);
+    --fgh: var(--v8);
+    --oh: var(--cg6);
     --bgd: var(--cg2);
     --fgd: var(--v6);
     --od: var(--cg3);
@@ -218,9 +224,12 @@ button:not(.override).off {
     --bg: var(--cr);
     --fg: var(--v8);
     --o: var(--cr6);
-    --bgh: var(--v8);
+    /* --bgh: var(--v8);
     --fgh: var(--v1);
-    --oh: var(--v8);
+    --oh: var(--v8); */
+    --bgh: var(--cr5);
+    --fgh: var(--v8);
+    --oh: var(--cr7);
     --bgd: var(--cr2);
     --fgd: var(--v6);
     --od: var(--cr3);
