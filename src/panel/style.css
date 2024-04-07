@@ -767,7 +767,7 @@
     color: var(--v6);
 
     font-size: 12px;
-    font-weight: 550;
+    font-weight: 700;
     text-transform: uppercase;
     user-select: none;
 }
@@ -899,6 +899,7 @@
     color: var(--v8);
 
     font-size: 12px;
+    font-weight: 500;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side > .header {
     align-items: stretch;
@@ -1345,6 +1346,9 @@
 
     color: var(--v8);
     border-bottom: 1px solid var(--v2);
+
+    font-size: 20px;
+    font-weight: 700;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action > .header > button {
     --bg: transparent;
@@ -1364,19 +1368,21 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
-    gap: 10px;
+    gap: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .header {
     padding: 5px 0px;
-    margin-bottom: 5px;
+    margin-top: 15px;
 
     color: var(--v6);
-
     border-bottom: 1px solid var(--v2);
 
     text-transform: uppercase;
     font-size: 12px;
-    font-weight: 550;
+    font-weight: 700;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .header:first-child {
+    margin-top: 0px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.logworks > .action.form > .content > .select {
     display: flex;
@@ -1535,7 +1541,7 @@
     color: var(--v8);
 
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.videosync > .nav > * > .title > div {
     flex-basis: 100%;

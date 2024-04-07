@@ -381,12 +381,12 @@
     color: var(--v8);
 
     font-size: 14px;
-    font-weight: 550;
+    font-weight: 700;
 
     user-select: none;
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .header.sub {
-    font-weight: 400;
+    font-weight: 600;
 }
 #PROJECTPAGE > .main > .edit > .content > .panel > .header > span:first-child {
     flex-basis: 100%;

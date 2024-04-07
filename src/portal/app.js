@@ -179,6 +179,26 @@ export default class App extends core.App {
                     if (scroll > 1) this.eTitleBar.classList.add("this");
                     else this.eTitleBar.classList.remove("this");
                 });
+                const form = new core.Form();
+                form.addField(new core.Form.BooleanInput("bool-inp", false));
+                form.addField(new core.Form.BooleanInput("bool-inp", true));
+                form.addField(new core.Form.Button("btn", "Button", "normal"));
+                form.addField(new core.Form.Button("btn", "Button", "special"));
+                form.addField(new core.Form.ColorInput("color-inp", "#00ffff"));
+                form.addField(new core.Form.DirentInput("dirent-inp", "/path/to/file.txt"));
+                form.addField(new core.Form.DropdownInput("dropdown-inp", ["a", "b", "c"], null)).app = this;
+                form.addField(new core.Form.Header("Header"));
+                form.addField(new core.Form.Input1d("inp-1d", 1));
+                form.addField(new core.Form.Input2d("inp-2d", [2, 3]));
+                form.addField(new core.Form.Input3d("inp-3d", [4, 5, 6]));
+                form.addField(new core.Form.JSONInput("json-inp"));
+                form.addField(new core.Form.Line());
+                form.addField(new core.Form.SelectInput("select-inp", ["d", "e", "f"], null));
+                form.addField(new core.Form.SubHeader("SubHeader"));
+                form.addField(new core.Form.TextInput("text-inp"));
+                form.addField(new core.Form.ToggleInput("toggle-inp", "Toggle", false));
+                form.addField(new core.Form.ToggleInput("toggle-inp", "Toggle", true));
+                // this.eContent.appendChild(form.elem);
             }
             this.#eNav = document.querySelector("#PAGE > .main > .nav");
             this.#eDown = document.querySelector("#PAGE > .main > button");

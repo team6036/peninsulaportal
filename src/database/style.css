@@ -204,6 +204,7 @@ button:not(.override) {
     margin: 1px;
 
     font-size: 20px;
+    font-weight: 500;
 }
 #PAGE > .content > div > .collection > .item > button > .active {
     width: 20px;
@@ -221,9 +222,10 @@ button:not(.override) {
 #PAGE > .content > div > .collection > .item > button > input {
     padding: 0px;
 
-    font-size: 20px;
-
     background-color: transparent;
+
+    font-size: 20px;
+    font-weight: inherit;
 }
 #PAGE > .content > div > .collection > .item > button > input:disabled {
     pointer-events: none;
@@ -398,9 +400,10 @@ button:not(.override) {
     align-content: center;
     gap: 10px;
 
-    font-size: 30px;
-
     color: var(--v8);
+
+    font-size: 30px;
+    font-weight: 700;
 }
 #PAGE > .content > div > .title > div {
     flex-basis: 100%;
