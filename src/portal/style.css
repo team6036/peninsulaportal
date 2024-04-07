@@ -96,7 +96,7 @@ body {
 }
 #PAGE > .main > .title {
     font-size: 50px;
-    font-weight: 500;
+    font-weight: 700;
 }
 #PAGE > .main > .subtitle {
     color: var(--v7);
@@ -195,9 +195,9 @@ body {
     display: none;
 }
 #PAGE > .content > article {
-    min-height: calc(100vh - var(--TOP));
     max-width: min(calc(100vw - 100px), 750px);
     margin-top: calc(125vh + 100px);
+    margin-bottom: 50vh;
 }
 #PAGE > button {
     position: absolute;

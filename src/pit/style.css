@@ -60,7 +60,7 @@ body {
     color: var(--v8);
 
     font-size: min(5vw, 5vh);
-    font-weight: 600;
+    font-weight: 700;
 }
 #PAGE > .content > .title > :first-child {
     color: var(--a);

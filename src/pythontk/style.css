@@ -47,12 +47,13 @@
     color: var(--a);
 
     font-size: 20px;
+    font-weight: 500;
 }
 #TITLEPAGE > .title > .main {
     color: var(--v8);
 
     font-size: 50px;
-    font-weight: 500;
+    font-weight: 700;
 }
 #TITLEPAGE > .title > .nav {
     width: min(300px, 100%);
