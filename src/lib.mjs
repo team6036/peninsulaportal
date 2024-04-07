@@ -36,6 +36,12 @@ export const TEXTDECODER = new TextDecoder();
 
 
 export function stringifyError(e, nl="") {
+    if (e instanceof ErrorEvent) {
+        return [
+            String(e.message),
+            "  "+e.filename+" @ "+e.lineno+":"+e.colno,
+        ].join("\n");
+    }
     let lines = [String(e)];
     if (e instanceof Error) {
         if (e.stack) lines.push(String(e.stack));
