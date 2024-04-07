@@ -13,22 +13,8 @@
 
     --gradient: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
 }
-/*.lw}*/
 
-@font-face {
-    font-family: REM;
-    src: url("./assets/REM.ttf");
-}
-@font-face {
-    font-family: Oswald;
-    src: url("./assets/Oswald.ttf");
-}
-@font-face {
-    font-family: Roboto;
-    src: url("./assets/Roboto.ttf");
-}
 
-/*.lw{*/
 * {
     font-family: inherit;
     box-sizing: border-box;
@@ -471,7 +457,6 @@ label.switch::after {
     color: var(--v8);
 
     font-size: 8px;
-    font-family: Oswald, Arial, Helvetica, sans-serif;
 
     pointer-events: none;
 
