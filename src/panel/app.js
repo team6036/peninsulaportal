@@ -3621,7 +3621,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     if (!this.hasApp()) return;
                     const app = this.app;
                     state.eSubmit.disabled = true;
-                    const progress = v => (app.progress = v);
+                    const progress = v => {
+                        if (this.app != app) return;
+                        app.progress = v;
+                    };
                     try {
                         progress(0);
                         const sum = [];
@@ -3909,7 +3912,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         if (state.logs.length <= 0) return;
                     }
                     state.eSubmit.disabled = true;
-                    const progress = v => (app.progress = v);
+                    const progress = v => {
+                        if (this.app != app) return;
+                        app.progress = v;
+                    };
                     try {
                         progress(0);
                         let sum, a, b;
@@ -8989,7 +8995,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         let i = Math.max(i1, i2);
                         source.file = file;
                         source.shortFile = file.slice(i+1);
-                        const progress = v => (this.app.progress = v);
+                        const progress = v => {
+                            if (this.source != source) return this.app.progress = null;
+                            this.app.progress = v;
+                        };
                         source.addHandler("progress", progress);
                         const t0 = util.getTime();
                         await source.importFrom(file);
@@ -9734,11 +9743,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (!this.hasSource()) return "No source";
         if (this.source instanceof NTSource) {
             if (this.source.disconnected) return "Disconnected";
-            if (this.source.connecting) return "Connecting to "+this.source.address;
+            if (this.source.connecting) return this.source.address+"...";
             return this.source.address;
         }
         if (this.source instanceof HistoricalSource) {
-            if (this.source.importing) return "Importing from "+this.source.shortFile;
+            if (this.source.importing) return this.source.shortFile+"...";
             if (this.source.fieldObjects.length <= 0) return "Nothing imported";
             return this.source.shortFile;
         }
@@ -9784,7 +9793,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 {
                     name: "State",
                     value: (this.source.importing ? "Not imported" : (this.source.fieldObjects.length <= 0) ? "Importing" : "Imported"),
-                    value: "TEMP",
                     icon: "cube-outline",
                 },
             );
