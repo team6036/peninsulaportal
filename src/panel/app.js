@@ -6504,7 +6504,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#eWarning = document.createElement("div");
         this.eDisplay.appendChild(this.eWarning);
         this.eWarning.classList.add("warning");
-        this.eWarning.innerHTML = "<ion-icon name='warning'></ion-icon><div class='tooltip hov sex'></div>";
+        this.eWarning.innerHTML = "<ion-icon name='warning'></ion-icon><div class='tooltip hov wy'></div>";
         this.#eWarningTooltip = this.eWarning.children[1];
         this.#eRemoveBtn = document.createElement("button");
         this.eDisplay.appendChild(this.eRemoveBtn);
