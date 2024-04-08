@@ -8551,9 +8551,9 @@ export default class App extends core.AppFeature {
                     },
                     view: () => {
                         let itms = [
-                            { id: "openclose", label: "Toggle Options", accelerator: "Ctrl+F" },
-                            { id: "expandcollapse", label: "Toggle Titlebar", accelerator: "Ctrl+Shift+F" },
-                            { id: "minmax", label: "Toggle Maximized", accelerator: "Ctrl+Option+F" },
+                            { id: "openclose", label: "Toggle Options", accelerator: "Ctrl+O" },
+                            { id: "expandcollapse", label: "Toggle Titlebar", accelerator: "Ctrl+F" },
+                            { id: "minmax", label: "Toggle Maximized", accelerator: "Ctrl+Shift+F" },
                             { id: "resetdivider", label: "Reset Divider" },
                             { id: "toggleside", label: "Toggle Side", accelerator: "Ctrl+S" },
                             "separator",
