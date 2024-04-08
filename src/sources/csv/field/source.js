@@ -10,6 +10,8 @@ export default class CSVFieldSource extends HistoricalSource {
     static TYPE = "csv-field";
     static WANTED = "text";
 
+    static getName() { return "CSV-Field"; }
+
     constructor() {
         super();
     }

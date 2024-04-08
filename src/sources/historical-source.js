@@ -14,6 +14,8 @@ export default class HistoricalSource extends Source {
     static TYPE = "";
     static WANTED = "uint8";
 
+    static getName() { return "Historical"; }
+
     constructor() {
         super();
 

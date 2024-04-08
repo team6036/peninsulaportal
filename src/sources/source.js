@@ -17,6 +17,8 @@ export default class Source extends util.Target {
 
     #playback;
 
+    static getName() { return "Source"; }
+
     constructor() {
         super();
 

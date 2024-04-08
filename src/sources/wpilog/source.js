@@ -10,6 +10,8 @@ export default class WPILOGSource extends HistoricalSource {
     static TYPE = "wpilog";
     static WANTED = "uint8";
 
+    static getName() { return "WPILOG"; }
+
     constructor() {
         super();
     }

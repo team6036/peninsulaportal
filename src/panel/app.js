@@ -3722,7 +3722,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         command: "session",
                     },
                     wpilog: {
-                        name: "WPILOG",
                         command: "wpilog",
                         decoder: "../wpilog/decoder-worker.js",
                         encoder: "../wpilog/encoder-worker.js",
@@ -3730,7 +3729,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         tag: "wpilog",
                     },
                     "csv-time": {
-                        name: "CSV-Time",
                         command: "csv",
                         decoder: "../csv/time/decoder-worker.js",
                         encoder: "../csv/time/encoder-worker.js",
@@ -3738,7 +3736,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         tag: "time.csv",
                     },
                     "csv-field": {
-                        name: "CSV-Field",
                         command: "csv",
                         decoder: "../csv/field/decoder-worker.js",
                         encoder: "../csv/field/encoder-worker.js",
@@ -3746,6 +3743,12 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         tag: "field.csv",
                     },
                 };
+                for (let type in portMap)
+                    portMap[type].getName = () => {
+                        if (portMap[type].name) return portMap[type].name;
+                        if (portMap[type].source) return portMap[type].source.getName();
+                        return type;
+                    };
 
                 let importFrom = null;
                 Object.defineProperty(state, "importFrom", {
@@ -3755,7 +3758,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         if (!(v in portMap)) return;
                         importFrom = v;
                         state.refresh();
-                        state.eImportFromBtnName.textContent = portMap[state.importFrom].name;
+                        state.eImportFromBtnName.textContent = portMap[state.importFrom].getName();
                         if (state.importFrom == "session") {
                             dropTarget.disabled = true;
                             return;
@@ -3771,7 +3774,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         if (!(v in portMap)) return;
                         exportTo = v;
                         state.refresh();
-                        state.eExportToBtnName.textContent = portMap[state.exportTo].name;
+                        state.eExportToBtnName.textContent = portMap[state.exportTo].getName();
                     },
                 });
                 let logs = new Set();
@@ -3828,7 +3831,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     let itm;
                     let menu = new core.App.Menu();
                     Object.keys(portMap).forEach(type => {
-                        itm = menu.addItem(new core.App.Menu.Item(portMap[type].name, (state.importFrom == type) ? "checkmark" : ""));
+                        itm = menu.addItem(new core.App.Menu.Item(portMap[type].getName(), (state.importFrom == type) ? "checkmark" : ""));
                         itm.addHandler("trigger", e => {
                             state.importFrom = type;
                         });
@@ -3853,7 +3856,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     let itm;
                     let menu = new core.App.Menu();
                     Object.keys(portMap).forEach(type => {
-                        itm = menu.addItem(new core.App.Menu.Item(portMap[type].name, (state.exportTo == type) ? "checkmark" : ""));
+                        itm = menu.addItem(new core.App.Menu.Item(portMap[type].getName(), (state.exportTo == type) ? "checkmark" : ""));
                         itm.addHandler("trigger", e => {
                             state.exportTo = type;
                         });
@@ -9007,12 +9010,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         source.remHandler("progress", progress);
                         this.app.progress = 1;
                     } catch (e) {
-                        this.app.doError({
-                            NTSource: "NT",
-                            WPILOGSource: "WPILOG",
-                            CSVTimeSource: "CSV-Time",
-                            CSVFieldSource: "CSV-Field",
-                        }[source.constructor.name]+" Load Error", "File: "+this.project.config.source, e);
+                        this.app.doError(source.constructor.getName()+" Load Error", this.project.config.source, e);
                     }
                     this.app.progress = null;
                 })();

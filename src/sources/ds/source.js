@@ -7,6 +7,8 @@ import Source from "../source.js";
 
 
 export default class DSSource extends Source {
+    static getName() { return "DriverStation"; }
+
     constructor() {
         super();
     }
