@@ -6466,6 +6466,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     #eShow;
     #eShowDisplay;
     #eDisplayName;
+    #eWarning;
+    #eWarningTooltip;
     #eRemoveBtn;
     #eContent;
     #eColorPicker;
@@ -6498,6 +6500,12 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#eShowDisplay = this.eShowBox.children[1];
         this.#eDisplayName = document.createElement("div");
         this.eDisplay.appendChild(this.eDisplayName);
+        this.eDisplayName.classList.add("name");
+        this.#eWarning = document.createElement("div");
+        this.eDisplay.appendChild(this.eWarning);
+        this.eWarning.classList.add("warning");
+        this.eWarning.innerHTML = "<ion-icon name='warning'></ion-icon><div class='tooltip hov sex'></div>";
+        this.#eWarningTooltip = this.eWarning.children[1];
         this.#eRemoveBtn = document.createElement("button");
         this.eDisplay.appendChild(this.eRemoveBtn);
         this.eRemoveBtn.classList.add("icon");
@@ -6665,6 +6673,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     get eShow() { return this.#eShow; }
     get eShowDisplay() { return this.#eShowDisplay; }
     get eDisplayName() { return this.#eDisplayName; }
+    get eWarning() { return this.#eWarning; }
+    get eWarningTooltip() { return this.#eWarningTooltip; }
     get eRemoveBtn() { return this.#eRemoveBtn; }
     get eContent() { return this.#eContent; }
     get eColorPicker() { return this.#eColorPicker; }
@@ -6691,8 +6701,23 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     }
     get enabled() { return !this.enabled; }
     set enabled(v) { this.disabled = !v; }
-    disable() { return this.disabled = true; }
-    enable() { return this.enabled = true; }
+    disable(warning) {
+        this.showWarning = true;
+        this.warning = warning;
+        return this.disabled = true;
+    }
+    enable() {
+        this.showWarning = false;
+        return this.enabled = true;
+    }
+
+    get showWarning() { return this.eWarning.classList.contains("this"); }
+    set showWarning(v) {
+        if (v) this.eWarning.classList.add("this");
+        else this.eWarning.classList.remove("this");
+    }
+    get warning() { return this.eWarningTooltip.textContent; }
+    set warning(v) { this.eWarningTooltip.textContent = v; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -7321,7 +7346,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             if (!this.hasPose()) return;
             const renders = this.#renders;
             const trailRenders = this.#trailRenders;
-            if (this.value.length <= 0) return this.pose.disable();
+            if (this.value.length <= 0) return this.pose.disable("No data");
             this.pose.enable();
             if (this.value.length % 3 == 0) {
                 let l = this.value.length / 3;
@@ -7396,7 +7421,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             } else {
                 if (renders.length > 0) this.tab.odometry.render.remRender(renders.splice(0));
                 if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
-                this.pose.disable();
+                this.pose.disable("Unable to extrapolate type, length = "+this.value.length);
             }
         });
     }
@@ -8059,7 +8084,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             const renders = this.#renders;
-            if (this.value.length <= 0) return this.pose.disable();
+            if (this.value.length <= 0) return this.pose.disable("No data");
             this.pose.enable();
             if (this.value.length % 7 == 0 || this.value.length % 3 == 0) {
                 let l = this.value.length;
@@ -8081,7 +8106,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     render.pos = positioning.pos;
                     render.q = positioning.q;
                 }
-            } else this.pose.disable();
+            } else this.pose.disable("Unable to extrapolate type, length = "+this.value.length);
         });
     }
 
