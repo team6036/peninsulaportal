@@ -1960,7 +1960,7 @@
     width: 10px;
     aspect-ratio: 1 / 1;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div.name {
     flex-basis: 100%;
 
     min-width: 0px;
@@ -1969,11 +1969,17 @@
     text-align: left;
     font-size: 14px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div::-webkit-scrollbar {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div.name::-webkit-scrollbar {
     display: none;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item.disabled > button.display > div {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item.disabled > button.display > div.name {
     text-decoration: line-through var(--v8) 1px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div.warning {
+    color: var(--cy);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > div.warning:not(.this) {
+    display: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > button.display > button {
     --bg: transparent;

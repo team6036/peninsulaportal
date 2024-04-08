@@ -843,8 +843,8 @@ article.md.lighter table td {
     z-index: 10000;
 
     --bg: var(--v2);
-    --space: 10px;
-    --size: var(--space);
+    --space: 5px;
+    --size: calc(1.5 * var(--space));
     --tooltip-size-v: 100%;
 
     --x: 0;
@@ -887,7 +887,7 @@ article.md.lighter table td {
 
     width: max-content;
     height: max-content;
-    padding: 7.5px;
+    padding: 5px 7.5px;
 
     background-color: var(--bg);
     border: 1px solid var(--v3);
