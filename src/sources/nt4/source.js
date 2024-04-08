@@ -9,6 +9,8 @@ import Source from "../source.js";
 export default class NTSource extends Source {
     #client;
 
+    static getName() { return "NT4"; }
+
     constructor(address) {
         super();
 

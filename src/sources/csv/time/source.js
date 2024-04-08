@@ -10,6 +10,8 @@ export default class CSVTimeSource extends HistoricalSource {
     static TYPE = "csv-time";
     static WANTED = "text";
 
+    static getName() { return "CSV-Time"; }
+
     constructor() {
         super();
     }
