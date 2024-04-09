@@ -61,19 +61,7 @@ Array.prototype.any = function(f=null) {
 };
 
 
-// let isNumCalls = {};
-// export function getIsNumCalls() {
-//     return isNumCalls;
-// }
-
 function isNum(o) {
-    // let stack;
-    // try {
-    //     throw new Error("stack-get");
-    // } catch (e) { stack = String(e.stack); }
-    // // let stack = "";
-    // if (!(stack in isNumCalls)) isNumCalls[stack] = 0;
-    // isNumCalls[stack]++;
     if (typeof(o) == "number")
         return !Number.isNaN(o) && Number.isFinite(o);
     return typeof(o) == "bigint";
@@ -401,6 +389,28 @@ export function jargonAlphabetAll() { return jargon(l, ALPHABETALL); }
 export function jargonBase16(l) { return jargon(l, BASE16); }
 export function jargonBase64(l) { return jargon(l, BASE64); }
 export function jargonVariable(l) { return jargon(l, VARIABLE); }
+
+export function stringifyError(e, nl="") {
+    if (typeof(ErrorEvent) != "undefined" && e instanceof ErrorEvent) {
+        return [
+            String(e.message),
+            "  "+e.filename+" @ "+e.lineno+":"+e.colno,
+        ].join("\n");
+    }
+    let lines = [String(e)];
+    if (e instanceof Error) {
+        if (e.stack) lines.push(String(e.stack));
+        if (e.cause) lines.push(stringifyError(e.cause, nl+"  "));
+    }
+    lines = lines.flatten().join("\n").split("\n").filter(part => part.length > 0);
+    if (lines[0] == lines[1]) lines.shift();
+    return lines.map(line => nl+line).join("\n");
+}
+export function getStack() {
+    try {
+        throw new Error("stack-get");
+    } catch (e) { return e.stack; }
+}
 
 export const ease = {
     // https://easings.net/

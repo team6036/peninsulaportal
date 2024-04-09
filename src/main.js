@@ -52,14 +52,14 @@ const MAIN = async () => {
     let showError = this.showError = async (name, type, e) => {
         let message = String(name);
         if (type) message += " - "+String(type);
-        electron.dialog.showErrorBox(message, (e == null) ? "" : lib.stringifyError(e));
+        electron.dialog.showErrorBox(message, (e == null) ? "" : util.stringifyError(e));
     };
     let showWarn = async (name, type, e) => {
         let message = String(name);
         if (type) message += " - "+String(type);
         await electron.dialog.showMessageBox({
             message: message,
-            detail: (e == null) ? "" : lib.stringifyError(e),
+            detail: (e == null) ? "" : util.stringifyError(e),
             type: "warning",
             buttons: ["OK"],
         });
@@ -69,7 +69,7 @@ const MAIN = async () => {
         if (type) message += " - "+String(type);
         await electron.dialog.showMessageBox({
             message: message,
-            detail: (e == null) ? "" : lib.stringifyError(e),
+            detail: (e == null) ? "" : util.stringifyError(e),
             type: "info",
             buttons: ["OK"],
         });
@@ -79,7 +79,7 @@ const MAIN = async () => {
         if (type) message += " - "+String(type);
         let i = (await electron.dialog.showMessageBox({
             message: message,
-            detail: (e == null) ? "" : lib.stringifyError(e),
+            detail: (e == null) ? "" : util.stringifyError(e),
             type: "question",
             buttons: [ok, cancel],
             cancelId: 1,
@@ -1004,7 +1004,7 @@ const MAIN = async () => {
                                     ssStream.on("error", e => rej(e));
                                 });
                             });
-                        } catch (e) { return { success: false, reason: lib.stringifyError(e) }; }
+                        } catch (e) { return { success: false, reason: util.stringifyError(e) }; }
                         return { success: true };
                     });
                 },
@@ -3262,7 +3262,7 @@ const MAIN = async () => {
                         return await f(...a);
                     } catch (e) {
                         console.error(e);
-                        throw lib.stringifyError(e);
+                        throw util.stringifyError(e);
                     }
                 };
             };
