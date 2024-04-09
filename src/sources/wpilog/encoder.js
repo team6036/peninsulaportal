@@ -56,11 +56,11 @@ export default class WPILOGEncoder extends util.Target {
     }
 
     build(callback) {
+        callback = util.ensure(callback, "func");
         let records = this.records;
         records = records.map((record, i) => {
             let data = record.build();
-            if (util.is(callback, "func"))
-                callback(util.lerp(0, 0.5, (i+1)/record.length));
+            callback(util.lerp(0, 0.5, (i+1)/record.length));
             return data;
         });
         let l = 0;
@@ -79,8 +79,7 @@ export default class WPILOGEncoder extends util.Target {
         records.forEach(record => {
             data.set(record, x);
             x += record.length;
-            if (util.is(callback, "func"))
-                callback(util.lerp(0.5, 1, x/data.length));
+            callback(util.lerp(0.5, 1, x/data.length));
         });
         return data;
     }

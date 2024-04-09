@@ -25,6 +25,7 @@ export default class DSEventsDecoder extends util.Target {
     get ts() { return convertTime(this.dataView.getBigInt64(4), this.dataView.getBigUint64(12)); }
 
     build(callback) {
+        callback = util.ensure(callback, "func");
         if (!this.isValid()) throw new Error("Unsupported version: "+this.version);
         let ts0 = this.ts;
         let x = 4+8+8;
@@ -49,8 +50,7 @@ export default class DSEventsDecoder extends util.Target {
                 ts: ts-ts0,
                 text: text,
             });
-            if (util.is(callback, "func"))
-                callback(record, x/this.data.byteLength);
+            callback(record, x/this.data.byteLength);
             if (x >= this.data.length) break;
         }
     }

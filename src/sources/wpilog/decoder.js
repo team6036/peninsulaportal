@@ -52,6 +52,7 @@ export default class WPILOGDecoder extends util.Target {
     }
 
     build(callback) {
+        callback = util.ensure(callback, "func");
         if (!this.isValid()) throw new Error("Unsupported version: "+this.version);
         let extraHeaderL = this.dataView.getUint32(8, true);
         let x = 12 + extraHeaderL;
@@ -71,8 +72,7 @@ export default class WPILOGDecoder extends util.Target {
                 data: this.data.subarray(x+headerL, x+headerL+size),
             });
             x += headerL+size;
-            if (util.is(callback, "func"))
-                callback(record, x/this.data.byteLength);
+            callback(record, x/this.data.byteLength);
         }
     }
 }

@@ -25,6 +25,7 @@ export default class DSLogDecoder extends util.Target {
     get ts() { return convertTime(this.dataView.getBigInt64(4), this.dataView.getBigUint64(12)); }
 
     build(callback) {
+        callback = util.ensure(callback, "func");
         if (!this.isValid()) throw new Error("Unsupported version: "+this.version);
         let x = 4+8+8;
         let ts = 0;
@@ -96,8 +97,7 @@ export default class DSLogDecoder extends util.Target {
             };
             if (distro in distrofs) distrofs[distro]();
             const record = new DSLogDecoder.Record(data);
-            if (util.is(callback, "func"))
-                callback(record, x/this.data.byteLength);
+            callback(record, x/this.data.byteLength);
             ts += 0.02;
             if (x >= this.data.length) break;
         }
