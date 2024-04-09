@@ -19,6 +19,7 @@ export default class CSVDecoder extends util.Target {
     get grid() { return this.#grid; }
 
     build(callback) {
+        callback = util.ensure(callback, "func");
         this.#grid = [];
         let grid = this.data.split("\n");
         for (let i = 0; i < grid.length; i++) {
@@ -27,8 +28,7 @@ export default class CSVDecoder extends util.Target {
             let buff = "";
             let quotes = false;
             for (let j = 0; j < row.length; j++) {
-                if (util.is(callback, "func"))
-                    callback((i+(j/row.length))/grid.length);
+                callback((i+(j/row.length))/grid.length);
                 let c = row[j];
                 if (quotes) {
                     if (c == "\"") {

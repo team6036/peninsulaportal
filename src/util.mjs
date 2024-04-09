@@ -97,7 +97,7 @@ export function is(o, type) {
             );
         },
         obj: () => {
-            return (typeof(o) == "object") && !is(o, "null");
+            return (typeof(o) == "object") && (o != null);
         },
         func: () => {
             return typeof(o) == "function";

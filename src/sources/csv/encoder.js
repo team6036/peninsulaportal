@@ -19,6 +19,7 @@ export default class CSVEncoder extends util.Target {
     set grid(v) { this.#grid = util.ensure(v, "arr").map(row => util.ensure(row, "arr")); }
 
     build(callback) {
+        callback = util.ensure(callback, "func");
         const grid = this.grid;
         const h = grid.length;
         if (h < 1) throw new Error("Invalid height ("+h+")");
@@ -34,8 +35,7 @@ export default class CSVEncoder extends util.Target {
         for (let i = 0; i < h; i++) {
             let row = grid[i], row2 = [];
             for (let j = 0; j < w; j++) {
-                if (util.is(callback, "func"))
-                    callback((i*w+j)/(w*h));
+                callback((i*w+j)/(w*h));
                 let data = String(row[j]);
                 data = data.replaceAll("\"", "\"\"");
                 if (data.includes(",")) row2.push("\""+data+"\"");
