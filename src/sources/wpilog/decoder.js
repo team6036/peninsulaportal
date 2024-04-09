@@ -90,7 +90,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         this.#ts = o.ts;
         this.#data = o.data;
 
-        this.#dataView = new DataView(this.data.buffer.slice(this.data.byteOffset, this.data.byteOffset+this.data.byteLength));
+        this.#dataView = new DataView(this.data.buffer, this.data.byteOffset, this.data.byteLength);
     }
     
     get entryId() { return this.#entryId; }

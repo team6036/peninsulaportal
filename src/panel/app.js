@@ -9555,6 +9555,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
 
         this.source = null;
+        this.addHandler("change-project", () => (this.source = null));
 
         this.format();
         this.addHandler("post-show", () => this.format());

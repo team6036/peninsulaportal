@@ -71,27 +71,27 @@ export function findStep(v, n=10) {
 }
 /*.lw}*/
 
+const namefs = {
+    PORTAL: "Portal",
+    PRESETS: "Presets",
+    PANEL: "Panel",
+    PLANNER: "Planner",
+    DATABASE: "Database",
+    PIT: "Pit",
+    PYTHONTK: "PythonTK",
+};
+const modalnamefs = {
+    ALERT: "Alert",
+    CONFIRM: "Confirm",
+    PROMPT: "Prompt",
+    PROGRESS: "Progress",
+};
 export function getName(name) {
     name = String(name);
-    let namefs = {
-        PORTAL: "Portal",
-        PRESETS: "Presets",
-        PANEL: "Panel",
-        PLANNER: "Planner",
-        DATABASE: "Database",
-        PIT: "Pit",
-        PYTHONTK: "PythonTK",
-    };
     if (name in namefs) return namefs[name];
     if (name.startsWith("modal:")) {
         name = name.slice(6);
-        let namefs = {
-            ALERT: "Alert",
-            CONFIRM: "Confirm",
-            PROMPT: "Prompt",
-            PROGRESS: "Progress",
-        };
-        if (name in namefs) return namefs[name];
+        if (name in modalnamefs) return modalnamefs[name];
     }
     return name;
 }
