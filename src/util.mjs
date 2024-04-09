@@ -61,7 +61,19 @@ Array.prototype.any = function(f=null) {
 };
 
 
+// let isNumCalls = {};
+// export function getIsNumCalls() {
+//     return isNumCalls;
+// }
+
 function isNum(o) {
+    // let stack;
+    // try {
+    //     throw new Error("stack-get");
+    // } catch (e) { stack = String(e.stack); }
+    // // let stack = "";
+    // if (!(stack in isNumCalls)) isNumCalls[stack] = 0;
+    // isNumCalls[stack]++;
     if (typeof(o) == "number")
         return !Number.isNaN(o) && Number.isFinite(o);
     return typeof(o) == "bigint";
@@ -117,12 +129,9 @@ export function is(o, type) {
 export function ensure(o, type) {
     let useDef = arguments.length != 3;
     let def = arguments[2];
-    if (type == "num" || type == "float")
-        return isNum(o) ? Number(o) : useDef ? 0 : def;
-    if (type == "int")
-        return isNum(o) ? Math.round(Number(o)) : useDef ? 0 : def;
-    if (type == "any_num")
-        return isAnyNum(o) ? Number(o) : useDef ? 0 : def;
+    if (type == "num" || type == "float") return isNum(o) ? Number(o) : useDef ? 0 : def;
+    if (type == "int") return isNum(o) ? Math.round(Number(o)) : useDef ? 0 : def;
+    if (type == "any_num") return isAnyNum(o) ? Number(o) : useDef ? 0 : def;
     let typefs = {
         bool: () => {
             return !!o;

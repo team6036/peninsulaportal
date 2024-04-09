@@ -21,14 +21,14 @@ class DSDecoderWorker extends WorkerBase {
                 const logDecoder = new DSLogDecoder(dataSource.logData);
                 const eventsDecoder = new DSEventsDecoder(dataSource.eventsData);
                 const source = new Source();
-                let first = true;
+                let first = true, tsMin = null, tsMax = null;
                 const updateTime = ts => {
                     if (first) {
                         first = false;
-                        return source.tsMin = source.tsMax = ts;
+                        return tsMin = tsMax = ts;
                     }
-                    source.tsMin = Math.min(source.tsMin, ts);
-                    source.tsMax = Math.max(source.tsMax, ts);
+                    tsMin = Math.min(tsMin, ts);
+                    tsMax = Math.max(tsMax, ts);
                 };
                 const fields = {
                     tripTime: ["TripTime", "double"],
@@ -57,6 +57,8 @@ class DSDecoderWorker extends WorkerBase {
                     updateTime(record.ts);
                     field.update(record.ts, record.text);
                 });
+                source.tsMin = tsMin;
+                source.tsMax = tsMax;
                 this.progress(1);
                 this.send("finish", source.toSerialized());
             } catch (e) { this.send("error", e); }

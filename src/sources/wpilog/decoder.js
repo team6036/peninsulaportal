@@ -86,9 +86,9 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         super();
 
         o = util.ensure(o, "obj");
-        this.#entryId = util.ensure(o.entryId, "int");
-        this.#ts = util.ensure(o.ts, "num");
-        this.#data = util.toUint8Array(o.data);
+        this.#entryId = o.entryId;
+        this.#ts = o.ts;
+        this.#data = o.data;
 
         this.#dataView = new DataView(this.data.buffer.slice(this.data.byteOffset, this.data.byteOffset+this.data.byteLength));
     }

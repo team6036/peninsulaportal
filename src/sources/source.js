@@ -164,7 +164,7 @@ export default class Source extends util.Target {
                 let path2 = path+"/"+i;
                 let f = this.getField(path2);
                 if (!f) (f = this.addField(new this.constructor.Field(this, path2, "struct:"+type))).real = false;
-                return f.update(data, ts);
+                return f.update(data, ts, true);
             });
             if (updateDecoded) field.updateDecoded(decoded, ts);
         } else {
@@ -174,7 +174,7 @@ export default class Source extends util.Target {
                 let path2 = path+"/"+field.name;
                 let f = this.getField(path2);
                 if (!f) (f = this.addField(new this.constructor.Field(this, path2, field.isStruct ? ("struct:"+field.type) : field.type))).real = false;
-                decoded[field.name] = f.update(data[field.name], ts);
+                decoded[field.name] = f.update(data[field.name], ts, true);
             });
             if (updateDecoded) field.updateDecoded(decoded, ts);
         }
@@ -364,8 +364,7 @@ Source.Field = class SourceField {
     get metaLogsV() { return [...this.#metaLogsV]; }
     set metaLogsV(v) { this.#metaLogsV = util.ensure(v, "arr"); }
 
-    getIndex(ts=null) {
-        ts = util.ensure(ts, "num", this.source.ts);
+    #getIndex(ts) {
         const n = this.logsN;
         if (n <= 0) return -1;
         if (ts < this.#logsTS[0]) return -1;
@@ -379,13 +378,14 @@ Source.Field = class SourceField {
         }
         return -1;
     }
-    get(ts=null) {
-        ts = util.ensure(ts, "num", this.source.ts);
+    getIndex(ts=null) { return this.#getIndex(util.ensure(ts, "num", this.source.ts)); }
+    #get(ts) {
         const n = this.logsN;
-        let i = this.getIndex(ts);
+        let i = this.#getIndex(ts);
         if (i < 0 || i >= n) return null;
         return this.#logsV[i];
     }
+    get(ts=null) { return this.#get(util.ensure(ts, "num", this.source.ts)); }
     getRange(tsStart=null, tsStop=null) {
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
@@ -423,7 +423,7 @@ Source.Field = class SourceField {
             ts = util.ensure(ts, "num", this.source.ts);
         }
         const n = this.logsN;
-        let i = this.getIndex(ts);
+        let i = volatile ? this.#getIndex(ts) : this.getIndex(ts);
         if (this.isJustPrimitive) {
             if (i >= 0 && i < n)
                 if (this.#logsV[i] == v)
@@ -444,18 +444,19 @@ Source.Field = class SourceField {
                 return this.#logsDec[i+1];
             }
             this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
+            return this.#logsDec[i+1];
         } else if (this.isArray) {
             v.forEach((v, i) => {
                 let path = this.path+"/"+i;
                 if (!this.source.hasField(path))
                     this.source.addField(new this.source.constructor.Field(this.source, path, this.baseType)).real = false;
-                this.source.getField(path).update(v, ts);
+                this.source.getField(path).update(v, ts, volatile);
             });
         }
         if (n == 0)
             if (this.name.startsWith("struct:") && this.type == "structschema")
                 this.source.createStruct(this.name.slice(7), v);
-        return this.isStruct ? this.#logsDec[i+1] : v;
+        return v;
     }
     updateDecoded(dec, ts=null) {
         if (!this.isStruct) return this.update(dec, ts);
