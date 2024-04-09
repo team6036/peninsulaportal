@@ -9214,6 +9214,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         };
                         source.addHandler("progress", progress);
                         const t0 = util.getTime();
+                        await util.wait(1000);
                         await source.importFrom(file);
                         const t1 = util.getTime();
                         console.log(t1-t0);

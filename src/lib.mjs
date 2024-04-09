@@ -36,7 +36,7 @@ export const TEXTDECODER = new TextDecoder();
 
 
 export function stringifyError(e, nl="") {
-    if (e instanceof ErrorEvent) {
+    if (typeof(ErrorEvent) != "undefined" && e instanceof ErrorEvent) {
         return [
             String(e.message),
             "  "+e.filename+" @ "+e.lineno+":"+e.colno,
