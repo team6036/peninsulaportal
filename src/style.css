@@ -80,10 +80,8 @@ button:not(.override) {
 button:not(.override):not(.shiny) {
     background: linear-gradient(
         105deg,
-        var(--bgh) 0%,
-        var(--bgh) var(--btn-c-size-v),
-        transparent var(--btn-c-size-v),
-        transparent 500%
+        var(--bgh) 0% var(--btn-c-size-v),
+        transparent var(--btn-c-size-v) 500%
     ), var(--bg);
     color: var(--fg);
     border: calc(1px * var(--use-o)) solid var(--o);
@@ -101,12 +99,10 @@ button:not(.override):disabled,
 button:not(.override).disabled {
     --btn-c-size-v: 0%;
 
-    background: radial-gradient(
-        circle,
-        var(--bgh) 0%,
-        var(--bgh) var(--btn-c-size-v),
-        transparent var(--btn-c-size-v),
-        transparent 500%
+    background: linear-gradient(
+        105deg,
+        var(--bgh) 0% var(--btn-c-size-v),
+        transparent var(--btn-c-size-v) 500%
     ), var(--bgd);
     color: var(--fgd);
     border: calc(1px * var(--use-o)) solid var(--od);
@@ -1128,12 +1124,9 @@ article.md.lighter table td {
     border: 1px solid;
     border-image-slice: 1;
     border-image-source: conic-gradient(
-        var(--c) 0deg,
-        var(--c) calc(180deg * var(--border-hov-c-line-v)),
-        transparent calc(180deg * var(--border-hov-c-line-v)),
-        transparent calc(180deg * (2 - var(--border-hov-c-line-v))),
-        var(--c) calc(180deg * (2 - var(--border-hov-c-line-v))),
-        var(--c) 360deg
+        var(--c) 0deg calc(180deg * var(--border-hov-c-line-v)),
+        transparent calc(180deg * var(--border-hov-c-line-v)) calc(180deg * (2 - var(--border-hov-c-line-v))),
+        var(--c) calc(180deg * (2 - var(--border-hov-c-line-v))) 360deg
     );
 
     transition: --border-hov-c-line-v var(--t), --btn-c-size-v var(--t), background var(--t), color var(--t) !important;
