@@ -61,97 +61,43 @@ Array.prototype.any = function(f=null) {
 };
 
 
-function isNum(o) {
-    if (typeof(o) == "number")
-        return !Number.isNaN(o) && Number.isFinite(o);
-    return typeof(o) == "bigint";
-}
-function isInt(o) {
-    if (typeof(o) == "number")
-        return !Number.isNaN(o) && Number.isFinite(o) && (o%1 == 0);
-    return typeof(o) == "bigint";
-}
-function isAnyNum(o) {
-    if (typeof(o) == "number")
-        return !Number.isNaN(o);
-    return typeof(o) == "bigint";
-}
+const isfs = {
+    num: o => ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) || (typeof(o) == "bigint"),
+    int: o => ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o%1 == 0)) || (typeof(o) == "bigint"),
+    obj: o => (typeof(o) == "object") && (o != null),
+    any_num: o => ((typeof(o) == "number") && !Number.isNaN(o)) || (typeof(o) == "bigint"),
+    bool: o => (typeof(o) == "boolean"),
+    str: o => (typeof(o) == "string"),
+    arr: o => Array.isArray(o) || (
+        o &&
+        isfs.obj(o) &&
+        isfs.int(o.length) && 
+        ((o.length == 0) || (o.length > 0 && (o.length - 1) in o)) &&
+        !(o instanceof Target)
+    ),
+    func: o => (typeof(o) == "function"),
+    async_func: o => isfs.func(o) && (o.constructor.name == "AsyncFunction"),
+};
+isfs.float = isfs.num;
 export function is(o, type) {
-    if (type == "num" || type == "float") return isNum(o);
-    if (type == "int") return isInt(o);
-    if (type == "any_num") return isAnyNum(o);
-    let typefs = {
-        bool: () => {
-            return typeof(o) == "boolean";
-        },
-        str: () => {
-            return typeof(o) == "string";
-        },
-        arr: () => {
-            return Array.isArray(o) || (
-                o &&
-                typefs.obj() &&
-                is(o.length, "num") && 
-                ((o.length == 0) || (o.length > 0 && (o.length - 1) in o)) &&
-                !(o instanceof Target)
-            );
-        },
-        obj: () => {
-            return (typeof(o) == "object") && (o != null);
-        },
-        func: () => {
-            return typeof(o) == "function";
-        },
-        async_func: () => {
-            return typefs.func() && o.constructor.name == "AsyncFunction";
-        },
-        null: () => {
-            return o == null;
-        },
-    };
-    if (type in typefs) return typefs[type]();
-    if (is(type, "func")) return o instanceof type;
-    return o == type;
+    return isfs[type] ? isfs[type](o) : (o == type);
 }
-
+const ensurefs = {
+    num: (o, useDef, def) => (isfs.num(o) ? Number(o) : useDef ? 0 : def),
+    int: (o, useDef, def) => (isfs.int(o) ? Number(o) : useDef ? 0 : def),
+    obj: (o, useDef, def) => (isfs.obj(o) ? o : useDef ? {} : def),
+    any_num: (o, useDef, def) => (isfs.any_num(o) ? Number(o) : useDef ? 0 : def),
+    bool: o => !!o,
+    str: (o, useDef, def) => (isfs.str(o) ? o : useDef ? "" : def),
+    arr: (o, useDef, def) => (isfs.arr(o) ? Array.from(o) : useDef ? [] : def),
+    func: (o, useDef, def) => (isfs.func(o) ? o : useDef ? (()=>{}) : def),
+    async_func: (o, useDef, def) => (isfs.async_func(o) ? o : useDef ? (async()=>{}) : def),
+};
+ensurefs.float = ensurefs.num;
 export function ensure(o, type) {
     let useDef = arguments.length != 3;
     let def = arguments[2];
-    if (type == "num" || type == "float") return isNum(o) ? Number(o) : useDef ? 0 : def;
-    if (type == "int") return isNum(o) ? Math.round(Number(o)) : useDef ? 0 : def;
-    if (type == "any_num") return isAnyNum(o) ? Number(o) : useDef ? 0 : def;
-    let typefs = {
-        bool: () => {
-            return !!o;
-        },
-        str: () => {
-            if (is(o, "str")) return o;
-            return useDef ? "" : def;
-        },
-        arr: () => {
-            if (is(o, "arr")) return Array.from(o);
-            return useDef ? [] : def;
-        },
-        obj: () => {
-            if (is(o, "obj")) return o;
-            return useDef ? {} : def;
-        },
-        func: () => {
-            if (is(o, "func")) return o;
-            return useDef ? ()=>{} : def;
-        },
-        async_func: () => {
-            if (is(o, "async_func")) return o;
-            if (is(o, "func")) return async () => o();
-            return useDef ? async()=>{} : def;
-        },
-        null: () => {
-            return null;
-        },
-    };
-    if (type in typefs) return typefs[type]();
-    if (is(o, type)) return o;
-    return useDef ? null : def;
+    return ensurefs[type] ? ensurefs[type](o, useDef, def) : is(o, type) ? o : useDef ? null : def;
 }
 
 export function arrEquals(a1, a2) {
