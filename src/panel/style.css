@@ -630,12 +630,25 @@
     max-width: 100%;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display {
+    overflow: hidden;
+
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: stretch;
     align-content: stretch;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > button {
+    --bg: transparent;
+    --bgh: transparent;
+    --bgd: transparent;
+
+    position: absolute;
+    top: 10px;
+    right: 10px;
+
+    padding: 5px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item {
     position: relative;
@@ -654,10 +667,10 @@
     background-color: var(--v2-8);
     border-radius: 5px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item > ion-icon {
-    color: var(--v1);
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item:not(.this) {
+    display: none;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item > .type {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.raw > .type {
     position: absolute;
     top: 10px;
     left: 10px;
@@ -667,7 +680,7 @@
     font-size: 14px;
     font-family: monospace;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item > .value {
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.raw > .value {
     max-width: 100%;
     max-height: 100%;
     overflow: auto;
@@ -676,6 +689,207 @@
 
     font-family: monospace;
     word-break: break-all;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.bool > ion-icon {
+    color: var(--v8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range > .content > .value {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    color: var(--v8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range > .content > .value > .display {
+    font-size: 30px;
+    font-weight: 600;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range > .content > .value > .real {
+    font-size: 16px;
+    font-family: monospace;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content {
+    --size: 0px;
+    --shift: calc((var(--size) - (var(--size) / 2 * 1.5)) / 2);
+
+    position: relative;
+
+    min-width: var(--size);
+    max-width: var(--size);
+    min-height: var(--size);
+    max-height: var(--size);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateY(calc(var(--shift) / 2));
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .value > .display {
+    font-size: calc(var(--size) / 7.5);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .value > .real {
+    font-size: calc(var(--size) / 20);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .range {
+    --range: 120deg;
+    --value: 0.5;
+    --color: var(--a);
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateY(var(--shift)) rotate(calc(-1 * var(--range)));
+
+    width: 100%;
+    height: 100%;
+
+    background: conic-gradient(
+        var(--color) 0deg calc((2 * var(--range)) * var(--value)),
+        var(--v3) calc((2 * var(--range)) * var(--value)) calc(2 * var(--range)),
+        transparent calc(2 * var(--range)) 360deg
+    );
+    border-radius: 100%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .range::before,
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .range::after {
+    content: "";
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 75%;
+    height: 75%;
+
+    border-radius: 100%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .range::before {
+    background-color: var(--v1);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > .range::after {
+    background-color: var(--v2-8);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > input {
+    position: absolute;
+    bottom: 5%;
+
+    min-width: 0px;
+    width: 25%;
+
+    background-color: var(--v1-8);
+    color: var(--v6);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > input.min {
+    left: 10%;
+
+    text-align: left;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-meter > .content > input.max {
+    right: 10%;
+
+    text-align: right;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .value {
+    width: 100%;
+    
+    flex-direction: row;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .value > * {
+    flex-basis: 100%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .value > :first-child {
+    text-align: left;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .value > :last-child {
+    text-align: right;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .range {
+    --value: 0.5;
+    --color: var(--a);
+
+    width: 100%;
+    height: min(30px, 25%);
+
+    background: linear-gradient(
+        90deg,
+        var(--color) 0% calc(100% * var(--value)),
+        var(--v2) calc(100% * var(--value)) 100%
+    );
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .minmax {
+    position: relative;
+
+    width: 100%;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .minmax > input {
+    position: absolute;
+    top: 0%;
+
+    min-width: 0px;
+    width: 25%;
+
+    background-color: var(--v1-8);
+    color: var(--v6);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .minmax > input.min {
+    left: 0%;
+
+    text-align: left;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-h > .content > .minmax > input.max {
+    right: 0%;
+
+    text-align: right;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-v > .content {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column-reverse;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-v > .content > .range {
+    --value: 0.5;
+    --color: var(--a);
+
+    width: min(75%, max(50px, 50%));
+    height: 75%;
+
+    background: linear-gradient(
+        0deg,
+        var(--color) 0% calc(100% * var(--value)),
+        var(--v2) calc(100% * var(--value)) 100%
+    );
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display > .item.range-v > .content > input {
+    min-width: 0px;
+    width: min(75%, max(50px, 50%));
+
+    background-color: var(--v1-8);
+    color: var(--v6);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.add {
     padding: 10px;
@@ -1816,7 +2030,12 @@
     width: 100%;
     height: 1px;
 
-    background: linear-gradient(90deg, var(--v3), var(--v3) calc(50% - 25px), transparent calc(50% - 25px), transparent calc(50% + 25px), var(--v3) calc(50% + 25px), var(--v3));
+    background: linear-gradient(
+        90deg,
+        var(--v3) 0% calc(50% - 25px),
+        transparent calc(50% - 25px) calc(50% + 25px),
+        var(--v3) calc(50% + 25px) 100%
+    );
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas.open > .options {
     padding-top: 35px;

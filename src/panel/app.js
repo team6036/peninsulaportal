@@ -2051,6 +2051,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #ePath;
     #eShowToggle;
     #eDisplay;
+    #eDisplayChange;
 
     constructor(...a) {
         super();
@@ -2114,6 +2115,197 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         this.#eDisplay = document.createElement("div");
         this.elem.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
+        this.#eDisplayChange = document.createElement("button");
+        this.eDisplay.appendChild(this.eDisplayChange);
+        this.eDisplayChange.innerHTML = "<ion-icon name='ellipsis-horizontal'></ion-icon>";
+        this.eDisplayChange.addEventListener("click", e => {
+            e.stopPropagation();
+            let dType = this.type;
+            let itm;
+            let menu = new core.App.Menu();
+            itm = menu.addItem(new core.App.Menu.Item("Default", (dType == null) ? "checkmark" : ""));
+            itm.addHandler("trigger", e => {
+                this.type = null;
+            });
+            menu.addItem(new core.App.Menu.Divider());
+            ["raw", "bool", "range-meter", "range-h", "range-v"].forEach(k => {
+                itm = menu.addItem(new core.App.Menu.Item({
+                    raw: "Raw",
+                    bool: "Boolean",
+                    "range-meter": "Speedometer",
+                    "range-h": "Horizontal Range",
+                    "range-v": "Vertical Range",
+                }[k], (dType == k) ? "checkmark" : ""));
+                itm.addHandler("trigger", e => {
+                    this.type = k;
+                });
+            });
+            if (!this.hasApp()) return;
+            this.app.contextMenu = menu;
+            e = util.ensure(e, "obj");
+            this.app.placeContextMenu(e.pageX, e.pageY);
+        });
+
+        const displayInits = {
+            raw: elem => {
+                let eType = document.createElement("div");
+                elem.appendChild(eType);
+                eType.classList.add("type");
+                let eValue = document.createElement("div");
+                elem.appendChild(eValue);
+                eValue.classList.add("value");
+                return {
+                    update: (node, value, display, typeData) => {
+                        value = getRepresentation(value, node.field.type == "structschema");
+                        eType.textContent = node.field.type;
+                        eValue.style.color = (display == null) ? "" : util.ensure(display.color, "str");
+                        eValue.style.fontSize = ((value.length < 25) ? 32 : 16)+"px";
+                        eValue.textContent = value;
+                    },
+                };
+            },
+            bool: elem => {
+                let eIcon = document.createElement("ion-icon");
+                elem.appendChild(eIcon);
+                return {
+                    update: (node, value, display, typeData) => {
+                        elem.style.backgroundColor = value ? "var(--cg2)" : "var(--cr2)";
+                        eIcon.name = value ? "checkmark" : "close-outline";
+                        let r = elem.getBoundingClientRect();
+                        eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
+                    },
+                };
+            },
+            "range-meter": elem => {
+                elem.classList.add("range");
+                let eContent = document.createElement("div");
+                elem.appendChild(eContent);
+                eContent.classList.add("content");
+                let eRange = document.createElement("div");
+                eContent.appendChild(eRange);
+                eRange.classList.add("range");
+                let eValue = document.createElement("div");
+                eContent.appendChild(eValue);
+                eValue.classList.add("value");
+                let eValueDisplay = document.createElement("div");
+                eValue.appendChild(eValueDisplay);
+                eValueDisplay.classList.add("display");
+                let eValueReal = document.createElement("div");
+                eValue.appendChild(eValueReal);
+                eValueReal.classList.add("real");
+                let mn = 0, mx = 0;
+                let eMin = document.createElement("input");
+                eContent.appendChild(eMin);
+                eMin.classList.add("min");
+                eMin.addEventListener("change", e => {
+                    let mn = Math.min(mx, util.ensure(parseFloat(eMin.value), "num"));
+                    let typeData = this.typeData;
+                    typeData.min = mn;
+                    this.typeData = typeData;
+                });
+                let eMax = document.createElement("input");
+                eContent.appendChild(eMax);
+                eMax.classList.add("max");
+                eMax.addEventListener("change", e => {
+                    let mx = Math.max(mn, util.ensure(parseFloat(eMax.value), "num"));
+                    let typeData = this.typeData;
+                    typeData.max = mx;
+                    this.typeData = typeData;
+                });
+                return {
+                    update: (node, value, display, typeData) => {
+                        value = util.ensure(+value, "num");
+                        mn = util.ensure(typeData.min, "num", 0);
+                        if (document.activeElement != eMin) eMin.value = mn;
+                        mx = util.ensure(typeData.max, "num", node.field.type == "boolean" ? 1 : 100);
+                        if (document.activeElement != eMax) eMax.value = mx;
+                        let r = elem.getBoundingClientRect();
+                        eContent.style.setProperty("--size", Math.min(r.width-40, r.height-40)+"px");
+                        eRange.style.setProperty("--value", Math.min(1, Math.max(0, (value-mn)/(mx-mn))));
+                        eRange.style.setProperty("--color", (display == null) ? "" : util.ensure(display.color, "str"));
+                        eValueDisplay.textContent = Math.round(value*100000)/100000;
+                        eValueReal.textContent = value;
+                    },
+                };
+            },
+            "_range": elem => {
+                elem.classList.add("range");
+                let eContent = document.createElement("div");
+                elem.appendChild(eContent);
+                eContent.classList.add("content");
+                let eValue = document.createElement("div");
+                eContent.appendChild(eValue);
+                eValue.classList.add("value");
+                let eValueDisplay = document.createElement("div");
+                eValue.appendChild(eValueDisplay);
+                eValueDisplay.classList.add("display");
+                let eValueReal = document.createElement("div");
+                eValue.appendChild(eValueReal);
+                eValueReal.classList.add("real");
+                let eRange = document.createElement("div");
+                eContent.appendChild(eRange);
+                eRange.classList.add("range");
+                let eMinMax = document.createElement("div");
+                eContent.appendChild(eMinMax);
+                eMinMax.classList.add("minmax");
+                let mn = 0, mx = 0;
+                let eMin = document.createElement("input");
+                eMinMax.appendChild(eMin);
+                eMin.classList.add("min");
+                eMin.addEventListener("change", e => {
+                    let mn = Math.min(mx, util.ensure(parseFloat(eMin.value), "num"));
+                    let typeData = this.typeData;
+                    typeData.min = mn;
+                    this.typeData = typeData;
+                });
+                let eMax = document.createElement("input");
+                eMinMax.appendChild(eMax);
+                eMax.classList.add("max");
+                eMax.addEventListener("change", e => {
+                    let mx = Math.max(mn, util.ensure(parseFloat(eMax.value), "num"));
+                    let typeData = this.typeData;
+                    typeData.max = mx;
+                    this.typeData = typeData;
+                });
+                return {
+                    update: (node, value, display, typeData) => {
+                        value = util.ensure(+value, "num");
+                        mn = util.ensure(typeData.min, "num", 0);
+                        if (document.activeElement != eMin) eMin.value = mn;
+                        mx = util.ensure(typeData.max, "num", 100);
+                        if (document.activeElement != eMax) eMax.value = mx;
+                        eRange.style.setProperty("--value", Math.min(1, Math.max(0, (value-mn)/(mx-mn))));
+                        eRange.style.setProperty("--color", (display == null) ? "" : util.ensure(display.color, "str"));
+                        eValueDisplay.textContent = Math.round(value*100000)/100000;
+                        eValueReal.textContent = value;
+                    },
+                };
+            },
+            "range-h": elem => displayInits["_range"](elem),
+            "range-v": elem => {
+                let r = displayInits["_range"](elem);
+                let eContent = elem.querySelector(":scope > .content");
+                let eRange = eContent.querySelector(":scope > .range");
+                let eMinMax = eContent.querySelector(":scope > .minmax");
+                let eMin = eMinMax.querySelector(":scope > input.min");
+                let eMax = eMinMax.querySelector(":scope > input.max");
+                eMin.remove();
+                eMax.remove();
+                eContent.appendChild(eMax);
+                eContent.insertBefore(eMin, eRange);
+                return r;
+            },
+        };
+        const displays = {};
+        for (let k in displayInits) {
+            let elem = document.createElement("div");
+            this.eDisplay.insertBefore(elem, this.eDisplayChange);
+            elem.classList.add("item");
+            elem.classList.add(k);
+            displays[k] = util.ensure(displayInits[k](elem), "obj");
+            displays[k].elem = elem;
+            displays[k].update = util.ensure(displays[k].update, "func");
+        }
 
         if (a.length <= 0 || a.length > 1) a = [null];
         if (a.length == 1) {
@@ -2130,14 +2322,13 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         [this.path, this.explorer.showHidden] = a;
 
         let prevNode = 0;
-        let state = {};
+        let prevDType = null;
 
         this.addHandler("update", delta => {
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
             const node = source ? source.tree.lookup(this.path) : null;
             if (prevNode != node) {
                 prevNode = node;
-                state = {};
                 this.name = node ? (node.name.length > 0) ? node.name : "/" : "?";
                 if (node) {
                     if (!node.hasField() || node.field.isArray || node.field.isStruct) {
@@ -2159,7 +2350,8 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 }
             }
             if (!node) return;
-            let display = getDisplay((node && node.hasField()) ? node.field.type : null, (node && node.hasField()) ? node.field.get() : null);
+            let value = (node && node.hasField()) ? node.field.get() : null;
+            let display = getDisplay((node && node.hasField()) ? node.field.type : null, value);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
@@ -2178,38 +2370,14 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     (...enodes) => this.explorer.rem(...enodes),
                 );
             } else {
-                if (state.type != node.field.type) {
-                    state.type = node.field.type;
-                    this.eDisplay.innerHTML = "";
-                    let item = document.createElement("div");
-                    this.eDisplay.appendChild(item);
-                    item.classList.add("item");
-                    let eIcon = null, eType = null, eValue = null;
-                    if (node.field.type == "boolean") {
-                        item.innerHTML = "<ion-icon></ion-icon>";
-                        eIcon = item.children[0];
-                    } else {
-                        item.innerHTML = "<div class='type'></div><div class='value'></div>";
-                        eType = item.children[0];
-                        eValue = item.children[1];
-                    }
-                    state.update = () => {
-                        let value = node.field.get();
-                        if (node.field.type == "boolean") {
-                            item.style.backgroundColor = value ? "var(--cg3)" : "var(--cr3)";
-                            eIcon.name = value ? "checkmark" : "close";
-                            let r = item.getBoundingClientRect();
-                            eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
-                        } else {
-                            eType.textContent = node.field.type;
-                            let display = getDisplay(node.field.type, value);
-                            eValue.style.color = (display == null) ? "" : util.ensure(display.color, "str");
-                            eValue.style.fontSize = (node.field.isNumerical ? 32 : 16)+"px";
-                            eValue.textContent = getRepresentation(value, node.field.type == "structschema");
-                        }
-                    };
+                let dType = this.type, dTypeData = this.typeData;
+                if (dType == null) dType = (node.field.type == "boolean") ? "bool" : "raw";
+                if (prevDType != dType) {
+                    if (prevDType in displays) displays[prevDType].elem.classList.remove("this");
+                    prevDType = dType;
+                    if (prevDType in displays) displays[prevDType].elem.classList.add("this");
                 }
-                if (state.update) state.update();
+                if (dType in displays) displays[dType].update(node, value, display, dTypeData);
             }
         });
     }
@@ -2255,9 +2423,51 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
     get explorer() { return this.#explorer; }
 
+    get type() {
+        if (!this.hasPage()) return null;
+        if (!this.page.hasProject()) return null;
+        const k = "browsertab:"+this.path;
+        if (!this.page.project.hasProfile(k)) return null;
+        let v = this.page.project.getProfile(k).value;
+        if (v == null) return null;
+        return String(v);
+    }
+    set type(v) {
+        v = (v == null) ? null : String(v);
+        if (!this.hasPage()) return;
+        if (!this.page.hasProject()) return;
+        const k = "browsertab:"+this.path;
+        if (v == null) {
+            this.page.project.remProfile(k);
+            return this.change("type", this.type, v);
+        }
+        if (!this.page.project.hasProfile(k))
+            this.page.project.addProfile(new Project.Profile(k));
+        [v, this.page.project.getProfile(k).value] = [this.page.project.getProfile(k).value, v];
+        this.change("type", v, this.type);
+    }
+    get typeData() {
+        if (!this.hasPage()) return {};
+        if (!this.page.hasProject()) return {};
+        const k = "browsertab:"+this.path+":data";
+        if (!this.page.project.hasProfile(k)) return {};
+        return util.ensure(this.page.project.getProfile(k).value, "obj");
+    }
+    set typeData(v) {
+        v = util.ensure(v, "obj");
+        if (!this.hasPage()) return;
+        if (!this.page.hasProject()) return;
+        const k = "browsertab:"+this.path+":data";
+        if (!this.page.project.hasProfile(k))
+            this.page.project.addProfile(new Project.Profile(k));
+        [v, this.page.project.getProfile(k).value] = [this.page.project.getProfile(k).value, v];
+        this.change("typeData", v, this.typeData);
+    }
+
     get ePath() { return this.#ePath; }
     get eShowToggle() { return this.#eShowToggle; }
     get eDisplay() { return this.#eDisplay; }
+    get eDisplayChange() { return this.#eDisplayChange; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -4487,7 +4697,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         const k = "vidsync:"+this.video;
         if (!this.page.project.hasProfile(k))
             this.page.project.addProfile(new Project.Profile(k));
-        [v, this.page.project.getProfile(k).value] = [this.page.getProfile(k).value, v];
+        [v, this.page.project.getProfile(k).value] = [this.page.project.getProfile(k).value, v];
         this.change("offset", v, this.offset);
     }
 
