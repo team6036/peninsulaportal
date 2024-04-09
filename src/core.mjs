@@ -2048,7 +2048,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
 
     get infos() { return [...this.#infos]; }
     set infos(v) {
-        this.#infos = util.ensure(v, "arr").map(v => lib.stringifyError(v));
+        this.#infos = util.ensure(v, "arr").map(v => util.stringifyError(v));
         Array.from(this.inner.querySelectorAll(":scope > .info")).forEach(elem => elem.remove());
         let sibling = this.eContent.nextElementSibling;
         this.infos.forEach(info => {

@@ -35,28 +35,6 @@ export const TEXTENCODER = new TextEncoder();
 export const TEXTDECODER = new TextDecoder();
 
 
-export function stringifyError(e, nl="") {
-    if (typeof(ErrorEvent) != "undefined" && e instanceof ErrorEvent) {
-        return [
-            String(e.message),
-            "  "+e.filename+" @ "+e.lineno+":"+e.colno,
-        ].join("\n");
-    }
-    let lines = [String(e)];
-    if (e instanceof Error) {
-        if (e.stack) lines.push(String(e.stack));
-        if (e.cause) lines.push(stringifyError(e.cause, nl+"  "));
-    }
-    lines = lines.flatten().join("\n").split("\n").filter(part => part.length > 0);
-    if (lines[0] == lines[1]) lines.shift();
-    return lines.map(line => nl+line).join("\n");
-}
-export function getStack() {
-    try {
-        throw new Error("stack-get");
-    } catch (e) { return e.stack; }
-}
-
 export function search(items, keys, query) {
     items = util.ensure(items, "arr");
     keys = util.ensure(keys, "arr");
