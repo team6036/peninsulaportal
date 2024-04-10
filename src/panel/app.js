@@ -2167,12 +2167,14 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             bool: elem => {
                 let eIcon = document.createElement("ion-icon");
                 elem.appendChild(eIcon);
+                new ResizeObserver(() => {
+                    let r = elem.getBoundingClientRect();
+                    eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
+                }).observe(elem);
                 return {
                     update: (node, value, display, typeData) => {
                         elem.style.backgroundColor = value ? "var(--cg2)" : "var(--cr2)";
                         eIcon.name = value ? "checkmark" : "close-outline";
-                        let r = elem.getBoundingClientRect();
-                        eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                     },
                 };
             },
@@ -2212,6 +2214,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     typeData.max = mx;
                     this.typeData = typeData;
                 });
+                new ResizeObserver(() => {
+                    let r = elem.getBoundingClientRect();
+                    eContent.style.setProperty("--size", Math.min(r.width-40, r.height-40)+"px");
+                }).observe(elem);
                 return {
                     update: (node, value, display, typeData) => {
                         value = util.ensure(+value, "num");
@@ -2219,8 +2225,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         if (document.activeElement != eMin) eMin.value = mn;
                         mx = util.ensure(typeData.max, "num", node.field.type == "boolean" ? 1 : 100);
                         if (document.activeElement != eMax) eMax.value = mx;
-                        let r = elem.getBoundingClientRect();
-                        eContent.style.setProperty("--size", Math.min(r.width-40, r.height-40)+"px");
                         eRange.style.setProperty("--value", Math.min(1, Math.max(0, (value-mn)/(mx-mn))));
                         eRange.style.setProperty("--color", (display == null) ? "" : util.ensure(display.color, "str"));
                         eValueDisplay.textContent = Math.round(value*100000)/100000;
