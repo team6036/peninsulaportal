@@ -136,7 +136,7 @@ function getDisplay(t, v) {
         let display = getDisplay(t, (t == "boolean") ? true : null);
         if (display == null) return null;
         return {
-            src: "../assets/icons/array.svg",
+            src: "./assets/icons/array.svg",
             color: display.color,
         };
     }
@@ -148,7 +148,7 @@ function getDisplay(t, v) {
         color: "var(--cr)",
     };
     if (["double", "float", "int"].includes(t)) return {
-        src: "../assets/icons/number.svg",
+        src: "./assets/icons/number.svg",
         color: "var(--cb)",
     };
     if (t == "boolean") return {
@@ -163,7 +163,7 @@ function getDisplay(t, v) {
         name: "map-outline",
     };
     return {
-        src: "../assets/icons/variable.svg",
+        src: "./assets/icons/variable.svg",
     };
 }
 
@@ -186,7 +186,7 @@ function getTabDisplay(name) {
         color: "var(--cb)",
     };
     if (name == "table") return {
-        src: "../assets/icons/table.svg",
+        src: "./assets/icons/table.svg",
         color: "var(--cb)",
     };
     if (name.startsWith("odometry")) return {
@@ -1586,7 +1586,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 this.items[1].addHandler("trigger", () => {
                     this.searchPart = "topics";
                 });
-                this.items[2].iconSrc = "../assets/icons/variable.svg";
+                this.items[2].iconSrc = "./assets/icons/variable.svg";
                 this.items[2].addHandler("trigger", () => {
                     this.searchPart = "all";
                 });
@@ -1604,7 +1604,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 util.formatText(this.searchPart),
                 { tables: "folder-outline", topics: "document-outline", all: "" }[this.searchPart],
             )];
-            if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
+            if (this.searchPart == "all") this.tags[0].iconSrc = "./assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
             if (this.hasPage() && this.page.hasSource()) {
@@ -2545,7 +2545,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.eTSInput.step = 0.01;
         this.#eFollowBtn = document.createElement("button");
         this.eSideHeader.appendChild(this.eFollowBtn);
-        this.eFollowBtn.innerHTML = "<ion-icon src='../assets/icons/jump.svg'></ion-icon>";
+        this.eFollowBtn.innerHTML = "<ion-icon src='./assets/icons/jump.svg'></ion-icon>";
 
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
@@ -3691,7 +3691,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 this.elem.classList.add("form");
 
                 this.displayName = this.title = "Merge Logs";
-                this.iconSrc = "../assets/icons/merge.svg";
+                this.iconSrc = "./assets/icons/merge.svg";
 
                 const conflictAffixMap = {
                     prefix: "prefix",
@@ -3867,7 +3867,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             updateSum();
                             return source;
                         }))).filter(source => !!source);
-                        const client = new WorkerClient("./merge-worker.js");
+                        const client = new WorkerClient(new URL("merge-worker.js", window.location));
                         const sourceData = await new Promise((res, rej) => {
                             client.addHandler("error", e => rej(e));
                             client.addHandler("stop", data => rej("WORKER TERMINATED"));
@@ -7245,7 +7245,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (core.GLOBALSTATE.getting) return;
 
             this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
-            this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
+            this.odometry.imageSrc = (this.template in templateImages) ? "file://"+templateImages[this.template] : null;
 
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
@@ -10024,7 +10024,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             {
                 name: "Fields",
                 value: this.source.tree.nFields,
-                iconSrc: "../assets/icons/number.svg",
+                iconSrc: "./assets/icons/number.svg",
             },
             {
                 name: "Duration",

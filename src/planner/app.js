@@ -1000,7 +1000,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.odometry2d.elem.classList.contains("this")) {
                 this.odometry2d.update(delta);
                 this.odometry2d.size = this.hasProject() ? this.project.size : 0;
-                this.odometry2d.imageSrc = (this.hasProject() && this.project.hasTemplate()) ? templateImages[this.project.template] : null;
+                this.odometry2d.imageSrc = (this.hasProject() && this.project.hasTemplate()) ? "file://"+templateImages[this.project.template] : null;
             }
 
             if (this.odometry3d.elem.classList.contains("this")) {

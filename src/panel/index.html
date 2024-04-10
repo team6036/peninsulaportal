@@ -2,16 +2,17 @@
 <html>
     <head>
 		<meta charset="UTF-8">
+		<base href="../">
 		<script type="importmap">
 			{
 				"imports": {
-					"three": "../../node_modules/three/build/three.module.min.js",
-					"three/addons/": "../assets/modules/three-addons/"
+					"three": "../node_modules/three/build/three.module.min.js",
+					"three/addons/": "./assets/modules/three-addons/"
 				}
 			}
 		</script>
 		<script type="module">
-			import App from "./app.js";
+			const App = (await import(String(new URL("app.js", window.location)))).default;
 			const app = new App();
 			app.start();
 		</script>
