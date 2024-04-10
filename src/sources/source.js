@@ -356,7 +356,10 @@ Source.Field = class SourceField {
     get logsV() { return [...this.#logsV]; }
     set logsV(v) { this.#logsV = util.ensure(v, "arr"); }
     get logsDec() { return [...this.#logsDec]; }
-    set logsDec(v) { this.#logsDec = util.ensure(v, "arr"); }
+    set logsDec(v) {
+        if (!this.isStruct) return;
+        this.#logsDec = util.ensure(v, "arr");
+    }
 
     get metaLogsN() { return Math.min(this.#metaLogsTS.length, this.#metaLogsV.length); }
     get metaLogsTS() { return [...this.#metaLogsTS]; }
@@ -367,8 +370,8 @@ Source.Field = class SourceField {
     #getIndex(ts) {
         const n = this.logsN;
         if (n <= 0) return -1;
-        if (ts < this.#logsTS[0]) return -1;
         if (ts >= this.#logsTS[n-1]) return n-1;
+        if (ts < this.#logsTS[0]) return -1;
         let l = 0, r = n-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);
@@ -423,7 +426,7 @@ Source.Field = class SourceField {
             ts = util.ensure(ts, "num", this.source.ts);
         }
         const n = this.logsN;
-        let i = volatile ? this.#getIndex(ts) : this.getIndex(ts);
+        const i = volatile ? this.#getIndex(ts) : this.getIndex(ts);
         if (this.isJustPrimitive) {
             if (i >= 0 && i < n)
                 if (this.#logsV[i] == v)
@@ -439,12 +442,9 @@ Source.Field = class SourceField {
         if (this.isStruct) {
             this.#logsDec.splice(i+1, 0, { r: null });
             const decoded = this.source.structDecode(this.path, this.baseType, this.isArray, v, ts, false);
-            if (decoded != null) {
-                this.#logsDec[i+1].r = decoded;
-                return this.#logsDec[i+1];
-            }
-            this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
-            return this.#logsDec[i+1];
+            if (decoded != null) this.#logsDec[i+1].r = decoded;
+            else this.source.queueStructDecode(this.path, this.baseType, this.isArray, v, ts);
+            v = this.#logsDec[i+1];
         } else if (this.isArray) {
             v.forEach((v, i) => {
                 let path = this.path+"/"+i;
@@ -473,8 +473,8 @@ Source.Field = class SourceField {
         ts = util.ensure(ts, "num", this.source.ts);
         const n = this.metaLogsN;
         if (n <= 0) return -1;
-        if (ts < this.#metaLogsTS[0]) return -1;
         if (ts >= this.#metaLogsTS[n-1]) return n-1;
+        if (ts < this.#metaLogsTS[0]) return -1;
         let l = 0, r = n-2;
         while (l <= r) {
             let m = Math.floor((l+r)/2);

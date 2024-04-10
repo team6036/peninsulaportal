@@ -30,6 +30,7 @@ class WPILOGDecoderWorker extends WorkerBase {
                 };
                 decoder.build((record, progress) => {
                     this.progress(progress);
+                    const ts = record.ts / 1000;
                     if (record.isControl()) {
                         if (record.isControlStart()) {
                             let startData = record.getControlStartData();
@@ -44,18 +45,16 @@ class WPILOGDecoderWorker extends WorkerBase {
                             let metadataData = record.getControlMetadataData();
                             let id = metadataData.entry;
                             let metadata = metadataData.metadata;
-                            if (!(id in entryId2Field)) return;
                             const field = entryId2Field[id];
-                            let ts = record.ts / 1000;
+                            if (!field) return;
                             field.updateMeta(metadata, ts);
                             updateTime(ts);
                         }
                         return;
                     }
                     let id = record.entryId;
-                    if (!(id in entryId2Field)) return;
                     const field = entryId2Field[id];
-                    let ts = record.ts / 1000;
+                    if (!field) return;
                     let typefs = {
                         boolean: () => record.getBool(),
                         int: () => record.getInt(),
