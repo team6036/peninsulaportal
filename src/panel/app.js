@@ -1040,25 +1040,31 @@ class Panel extends Widget {
                 this.change("isTitleCollapsed", isTitleCollapsed, isTitleCollapsed=this.isTitleCollapsed);
         }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
-        if (a.length <= 0 || a.length > 3) a = [null];
+        let isMaximized = null;
+        new MutationObserver(() => {
+            if (isMaximized != this.isMaximized)
+                this.change("isMaximized", isMaximized, isMaximized=this.isMaximized);
+        }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
+
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel) a = [a.tabs, a.tabIndex, a.isTitleCollapsed];
+            if (a instanceof Panel) a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
             else if (a instanceof Panel.Tab) a = [[a], 0];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof Panel.Tab) a = [a, 0];
                 else {
                     a = new Panel(...a);
-                    a = [a.tabs, a.tabIndex, a.isTitleCollapsed];
+                    a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.tabs, a.tabIndex, a.isCollapsed];
+            else if (util.is(a, "obj")) a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
             else a = [[], 0];
         }
         if (a.length == 2)
-            a = [...a, false];
+            a = [...a, false, false];
 
-        [this.tabs, this.tabIndex, this.isTitleCollapsed] = a;
+        [this.tabs, this.tabIndex, this.isTitleCollapsed, this.isMaximized] = a;
 
         if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
     }
@@ -1184,7 +1190,8 @@ class Panel extends Widget {
         return util.Reviver.revivable(this.constructor, {
             tabs: this.tabs,
             tabIndex: this.tabIndex,
-            isCollapsed: this.isTitleCollapsed,
+            isTitleCollapsed: this.isTitleCollapsed,
+            isMaximized: this.isMaximized,
         });
     }
 }
