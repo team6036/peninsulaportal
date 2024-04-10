@@ -5255,6 +5255,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
         this.addHandler("rem", () => this.odometry.remHint(hint));
 
+        const targetScale = 2/3;
+
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             const hovered = this.hovered;
@@ -5265,30 +5267,17 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
                         ctx.lineWidth = 7.5*quality;
                         ctx.lineJoin = "miter";
-                        ctx.beginPath();
-                        let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
-                            .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
-                            .map(v => v.rotateOrigin(this.heading));
-                        for (let i = 0; i <= path.length; i++) {
-                            let j = i%path.length;
-                            let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
-                            if (i > 0) ctx.lineTo(...p.xy);
-                            else ctx.moveTo(...p.xy);
-                        }
-                        ctx.closePath();
-                        ctx.stroke();
-                        ctx.strokeStyle = PROPERTYCACHE.get("--v8");
-                        ctx.lineWidth = 1*quality;
-                        ctx.lineJoin = "miter";
                         if (builtinType == "target") {
                             ctx.lineCap = "square";
-                            let path = [[0.75, 1], [1, 1], [1, 0.75]];
+                            let path = [[targetScale, 1], [1, 1], [1, targetScale]];
                             for (let xi = 0; xi < 2; xi++) {
                                 let x = xi*2 - 1;
                                 for (let yi = 0; yi < 2; yi++) {
                                     let y = yi*2 - 1;
                                     ctx.beginPath();
-                                    let path2 = path.map(v => this.size.div(2).mul(v).mul(x, y)).map(v => v.rotateOrigin(this.heading));
+                                    let path2 = path
+                                        .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v).mul(x, y))
+                                        .map(v => v.rotateOrigin(this.heading));
                                     for (let i = 0; i < path2.length; i++) {
                                         let p = this.odometry.worldToCanvas(this.rPos.add(path2[i]));
                                         if (i > 0) ctx.lineTo(...p.xy);
@@ -5299,7 +5288,45 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             }
                         } else {
                             ctx.beginPath();
-                            path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                                .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
+                                .map(v => v.rotateOrigin(this.heading));
+                            for (let i = 0; i <= path.length; i++) {
+                                let j = i%path.length;
+                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                                if (i > 0) ctx.lineTo(...p.xy);
+                                else ctx.moveTo(...p.xy);
+                            }
+                            ctx.closePath();
+                            ctx.stroke();
+                        }
+                        ctx.strokeStyle = PROPERTYCACHE.get("--v8");
+                        ctx.lineWidth = 1*quality;
+                        if (builtinType == "target") {
+                            let w = this.odometry.pageLenToWorld(7.5)/this.odometry.pageLenToWorld(this.w);
+                            let h = this.odometry.pageLenToWorld(7.5)/this.odometry.pageLenToWorld(this.h);
+                            let path = [[targetScale-w*2, 1], [1, 1], [1, targetScale-h*2]];
+                            for (let xi = 0; xi < 2; xi++) {
+                                let x = xi*2 - 1;
+                                for (let yi = 0; yi < 2; yi++) {
+                                    let y = yi*2 - 1;
+                                    ctx.beginPath();
+                                    let path2 = path
+                                        .map(v => this.size.div(2).mul(v).mul(x, y))
+                                        .map(v => v.rotateOrigin(this.heading));
+                                    for (let i = 0; i < path2.length; i++) {
+                                        let p = this.odometry.worldToCanvas(this.rPos.add(path2[i]));
+                                        if (i > 0) ctx.lineTo(...p.xy);
+                                        else ctx.moveTo(...p.xy);
+                                    }
+                                    ctx.stroke();
+                                }
+                            }
+                        } else {
+                            ctx.beginPath();
+                            path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                                .map(v => this.size.div(2).mul(v))
+                                .map(v => v.rotateOrigin(this.heading));
                             for (let i = 0; i <= path.length; i++) {
                                 let j = i%path.length;
                                 let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
