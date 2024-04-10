@@ -5158,6 +5158,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             "§default": "Default",
             "§node": "Node",
             "§box": "Box",
+            "§target": "Target",
             "§arrow": "Arrow (Centered)",
             "§arrow-h": "Arrow (Head Centered)",
             "§arrow-t": "Arrow (Tail Centered)",
@@ -5172,6 +5173,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         "§default",
         "§node",
         "§box",
+        "§target",
         {
             name: "Arrow", key: "§arrow",
             sub: [
@@ -5258,11 +5260,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             const hovered = this.hovered;
             if (this.hasType() && this.hasBuiltinType()) {
                 const builtinType = this.builtinType;
-                if (["default", "node", "box", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
+                if (["default", "node", "box", "target", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
                     if (!["node", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
                         ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
                         ctx.lineWidth = 7.5*quality;
-                        ctx.lineJoin = "round";
+                        ctx.lineJoin = "miter";
                         ctx.beginPath();
                         let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                             .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
@@ -5277,17 +5279,36 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.stroke();
                         ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                         ctx.lineWidth = 1*quality;
-                        ctx.lineJoin = "round";
-                        ctx.beginPath();
-                        path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
-                        for (let i = 0; i <= path.length; i++) {
-                            let j = i%path.length;
-                            let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
-                            if (i > 0) ctx.lineTo(...p.xy);
-                            else ctx.moveTo(...p.xy);
+                        ctx.lineJoin = "miter";
+                        if (builtinType == "target") {
+                            ctx.lineCap = "square";
+                            let path = [[0.75, 1], [1, 1], [1, 0.75]];
+                            for (let xi = 0; xi < 2; xi++) {
+                                let x = xi*2 - 1;
+                                for (let yi = 0; yi < 2; yi++) {
+                                    let y = yi*2 - 1;
+                                    ctx.beginPath();
+                                    let path2 = path.map(v => this.size.div(2).mul(v).mul(x, y)).map(v => v.rotateOrigin(this.heading));
+                                    for (let i = 0; i < path2.length; i++) {
+                                        let p = this.odometry.worldToCanvas(this.rPos.add(path2[i]));
+                                        if (i > 0) ctx.lineTo(...p.xy);
+                                        else ctx.moveTo(...p.xy);
+                                    }
+                                    ctx.stroke();
+                                }
+                            }
+                        } else {
+                            ctx.beginPath();
+                            path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+                            for (let i = 0; i <= path.length; i++) {
+                                let j = i%path.length;
+                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                                if (i > 0) ctx.lineTo(...p.xy);
+                                else ctx.moveTo(...p.xy);
+                            }
+                            ctx.closePath();
+                            ctx.stroke();
                         }
-                        ctx.closePath();
-                        ctx.stroke();
                     }
                     if (["arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
                         ctx.strokeStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? this.colorH : this.color));
