@@ -442,7 +442,7 @@ export class App extends util.Target {
         ];
     }
 
-    static async createMarkdown(text, signal, pth="") {
+    static async createMarkdown(pth, signal) {
         if (!(signal instanceof util.Target)) signal = new util.Target();
         const converter = new showdown.Converter({
             ghCompatibleHeaderId: true,
@@ -454,45 +454,46 @@ export class App extends util.Target {
         converter.setFlavor("github");
         let article = document.createElement("article");
         article.classList.add("md");
-        article.innerHTML = converter.makeHtml(text);
-        const repoRoot = await window.api.getRepoRoot();
-        const url = "file://"+repoRoot+"/";
+        article.innerHTML = converter.makeHtml(await (await fetch(pth)).text());
         const dfs = async elem => {
-            await (async () => {
+            let skip = await (async () => {
                 if (elem instanceof HTMLImageElement && elem.classList.contains("docs-icon")) {
                     const onHolidayState = async holiday => {
                         const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
                         elem.src = 
                             ((holiday == null) || ("icon" in holidayData && !holidayData.icon)) ?
-                                String(new URL("./src/assets/app/icon.png", url)) :
-                            util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
+                                "./assets/app/icon.png" :
+                            "file://"+util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
                     };
                     signal.addHandler("holiday", onHolidayState);
                     await onHolidayState(await window.api.get("active-holiday"));
-                    return;
+                    return true;
                 }
                 if (elem instanceof HTMLAnchorElement) {
                     if (elem.classList.contains("back")) {
                         elem.setAttribute("href", "");
                         elem.addEventListener("click", e => {
                             e.stopPropagation();
+                            e.preventDefault();
                             signal.post("back", e);
                         });
-                        return;
+                        return false;
                     }
                     let href = elem.getAttribute("href");
-                    if (!href.startsWith("./") && !href.startsWith("../")) return;
+                    if (!href.startsWith("./") && !href.startsWith("../")) return false;
                     elem.setAttribute("href", "");
                     elem.addEventListener("click", e => {
                         e.stopPropagation();
-                        signal.post("nav", e, String(new URL(href, new URL(pth, url))).slice(url.length));
+                        e.preventDefault();
+                        const eBase = document.querySelector("base");
+                        signal.post("nav", e, String(new URL(href, new URL(pth, eBase ? new URL(eBase.href, window.location) : window.location))));
                     });
-                    return;
+                    return false;
                 }
                 if (elem.tagName == "BLOCKQUOTE") {
-                    if (elem.children.length != 1) return;
+                    if (elem.children.length != 1) return false;
                     let p = elem.children[0];
-                    if (!(p instanceof HTMLParagraphElement)) return;
+                    if (!(p instanceof HTMLParagraphElement)) return false;
                     let text = p.childNodes[0];
                     if (!(text instanceof Text)) return;
                     const tags = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"];
@@ -520,14 +521,16 @@ export class App extends util.Target {
                         CAUTION: "warning-outline",
                     }[tag];
                     header.appendChild(document.createTextNode(util.formatText(tag)));
-                    return;
+                    return false;
                 }
             })();
+            if (skip) return;
             ["href", "src"].forEach(attr => {
                 if (!elem.hasAttribute(attr)) return;
                 let v = elem.getAttribute(attr);
                 if (!v.startsWith("./") && !v.startsWith("../")) return;
-                v = String(new URL(v, new URL(pth, url)));
+                const eBase = document.querySelector("base");
+                v = String(new URL(v, new URL(pth, eBase ? new URL(eBase.href, window.location) : window.location)));
                 elem.setAttribute(attr, v);
             });
             await Promise.all(Array.from(elem.children).map(child => dfs(child)));
@@ -541,10 +544,10 @@ export class App extends util.Target {
         }, 100);
         return article;
     }
-    async createMarkdown(text, signal, pth="") {
+    async createMarkdown(pth, signal) {
         if (!(signal instanceof util.Target)) signal = new util.Target();
         this.addHandler("cmd-win-holiday", holiday => signal.post("holiday", holiday));
-        return await App.createMarkdown(text, signal, pth);
+        return await App.createMarkdown(pth, signal);
     }
     static evaluateLoad(load) {
         let ogLoad = load = String(load);
@@ -688,7 +691,6 @@ export class App extends util.Target {
         }
         let itm = this.menu.getItemById("toggledevtools");
         if (!itm) return;
-        // itm.enabled = this.devMode;
     }
     get holiday() { return this.#holiday; }
     set holiday(v) {
@@ -700,10 +702,6 @@ export class App extends util.Target {
 
     async setup() {
         if (this.setupDone) return false;
-
-        const root = "file://"+(await window.api.getAppRoot());
-        const theRoot = "file://"+(await window.api.getRoot());
-        const repoRoot = "file://"+(await window.api.getRepoRoot());
 
         window.api.onPerm(async () => {
             let perm = await this.getPerm();
@@ -748,8 +746,8 @@ export class App extends util.Target {
             pop.cancel = "Documentation";
             pop.iconSrc = 
                 ((holiday == null) || ("icon" in holidayData && !holidayData.icon)) ?
-                    (root+"/assets/app/icon.svg") :
-                util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
+                    "./assets/app/icon.svg" :
+                "file://"+util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
             pop.title = "Peninsula "+lib.getName(name);
@@ -805,12 +803,12 @@ export class App extends util.Target {
         this.#eCoreStyle = document.createElement("link");
         document.head.appendChild(this.eCoreStyle);
         this.eCoreStyle.rel = "stylesheet";
-        this.eCoreStyle.href = root+"/style.css";
+        this.eCoreStyle.href = "./style.css";
 
         this.#eStyle = document.createElement("link");
         document.head.appendChild(this.eStyle);
         this.eStyle.rel = "stylesheet";
-        this.eStyle.href = theRoot+"/style.css";
+        this.eStyle.href = new URL("style.css", window.location);
 
         this.#eDynamicStyle = document.createElement("style");
         document.head.appendChild(this.eDynamicStyle);
@@ -868,30 +866,30 @@ export class App extends util.Target {
         const ionicons1 = document.createElement("script");
         document.body.appendChild(ionicons1);
         ionicons1.type = "module";
-        ionicons1.src = repoRoot+"/node_modules/ionicons/dist/ionicons/ionicons.esm.js";
+        ionicons1.src = "../node_modules/ionicons/dist/ionicons/ionicons.esm.js";
         const ionicons2 = document.createElement("script");
         document.body.appendChild(ionicons2);
         ionicons2.noModule = true;
-        ionicons2.src = repoRoot+"/node_modules/ionicons/dist/ionicons/ionicons.js";
+        ionicons2.src = "../node_modules/ionicons/dist/ionicons/ionicons.js";
 
         const fuse = document.createElement("script");
         document.head.appendChild(fuse);
-        fuse.src = root+"/assets/modules/fuse.min.js";
+        fuse.src = "./assets/modules/fuse.min.js";
 
         const showdown = document.createElement("script");
         document.head.appendChild(showdown);
-        showdown.src = root+"/assets/modules/showdown.min.js";
+        showdown.src = "./assets/modules/showdown.min.js";
 
         const highlight1 = document.createElement("script");
         document.head.appendChild(highlight1);
-        highlight1.src = root+"/assets/modules/highlight.min.js";
+        highlight1.src = "./assets/modules/highlight.min.js";
         const highlight2 = document.createElement("link");
         document.head.appendChild(highlight2);
         highlight2.rel = "stylesheet";
 
         const qrcode = document.createElement("script");
         document.head.appendChild(qrcode);
-        qrcode.src = root+"/assets/modules/qrcode.min.js";
+        qrcode.src = "./assets/modules/qrcode.min.js";
         
         let t = util.getTime();
         
@@ -925,11 +923,8 @@ export class App extends util.Target {
                     theme :
                 util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj");
             this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
-            // this.base = Array.from(new Array(9).keys()).map(i => new Array(3).fill((i < 2) ? 0 : (i < 6) ? 85 : 255));
             let darkWanted = !!(await window.api.get("dark-wanted"));
-            highlight2.href = root+"/assets/modules/" + (
-                darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css"
-            );
+            highlight2.href = "./assets/modules/" + (darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css");
             if (!darkWanted) this.base = this.base.reverse();
             this.colors = data.colors || {
                 r: "#ff0000",
@@ -1000,10 +995,10 @@ export class App extends util.Target {
                     const holidayIconData = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj");
                     let eSpecialBack = elem.querySelector(".special.back");
                     if (eSpecialBack instanceof HTMLImageElement)
-                        eSpecialBack.src = holidayIconData.hat2;
+                        eSpecialBack.src = "file://"+holidayIconData.hat2;
                     let eSpecialFront = elem.querySelector(".special.front");
                     if (eSpecialFront instanceof HTMLImageElement)
-                        eSpecialFront.src = holidayIconData.hat1;
+                        eSpecialFront.src = "file://"+holidayIconData.hat1;
                 };
                 this.addHandler("cmd-win-holiday", async holiday => {
                     await onHolidayState(holiday);
@@ -1919,6 +1914,11 @@ App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
     get signal() { return this.#signal; }
 
     async navigate(href, direction=-1) {
+        const eBase = document.querySelector("base");
+        href = 
+            (this.#history.length > 0) ?
+                String(new URL(href, new URL(this.#history.at(-1), eBase ? new URL(eBase.href, window.location) : window.location))) :
+            String(new URL(href, eBase ? new URL(eBase.href, window.location) : window.location));
         this.#history.push(href);
         if (this.hasEArticle()) {
             let article = this.eArticle;
@@ -1928,11 +1928,7 @@ App.MarkdownPopup = class AppMarkdownPopup extends App.Popup {
             setTimeout(() => article.remove(), 250);
         }
         try {
-            const repoRoot = await window.api.getRepoRoot();
-            const url = "file://"+repoRoot+"/";
-            const hrefUrl = String(new URL(href, url));
-            const relativeUrl = String(new URL("..", hrefUrl+"/")).slice(url.length);
-            this.#eArticle = await App.createMarkdown(await (await fetch(hrefUrl)).text(), this.signal, "./"+relativeUrl);
+            this.#eArticle = await App.createMarkdown(href, this.signal);
             this.eContent.appendChild(this.eArticle);
         } catch (e) { return false; }
         if (!this.hasEArticle()) return false;
@@ -3121,7 +3117,7 @@ export class AppModal extends App {
             this.#eModalStyle = document.createElement("link");
             document.head.appendChild(this.eModalStyle);
             this.eModalStyle.rel = "stylesheet";
-            this.eModalStyle.href = "./style-modal.css";
+            this.eModalStyle.href = new URL("style-modal.css", window.location);
 
             document.body.innerHTML = `
 <div id="mount">
@@ -3268,7 +3264,7 @@ export class AppFeature extends App {
             this.#eFeatureStyle = document.createElement("link");
             document.head.appendChild(this.eFeatureStyle);
             this.eFeatureStyle.rel = "stylesheet";
-            this.eFeatureStyle.href = "../style-feature.css";
+            this.eFeatureStyle.href = "./style-feature.css";
 
             const checkSizes = async () => {
                 let left = PROPERTYCACHE.get("--LEFT");
@@ -5324,7 +5320,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             }
                         } else {
                             ctx.beginPath();
-                            path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                                 .map(v => this.size.div(2).mul(v))
                                 .map(v => v.rotateOrigin(this.heading));
                             for (let i = 0; i <= path.length; i++) {

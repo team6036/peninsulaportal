@@ -495,7 +495,7 @@ TemplateCollection.Item = class TemplateCollectionItem extends TemplateCollectio
             this.odometry2d.size = this.size;
             this.odometry3d.size = this.size;
             const templateImages = core.GLOBALSTATE.getProperty("template-images").value;
-            this.odometry2d.imageSrc = templateImages[this.id];
+            this.odometry2d.imageSrc = "file://"+templateImages[this.id];
             this.odometry3d.template = this.id;
         };
         this.addHandler("change", apply);
