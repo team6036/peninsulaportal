@@ -925,6 +925,7 @@ export class App extends util.Target {
                     theme :
                 util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj");
             this.base = data.base || Array.from(new Array(9).keys()).map(i => new Array(3).fill(255*i/9));
+            // this.base = Array.from(new Array(9).keys()).map(i => new Array(3).fill((i < 2) ? 0 : (i < 6) ? 85 : 255));
             let darkWanted = !!(await window.api.get("dark-wanted"));
             highlight2.href = root+"/assets/modules/" + (
                 darkWanted ? "highlight-dark.min.css" : "highlight-light.min.css"
