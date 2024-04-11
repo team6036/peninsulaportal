@@ -237,7 +237,10 @@ export class PLoadingElement extends HTMLElement {
         return this.#update();
     }
 
-    attributeChangedCallback(name, prev, curr) {  this[name] = curr; }
+    attributeChangedCallback(name, prev, curr) {
+        if (!["type", "axis"].includes(name)) return;
+        this[name] = curr;
+    }
 }
 window.customElements.define("p-loading", PLoadingElement);
 
