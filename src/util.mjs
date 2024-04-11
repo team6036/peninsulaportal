@@ -171,9 +171,7 @@ export function angleRelRadians(a, b) {
     return r;
 }
 
-export function getTime() {
-    return new Date().getTime();
-}
+export function getTime() { return Date.now(); }
 export const UNITVALUES = {
     ms: 1,
     s: 1000,
@@ -784,13 +782,17 @@ export class Color extends Target {
         this.#r = this.#g = this.#b = this.#a = null;
         this.#hsv = null;
 
+        this.set(...a);
+    }
+
+    set(...a) {
         if (a.length <= 0 || [2].includes(a.length) || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Color) a = a.rgba;
             else if (a instanceof V3) a = [...a.xyz, 1];
             else if (a instanceof V4) a = a.wxyz;
-            else if (is(a, "arr")) a = new Color(...a).rgba;
+            else if (is(a, "arr")) return this.set(...a);
             else if (is(a, "obj")) a = [a.r, a.g, a.b, a.a];
             else if (is(a, "num")) {
                 if (a < 0) a = new Array(3).fill(-a);
@@ -846,9 +848,9 @@ export class Color extends Target {
         if (a.length == 3) a = [...a, 1];
 
         [this.r, this.g, this.b, this.a] = a;
-    }
 
-    set(...a) { this.rgba = new Color(...a).rgba; return this; }
+        return this;
+    }
 
     #uncache() { this.#hsv = this.#hex = this.#hexNoAlpha = this.#rgba = this.#rgb = null; }
 
@@ -1012,14 +1014,18 @@ export class Range extends Target {
     constructor(...a) {
         super();
 
+        this.#l = this.#r = 0;
+        this.#lInclude = this.#rInclude = true;
+
+        this.set(...a);
+    }
+
+    set(...a) {
         if (a.length <= 0 || [3].includes(a.length) || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Range) a = [a.l, a.r, a.lInclude, a.rInclude];
-            else if (is(a, "arr")) {
-                a = new Range(...a);
-                a = [a.l, a.r, a.lInclude, a.rInclude];
-            }
+            else if (is(a, "arr")) return this.set(...a);
             else if (is(a, "obj")) a = [a.l, a.r, a.lInclude, a.rInclude];
             else if (is(a, "any_num")) a = [a, Infinity];
             else a = [-Infinity, Infinity];
@@ -1027,6 +1033,8 @@ export class Range extends Target {
         if (a.length == 2) a = [...a, true, true];
 
         [this.l, this.r, this.lInclude, this.rInclude] = a;
+
+        return this;
     }
 
     get l() { return this.#l; }
@@ -1100,22 +1108,30 @@ export class V extends Target {
     constructor(...a) {
         super();
 
+        this.#x = this.#y = 0;
+
+        this.set(...a);
+    }
+
+    get length() { return 2; }
+
+    set(...a) {
         if (a.length <= 0 || a.length > 2) a = [0];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof V) a = a.xy;
             else if (a instanceof V3) a = [a.x, a.y];
             else if (a instanceof V4) a = [a.x, a.y];
-            else if (is(a, "arr")) a = new V(...a).xy;
+            else if (is(a, "arr")) return this.set(...a);
             else if (is(a, "obj")) a = [a.x, a.y];
             else if (is(a, "num")) a = [a, a];
             else a = [0, 0];
         }
 
         [this.x, this.y] = a;
-    }
 
-    get length() { return 2; }
+        return this;
+    }
 
     get x() { return this.#x; }
     set x(v) {
@@ -1130,9 +1146,7 @@ export class V extends Target {
         this.change("y", this.y, this.#y=v);
     }
     get xy() { return [this.x, this.y]; }
-    set xy(v) { [this.x, this.y] = new V(v).xy; }
-
-    set(...a) { this.xy = a; return this; }
+    set xy(v) { this.set(v); }
 
     add(...a) {
         a = new V(...a);
@@ -1256,13 +1270,21 @@ export class V3 extends Target {
     constructor(...a) {
         super();
 
+        this.#x = this.#y = this.#z = 0;
+        
+        this.set(...a);
+    }
+
+    get length() { return 3; }
+
+    set(...a) {
         if (a.length <= 0 || a.length > 3) a = [0];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof V3) a = [a.x, a.y, a.z];
             else if (a instanceof V) a = [a.x, a.y, 0];
             else if (a instanceof V4) a = [a.x, a.y, a.z];
-            else if (is(a, "arr")) a = new V3(...a).xyz;
+            else if (is(a, "arr")) return this.set(...a);
             else if (is(a, "obj")) a = [a.x, a.y, a.z];
             else if (is(a, "num")) a = [a, a, a];
             else a = [0, 0, 0];
@@ -1270,9 +1292,9 @@ export class V3 extends Target {
         if (a.length == 2) a = [...a, 0];
 
         [this.x, this.y, this.z] = a;
-    }
 
-    get length() { return 3; }
+        return this;
+    }
 
     get x() { return this.#x; }
     set x(v) {
@@ -1293,9 +1315,7 @@ export class V3 extends Target {
         this.change("z", this.z, this.#z=v);
     }
     get xyz() { return [this.x, this.y, this.z]; }
-    set xyz(v) { [this.x, this.y, this.z] = new V3(v).xyz; }
-
-    set(...a) { this.xyz = a; return this; }
+    set xyz(v) { this.set(v); }
 
     add(...a) {
         a = new V3(...a);
@@ -1410,13 +1430,21 @@ export class V4 extends Target {
     constructor(...a) {
         super();
 
+        this.#w = this.#x = this.#y = this.#z = 0;
+
+        this.set(...a);
+    }
+
+    get length() { return 4; }
+
+    set(...a) {
         if (a.length <= 0 || a.length > 4) a = [0];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof V4) a = a.wxyz;
             else if (a instanceof V) a = [0, a.x, a.y, 0];
             else if (a instanceof V3) a = [0, a.x, a.y, a.z];
-            else if (is(a, "arr")) a = new V4(...a).wxyz;
+            else if (is(a, "arr")) return this.set(...a);
             else if (is(a, "obj")) a = [a.w, a.x, a.y, a.z];
             else if (is(a, "num")) a = [a, a, a, a];
             else a = [0, 0, 0, 0];
@@ -1425,9 +1453,9 @@ export class V4 extends Target {
         if (a.length == 3) a = [0, ...a];
 
         [this.w, this.x, this.y, this.z] = a;
-    }
 
-    get length() { return 4; }
+        return this;
+    }
 
     get w() { return this.#w; }
     set w(v) {
@@ -1454,7 +1482,7 @@ export class V4 extends Target {
         this.change("z", this.z, this.#z=v);
     }
     get wxyz() { return [this.w, this.x, this.y, this.z]; }
-    set wxyz(v) { [this.w, this.x, this.y, this.z] = new V4(v).wxyz; }
+    set wxyz(v) { this.set(v); }
 
     get t() { return this.w; }
     set t(v) { this.w = v; }
@@ -1466,8 +1494,6 @@ export class V4 extends Target {
     set r(v) { this.z = v; }
     get tblr() { return [this.t, this.b, this.l, this.r]; }
     set tblr(v) { [this.t, this.b, this.l, this.r] = new V4(v).tblr; }
-
-    set(...a) { this.wxyz = a; return this; }
 
     add(...a) {
         a = new V4(...a);
@@ -1551,6 +1577,8 @@ Object.defineProperty(V4.prototype, "3", {
     get: function() { return this.z; },
     set: function(v) { this.z = v; },
 });
+
+// TODO: revamp these apis
 
 export class Shape extends Target {
     get p() { return new V(); }
@@ -2127,13 +2155,7 @@ export class Resolver extends Target {
     set state(v) {
         if (this.state == v) return;
         this.change("state", this.state, this.#state=v);
-        let resolves = this.#resolves.filter(o => {
-            let methodfs = {
-                "==": o.v == this.state,
-                "!=": o.v != this.state,
-            };
-            return methodfs[o.method];
-        });
+        let resolves = this.#resolves.filter(o => o.f(this.state));
         for (let o of resolves) {
             this.#resolves.splice(this.#resolves.indexOf(o), 1);
             let stateChanged = false;
@@ -2145,14 +2167,13 @@ export class Resolver extends Target {
         }
     }
 
-    async when(v) {
-        if (this.state == v) return;
-        return await new Promise((res, rej) => this.#resolves.push({ v: v, res: res, method: "==" }));
+    async whenCondition(f) {
+        f = ensure(f, "func");
+        if (f(this.state)) return;
+        return await new Promise((res, rej) => this.#resolves.push({ f: f, res: res }));
     }
-    async whenNot(v) {
-        if (this.state != v) return;
-        return await new Promise((res, rej) => this.#resolves.push({ v: v, res: res, method: "!=" }));
-    }
+    async when(v) { return await this.whenCondition(v2 => (v2 == v)); }
+    async whenNot(v) { return await this.whenCondition(v2 => (v2 != v)); }
     async whenTrue() { return await this.when(true); }
     async whenFalse() { return await this.when(false); }
 }
