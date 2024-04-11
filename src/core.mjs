@@ -882,10 +882,6 @@ export class App extends util.Target {
         ionicons2.noModule = true;
         ionicons2.src = "../node_modules/ionicons/dist/ionicons/ionicons.js";
 
-        const fuse = document.createElement("script");
-        document.head.appendChild(fuse);
-        fuse.src = "./assets/modules/fuse.min.js";
-
         const showdown = document.createElement("script");
         document.head.appendChild(showdown);
         showdown.src = "./assets/modules/showdown.min.js";
