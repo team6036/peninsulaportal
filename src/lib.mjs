@@ -1,10 +1,14 @@
 /*.lw{*/
 import * as util from "./util.mjs";
+/*.lw}*/
 
-let math = null;
+import Fuse from "../node_modules/fuse.js/dist/fuse.min.mjs";
+
+/*.lw{*/
+let mathjs = null;
 if (typeof(window) != "undefined") {
     try {
-        math = (await import("../node_modules/mathjs/lib/browser/math.js")).default;
+        mathjs = (await import("../node_modules/mathjs/lib/browser/math.js")).default;
     } catch (e) {
         console.log("MATHJS IMPORT TRY 1 ERR", e);
         try {
@@ -16,15 +20,16 @@ if (typeof(window) != "undefined") {
                 script.addEventListener("error", e => rej(e));
                 script.src = "../node_modules/mathjs/lib/browser/math.js";
             });
-            math = window.math;
+            mathjs = window.math;
             delete window.math;
         } catch (e) {
             console.log("MATHJS IMPORT TRY 2 ERR", e);
         }
     }
 }
-export { math as mathjs };
+export { mathjs };
 /*.lw}*/
+
 
 export const TEXTENCODER = new TextEncoder();
 export const TEXTDECODER = new TextDecoder();
@@ -262,9 +267,9 @@ export class Unit extends util.Target {
 
     convert(to) {
         to = String(to).toLowerCase();
-        if (this.unit != "#" && to != "#" && math) {
+        if (this.unit != "#" && to != "#" && mathjs) {
             try {
-                return new Unit(math.unit(this.value, this.unit).toNumber(to), to);
+                return new Unit(mathjs.unit(this.value, this.unit).toNumber(to), to);
             } catch (e) {}
         }
         return new Unit(this.value, to);
@@ -274,9 +279,9 @@ export class Unit extends util.Target {
         v = util.ensure(v, "num");
         u1 = String(u1).toLowerCase();
         u2 = String(u2).toLowerCase();
-        if (u1 != "#" && u2 != "#" && math) {
+        if (u1 != "#" && u2 != "#" && mathjs) {
             try {
-                return math.unit(v, u1).toNumber(u2);
+                return mathjs.unit(v, u1).toNumber(u2);
             } catch (e) {}
         }
         return v;
