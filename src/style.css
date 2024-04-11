@@ -14,6 +14,11 @@
     --gradient: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
 }
 
+@font-face {
+    font-family: ComicSans;
+    src: url(./assets/ComicSans.ttf);
+}
+
 
 * {
     font-family: inherit;
@@ -34,9 +39,6 @@ body {
     background-color: #000;
 
     font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    /*.lw}*/
-    /* font-family: REM, Arial, Helvetica, sans-serif; */
-    /*.lw{*/
 }
 
 ::selection {
