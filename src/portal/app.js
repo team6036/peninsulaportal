@@ -24,9 +24,7 @@ class FeatureButton extends util.Target {
         this.eName.classList.add("name");
         this.#eIcon = document.createElement("ion-icon");
         this.elem.insertBefore(this.eIcon, this.eName);
-        this.#eTooltip = document.createElement("div");
-        this.elem.appendChild(this.eTooltip);
-        this.eTooltip.classList.add("tooltip");
+        this.#eTooltip = document.createElement("p-tooltip");
         this.eTooltip.classList.add("hov");
         this.eTooltip.classList.add("sx");
 
@@ -148,11 +146,9 @@ export default class App extends core.App {
             this.#eContent = document.querySelector("#PAGE > .content");
             if (this.hasEContent()) {
                 (async () => {
-                    let resp = await fetch("../../README.md");
-                    let text = await resp.text();
                     let signal = new util.Target();
                     signal.addHandler("nav", (e, href) => this.addPopup(new App.MarkdownPopup(href)));
-                    this.eContent.appendChild(await this.createMarkdown(text, signal));
+                    this.eContent.appendChild(await this.createMarkdown("../README.md", signal));
                 })();
                 this.addHandler("update", delta => {
                     let scroll = this.eContent.scrollTop / window.innerHeight;

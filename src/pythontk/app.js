@@ -23,11 +23,9 @@ export default class App extends core.App {
         });
         this.addHandler("post-setup", async () => {
             (async () => {
-                let resp = await fetch("./doc.md");
-                let text = await resp.text();
                 let signal = new util.Target();
                 signal.addHandler("nav", (e, href) => this.addPopup(new App.MarkdownPopup(href)));
-                const eArticle = await this.createMarkdown(text, signal);
+                const eArticle = await this.createMarkdown(new URL("doc.md", window.location), signal);
                 if (!this.hasESide()) return;
                 if (!this.hasEArticle()) return;
                 const dfsArticle = elem => {

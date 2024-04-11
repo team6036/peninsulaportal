@@ -98,8 +98,9 @@ export class WorkerBase extends util.Target {
         return true;
     }
     progress(progress) {
-        if (util.getTime()-this.#progressT < 1000/60) return false;
-        this.#progressT = util.getTime();
+        let t = util.getTime();
+        if (t-this.#progressT < 1000/60) return false;
+        this.#progressT = t;
         return this.send("progress", Math.min(1, Math.max(0, util.ensure(progress, "num"))));
     }
 }

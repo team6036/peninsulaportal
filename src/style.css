@@ -14,6 +14,11 @@
     --gradient: linear-gradient(160deg, var(--v2-0) 0%, var(--v2-4) 100%);
 }
 
+@font-face {
+    font-family: ComicSans;
+    src: url(./assets/ComicSans.ttf);
+}
+
 
 * {
     font-family: inherit;
@@ -34,9 +39,6 @@ body {
     background-color: #000;
 
     font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    /*.lw}*/
-    /* font-family: REM, Arial, Helvetica, sans-serif; */
-    /*.lw{*/
 }
 
 ::selection {
@@ -827,7 +829,7 @@ article.md.lighter table td {
     font-family: monospace;
 }
 
-:has(> .tooltip) {
+:has(> p-tooltip) {
     position: relative;
 }
 @property --tooltip-size-v {
@@ -835,7 +837,7 @@ article.md.lighter table td {
     inherits: true;
     initial-value: 0%;
 }
-.tooltip {
+p-tooltip {
     z-index: 10000;
 
     --bg: var(--v2);
@@ -897,7 +899,7 @@ article.md.lighter table td {
 
     transition: --tooltip-size-v var(--t), transform var(--t), background-color var(--t), opacity var(--t), visibility var(--t);
 }
-.tooltip::before {
+p-tooltip::before {
     content: "";
 
     position: absolute;
@@ -925,22 +927,22 @@ article.md.lighter table td {
 
     transition: background-color var(--t);
 }
-.tooltip.hov,
-.tooltip.hov-long,
-.tooltip.tog {
+p-tooltip.hov,
+p-tooltip.hov-long,
+p-tooltip.tog {
     --tooltip-size-v: 75%;
 
     opacity: 0%;
     visibility: hidden;
 }
-:hover > .tooltip.hov,
-.active > .tooltip.tog {
+:hover > p-tooltip.hov,
+.active > p-tooltip.tog {
     --tooltip-size-v: 100%;
 
     opacity: 100%;
     visibility: inherit;
 }
-:hover > .tooltip.hov-long {
+:hover > p-tooltip.hov-long {
     animation: tooltip-long-hov var(--t) 2s forwards;
 }
 @keyframes tooltip-long-hov {
@@ -957,51 +959,51 @@ article.md.lighter table td {
         visibility: inherit;
     }
 }
-.tooltip.nex,
-.tooltip.nx,
-.tooltip.nwx,
-.tooltip.sex,
-.tooltip.sx,
-.tooltip.swx {
+p-tooltip.nex,
+p-tooltip.nx,
+p-tooltip.nwx,
+p-tooltip.sex,
+p-tooltip.sx,
+p-tooltip.swx {
     --ax: 1;
 }
-.tooltip.ney,
-.tooltip.ey,
-.tooltip.sey,
-.tooltip.nwy,
-.tooltip.wy,
-.tooltip.swy {
+p-tooltip.ney,
+p-tooltip.ey,
+p-tooltip.sey,
+p-tooltip.nwy,
+p-tooltip.wy,
+p-tooltip.swy {
     --ay: 1;
 }
-.tooltip.nex,
-.tooltip.sex,
-.tooltip.ney,
-.tooltip.ey,
-.tooltip.sey {
+p-tooltip.nex,
+p-tooltip.sex,
+p-tooltip.ney,
+p-tooltip.ey,
+p-tooltip.sey {
     --x: +1;
 }
-.tooltip.nwx,
-.tooltip.swx,
-.tooltip.nwy,
-.tooltip.wy,
-.tooltip.swy {
+p-tooltip.nwx,
+p-tooltip.swx,
+p-tooltip.nwy,
+p-tooltip.wy,
+p-tooltip.swy {
     --x: -1;
 }
-.tooltip.nex,
-.tooltip.nx,
-.tooltip.nwx,
-.tooltip.ney,
-.tooltip.nwy {
+p-tooltip.nex,
+p-tooltip.nx,
+p-tooltip.nwx,
+p-tooltip.ney,
+p-tooltip.nwy {
     --y: -1;
 }
-.tooltip.sex,
-.tooltip.sx,
-.tooltip.swx,
-.tooltip.sey,
-.tooltip.swy {
+p-tooltip.sex,
+p-tooltip.sx,
+p-tooltip.swx,
+p-tooltip.sey,
+p-tooltip.swy {
     --y: +1;
 }
-.tooltip.color {
+p-tooltip.color {
     min-width: 150px;
     max-width: 150px;
     padding: 10px;
@@ -1014,15 +1016,15 @@ article.md.lighter table td {
     align-content: center;
     gap: 10px;
 }
-.tooltip.color > .title {
+p-tooltip.color > .title {
     color: var(--v8);
 
     text-align: center;
 }
-.tooltip.color > .title:empty {
+p-tooltip.color > .title:empty {
     display: none;
 }
-.tooltip.color > .picker {
+p-tooltip.color > .picker {
     --thumb: #000;
 
     position: relative;
@@ -1032,7 +1034,7 @@ article.md.lighter table td {
     background-color: #000;
     outline: 1px solid var(--v8);
 }
-.tooltip.color > .picker::before {
+p-tooltip.color > .picker::before {
     content: "";
 
     position: absolute;
@@ -1044,7 +1046,7 @@ article.md.lighter table td {
 
     background: linear-gradient(0deg, #000f, #0000);
 }
-.tooltip.color > .picker > div {
+p-tooltip.color > .picker > div {
     position: absolute;
     transform: translate(-50%, -50%);
 
@@ -1055,7 +1057,7 @@ article.md.lighter table td {
     border-radius: 100%;
     outline: 1px solid var(--v8);
 }
-.tooltip.color > .sliders {
+p-tooltip.color > .sliders {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -1064,7 +1066,7 @@ article.md.lighter table td {
     align-content: center;
     gap: 10px;
 }
-.tooltip.color > .sliders > input {
+p-tooltip.color > .sliders > input {
     --thumb: #000;
 
     -webkit-appearance: none;
@@ -1077,7 +1079,7 @@ article.md.lighter table td {
     border: 1px solid var(--v8);
     outline: none;
 }
-.tooltip.color > .sliders > input::-webkit-slider-thumb {
+p-tooltip.color > .sliders > input::-webkit-slider-thumb {
     z-index: 1;
 
     -webkit-appearance: none;
@@ -1090,7 +1092,7 @@ article.md.lighter table td {
     border-radius: 100%;
     outline: 1px solid var(--v8);
 }
-.tooltip.color > .swatches {
+p-tooltip.color > .swatches {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -1099,10 +1101,10 @@ article.md.lighter table td {
     align-content: center;
     gap: 5px;
 }
-.tooltip.color > .swatches:empty {
+p-tooltip.color > .swatches:empty {
     display: none;
 }
-.tooltip.color > .swatches > button {
+p-tooltip.color > .swatches > button {
     width: 25px;
     aspect-ratio: 1 / 1;
     padding: 0px;
@@ -1977,16 +1979,16 @@ p-loading[type="bounce"] > div > div:last-child {
 .explorer:not(.hidden) > .node.hidden > button.display {
     display: none;
 }
-.explorer > .node > button.display > .tooltip,
-.explorernode > button.display > .tooltip {
+.explorer > .node > button.display > p-tooltip,
+.explorernode > button.display > p-tooltip {
     text-align: left;
     font-size: 12px;
     font-family: monospace;
     white-space: pre-wrap;
     word-wrap: break-word;
 }
-.explorer > .node > button.display > .tooltip:empty,
-.explorernode > button.display > .tooltip:empty {
+.explorer > .node > button.display > p-tooltip:empty,
+.explorernode > button.display > p-tooltip:empty {
     display: none;
 }
 .explorer > .node > button.display > .main,

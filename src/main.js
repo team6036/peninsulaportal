@@ -2190,6 +2190,7 @@ const MAIN = async () => {
                         project.items.forEach(id => {
                             let itm = project.getItem(id);
                             if (!(itm instanceof sublib.Project.Obstacle)) return;
+                            if (itm.disabled) return;
                             dataIn.obstacles.push({
                                 x: itm.x/100, y: itm.y/100,
                                 radius: itm.radius/100,

@@ -103,11 +103,9 @@ export default class App extends core.App {
         });
         this.addHandler("post-setup", async () => {
             (async () => {
-                let resp = await fetch("./display.md");
-                let text = await resp.text();
                 let signal = new util.Target();
                 signal.addHandler("nav", (e, href) => this.addPopup(new App.MarkdownPopup(href)));
-                document.querySelector("#PAGE > .content").appendChild(await this.createMarkdown(text, signal));
+                document.querySelector("#PAGE > .content").appendChild(await this.createMarkdown(new URL("display.md", window.location), signal));
                 const eColorsheet = document.getElementById("colorsheet");
                 if (eColorsheet instanceof HTMLDivElement) {
                     let headers = ["v", "a", ...this.colorNames.map(c => "c"+c)];

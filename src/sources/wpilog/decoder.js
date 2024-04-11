@@ -38,15 +38,15 @@ export default class WPILOGDecoder extends util.Target {
     }
 
     #readInt(x, l) {
-        let v = BigInt(0);
+        let v = 0;
         for (let i = 0; i < Math.min(8,l); i++) {
             let byte = this.data[x+i];
             if (i == 7) {
                 if ((byte & (1 << 7)) != 0)
-                    v -= (BigInt(1) << BigInt(63));
+                    v -= (1 << 63);
                 byte &= ~(1 << 7);
             }
-            v |= BigInt(byte) << BigInt(i * 8);
+            v |= byte << i*8;
         }
         return Number(v);
     }
@@ -85,7 +85,6 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     constructor(o) {
         super();
 
-        o = util.ensure(o, "obj");
         this.#entryId = o.entryId;
         this.#ts = o.ts;
         this.#data = o.data;
@@ -102,7 +101,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     #getControlType() { return this.isControl() ? this.#data[0] : null; }
     isControlStart() { return this.isControl() && (this.data.length >= 17) && (this.#getControlType() == CONTROLSTART); }
     isControlFinish() { return this.isControl() && (this.data.length == 5) && (this.#getControlType() == CONTROLFINISH); }
-    isControlMetadata() { return this.isControl() && (this.data.length >= 9) && (this.#getControlType() == CONTROLMETADATA); }
+    isControlMeta() { return this.isControl() && (this.data.length >= 9) && (this.#getControlType() == CONTROLMETADATA); }
 
     getControlStartData() {
         if (!this.isControlStart()) throw new Error("getControlStartData: Is not controlStart");
@@ -171,7 +170,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     }
     getDoubleArr() {
         if (this.data.length%8 != 0) throw new Error("getDoubleArr: Unexpected length: "+this.data.length);
-        return (this.data.length%8 == 0) ? Array.from(new Array(this.data.length/8).keys()).map(i => this.dataView.getFloat64(i*8, true)) : null;
+        return Array.from(new Array(this.data.length/8).keys()).map(i => this.dataView.getFloat64(i*8, true));
     }
     getStrArr() {
         let l = this.dataView.getUint32(0, true);

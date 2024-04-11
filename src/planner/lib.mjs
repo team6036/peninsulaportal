@@ -533,6 +533,7 @@ Project.Node = class ProjectNode extends Project.Item {
 }
 Project.Obstacle = class ProjectObstacle extends Project.Item {
     #radius;
+    #disabled;
 
     constructor(...a) {
         super();
@@ -542,19 +543,20 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Obstacle) a = [a.id, a.pos, a.radius];
-            else if (a instanceof Project.Item) a = [a.id, a.pos, 100];
+            if (a instanceof Project.Obstacle) a = [a.id, a.pos, a.radius, a.disabled];
+            else if (a instanceof Project.Item) a = [a.id, a.pos, 100, false];
             else if (util.is(a, "arr")) {
                 a = new Project.Obstacle(...a);
-                a = [a.id, a.pos, a.radius];
+                a = [a.id, a.pos, a.radius, a.disabled];
             }
             else if (a instanceof V) a = [a, 100];
-            else if (util.is(a, "obj")) a = [a.id, a.pos, a.radius];
+            else if (util.is(a, "obj")) a = [a.id, a.pos, a.radius, a.disabled];
             else a = [0, a];
         }
-        if (a.length == 2) a = [null, ...a];
+        if (a.length == 2) a = [...a, false];
+        if (a.length == 3) a = [null, ...a];
 
-        [this.id, this.pos, this.radius] = a;
+        [this.id, this.pos, this.radius, this.disabled] = a;
     }
 
     get radius() { return this.#radius; }
@@ -563,6 +565,17 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
         if (this.radius == v) return;
         this.change("radius", this.radius, this.#radius=v);
     }
+
+    get disabled() { return this.#disabled; }
+    set disabled(v) {
+        v = !!v;
+        if (this.disabled == v) return;
+        this.change("disabled", this.disabled, this.#disabled=v);
+    }
+    get enabled() { return !this.disabled; }
+    set enabled(v) { this.disabled = !v; }
+    disable() { return this.disabled = true; }
+    enable() { return this.enabled = true; }
 
     getBBox() {
         return new util.Rect(this.pos.sub(this.radius), new V(this.radius).mul(2));
@@ -573,6 +586,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
             id: this.id,
             pos: this.pos,
             radius: this.radius,
+            disabled: this.disabled,
         });
     }
 }

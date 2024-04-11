@@ -42,7 +42,7 @@ export default class DSSource extends Source {
         eventsData = util.toUint8Array(eventsData);
         this.tsMin = this.tsMax = 0;
         this.clear();
-        const client = new WorkerClient("../sources/ds/decoder-worker.js");
+        const client = new WorkerClient("./sources/ds/decoder-worker.js");
         return await new Promise((res, rej) => {
             client.addHandler("error", e => rej(e));
             client.addHandler("stop", data => rej("WORKER TERMINATED"));

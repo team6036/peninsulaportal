@@ -127,8 +127,6 @@ DSLogDecoder.Record = class DSLogDecoderRecord extends util.Target {
     constructor(o) {
         super();
 
-        o = util.ensure(o, "obj");
-
         this.#ts = util.ensure(o.ts, "num");
 
         this.#tripTime = util.ensure(o.tripTime, "num");

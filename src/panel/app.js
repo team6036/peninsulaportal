@@ -136,7 +136,7 @@ function getDisplay(t, v) {
         let display = getDisplay(t, (t == "boolean") ? true : null);
         if (display == null) return null;
         return {
-            src: "../assets/icons/array.svg",
+            src: "./assets/icons/array.svg",
             color: display.color,
         };
     }
@@ -148,7 +148,7 @@ function getDisplay(t, v) {
         color: "var(--cr)",
     };
     if (["double", "float", "int"].includes(t)) return {
-        src: "../assets/icons/number.svg",
+        src: "./assets/icons/number.svg",
         color: "var(--cb)",
     };
     if (t == "boolean") return {
@@ -163,7 +163,7 @@ function getDisplay(t, v) {
         name: "map-outline",
     };
     return {
-        src: "../assets/icons/variable.svg",
+        src: "./assets/icons/variable.svg",
     };
 }
 
@@ -186,7 +186,7 @@ function getTabDisplay(name) {
         color: "var(--cb)",
     };
     if (name == "table") return {
-        src: "../assets/icons/table.svg",
+        src: "./assets/icons/table.svg",
         color: "var(--cb)",
     };
     if (name.startsWith("odometry")) return {
@@ -1040,25 +1040,31 @@ class Panel extends Widget {
                 this.change("isTitleCollapsed", isTitleCollapsed, isTitleCollapsed=this.isTitleCollapsed);
         }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
-        if (a.length <= 0 || a.length > 3) a = [null];
+        let isMaximized = null;
+        new MutationObserver(() => {
+            if (isMaximized != this.isMaximized)
+                this.change("isMaximized", isMaximized, isMaximized=this.isMaximized);
+        }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
+
+        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel) a = [a.tabs, a.tabIndex, a.isTitleCollapsed];
+            if (a instanceof Panel) a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
             else if (a instanceof Panel.Tab) a = [[a], 0];
             else if (util.is(a, "arr")) {
                 if (a[0] instanceof Panel.Tab) a = [a, 0];
                 else {
                     a = new Panel(...a);
-                    a = [a.tabs, a.tabIndex, a.isTitleCollapsed];
+                    a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.tabs, a.tabIndex, a.isCollapsed];
+            else if (util.is(a, "obj")) a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
             else a = [[], 0];
         }
         if (a.length == 2)
-            a = [...a, false];
+            a = [...a, false, false];
 
-        [this.tabs, this.tabIndex, this.isTitleCollapsed] = a;
+        [this.tabs, this.tabIndex, this.isTitleCollapsed, this.isMaximized] = a;
 
         if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
     }
@@ -1184,7 +1190,8 @@ class Panel extends Widget {
         return util.Reviver.revivable(this.constructor, {
             tabs: this.tabs,
             tabIndex: this.tabIndex,
-            isCollapsed: this.isTitleCollapsed,
+            isTitleCollapsed: this.isTitleCollapsed,
+            isMaximized: this.isMaximized,
         });
     }
 }
@@ -1579,7 +1586,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 this.items[1].addHandler("trigger", () => {
                     this.searchPart = "topics";
                 });
-                this.items[2].iconSrc = "../assets/icons/variable.svg";
+                this.items[2].iconSrc = "./assets/icons/variable.svg";
                 this.items[2].addHandler("trigger", () => {
                     this.searchPart = "all";
                 });
@@ -1597,7 +1604,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 util.formatText(this.searchPart),
                 { tables: "folder-outline", topics: "document-outline", all: "" }[this.searchPart],
             )];
-            if (this.searchPart == "all") this.tags[0].iconSrc = "../assets/icons/variable.svg";
+            if (this.searchPart == "all") this.tags[0].iconSrc = "./assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
             if (this.hasPage() && this.page.hasSource()) {
@@ -2167,12 +2174,14 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             bool: elem => {
                 let eIcon = document.createElement("ion-icon");
                 elem.appendChild(eIcon);
+                new ResizeObserver(() => {
+                    let r = elem.getBoundingClientRect();
+                    eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
+                }).observe(elem);
                 return {
                     update: (node, value, display, typeData) => {
                         elem.style.backgroundColor = value ? "var(--cg2)" : "var(--cr2)";
                         eIcon.name = value ? "checkmark" : "close-outline";
-                        let r = elem.getBoundingClientRect();
-                        eIcon.style.fontSize = Math.max(16, Math.min(64, r.width-40, r.height-40))+"px";
                     },
                 };
             },
@@ -2212,6 +2221,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     typeData.max = mx;
                     this.typeData = typeData;
                 });
+                new ResizeObserver(() => {
+                    let r = elem.getBoundingClientRect();
+                    eContent.style.setProperty("--size", Math.min(r.width-40, r.height-40)+"px");
+                }).observe(elem);
                 return {
                     update: (node, value, display, typeData) => {
                         value = util.ensure(+value, "num");
@@ -2219,8 +2232,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                         if (document.activeElement != eMin) eMin.value = mn;
                         mx = util.ensure(typeData.max, "num", node.field.type == "boolean" ? 1 : 100);
                         if (document.activeElement != eMax) eMax.value = mx;
-                        let r = elem.getBoundingClientRect();
-                        eContent.style.setProperty("--size", Math.min(r.width-40, r.height-40)+"px");
                         eRange.style.setProperty("--value", Math.min(1, Math.max(0, (value-mn)/(mx-mn))));
                         eRange.style.setProperty("--color", (display == null) ? "" : util.ensure(display.color, "str"));
                         eValueDisplay.textContent = Math.round(value*100000)/100000;
@@ -2534,7 +2545,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.eTSInput.step = 0.01;
         this.#eFollowBtn = document.createElement("button");
         this.eSideHeader.appendChild(this.eFollowBtn);
-        this.eFollowBtn.innerHTML = "<ion-icon src='../assets/icons/jump.svg'></ion-icon>";
+        this.eFollowBtn.innerHTML = "<ion-icon src='./assets/icons/jump.svg'></ion-icon>";
 
         if (a.length <= 0 || a.length > 3) a = [null];
         if (a.length == 1) {
@@ -2930,9 +2941,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         let name = document.createElement("div");
         this.eHeader.appendChild(name);
         name.textContent = (path.length > 0) ? path.at(-1) : "/";
-        let tooltip = document.createElement("div");
-        this.eHeader.appendChild(tooltip);
-        tooltip.classList.add("tooltip");
+        let tooltip = document.createElement("p-tooltip");
         tooltip.classList.add("hov");
         tooltip.classList.add("swx");
         tooltip.textContent = this.path;
@@ -3680,7 +3689,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 this.elem.classList.add("form");
 
                 this.displayName = this.title = "Merge Logs";
-                this.iconSrc = "../assets/icons/merge.svg";
+                this.iconSrc = "./assets/icons/merge.svg";
 
                 const conflictAffixMap = {
                     prefix: "prefix",
@@ -3856,7 +3865,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             updateSum();
                             return source;
                         }))).filter(source => !!source);
-                        const client = new WorkerClient("./merge-worker.js");
+                        const client = new WorkerClient(new URL("merge-worker.js", window.location));
                         const sourceData = await new Promise((res, rej) => {
                             client.addHandler("error", e => rej(e));
                             client.addHandler("stop", data => rej("WORKER TERMINATED"));
@@ -6723,7 +6732,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#eWarning = document.createElement("div");
         this.eDisplay.appendChild(this.eWarning);
         this.eWarning.classList.add("warning");
-        this.eWarning.innerHTML = "<ion-icon name='warning'></ion-icon><div class='tooltip hov wy'></div>";
+        this.eWarning.innerHTML = "<ion-icon name='warning'></ion-icon><p-tooltip class='hov wy'></p-tooltip>";
         this.#eWarningTooltip = this.eWarning.children[1];
         this.#eRemoveBtn = document.createElement("button");
         this.eDisplay.appendChild(this.eRemoveBtn);
@@ -7234,7 +7243,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             if (core.GLOBALSTATE.getting) return;
 
             this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
-            this.odometry.imageSrc = (this.template in templateImages) ? templateImages[this.template] : null;
+            this.odometry.imageSrc = (this.template in templateImages) ? "file://"+templateImages[this.template] : null;
 
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
@@ -9214,7 +9223,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         };
                         source.addHandler("progress", progress);
                         const t0 = util.getTime();
-                        await util.wait(1000);
                         await source.importFrom(file);
                         const t1 = util.getTime();
                         console.log(t1-t0);
@@ -10014,7 +10022,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             {
                 name: "Fields",
                 value: this.source.tree.nFields,
-                iconSrc: "../assets/icons/number.svg",
+                iconSrc: "./assets/icons/number.svg",
             },
             {
                 name: "Duration",

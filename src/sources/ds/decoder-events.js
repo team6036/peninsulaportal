@@ -62,8 +62,6 @@ DSEventsDecoder.Record = class DSEventsDecoderRecord extends util.Target {
     constructor(o) {
         super();
 
-        o = util.ensure(o, "obj");
-
         this.#ts = util.ensure(o.ts, "num");
         this.#text = String(text);
     }
