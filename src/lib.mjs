@@ -1,7 +1,6 @@
 /*.lw{*/
 import * as util from "./util.mjs";
 
-
 let math = null;
 if (typeof(window) != "undefined") {
     try {
@@ -15,10 +14,7 @@ if (typeof(window) != "undefined") {
             await new Promise(async (res, rej) => {
                 script.addEventListener("load", () => res());
                 script.addEventListener("error", e => rej(e));
-                script.src = new URL(
-                    "node_modules/mathjs/lib/browser/math.js",
-                    "file://"+String(await window.api.getAppRoot()),
-                );
+                script.src = "../node_modules/mathjs/lib/browser/math.js";
             });
             math = window.math;
             delete window.math;
@@ -30,10 +26,8 @@ if (typeof(window) != "undefined") {
 export { math as mathjs };
 /*.lw}*/
 
-
 export const TEXTENCODER = new TextEncoder();
 export const TEXTDECODER = new TextDecoder();
-
 
 export function search(items, keys, query) {
     items = util.ensure(items, "arr");

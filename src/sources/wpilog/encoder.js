@@ -92,7 +92,6 @@ WPILOGEncoder.Record = class WPILOGEncoderRecord extends util.Target {
     constructor(o) {
         super();
 
-        o = util.ensure(o, "obj");
         this.#entryId = o.entryId;
         this.#ts = o.ts;
         this.#data = o.data;
