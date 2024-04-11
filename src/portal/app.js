@@ -24,9 +24,7 @@ class FeatureButton extends util.Target {
         this.eName.classList.add("name");
         this.#eIcon = document.createElement("ion-icon");
         this.elem.insertBefore(this.eIcon, this.eName);
-        this.#eTooltip = document.createElement("div");
-        this.elem.appendChild(this.eTooltip);
-        this.eTooltip.classList.add("tooltip");
+        this.#eTooltip = document.createElement("p-tooltip");
         this.eTooltip.classList.add("hov");
         this.eTooltip.classList.add("sx");
 

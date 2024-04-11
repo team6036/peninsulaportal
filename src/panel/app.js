@@ -2941,9 +2941,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         let name = document.createElement("div");
         this.eHeader.appendChild(name);
         name.textContent = (path.length > 0) ? path.at(-1) : "/";
-        let tooltip = document.createElement("div");
-        this.eHeader.appendChild(tooltip);
-        tooltip.classList.add("tooltip");
+        let tooltip = document.createElement("p-tooltip");
         tooltip.classList.add("hov");
         tooltip.classList.add("swx");
         tooltip.textContent = this.path;
@@ -6734,7 +6732,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#eWarning = document.createElement("div");
         this.eDisplay.appendChild(this.eWarning);
         this.eWarning.classList.add("warning");
-        this.eWarning.innerHTML = "<ion-icon name='warning'></ion-icon><div class='tooltip hov wy'></div>";
+        this.eWarning.innerHTML = "<ion-icon name='warning'></ion-icon><p-tooltip class='hov wy'></p-tooltip>";
         this.#eWarningTooltip = this.eWarning.children[1];
         this.#eRemoveBtn = document.createElement("button");
         this.eDisplay.appendChild(this.eRemoveBtn);

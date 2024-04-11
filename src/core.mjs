@@ -198,7 +198,7 @@ GLOBALSTATE.addProperty(new GlobalState.Property(
 ));
 
 
-export class LoadingElement extends HTMLElement {
+export class PLoadingElement extends HTMLElement {
     #type;
     #axis;
 
@@ -239,7 +239,14 @@ export class LoadingElement extends HTMLElement {
 
     attributeChangedCallback(name, prev, curr) {  this[name] = curr; }
 }
-window.customElements.define("p-loading", LoadingElement);
+window.customElements.define("p-loading", PLoadingElement);
+
+export class PTooltip extends HTMLElement {
+    constructor() {
+        super();
+    }
+}
+window.customElements.define("p-tooltip", PTooltip);
 
 
 export class App extends util.Target {
@@ -4341,8 +4348,8 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
         this.#eNavProgress = document.createElement("div");
         this.eNav.appendChild(this.eNavProgress);
         this.eNavProgress.classList.add("progress");
-        this.eNavProgress.innerHTML = "<div class='hover'><div class='tooltip hov nx'></div></div>";
-        this.#eNavProgressTooltip = this.eNavProgress.querySelector(":scope > .hover > .tooltip");
+        this.eNavProgress.innerHTML = "<div class='hover'><p-tooltip class='hov nx'></p-tooltip></div>";
+        this.#eNavProgressTooltip = this.eNavProgress.querySelector(":scope > .hover > p-tooltip");
         this.#eNavOptionsButton = document.createElement("button");
         this.eNavPre.appendChild(this.eNavOptionsButton);
         this.eNavOptionsButton.innerHTML = "<ion-icon name='ellipsis-vertical'></ion-icon>";
@@ -7298,7 +7305,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
         this.#eDisplay = document.createElement("button");
         this.elem.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
-        this.eDisplay.innerHTML = "<div class='tooltip tog swx'></div>";
+        this.eDisplay.innerHTML = "<p-tooltip class='tog swx'></p-tooltip>";
         let enterId = null, leaveId = null;
         this.eDisplay.addEventListener("mouseenter", e => {
             clearTimeout(enterId);
@@ -8326,7 +8333,7 @@ Form.ColorInput = class FormColorInput extends Form.Field {
         this.value.addHandler("change", (c, f, t) => this.change("value", null, this.value));
         this.#useAlpha = null;
 
-        this.eContent.innerHTML = "<div class='tooltip tog swx color'></div>";
+        this.eContent.innerHTML = "<p-tooltip class='tog swx color'></p-tooltip>";
         let colorPicker = this.eContent.children[0];
         let ignore = false;
         let observer = new MutationObserver(() => {
