@@ -48,6 +48,8 @@ way_i = way_i.astype(int)
 
 percents = []
 
+guess = []
+
 i = 0
 for node in data['nodes']:
     if node['vx'] is not None and node['vy'] is not None:
@@ -58,6 +60,10 @@ for node in data['nodes']:
     else:
         w_theta.append(w_theta[-1])
 
+    if 'guess' in node and node['guess']:
+        guess.append(True)
+    else:
+        guess.append(False)
 
     if 'theta_v' in node:
         opti.subject_to(X[way_i[i], 5] == 0)
@@ -82,8 +88,9 @@ for i in range(N+1):
         opti.subject_to((X[i, 0] + c[3][0] - obx[o])**2 + (X[i, 1] + c[3][1] - oby[o])**2 > obr[o]**2)
 
 for i in range(0, len(w_x)):
-    opti.subject_to(X[way_i[i], 0] == w_x[i])
-    opti.subject_to(X[way_i[i], 1] == w_y[i])
+    if not guess[i]:
+        opti.subject_to(X[way_i[i], 0] == w_x[i])
+        opti.subject_to(X[way_i[i], 1] == w_y[i])
 
 dts = []
 initDt = 4.95/ct
