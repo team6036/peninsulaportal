@@ -388,6 +388,7 @@ class RSelectable extends core.Odometry2d.Render {
                 render.heading = this.item.heading * (180/Math.PI);
             } else if (type == "obstacle") {
                 render.radius = this.item.radius;
+                render.alpha = this.item.disabled ? 0.5 : 1;
             }
         });
 
@@ -1618,8 +1619,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
     #fRobotHeading;
     #fRobotVelocity;
     #fRobotRotVelocity;
-    #fRadius;
     #fOptions;
+    #fObstacleRadius;
+    #fObstacleEnabled;
     #fRemove;
 
     #eSpawnBox;
@@ -1811,22 +1813,32 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.page.editorRefresh();
         });
         
-        this.#fRadius = form.addField(new core.Form.Input1d("radius"));
-        forObstacle.push(this.fRadius);
-        this.fRadius.app = this.app;
-        this.fRadius.types = ["m", "cm", "mm", "yd", "ft", "in"];
-        this.fRadius.baseType = this.fRadius.activeType = "m";
-        this.fRadius
-        this.fRadius.step = 0.1;
-        this.fRadius.inputs.forEach(inp => {
+        this.#fObstacleRadius = form.addField(new core.Form.Input1d("radius"));
+        forObstacle.push(this.fObstacleRadius);
+        this.fObstacleRadius.app = this.app;
+        this.fObstacleRadius.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        this.fObstacleRadius.baseType = this.fObstacleRadius.activeType = "m";
+        this.fObstacleRadius.step = 0.1;
+        this.fObstacleRadius.inputs.forEach(inp => {
             inp.placeholder = "...";
         });
-        this.fRadius.addHandler("change-value", () => {
-            if (!this.fRadius.hasValue()) return;
+        this.fObstacleRadius.addHandler("change-value", () => {
+            if (!this.fObstacleRadius.hasValue()) return;
             let itms = getSelected();
             itms.forEach(itm => {
                 if (!(itm instanceof sublib.Project.Obstacle)) return;
-                itm.radius = this.fRadius.value*100;
+                itm.radius = this.fObstacleRadius.value*100;
+            });
+            this.page.editorRefresh();
+        });
+
+        this.#fObstacleEnabled = form.addField(new core.Form.BooleanInput("enabled"));
+        forObstacle.push(this.fObstacleEnabled);
+        this.fObstacleEnabled.addHandler("change-value", () => {
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof sublib.Project.Obstacle)) return;
+                itm.enabled = this.fObstacleEnabled.value*100;
             });
             this.page.editorRefresh();
         });
@@ -1917,8 +1929,13 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
             if (allObstacle) {
                 let v = getSameValue(itm => itm.radius);
-                this.fRadius.value = (v == null) ? null : v/100;
-            } else this.fRadius.value = null;
+                this.fObstacleRadius.value = (v == null) ? null : v/100;
+            } else this.fObstacleRadius.value = null;
+
+            if (allObstacle) {
+                let v = getSameValue(itm => itm.enabled);
+                this.fObstacleEnabled.value = (v == null) ? null : v;
+            } else this.fObstacleEnabled.value = null;
         });
     }
 
@@ -1926,8 +1943,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
     get fRobotHeading() { return this.#fRobotHeading; }
     get fRobotVelocity() { return this.#fRobotVelocity; }
     get fRobotRotVelocity() { return this.#fRobotRotVelocity; }
-    get fRadius() { return this.#fRadius; }
     get fOptions() { return this.#fOptions; }
+    get fObstacleRadius() { return this.#fObstacleRadius; }
+    get fObstacleEnabled() { return this.#fObstacleEnabled; }
     get fRemove() { return this.#fRemove; }
 
     get eSpawnBox() { return this.#eSpawnBox; }
