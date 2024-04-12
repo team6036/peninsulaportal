@@ -13,7 +13,9 @@ const context = {};
 
 Welcome to Peninsula Portal!
 
-Developed by FRC 6036
+Developed by FRC 6036 - Jeffrey Fan
+
+Haha no documentation!
 
 */
 
