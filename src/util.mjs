@@ -883,9 +883,9 @@ export class Color extends Target {
         this.change("a", this.a, this.#a=v);
     }
     get rgb() { return [this.r, this.g, this.b]; }
-    set rgb(v) { [this.r, this.g, this.b] = new Color(v).rgb; }
+    set rgb(v) { this.set(v); }
     get rgba() { return [this.r, this.g, this.b, this.a]; }
-    set rgba(v) { [this.r, this.g, this.b, this.a] = new Color(v).rgba; }
+    set rgba(v) { this.set(v); }
 
     diff(...v) {
         v = new Color(...v);

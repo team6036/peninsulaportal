@@ -416,6 +416,10 @@ Project.Node = class ProjectNode extends Project.Item {
 
     #options;
 
+    #type;
+    #color;
+    #ghost;
+
     constructor(...a) {
         super();
 
@@ -427,18 +431,21 @@ Project.Node = class ProjectNode extends Project.Item {
 
         this.#options = {};
 
+        this.#color = "cb";
+        this.#ghost = false;
+
         this.velocity.addHandler("change", (c, f, t) => this.change("velocity."+c, f, t));
 
-        if (a.length <= 0 || a.length > 8) a = [null];
+        if (a.length <= 0 || [9, 10].includes(a.length) || a.length > 10) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Project.Node) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
+            if (a instanceof Project.Node) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type, a.color, a.ghost];
             else if (a instanceof Project.Item) a = [a.id, a.pos, 0];
             else if (util.is(a, "arr")) {
                 a = new Project.Node(...a);
-                a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
+                a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type, a.color, a.ghost];
             }
-            else if (util.is(a, "obj")) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options];
+            else if (util.is(a, "obj")) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type || "§default", a.color || "cb", a.ghost];
             else a = [a, 0];
         }
         if (a.length == 2) a = [...a, 100];
@@ -446,9 +453,10 @@ Project.Node = class ProjectNode extends Project.Item {
         if (a.length == 4) a = [...a.slice(0, 3), 0, ...a.slice(3)];
         if (a.length == 5) a = [...a.slice(0, 2), true, ...a.slice(2)];
         if (a.length == 6) a = [...a, {}];
-        if (a.length == 7) a = [null, ...a];
+        if (a.length == 7) a = [...a, "§default", "cb", false];
+        if (a.length == 10) a = [null, ...a];
         
-        [this.id, this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity, this.options] = a;
+        [this.id, this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity, this.options, this.type, this.color, this.ghost] = a;
     }
 
     get heading() { return this.#heading; }
@@ -521,6 +529,27 @@ Project.Node = class ProjectNode extends Project.Item {
         return v;
     }
 
+    get type() { return this.#type; }
+    set type(v) {
+        v = String(v);
+        if (this.type == v) return;
+        this.change("type", this.type, this.#type=v);
+    }
+
+    get color() { return this.#color; }
+    set color(v) {
+        v = String(v);
+        if (this.color == v) return;
+        this.change("color", this.color, this.#color=v);
+    }
+
+    get ghost() { return this.#ghost; }
+    set ghost(v) {
+        v = !!v;
+        if (this.ghost == v) return;
+        this.change("ghost", this.ghost, this.#ghost=v);
+    }
+
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
             id: this.id,
@@ -528,6 +557,7 @@ Project.Node = class ProjectNode extends Project.Item {
             heading: this.heading, useHeading: this.useHeading,
             velocity: this.velocity, velocityRot: this.velocityRot, useVelocity: this.useVelocity,
             options: this.options,
+            type: this.type, color: this.color, ghost: this.ghost,
         });
     }
 }
@@ -544,7 +574,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Project.Obstacle) a = [a.id, a.pos, a.radius, a.disabled];
-            else if (a instanceof Project.Item) a = [a.id, a.pos, 100, false];
+            else if (a instanceof Project.Item) a = [a.id, a.pos, 100];
             else if (util.is(a, "arr")) {
                 a = new Project.Obstacle(...a);
                 a = [a.id, a.pos, a.radius, a.disabled];

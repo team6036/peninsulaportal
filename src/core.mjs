@@ -199,6 +199,8 @@ GLOBALSTATE.addProperty(new GlobalState.Property(
 
 
 export class PLoadingElement extends HTMLElement {
+    #first;
+
     #type;
     #axis;
 
@@ -207,15 +209,10 @@ export class PLoadingElement extends HTMLElement {
     constructor() {
         super();
 
-        this.#type = null;
-        this.#axis = null;
+        this.#first = true;
 
-        this.type = "scroll";
-        this.axis = "x";
-    }
-
-    #update() {
-        this.innerHTML = "<div>"+Array.from(new Array(4).keys()).map(i => "<div style='--i:"+i+";'></div>").join("")+"</div>";
+        this.#type = "scroll";
+        this.#axis = "x";
     }
 
     get type() { return this.#type; }
@@ -225,7 +222,6 @@ export class PLoadingElement extends HTMLElement {
         if (this.type == v) return;
         this.#type = v;
         this.setAttribute("type", this.type);
-        return this.#update();
     }
     get axis() { return this.#axis; }
     set axis(v) {
@@ -234,20 +230,306 @@ export class PLoadingElement extends HTMLElement {
         if (this.axis == v) return;
         this.#axis = v;
         this.setAttribute("axis", this.axis);
-        return this.#update();
     }
 
-    attributeChangedCallback(name, prev, curr) {
-        if (!["type", "axis"].includes(name)) return;
-        this[name] = curr;
+    connectedCallback() {
+        if (!this.#first) return;
+
+        this.#first = false;
+
+        this.innerHTML = "<div>"+Array.from(new Array(4).keys()).map(i => "<div style='--i:"+i+";'></div>").join("")+"</div>";
     }
+    attributeChangedCallback(name, prev, curr) { this[name] = curr; }
 }
 window.customElements.define("p-loading", PLoadingElement);
 
 export class PTooltip extends HTMLElement {
+    #first;
+    #id;
+
+    #type;
+
+    #ignore;
+
+    #swatches;
+    #color;
+
+    #showPicker;
+    #showH;
+    #showS;
+    #showV;
+    #showA;
+    #useA;
+
+    #eTitle;
+    #ePicker;
+    #ePickerThumb;
+    #eSliders;
+    #eSliderInputs;
+    #eSwatches;
+
+    static observedAttributes = ["type"];
+
     constructor() {
         super();
+
+        this.#first = true;
+        this.#id = null;
+
+        this.#type = "normal";
+
+        this.#ignore = false;
+
+        this.#swatches = null;
+        this.#color = new util.Color();
+        this.color.addHandler("change", (c, f, t) => {
+            if (this.#ignore) return;
+            this.format();
+        });
+
+        this.#showPicker = this.#showH = this.#showS = this.#showV = this.#showA = this.#useA = true;
     }
+
+    get type() { return this.#type; }
+    set type(v) {
+        v = String(v);
+        if (!["color", "normal"].includes(v)) return;
+        if (this.type == v) return;
+        this.#type = v;
+        this.setAttribute("type", this.type);
+        this.format();
+    }
+
+    get swatches() {
+        if (!this.hasSwatches()) return null;
+        return [...this.#swatches];
+    }
+    set swatches(v) {
+        if (v == null) {
+            this.clearSwatches();
+            return this.#swatches = null;
+        }
+        v = util.ensure(v, "arr");
+        this.clearSwatches();
+        this.addSwatch(v);
+    }
+    hasSwatches() { return this.#swatches != null; }
+    findSwatch(swatch) {
+        if (!this.hasSwatches()) return -1;
+        for (let i = 0; i < this.#swatches.length; i++)
+            if (this.#swatches[i].diff(swatch) < 2)
+                return i;
+        return -1;
+    }
+    hasSwatch(swatch) { return this.findSwatch(swatch) >= 0; }
+    addSwatch(...swatches) {
+        let r = util.Target.resultingForEach(swatches, swatch => {
+            swatch = new util.Color(swatch);
+            if (this.hasSwatch(swatch)) return false;
+            this.#swatches.push(swatch);
+            swatch.addLinkedHandler(this, "change", () => this.format());
+            return swatch;
+        });
+        this.format();
+        return r;
+    }
+    remSwatch(...swatches) {
+        let r = util.Target.resultingForEach(swatches, swatch => {
+            if (!this.hasSwatch(swatch)) return false;
+            swatch = this.#swatches[this.findSwatch(swatch)];
+            this.#swatches.splice(this.#swatches.indexOf(swatch), 1);
+            swatch.clearLinkedHandlers(this, "change");
+            return swatch;
+        });
+        this.format();
+        return r;
+    }
+    get color() { return this.#color; }
+    set color(v) { this.#color.set(v); }
+
+    get showPicker() { return this.#showPicker; }
+    set showPicker(v) {
+        v = !!v;
+        if (this.showPicker == v) return;
+        this.#showPicker = v;
+        this.format();
+    }
+    get showH() { return this.#showH; }
+    set showH(v) {
+        v = !!v;
+        if (this.showH == v) return;
+        this.#showH = v;
+        this.format();
+    }
+    get showS() { return this.#showS; }
+    set showS(v) {
+        v = !!v;
+        if (this.showS == v) return;
+        this.#showS = v;
+        this.format();
+    }
+    get showV() { return this.#showV; }
+    set showV(v) {
+        v = !!v;
+        if (this.showV == v) return;
+        this.#showV = v;
+        this.format();
+    }
+    get showA() { return this.#showA; }
+    set showA(v) {
+        v = !!v;
+        if (this.showA == v) return;
+        this.#showA = v;
+        this.format();
+    }
+    get useA() { return this.#useA; }
+    set useA(v) {
+        v = !!v;
+        if (this.useA == v) return;
+        this.#useA = v;
+        this.format();
+    }
+
+    get title() { return this.#eTitle.textContent; }
+    set title(v) { this.#eTitle.textContent = v; }
+
+    format() {
+        if (this.#first) return;
+
+        if (this.type != "color") {
+            this.#eTitle.remove();
+            this.#ePicker.remove();
+            this.#eSliders.remove();
+            this.#eSwatches.remove();
+            return;
+        }
+
+        this.appendChild(this.#eTitle);
+        this.appendChild(this.#ePicker);
+        this.appendChild(this.#eSliders);
+        this.appendChild(this.#eSwatches);
+
+        if (this.hasSwatches()) this.#swatches.sort((a, b) => a.h-b.h);
+        this.#ePicker.style.display = this.showPicker ? "" : "none";
+        this.#eSliders.style.display = (this.showH || this.showS || this.showV || (this.showA && this.useA)) ? "" : "none";
+        if (!this.useA) this.color.a = 1;
+        let c = new util.Color(255, 0, 0);
+        c.h = this.color.h;
+        this.#ePicker.style.background = "linear-gradient(90deg, #fff, "+c.toHex(false)+")";
+        this.#ePicker.style.setProperty("--thumb", this.color.toHex(false));
+        this.#ePickerThumb.style.left = (100*this.color.s)+"%";
+        this.#ePickerThumb.style.top = (100*(1-this.color.v))+"%";
+        for (let k in this.#eSliderInputs) {
+            let v = this.color[k];
+            if (k == "h") v /= 360;
+            v *= 10000;
+            let on = (k == "a") ? (this.showA && this.useA) : this["show"+k.toUpperCase()];
+            const eSlider = this.#eSliderInputs[k];
+            eSlider.disabled = !on;
+            eSlider.style.display = on ? "" : "none";
+            if (Math.abs(eSlider.valueAsNumber - v) >= 1) eSlider.value = Math.round(v);
+            let cthumb = new util.Color(255, 0, 0);
+            let carr = [];
+            if (k == "h") {
+                cthumb.h = this.color.h;
+                for (let i = 0; i < 7; i++) {
+                    let c = new util.Color();
+                    c.hsv = [util.lerp(0, 360, i/6), 1, 1];
+                    carr.push(c);
+                }
+            } else if (k == "s") {
+                cthumb.h = this.color.h;
+                cthumb.s = this.color.s;
+                let c = new util.Color(255, 0, 0);
+                c.h = this.color.h;
+                carr.push(new util.Color(255, 255, 255), c);
+            } else if (k == "v") {
+                cthumb.h = this.color.h;
+                cthumb.s = this.color.s;
+                cthumb.v = this.color.v;
+                let c = new util.Color(255, 0, 0);
+                c.h = this.color.h;
+                c.s = this.color.s;
+                carr.push(new util.Color(0, 0, 0), c);
+            } else {
+                cthumb.hsva = this.color.hsva;
+                let c = new util.Color();
+                c.hsv = this.color.hsv;
+                carr.push(new util.Color(c.r, c.g, c.b, 0), c);
+            }
+            eSlider.style.background = "linear-gradient(90deg, "+carr.map(c => c.toHex()).join(", ")+")";
+            eSlider.style.setProperty("--thumb", cthumb.toHex());
+        }
+        this.#eSwatches.innerHTML = "";
+        if (this.hasSwatches()) {
+            for (let c of this.#swatches) {
+                let btn = document.createElement("button");
+                this.#eSwatches.appendChild(btn);
+                btn.classList.add("override");
+                btn.style.backgroundColor = c.toHex();
+                btn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    this.color = c;
+                });
+            }
+        } else {
+            for (let c of "roygcbpm") {
+                c = PROPERTYCACHE.getColor("--c"+c);
+                let btn = document.createElement("button");
+                this.#eSwatches.appendChild(btn);
+                btn.classList.add("override");
+                btn.style.backgroundColor = c.toHex();
+                btn.addEventListener("click", e => {
+                    e.stopPropagation();
+                    this.color = c;
+                });
+            }
+        }
+    }
+
+    connectedCallback() {
+        clearInterval(this.#id);
+        this.#id = setInterval(() => this.format(), 1000);
+
+        if (!this.#first) return this.format();
+
+        this.#first = false;
+
+        this.#eTitle = document.createElement("div");
+        this.#eTitle.classList.add("title");
+        this.#ePicker = document.createElement("div");
+        this.#ePicker.classList.add("picker");
+        this.#ePickerThumb = document.createElement("div");
+        this.#ePicker.appendChild(this.#ePickerThumb);
+        this.#eSliders = document.createElement("div");
+        this.#eSliders.classList.add("sliders");
+        this.#eSliderInputs = {};
+        "hsva".split("").forEach(k => {
+            const eSlider = this.#eSliderInputs[k] = document.createElement("input");
+            this.#eSliders.appendChild(eSlider);
+            eSlider.type = "range";
+            eSlider.min = 0;
+            eSlider.max = 10000;
+            eSlider.addEventListener("input", e => {
+                let v = eSlider.valueAsNumber;
+                v /= 10000;
+                if (k == "h") v *= 360;
+                this.#ignore = true;
+                this.color[k] = v;
+                this.#ignore = false;
+            });
+        });
+        this.#eSwatches = document.createElement("div");
+        this.#eSwatches.classList.add("swatches");
+
+        this.format();
+    }
+    disconnectedCallback() {
+        clearInterval(this.#id);
+
+        this.format();
+    }
+    attributeChangedCallback(name, prev, curr) { this[name] = curr; }
 }
 window.customElements.define("p-tooltip", PTooltip);
 
@@ -1010,208 +1292,6 @@ export class App extends util.Target {
                     await onHolidayState(holiday);
                 });
                 await onHolidayState(await window.api.get("active-holiday"));
-            });
-            Array.from(document.querySelectorAll(".tooltip.color")).forEach(elem => {
-                if (elem.children.length > 0) return;
-                const signal = new util.Target();
-                Object.defineProperty(elem, "signal", { value: signal, writable: false });
-                const color = new util.Color(255, 0, 0);
-                color.addHandler("change", () => {
-                    update();
-                    signal.post("change");
-                });
-                Object.defineProperty(elem, "color", {
-                    get: () => color,
-                    set: v => color.set(v),
-                });
-                "rgba".split("").forEach(k => Object.defineProperty(elem, k, {
-                    get: () => color[k],
-                    set: v => (color[k] = v),
-                }));
-                let useAlpha = true;
-                Object.defineProperty(elem, "useAlpha", {
-                    get: () => useAlpha,
-                    set: v => {
-                        useAlpha = !!v;
-                        update();
-                    },
-                });
-                let show = {};
-                "hsv".split("").forEach(k => {
-                    show[k] = true;
-                    Object.defineProperty(elem, "show"+k.toUpperCase(), {
-                        get: () => show[k],
-                        set: v => {
-                            show[k] = !!v;
-                            update();
-                        },
-                    });
-                });
-                const title = document.createElement("div");
-                elem.appendChild(title);
-                title.classList.add("title");
-                Object.defineProperty(elem, "title", {
-                    get: () => title.textContent,
-                    set: v => (title.textContent = v),
-                });
-                elem.title = "Pick a color";
-                const picker = document.createElement("div");
-                elem.appendChild(picker);
-                picker.classList.add("picker");
-                picker.innerHTML = "<div></div>";
-                picker.addEventListener("mousedown", e => {
-                    const mouseup = () => {
-                        document.body.removeEventListener("mouseup", mouseup);
-                        document.body.removeEventListener("mousemove", mousemove);
-                    };
-                    const mousemove = e => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        let r = picker.getBoundingClientRect();
-                        let x = (e.pageX - r.left) / r.width;
-                        let y = (e.pageY - r.top) / r.height;
-                        y = 1-y;
-                        color.s = x;
-                        color.v = y;
-                    };
-                    document.body.addEventListener("mouseup", mouseup);
-                    document.body.addEventListener("mousemove", mousemove);
-                    mousemove(e);
-                });
-                const pickerThumb = picker.children[0];
-                const sliders = document.createElement("div");
-                elem.appendChild(sliders);
-                sliders.classList.add("sliders");
-                sliders.innerHTML = new Array(4).fill("<input type='range' min='0' max='100'>").join("");
-                const sliderElements = {};
-                "hsva".split("").forEach((k, i) => {
-                    const slider = sliderElements[k] = sliders.children[i];
-                    slider.addEventListener("input", e => {
-                        let v = slider.value;
-                        v /= 100;
-                        if (k == "h") v *= 360;
-                        color[k] = v;
-                    });
-                });
-                const swatches = document.createElement("div");
-                elem.appendChild(swatches);
-                swatches.classList.add("swatches");
-                let swatchColors = [];
-                Object.defineProperty(elem, "swatches", {
-                    get: () => [...swatchColors],
-                    set: v => {
-                        v = util.ensure(v, "arr");
-                        elem.clearSwatches();
-                        elem.addSwatch(v);
-                    },
-                });
-                elem.clearSwatches = () => {
-                    let swatches = elem.swatches;
-                    elem.remSwatch(swatches);
-                    return swatches;
-                };
-                const getSwatch = swatch => {
-                    swatch = new util.Color(swatch);
-                    for (let i = 0; i < swatchColors.length; i++)
-                        if (swatch.diff(swatchColors[i]) < 2)
-                            return i;
-                    return -1;
-                };
-                elem.hasSwatch = swatch => getSwatch(swatch) >= 0;
-                elem.addSwatch = (...swatches) => {
-                    let r = util.Target.resultingForEach(swatches, swatch => {
-                        swatch = new util.Color(swatch);
-                        if (elem.hasSwatch(swatch)) return false;
-                        swatchesChanged = true;
-                        swatchColors.push(swatch);
-                        swatch.addLinkedHandler(this, "change", () => update());
-                        return swatch;
-                    });
-                    update();
-                    return r;
-                };
-                elem.remSwatch = (...swatches) => {
-                    let r = util.Target.resultingForEach(swatches, swatch => {
-                        swatch = new util.Color(swatch);
-                        if (!elem.hasSwatch(swatch)) return false;
-                        swatchesChanged = true;
-                        swatchColors.splice(getSwatch(swatch), 1);
-                        swatch.clearLinkedHandlers(this, "change");
-                        return swatch;
-                    });
-                    update();
-                    return r;
-                };
-                let swatchesChanged = false;
-                const importDefault = () => {
-                    if (swatchesChanged || !document.body.contains(elem))
-                        return this.remHandler("update-dynamic-style", importDefault);
-                    elem.swatches = "roygcbpm".split("").map(k => PROPERTYCACHE.getColor("--c"+k));
-                    swatchesChanged = false;
-                };
-                this.addHandler("update-dynamic-style", importDefault);
-                const update = () => {
-                    let c = new util.Color(255, 0, 0);
-                    c.h = color.h;
-                    picker.style.background = "linear-gradient(90deg, #fff, "+c.toHex(false)+")";
-                    picker.style.setProperty("--thumb", color.toHex(false));
-                    pickerThumb.style.left = (100*color.s)+"%";
-                    pickerThumb.style.top = (100*(1-color.v))+"%";
-                    for (let k in sliderElements) {
-                        let v = color[k];
-                        if (k == "h") v /= 360;
-                        v *= 100;
-                        let on = (k == "a") ? useAlpha : show[k];
-                        const slider = sliderElements[k];
-                        slider.value = v;
-                        slider.disabled = !on;
-                        slider.style.display = on ? "" : "none";
-                        let cthumb = new util.Color(255, 0, 0);
-                        let carr = [];
-                        if (k == "h") {
-                            cthumb.h = color.h;
-                            for (let i = 0; i < 7; i++) {
-                                let c = new util.Color();
-                                c.hsv = [util.lerp(0, 360, i/6), 1, 1];
-                                carr.push(c);
-                            }
-                        } else if (k == "s") {
-                            cthumb.h = color.h;
-                            cthumb.s = color.s;
-                            let c = new util.Color(255, 0, 0);
-                            c.h = color.h;
-                            carr.push(new util.Color(255, 255, 255), c);
-                        } else if (k == "v") {
-                            cthumb.h = color.h;
-                            cthumb.s = color.s;
-                            cthumb.v = color.v;
-                            let c = new util.Color(255, 0, 0);
-                            c.h = color.h;
-                            c.s = color.s;
-                            carr.push(new util.Color(0, 0, 0), c);
-                        } else {
-                            cthumb.hsva = color.hsva;
-                            let c = new util.Color();
-                            c.hsv = color.hsv;
-                            carr.push(new util.Color(c.r, c.g, c.b, 0), c);
-                        }
-                        slider.style.background = "linear-gradient(90deg, "+carr.map(c => c.toHex()).join(", ")+")";
-                        slider.style.setProperty("--thumb", cthumb.toHex());
-                    }
-                    swatches.innerHTML = "";
-                    for (let c of swatchColors) {
-                        let btn = document.createElement("button");
-                        swatches.appendChild(btn);
-                        btn.classList.add("override");
-                        btn.style.backgroundColor = c.toHex();
-                        btn.addEventListener("click", e => {
-                            e.stopPropagation();
-                            color.set(c);
-                        });
-                    }
-                };
-                update();
-                importDefault();
             });
         };
         setInterval(updatePage, 500);
@@ -8316,6 +8396,7 @@ Form.ColorInput = class FormColorInput extends Form.Field {
     #useAlpha;
 
     #eColorbox;
+    #eColorPicker;
     #eInput;
 
     constructor(name, value) {
@@ -8332,18 +8413,13 @@ Form.ColorInput = class FormColorInput extends Form.Field {
         this.value.addHandler("change", (c, f, t) => this.change("value", null, this.value));
         this.#useAlpha = null;
 
-        this.eContent.innerHTML = "<p-tooltip class='tog swx color'></p-tooltip>";
-        let colorPicker = this.eContent.children[0];
+        this.eContent.innerHTML = "<p-tooltip type='color' class='tog swx'></p-tooltip>";
+        this.#eColorPicker = this.eContent.children[0];
         let ignore = false;
-        let observer = new MutationObserver(() => {
-            observer.disconnect();
-            colorPicker.signal.addHandler("change", () => {
-                if (ignore) return;
-                this.value = colorPicker.color;
-            });
-            apply();
+        this.eColorPicker.color.addHandler("change", () => {
+            if (ignore) return;
+            this.value = this.eColorPicker.color;
         });
-        observer.observe(colorPicker, { childList: true });
 
         this.#eColorbox = document.createElement("button");
         this.eContent.appendChild(this.eColorbox);
@@ -8352,7 +8428,7 @@ Form.ColorInput = class FormColorInput extends Form.Field {
             e.stopPropagation();
             this.eContent.classList.add("active");
             const onClick = e => {
-                if (colorPicker.contains(e.target)) return;
+                if (this.eColorPicker.contains(e.target)) return;
                 e.stopPropagation();
                 this.eContent.classList.remove("active");
                 document.body.removeEventListener("click", onClick, true);
@@ -8369,8 +8445,8 @@ Form.ColorInput = class FormColorInput extends Form.Field {
             this.eInput.value = this.value.toHex(this.useAlpha);
             this.eColorbox.style.backgroundColor = this.value.toHex(this.useAlpha);
             ignore = true;
-            colorPicker.color = this.value;
-            colorPicker.useAlpha = this.useAlpha;
+            this.eColorPicker.color = this.value;
+            this.eColorPicker.useA = this.useAlpha;
             ignore = false;
         };
         this.addHandler("change", apply);
@@ -8389,6 +8465,7 @@ Form.ColorInput = class FormColorInput extends Form.Field {
     }
     
     get eColorbox() { return this.#eColorbox; }
+    get eColorPicker() { return this.#eColorPicker; }
     get eInput() { return this.#eInput; }
 };
 Form.EnumInput = class FormEnumInput extends Form.Field {

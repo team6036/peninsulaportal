@@ -14,13 +14,6 @@ import CSVFieldSource from "../sources/csv/field/source.js";
 import { WorkerClient } from "../worker.js";
 
 
-window.f = () => {
-    Array.from(document.querySelectorAll("*")).forEach(elem => {
-        if (elem.scrollTop <= 0) return;
-        console.log(elem, elem.scrollTop);
-    });
-};
-
 
 function generatePositioning(value, lengthUnits, angleUnits, z2d=0) {
     value = util.ensure(value, "arr").map(v => util.ensure(v, "num"));
