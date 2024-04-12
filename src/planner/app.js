@@ -386,6 +386,9 @@ class RSelectable extends core.Odometry2d.Render {
                 render.velocity = this.item.velocity;
                 render.showVelocity = this.item.useVelocity;
                 render.heading = this.item.heading * (180/Math.PI);
+                render.type = this.item.type;
+                render.color = this.item.color;
+                render.alpha = this.item.ghost ? 0.5 : 1;
             } else if (type == "obstacle") {
                 render.radius = this.item.radius;
                 render.alpha = this.item.disabled ? 0.5 : 1;
@@ -1620,6 +1623,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
     #fRobotVelocity;
     #fRobotRotVelocity;
     #fOptions;
+    #fType;
+    #fColor;
+    #fGhost;
     #fObstacleRadius;
     #fObstacleEnabled;
     #fRemove;
@@ -1812,6 +1818,59 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             itm.delOption(k);
             this.page.editorRefresh();
         });
+
+        this.#fType = form.addField(new core.Form.DropdownInput("type", [
+            "§default",
+            "§node",
+            "§box",
+            "§arrow",
+            "§arrow-h",
+            "§arrow-t",
+            "§target",
+        ].map(type => { return { value: type, name: core.Odometry2d.Robot.getTypeName(type) }; })));
+        forNode.push(this.fType);
+        this.fType.app = this.app;
+        this.fType.addHandler("change-value", () => {
+            if (!this.fType.hasValue()) return;
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof sublib.Project.Node)) return;
+                itm.type = this.fType.value;
+            });
+            this.page.editorRefresh();
+        });
+
+        this.#fColor = form.addField(new core.Form.ColorInput("color"));
+        forNode.push(this.fColor);
+        this.fColor.eColorPicker.showPicker = this.fColor.eColorPicker.showH = this.fColor.eColorPicker.showS = this.fColor.eColorPicker.showV = this.fColor.useAlpha = false;
+        this.fColor.eInput.style.display = "none";
+        this.fColor.addHandler("change-value", () => {
+            let color = null;
+            for (let c of "roygcbpm") {
+                let cc = core.PROPERTYCACHE.getColor("--c"+c);
+                let diff = cc.diff(this.fColor.value);
+                if (diff >= 1) continue;
+                color = c;
+            }
+            if (color == null) return;
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof sublib.Project.Node)) return;
+                itm.color = "c"+color;
+            });
+            this.page.editorRefresh();
+        });
+
+        this.#fGhost = form.addField(new core.Form.BooleanInput("ghost"));
+        forNode.push(this.fGhost);
+        this.fGhost.addHandler("change-value", () => {
+            let itms = getSelected();
+            itms.forEach(itm => {
+                if (!(itm instanceof sublib.Project.Node)) return;
+                itm.ghost = this.fGhost.value;
+            });
+            this.page.editorRefresh();
+        });
         
         this.#fObstacleRadius = form.addField(new core.Form.Input1d("radius"));
         forObstacle.push(this.fObstacleRadius);
@@ -1838,7 +1897,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let itms = getSelected();
             itms.forEach(itm => {
                 if (!(itm instanceof sublib.Project.Obstacle)) return;
-                itm.enabled = this.fObstacleEnabled.value*100;
+                itm.enabled = this.fObstacleEnabled.value;
             });
             this.page.editorRefresh();
         });
@@ -1927,15 +1986,35 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                 });
             } else this.fOptions.map = null;
 
+            this.fType.disabled = !has;
+            if (allNode) {
+                let v = getSameValue(itm => itm.type);
+                this.fType.value = (v == null) ? null : v;
+            } else this.fType.value = null;
+
+            this.fColor.disabled = !has;
+            if (allNode) {
+                let v = getSameValue(itm => itm.color);
+                if (v != null) this.fColor.value = core.PROPERTYCACHE.getColor("--"+v);
+            }
+
+            this.fGhost.disabled = !has;
+            if (allNode) {
+                let v = getSameValue(itm => itm.ghost);
+                if (v != null) this.fGhost.value = v;
+            }
+
+            this.fObstacleRadius.disabled = !has;
             if (allObstacle) {
                 let v = getSameValue(itm => itm.radius);
                 this.fObstacleRadius.value = (v == null) ? null : v/100;
             } else this.fObstacleRadius.value = null;
 
+            this.fObstacleEnabled.disabled = !has;
             if (allObstacle) {
                 let v = getSameValue(itm => itm.enabled);
-                this.fObstacleEnabled.value = (v == null) ? null : v;
-            } else this.fObstacleEnabled.value = null;
+                if (v != null) this.fObstacleEnabled.value = v;
+            }
         });
     }
 
@@ -1944,6 +2023,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
     get fRobotVelocity() { return this.#fRobotVelocity; }
     get fRobotRotVelocity() { return this.#fRobotRotVelocity; }
     get fOptions() { return this.#fOptions; }
+    get fType() { return this.#fType; }
+    get fColor() { return this.#fColor; }
+    get fGhost() { return this.#fGhost; }
     get fObstacleRadius() { return this.#fObstacleRadius; }
     get fObstacleEnabled() { return this.#fObstacleEnabled; }
     get fRemove() { return this.#fRemove; }

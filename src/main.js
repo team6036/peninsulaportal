@@ -1706,7 +1706,6 @@ const MAIN = async () => {
                     manager.addWindow(new this.constructor(manager, name));
                 },
                 "close": async () => {
-                    console.log(this.name, "stop");
                     await this.stop();
                 },
                 "_config": async () => {

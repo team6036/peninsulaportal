@@ -1003,7 +1003,7 @@ p-tooltip.sey,
 p-tooltip.swy {
     --y: +1;
 }
-p-tooltip.color {
+p-tooltip[type="color"] {
     min-width: 150px;
     max-width: 150px;
     padding: 10px;
@@ -1016,15 +1016,15 @@ p-tooltip.color {
     align-content: center;
     gap: 10px;
 }
-p-tooltip.color > .title {
+p-tooltip[type="color"] > .title {
     color: var(--v8);
 
     text-align: center;
 }
-p-tooltip.color > .title:empty {
+p-tooltip[type="color"] > .title:empty {
     display: none;
 }
-p-tooltip.color > .picker {
+p-tooltip[type="color"] > .picker {
     --thumb: #000;
 
     position: relative;
@@ -1034,7 +1034,7 @@ p-tooltip.color > .picker {
     background-color: #000;
     outline: 1px solid var(--v8);
 }
-p-tooltip.color > .picker::before {
+p-tooltip[type="color"] > .picker::before {
     content: "";
 
     position: absolute;
@@ -1046,7 +1046,7 @@ p-tooltip.color > .picker::before {
 
     background: linear-gradient(0deg, #000f, #0000);
 }
-p-tooltip.color > .picker > div {
+p-tooltip[type="color"] > .picker > div {
     position: absolute;
     transform: translate(-50%, -50%);
 
@@ -1057,7 +1057,7 @@ p-tooltip.color > .picker > div {
     border-radius: 100%;
     outline: 1px solid var(--v8);
 }
-p-tooltip.color > .sliders {
+p-tooltip[type="color"] > .sliders {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -1066,7 +1066,7 @@ p-tooltip.color > .sliders {
     align-content: center;
     gap: 10px;
 }
-p-tooltip.color > .sliders > input {
+p-tooltip[type="color"] > .sliders > input {
     --thumb: #000;
 
     -webkit-appearance: none;
@@ -1079,7 +1079,7 @@ p-tooltip.color > .sliders > input {
     border: 1px solid var(--v8);
     outline: none;
 }
-p-tooltip.color > .sliders > input::-webkit-slider-thumb {
+p-tooltip[type="color"] > .sliders > input::-webkit-slider-thumb {
     z-index: 1;
 
     -webkit-appearance: none;
@@ -1092,7 +1092,7 @@ p-tooltip.color > .sliders > input::-webkit-slider-thumb {
     border-radius: 100%;
     outline: 1px solid var(--v8);
 }
-p-tooltip.color > .swatches {
+p-tooltip[type="color"] > .swatches {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -1101,10 +1101,10 @@ p-tooltip.color > .swatches {
     align-content: center;
     gap: 5px;
 }
-p-tooltip.color > .swatches:empty {
+p-tooltip[type="color"] > .swatches:empty {
     display: none;
 }
-p-tooltip.color > .swatches > button {
+p-tooltip[type="color"] > .swatches > button {
     width: 25px;
     aspect-ratio: 1 / 1;
     padding: 0px;
@@ -2252,6 +2252,7 @@ p-loading[type="bounce"] > div > div:last-child {
 }
 .form > .item.color > .content > button {
     min-width: 85px;
+    min-height: 25px;
 
     border-radius: 5px;
     outline: 1px solid var(--v8);
