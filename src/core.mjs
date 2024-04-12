@@ -5737,6 +5737,8 @@ export class Odometry3d extends Odometry {
         const templateModels = GLOBALSTATE.getProperty("template-models").value;
         if (!(name in templates)) return null;
         if (!(name in templateModels)) return null;
+        const template = util.ensure(templates[name], "obj");
+        if ("model" in template && !template.model) return;
         if (this.loadedFields[name]) {
             if (this.loadedFields[name][type])
                 return this.loadedFields[name][type];
@@ -5773,6 +5775,8 @@ export class Odometry3d extends Odometry {
         const robotModels = GLOBALSTATE.getProperty("robot-models").value;
         if (!(name in robots)) return null;
         if (!(name in robotModels)) return null;
+        const robot = util.ensure(robots[name], "obj");
+        if ("model" in robot && !robot.model) return;
         if (this.loadedRobots[name]) {
             if (this.loadedRobots[name][type])
                 return this.loadedRobots[name][type];
