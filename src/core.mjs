@@ -618,7 +618,8 @@ export class App extends util.Target {
 
         this.addHandler("start", async () => {
             await window.buildAgent();
-            this.menu = App.Menu.buildMenu();
+            // this.menu = App.Menu.buildMenu();
+            this.menu = App.Menu.buildWholeMenu();
             let id = setInterval(async () => {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
@@ -2819,7 +2820,7 @@ App.Menu = class AppMenu extends util.Target {
     static buildWholeMenu(name) {
         name = String(name);
         let menu = new App.Menu();
-        let itm = new App.Menu.item((name.length > 0) ? name : "Peninsula", "navigate");
+        let itm = new App.Menu.Item((name.length > 0) ? name : "Peninsula", "navigate");
         itm.id = "menu:main";
         this.buildMainMenu().items.forEach(subitm => itm.menu.addItem(subitm));
         menu.addItem(itm);
@@ -3190,6 +3191,7 @@ export class AppModal extends App {
         this.addHandler("modal-cmd-close", async () => await window.api.send("close"));
 
         this.addHandler("setup", async () => {
+            this.menu.getItemById("about").disabled = true;
             this.menu.getItemById("reload").disabled = true;
             this.menu.getItemById("spawn").disabled = true;
 

@@ -1465,10 +1465,11 @@ const MAIN = async () => {
                         let signal = new util.Target();
                         signal.addHandler("about", () => this.send("about"));
                         signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
-                        this.#menu = electron.Menu.buildFromTemplate([
-                            ...makeMenuDefault(this.name, signal),
-                            ...util.ensure(v, "arr"),
-                        ]);
+                        // this.#menu = electron.Menu.buildFromTemplate([
+                        //     ...makeMenuDefault(this.name, signal),
+                        //     ...util.ensure(v, "arr"),
+                        // ]);
+                        this.#menu = electron.Menu.buildFromTemplate(util.ensure(v, "arr"));
                         const dfs = menu => {
                             if (!menu) return;
                             menu.items.forEach(itm => {
