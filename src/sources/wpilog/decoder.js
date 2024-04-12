@@ -23,7 +23,7 @@ export default class WPILOGDecoder extends util.Target {
     isValid() {
         return (
             this.data.length >= 12 &&
-            lib.TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
+            util.TEXTDECODER.decode(this.data.subarray(0, 6)) == HEADERSTRING &&
             this.version == HEADERVERSION
         );
     }
@@ -34,7 +34,7 @@ export default class WPILOGDecoder extends util.Target {
     get extraHeader() {
         if (this.data.length < 12) return "";
         let l = this.dataView.getUint32(8, true);
-        return lib.TEXTDECODER.decode(this.data.subarray(12, 12+l));
+        return util.TEXTDECODER.decode(this.data.subarray(12, 12+l));
     }
 
     #readInt(x, l) {
@@ -158,7 +158,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         if (this.data.length != 8) throw new Error("getDouble: Unexpected length: "+this.data.length);
         return this.dataView.getFloat64(0, true);
     }
-    getStr() { return lib.TEXTDECODER.decode(this.data); }
+    getStr() { return util.TEXTDECODER.decode(this.data); }
     getBoolArr() { return [...this.data.map(x => x != 0)]; }
     getIntArr() {
         if (this.data.length%8 != 0) throw new Error("getIntArr: Unexpected length: "+this.data.length);
@@ -188,7 +188,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         let l = this.dataView.getUint32(x, true);
         if (x+4+l > this.data.length) throw new Error("readStr: Length exceeded: "+(x+4+l)+" > "+this.data.length);
         return {
-            str: lib.TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
+            str: util.TEXTDECODER.decode(this.data.subarray(x+4, x+4+l)),
             shift: 4+l,
         };
     }

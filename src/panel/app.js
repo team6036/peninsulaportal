@@ -166,7 +166,7 @@ function getRepresentation(o, alt=false) {
         util.is(o, "bool") ||
         util.is(o, "str")
     ) return (alt && util.is(o, "str")) ? `"${o}"` : String(o);
-    if (o instanceof Uint8Array) return alt ? lib.TEXTDECODER.decode(o) : [...o].map(x => x.toString(16).padStart(2, "0")).join("");
+    if (o instanceof Uint8Array) return alt ? util.TEXTDECODER.decode(o) : [...o].map(x => x.toString(16).padStart(2, "0")).join("");
     if (util.is(o, "arr")) return (alt ? "" : "[")+[...o].map(o => getRepresentation(o)).join(", ")+(alt ? "" : "]");
     if (util.is(o, "obj")) return JSON.stringify(o);
     return String(o);

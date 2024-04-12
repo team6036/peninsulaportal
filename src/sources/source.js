@@ -183,7 +183,7 @@ export default class Source extends util.Target {
     createStruct(name, data) {
         name = String(name);
         if (this.structHelper.hasPattern(name)) return false;
-        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, lib.TEXTDECODER.decode(util.toUint8Array(data))));
+        let pattern = this.structHelper.addPattern(new StructHelper.Pattern(this.structHelper, name, util.TEXTDECODER.decode(util.toUint8Array(data))));
         pattern.build();
         return pattern;
     }
