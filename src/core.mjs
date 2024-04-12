@@ -1051,8 +1051,8 @@ export class App extends util.Target {
         this.addHandler("cmd-documentation", async () => {
             let name = String(await window.api.get("name"));
             if (["PANEL", "PLANNER", "PRESETS", "DATABASE"].includes(name))
-                this.addPopup(new App.MarkdownPopup("./docs/"+name.toLowerCase()+"/MAIN.md"));
-            else this.addPopup(new App.MarkdownPopup("./README.md"));
+                this.addPopup(new App.MarkdownPopup("../docs/"+name.toLowerCase()+"/MAIN.md"));
+            else this.addPopup(new App.MarkdownPopup("../README.md"));
         });
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
