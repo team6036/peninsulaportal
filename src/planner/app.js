@@ -1690,7 +1690,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         let forAny = [], forNode = [], forObstacle = [];
 
-        let form = new core.Form();
+        const form = new core.Form();
         this.addItem(form.elem);
 
         forAny.push(form.addField(new core.Form.Header("Item Options")));
@@ -1819,7 +1819,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.page.editorRefresh();
         });
 
-        this.#fType = form.addField(new core.Form.DropdownInput("type", [
+        const subform = form.addField(new core.Form.SubForm("display")).form;
+
+        this.#fType = subform.addField(new core.Form.DropdownInput("type", [
             "§default",
             "§node",
             "§box",
@@ -1840,7 +1842,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.page.editorRefresh();
         });
 
-        this.#fColor = form.addField(new core.Form.ColorInput("color"));
+        this.#fColor = subform.addField(new core.Form.ColorInput("color"));
         forNode.push(this.fColor);
         this.fColor.eColorPicker.showPicker = this.fColor.eColorPicker.showH = this.fColor.eColorPicker.showS = this.fColor.eColorPicker.showV = this.fColor.useAlpha = false;
         this.fColor.eInput.style.display = "none";
@@ -1861,7 +1863,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.page.editorRefresh();
         });
 
-        this.#fGhost = form.addField(new core.Form.BooleanInput("ghost"));
+        this.#fGhost = subform.addField(new core.Form.BooleanInput("ghost"));
         forNode.push(this.fGhost);
         this.fGhost.addHandler("change-value", () => {
             let itms = getSelected();
