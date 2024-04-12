@@ -545,7 +545,7 @@ Project.Meta = class ProjectMeta extends util.Target {
         return util.Reviver.revivable(this.constructor, {
             name: this.name,
             modified: this.modified, created: this.created,
-            thumb: this.thumb,
+            // thumb: this.thumb,
         });
     }
 };
