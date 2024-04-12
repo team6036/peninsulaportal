@@ -26,6 +26,10 @@ export const VARIABLE = NUMBERS+ALPHABETALL+"_";
 export const MAGIC = "_*[[;ƒ";
 
 
+export const TEXTENCODER = new TextEncoder();
+export const TEXTDECODER = new TextDecoder();
+
+
 Array.prototype.sum = function() {
     return this.reduce((sum, x) => sum+x, 0);
 };
@@ -273,7 +277,7 @@ export function generatePath(...path) { return generateArrayPath(...path).join("
 
 export function toUint8Array(v) {
     if (v instanceof Uint8Array) return v;
-    if (is(v, "str")) return new TextEncoder().encode(v);
+    if (is(v, "str")) return TEXTENCODER.encode(v);
     try {
         return Uint8Array.from(v);
     } catch (e) {}
@@ -288,6 +292,180 @@ export function decodeUint8Array(v) {
     let out = new Uint8Array(v.length);
     for (let i = 0; i < v.length; i++) out[i] = BASE256.indexOf(v[i]);
     return out;
+}
+
+const TYPEIDX = [
+    "arr",
+    "bool",
+    "float",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "obj",
+    "raw",
+    "str",
+];
+export function encodeJSON(o) {
+    if (is(o, "arr") && !(o instanceof Uint8Array)) {
+        const encoded = o.map(o => encodeJSON(o));
+        let l = 1 + 4;
+        encoded.forEach(bytes => (l += bytes.byteLength));
+        const data = new Uint8Array(l);
+        const dataView = new DataView(data.buffer);
+        dataView.setInt8(0, TYPEIDX.indexOf("arr"));
+        dataView.setUint32(1, encoded.length);
+        let x = 1 + 4;
+        encoded.forEach(bytes => {
+            data.set(bytes, x);
+            x += bytes.byteLength;
+        });
+        return data;
+    }
+    if (is(o, "bool")) {
+        let l = 1 + 1;
+        const data = new Uint8Array(l);
+        const dataView = new DataView(data.buffer);
+        dataView.setInt8(0, TYPEIDX.indexOf("bool"));
+        dataView.setUint8(1, o ? 1 : 0);
+        return data;
+    }
+    if (is(o, "float") && !is(o, "int")) {
+        let l = 1 + 8;
+        const data = new Uint8Array(l);
+        const dataView = new DataView(data.buffer);
+        dataView.setInt8(0, TYPEIDX.indexOf("float"));
+        dataView.setFloat64(1, o);
+        return data;
+    }
+    if (is(o, "int")) {
+        let type =
+            (-(2**7) <= o && o < (2**7)) ? "int8" :
+            (-(2**15) <= o && o < (2**15)) ? "int16" :
+            (-(2**31) <= o && o < (2**31)) ? "int32" :
+            "int64";
+        let l = 1 + {
+            int8: 1,
+            int16: 2,
+            int32: 4,
+            int64: 8,
+        }[type];
+        const data = new Uint8Array(l);
+        const dataView = new DataView(data.buffer);
+        dataView.setInt8(0, TYPEIDX.indexOf(type));
+        if (type == "int8") dataView.setInt8(1, o);
+        else if (type == "int16") dataView.setInt16(1, o);
+        else if (type == "int32") dataView.setInt32(1, o);
+        else dataView.setBigInt64(1, BigInt(o));
+        return data;
+    }
+    if (is(o, "obj")) {
+        let l = 1 + 4;
+        const keys = Object.keys(o);
+        const n = keys.length;
+        const encodedKeys = keys.map(key => encodeJSON(key));
+        const encodedValues = keys.map(key => encodeJSON(o[key]));
+        encodedKeys.forEach(bytes => (l += bytes.byteLength));
+        encodedValues.forEach(bytes => (l += bytes.byteLength));
+        const data = new Uint8Array(l);
+        const dataView = new DataView(data.buffer);
+        dataView.setInt8(0, TYPEIDX.indexOf("obj"));
+        dataView.setUint32(1, n);
+        let x = 1 + 4;
+        [...encodedKeys, ...encodedValues].forEach(bytes => {
+            data.set(bytes, x);
+            x += bytes.byteLength;
+        });
+        return data;
+    }
+    if (o instanceof Uint8Array) {
+        let l = 1 + 4 + o.byteLength;
+        const data = new Uint8Array(l);
+        const dataView = new DataView(data.buffer);
+        dataView.setInt8(0, TYPEIDX.indexOf("raw"));
+        dataView.setUint32(1, o.byteLength);
+        data.set(o, 1 + 4);
+        return data;
+    }
+    if (is(o, "str")) {
+        o = TEXTENCODER.encode(o);
+        let l = 1 + 4 + o.byteLength;
+        const data = new Uint8Array(l);
+        const dataView = new DataView(data.buffer);
+        dataView.setInt8(0, TYPEIDX.indexOf("str"));
+        dataView.setUint32(1, o.byteLength);
+        data.set(o, 1 + 4);
+        return data;
+    }
+    return null;
+}
+function _decodeJSON(data, x) {
+    const dataViewer = new DataView(data, x);
+    const type = TYPEIDX[dataViewer.getInt8(0)];
+    x += 1;
+    let value = null;
+    if (type == "arr") {
+        value = [];
+        let n = dataViewer.getUint32(1);
+        x += 4;
+        while (n-- > 0) {
+            let decoded = _decodeJSON(data, x);
+            value.push(decoded.value);
+            x = decoded.x;
+        }
+    } else if (type == "bool") {
+        value = dataViewer.getUint8(1);
+        x += 1;
+    } else if (type == "float") {
+        value = dataViewer.getFloat64(1);
+        x += 8;
+    } else if (type == "int8") {
+        value = dataViewer.getInt8(1);
+        x += 1;
+    } else if (type == "int16") {
+        value = dataViewer.getInt16(1);
+        x += 2;
+    } else if (type == "int32") {
+        value = dataViewer.getInt32(1);
+        x += 4;
+    } else if (type == "int64") {
+        value = Number(dataViewer.getBigInt64(1));
+        x += 8;
+    } else if (type == "obj") {
+        value = {};
+        let n = dataViewer.getUint32(1);
+        x += 4;
+        let keys = [], values = [];
+        for (let i = 0; i < n; i++) {
+            let decoded = _decodeJSON(data, x);
+            keys.push(decoded.value);
+            x = decoded.x;
+        }
+        for (let i = 0; i < n; i++) {
+            let decoded = _decodeJSON(data, x);
+            values.push(decoded.value);
+            x = decoded.x;
+        }
+        for (let i = 0; i < n; i++) value[keys[i]] = values[i];
+    } else if (type == "raw") {
+        let n = dataViewer.getUint32(1);
+        x += 4;
+        value = new Uint8Array(data.slice(x, x+n));
+        x += n;
+    } else if (type == "str") {
+        let n = dataViewer.getUint32(1);
+        x += 4;
+        value = TEXTDECODER.decode(new Uint8Array(data.slice(x, x+n)));
+        x += n;
+    }
+    return {
+        value: value,
+        x: x,
+    };
+}
+export function decodeJSON(data) {
+    data = toUint8Array(data);
+    return _decodeJSON(data.buffer, 0).value;
 }
 
 function splitString(s) {

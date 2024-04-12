@@ -30,10 +30,6 @@ if (typeof(window) != "undefined") {
 export { mathjs };
 /*.lw}*/
 
-
-export const TEXTENCODER = new TextEncoder();
-export const TEXTDECODER = new TextDecoder();
-
 export function search(items, keys, query) {
     items = util.ensure(items, "arr");
     keys = util.ensure(keys, "arr");

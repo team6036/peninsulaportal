@@ -34,7 +34,7 @@ export default class DSEventsDecoder extends util.Target {
             x += 8+8;
             let l = this.dataView.getInt32(x);
             x += 4;
-            let text = lib.TEXTDECODER.decode(this.data.subarray(x, x+l));
+            let text = util.TEXTDECODER.decode(this.data.subarray(x, x+l));
             x += l;
             ["<TagVersion>", "<time>", "<count>", "<flags>", "<Code>", "<location>", "<stack>"].forEach(tag => {
                 while (text.includes(tag)) {

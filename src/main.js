@@ -154,7 +154,7 @@ const MAIN = async () => {
             this.process.stdout.on("data", data => this.post("data", data));
             let error = "";
             this.process.stderr.on("data", data => {
-                error += lib.TEXTDECODER.decode(data);
+                error += util.TEXTDECODER.decode(data);
             });
             this.process.on("exit", () => {
                 if (error) this.post("error", error);
