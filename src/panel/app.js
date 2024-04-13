@@ -453,13 +453,13 @@ class LoggerContext extends util.Target {
     }
     isLoading(name) { return this.loading.includes(name); }
 
-    async logsCache(paths) {
-        paths = util.ensure(paths, "arr").map(path => String(path));
-        let names = await Promise.all(paths.map(async path => {
+    async logsCache(pths) {
+        pths = util.ensure(pths, "arr").map(pth => String(pth));
+        let names = await Promise.all(pths.map(async pth => {
             this.incLoading("§caching");
             let name = null;
             try {
-                name = await window.api.send("log-cache", path);
+                name = await window.api.send("log-cache", pth);
             } catch (e) {
                 this.decLoading("§caching");
                 throw e;
@@ -541,8 +541,8 @@ class LoggerContext extends util.Target {
         this.#clientLogs = {};
         logs.map(log => {
             log = util.ensure(log, "obj");
-            let name = String(log.name), path = String(log.path);
-            this.#clientLogs[name] = path;
+            let name = String(log.name), pth = String(log.pth);
+            this.#clientLogs[name] = pth;
         });
     }
 
@@ -2062,10 +2062,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
 
         this.#explorer = new FieldExplorer();
         this.explorer.addHandler("change-showHidden", (f, t) => this.change("explorer.showHidden", f, t));
-        this.explorer.addHandler("trigger2", (e, path) => (this.path += "/"+path));
-        this.explorer.addHandler("contextmenu", (e, path) => {
+        this.explorer.addHandler("trigger2", (e, pth) => (this.path += "/"+pth));
+        this.explorer.addHandler("contextmenu", (e, pth) => {
             e = util.ensure(e, "obj");
-            let enode = this.explorer.lookup(path);
+            let enode = this.explorer.lookup(pth);
             if (!enode) return;
             let itm;
             let menu = new core.App.Menu();
@@ -2088,10 +2088,10 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             this.app.contextMenu = menu;
             this.app.placeContextMenu(e.pageX, e.pageY);
         });
-        this.explorer.addHandler("drag", (e, path) => {
-            path = util.generatePath(this.path+"/"+path);
+        this.explorer.addHandler("drag", (e, pth) => {
+            pth = util.generatePath(this.path+"/"+pth);
             if (!this.hasApp() || !this.hasPage()) return;
-            this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(path) : null;
+            this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(pth) : null;
             this.app.dragging = true;
         });
 
@@ -2347,8 +2347,8 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     this.explorer.elem.classList.remove("this");
                     this.eDisplay.classList.remove("this");
                     this.icon = "document-outline";
-                    let path = this.path.split("/").filter(part => part.length > 0);
-                    this.name = (path.length > 0) ? path.at(-1) : "/";
+                    let pth = this.path.split("/").filter(part => part.length > 0);
+                    this.name = (pth.length > 0) ? pth.at(-1) : "/";
                     this.eTabName.style.color = "var(--cr)";
                     this.iconColor = "var(--cr)";
                 }
@@ -2393,34 +2393,34 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         this.change("path", this.path, this.#path=v);
         this.ePath.innerHTML = "";
         this.ePath.appendChild(this.eShowToggle);
-        let path = this.path.split("/").filter(part => part.length > 0);
-        if (path.length > 0) {
+        let pth = this.path.split("/").filter(part => part.length > 0);
+        if (pth.length > 0) {
             let btn = document.createElement("button");
             this.ePath.appendChild(btn);
             btn.classList.add("icon");
             btn.innerHTML = "<ion-icon name='chevron-back'></ion-icon>";
             btn.addEventListener("click", e => {
                 e.stopPropagation();
-                path.pop();
-                this.path = path.join("/");
+                pth.pop();
+                this.path = pth.join("/");
             });
         }
-        for (let i = 0; i <= path.length; i++) {
+        for (let i = 0; i <= pth.length; i++) {
             if (i > 1) {
                 let divider = document.createElement("div");
                 this.ePath.appendChild(divider);
                 divider.classList.add("divider");
                 divider.textContent = "/";
             }
-            let pth = path.slice(0, i);
+            let pth2 = pth.slice(0, i);
             let btn = document.createElement("button");
             this.ePath.appendChild(btn);
             btn.classList.add("item");
             btn.classList.add("override");
-            btn.textContent = (i > 0) ? path[i-1] : "/";
+            btn.textContent = (i > 0) ? pth[i-1] : "/";
             btn.addEventListener("click", e => {
                 e.stopPropagation();
-                this.path = pth.join("/");
+                this.path = pth2.join("/");
             });
         }
     }
@@ -2929,11 +2929,11 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
         v = util.generatePath(v);
         if (this.path == v) return;
         this.change("path", this.path, this.#path=v);
-        let path = this.path.split("/").filter(part => part.length > 0);
+        let pth = this.path.split("/").filter(part => part.length > 0);
         this.eHeader.innerHTML = "";
         let name = document.createElement("div");
         this.eHeader.appendChild(name);
-        name.textContent = (path.length > 0) ? path.at(-1) : "/";
+        name.textContent = (pth.length > 0) ? pth.at(-1) : "/";
         let tooltip = document.createElement("p-tooltip");
         tooltip.classList.add("hov");
         tooltip.classList.add("swx");
@@ -6551,12 +6551,12 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (field.isArray)
                 return node.nodeObjects.map(node => this.getValue(node)).collapse();
             const decoded = util.ensure(field.getDecoded(), "obj");
-            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
-            return paths.map(path => {
+            let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
+            return pths.map(pth => {
                 let o = decoded;
-                for (let i = 0; i < path.length; i++) {
+                for (let i = 0; i < pth.length; i++) {
                     if (!util.is(o.r, "obj")) return null;
-                    o = o.r[path[i]];
+                    o = o.r[pth[i]];
                 }
                 return o;
             });
@@ -6572,13 +6572,13 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
             if (field.isArray)
                 return node.nodeObjects.map(node => this.getValue(node)).collapse();
             const range = field.getDecodedRange(tsStart, tsStop);
-            let paths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(path => util.ensure(path, "arr").map(v => String(v)));
+            let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
             range.v = range.v.map(decoded => {
-                return paths.map(path => {
+                return pths.map(pth => {
                     let o = decoded;
-                    for (let i = 0; i < path.length; i++) {
+                    for (let i = 0; i < pth.length; i++) {
                         if (!util.is(o.r, "obj")) return null;
-                        o = o.r[path[i]];
+                        o = o.r[pth[i]];
                     }
                     return o;
                 });
@@ -9334,9 +9334,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         this.#explorer = new FieldExplorer();
         this.explorer.addHandler("change-showHidden", (f, t) => this.change("showHidden", f, t));
-        this.explorer.addHandler("contextmenu", (e, path) => {
+        this.explorer.addHandler("contextmenu", (e, pth) => {
             e = util.ensure(e, "obj");
-            let enode = this.explorer.lookup(path);
+            let enode = this.explorer.lookup(pth);
             if (!enode) return;
             let itm;
             let menu = new core.App.Menu();
@@ -9358,9 +9358,9 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.contextMenu = menu;
             this.app.placeContextMenu(e.pageX, e.pageY);
         });
-        this.explorer.addHandler("drag", (e, path) => {
-            path = util.generatePath(path);
-            let node = this.hasSource() ? this.source.tree.lookup(path) : null;
+        this.explorer.addHandler("drag", (e, pth) => {
+            pth = util.generatePath(pth);
+            let node = this.hasSource() ? this.source.tree.lookup(pth) : null;
             if (!node) return;
             this.app.dragData = node;
             this.app.dragging = true;
@@ -9519,15 +9519,15 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             items = items.filter(item => item instanceof File);
             if (items.length <= 0) return;
             const file = items[0];
-            const path = file.path;
+            const pth = file.path;
             if (!this.hasProject()) return;
             let type = "wpilog";
-            if (path.endsWith(".wpilog")) type = "wpilog";
-            else if (path.endsWith(".time.csv")) type = "csv-time";
-            else if (path.endsWith(".field.csv")) type = "csv-field";
-            else if (path.endsWith(".csv")) type = "csv-time";
+            if (pth.endsWith(".wpilog")) type = "wpilog";
+            else if (pth.endsWith(".time.csv")) type = "csv-time";
+            else if (pth.endsWith(".field.csv")) type = "csv-field";
+            else if (pth.endsWith(".csv")) type = "csv-time";
             this.project.config.sourceType = type;
-            this.project.config.source = path;
+            this.project.config.source = pth;
             this.update(0);
             this.app.post("cmd-action");
         });

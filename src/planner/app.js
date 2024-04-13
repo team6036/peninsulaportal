@@ -47,7 +47,7 @@ class RLabel extends core.Odometry2d.Render {
             ctx.fillStyle = core.PROPERTYCACHE.get("--cg-8");
             const width = ctx.measureText(this.text).width/quality;
             ctx.beginPath();
-            let path = [
+            let pth = [
                 [0, 0],
                 [+5, 5],
                 [+width/2+5, 5],
@@ -57,12 +57,12 @@ class RLabel extends core.Odometry2d.Render {
                 [-5, 5],
             ];
             let offset = [0, 5];
-            for (let i = 0; i <= path.length; i++) {
-                let j = i%path.length;
-                let p = this.odometry.worldToCanvas(this.pos).add(new V(path[j]).add(offset).mul(+1,-1).mul(quality));
+            for (let i = 0; i < pth.length; i++) {
+                let p = this.odometry.worldToCanvas(this.pos).add(new V(pth[i]).add(offset).mul(+1,-1).mul(quality));
                 if (i > 0) ctx.lineTo(...p.xy);
                 else ctx.moveTo(...p.xy);
             }
+            ctx.closePath();
             ctx.fill();
             ctx.fillStyle = core.PROPERTYCACHE.get("--v8");
             let p = this.odometry.worldToCanvas(this.pos).add(new V(0,15).add(offset).mul(+1,-1).mul(quality));
@@ -660,17 +660,17 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.displayPath = new sublib.Project.Path();
             this.chooseState.addHandler("choose", (itm, shift) => {
                 if (!this.hasDisplayPath()) return;
-                let path = this.displayPath;
+                let pth = this.displayPath;
                 shift = !!shift;
                 if (!(itm instanceof sublib.Project.Node)) return;
-                if (shift) path.remNode(itm);
-                else path.addNode(itm);
+                if (shift) pth.remNode(itm);
+                else pth.addNode(itm);
             });
             this.chooseState.addHandler("done", () => {
                 if (!this.hasDisplayPath()) return;
-                let path = this.displayPath;
+                let pth = this.displayPath;
                 if (!this.hasProject()) return;
-                this.project.addPath(path);
+                this.project.addPath(pth);
             });
             this.chooseState.addHandler("cancel", () => {
             });
@@ -2061,15 +2061,15 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             items = items.filter(item => item instanceof File);
             if (items.length <= 0) return;
             const file = items[0];
-            const path = file.path;
+            const pth = file.path;
             let content = null;
             try {
-                content = await window.api.send("read-data", path);
-            } catch (e) { return this.app.doError("DATA.IN Read Error", path, e); }
+                content = await window.api.send("read-data", pth);
+            } catch (e) { return this.app.doError("DATA.IN Read Error", pth, e); }
             let data = null;
             try {
                 data = JSON.parse(content);
-            } catch (e) { return this.app.doError("DATA.IN Parse Error", path, e); }
+            } catch (e) { return this.app.doError("DATA.IN Parse Error", pth, e); }
             data = util.ensure(data, "obj");
             const nodes = util.ensure(data.nodes, "arr");
             const obstacles = util.ensure(data.obstacles, "arr");
@@ -2099,9 +2099,9 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 pobstacle.pos = new V(obstacle.x, obstacle.y).mul(100);
                 pobstacle.radius = obstacle.radius*100;
             });
-            const ppath = new sublib.Project.Path();
-            this.page.project.addPath(ppath);
-            ppath.nodes = ids;
+            const ppth = new sublib.Project.Path();
+            this.page.project.addPath(ppth);
+            ppth.nodes = ids;
         });
 
         this.#generating = null;
@@ -2121,17 +2121,17 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             this.page.displayPath = new sublib.Project.Path();
             this.page.chooseState.addHandler("choose", (itm, shift) => {
                 if (!this.page.hasDisplayPath()) return;
-                let path = this.page.displayPath;
+                let pth = this.page.displayPath;
                 shift = !!shift;
                 if (!(itm instanceof sublib.Project.Node)) return;
-                if (shift) path.remNode(itm);
-                else path.addNode(itm);
+                if (shift) pth.remNode(itm);
+                else pth.addNode(itm);
             });
             this.page.chooseState.addHandler("done", () => {
                 if (!this.page.hasDisplayPath()) return;
-                let path = this.page.displayPath;
+                let pth = this.page.displayPath;
                 if (!this.page.hasProject()) return;
-                this.page.project.addPath(path);
+                this.page.project.addPath(pth);
             });
             this.page.chooseState.addHandler("cancel", () => {
             });
@@ -2154,12 +2154,12 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             }
             if (!this.page.hasProject()) return;
             if (!this.page.project.hasPath(this.page.selectedPath)) return;
-            let path = this.page.project.getPath(this.page.selectedPath);
+            let pth = this.page.project.getPath(this.page.selectedPath);
             this.generating = true;
             this.app.markChange("*all");
             await this.app.post("cmd-save");
             try {
-                await window.api.send("exec", this.page.project.id, path.id);
+                await window.api.send("exec", this.page.project.id, pth.id);
             } catch (e) { this.app.doError("Exec Error", "", e); }
             this.generating = false;
         });
@@ -2181,18 +2181,18 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
         });
 
         const updatePaths = () => {
-            let paths = {};
+            let pths = {};
             if (this.page.hasProject())
-                this.page.project.paths.forEach(id => (paths[id] = this.page.project.getPath(id)));
+                this.page.project.paths.forEach(id => (pths[id] = this.page.project.getPath(id)));
             for (let id in buttons) {
-                if (id in paths) continue;
+                if (id in pths) continue;
                 this.remButton(buttons[id]);
                 delete buttons[id];
             }
-            for (let id in paths) {
+            for (let id in pths) {
                 if (!(id in buttons)) buttons[id] = this.addButton(new App.ProjectPage.PathsPanel.Button(this, null));
                 let btn = buttons[id];
-                btn.path = paths[id];
+                btn.path = pths[id];
                 btn.selected = this.page.selectedPath == btn.path.id;
             }
         };
@@ -2384,11 +2384,11 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 let nodes = pth.nodes;
                 this.page.chooseState.addHandler("choose", (itm, shift) => {
                     if (!this.page.hasDisplayPath()) return;
-                    let path = this.page.displayPath;
+                    let pth = this.page.displayPath;
                     shift = !!shift;
                     if (!(itm instanceof sublib.Project.Node)) return;
-                    if (shift) path.remNode(itm);
-                    else path.addNode(itm);
+                    if (shift) pth.remNode(itm);
+                    else pth.addNode(itm);
                 });
                 this.page.chooseState.addHandler("done", () => {
                 });

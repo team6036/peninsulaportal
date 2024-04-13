@@ -272,8 +272,8 @@ export async function timeout(t, v) {
     });
 }
 
-export function generateArrayPath(...path) { return path.flatten().join("/").split("/").filter(part => part.length > 0); }
-export function generatePath(...path) { return generateArrayPath(...path).join("/"); }
+export function generateArrayPath(...pth) { return pth.flatten().join("/").split("/").filter(part => part.length > 0); }
+export function generatePath(...pth) { return generateArrayPath(...pth).join("/"); }
 
 export function toUint8Array(v) {
     if (v instanceof Uint8Array) return v;

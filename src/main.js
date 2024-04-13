@@ -1447,7 +1447,7 @@ const MAIN = async () => {
                             .map(dirent => {
                                 return {
                                     name: dirent.name,
-                                    path: path.join(this.dataPath, "logs", dirent.name),
+                                    pth: path.join(this.dataPath, "logs", dirent.name),
                                 };
                             });
                     },
@@ -4005,6 +4005,7 @@ const MAIN = async () => {
                     if (await this.get("holiday-opt")) return null;
                     return (active in holidays) ? active : null;
                 },
+                "holiday": async () => await this.getThis("active-holiday"),
                 "production": async () => {
                     return app.isPackaged;
                 },

@@ -900,12 +900,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.lineWidth = 7.5*quality;
                         ctx.lineJoin = "round";
                         ctx.beginPath();
-                        let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                        let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                             .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
                             .map(v => v.rotateOrigin(this.heading));
-                        for (let i = 0; i <= path.length; i++) {
-                            let j = i%path.length;
-                            let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                        for (let i = 0; i < pth.length; i++) {
+                            let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                             if (i > 0) ctx.lineTo(...p.xy);
                             else ctx.moveTo(...p.xy);
                         }
@@ -915,10 +914,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.lineWidth = 1*quality;
                         ctx.lineJoin = "round";
                         ctx.beginPath();
-                        path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
-                        for (let i = 0; i <= path.length; i++) {
-                            let j = i%path.length;
-                            let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                        pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]].map(v => this.size.div(2).mul(v)).map(v => v.rotateOrigin(this.heading));
+                        for (let i = 0; i < pth.length; i++) {
+                            let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                             if (i > 0) ctx.lineTo(...p.xy);
                             else ctx.moveTo(...p.xy);
                         }
@@ -978,12 +976,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.lineWidth = 1*quality;
                             ctx.lineJoin = "round";
                             ctx.beginPath();
-                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                            let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                                 .map(v => new V(10.5).mul(v))
                                 .map(v => v.rotateOrigin(this.heading));
-                            for (let i = 0; i <= path.length; i++) {
-                                let j = i%path.length;
-                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                            for (let i = 0; i < pth.length; i++) {
+                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
@@ -1001,12 +998,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.lineWidth = 1*quality;
                             ctx.lineJoin = "round";
                             ctx.beginPath();
-                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                            let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                                 .map(v => new V(12).mul(v))
                                 .map(v => v.rotateOrigin(this.heading));
-                            for (let i = 0; i <= path.length; i++) {
-                                let j = i%path.length;
-                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                            for (let i = 0; i <= pth.length; i++) {
+                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
