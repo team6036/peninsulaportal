@@ -152,9 +152,9 @@ export default class App extends core.App {
                             ],
                         });
                         result = util.ensure(result, "obj");
-                        let path = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
+                        let pth = result.canceled ? null : util.ensure(result.filePaths, "arr")[0];
                         try {
-                            await window.api.send("feature", name, "set", "root", path);
+                            await window.api.send("feature", name, "set", "root", pth);
                         } catch (e) { await this.doError("Feature Root Set Error", "FeatureName: "+name, e); }
                         let value = "";
                         try {

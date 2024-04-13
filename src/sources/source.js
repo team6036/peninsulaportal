@@ -55,10 +55,10 @@ export default class Source extends util.Target {
         v = util.generatePath(v);
         return v in this.#fields;
     }
-    getField(path) {
-        if (!this.hasField(path)) return null;
-        path = util.generatePath(path);
-        return this.#fields[path];
+    getField(pth) {
+        if (!this.hasField(pth)) return null;
+        pth = util.generatePath(pth);
+        return this.#fields[pth];
     }
     addField(...fields) {
         return util.Target.resultingForEach(fields, field => {
@@ -66,10 +66,10 @@ export default class Source extends util.Target {
             if (field.source != this) return false;
             if (this.hasField(field)) return false;
             this.#fields[field.path] = field;
-            let path = field.path.split("/");
+            let pth = field.path.split("/");
             let node = this.tree;
-            while (path.length > 0) {
-                let name = path.shift();
+            while (pth.length > 0) {
+                let name = pth.shift();
                 if (!node.hasNode(name))
                     node.addNode(new Source.Node(node, name));
                 node = node.getNode(name);
@@ -85,10 +85,10 @@ export default class Source extends util.Target {
             if (field.source != this) return false;
             if (!this.hasField(field)) return false;
             delete this.#fields[field.path];
-            let path = field.path.split("/").filter(part => part.length > 0);
+            let pth = field.path.split("/").filter(part => part.length > 0);
             let node = this.tree;
-            while (path.length > 0) {
-                let name = path.shift();
+            while (pth.length > 0) {
+                let name = pth.shift();
                 if (!node.hasNode(name)) {
                     node = null;
                     break;
@@ -117,18 +117,18 @@ export default class Source extends util.Target {
 
     get structHelper() { return this.#structHelper; }
 
-    add(path, type) {
-        path = util.generatePath(path);
-        let field = new this.constructor.Field(this, path, type);
+    add(pth, type) {
+        pth = util.generatePath(pth);
+        let field = new this.constructor.Field(this, pth, type);
         return this.addField(field);
     }
-    rem(path) {
-        return this.remField(path);
+    rem(pth) {
+        return this.remField(pth);
     }
-    update(path, v, ts=null, volatile=false) {
+    update(pth, v, ts=null, volatile=false) {
         if (arguments.length == 1) return this.post("update", arguments[0]);
-        if (!this.hasField(path)) return false;
-        return this.getField(path).update(v, ts, volatile);
+        if (!this.hasField(pth)) return false;
+        return this.getField(pth).update(v, ts, volatile);
     }
     clear() {
         this.clearFields();
@@ -137,23 +137,23 @@ export default class Source extends util.Target {
         return this;
     }
 
-    queueStructDecode(path, type, array, v, ts) {
-        this.#structDecodes.push({ path: path, type: type, array: array, v: v, ts: ts });
+    queueStructDecode(pth, type, array, v, ts) {
+        this.#structDecodes.push({ pth: pth, type: type, array: array, v: v, ts: ts });
     }
     dequeueStructDecode() {
         this.#structDecodes = this.#structDecodes.filter(decode => {
-            let { path, type, array, v, ts } = decode;
-            return !this.structDecode(path, type, array, v, ts);
+            let { pth, type, array, v, ts } = decode;
+            return !this.structDecode(pth, type, array, v, ts);
         });
     }
-    structDecode(path, type, array, v, ts, updateDecoded=true) {
-        path = util.generatePath(path);
+    structDecode(pth, type, array, v, ts, updateDecoded=true) {
+        pth = util.generatePath(pth);
         type = String(type);
         array = !!array;
         v = util.toUint8Array(v);
         ts = util.ensure(ts, "num");
-        if (!this.hasField(path)) return null;
-        const field = this.getField(path);
+        if (!this.hasField(pth)) return null;
+        const field = this.getField(pth);
         if (!this.structHelper.hasPattern(type)) return null;
         const pattern = this.structHelper.getPattern(type);
         if (pattern.length == null) return null;
@@ -161,9 +161,9 @@ export default class Source extends util.Target {
         if (array) {
             let datas = util.ensure(pattern.splitData(v), "arr");
             decoded = datas.map((data, i) => {
-                let path2 = path+"/"+i;
-                let f = this.getField(path2);
-                if (!f) (f = this.addField(new this.constructor.Field(this, path2, "struct:"+type))).real = false;
+                let pth2 = pth+"/"+i;
+                let f = this.getField(pth2);
+                if (!f) (f = this.addField(new this.constructor.Field(this, pth2, "struct:"+type))).real = false;
                 return f.update(data, ts, true);
             });
             if (updateDecoded) field.updateDecoded(decoded, ts);
@@ -171,9 +171,9 @@ export default class Source extends util.Target {
             let data = util.ensure(pattern.decode(v), "obj");
             decoded = {};
             pattern.fields.forEach(field => {
-                let path2 = path+"/"+field.name;
-                let f = this.getField(path2);
-                if (!f) (f = this.addField(new this.constructor.Field(this, path2, field.isStruct ? ("struct:"+field.type) : field.type))).real = false;
+                let pth2 = pth+"/"+field.name;
+                let f = this.getField(pth2);
+                if (!f) (f = this.addField(new this.constructor.Field(this, pth2, field.isStruct ? ("struct:"+field.type) : field.type))).real = false;
                 decoded[field.name] = f.update(data[field.name], ts, true);
             });
             if (updateDecoded) field.updateDecoded(decoded, ts);
@@ -213,7 +213,7 @@ export default class Source extends util.Target {
         this.clear();
         this.#structDecodes = util.ensure(data.structDecodes, "arr").map(decode => {
             decode = util.ensure(decode, "obj");
-            decode.path = util.generatePath(decode.path);
+            decode.pth = util.generatePath(decode.pth);
             decode.type = String(decode.type);
             decode.array = !!decode.array;
             decode.v = util.toUint8Array(decode.v);
@@ -291,7 +291,7 @@ Source.Field = class SourceField {
         return v;
     }
 
-    constructor(source, path, type) {
+    constructor(source, pth, type) {
         if (!(source instanceof Source)) throw new Error("Source is not of class Source");
         this.#source = source;
 
@@ -299,10 +299,10 @@ Source.Field = class SourceField {
 
         this.#real = true;
 
-        this.#path = util.generatePath(path);
+        this.#path = util.generatePath(pth);
         this.#pathArray = this.path.split("/");
-        path = this.path.split("/");
-        this.#name = (path.length > 0) ? path.at(-1) : "";
+        pth = this.path.split("/");
+        this.#name = (pth.length > 0) ? pth.at(-1) : "";
         this.#isHidden = this.name.startsWith(".");
         if (type == null) throw new Error("Type is null");
         this.#type = String(type);
@@ -447,10 +447,10 @@ Source.Field = class SourceField {
             v = this.#logsDec[i+1];
         } else if (this.isArray) {
             v.forEach((v, i) => {
-                let path = this.path+"/"+i;
-                if (!this.source.hasField(path))
-                    this.source.addField(new this.source.constructor.Field(this.source, path, this.baseType)).real = false;
-                this.source.getField(path).update(v, ts, volatile);
+                let pth = this.path+"/"+i;
+                if (!this.source.hasField(pth))
+                    this.source.addField(new this.source.constructor.Field(this.source, pth, this.baseType)).real = false;
+                this.source.getField(pth).update(v, ts, volatile);
             });
         }
         if (n == 0)
@@ -559,10 +559,10 @@ Source.Node = class SourceNode {
         this.#field = null;
 
         this.#name = String(name);
-        let path = (this.parent instanceof Source) ? "" : this.parent.path;
-        if (path.length > 0) path += "/";
-        path += this.name;
-        this.#path = path;
+        let pth = (this.parent instanceof Source) ? "" : this.parent.path;
+        if (pth.length > 0) pth += "/";
+        pth += this.name;
+        this.#path = pth;
 
         this.#nodes = {};
 
@@ -632,11 +632,11 @@ Source.Node = class SourceNode {
             return node;
         });
     }
-    lookup(path) {
-        path = util.generateArrayPath(path);
+    lookup(pth) {
+        pth = util.generateArrayPath(pth);
         let node = this;
-        while (path.length > 0) {
-            let name = path.shift();
+        while (pth.length > 0) {
+            let name = pth.shift();
             if (!node.hasNode(name)) return null;
             node = node.getNode(name);
         }

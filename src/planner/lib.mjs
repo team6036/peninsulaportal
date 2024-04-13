@@ -74,16 +74,16 @@ export class Project extends lib.Project {
         [this.id, this.template, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.sidePos, this.maximized, this.config, this.meta] = a;
 
         this.addHandler("change", () => {
-            let pathNames = new Set();
+            let names = new Set();
             this.paths.forEach(id => {
                 let path = this.getPath(id);
                 if (path.name.length <= 0) path.name = "New Path";
-                if (pathNames.has(path.name)) {
+                if (names.has(path.name)) {
                     let n = 1;
-                    while (pathNames.has(path.name+ " ("+n+")")) n++;
+                    while (names.has(path.name+ " ("+n+")")) n++;
                     path.name += " ("+n+")";
                 }
-                pathNames.add(path.name);
+                names.add(path.name);
             });
         });
     }

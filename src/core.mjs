@@ -5352,12 +5352,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.lineWidth = 7.5*quality;
                         ctx.lineJoin = "miter";
                         ctx.beginPath();
-                        let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                        let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                             .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
                             .map(v => v.rotateOrigin(this.heading));
-                        for (let i = 0; i <= path.length; i++) {
-                            let j = i%path.length;
-                            let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                        for (let i = 0; i < pth.length; i++) {
+                            let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                             if (i > 0) ctx.lineTo(...p.xy);
                             else ctx.moveTo(...p.xy);
                         }
@@ -5369,17 +5368,17 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.lineCap = "square";
                             let w = this.odometry.pageLenToWorld(7.5)/this.odometry.pageLenToWorld(this.w);
                             let h = this.odometry.pageLenToWorld(7.5)/this.odometry.pageLenToWorld(this.h);
-                            let path = [[targetScale-w*2, 1], [1, 1], [1, targetScale-h*2]];
+                            let pth = [[targetScale-w*2, 1], [1, 1], [1, targetScale-h*2]];
                             for (let xi = 0; xi < 2; xi++) {
                                 let x = xi*2 - 1;
                                 for (let yi = 0; yi < 2; yi++) {
                                     let y = yi*2 - 1;
                                     ctx.beginPath();
-                                    let path2 = path
+                                    let pth2 = pth
                                         .map(v => this.size.div(2).mul(v).mul(x, y))
                                         .map(v => v.rotateOrigin(this.heading));
-                                    for (let i = 0; i < path2.length; i++) {
-                                        let p = this.odometry.worldToCanvas(this.rPos.add(path2[i]));
+                                    for (let i = 0; i < pth2.length; i++) {
+                                        let p = this.odometry.worldToCanvas(this.rPos.add(pth2[i]));
                                         if (i > 0) ctx.lineTo(...p.xy);
                                         else ctx.moveTo(...p.xy);
                                     }
@@ -5388,12 +5387,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             }
                         } else {
                             ctx.beginPath();
-                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                            let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                                 .map(v => this.size.div(2).mul(v))
                                 .map(v => v.rotateOrigin(this.heading));
-                            for (let i = 0; i <= path.length; i++) {
-                                let j = i%path.length;
-                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                            for (let i = 0; i < pth.length; i++) {
+                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
@@ -5454,12 +5452,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.lineWidth = 1*quality;
                             ctx.lineJoin = "round";
                             ctx.beginPath();
-                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                            let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                                 .map(v => new V(10.5).mul(v))
                                 .map(v => v.rotateOrigin(this.heading));
-                            for (let i = 0; i <= path.length; i++) {
-                                let j = i%path.length;
-                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                            for (let i = 0; i < pth.length; i++) {
+                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
@@ -5477,12 +5474,11 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.lineWidth = 1*quality;
                             ctx.lineJoin = "round";
                             ctx.beginPath();
-                            let path = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
+                            let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
                                 .map(v => new V(12).mul(v))
                                 .map(v => v.rotateOrigin(this.heading));
-                            for (let i = 0; i <= path.length; i++) {
-                                let j = i%path.length;
-                                let p = this.odometry.worldToCanvas(this.rPos.add(path[j]));
+                            for (let i = 0; i < pth.length; i++) {
+                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
@@ -7223,10 +7219,10 @@ export class Explorer extends util.Target {
             this.#nodes[node.name] = node;
             this.#nodeKeys.push(node.name);
             this.#nodeObjects.push(node);
-            node.addLinkedHandler(this, "trigger", (e, path) => this.post("trigger", e, path));
-            node.addLinkedHandler(this, "trigger2", (e, path) => this.post("trigger2", e, path));
-            node.addLinkedHandler(this, "contextmenu", (e, path) => this.post("contextmenu", e, path));
-            node.addLinkedHandler(this, "drag", (e, path) => this.post("drag", e, path));
+            node.addLinkedHandler(this, "trigger", (e, pth) => this.post("trigger", e, pth));
+            node.addLinkedHandler(this, "trigger2", (e, pth) => this.post("trigger2", e, pth));
+            node.addLinkedHandler(this, "contextmenu", (e, pth) => this.post("contextmenu", e, pth));
+            node.addLinkedHandler(this, "drag", (e, pth) => this.post("drag", e, pth));
             this.elem.appendChild(node.elem);
             node.onAdd();
             rr = true;
@@ -7253,14 +7249,14 @@ export class Explorer extends util.Target {
         if (rr) this.format();
         return r;
     }
-    lookup(path) {
-        path = util.generateArrayPath(path);
+    lookup(pth) {
+        pth = util.generateArrayPath(pth);
         let explorer = this;
-        while (path.length > 0) {
-            let name = path.shift();
+        while (pth.length > 0) {
+            let name = pth.shift();
             if (!explorer.has(name)) return null;
             let node = explorer.get(name);
-            if (path.length <= 0) return node;
+            if (pth.length <= 0) return node;
             explorer = node.explorer;
         }
         return null;
@@ -7356,25 +7352,25 @@ Explorer.Node = class ExplorerNode extends util.Target {
         super();
 
         this.#explorer = new this.constructor.EXPLORER();
-        this.explorer.addHandler("trigger", (e, path) => {
-            path = util.generatePath(path);
-            if (this.name.length > 0) path = this.name+"/"+path;
-            this.post("trigger", e, path);
+        this.explorer.addHandler("trigger", (e, pth) => {
+            pth = util.generatePath(pth);
+            if (this.name.length > 0) pth = this.name+"/"+pth;
+            this.post("trigger", e, pth);
         });
-        this.explorer.addHandler("trigger2", (e, path) => {
-            path = util.generatePath(path);
-            if (this.name.length > 0) path = this.name+"/"+path;
-            this.post("trigger2", e, path);
+        this.explorer.addHandler("trigger2", (e, pth) => {
+            pth = util.generatePath(pth);
+            if (this.name.length > 0) pth = this.name+"/"+pth;
+            this.post("trigger2", e, pth);
         });
-        this.explorer.addHandler("contextmenu", (e, path) => {
-            path = util.generatePath(path);
-            if (this.name.length > 0) path = this.name+"/"+path;
-            this.post("contextmenu", e, path);
+        this.explorer.addHandler("contextmenu", (e, pth) => {
+            pth = util.generatePath(pth);
+            if (this.name.length > 0) pth = this.name+"/"+pth;
+            this.post("contextmenu", e, pth);
         });
-        this.explorer.addHandler("drag", (e, path) => {
-            path = util.generatePath(path);
-            if (this.name.length > 0) path = this.name+"/"+path;
-            this.post("drag", e, path);
+        this.explorer.addHandler("drag", (e, pth) => {
+            pth = util.generatePath(pth);
+            if (this.name.length > 0) pth = this.name+"/"+pth;
+            this.post("drag", e, pth);
         });
 
         this.#name = String(name);
@@ -7481,10 +7477,10 @@ Explorer.Node = class ExplorerNode extends util.Target {
         this.updateDisplay();
     }
 
-    lookup(path) {
-        path = util.generateArrayPath(path);
-        if (path.length <= 0) return this;
-        return this.explorer.lookup(path);
+    lookup(pth) {
+        pth = util.generateArrayPath(pth);
+        if (pth.length <= 0) return this;
+        return this.explorer.lookup(pth);
     }
 
     get showValue() { return this.#showValue; }
