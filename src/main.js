@@ -1041,14 +1041,8 @@ const MAIN = async () => {
             (async () => {
                 await this.whenPartiallyReady();
                 if (!this.hasWindow()) return;
-                let prevIsDevMode = null;
                 let prevHoliday = null;
                 const check = async () => {
-                    let isDevMode = !!(await this.get("devmode"));
-                    if (prevIsDevMode != isDevMode) {
-                        prevIsDevMode = isDevMode;
-                        this.send("win-devmode", isDevMode);
-                    }
                     let holiday = await this.get("active-holiday");
                     holiday = (holiday == null) ? null : String(holiday);
                     await onHolidayState(holiday);
@@ -1057,8 +1051,6 @@ const MAIN = async () => {
                         this.send("win-holiday", holiday);
                     }
                 };
-                fs.watchFile(path.join(__dirname, ".config"), check);
-                fs.watchFile(path.join(__dirname, ".clientconfig"), check);
                 fs.watchFile(path.join(this.rootManager.dataPath, "config.json"), check);
                 fs.watchFile(path.join(this.rootManager.dataPath, "holidays", "holidays.json"), check);
                 await check();
@@ -3887,6 +3879,9 @@ const MAIN = async () => {
             if (this.hasWindow()) return await this.window.manager.getThis(k);
             k = String(k);
             let kfs = {
+                "packaged": async () => {
+                    return app.isPackaged;
+                },
                 "loads": async () => {
                     return this.loads;
                 },
@@ -4031,21 +4026,6 @@ const MAIN = async () => {
                 "repo": async () => {
                     let repo = (await kfs._fullpackage()).repository;
                     return String(util.is(repo, "obj") ? repo.url : repo);
-                },
-                "_fulldevconfig": async () => {
-                    let content = "";
-                    try {
-                        content = await WindowManager.fileRead(path.join(__dirname, ".config"));
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
-                    return data;
-                },
-                "devmode": async () => {
-                    return !(await kfs.production()) && ((await kfs._fulldevconfig()).isDevMode);
                 },
                 "_fullconfig": async () => {
                     await this.affirm();
