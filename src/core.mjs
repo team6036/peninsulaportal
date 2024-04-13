@@ -537,8 +537,9 @@ window.customElements.define("p-tooltip", PTooltip);
 export class App extends util.Target {
     #setupDone;
 
+    #packaged;
+
     #fullscreen;
-    #devMode;
     #holiday;
 
     #popups;
@@ -580,8 +581,9 @@ export class App extends util.Target {
 
         this.#setupDone = false;
 
+        this.#packaged = true;
+
         this.#fullscreen = null;
-        this.#devMode = null;
         this.#holiday = null;
 
         this.#popups = new Set();
@@ -954,6 +956,8 @@ export class App extends util.Target {
         return elem;
     }
 
+    get packaged() { return this.#packaged; }
+
     get fullscreen() { return this.#fullscreen; }
     set fullscreen(v) {
         v = !!v;
@@ -970,21 +974,6 @@ export class App extends util.Target {
         document.documentElement.style.setProperty("--RIGHT", (v ? 0 : right)+"px");
         PROPERTYCACHE.clear();
     }
-    get devMode() { return this.#devMode; }
-    set devMode(v) {
-        v = !!v;
-        if (this.devMode == v) return;
-        this.#devMode = v;
-        if (v) {
-            window.app = this;
-            window.util = util;
-        } else { 
-            delete window.app;
-            delete window.util;
-        }
-        let itm = this.menu.getItemById("toggledevtools");
-        if (!itm) return;
-    }
     get holiday() { return this.#holiday; }
     set holiday(v) {
         v = (v == null) ? null : String(v);
@@ -995,6 +984,9 @@ export class App extends util.Target {
 
     async setup() {
         if (this.setupDone) return false;
+
+        window.app = this;
+        window.util = util;
 
         window.api.onPerm(async () => {
             let perm = await this.getPerm();
@@ -1057,8 +1049,7 @@ export class App extends util.Target {
         });
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
-            let isDevMode = await window.api.get("devmode");
-            if (!isDevMode && ["DATABASE", "PYTHONTK"].includes(name)) {
+            if (!this.packaged && ["DATABASE", "PYTHONTK"].includes(name)) {
                 let pop = this.confirm(
                     "Open "+lib.getName(name),
                     "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs",
@@ -1075,9 +1066,6 @@ export class App extends util.Target {
         this.addHandler("cmd-win-fullscreen", async v => {
             this.fullscreen = v;
         });
-        this.addHandler("cmd-win-devmode", async v => {
-            this.devMode = v;
-        });
         this.addHandler("cmd-win-holiday", async v => {
             this.holiday = v;
         });
@@ -1087,6 +1075,8 @@ export class App extends util.Target {
             if (!itm) return;
             itm.post("trigger", null);
         });
+
+        this.#packaged = !!(await window.api.get("packaged"));
 
         this.#eTitle = document.querySelector("head > title");
         if (!(this.eTitle instanceof HTMLTitleElement)) this.#eTitle = document.createElement("title");
@@ -1183,7 +1173,6 @@ export class App extends util.Target {
         let t = util.getTime();
         
         this.fullscreen = await window.api.get("fullscreen");
-        this.devMode = await window.api.get("devmode");
         this.holiday = await window.api.get("active-holiday");
 
         let agent = window.agent();
