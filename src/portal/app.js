@@ -235,10 +235,10 @@ export default class App extends core.App {
                     if (!timer.dequeueAll(250)) return;
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
                     if (repoAnchor instanceof HTMLAnchorElement)
-                        repoAnchor.href = await window.api.get("val-repo");
+                        repoAnchor.href = await window.api.get("repo");
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)
-                        dbHostAnchor.href = await window.api.get("val-db-host");
+                        dbHostAnchor.href = await window.api.get("db-host");
                     const assetsHostAnchor = this.eInfo.querySelector(":scope > .nav > a#assets-host");
                     if (assetsHostAnchor instanceof HTMLAnchorElement)
                         assetsHostAnchor.href = await window.api.get("assets-host");

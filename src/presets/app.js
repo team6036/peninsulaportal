@@ -193,7 +193,7 @@ export default class App extends core.App {
                         if (type == "bool") {
                             let checked = false;
                             try {
-                                checked = !!(await window.api.get("val-"+elem.id));
+                                checked = !!(await window.api.get(elem.id));
                             } catch (e) { await this.doError("Input Boolean Get Error", "InputId: "+elem.id, e); }
                             if (elem.checked == checked) {
                                 elem.disabled = disabled;
@@ -204,7 +204,7 @@ export default class App extends core.App {
                         } else {
                             let value = "";
                             try {
-                                value = await window.api.get("val-"+elem.id);
+                                value = await window.api.get(elem.id);
                             } catch (e) { await this.doError("Input Get Error", "InputId: "+elem.id, e); }
                             let idfs = {
                                 "db-host": async () => {
@@ -282,7 +282,7 @@ export default class App extends core.App {
                         const disabled = elem.disabled;
                         elem.disabled = true;
                         try {
-                            await window.api.set("val-"+elem.id, v);
+                            await window.api.set(elem.id, v);
                         } catch (e) { await this.doError("Input Set Error", "InputId: "+elem.id, e); }
                         elem.disabled = disabled;
                         lock = false;
@@ -374,7 +374,7 @@ export default class App extends core.App {
                 setInterval(async () => {
                     const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
                     if (repoAnchor instanceof HTMLAnchorElement)
-                        repoAnchor.href = await window.api.get("val-repo");
+                        repoAnchor.href = await window.api.get("repo");
                     const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
                     if (dbHostAnchor instanceof HTMLAnchorElement)
                         dbHostAnchor.href = await window.api.get("db-host");

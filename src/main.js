@@ -130,6 +130,12 @@ const MAIN = async () => {
     const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
+    class MissingError extends Error {
+        constructor(message, ...a) {
+            super(message, ...a);
+        }
+    }
+
     class Process extends util.Target {
         #id;
         #tags;
@@ -1267,12 +1273,27 @@ const MAIN = async () => {
         }
 
         async get(k) {
+            try {
+                return await this.getThis(k);
+            } catch (e) { if (!(e instanceof MissingError)) throw e; }
+            return await this.manager.get(k);
+        }
+        async set(k, v) {
+            try {
+                return await this.setThis(k, v);
+            } catch (e) { if (!(e instanceof MissingError)) throw e; }
+            return await this.manager.set(k, v);
+        }
+        async on(k, ...a) {
+            try {
+                return await this.onThis(k, ...a);
+            } catch (e) { if (!(e instanceof MissingError)) throw e; }
+            return await this.manager.on(k, ...a);
+        }
+
+        async getThis(k) {
             if (!this.started) return null;
             k = String(k);
-            try {
-                return await this.manager.get(k);
-            } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
-            let doLog = true;
             let kfs = {
                 "id": async () => this.id,
 
@@ -1300,7 +1321,7 @@ const MAIN = async () => {
                 },
                 "blurred": async () => {
                     if (!this.hasWindow()) return null;
-                    return !(await this.get("focused"));
+                    return !(await this.getThis("focused"));
                 },
                 "focusable": async () => {
                     if (!this.hasWindow()) return null;
@@ -1313,7 +1334,7 @@ const MAIN = async () => {
                 },
                 "hidden": async () => {
                     if (!this.hasWindow()) return null;
-                    return !(await this.get("visible"));
+                    return !(await this.getThis("visible"));
                 },
 
                 "modal": async () => {
@@ -1345,7 +1366,7 @@ const MAIN = async () => {
                 },
                 "disabled": async () => {
                     if (!this.hasWindow()) return null;
-                    return !(await this.get("enabled"));
+                    return !(await this.getThis("enabled"));
                 },
 
                 "resizable": async () => {
@@ -1404,66 +1425,53 @@ const MAIN = async () => {
                     return this.window.getBounds();
                 },
             };
-            let r = null;
-            if (k in kfs) r = await kfs[k]();
-            else {
-                let namefs = {
-                    PANEL: {
-                        "client-location": async () => {
-                            doLog = false;
-                            const client = this.clientManager.getClientById("logger");
-                            if (!client) return null;
-                            return client.location;
-                        },
-                        "client-connected": async () => {
-                            doLog = false;
-                            const client = this.clientManager.getClientById("logger");
-                            if (!client) return null;
-                            return client.connected;
-                        },
-                        "logs-client": async () => {
-                            doLog = false;
-                            let hasLogsDir = await this.dirHas("logs");
-                            if (!hasLogsDir) return [];
-                            let dirents = await this.dirList("logs");
-                            return dirents
-                                .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".wpilog")))
-                                .map(dirent => {
-                                    return {
-                                        name: dirent.name,
-                                        path: path.join(this.dataPath, "logs", dirent.name),
-                                    };
-                                });
-                        },
-                        "logs-server": async () => {
-                            doLog = false;
-                            const client = this.clientManager.getClientById("logger");
-                            if (!client) return [];
-                            if (client.disconnected) {
-                                client.connect();
-                                return [];
-                            }
-                            return util.ensure(await client.emit("logs-get", null), "arr").map(name => String(name));
-                        },
+            if (k in kfs) return await kfs[k]();
+            let namefs = {
+                PANEL: {
+                    "client-location": async () => {
+                        const client = this.clientManager.getClientById("logger");
+                        if (!client) return null;
+                        return client.location;
                     },
-                };
-                if (this.name in namefs)
-                    if (k in namefs[this.name])
-                        r = await namefs[this.name][k]();
-            }
-            if (doLog) this.log(`GET - ${k}`);
-            return r;
+                    "client-connected": async () => {
+                        const client = this.clientManager.getClientById("logger");
+                        if (!client) return null;
+                        return client.connected;
+                    },
+                    "logs-client": async () => {
+                        let hasLogsDir = await this.dirHas("logs");
+                        if (!hasLogsDir) return [];
+                        let dirents = await this.dirList("logs");
+                        return dirents
+                            .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".wpilog")))
+                            .map(dirent => {
+                                return {
+                                    name: dirent.name,
+                                    path: path.join(this.dataPath, "logs", dirent.name),
+                                };
+                            });
+                    },
+                    "logs-server": async () => {
+                        const client = this.clientManager.getClientById("logger");
+                        if (!client) return [];
+                        if (client.disconnected) {
+                            client.connect();
+                            return [];
+                        }
+                        return util.ensure(await client.emit("logs-get", null), "arr").map(name => String(name));
+                    },
+                },
+            };
+            if (this.name in namefs)
+                if (k in namefs[this.name])
+                    return await namefs[this.name][k]();
+            throw new MissingError("Could not get for key: "+k);
         }
-        async set(k, v) {
+        async setThis(k, v) {
             if (!this.started) return false;
             k = String(k);
-            try {
-                return await this.manager.set(k, v);
-            } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
-            let doLog = true;
             let kfs = {
                 "menu": async () => {
-                    doLog = false;
                     this.#menu = null;
                     try {
                         let signal = new util.Target();
@@ -1592,7 +1600,6 @@ const MAIN = async () => {
                 },
 
                 "size": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     v = new V(v).ceil();
                     let bounds = this.window.getBounds();
@@ -1606,7 +1613,6 @@ const MAIN = async () => {
                     return true;
                 },
                 "width": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
@@ -1620,7 +1626,6 @@ const MAIN = async () => {
                     return true;
                 },
                 "height": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
@@ -1634,72 +1639,59 @@ const MAIN = async () => {
                     return true;
                 },
                 "min-size": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(...new V(v).ceil().xy);
                     return true;
                 },
                 "min-width": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(Math.ceil(util.ensure(v, "num")), this.window.getMinimumSize()[1]);
                     return true;
                 },
                 "min-height": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(this.window.getMinimumSize()[0], Math.ceil(util.ensure(v, "num")));
                     return true;
                 },
                 "max-size": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(...new V(v).ceil().xy);
                     return true;
                 },
                 "max-width": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(Math.ceil(util.ensure(v, "num")), this.window.getMaximumSize()[1]);
                     return true;
                 },
                 "max-height": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(this.window.getMaximumSize()[0], Math.ceil(util.ensure(v, "num")));
                     return true;
                 },
                 "bounds": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     this.window.setBounds(v);
                     return true;
                 },
 
                 "title-bar-overlay": async () => {
-                    doLog = false;
                     if (!this.hasWindow()) return false;
                     if (this.window.setTitleBarOverlay)
                         this.window.setTitleBarOverlay(v);
                     return true;
                 },
             };
-            let r = false;
-            if (k in kfs) r = await kfs[k]();
-            else {
-                let namefs = {
-                };
-                if (this.name in namefs)
-                    if (k in namefs[this.name])
-                        r = await namefs[this.name][k]();
-            }
-            if (doLog) this.log(`SET - ${k} = ${simplify(JSON.stringify(v))}`);
-            return r;
+            if (k in kfs) return await kfs[k]();
+            let namefs = {
+            };
+            if (this.name in namefs)
+                if (k in namefs[this.name])
+                    return await namefs[this.name][k]();
+            throw new MissingError("Could not set for key: "+k);
         }
-        async on(k, ...a) {
+        async onThis(k, ...a) {
             if (!this.started) return null;
             k = String(k);
-            let doLog = true;
             let kfs = {
                 "reload": async () => {
                     const manager = this.manager, name = this.name;
@@ -1892,8 +1884,7 @@ const MAIN = async () => {
                     return null;
                 },
             };
-            if (k in kfs)
-                return await kfs[k](...a);
+            if (k in kfs) return await kfs[k](...a);
             let namefs = {
                 PRESETS: {
                     "cmd-open-app-data-dir": async () => {
@@ -1988,7 +1979,7 @@ const MAIN = async () => {
                     "log-upload": async name => {
                         name = String(name);
                         await this.manager.affirm();
-                        let logs = await this.get("logs-client");
+                        let logs = await this.getThis("logs-client");
                         let found = null;
                         for (let log of logs) {
                             if (log.name != name) continue;
@@ -2008,7 +1999,7 @@ const MAIN = async () => {
                     "log-download": async name => {
                         name = String(name);
                         await this.manager.affirm();
-                        let logs = await this.get("logs-server");
+                        let logs = await this.getThis("logs-server");
                         if (!logs.includes(name)) return false;
                         const client = this.clientManager.getClientById("logger");
                         if (!client) return false;
@@ -2022,7 +2013,7 @@ const MAIN = async () => {
                     "log-client-delete": async name => {
                         name = String(name);
                         await this.manager.affirm();
-                        let logs = await this.get("logs-client");
+                        let logs = await this.getThis("logs-client");
                         let found = null;
                         for (let log of logs) {
                             if (log.name != name) continue;
@@ -2037,7 +2028,7 @@ const MAIN = async () => {
                     "log-server-delete": async name => {
                         name = String(name);
                         await this.manager.affirm();
-                        let logs = await this.get("logs-server");
+                        let logs = await this.getThis("logs-server");
                         if (!logs.includes(name)) return false;
                         const client = this.clientManager.getClientById("logger");
                         if (!client) return false;
@@ -2465,20 +2456,10 @@ const MAIN = async () => {
                     },
                 },
             };
-            let r = null, hasR = false;
-            if (this.name in namefs) {
-                if (k in namefs[this.name]) {
-                    r = await namefs[this.name][k](...a);
-                    hasR = true;
-                }
-            }
-            if (hasR) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
-            else {
-                try {
-                    r = await this.manager.on(k, ...a);
-                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
-            }
-            return r;
+            if (this.name in namefs)
+                if (k in namefs[this.name])
+                    return await namefs[this.name][k](...a);
+            throw new MissingError("Could not on for key: "+k);
         }
         async send(k, ...a) {
             if (!this.started) return false;
@@ -2784,7 +2765,7 @@ const MAIN = async () => {
                 const host = await this.get("db-host");
                 const doFallback = host == null;
                 const theHost = host + "/api";
-                const isCompMode = await this.get("val-comp-mode");
+                const isCompMode = await this.get("comp-mode");
                 this.remLoad("find");
                 if (doFallback) log(`poll ( host: FALLBACK )`);
                 else log(`poll ( host: ${host} )`);
@@ -3879,8 +3860,31 @@ const MAIN = async () => {
             return null;
         }
 
-        async get(k) {
-            if (this.hasWindow()) return await this.window.manager.get(k);
+        async get(k) { return await this.getThis(k); }
+        async set(k, v) { return await this.setThis(k, v); }
+        async on(k, ...a) { return await this.onThis(k, ...a); }
+
+        async getCallback(id, k) {
+            if (this.hasWindow()) return await this.window.manager.getCallback(id, k);
+            let win = this.identifyWindow(id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            return await win.get(k);
+        }
+        async setCallback(id, k, v) {
+            if (this.hasWindow()) return await this.window.manager.setCallback(id, k, v);
+            let win = this.identifyWindow(id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            return await win.set(k, v);
+        }
+        async onCallback(id, k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
+            let win = this.identifyWindow(id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            return await win.on(k, ...a);
+        }
+
+        async getThis(k) {
+            if (this.hasWindow()) return await this.window.manager.getThis(k);
             k = String(k);
             let kfs = {
                 "loads": async () => {
@@ -4100,43 +4104,10 @@ const MAIN = async () => {
                 "cleanup": async () => await this.getCleanup(),
             };
             if (k in kfs) return await kfs[k]();
-            if (k.startsWith("val-")) {
-                try {
-                    return await this.getValue(k.slice(4));
-                } catch (e) { if (!String(e).startsWith("§GV ")) throw e; }
-            }
-            throw "§G No possible \"get\" for key: "+k;
+            throw new MissingError("Could not get for key: "+k);
         }
-        async getValue(k) {
-            if (this.hasWindow()) return await this.window.manager.getValue(k);
-            k = String(k);
-            let kfs = {
-                "version": async () => await this.get("version"),
-                "db-host": async () => await this.get("db-host"),
-                "assets-host": async () => await this.get("assets-host"),
-                "socket-host": async () => await this.get("socket-host"),
-                "scout-url": async () => await this.get("scout-url"),
-                "repo": async () => await this.get("repo"),
-                "holiday": async () => await this.get("active-holiday"),
-                "comp-mode": async () => await this.get("comp-mode"),
-                "theme": async () => await this.get("theme"),
-                "native-theme": async () => await this.get("native-theme"),
-                "holiday-opt": async () => await this.get("holiday-opt"),
-            };
-            if (k in kfs) return await kfs[k]();
-            throw "§GV No possible \"getValue\" for key: "+k;
-        }
-        async getCallback(id, k) {
-            if (this.hasWindow()) return await this.window.manager.getCallback(id, k);
-            try {
-                return await this.get(k);
-            } catch (e) { if (!String(e).startsWith("§G ")) throw e; }
-            let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
-            return await win.get(k);
-        }
-        async set(k, v) {
-            if (this.hasWindow()) return await this.window.manager.set(k, v);
+        async setThis(k, v) {
+            if (this.hasWindow()) return await this.window.manager.setThis(k, v);
             k = String(k);
             let kfs = {
                 "fs-version": async () => await this.setFSVersion(v),
@@ -4188,44 +4159,11 @@ const MAIN = async () => {
                 },
             };
             if (k in kfs) return await kfs[k]();
-            if (k.startsWith("val-")) {
-                try {
-                    return await this.setValue(k.slice(4), v);
-                } catch (e) { if (!String(e).startsWith("§SV ")) throw e; }
-            }
-            throw "§S No possible \"set\" for key: "+k;
+            throw new MissingError("Could not set for key: "+k);
         }
-        async setValue(k, v) {
-            if (this.hasWindow()) return await this.window.manager.setValue(k, v);
+        async onThis(k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.onThis(k, ...a);
             k = String(k);
-            let kfs = {
-                "db-host": async () => await this.set("db-host", v),
-                "assets-host": async () => await this.set("assets-host", v),
-                "socket-host": async () => await this.set("socket-host", v),
-                "scout-url": async () => await this.set("scout-url", v),
-                "comp-mode": async () => await this.set("comp-mode", v),
-                "holiday-opt": async () => await this.set("holiday-opt", v),
-            };
-            if (k in kfs) return await kfs[k]();
-            throw "§SV No possible \"setValue\" for key: "+k;
-        }
-        async setCallback(id, k, v) {
-            if (this.hasWindow()) return await this.window.manager.setCallback(id, k, v);
-            try {
-                let r = await this.set(k, v);
-                this.rootManager.buildAgent();
-                return r;
-            } catch (e) { if (!String(e).startsWith("§S ")) throw e; }
-            let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
-            let r = await win.set(k, v);
-            this.rootManager.buildAgent();
-            return r;
-        }
-        async on(k, ...a) {
-            if (this.hasWindow()) return await this.window.manager.on(k, ...a);
-            k = String(k);
-            let doLog = true;
             let kfs = {
                 "spawn": async name => {
                     name = String(name);
@@ -4241,7 +4179,6 @@ const MAIN = async () => {
                     notif.show();
                 },
                 "menu-role-label": async role => {
-                    doLog = false;
                     role = String(role);
                     return electron.Menu.buildFromTemplate([{ role: role }]).items[0].label;
                 },
@@ -4298,23 +4235,8 @@ const MAIN = async () => {
                 "cleanup": async () => await this.cleanup(),
                 "try-load": async () => await this.tryLoad(),
             };
-            if (k in kfs) {
-                let r = await kfs[k](...a);
-                if (doLog) this.log(`ON - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
-                return r;
-            }
-            throw "§O No possible \"on\" for key: "+k;
-        }
-        async onCallback(id, k, ...a) {
-            if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
-            let win = this.identifyWindow(id);
-            if (!win) {
-                try {
-                    return await this.on(k, ...a);
-                } catch (e) { if (!String(e).startsWith("§O ")) throw e; }
-            }
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
-            return await win.on(k, ...a);
+            if (k in kfs) return await kfs[k](...a);
+            throw new MissingError("Could not on for key: "+k);
         }
         async send(k, ...a) {
             await Promise.all(this.windows.map(async win => await win.send(k, ...a)));
@@ -4347,7 +4269,7 @@ const MAIN = async () => {
             return this.log(...a);
         }
         log(...a) {
-            if (this.hasWindow()) return this.window.log(...a);
+            if (this.hasWindow()) return this.window.log(":", ...a);
             return log(":", ...a);
         }
     }
