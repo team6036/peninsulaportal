@@ -112,6 +112,8 @@ const MAIN = async () => {
 
     const octokit = require("octokit");
 
+    const zlib = require("zlib");
+
     const OS = {
         arch: os.arch(),
         platform: os.platform(),
@@ -1467,10 +1469,6 @@ const MAIN = async () => {
                         let signal = new util.Target();
                         signal.addHandler("about", () => this.send("about"));
                         signal.addHandler("settings", () => this.on("spawn", "PRESETS"));
-                        // this.#menu = electron.Menu.buildFromTemplate([
-                        //     ...makeMenuDefault(this.name, signal),
-                        //     ...util.ensure(v, "arr"),
-                        // ]);
                         this.#menu = electron.Menu.buildFromTemplate(util.ensure(v, "arr"));
                         const dfs = menu => {
                             if (!menu) return;
@@ -4246,6 +4244,22 @@ const MAIN = async () => {
                     doLog = false;
                     role = String(role);
                     return electron.Menu.buildFromTemplate([{ role: role }]).items[0].label;
+                },
+                "compress": async data => {
+                    return new Promise((res, rej) => {
+                        zlib.deflate(util.TEXTENCODER.encode(String(data)), (err, buff) => {
+                            if (err) return rej(err);
+                            res(buff);
+                        });
+                    });
+                },
+                "decompress": async data => {
+                    return new Promise((res, rej) => {
+                        zlib.inflate(data, (err, buff) => {
+                            if (err) return rej(err);
+                            res(util.TEXTDECODER.decode(buff));
+                        });
+                    });
                 },
                 "_state": async () => {
                     await this.affirm();
