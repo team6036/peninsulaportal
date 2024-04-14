@@ -1006,8 +1006,7 @@ const MAIN = async () => {
                     client.id = "logger";
                     client.addHandler("stream-logs", async (fname, payload, meta, ssStream) => {
                         await this.affirm();
-                        if (!(await this.dirHas("logs")))
-                            await this.dirMake("logs");
+                        await this.dirAffirm("logs");
                         const pth = WindowManager.makePath(this.dataPath, "logs", fname);
                         const stream = fs.createWriteStream(pth);
                         try {
@@ -1721,7 +1720,7 @@ const MAIN = async () => {
                     await this.affirm();
                     let content = "";
                     try {
-                        content = await this.fileRead(["data", "config.json"]);
+                        content = await this.fileRead("config.json");
                     } catch (e) {}
                     let config = null;
                     try {
@@ -1739,7 +1738,7 @@ const MAIN = async () => {
                     k = String(k);
                     let config = await kfs._config();
                     config[k] = v;
-                    await this.fileWrite(["data", "config.json"], JSON.stringify(config, null, "\t"));
+                    await this.fileWrite("config.json", JSON.stringify(config, null, "\t"));
                     return v;
                 },
                 "config-del": async k => {
@@ -1747,7 +1746,7 @@ const MAIN = async () => {
                     let config = await kfs._config();
                     let v = config[k];
                     delete config[k];
-                    await this.fileWrite(["data", "config.json"], JSON.stringify(config, null, "\t"));
+                    await this.fileWrite("config.json", JSON.stringify(config, null, "\t"));
                     return v;
                 },
                 "root-get": async () => {
@@ -1829,7 +1828,7 @@ const MAIN = async () => {
                 },
                 "project-get": async id => {
                     await kfs["project-affirm"]();
-                    id = String(id);
+                    id = lib.FSOperator.sanitizeName(id);
                     const root = await kfs["root-get"]();
                     let content = null;
                     try {
@@ -1839,13 +1838,13 @@ const MAIN = async () => {
                 },
                 "project-set": async (id, content) => {
                     await kfs["project-affirm"]();
-                    id = String(id);
+                    id = lib.FSOperator.sanitizeName(id);
                     const root = await kfs["root-get"]();
                     await WindowManager.fileWrite([root, "projects", id+".json"], content);
                 },
                 "project-del": async id => {
                     await kfs["project-affirm"]();
-                    id = String(id);
+                    id = lib.FSOperator.sanitizeName(id);
                     const root = await kfs["root-get"]();
                     try {
                         await WindowManager.fileDelete([root, "projects", id+".json"]);
@@ -1881,8 +1880,8 @@ const MAIN = async () => {
                         let name = path.basename(pth, ext);
                         if (await WindowManager.fileHas([root, name+ext])) {
                             let n = 1;
-                            while (await WindowManager.fileHas([root, name+"-"+n+ext])) n++;
-                            name += "-"+n;
+                            while (await WindowManager.fileHas([root, name+" ("+n+")"+ext])) n++;
+                            name += " ("+n+")";
                         }
                         pth = path.join(root, name+ext);
                     }
@@ -1981,8 +1980,7 @@ const MAIN = async () => {
                         pth = String(pth);
                         if (!(await WindowManager.fileHas(pth))) return null;
                         await this.manager.affirm();
-                        if (!(await this.dirHas("logs")))
-                            await this.dirMake("logs");
+                        await this.dirAffirm("logs");
                         const name = path.basename(pth);
                         let pthDest = path.join(this.dataPath, "logs", name);
                         if (path.resolve(pth) == path.resolve(pthDest)) return name;
@@ -2034,8 +2032,7 @@ const MAIN = async () => {
                             break;
                         }
                         if (!found) return false;
-                        if (await this.fileHas(["logs", found.name]))
-                            await this.fileDelete(["logs", found.name]);
+                        await this.fileDeny(["logs", found.name]);
                         return true;
                     },
                     "log-server-delete": async name => {
@@ -2053,31 +2050,27 @@ const MAIN = async () => {
                         return true;
                     },
                     "videos": async () => {
-                        if (!(await this.dirHas("videos")))
-                            await this.dirMake("videos");
+                        await this.dirAffirm("videos");
                         return (await this.dirList("videos"))
                             .filter(dirent => dirent.type == "file")
                             .map(dirent => dirent.name);
                     },
                     "video-has": async name => {
-                        name = String(name);
-                        if (!(await this.dirHas("videos")))
-                            await this.dirMake("videos");
+                        name = lib.FSOperator.sanitizeName(name);
+                        await this.dirAffirm("videos");
                         return !!(await this.fileHas(["videos", name]));
                     },
                     "video-get": async name => {
-                        name = String(name);
-                        if (!(await this.dirHas("videos")))
-                            await this.dirMake("videos");
+                        name = lib.FSOperator.sanitizeName(name);
+                        await this.dirAffirm("videos");
                         if (!(await this.fileHas(["videos", name])))
                             return null;
                         return WindowManager.makePath(this.dataPath, "videos", name);
                     },
                     "video-rename": async (from, to) => {
-                        from = String(from);
-                        to = String(to).replaceAll("/", "-").replaceAll("\\", "-");
-                        if (!(await this.dirHas("videos")))
-                            await this.dirMake("videos");
+                        from = lib.FSOperator.sanitizeName(from);
+                        to = lib.FSOperator.sanitizeName(to);
+                        await this.dirAffirm("videos");
                         if (!(await this.fileHas(["videos", from])))
                             return null;
                         await fs.promises.rename(
@@ -2089,13 +2082,11 @@ const MAIN = async () => {
                     "video-add-url": async url => {
                         url = String(url);
                         const ytStream = await this.ytdlDownload(url, { quality: "136" });
-                        if (!(await this.dirHas("videos")))
-                            await this.dirMake("videos");
+                        await this.dirAffirm("videos");
                         const l = 11;
                         const id = url.slice(url.length-l).split("").filter(c => util.BASE64.includes(c)).join("");
                         const name = id+".mp4";
-                        if (await this.fileHas(["videos", name]))
-                            await this.fileDelete(["videos", name]);
+                        await this.fileDeny(["videos", name]);
                         const pth = WindowManager.makePath(this.dataPath, "videos", name);
                         const fsStream = fs.createWriteStream(pth);
                         await new Promise((res, rej) => {
@@ -2109,13 +2100,11 @@ const MAIN = async () => {
                             return name;
                         return null;
                     },
-                    "video-add-file": async (pth, name) => {
+                    "video-add-file": async (pth, name=null) => {
                         pth = WindowManager.makePath(pth);
-                        name = (name == null) ? path.basename(pth) : (String(name)+path.extname(pth));
-                        if (!(await this.dirHas("videos")))
-                            await this.dirMake("videos");
-                        if (await this.fileHas(["videos", name]))
-                            await this.fileDelete(["videos", name]);
+                        name = (name == null) ? path.basename(pth) : (lib.FSOperator.sanitizeName(name)+path.extname(pth));
+                        await this.dirAffirm("videos");
+                        await this.fileDeny(["videos", name]);
                         const pth2 = WindowManager.makePath(this.dataPath, "videos", name);
                         await fs.promises.cp(
                             pth, pth2,
@@ -2126,23 +2115,19 @@ const MAIN = async () => {
                         return null;
                     },
                     "video-rem": async name => {
-                        name = String(name);
-                        if (!(await this.dirHas("videos")))
-                            await this.dirMake("videos");
-                        if (!(await this.fileHas(["videos", name])))
-                            return null;
-                        await this.fileDelete(["videos", name]);
-                        return name;
+                        name = lib.FSOperator.sanitizeName(name);
+                        await this.dirAffirm("videos");
+                        return (await this.fileDeny(["videos", name])) ? name : null;
                     },
                 },
                 PLANNER: {
                     "read-data": async pth => await WindowManager.fileRead(pth),
-                    "exec": async (id, pathId) => {
+                    "exec": async (id, pthId) => {
                         if (this.processManager.getProcessById("script") instanceof Process)
                             throw new Error("Existing process has not terminated");
 
                         id = String(id);
-                        pathId = String(pathId);
+                        pthId = String(pthId);
 
                         const sublib = await import("./planner/lib.mjs");
 
@@ -2151,8 +2136,11 @@ const MAIN = async () => {
                             project = JSON.parse(await kfs["project-get"](id), sublib.REVIVER.f);
                         } catch (e) {}
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
-                        if (!project.hasPath(pathId)) throw new Error("Nonexistent path with id: "+pathId+" for project id: "+id);
-                        let pth = project.getPath(pathId);
+                        if (!project.hasPath(pthId)) throw new Error("Nonexistent path with id: "+pthId+" for project id: "+id);
+                        let pth = project.getPath(pthId);
+
+                        const projectName = lib.FSOperator.sanitizeName(project.meta.name);
+                        const pthName = lib.FSOperator.sanitizeName(pth.name);
 
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
                         if (script == null) throw new Error("No script for project with id: "+id);
@@ -2203,20 +2191,16 @@ const MAIN = async () => {
                         let contentIn = JSON.stringify(dataIn, null, "\t");
 
                         this.log("exec: REMOVE data.in/data.out");
-                        if (await WindowManager.fileHas(path.join(root, "data.in")))
-                            await WindowManager.fileDelete(path.join(root, "data.in"));
-                        if (await WindowManager.fileHas(path.join(root, "data.out")))
-                            await WindowManager.fileDelete(path.join(root, "data.out"));
+                        await WindowManager.fileDeny([root, "data.in"]);
+                        await WindowManager.fileDeny([root, "data.out"]);
                         this.log("exec: REMOVE stdout.log/stderr.log");
-                        if (await WindowManager.fileHas(path.join(root, "stdout.log")))
-                            await WindowManager.fileDelete(path.join(root, "stdout.log"));
-                        if (await WindowManager.fileHas(path.join(root, "stderr.log")))
-                            await WindowManager.fileDelete(path.join(root, "stderr.log"));
+                        await WindowManager.fileDeny([root, "stdout.log"]);
+                        await WindowManager.fileDeny([root, "stderr.log"]);
                         this.log("exec: CREATE data.in");
-                        await WindowManager.fileWrite(path.join(root, "data.in"), contentIn);
+                        await WindowManager.fileWrite([root, "data.in"], contentIn);
                         this.log("exec: CREATE stdout.log/stderr.log");
-                        await WindowManager.fileWrite(path.join(root, "stdout.log"), "");
-                        await WindowManager.fileWrite(path.join(root, "stderr.log"), "");
+                        await WindowManager.fileWrite([root, "stdout.log"], "");
+                        await WindowManager.fileWrite([root, "stderr.log"], "");
                         return new Promise((res, rej) => {
                             this.log("exec: SPAWN");
                             const process = this.processManager.addProcess(new Process("spawn", project.config.scriptPython, [script], { cwd: root }));
@@ -2226,41 +2210,41 @@ const MAIN = async () => {
                                 const doAppRoot = appRoot != this.dataPath;
                                 await WindowManager.dirAffirm([root, "paths"]);
                                 if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths"]);
-                                await WindowManager.dirAffirm([root, "paths", project.meta.name]);
-                                if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths", project.meta.name]);
-                                await WindowManager.dirAffirm([root, "paths", project.meta.name, pth.name]);
-                                if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths", project.meta.name, pth.name]);
+                                await WindowManager.dirAffirm([root, "paths", projectName]);
+                                if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths", projectName]);
+                                await WindowManager.dirAffirm([root, "paths", projectName, pthName]);
+                                if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths", projectName, pthName]);
                                 if (await WindowManager.fileHas(path.join(root, "data.in"))) {
                                     if (doAppRoot)
                                         await fs.promises.cp(
                                             path.join(root, "data.in"),
-                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.in"),
+                                            path.join(appRoot, "paths", projectName, pthName, "data.in"),
                                             { force: true, recursive: true },
                                         );
                                     await fs.promises.rename(
                                         path.join(root, "data.in"),
-                                        path.join(root, "paths", project.meta.name, pth.name, "data.in"),
+                                        path.join(root, "paths", projectName, pthName, "data.in"),
                                     );
                                 }
                                 if (await WindowManager.fileHas(path.join(root, "data.out"))) {
                                     if (doAppRoot)
                                         await fs.promises.cp(
                                             path.join(root, "data.out"),
-                                            path.join(appRoot, "paths", project.meta.name, pth.name, "data.out"),
+                                            path.join(appRoot, "paths", projectName, pthName, "data.out"),
                                             { force: true, recursive: true },
                                         );
                                     await fs.promises.rename(
                                         path.join(root, "data.out"),
-                                        path.join(root, "paths", project.meta.name, pth.name, "data.out"),
+                                        path.join(root, "paths", projectName, pthName, "data.out"),
                                     );
                                 }
                                 if (await WindowManager.fileHas(path.join(root, "stdout.log"))) await fs.promises.rename(
                                     path.join(root, "stdout.log"),
-                                    path.join(root, "paths", project.meta.name, pth.name, "stdout.log"),
+                                    path.join(root, "paths", projectName, pthName, "stdout.log"),
                                 );
                                 if (await WindowManager.fileHas(path.join(root, "stderr.log"))) await fs.promises.rename(
                                     path.join(root, "stderr.log"),
-                                    path.join(root, "paths", project.meta.name, pth.name, "stderr.log"),
+                                    path.join(root, "paths", projectName, pthName, "stderr.log"),
                                 );
                             };
                             process.addHandler("data", async data => {
@@ -2317,39 +2301,39 @@ const MAIN = async () => {
                         } catch (e) {}
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
 
+                        const projectName = lib.FSOperator.sanitizeName(project.meta.name);
+
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
                         if (script == null) return {};
                         script = String(script);
-                        let has = await WindowManager.fileHas(script);
-                        if (!has) throw new Error("Script ("+script+") does not exist for project id: "+id);
+                        if (!(await WindowManager.fileHas(script))) throw new Error("Script ("+script+") does not exist for project id: "+id);
                         let root = path.dirname(script);
-                        this.log(`exec-get: looking in ${root} for ${project.meta.name}`);
+                        this.log(`exec-get: looking in ${root} for ${projectName}`);
 
-                        if (!(await WindowManager.dirHas(path.join(root, "paths")))) return {};
-                        if (!(await WindowManager.dirHas(path.join(root, "paths", project.meta.name)))) return {};
+                        if (!(await WindowManager.dirHas([root, "paths"]))) return {};
+                        if (!(await WindowManager.dirHas([root, "paths", projectName]))) return {};
                         let datas = {};
-                        let pathNames = project.paths.map(id => project.getPath(id).name);
-                        let pathList = await WindowManager.dirList(path.join(root, "paths", project.meta.name));
-                        pathList = pathList.filter(dirent => (dirent.type != "file" && pathNames.includes(dirent.name))).map(dirent => dirent.name);
-                        await Promise.all(pathList.map(async name => {
-                            let pathId = null;
+                        let pthList = await WindowManager.dirList([root, "paths", projectName]);
+                        pthList = pthList.filter(dirent => dirent.type != "file").map(dirent => dirent.name);
+                        await Promise.all(pthList.map(async name => {
+                            let pthId = null;
                             for (let id of project.paths) {
                                 let pth = project.getPath(id);
-                                if (pth.name != name) continue;
-                                pathId = id;
+                                if (lib.FSOperator.sanitizeName(pth.name) != name) continue;
+                                pthId = id;
                                 break;
                             }
-                            if (pathId == null) return;
+                            if (pthId == null) return;
                             let contentOut = "";
                             try {
-                                contentOut = await WindowManager.fileRead(path.join(root, "paths", project.meta.name, name, "data.out"));
+                                contentOut = await WindowManager.fileRead(path.join(root, "paths", projectName, name, "data.out"));
                             } catch (e) {}
                             let dataOut = null;
                             try {
                                 dataOut = JSON.parse(contentOut);
                             } catch (e) {}
                             if (dataOut == null) return;
-                            datas[pathId] = dataOut;
+                            datas[pthId] = dataOut;
                         }));
                         return datas;
                     },
@@ -3175,7 +3159,7 @@ const MAIN = async () => {
                                 sublog("solver");
                                 this.addLoad(name+":solver");
                                 try {
-                                    if (await WindowManager.dirHas(path.join(__dirname, name.toLowerCase(), "solver")))
+                                    if (await WindowManager.dirHas([__dirname, name.toLowerCase(), "solver"]))
                                         await fs.promises.cp(
                                             path.join(__dirname, name.toLowerCase(), "solver"),
                                             path.join(Window.getDataPath(this, name), "solver"),
@@ -3461,12 +3445,8 @@ const MAIN = async () => {
         get root() { return this.dataPath; }
         set root(v) {}
 
-        static async basicAffirm(dataPath) {
-            await this.dirAffirm(dataPath);
-            return true;
-        }
         static async affirm(dataPath) {
-            await this.basicAffirm(dataPath);
+            await this.dirAffirm(dataPath);
             await this.dirAffirm([dataPath, "logs"]);
             await this.dirAffirm([dataPath, "dump"]);
             await this.dirAffirm([dataPath, "data"]);

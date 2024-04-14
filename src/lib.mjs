@@ -173,15 +173,17 @@ export class FSOperator extends util.Target {
         if (!this.hasModules()) return null;
         pth = this.makePath(pth);
         this.fsLog(`fs:file-affirm ${pth}`);
-        if (await this.fileHas(pth)) return null;
-        return await this.fileWrite(pth, content);
+        if (await this.fileHas(pth)) return false;
+        await this.fileWrite(pth, content);
+        return true;
     }
     static async fileDeny(pth) {
         if (!this.hasModules()) return null;
         pth = this.makePath(pth);
         this.fsLog(`fs:file-deny ${pth}`);
-        if (!(await this.fileHas(pth))) return null;
-        return await this.fileDelete(pth, content);
+        if (!(await this.fileHas(pth))) return false;
+        await this.fileDelete(pth, content);
+        return true;
     }
 
     static async dirHas(pth) {
@@ -222,15 +224,17 @@ export class FSOperator extends util.Target {
         if (!this.hasModules()) return null;
         pth = this.makePath(pth);
         this.fsLog(`fs:dir-affirm ${pth}`);
-        if (await this.dirHas(pth)) return null;
-        return await this.dirMake(pth);
+        if (await this.dirHas(pth)) return false;
+        await this.dirMake(pth);
+        return true;
     }
     static async dirDeny(pth) {
         if (!this.hasModules()) return null;
         pth = this.makePath(pth);
         this.fsLog(`fs:dir-deny ${pth}`);
-        if (!(await this.dirHas(pth))) return null;
-        return await this.dirDelete(pth);
+        if (!(await this.dirHas(pth))) return false;
+        await this.dirDelete(pth);
+        return true;
     }
 
     async fileHas(pth) { return await this.constructor.fileHas([this.root, pth]); }
@@ -251,6 +255,16 @@ export class FSOperator extends util.Target {
     async dirDeny(pth) { return await this.constructor.dirDeny([this.root, pth]); }
 
     static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
+
+    static sanitizeName(name) {
+        name = String(name)
+            .replaceAll(/[\/\\<>\:\"\|\?\*]/g, "-")
+            .split("")
+            .map(c => c.charCodeAt(0) >= 32 ? c : "")
+            .join("");
+        while (name.endsWith(".") || name.endsWith(" ")) name = name.slice(0, -1);
+        return name;
+    }
 }
 
 /*.lw{*/
