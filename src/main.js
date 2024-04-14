@@ -3449,15 +3449,17 @@ const MAIN = async () => {
             await this.dirAffirm(dataPath);
             await this.dirAffirm([dataPath, "logs"]);
             await this.dirAffirm([dataPath, "dump"]);
-            await this.dirAffirm([dataPath, "data"]);
-            await this.dirAffirm([dataPath, "data", "templates"]);
-            await this.dirAffirm([dataPath, "data", "templates", "images"]);
-            await this.dirAffirm([dataPath, "data", "templates", "models"]);
-            await this.dirAffirm([dataPath, "data", "robots"]);
-            await this.dirAffirm([dataPath, "data", "robots", "models"]);
-            await this.dirAffirm([dataPath, "data", "holidays"]);
-            await this.dirAffirm([dataPath, "data", "holidays", "icons"]);
-            await this.fileAffirm([dataPath, "data", "config.json"]);
+            await Promise.all(["data", "override"].map(async sect => {
+                await this.dirAffirm([dataPath, sect]);
+                await this.dirAffirm([dataPath, sect, "templates"]);
+                await this.dirAffirm([dataPath, sect, "templates", "images"]);
+                await this.dirAffirm([dataPath, sect, "templates", "models"]);
+                await this.dirAffirm([dataPath, sect, "robots"]);
+                await this.dirAffirm([dataPath, sect, "robots", "models"]);
+                await this.dirAffirm([dataPath, sect, "holidays"]);
+                await this.dirAffirm([dataPath, sect, "holidays", "icons"]);
+                await this.fileAffirm([dataPath, sect, "config.json"]);
+            }));
             await this.fileAffirm([dataPath, ".version"]);
             await this.fileAffirm([dataPath, "state.json"]);
             return true;
@@ -3511,19 +3513,24 @@ const MAIN = async () => {
                     ],
                 },
                 //~/data
+                //~/override
                 {
-                    type: "dir", name: "data",
+                    type: "dir", match: ["^data$", "^override$"],
                     children: [
-                        //~/templates
+                        //~/data/templates
+                        //~/override/templates
                         {
                             type: "dir", name: "templates",
                             children: [
                                 //~/data/templates/images
+                                //~/override/templates/images
                                 {
                                     type: "dir", name: "images",
                                     children: [
                                         //~/data/templates/images/*.png
                                         //~/data/templates/images/*.png-tmp
+                                        //~/override/templates/images/*.png
+                                        //~/override/templates/images/*.png-tmp
                                         {
                                             type: "file",
                                             match: [/\.png$/, /\.png-tmp$/],
@@ -3531,11 +3538,14 @@ const MAIN = async () => {
                                     ],
                                 },
                                 //~/data/templates/models
+                                //~/override/templates/models
                                 {
                                     type: "dir", name: "models",
                                     children: [
                                         //~/data/templates/models/*.glb
                                         //~/data/templates/models/*.glb-tmp
+                                        //~/override/templates/models/*.glb
+                                        //~/override/templates/models/*.glb-tmp
                                         {
                                             type: "file",
                                             match: [/\.glb$/, /\.glb-tmp$/],
@@ -3543,19 +3553,24 @@ const MAIN = async () => {
                                     ],
                                 },
                                 //~/data/templates/templates.json
+                                //~/override/templates/templates.json
                                 { type: "file", name: "templates.json" },
                             ],
                         },
                         //~/data/robots
+                        //~/override/robots
                         {
                             type: "dir", name: "robots",
                             children: [
                                 //~/data/robots/models
+                                //~/override/robots/models
                                 {
                                     type: "dir", name: "models",
                                     children: [
                                         //~/data/robots/models/*.glb
                                         //~/data/robots/models/*.glb-tmp
+                                        //~/override/robots/models/*.glb
+                                        //~/override/robots/models/*.glb-tmp
                                         {
                                             type: "file",
                                             match: [/\.glb$/, /\.glb-tmp$/],
@@ -3563,25 +3578,22 @@ const MAIN = async () => {
                                     ],
                                 },
                                 //~/data/robots/robots.json
+                                //~/override/robots/robots.json
                                 { type: "file", name: "robots.json" },
                             ],
                         },
                         //~/data/holidays
+                        //~/override/holidays
                         {
                             type: "dir", name: "holidays",
                             children: [
                                 //~/data/holidays/icons
+                                //~/override/holidays/icons
                                 {
                                     type: "dir", name: "icons",
                                     children: [
-                                        //~/data/holidays/icons/*.svg
-                                        //~/data/holidays/icons/*.png
-                                        //~/data/holidays/icons/*.ico
-                                        //~/data/holidays/icons/*.icns
-                                        //~/data/holidays/icons/*.svg-tmp
-                                        //~/data/holidays/icons/*.png-tmp
-                                        //~/data/holidays/icons/*.ico-tmp
-                                        //~/data/holidays/icons/*.icns-tmp
+                                        //~/data/holidays/icons/*.~
+                                        //~/override/holidays/icons/*.~
                                         {
                                             type: "file",
                                             match: [
@@ -3598,12 +3610,15 @@ const MAIN = async () => {
                                     ],
                                 },
                                 //~/data/holidays/holidays.json
+                                //~/override/holidays/holidays.json
                                 { type: "file", name: "holidays.json" },
                             ],
                         },
                         //~/data/themes.json
+                        //~/override/themes.json
                         { type: "file", name: "themes.json" },
                         //~/data/config.json
+                        //~/override/config.json
                         { type: "file", name: "config.json" },
                     ],
                 },
@@ -3953,7 +3968,7 @@ const MAIN = async () => {
                 },
                 "_fullthemes": async () => {
                     let data = {};
-                    for (let pth of [["data", "themes.json"], ["inject", "themes.json"]]) {
+                    for (let pth of [["data", "themes.json"], ["override", "themes.json"]]) {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
@@ -3972,7 +3987,7 @@ const MAIN = async () => {
                 },
                 "_fulltemplates": async () => {
                     let data = {};
-                    for (let pth of [["data", "templates", "templates.json"], ["inject", "templates", "templates.json"]]) {
+                    for (let pth of [["data", "templates", "templates.json"], ["override", "templates", "templates.json"]]) {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
@@ -4003,7 +4018,7 @@ const MAIN = async () => {
                 },
                 "_fullrobots": async () => {
                     let data = {};
-                    for (let pth of [["data", "robots", "robots.json"], ["inject", "robots", "robots.json"]]) {
+                    for (let pth of [["data", "robots", "robots.json"], ["override", "robots", "robots.json"]]) {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
@@ -4028,7 +4043,7 @@ const MAIN = async () => {
                 },
                 "_fullholidays": async () => {
                     let data = {};
-                    for (let pth of [["data", "holidays", "holidays.json"], ["inject", "holidays", "holidays.json"]]) {
+                    for (let pth of [["data", "holidays", "holidays.json"], ["override", "holidays", "holidays.json"]]) {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
@@ -4086,7 +4101,7 @@ const MAIN = async () => {
                 },
                 "_fullconfig": async () => {
                     let data = {};
-                    for (let pth of [["data", "config.json"], ["inject", "config.json"]]) {
+                    for (let pth of [["data", "config.json"], ["override", "config.json"]]) {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
