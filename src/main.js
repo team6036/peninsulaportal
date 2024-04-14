@@ -1123,12 +1123,9 @@ const MAIN = async () => {
         static async affirm(manager, name, started=true) {
             if (!this.getCanOperate(manager, name, started)) return false;
             await manager.affirm();
-            let hasWindowData = await WindowManager.dirHas(this.getDataPath(manager, name, started));
-            if (!hasWindowData) await WindowManager.dirMake(this.getDataPath(manager, name, started));
-            let hasConfig = await WindowManager.fileHas([this.getDataPath(manager, name, started), "config.json"]);
-            if (!hasConfig) await WindowManager.fileWrite([this.getDataPath(manager, name, started), "config.json"], "");
-            let hasState = await WindowManager.fileHas([this.getDataPath(manager, name, started), "state.json"]);
-            if (!hasState) await WindowManager.fileWrite([this.getDataPath(manager, name, started), "state.json"], "");
+            await WindowManager.dirAffirm(this.getDataPath(manager, name, started));
+            await WindowManager.fileAffirm([this.getDataPath(manager, name, started), "config.json"]);
+            await WindowManager.fileAffirm([this.getDataPath(manager, name, started), "state.json"]); 
             return true;
         }
         async affirm() { return await Window.affirm(this.manager, this.name, this.started); }
@@ -1168,6 +1165,16 @@ const MAIN = async () => {
             await this.affirm(manager, name, started);
             return await WindowManager.fileDelete(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
         }
+        static async fileAffirm(manager, name, pth, content="", started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileAffirm(WindowManager.makePath(this.getDataPath(manager, name, started), pth), content);
+        }
+        static async fileDeny(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.fileDeny(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
 
         static async dirHas(manager, name, pth, started=true) {
             if (!this.getCanOperate(manager, name, started)) return null;
@@ -1189,6 +1196,16 @@ const MAIN = async () => {
             await this.affirm(manager, name, started);
             return await WindowManager.dirDelete(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
         }
+        static async dirAffirm(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.dirAffirm(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
+        static async dirDeny(manager, name, pth, started=true) {
+            if (!this.getCanOperate(manager, name, started)) return null;
+            await this.affirm(manager, name, started);
+            return await WindowManager.dirDeny(WindowManager.makePath(this.getDataPath(manager, name, started), pth));
+        }
 
         async fileHas(pth) { return Window.fileHas(this.manager, this.name, pth, this.started); }
         async fileRead(pth) { return Window.fileRead(this.manager, this.name, pth, this.started); }
@@ -1197,11 +1214,15 @@ const MAIN = async () => {
         async fileWriteRaw(pth, content) { return Window.fileWriteRaw(this.manager, this.name, pth, content, this.started); }
         async fileAppend(pth, content) { return Window.fileAppend(this.manager, this.name, pth, content, this.started); }
         async fileDelete(pth) { return Window.fileDelete(this.manager, this.name, pth, this.started); }
+        async fileAffirm(pth, content="") { return Window.fileAffirm(this.manager, this.name, pth, content, this.started); }
+        async fileDeny(pth) { return Window.fileDeny(this.manager, this.name, pth, this.started); }
 
         async dirHas(pth) { return Window.dirHas(this.manager, this.name, pth, this.started); }
         async dirList(pth) { return Window.dirList(this.manager, this.name, pth, this.started); }
         async dirMake(pth) { return Window.dirMake(this.manager, this.name, pth, this.started); }
         async dirDelete(pth) { return Window.dirDelete(this.manager, this.name, pth, this.started); }
+        async dirAffirm(pth) { return Window.dirAffirm(this.manager, this.name, pth, this.started); }
+        async dirDeny(pth) { return Window.dirDeny(this.manager, this.name, pth, this.started); }
 
         receiveMessage(name, ...a) {
             name = String(name);
@@ -1435,8 +1456,7 @@ const MAIN = async () => {
                         return client.connected;
                     },
                     "logs-client": async () => {
-                        let hasLogsDir = await this.dirHas("logs");
-                        if (!hasLogsDir) return [];
+                        await this.dirAffirm("logs");
                         let dirents = await this.dirList("logs");
                         return dirents
                             .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".wpilog")))
@@ -1786,12 +1806,9 @@ const MAIN = async () => {
                 },
                 "project-affirm": async () => {
                     const root = await kfs["root-get"]();
-                    let hasDir = await WindowManager.dirHas(root);
-                    if (!hasDir) await WindowManager.dirMake(root);
-                    let hasProjectsContent = await WindowManager.fileHas([root, "projects.json"]);
-                    if (!hasProjectsContent) await WindowManager.fileWrite([root, "projects.json"], "");
-                    let hasProjectsDir = await WindowManager.dirHas([root, "projects"]);
-                    if (!hasProjectsDir) await WindowManager.dirMake([root, "projects"]);
+                    await WindowManager.dirAffirm(root);
+                    await WindowManager.fileAffirm([root, "projects.json"]);
+                    await WindowManager.dirAffirm([root, "projects"]);
                 },
                 "projects-get": async () => {
                     await kfs["project-affirm"]();
@@ -2207,48 +2224,44 @@ const MAIN = async () => {
                             const finish = async () => {
                                 const appRoot = await this.on("root-get");
                                 const doAppRoot = appRoot != this.dataPath;
-                                let hasMainDir = await WindowManager.dirHas(path.join(root, "paths"));
-                                if (!hasMainDir) await WindowManager.dirMake(path.join(root, "paths"));
-                                if (doAppRoot) {
-                                    let hasMainDir = await WindowManager.dirHas(path.join(appRoot, "paths"));
-                                    if (!hasMainDir) await WindowManager.dirMake(path.join(appRoot, "paths"));
-                                }
-                                let hasProjectDir = await WindowManager.dirHas(path.join(root, "paths", project.meta.name));
-                                if (!hasProjectDir) await WindowManager.dirMake(path.join(root, "paths", project.meta.name));
-                                if (doAppRoot) {
-                                    let hasProjectDir = await WindowManager.dirHas(path.join(appRoot, "paths", project.meta.name));
-                                    if (!hasProjectDir) await WindowManager.dirMake(path.join(appRoot, "paths", project.meta.name));
-                                }
-                                let hasPathDir = await WindowManager.dirHas(path.join(root, "paths", project.meta.name, pth.name));
-                                if (!hasPathDir) await WindowManager.dirMake(path.join(root, "paths", project.meta.name, pth.name));
-                                if (doAppRoot) {
-                                    let hasPathDir = await WindowManager.dirHas(path.join(appRoot, "paths", project.meta.name, pth.name));
-                                    if (!hasPathDir) await WindowManager.dirMake(path.join(appRoot, "paths", project.meta.name, pth.name));
-                                }
-                                let hasDataIn = await WindowManager.fileHas(path.join(root, "data.in"));
-                                if (hasDataIn) {
+                                await WindowManager.dirAffirm([root, "paths"]);
+                                if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths"]);
+                                await WindowManager.dirAffirm([root, "paths", project.meta.name]);
+                                if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths", project.meta.name]);
+                                await WindowManager.dirAffirm([root, "paths", project.meta.name, pth.name]);
+                                if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths", project.meta.name, pth.name]);
+                                if (await WindowManager.fileHas(path.join(root, "data.in"))) {
                                     if (doAppRoot)
                                         await fs.promises.cp(
                                             path.join(root, "data.in"),
                                             path.join(appRoot, "paths", project.meta.name, pth.name, "data.in"),
                                             { force: true, recursive: true },
                                         );
-                                    await fs.promises.rename(path.join(root, "data.in"), path.join(root, "paths", project.meta.name, pth.name, "data.in"));
+                                    await fs.promises.rename(
+                                        path.join(root, "data.in"),
+                                        path.join(root, "paths", project.meta.name, pth.name, "data.in"),
+                                    );
                                 }
-                                let hasDataOut = await WindowManager.fileHas(path.join(root, "data.out"));
-                                if (hasDataOut) {
+                                if (await WindowManager.fileHas(path.join(root, "data.out"))) {
                                     if (doAppRoot)
                                         await fs.promises.cp(
                                             path.join(root, "data.out"),
                                             path.join(appRoot, "paths", project.meta.name, pth.name, "data.out"),
                                             { force: true, recursive: true },
                                         );
-                                    await fs.promises.rename(path.join(root, "data.out"), path.join(root, "paths", project.meta.name, pth.name, "data.out"));
+                                    await fs.promises.rename(
+                                        path.join(root, "data.out"),
+                                        path.join(root, "paths", project.meta.name, pth.name, "data.out"),
+                                    );
                                 }
-                                let hasOutLog = await WindowManager.fileHas(path.join(root, "stdout.log"));
-                                if (hasOutLog) await fs.promises.rename(path.join(root, "stdout.log"), path.join(root, "paths", project.meta.name, pth.name, "stdout.log"));
-                                let hasErrLog = await WindowManager.fileHas(path.join(root, "stderr.log"));
-                                if (hasErrLog) await fs.promises.rename(path.join(root, "stderr.log"), path.join(root, "paths", project.meta.name, pth.name, "stderr.log"));
+                                if (await WindowManager.fileHas(path.join(root, "stdout.log"))) await fs.promises.rename(
+                                    path.join(root, "stdout.log"),
+                                    path.join(root, "paths", project.meta.name, pth.name, "stdout.log"),
+                                );
+                                if (await WindowManager.fileHas(path.join(root, "stderr.log"))) await fs.promises.rename(
+                                    path.join(root, "stderr.log"),
+                                    path.join(root, "paths", project.meta.name, pth.name, "stderr.log"),
+                                );
                             };
                             process.addHandler("data", async data => {
                                 WindowManager.fileAppend(path.join(root, "stdout.log"), data);
@@ -2312,10 +2325,8 @@ const MAIN = async () => {
                         let root = path.dirname(script);
                         this.log(`exec-get: looking in ${root} for ${project.meta.name}`);
 
-                        let hasMainDir = await WindowManager.dirHas(path.join(root, "paths"));
-                        if (!hasMainDir) return {};
-                        let hasProjectDir = await WindowManager.dirHas(path.join(root, "paths", project.meta.name));
-                        if (!hasProjectDir) return {};
+                        if (!(await WindowManager.dirHas(path.join(root, "paths")))) return {};
+                        if (!(await WindowManager.dirHas(path.join(root, "paths", project.meta.name)))) return {};
                         let datas = {};
                         let pathNames = project.paths.map(id => project.getPath(id).name);
                         let pathList = await WindowManager.dirList(path.join(root, "paths", project.meta.name));
@@ -3451,43 +3462,28 @@ const MAIN = async () => {
         set root(v) {}
 
         static async basicAffirm(dataPath) {
-            let hasData = await this.dirHas(dataPath);
-            if (!hasData) await this.dirMake(dataPath);
+            await this.dirAffirm(dataPath);
             return true;
         }
         static async affirm(dataPath) {
             await this.basicAffirm(dataPath);
-            let hasLogDir = await this.dirHas([dataPath, "logs"]);
-            if (!hasLogDir) await this.dirMake([dataPath, "logs"]);
-            let hasDumpDir = await this.dirHas([dataPath, "dump"]);
-            if (!hasDumpDir) await this.dirMake([dataPath, "dump"]);
-            let hasDataDir = await this.dirHas([dataPath, "data"]);
-            if (!hasDataDir) await this.dirMake([dataPath, "data"]);
-            let hasTemplatesDir = await this.dirHas([dataPath, "data", "templates"]);
-            if (!hasTemplatesDir) await this.dirMake([dataPath, "data", "templates"]);
-            let hasTemplateImagesDir = await this.dirHas([dataPath, "data", "templates", "images"]);
-            if (!hasTemplateImagesDir) await this.dirMake([dataPath, "data", "templates", "images"]);
-            let hasTemplateModelsDir = await this.dirHas([dataPath, "data", "templates", "models"]);
-            if (!hasTemplateModelsDir) await this.dirMake([dataPath, "data", "templates", "models"]);
-            let hasRobotsDir = await this.dirHas([dataPath, "data", "robots"]);
-            if (!hasRobotsDir) await this.dirMake([dataPath, "data", "robots"]);
-            let hasRobotModelsDir = await this.dirHas([dataPath, "data", "robots", "models"]);
-            if (!hasRobotModelsDir) await this.dirMake([dataPath, "data", "robots", "models"]);
-            let hasHolidaysDir = await this.dirHas([dataPath, "data", "holidays"]);
-            if (!hasHolidaysDir) await this.dirMake([dataPath, "data", "holidays"]);
-            let hasHolidayIconsDir = await this.dirHas([dataPath, "data", "holidays", "icons"]);
-            if (!hasHolidayIconsDir) await this.dirMake([dataPath, "data", "holidays", "icons"]);
-            let hasConfig = await this.fileHas([dataPath, "data", "config.json"]);
-            if (!hasConfig) await this.fileWrite([dataPath, "data", "config.json"], "");
-            let hasVersion = await this.fileHas([dataPath, ".version"]);
-            if (!hasVersion) await this.fileWrite([dataPath, ".version"], "");
-            let hasState = await this.fileHas([dataPath, "state.json"]);
-            if (!hasState) await this.fileWrite([dataPath, "state.json"], "");
+            await this.dirAffirm([dataPath, "logs"]);
+            await this.dirAffirm([dataPath, "dump"]);
+            await this.dirAffirm([dataPath, "data"]);
+            await this.dirAffirm([dataPath, "data", "templates"]);
+            await this.dirAffirm([dataPath, "data", "templates", "images"]);
+            await this.dirAffirm([dataPath, "data", "templates", "models"]);
+            await this.dirAffirm([dataPath, "data", "robots"]);
+            await this.dirAffirm([dataPath, "data", "robots", "models"]);
+            await this.dirAffirm([dataPath, "data", "holidays"]);
+            await this.dirAffirm([dataPath, "data", "holidays", "icons"]);
+            await this.fileAffirm([dataPath, "data", "config.json"]);
+            await this.fileAffirm([dataPath, ".version"]);
+            await this.fileAffirm([dataPath, "state.json"]);
             return true;
         }
         async affirm() {
-            if (this.hasWindow())
-                return (await this.window.manager.affirm()) && (await WindowManager.basicAffirm(this.dataPath));
+            if (this.hasWindow()) return await this.window.manager.affirm();
             let r = await WindowManager.affirm(this.dataPath);
             if (!r) return r;
             if (!this.hasStream()) {
@@ -3567,7 +3563,7 @@ const MAIN = async () => {
                                     ],
                                 },
                                 //~/data/templates/templates.json
-                                { type: "file", name: "templates.json" }
+                                { type: "file", name: "templates.json" },
                             ],
                         },
                         //~/data/robots
@@ -3587,7 +3583,7 @@ const MAIN = async () => {
                                     ],
                                 },
                                 //~/data/robots/robots.json
-                                { type: "file", name: "robots.json" }
+                                { type: "file", name: "robots.json" },
                             ],
                         },
                         //~/data/holidays
@@ -3622,7 +3618,7 @@ const MAIN = async () => {
                                     ],
                                 },
                                 //~/data/holidays/holidays.json
-                                { type: "file", name: "holidays.json" }
+                                { type: "file", name: "holidays.json" },
                             ],
                         },
                         //~/data/themes.json
@@ -3976,15 +3972,14 @@ const MAIN = async () => {
                     return this.isLoading;
                 },
                 "_fullthemes": async () => {
-                    let content = "";
-                    try {
-                        content = await this.fileRead(["data", "themes.json"]);
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
+                    let data = {};
+                    for (let pth of [["data", "themes.json"], ["inject", "themes.json"]]) {
+                        try {
+                            let content = await this.fileRead(pth);
+                            let data2 = util.ensure(JSON.parse(content), "obj");
+                            for (let k in data2) data[k] = data2[k];
+                        } catch (e) {}
+                    };
                     return data;
                 },
                 "themes": async () => {
@@ -3996,15 +3991,14 @@ const MAIN = async () => {
                     return (active in themes) ? active : null;
                 },
                 "_fulltemplates": async () => {
-                    let content = "";
-                    try {
-                        content = await this.fileRead(["data", "templates", "templates.json"]);
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
+                    let data = {};
+                    for (let pth of [["data", "templates", "templates.json"], ["inject", "templates", "templates.json"]]) {
+                        try {
+                            let content = await this.fileRead(pth);
+                            let data2 = util.ensure(JSON.parse(content), "obj");
+                            for (let k in data2) data[k] = data2[k];
+                        } catch (e) {}
+                    };
                     return data;
                 },
                 "templates": async () => {
@@ -4028,15 +4022,14 @@ const MAIN = async () => {
                     return (active in templates) ? active : null;
                 },
                 "_fullrobots": async () => {
-                    let content = "";
-                    try {
-                        content = await this.fileRead(["data", "robots", "robots.json"]);
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
+                    let data = {};
+                    for (let pth of [["data", "robots", "robots.json"], ["inject", "robots", "robots.json"]]) {
+                        try {
+                            let content = await this.fileRead(pth);
+                            let data2 = util.ensure(JSON.parse(content), "obj");
+                            for (let k in data2) data[k] = data2[k];
+                        } catch (e) {}
+                    };
                     return data;
                 },
                 "robots": async () => {
@@ -4054,15 +4047,14 @@ const MAIN = async () => {
                     return (active in robots) ? active : null;
                 },
                 "_fullholidays": async () => {
-                    let content = "";
-                    try {
-                        content = await this.fileRead(["data", "holidays", "holidays.json"]);
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
+                    let data = {};
+                    for (let pth of [["data", "holidays", "holidays.json"], ["inject", "holidays", "holidays.json"]]) {
+                        try {
+                            let content = await this.fileRead(pth);
+                            let data2 = util.ensure(JSON.parse(content), "obj");
+                            for (let k in data2) data[k] = data2[k];
+                        } catch (e) {}
+                    };
                     return data;
                 },
                 "holidays": async () => {
@@ -4113,16 +4105,14 @@ const MAIN = async () => {
                     return String(util.is(repo, "obj") ? repo.url : repo);
                 },
                 "_fullconfig": async () => {
-                    await this.affirm();
-                    let content = "";
-                    try {
-                        content = await this.fileRead(["data", "config.json"]);
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
+                    let data = {};
+                    for (let pth of [["data", "config.json"], ["inject", "config.json"]]) {
+                        try {
+                            let content = await this.fileRead(pth);
+                            let data2 = util.ensure(JSON.parse(content), "obj");
+                            for (let k in data2) data[k] = data2[k];
+                        } catch (e) {}
+                    };
                     return data;
                 },
                 "db-host": async () => {

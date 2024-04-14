@@ -169,6 +169,20 @@ export class FSOperator extends util.Target {
         this.fsLog(`fs:file-delete ${pth}`);
         return await this.fs.promises.unlink(pth);
     }
+    static async fileAffirm(pth, content="") {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:file-affirm ${pth}`);
+        if (await this.fileHas(pth)) return null;
+        return await this.fileWrite(pth, content);
+    }
+    static async fileDeny(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:file-deny ${pth}`);
+        if (!(await this.fileHas(pth))) return null;
+        return await this.fileDelete(pth, content);
+    }
 
     static async dirHas(pth) {
         if (!this.hasModules()) return null;
@@ -204,6 +218,20 @@ export class FSOperator extends util.Target {
         this.fsLog(`fs:dir-delete ${pth}`);
         return await this.fs.promises.rm(pth, { force: true, recursive: true });
     }
+    static async dirAffirm(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:dir-affirm ${pth}`);
+        if (await this.dirHas(pth)) return null;
+        return await this.dirMake(pth);
+    }
+    static async dirDeny(pth) {
+        if (!this.hasModules()) return null;
+        pth = this.makePath(pth);
+        this.fsLog(`fs:dir-deny ${pth}`);
+        if (!(await this.dirHas(pth))) return null;
+        return await this.dirDelete(pth);
+    }
 
     async fileHas(pth) { return await this.constructor.fileHas([this.root, pth]); }
     async fileRead(pth) { return await this.constructor.fileRead([this.root, pth]); }
@@ -212,11 +240,15 @@ export class FSOperator extends util.Target {
     async fileWriteRaw(pth, content) { return await this.constructor.fileWriteRaw([this.root, pth], content); }
     async fileAppend(pth, content) { return await this.constructor.fileAppend([this.root, pth], content); }
     async fileDelete(pth) { return await this.constructor.fileDelete([this.root, pth]); }
+    async fileAffirm(pth, content="") { return await this.constructor.fileAffirm([this.root, pth], content); }
+    async fileDeny(pth) { return await this.constructor.fileDeny([this.root, pth]); }
 
     async dirHas(pth) { return await this.constructor.dirHas([this.root, pth]); }
     async dirList(pth) { return await this.constructor.dirList([this.root, pth]); }
     async dirMake(pth) { return await this.constructor.dirMake([this.root, pth]); }
     async dirDelete(pth) { return await this.constructor.dirDelete([this.root, pth]); }
+    async dirAffirm(pth) { return await this.constructor.dirAffirm([this.root, pth]); }
+    async dirDeny(pth) { return await this.constructor.dirDeny([this.root, pth]); }
 
     static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
 }
