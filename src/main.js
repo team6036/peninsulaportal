@@ -4089,9 +4089,6 @@ const MAIN = async () => {
                     return (active in holidays) ? active : null;
                 },
                 "holiday": async () => await this.getThis("active-holiday"),
-                "production": async () => {
-                    return app.isPackaged;
-                },
                 "fs-version": async () => await this.getFSVersion(),
                 "_fullpackage": async () => {
                     let content = "";
@@ -4109,7 +4106,7 @@ const MAIN = async () => {
                     return String((await kfs._fullpackage()).version);
                 },
                 "version": async () => {
-                    return String((await kfs["base-version"]()) + ((await this.get("production")) ? "" : "-dev"));
+                    return String((await kfs["base-version"]()) + ((await this.get("packaged")) ? "" : "-dev"));
                 },
                 "repo": async () => {
                     let repo = (await kfs._fullpackage()).repository;
