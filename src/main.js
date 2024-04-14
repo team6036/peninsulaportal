@@ -3515,7 +3515,7 @@ const MAIN = async () => {
                 //~/data
                 //~/override
                 {
-                    type: "dir", match: ["^data$", "^override$"],
+                    type: "dir", match: (_, name) => ["data", "override"].includes(name),
                     children: [
                         //~/data/templates
                         //~/override/templates
