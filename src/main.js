@@ -130,6 +130,59 @@ const MAIN = async () => {
     const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
+    const DATASCHEMA = [
+        /\.DS_Store/,
+        /thumb\.db/,
+        /desktop\.ini/,
+
+        /^logs$/,
+        /^logs\/[^\/]+\.log$/,
+
+        /^dump$/,
+        /^dump\/.*$/,
+
+        /^state\.json$/,
+
+        /^\.version$/,
+
+        /^(data|override)$/,
+        /^(data|override)\/templates$/,
+        /^(data|override)\/templates\/images$/,
+        /^(data|override)\/templates\/images\/[^\/]+\.(png|png-tmp)$/,
+        /^(data|override)\/templates\/models$/,
+        /^(data|override)\/templates\/models\/[^\/]+\.(glb|glb-tmp)$/,
+        /^(data|override)\/templates\/templates\.json$/,
+        /^(data|override)\/robots$/,
+        /^(data|override)\/robots\/models$/,
+        /^(data|override)\/robots\/models\/[^\/]+\.(glb|glb-tmp)$/,
+        /^(data|override)\/robots\/robots\.json$/,
+        /^(data|override)\/holidays$/,
+        /^(data|override)\/holidays\/icons$/,
+        /^(data|override)\/holidays\/icons\/[^\/]+\.(svg|png|ico|icns|svg-tmp|png-tmp|ico-tmp|icns-tmp)$/,
+        /^(data|override)\/holidays\/holidays\.json$/,
+        /^(data|override)\/themes\.json$/,
+        /^(data|override)\/config\.json$/,
+    ];
+    FEATURES.forEach(name => {
+        name = name.toLowerCase();
+        DATASCHEMA.push(
+            new RegExp("^"+name+"$"),
+            new RegExp("^"+name+"/config\\.json$"),
+            new RegExp("^"+name+"/state\\.json$"),
+            new RegExp("^"+name+"/projects$"),
+            new RegExp("^"+name+"/projects/[^/]+\\.json$"),
+            new RegExp("^"+name+"/projects\\.json$"),
+        );
+    });
+
+    DATASCHEMA.push(/^panel\/logs$/);
+    DATASCHEMA.push(/^panel\/logs\/[^\/]+\.wpilog$/);
+    DATASCHEMA.push(/^panel\/videos$/);
+    DATASCHEMA.push(/^panel\/videos\/[^\/]+\.(mp4|mov)$/);
+
+    DATASCHEMA.push(/^planner\/templates\.json$/);
+    DATASCHEMA.push(/^planner\/solver.*$/);
+
     class MissingError extends Error {
         constructor(message, ...a) {
             super(message, ...a);
@@ -3388,12 +3441,12 @@ const MAIN = async () => {
                 });
 
                 (async () => {
-                    let dirents = await this.getCleanup();
-                    if (dirents.length <= 3) return;
+                    let pths = await this.getCleanup();
+                    if (pths.length <= 3) return;
                     let r = await showConfirm(
                         "Junk Files",
                         "We found some junk files located in the app data directory. Would you like to clean up?",
-                        dirents.map(pth => WindowManager.makePath(pth)).join("\n"),
+                        pths.join("\n"),
                     );
                     if (!r) return;
                     await this.cleanup();
@@ -3491,300 +3544,25 @@ const MAIN = async () => {
         }
         static async getCleanup(dataPath) {
             log(". get-cleanup");
-            const l = (...a) => log(". get-cleanup - found: "+WindowManager.makePath(...a));
-            const format = [
-                //~/logs
-                {
-                    type: "dir", name: "logs",
-                    children: [
-                        //~/logs/*.log
-                        {
-                            type: "file",
-                            match: [/\.log$/],
-                        },
-                    ],
-                },
-                //~/dump
-                {
-                    type: "dir", name: "dump",
-                    children: [
-                        //~/dump/*
-                        { type: "file" },
-                    ],
-                },
-                //~/data
-                //~/override
-                {
-                    type: "dir", match: (_, name) => ["data", "override"].includes(name),
-                    children: [
-                        //~/data/templates
-                        //~/override/templates
-                        {
-                            type: "dir", name: "templates",
-                            children: [
-                                //~/data/templates/images
-                                //~/override/templates/images
-                                {
-                                    type: "dir", name: "images",
-                                    children: [
-                                        //~/data/templates/images/*.png
-                                        //~/data/templates/images/*.png-tmp
-                                        //~/override/templates/images/*.png
-                                        //~/override/templates/images/*.png-tmp
-                                        {
-                                            type: "file",
-                                            match: [/\.png$/, /\.png-tmp$/],
-                                        },
-                                    ],
-                                },
-                                //~/data/templates/models
-                                //~/override/templates/models
-                                {
-                                    type: "dir", name: "models",
-                                    children: [
-                                        //~/data/templates/models/*.glb
-                                        //~/data/templates/models/*.glb-tmp
-                                        //~/override/templates/models/*.glb
-                                        //~/override/templates/models/*.glb-tmp
-                                        {
-                                            type: "file",
-                                            match: [/\.glb$/, /\.glb-tmp$/],
-                                        }
-                                    ],
-                                },
-                                //~/data/templates/templates.json
-                                //~/override/templates/templates.json
-                                { type: "file", name: "templates.json" },
-                            ],
-                        },
-                        //~/data/robots
-                        //~/override/robots
-                        {
-                            type: "dir", name: "robots",
-                            children: [
-                                //~/data/robots/models
-                                //~/override/robots/models
-                                {
-                                    type: "dir", name: "models",
-                                    children: [
-                                        //~/data/robots/models/*.glb
-                                        //~/data/robots/models/*.glb-tmp
-                                        //~/override/robots/models/*.glb
-                                        //~/override/robots/models/*.glb-tmp
-                                        {
-                                            type: "file",
-                                            match: [/\.glb$/, /\.glb-tmp$/],
-                                        }
-                                    ],
-                                },
-                                //~/data/robots/robots.json
-                                //~/override/robots/robots.json
-                                { type: "file", name: "robots.json" },
-                            ],
-                        },
-                        //~/data/holidays
-                        //~/override/holidays
-                        {
-                            type: "dir", name: "holidays",
-                            children: [
-                                //~/data/holidays/icons
-                                //~/override/holidays/icons
-                                {
-                                    type: "dir", name: "icons",
-                                    children: [
-                                        //~/data/holidays/icons/*.~
-                                        //~/override/holidays/icons/*.~
-                                        {
-                                            type: "file",
-                                            match: [
-                                                /\.svg$/,
-                                                /\.png$/,
-                                                /\.ico$/,
-                                                /\.icns$/,
-                                                /\.svg-tmp$/,
-                                                /\.png-tmp$/,
-                                                /\.ico-tmp$/,
-                                                /\.icns-tmp$/,
-                                            ],
-                                        }
-                                    ],
-                                },
-                                //~/data/holidays/holidays.json
-                                //~/override/holidays/holidays.json
-                                { type: "file", name: "holidays.json" },
-                            ],
-                        },
-                        //~/data/themes.json
-                        //~/override/themes.json
-                        { type: "file", name: "themes.json" },
-                        //~/data/config.json
-                        //~/override/config.json
-                        { type: "file", name: "config.json" },
-                    ],
-                },
-                //~/<feature>
-                {
-                    type: "dir",
-                    match: (_, name) => FEATURES.includes(name.toUpperCase()),
-                },
-                //~/portal
-                {
-                    type: "dir", name: "portal",
-                    children: [
-                        //~/portal/config.json
-                        { type: "file", name: "config.json" },
-                        //~/portal/state.json
-                        { type: "file", name: "state.json" },
-                    ],
-                },
-                //~/presets
-                {
-                    type: "dir", name: "presets",
-                    children: [
-                        //~/presets/config.json
-                        { type: "file", name: "config.json" },
-                        //~/presets/state.json
-                        { type: "file", name: "state.json" },
-                    ],
-                },
-                //~/panel
-                {
-                    type: "dir", name: "panel",
-                    children: [
-                        //~/panel/logs
-                        {
-                            type: "dir", name: "logs",
-                            children: [
-                                //~/panel/logs/*.wpilog
-                                {
-                                    type: "file",
-                                    match: [/\.wpilog$/],
-                                },
-                            ],
-                        },
-                        //~/panel/videos
-                        {
-                            type: "dir", name: "videos",
-                            children: [
-                                //~/panel/videos/*.mp4
-                                //~/panel/videos/*.mov
-                                {
-                                    type: "file",
-                                    match: [/\.mp4$/, /\.mov$/],
-                                },
-                            ],
-                        },
-                        //~/panel/projects
-                        {
-                            type: "dir", name: "projects",
-                            children: [
-                                //~/panel/projects/*.json
-                                {
-                                    type: "file",
-                                    match: [/\.json$/],
-                                },
-                            ],
-                        },
-                        //~/panel/projects.json
-                        { type: "file", name: "projects.json" },
-                        //~/panel/config.json
-                        { type: "file", name: "config.json" },
-                        //~/panel/state.json
-                        { type: "file", name: "state.json" },
-                    ],
-                },
-                //~/planner
-                {
-                    type: "dir", name: "planner",
-                    children: [
-                        //~/planner/projects
-                        {
-                            type: "dir", name: "projects",
-                            children: [
-                                //~/planner/projects/*.json
-                                {
-                                    type: "file",
-                                    match: [/\.json$/],
-                                },
-                            ],
-                        },
-                        //~/planner/projects.json
-                        { type: "file", name: "projects.json" },
-                        //~/planner/templates.json
-                        { type: "file", name: "templates.json" },
-                        //~/planner/solver
-                        { type: "dir", name: "solver" },
-                        //~/planner/config.json
-                        { type: "file", name: "config.json" },
-                        //~/planner/state.json
-                        { type: "file", name: "state.json" },
-                    ],
-                },
-                //~/database
-                {
-                    type: "dir", name: "database",
-                    children: [
-                        //~/database/config.json
-                        { type: "file", name: "config.json" },
-                        //~/database/state.json
-                        { type: "file", name: "state.json" },
-                    ],
-                },
-                //~/pit
-                {
-                    type: "dir", name: "pit",
-                    children: [
-                        //~/pit/config.json
-                        { type: "file", name: "config.json" },
-                        //~/pit/state.json
-                        { type: "file", name: "state.json" },
-                    ],
-                },
-                //~/pythontk
-                {
-                    type: "dir", name: "pythontk",
-                    children: [
-                        //~/pythontk/config.json
-                        { type: "file", name: "config.json" },
-                        //~/pythontk/state.json
-                        { type: "file", name: "state.json" },
-                    ],
-                },
-                //~/state.json
-                { type: "file", name: "state.json" },
-                //~/.version
-                { type: "file", name: ".version" },
-            ];
-            let pths = [];
-            const cleanup = async (pth, patterns) => {
+            dataPath = WindowManager.makePath(dataPath);
+            const pths = [];
+            const dfs = async pth => {
                 let dirents = await this.dirList(pth);
                 await Promise.all(dirents.map(async dirent => {
-                    if (dirent.name == ".DS_Store") return;
-                    let any = false;
-                    await Promise.all(patterns.map(async pattern => {
-                        if (("type" in pattern) && (dirent.type != pattern.type)) return;
-                        if (("name" in pattern) && (dirent.name != pattern.name)) return;
-                        if ("match" in pattern) {
-                            if (util.is(pattern.match, "func")) {
-                                if (!pattern.match(dirent.type, dirent.name))
-                                    return;
-                            } else if (util.is(pattern.match, "arr")) {
-                                if (!pattern.match.any(v => new RegExp(v).test(dirent.name)))
-                                    return;
-                            } else if (!new RegExp(pattern.match).test(dirent.name)) return;
-                        }
-                        any = true;
-                        if (dirent.type != "dir") return;
-                        if (!("children" in pattern)) return;
-                        await cleanup([...pth, dirent.name], pattern.children);
-                    }));
-                    if (any) return;
-                    l(...pth, dirent.name);
-                    pths.push([pth, dirent.name]);
+                    let pth2 = path.join(pth, dirent.name);
+                    pths.push(pth2.slice(dataPath.length+1));
+                    if (dirent.type == "dir") await dfs(pth2);
                 }));
             };
-            await cleanup([dataPath], format);
-            return pths;
+            await dfs(dataPath);
+            let successes = {};
+            pths.forEach(pth => {
+                successes[pth] = 0;
+                DATASCHEMA.forEach(schema => {
+                    successes[pth] += schema.test(pth);
+                });
+            });
+            return pths.filter(pth => successes[pth] <= 0).map(pth => path.join(dataPath, pth));
         }
         async getCleanup() {
             if (this.hasWindow()) return await this.window.manager.getCleanup();
@@ -3793,7 +3571,7 @@ const MAIN = async () => {
         static async cleanup(dataPath, version) {
             version = String(version);
             log(". cleanup");
-            const l = (...a) => log(". cleanup - delete: "+WindowManager.makePath(...a));
+            const l = pth => log(". cleanup - delete: "+WindowManager.makePath(pth));
             let fsVersion = await this.getFSVersion(dataPath);
             log(`. cleanup - fs-version check (${version} ?>= ${fsVersion})`);
             if (!(await this.canFS(dataPath, version))) {
@@ -3804,7 +3582,7 @@ const MAIN = async () => {
             await this.setFSVersion(dataPath, version);
             let pths = await this.getCleanup(dataPath);
             await Promise.all(pths.map(async pth => {
-                l(...pth);
+                l(pth);
                 try { return await this.dirDelete(pth); }
                 catch (e) {}
                 try { return await this.fileDelete(pth); }
