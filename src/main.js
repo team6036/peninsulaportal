@@ -3550,7 +3550,7 @@ const MAIN = async () => {
                 let dirents = await this.dirList(pth);
                 await Promise.all(dirents.map(async dirent => {
                     let pth2 = path.join(pth, dirent.name);
-                    pths.push(pth2.slice(dataPath.length+1));
+                    pths.push(pth2.slice(dataPath.length+1).replaceAll(path.sep, "/"));
                     if (dirent.type == "dir") await dfs(pth2);
                 }));
             };
