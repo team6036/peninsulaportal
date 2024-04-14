@@ -126,6 +126,18 @@ const MAIN = async () => {
         if (s.length > 20) s = s.slice(0, 20)+"...";
         return s;
     }
+    function mergeThings(dest, src) {
+        if (util.is(dest, "arr")) {
+            dest.push(...util.ensure(src, "arr"));
+        } else if (util.is(dest, "obj")) {
+            src = util.ensure(src, "obj");
+            for (let k in src) {
+                if (k in dest) dest[k] = mergeThings(dest[k], src[k]);
+                else dest[k] = src[k];
+            }
+        }
+        return dest;
+    }
 
     const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
@@ -3750,7 +3762,7 @@ const MAIN = async () => {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
-                            for (let k in data2) data[k] = data2[k];
+                            data = mergeThings(data, data2);
                         } catch (e) {}
                     };
                     return data;
@@ -3769,7 +3781,12 @@ const MAIN = async () => {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
-                            for (let k in data2) data[k] = data2[k];
+                            let subdata = util.ensure(data2.templates, "obj");
+                            for (let k in subdata) {
+                                subdata[k] = util.ensure(subdata[k], "obj");
+                                subdata[k]._source = pth[0];
+                            }
+                            data = mergeThings(data, data2);
                         } catch (e) {}
                     };
                     return data;
@@ -3780,13 +3797,13 @@ const MAIN = async () => {
                 "template-images": async () => {
                     let templates = await kfs.templates();
                     let images = {};
-                    Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "data", "templates", "images", name+".png")));
+                    Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, templates[name]._source, "templates", "images", name+".png")));
                     return images;
                 },
                 "template-models": async () => {
                     let templates = await kfs.templates();
                     let models = {};
-                    Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, "data", "templates", "models", name+".glb")));
+                    Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, templates[name]._source, "templates", "models", name+".glb")));
                     return models;
                 },
                 "active-template": async () => {
@@ -3800,7 +3817,12 @@ const MAIN = async () => {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
-                            for (let k in data2) data[k] = data2[k];
+                            let subdata = util.ensure(data2.robots, "obj");
+                            for (let k in subdata) {
+                                subdata[k] = util.ensure(subdata[k], "obj");
+                                subdata[k]._source = pth[0];
+                            }
+                            data = mergeThings(data, data2);
                         } catch (e) {}
                     };
                     return data;
@@ -3811,7 +3833,7 @@ const MAIN = async () => {
                 "robot-models": async () => {
                     let robots = await kfs.robots();
                     let models = {};
-                    Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, "data", "robots", "models", name+".glb")));
+                    Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, robots[name]._source, "robots", "models", name+".glb")));
                     return models;
                 },
                 "active-robot": async () => {
@@ -3825,7 +3847,12 @@ const MAIN = async () => {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
-                            for (let k in data2) data[k] = data2[k];
+                            let subdata = util.ensure(data2.holidays, "obj");
+                            for (let k in subdata) {
+                                subdata[k] = util.ensure(subdata[k], "obj");
+                                subdata[k]._source = pth[0];
+                            }
+                            data = mergeThings(data, data2);
                         } catch (e) {}
                     };
                     return data;
@@ -3842,7 +3869,7 @@ const MAIN = async () => {
                             let name2 = name;
                             if (["hat1", "hat2"].includes(type)) name2 += "-hat-"+type.slice(3)+".svg";
                             else name2 += "."+type;
-                            icons[name][type] = path.join(this.dataPath, "data", "holidays", "icons", name2);
+                            icons[name][type] = path.join(this.dataPath, holidays[name]._source, "holidays", "icons", name2);
                         });
                     });
                     return icons;
@@ -3883,7 +3910,7 @@ const MAIN = async () => {
                         try {
                             let content = await this.fileRead(pth);
                             let data2 = util.ensure(JSON.parse(content), "obj");
-                            for (let k in data2) data[k] = data2[k];
+                            data = mergeThings(data, data2);
                         } catch (e) {}
                     };
                     return data;
