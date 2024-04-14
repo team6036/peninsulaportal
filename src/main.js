@@ -880,6 +880,10 @@ const MAIN = async () => {
                 delete options.titleBarStyle;
                 delete options.trafficLightPosition;
             }
+            if (this.isModal) {
+                options.alwaysOnTop = true;
+                options.hiddenInMissionControl = true;
+            }
             const onHolidayState = async holiday => {
                 let tag = "png";
                 let defaultIcon = path.join(__dirname, "assets", "app", "icon."+tag);
@@ -1051,8 +1055,8 @@ const MAIN = async () => {
                         this.send("win-holiday", holiday);
                     }
                 };
-                fs.watchFile(path.join(this.rootManager.dataPath, "config.json"), check);
-                fs.watchFile(path.join(this.rootManager.dataPath, "holidays", "holidays.json"), check);
+                fs.watchFile(path.join(this.rootManager.dataPath, "data", "config.json"), check);
+                fs.watchFile(path.join(this.rootManager.dataPath, "data", "holidays", "holidays.json"), check);
                 await check();
                 if (!this.hasWindow()) return;
                 let size = this.window.getSize();
@@ -1121,10 +1125,10 @@ const MAIN = async () => {
             await manager.affirm();
             let hasWindowData = await WindowManager.dirHas(this.getDataPath(manager, name, started));
             if (!hasWindowData) await WindowManager.dirMake(this.getDataPath(manager, name, started));
-            let hasConfig = await WindowManager.fileHas([this.getDataPath(manager, name, started), ".config"]);
-            if (!hasConfig) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".config"], "");
-            let hasState = await WindowManager.fileHas([this.getDataPath(manager, name, started), ".state"]);
-            if (!hasState) await WindowManager.fileWrite([this.getDataPath(manager, name, started), ".state"], "");
+            let hasConfig = await WindowManager.fileHas([this.getDataPath(manager, name, started), "config.json"]);
+            if (!hasConfig) await WindowManager.fileWrite([this.getDataPath(manager, name, started), "config.json"], "");
+            let hasState = await WindowManager.fileHas([this.getDataPath(manager, name, started), "state.json"]);
+            if (!hasState) await WindowManager.fileWrite([this.getDataPath(manager, name, started), "state.json"], "");
             return true;
         }
         async affirm() { return await Window.affirm(this.manager, this.name, this.started); }
@@ -1697,7 +1701,7 @@ const MAIN = async () => {
                     await this.affirm();
                     let content = "";
                     try {
-                        content = await this.fileRead(".config");
+                        content = await this.fileRead(["data", "config.json"]);
                     } catch (e) {}
                     let config = null;
                     try {
@@ -1715,7 +1719,7 @@ const MAIN = async () => {
                     k = String(k);
                     let config = await kfs._config();
                     config[k] = v;
-                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
+                    await this.fileWrite(["data", "config.json"], JSON.stringify(config, null, "\t"));
                     return v;
                 },
                 "config-del": async k => {
@@ -1723,7 +1727,7 @@ const MAIN = async () => {
                     let config = await kfs._config();
                     let v = config[k];
                     delete config[k];
-                    await this.fileWrite(".config", JSON.stringify(config, null, "\t"));
+                    await this.fileWrite(["data", "config.json"], JSON.stringify(config, null, "\t"));
                     return v;
                 },
                 "root-get": async () => {
@@ -1737,7 +1741,7 @@ const MAIN = async () => {
                     await this.affirm();
                     let content = "";
                     try {
-                        content = await this.fileRead(".state");
+                        content = await this.fileRead("state.json");
                     } catch (e) {}
                     let state = null;
                     try {
@@ -1755,7 +1759,7 @@ const MAIN = async () => {
                     k = String(k);
                     let state = await kfs._state();
                     state[k] = v;
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
                     return v;
                 },
                 "state-del": async k => {
@@ -1763,7 +1767,7 @@ const MAIN = async () => {
                     let state = await kfs._state();
                     let v = state[k];
                     delete state[k];
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
                     return v;
                 },
                 "capture": async rect => {
@@ -1915,7 +1919,7 @@ const MAIN = async () => {
                                 "root": async () => {
                                     let content = "";
                                     try {
-                                        content = await Window.fileRead(this.manager, name, [".config"]);
+                                        content = await Window.fileRead(this.manager, name, ["config.json"]);
                                     } catch (e) {}
                                     let data = null;
                                     try {
@@ -1929,7 +1933,7 @@ const MAIN = async () => {
                                 "root": async v => {
                                     let content = "";
                                     try {
-                                        content = await Window.fileRead(this.manager, name, [".config"]);
+                                        content = await Window.fileRead(this.manager, name, ["config.json"]);
                                     } catch (e) {}
                                     let data = null;
                                     try {
@@ -1939,7 +1943,7 @@ const MAIN = async () => {
                                     data.root = util.ensure(v, "str", Window.getDataPath(this.manager, name));
                                     if (data.root == Window.getDataPath(this.manager, name)) delete data.root;
                                     content = JSON.stringify(data);
-                                    await Window.fileWrite(this.manager, name, [".config"], content);
+                                    await Window.fileWrite(this.manager, name, ["config.json"], content);
                                 },
                             },
                         };
@@ -2804,12 +2808,12 @@ const MAIN = async () => {
                 log("config");
                 this.addLoad("config");
                 try {
+                    const pth = path.join(this.dataPath, "data", "config.json");
                     if (doFallback) await fs.promises.cp(
-                        path.join(__dirname, "assets", "fallback", "config.json"),
-                        path.join(this.dataPath, ".config"),
+                        path.join(__dirname, "assets", "fallback", "config.json"), pth,
                         { recursive: true, force: true },
                     );
-                    else await fetchAndPipe(theHost+"/config", path.join(this.dataPath, ".config"));
+                    else await fetchAndPipe(theHost+"/config", pth);
                     log("config - success");
                 } catch (e) {
                     log(`config - error - ${e}`);
@@ -2890,12 +2894,12 @@ const MAIN = async () => {
                         log("templates.json");
                         this.addLoad("templates.json");
                         try {
+                            const pth = path.join(this.dataPath, "data", "templates", "templates.json");
                             if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "templates.json"),
-                                path.join(this.dataPath, "templates", "templates.json"),
+                                path.join(__dirname, "assets", "fallback", "templates.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/templates", path.join(this.dataPath, "templates", "templates.json"));
+                            else await fetchAndPipe(theHost+"/templates", pth);
                             log("templates.json - success");
                         } catch (e) {
                             log(`templates.json - error - ${e}`);
@@ -2903,7 +2907,7 @@ const MAIN = async () => {
                         }
                         this.remLoad("templates.json");
                         log("checking templates.json");
-                        let content = await this.fileRead(["templates", "templates.json"]);
+                        let content = await this.fileRead(["data", "templates", "templates.json"]);
                         let data = null;
                         try {
                             data = JSON.parse(content);
@@ -2923,7 +2927,7 @@ const MAIN = async () => {
                                         log(`templates/${name}.${tag} IGNORED`);
                                         return;
                                     }
-                                const pth = path.join(this.dataPath, "templates", section, name+"."+tag);
+                                const pth = path.join(this.dataPath, "data", "templates", section, name+"."+tag);
                                 const key = "templates."+name+"."+tag;
                                 if (kit && releaseId && assets && (key in assets)) {
                                     let successful = false;
@@ -2964,12 +2968,12 @@ const MAIN = async () => {
                         log("robots.json");
                         this.addLoad("robots.json");
                         try {
+                            const pth = path.join(this.dataPath, "data", "robots", "robots.json");
                             if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "robots.json"),
-                                path.join(this.dataPath, "robots", "robots.json"),
+                                path.join(__dirname, "assets", "fallback", "robots.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/robots", path.join(this.dataPath, "robots", "robots.json"));
+                            else await fetchAndPipe(theHost+"/robots", pth);
                             log("robots.json - success");
                         } catch (e) {
                             log(`robots.json - error - ${e}`);
@@ -2977,7 +2981,7 @@ const MAIN = async () => {
                         }
                         this.remLoad("robots.json");
                         log("checking robots.json");
-                        let content = await this.fileRead(["robots", "robots.json"]);
+                        let content = await this.fileRead(["data", "robots", "robots.json"]);
                         let data = null;
                         try {
                             data = JSON.parse(content);
@@ -2991,7 +2995,7 @@ const MAIN = async () => {
                             name = String(name);
                             await Promise.all(["models"].map(async section => {
                                 let tag = { images: "png", models: "glb" }[section];
-                                const pth = path.join(this.dataPath, "robots", section, name+"."+tag);
+                                const pth = path.join(this.dataPath, "data", "robots", section, name+"."+tag);
                                 const key = "robots."+name+"."+tag;
                                 if (kit && releaseId && assets && (key in assets)) {
                                     let successful = false;
@@ -3032,12 +3036,12 @@ const MAIN = async () => {
                         log("holidays.json");
                         this.addLoad("holidays.json");
                         try {
+                            const pth = path.join(this.dataPath, "data", "holidays", "holidays.json");
                             if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "holidays.json"),
-                                path.join(this.dataPath, "holidays", "holidays.json"),
+                                path.join(__dirname, "assets", "fallback", "holidays.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/holidays", path.join(this.dataPath, "holidays", "holidays.json"));
+                            else await fetchAndPipe(theHost+"/holidays", pth);
                             log("holidays.json - success");
                         } catch (e) {
                             log(`holidays.json - error - ${e}`);
@@ -3045,7 +3049,7 @@ const MAIN = async () => {
                         }
                         this.remLoad("holidays.json");
                         log("checking holidays.json");
-                        let content = await this.fileRead(["holidays", "holidays.json"]);
+                        let content = await this.fileRead(["data", "holidays", "holidays.json"]);
                         let data = null;
                         try {
                             data = JSON.parse(content);
@@ -3069,7 +3073,7 @@ const MAIN = async () => {
                                     if ("hat" in holiday && !holiday.hat)
                                         return;
                                 let fullname = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
-                                const pth = path.join(this.dataPath, "holidays", "icons", fullname);
+                                const pth = path.join(this.dataPath, "data", "holidays", "icons", fullname);
                                 const key = "holidays."+fullname;
                                 if (kit && releaseId && assets && (key in assets)) {
                                     let successful = false;
@@ -3136,12 +3140,12 @@ const MAIN = async () => {
                         log("themes.json");
                         this.addLoad("themes.json");
                         try {
+                            const pth = path.join(this.dataPath, "data", "themes.json");
                             if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "themes.json"),
-                                path.join(this.dataPath, "themes.json"),
+                                path.join(__dirname, "assets", "fallback", "themes.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/themes", path.join(this.dataPath, "themes.json"));
+                            else await fetchAndPipe(theHost+"/themes", pth);
                             log("themes.json - success");
                         } catch (e) {
                             log(`themes.json - error - ${e}`);
@@ -3195,12 +3199,13 @@ const MAIN = async () => {
                                 sublog("templates.json");
                                 this.addLoad(name+":templates.json");
                                 try {
+                                    const pth = path.join(Window.getDataPath(this, name), "templates.json");
                                     if (doFallback) await fs.promises.cp(
                                         path.join(__dirname, "assets", "fallback", "planner", "templates.json"),
-                                        path.join(Window.getDataPath(this, name), "templates.json"),
+                                        pth,
                                         { recursive: true, force: true },
                                     );
-                                    else await fetchAndPipe(subhost+"/templates", path.join(Window.getDataPath(this, name), "templates.json"));
+                                    else await fetchAndPipe(subhost+"/templates", pth);
                                     sublog("templates.json - success");
                                 } catch (e) {
                                     sublog(`templates.json - error - ${e}`);
@@ -3387,6 +3392,18 @@ const MAIN = async () => {
                     showError("Info", null, (await buildTree(path.join(__dirname, ".."), 0)).join("\n"));
                 });
 
+                (async () => {
+                    let dirents = await this.getCleanup();
+                    if (dirents.length <= 3) return;
+                    let r = await showConfirm(
+                        "Junk Files",
+                        "We found some junk files located in the app data directory. Would you like to clean up?",
+                        dirents.map(pth => WindowManager.makePath(pth)).join("\n"),
+                    );
+                    if (!r) return;
+                    await this.cleanup();
+                })();
+
                 try {
                     await this.tryLoad();
                 } catch (e) { await showError("WindowManager Start Error", "Load Error", e); }
@@ -3444,28 +3461,28 @@ const MAIN = async () => {
             if (!hasLogDir) await this.dirMake([dataPath, "logs"]);
             let hasDumpDir = await this.dirHas([dataPath, "dump"]);
             if (!hasDumpDir) await this.dirMake([dataPath, "dump"]);
-            let hasTemplatesDir = await this.dirHas([dataPath, "templates"]);
-            if (!hasTemplatesDir) await this.dirMake([dataPath, "templates"]);
-            let hasTemplateImagesDir = await this.dirHas([dataPath, "templates", "images"]);
-            if (!hasTemplateImagesDir) await this.dirMake([dataPath, "templates", "images"]);
-            let hasTemplateModelsDir = await this.dirHas([dataPath, "templates", "models"]);
-            if (!hasTemplateModelsDir) await this.dirMake([dataPath, "templates", "models"]);
-            let hasRobotsDir = await this.dirHas([dataPath, "robots"]);
-            if (!hasRobotsDir) await this.dirMake([dataPath, "robots"]);
-            let hasRobotModelsDir = await this.dirHas([dataPath, "robots", "models"]);
-            if (!hasRobotModelsDir) await this.dirMake([dataPath, "robots", "models"]);
-            let hasHolidaysDir = await this.dirHas([dataPath, "holidays"]);
-            if (!hasHolidaysDir) await this.dirMake([dataPath, "holidays"]);
-            let hasHolidayIconsDir = await this.dirHas([dataPath, "holidays", "icons"]);
-            if (!hasHolidayIconsDir) await this.dirMake([dataPath, "holidays", "icons"]);
-            let hasConfig = await this.fileHas([dataPath, ".config"]);
-            if (!hasConfig) await this.fileWrite([dataPath, ".config"], "");
-            let hasClientConfig = await this.fileHas([dataPath, ".clientconfig"]);
-            if (!hasClientConfig) await this.fileWrite([dataPath, ".clientconfig"], "");
+            let hasDataDir = await this.dirHas([dataPath, "data"]);
+            if (!hasDataDir) await this.dirMake([dataPath, "data"]);
+            let hasTemplatesDir = await this.dirHas([dataPath, "data", "templates"]);
+            if (!hasTemplatesDir) await this.dirMake([dataPath, "data", "templates"]);
+            let hasTemplateImagesDir = await this.dirHas([dataPath, "data", "templates", "images"]);
+            if (!hasTemplateImagesDir) await this.dirMake([dataPath, "data", "templates", "images"]);
+            let hasTemplateModelsDir = await this.dirHas([dataPath, "data", "templates", "models"]);
+            if (!hasTemplateModelsDir) await this.dirMake([dataPath, "data", "templates", "models"]);
+            let hasRobotsDir = await this.dirHas([dataPath, "data", "robots"]);
+            if (!hasRobotsDir) await this.dirMake([dataPath, "data", "robots"]);
+            let hasRobotModelsDir = await this.dirHas([dataPath, "data", "robots", "models"]);
+            if (!hasRobotModelsDir) await this.dirMake([dataPath, "data", "robots", "models"]);
+            let hasHolidaysDir = await this.dirHas([dataPath, "data", "holidays"]);
+            if (!hasHolidaysDir) await this.dirMake([dataPath, "data", "holidays"]);
+            let hasHolidayIconsDir = await this.dirHas([dataPath, "data", "holidays", "icons"]);
+            if (!hasHolidayIconsDir) await this.dirMake([dataPath, "data", "holidays", "icons"]);
+            let hasConfig = await this.fileHas([dataPath, "data", "config.json"]);
+            if (!hasConfig) await this.fileWrite([dataPath, "data", "config.json"], "");
             let hasVersion = await this.fileHas([dataPath, ".version"]);
             if (!hasVersion) await this.fileWrite([dataPath, ".version"], "");
-            let hasState = await this.fileHas([dataPath, ".state"]);
-            if (!hasState) await this.fileWrite([dataPath, ".state"], "");
+            let hasState = await this.fileHas([dataPath, "state.json"]);
+            if (!hasState) await this.fileWrite([dataPath, "state.json"], "");
             return true;
         }
         async affirm() {
@@ -3517,97 +3534,127 @@ const MAIN = async () => {
                         { type: "file" },
                     ],
                 },
-                //~/templates
+                //~/data
                 {
-                    type: "dir", name: "templates",
+                    type: "dir", name: "data",
                     children: [
-                        //~/templates/images
+                        //~/templates
                         {
-                            type: "dir", name: "images",
+                            type: "dir", name: "templates",
                             children: [
-                                //~/templates/images/*.png
-                                //~/templates/images/*.png-tmp
+                                //~/data/templates/images
                                 {
-                                    type: "file",
-                                    match: [/\.png$/, /\.png-tmp$/],
-                                },
-                            ],
-                        },
-                        //~/templates/models
-                        {
-                            type: "dir", name: "models",
-                            children: [
-                                //~/templates/models/*.glb
-                                //~/templates/models/*.glb-tmp
-                                {
-                                    type: "file",
-                                    match: [/\.glb$/, /\.glb-tmp$/],
-                                }
-                            ],
-                        },
-                        //~/templates/templates.json
-                        { type: "file", name: "templates.json" }
-                    ],
-                },
-                //~/robots
-                {
-                    type: "dir", name: "robots",
-                    children: [
-                        //~/robots/models
-                        {
-                            type: "dir", name: "models",
-                            children: [
-                                //~/robots/models/*.glb
-                                //~/robots/models/*.glb-tmp
-                                {
-                                    type: "file",
-                                    match: [/\.glb$/, /\.glb-tmp$/],
-                                }
-                            ],
-                        },
-                        //~/robots/robots.json
-                        { type: "file", name: "robots.json" }
-                    ],
-                },
-                //~/holidays
-                {
-                    type: "dir", name: "holidays",
-                    children: [
-                        //~/holidays/icons
-                        {
-                            type: "dir", name: "icons",
-                            children: [
-                                //~/holidays/icons/*.svg
-                                //~/holidays/icons/*.png
-                                //~/holidays/icons/*.ico
-                                //~/holidays/icons/*.icns
-                                //~/holidays/icons/*.svg-tmp
-                                //~/holidays/icons/*.png-tmp
-                                //~/holidays/icons/*.ico-tmp
-                                //~/holidays/icons/*.icns-tmp
-                                {
-                                    type: "file",
-                                    match: [
-                                        /\.svg$/,
-                                        /\.png$/,
-                                        /\.ico$/,
-                                        /\.icns$/,
-                                        /\.svg-tmp$/,
-                                        /\.png-tmp$/,
-                                        /\.ico-tmp$/,
-                                        /\.icns-tmp$/,
+                                    type: "dir", name: "images",
+                                    children: [
+                                        //~/data/templates/images/*.png
+                                        //~/data/templates/images/*.png-tmp
+                                        {
+                                            type: "file",
+                                            match: [/\.png$/, /\.png-tmp$/],
+                                        },
                                     ],
-                                }
+                                },
+                                //~/data/templates/models
+                                {
+                                    type: "dir", name: "models",
+                                    children: [
+                                        //~/data/templates/models/*.glb
+                                        //~/data/templates/models/*.glb-tmp
+                                        {
+                                            type: "file",
+                                            match: [/\.glb$/, /\.glb-tmp$/],
+                                        }
+                                    ],
+                                },
+                                //~/data/templates/templates.json
+                                { type: "file", name: "templates.json" }
                             ],
                         },
-                        //~/holidays/holidays.json
-                        { type: "file", name: "holidays.json" }
+                        //~/data/robots
+                        {
+                            type: "dir", name: "robots",
+                            children: [
+                                //~/data/robots/models
+                                {
+                                    type: "dir", name: "models",
+                                    children: [
+                                        //~/data/robots/models/*.glb
+                                        //~/data/robots/models/*.glb-tmp
+                                        {
+                                            type: "file",
+                                            match: [/\.glb$/, /\.glb-tmp$/],
+                                        }
+                                    ],
+                                },
+                                //~/data/robots/robots.json
+                                { type: "file", name: "robots.json" }
+                            ],
+                        },
+                        //~/data/holidays
+                        {
+                            type: "dir", name: "holidays",
+                            children: [
+                                //~/data/holidays/icons
+                                {
+                                    type: "dir", name: "icons",
+                                    children: [
+                                        //~/data/holidays/icons/*.svg
+                                        //~/data/holidays/icons/*.png
+                                        //~/data/holidays/icons/*.ico
+                                        //~/data/holidays/icons/*.icns
+                                        //~/data/holidays/icons/*.svg-tmp
+                                        //~/data/holidays/icons/*.png-tmp
+                                        //~/data/holidays/icons/*.ico-tmp
+                                        //~/data/holidays/icons/*.icns-tmp
+                                        {
+                                            type: "file",
+                                            match: [
+                                                /\.svg$/,
+                                                /\.png$/,
+                                                /\.ico$/,
+                                                /\.icns$/,
+                                                /\.svg-tmp$/,
+                                                /\.png-tmp$/,
+                                                /\.ico-tmp$/,
+                                                /\.icns-tmp$/,
+                                            ],
+                                        }
+                                    ],
+                                },
+                                //~/data/holidays/holidays.json
+                                { type: "file", name: "holidays.json" }
+                            ],
+                        },
+                        //~/data/themes.json
+                        { type: "file", name: "themes.json" },
+                        //~/data/config.json
+                        { type: "file", name: "config.json" },
                     ],
                 },
                 //~/<feature>
                 {
                     type: "dir",
                     match: (_, name) => FEATURES.includes(name.toUpperCase()),
+                },
+                //~/portal
+                {
+                    type: "dir", name: "portal",
+                    children: [
+                        //~/portal/config.json
+                        { type: "file", name: "config.json" },
+                        //~/portal/state.json
+                        { type: "file", name: "state.json" },
+                    ],
+                },
+                //~/presets
+                {
+                    type: "dir", name: "presets",
+                    children: [
+                        //~/presets/config.json
+                        { type: "file", name: "config.json" },
+                        //~/presets/state.json
+                        { type: "file", name: "state.json" },
+                    ],
                 },
                 //~/panel
                 {
@@ -3649,6 +3696,10 @@ const MAIN = async () => {
                         },
                         //~/panel/projects.json
                         { type: "file", name: "projects.json" },
+                        //~/panel/config.json
+                        { type: "file", name: "config.json" },
+                        //~/panel/state.json
+                        { type: "file", name: "state.json" },
                     ],
                 },
                 //~/planner
@@ -3672,16 +3723,52 @@ const MAIN = async () => {
                         { type: "file", name: "templates.json" },
                         //~/planner/solver
                         { type: "dir", name: "solver" },
+                        //~/planner/config.json
+                        { type: "file", name: "config.json" },
+                        //~/planner/state.json
+                        { type: "file", name: "state.json" },
                     ],
                 },
-                //~/themes.json
-                { type: "file", name: "themes.json" },
+                //~/database
+                {
+                    type: "dir", name: "database",
+                    children: [
+                        //~/database/config.json
+                        { type: "file", name: "config.json" },
+                        //~/database/state.json
+                        { type: "file", name: "state.json" },
+                    ],
+                },
+                //~/pit
+                {
+                    type: "dir", name: "pit",
+                    children: [
+                        //~/pit/config.json
+                        { type: "file", name: "config.json" },
+                        //~/pit/state.json
+                        { type: "file", name: "state.json" },
+                    ],
+                },
+                //~/pythontk
+                {
+                    type: "dir", name: "pythontk",
+                    children: [
+                        //~/pythontk/config.json
+                        { type: "file", name: "config.json" },
+                        //~/pythontk/state.json
+                        { type: "file", name: "state.json" },
+                    ],
+                },
+                //~/state.json
+                { type: "file", name: "state.json" },
+                //~/.version
+                { type: "file", name: ".version" },
             ];
             let pths = [];
             const cleanup = async (pth, patterns) => {
                 let dirents = await this.dirList(pth);
                 await Promise.all(dirents.map(async dirent => {
-                    if (dirent.name[0] == ".") return;
+                    if (dirent.name == ".DS_Store") return;
                     let any = false;
                     await Promise.all(patterns.map(async pattern => {
                         if (("type" in pattern) && (dirent.type != pattern.type)) return;
@@ -3891,7 +3978,7 @@ const MAIN = async () => {
                 "_fullthemes": async () => {
                     let content = "";
                     try {
-                        content = await this.fileRead("themes.json");
+                        content = await this.fileRead(["data", "themes.json"]);
                     } catch (e) {}
                     let data = null;
                     try {
@@ -3911,7 +3998,7 @@ const MAIN = async () => {
                 "_fulltemplates": async () => {
                     let content = "";
                     try {
-                        content = await this.fileRead(["templates", "templates.json"]);
+                        content = await this.fileRead(["data", "templates", "templates.json"]);
                     } catch (e) {}
                     let data = null;
                     try {
@@ -3926,13 +4013,13 @@ const MAIN = async () => {
                 "template-images": async () => {
                     let templates = await kfs.templates();
                     let images = {};
-                    Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "templates", "images", name+".png")));
+                    Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, "data", "templates", "images", name+".png")));
                     return images;
                 },
                 "template-models": async () => {
                     let templates = await kfs.templates();
                     let models = {};
-                    Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, "templates", "models", name+".glb")));
+                    Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, "data", "templates", "models", name+".glb")));
                     return models;
                 },
                 "active-template": async () => {
@@ -3943,7 +4030,7 @@ const MAIN = async () => {
                 "_fullrobots": async () => {
                     let content = "";
                     try {
-                        content = await this.fileRead(["robots", "robots.json"]);
+                        content = await this.fileRead(["data", "robots", "robots.json"]);
                     } catch (e) {}
                     let data = null;
                     try {
@@ -3958,7 +4045,7 @@ const MAIN = async () => {
                 "robot-models": async () => {
                     let robots = await kfs.robots();
                     let models = {};
-                    Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, "robots", "models", name+".glb")));
+                    Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, "data", "robots", "models", name+".glb")));
                     return models;
                 },
                 "active-robot": async () => {
@@ -3969,7 +4056,7 @@ const MAIN = async () => {
                 "_fullholidays": async () => {
                     let content = "";
                     try {
-                        content = await this.fileRead(["holidays", "holidays.json"]);
+                        content = await this.fileRead(["data", "holidays", "holidays.json"]);
                     } catch (e) {}
                     let data = null;
                     try {
@@ -3984,14 +4071,15 @@ const MAIN = async () => {
                 "holiday-icons": async () => {
                     let holidays = await kfs.holidays();
                     let icons = {};
-                    Object.keys(holidays).map(name => (icons[name] = {
-                        svg: path.join(this.dataPath, "holidays", "icons", name+".svg"),
-                        png: path.join(this.dataPath, "holidays", "icons", name+".png"),
-                        ico: path.join(this.dataPath, "holidays", "icons", name+".ico"),
-                        icns: path.join(this.dataPath, "holidays", "icons", name+".icns"),
-                        hat1: path.join(this.dataPath, "holidays", "icons", name+"-hat-1.svg"),
-                        hat2: path.join(this.dataPath, "holidays", "icons", name+"-hat-2.svg"),
-                    }));
+                    Object.keys(holidays).map(name => {
+                        icons[name] = {};
+                        ["svg", "png", "ico", "icns", "hat1", "hat2"].forEach(type => {
+                            let name2 = name;
+                            if (["hat1", "hat2"].includes(type)) name2 += "-hat-"+type.slice(3)+".svg";
+                            else name2 += "."+type;
+                            icons[name][type] = path.join(this.dataPath, "data", "holidays", "icons", name2);
+                        });
+                    });
                     return icons;
                 },
                 "active-holiday": async () => {
@@ -4031,7 +4119,7 @@ const MAIN = async () => {
                     await this.affirm();
                     let content = "";
                     try {
-                        content = await this.fileRead(".config");
+                        content = await this.fileRead(["data", "config.json"]);
                     } catch (e) {}
                     let data = null;
                     try {
@@ -4058,7 +4146,6 @@ const MAIN = async () => {
                     await this.affirm();
                     let content = "";
                     try {
-                        content = await this.fileRead(".clientconfig");
                     } catch (e) {}
                     let data = null;
                     try {
@@ -4096,7 +4183,7 @@ const MAIN = async () => {
                     if (k == null) return;
                     let content = "";
                     try {
-                        content = await this.fileRead(".config");
+                        content = await this.fileRead(["data", "config.json"]);
                     } catch (e) {}
                     let data = null;
                     try {
@@ -4105,7 +4192,7 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     data[k] = v;
                     content = JSON.stringify(data, null, "\t");
-                    await this.fileWrite(".config", content);
+                    await this.fileWrite(["data", "config.json"], content);
                 },
                 "db-host": async () => await kfs._fullconfig("dbHost", (v == null) ? null : String(v)),
                 "assets-host": async () => await kfs._fullconfig("assetsHost", String(v)),
@@ -4115,7 +4202,6 @@ const MAIN = async () => {
                     if (k == null) return;
                     let content = "";
                     try {
-                        content = await this.fileRead(".clientconfig");
                     } catch (e) {}
                     let data = null;
                     try {
@@ -4124,7 +4210,6 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     data[k] = v;
                     content = JSON.stringify(data, null, "\t");
-                    await this.fileWrite(".clientconfig", content);
                 },
                 "comp-mode": async () => await kfs._fullclientconfig("isCompMode", !!v),
                 "theme": async () => {
@@ -4183,7 +4268,7 @@ const MAIN = async () => {
                     await this.affirm();
                     let content = "";
                     try {
-                        content = await this.fileRead(".state");
+                        content = await this.fileRead("state.json");
                     } catch (e) {}
                     let state = null;
                     try {
@@ -4201,7 +4286,7 @@ const MAIN = async () => {
                     k = String(k);
                     let state = await kfs._state();
                     state[k] = v;
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
                     return v;
                 },
                 "state-del": async k => {
@@ -4209,7 +4294,7 @@ const MAIN = async () => {
                     let state = await kfs._state();
                     let v = state[k];
                     delete state[k];
-                    await this.fileWrite(".state", JSON.stringify(state, null, "\t"));
+                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
                     return v;
                 },
                 "open": async url => await electron.shell.openExternal(url),

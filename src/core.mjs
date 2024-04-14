@@ -574,8 +574,6 @@ export class App extends util.Target {
     #eOverlay;
     #eRunInfo;
 
-    static CLEANUPPROMPT = true;
-
     constructor() {
         super();
 
@@ -620,7 +618,6 @@ export class App extends util.Target {
 
         this.addHandler("start", async () => {
             await window.buildAgent();
-            // this.menu = App.Menu.buildMenu();
             this.menu = App.Menu.buildWholeMenu();
             let id = setInterval(async () => {
                 if (document.readyState != "complete") return;
@@ -685,19 +682,6 @@ export class App extends util.Target {
                     t0 = t1;
                 };
                 update();
-                if (!this.constructor.CLEANUPPROMPT) return;
-                let cleanups = util.ensure(await window.api.get("cleanup"), "arr").map(pth => {
-                    return [pth].flatten().join("/");
-                });
-                if (cleanups.length <= 3) return;
-                let pop = this.confirm(
-                    "Junk Files Found!",
-                    "We found some unnecessary files in your application data. Would you like to clean up these files?",
-                );
-                pop.infos = [cleanups.join("\n")];
-                let r = await pop.whenResult();
-                if (!r) return;
-                await window.api.send("cleanup");
             }, 10);
         });
 
@@ -3153,8 +3137,6 @@ export class AppModal extends App {
     #ieSubIcon;
     #ieTitle;
     #ieContent;
-
-    static CLEANUPPROMPT = false;
 
     constructor() {
         super();
