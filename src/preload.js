@@ -39,8 +39,8 @@ contextBridge.exposeInMainWorld("api", {
     getRoot: () => ipcRenderer.invoke("get-root", "window"),
     getRepoRoot: () => ipcRenderer.invoke("get-root", "repo"),
 
-    get: k => ipcRenderer.invoke("get", k),
-    set: (k, v) => ipcRenderer.invoke("set", k, v),
+    get: (k, ...a) => ipcRenderer.invoke("get", k, ...a),
+    set: (k, v, ...a) => ipcRenderer.invoke("set", k, v, ...a),
     
     on: f => {
         ipcRenderer.on("send", f);
