@@ -3784,7 +3784,7 @@ const MAIN = async () => {
                 "loading": async () => {
                     return this.isLoading;
                 },
-                "_fulltypes": async (type=null, pth=null, applier=null) => {
+                "_fulltyped": async (type=null, pth=null, applier=null) => {
                     if (type == null) return null;
                     if (pth == null) return null;
                     applier = util.ensure(applier, "func");
@@ -3800,7 +3800,7 @@ const MAIN = async () => {
                     if (pth == null) return null;
                     let data = {};
                     for (let type of ["data", "override"])
-                        data = mergeThings(data, await kfs._fulltypes(type, pth, applier));
+                        data = mergeThings(data, await kfs._fulltyped(type, pth, applier));
                     return data;
                 },
                 "_fullthemes": async () => await kfs._full("themes.json"),
@@ -3895,7 +3895,7 @@ const MAIN = async () => {
                 },
                 "holiday": async () => await kfs["active-holiday"](),
                 "_fullconfig": async () => await kfs._full("config.json"),
-                "_fullconfig_data": async () => await kfs._fulltypes("data", "config.json"),
+                "_fullconfig_data": async () => await kfs._fulltyped("data", "config.json"),
                 "db-host": async () => {
                     let host = (await kfs._fullconfig_data()).dbHost;
                     return (host == null) ? null : String(host);
@@ -3946,7 +3946,7 @@ const MAIN = async () => {
             if (this.hasWindow()) return await this.window.manager.setThis(k, v);
             k = String(k);
             let kfs = {
-                "_fulltypes": async (type=null, pth=null, k=null, v=null) => {
+                "_fulltyped": async (type=null, pth=null, k=null, v=null) => {
                     if (type == null) return;
                     if (pth == null) return;
                     if (k == null) return;
@@ -3965,7 +3965,7 @@ const MAIN = async () => {
                     await this.fileWrite([type, pth], content);
                     this.check();
                 },
-                "_full": async (pth=null, k=null, v=null) => await kfs._fulltypes("override", pth, k, v),
+                "_full": async (pth=null, k=null, v=null) => await kfs._fulltyped("override", pth, k, v),
                 "_fullthemes": async (k=null, v=null) => await kfs._full("themes.json", k, v),
                 "themes": async () => await kfs._fullthemes("themes", util.ensure(v, "obj")),
                 "active-theme": async () => await kfs._fullthemes("active", (v == null) ? null : String(v)),
@@ -3983,7 +3983,7 @@ const MAIN = async () => {
                 "active-holiday": async () => await kfs._fullholidays("active", (v == null) ? null : String(v)),
                 "holiday": async () => await kfs["active-holiday"](),
                 "_fullconfig": async (k=null, v=null) => await kfs._full("config.json", k, v),
-                "_fullconfig_data": async (k=null, v=null) => await kfs._fulltypes("data", "config.json", k, v),
+                "_fullconfig_data": async (k=null, v=null) => await kfs._fulltyped("data", "config.json", k, v),
                 "db-host": async () => await kfs._fullconfig_data("dbHost", (v == null) ? null : String(v)),
                 "assets-host": async () => await kfs._fullconfig("assetsHost", String(v)),
                 "socket-host": async () => await kfs._fullconfig("socketHost", (v == null) ? null : String(v)),
