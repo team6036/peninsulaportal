@@ -825,7 +825,7 @@ export class App extends util.Target {
     }
     async createMarkdown(pth, signal) {
         if (!(signal instanceof util.Target)) signal = new util.Target();
-        this.addHandler("cmd-win-holiday", holiday => signal.post("holiday", holiday));
+        this.addHandler("cmd-holiday", holiday => signal.post("holiday", holiday));
         return await App.createMarkdown(pth, signal);
     }
     static evaluateLoad(load) {
@@ -1047,10 +1047,10 @@ export class App extends util.Target {
         });
         this.addHandler("cmd-reload", async () => await window.api.send("reload"));
         this.addHandler("cmd-helpurl", async id => await window.api.send("open", await window.api.get(id)));
-        this.addHandler("cmd-win-fullscreen", async v => {
+        this.addHandler("cmd-fullscreen", async v => {
             this.fullscreen = v;
         });
-        this.addHandler("cmd-win-holiday", async v => {
+        this.addHandler("cmd-holiday", async v => {
             this.holiday = v;
         });
 
@@ -1203,6 +1203,7 @@ export class App extends util.Target {
         };
         this.addHandler("cmd-theme", () => themeUpdate());
         this.addHandler("cmd-native-theme", () => themeUpdate());
+        this.addHandler("cmd-dark-wanted", () => themeUpdate());
         await themeUpdate();
 
         await this.postResult("setup");
@@ -1262,7 +1263,7 @@ export class App extends util.Target {
                     if (eSpecialFront instanceof HTMLImageElement)
                         eSpecialFront.src = "file://"+holidayIconData.hat1;
                 };
-                this.addHandler("cmd-win-holiday", async holiday => {
+                this.addHandler("cmd-holiday", async holiday => {
                     await onHolidayState(holiday);
                 });
                 await onHolidayState(await window.api.get("active-holiday"));

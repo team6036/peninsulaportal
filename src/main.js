@@ -129,14 +129,16 @@ const MAIN = async () => {
     function mergeThings(dest, src) {
         if (util.is(dest, "arr")) {
             dest.push(...util.ensure(src, "arr"));
+            return dest;
         } else if (util.is(dest, "obj")) {
             src = util.ensure(src, "obj");
             for (let k in src) {
                 if (k in dest) dest[k] = mergeThings(dest[k], src[k]);
                 else dest[k] = src[k];
             }
+            return dest;
         }
-        return dest;
+        return src;
     }
 
     const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"];
@@ -1022,8 +1024,8 @@ const MAIN = async () => {
                 this.manager.windows.filter(win => win.hasWindow()).forEach(win => win.window.webContents.closeDevTools());
             });
 
-            this.window.on("enter-full-screen", () => this.send("win-fullscreen", true));
-            this.window.on("leave-full-screen", () => this.send("win-fullscreen", false));
+            this.window.on("enter-full-screen", () => this.send("fullscreen", true));
+            this.window.on("leave-full-screen", () => this.send("fullscreen", false));
 
             this.window.on("focus", () => this.manager.checkMenu());
             this.window.on("blur", () => this.manager.checkMenu());
@@ -1109,19 +1111,7 @@ const MAIN = async () => {
             (async () => {
                 await this.whenPartiallyReady();
                 if (!this.hasWindow()) return;
-                let prevHoliday = null;
-                const check = async () => {
-                    let holiday = await this.get("active-holiday");
-                    holiday = (holiday == null) ? null : String(holiday);
-                    await onHolidayState(holiday);
-                    if (prevHoliday != holiday) {
-                        prevHoliday = holiday;
-                        this.send("win-holiday", holiday);
-                    }
-                };
-                fs.watchFile(path.join(this.rootManager.dataPath, "data", "config.json"), check);
-                fs.watchFile(path.join(this.rootManager.dataPath, "data", "holidays", "holidays.json"), check);
-                await check();
+                await this.check();
                 if (!this.hasWindow()) return;
                 let size = this.window.getSize();
                 const finishAndShow = () => {
@@ -1171,6 +1161,29 @@ const MAIN = async () => {
             this.#menu = null;
             await this.manager.remWindow(this);
             return this;
+        }
+        async check() {
+            const theme = await this.get("active-theme");
+            if (this.state.theme != theme) {
+                this.state.theme = theme;
+                this.send("theme");
+            }
+            const nativeTheme = await this.get("native-theme");
+            if (this.state.nativeTheme != nativeTheme) {
+                this.state.nativeTheme = nativeTheme;
+                this.send("native-theme");
+            }
+            const darkWanted = await this.get("dark-wanted");
+            if (this.state.darkWanted != darkWanted) {
+                this.state.darkWanted = darkWanted;
+                this.send("dark-wanted");
+            }
+            const holiday = await this.get("active-holiday");
+            if (this.state.holiday != holiday) {
+                this.state.holiday = holiday;
+                this.send("active-holiday");
+            }
+            await this.windowManager.check();
         }
         
         static getDataPath(manager, name, started=true) {
@@ -2639,10 +2652,12 @@ const MAIN = async () => {
                         }),
                     },
                 ]));
-            electron.nativeTheme.on("updated", () => this.send("native-theme"));
-            electron.nativeTheme.themeSource = await this.get("native-theme");
             app.on("browser-window-blur", () => this.checkMenu());
             app.on("browser-window-focus", () => this.checkMenu());
+            ["themes.json", ["templates", "templates.json"], ["robots", "robots.json"], ["holidays", "holidays.json"], "config.json"].forEach(pth => {
+                fs.watchFile(WindowManager.makePath(this.dataPath, "data", pth), () => this.check());
+                fs.watchFile(WindowManager.makePath(this.dataPath, "override", pth), () => this.check());
+            });
             return true;
         }
         async quit() {
@@ -3502,6 +3517,10 @@ const MAIN = async () => {
 
             return await this.clearWindows();
         }
+        async check() {
+            if (!this.hasWindow()) electron.nativeTheme.themeSource = await this.get("native-theme");
+            await Promise.all(this.windows.map(async win => await win.check()));
+        }
 
         get dataPath() {
             if (this.hasWindow()) return this.window.dataPath;
@@ -3516,13 +3535,22 @@ const MAIN = async () => {
             await this.dirAffirm([dataPath, "dump"]);
             await Promise.all(["data", "override"].map(async sect => {
                 await this.dirAffirm([dataPath, sect]);
+
+                await this.fileAffirm([dataPath, sect, "themes.json"]);
+
                 await this.dirAffirm([dataPath, sect, "templates"]);
+                await this.fileAffirm([dataPath, sect, "templates", "templates.json"]);
                 await this.dirAffirm([dataPath, sect, "templates", "images"]);
                 await this.dirAffirm([dataPath, sect, "templates", "models"]);
+
                 await this.dirAffirm([dataPath, sect, "robots"]);
+                await this.fileAffirm([dataPath, sect, "robots", "robots.json"]);
                 await this.dirAffirm([dataPath, sect, "robots", "models"]);
+
                 await this.dirAffirm([dataPath, sect, "holidays"]);
+                await this.fileAffirm([dataPath, sect, "holidays", "holidays.json"]);
                 await this.dirAffirm([dataPath, sect, "holidays", "icons"]);
+
                 await this.fileAffirm([dataPath, sect, "config.json"]);
             }));
             await this.fileAffirm([dataPath, ".version"]);
@@ -3756,17 +3784,26 @@ const MAIN = async () => {
                 "loading": async () => {
                     return this.isLoading;
                 },
-                "_fullthemes": async () => {
+                "_fulltypes": async (type=null, pth=null, applier=null) => {
+                    if (type == null) return null;
+                    if (pth == null) return null;
+                    applier = util.ensure(applier, "func");
+                    let data = null;
+                    try {
+                        let content = await this.fileRead([type, pth]);
+                        data = util.ensure(JSON.parse(content), "obj");
+                        applier(data, type);
+                    } catch (e) {}
+                    return util.ensure(data, "obj");
+                },
+                "_full": async (pth=null, applier=null) => {
+                    if (pth == null) return null;
                     let data = {};
-                    for (let pth of [["data", "themes.json"], ["override", "themes.json"]]) {
-                        try {
-                            let content = await this.fileRead(pth);
-                            let data2 = util.ensure(JSON.parse(content), "obj");
-                            data = mergeThings(data, data2);
-                        } catch (e) {}
-                    };
+                    for (let type of ["data", "override"])
+                        data = mergeThings(data, await kfs._fulltypes(type, pth, applier));
                     return data;
                 },
+                "_fullthemes": async () => await kfs._full("themes.json"),
                 "themes": async () => {
                     return util.ensure((await kfs._fullthemes()).themes, "obj");
                 },
@@ -3775,22 +3812,14 @@ const MAIN = async () => {
                     let themes = await kfs.themes();
                     return (active in themes) ? active : null;
                 },
-                "_fulltemplates": async () => {
-                    let data = {};
-                    for (let pth of [["data", "templates", "templates.json"], ["override", "templates", "templates.json"]]) {
-                        try {
-                            let content = await this.fileRead(pth);
-                            let data2 = util.ensure(JSON.parse(content), "obj");
-                            let subdata = util.ensure(data2.templates, "obj");
-                            for (let k in subdata) {
-                                subdata[k] = util.ensure(subdata[k], "obj");
-                                subdata[k]._source = pth[0];
-                            }
-                            data = mergeThings(data, data2);
-                        } catch (e) {}
-                    };
-                    return data;
-                },
+                "theme": async () => await kfs["active-theme"](),
+                "_fulltemplates": async () => await kfs._full(["templates", "templates.json"], (data, type) => {
+                    let subdata = util.ensure(data.templates, "obj");
+                    for (let k in subdata) {
+                        subdata[k] = util.ensure(subdata[k], "obj");
+                        subdata[k]._source = type;
+                    }
+                }),
                 "templates": async () => {
                     return util.ensure((await kfs._fulltemplates()).templates, "obj");
                 },
@@ -3811,22 +3840,14 @@ const MAIN = async () => {
                     let templates = await kfs.templates();
                     return (active in templates) ? active : null;
                 },
-                "_fullrobots": async () => {
-                    let data = {};
-                    for (let pth of [["data", "robots", "robots.json"], ["override", "robots", "robots.json"]]) {
-                        try {
-                            let content = await this.fileRead(pth);
-                            let data2 = util.ensure(JSON.parse(content), "obj");
-                            let subdata = util.ensure(data2.robots, "obj");
-                            for (let k in subdata) {
-                                subdata[k] = util.ensure(subdata[k], "obj");
-                                subdata[k]._source = pth[0];
-                            }
-                            data = mergeThings(data, data2);
-                        } catch (e) {}
-                    };
-                    return data;
-                },
+                "template": async () => await kfs["active-template"](),
+                "_fullrobots": async () => await kfs._full(["robots", "robots.json"], (data, type) => {
+                    let subdata = util.ensure(data.robots, "obj");
+                    for (let k in subdata) {
+                        subdata[k] = util.ensure(subdata[k], "obj");
+                        subdata[k]._source = type;
+                    }
+                }),
                 "robots": async () => {
                     return util.ensure((await kfs._fullrobots()).robots, "obj");
                 },
@@ -3841,22 +3862,14 @@ const MAIN = async () => {
                     let robots = await kfs.robots();
                     return (active in robots) ? active : null;
                 },
-                "_fullholidays": async () => {
-                    let data = {};
-                    for (let pth of [["data", "holidays", "holidays.json"], ["override", "holidays", "holidays.json"]]) {
-                        try {
-                            let content = await this.fileRead(pth);
-                            let data2 = util.ensure(JSON.parse(content), "obj");
-                            let subdata = util.ensure(data2.holidays, "obj");
-                            for (let k in subdata) {
-                                subdata[k] = util.ensure(subdata[k], "obj");
-                                subdata[k]._source = pth[0];
-                            }
-                            data = mergeThings(data, data2);
-                        } catch (e) {}
-                    };
-                    return data;
-                },
+                "robot": async () => await kfs["active-robot"](),
+                "_fullholidays": async () => await kfs._full(["holidays", "holidays.json"], (data, type) => {
+                    let subdata = util.ensure(data.holidays, "obj");
+                    for (let k in subdata) {
+                        subdata[k] = util.ensure(subdata[k], "obj");
+                        subdata[k]._source = type;
+                    }
+                }),
                 "holidays": async () => {
                     return util.ensure((await kfs._fullholidays()).holidays, "obj");
                 },
@@ -3880,7 +3893,28 @@ const MAIN = async () => {
                     if (await this.get("holiday-opt")) return null;
                     return (active in holidays) ? active : null;
                 },
-                "holiday": async () => await this.getThis("active-holiday"),
+                "holiday": async () => await kfs["active-holiday"](),
+                "_fullconfig": async () => await kfs._full("config.json"),
+                "_fullconfig_data": async () => await kfs._fulltypes("data", "config.json"),
+                "db-host": async () => {
+                    let host = (await kfs._fullconfig_data()).dbHost;
+                    return (host == null) ? null : String(host);
+                },
+                "assets-host": async () => {
+                    return String((await kfs._fullconfig()).assetsHost);
+                },
+                "socket-host": async () => {
+                    let host = (await kfs._fullconfig()).socketHost;
+                    return (host == null) ? (await kfs["db-host"]()) : String(host);
+                },
+                "scout-url": async () => {
+                    return String((await kfs._fullconfig()).scoutURL);
+                },
+                "comp-mode": async () => !!(await kfs._fullconfig()).isCompMode,
+                "native-theme": async () => util.ensure((await kfs._fullconfig()).nativeTheme, "str", "system"),
+                "holiday-opt": async () => !!(await kfs._fullconfig()).holidayOpt,
+                "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
+                "cleanup": async () => await this.getCleanup(),
                 "fs-version": async () => await this.getFSVersion(),
                 "_fullpackage": async () => {
                     let content = "";
@@ -3904,59 +3938,6 @@ const MAIN = async () => {
                     let repo = (await kfs._fullpackage()).repository;
                     return String(util.is(repo, "obj") ? repo.url : repo);
                 },
-                "_fullconfig": async () => {
-                    let data = {};
-                    for (let pth of [["data", "config.json"], ["override", "config.json"]]) {
-                        try {
-                            let content = await this.fileRead(pth);
-                            let data2 = util.ensure(JSON.parse(content), "obj");
-                            data = mergeThings(data, data2);
-                        } catch (e) {}
-                    };
-                    return data;
-                },
-                "db-host": async () => {
-                    let host = (await kfs._fullconfig()).dbHost;
-                    return (host == null) ? null : String(host);
-                },
-                "assets-host": async () => {
-                    return String((await kfs._fullconfig()).assetsHost);
-                },
-                "socket-host": async () => {
-                    let host = (await kfs._fullconfig()).socketHost;
-                    return (host == null) ? (await kfs["db-host"]()) : String(host);
-                },
-                "scout-url": async () => {
-                    return String((await kfs._fullconfig()).scoutURL);
-                },
-                "_fullclientconfig": async () => {
-                    await this.affirm();
-                    let content = "";
-                    try {
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
-                    return data;
-                },
-                "comp-mode": async () => {
-                    return !!(await kfs._fullclientconfig()).isCompMode;
-                },
-                "theme": async () => {
-                    let theme = (await kfs._fullclientconfig()).theme;
-                    if (util.is(theme, "obj")) return theme;
-                    return util.ensure(theme, "str", await kfs["active-theme"]());
-                },
-                "native-theme": async () => {
-                    return util.ensure((await kfs._fullclientconfig()).nativeTheme, "str", "system");
-                },
-                "holiday-opt": async () => {
-                    return !!(await kfs._fullclientconfig()).holidayOpt;
-                },
-                "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
-                "cleanup": async () => await this.getCleanup(),
             };
             if (k in kfs) return await kfs[k]();
             throw new MissingError("Could not get for key: "+k);
@@ -3965,51 +3946,52 @@ const MAIN = async () => {
             if (this.hasWindow()) return await this.window.manager.setThis(k, v);
             k = String(k);
             let kfs = {
-                "fs-version": async () => await this.setFSVersion(v),
-                "_fullconfig": async (k=null, v=null) => {
+                "_fulltypes": async (type=null, pth=null, k=null, v=null) => {
+                    if (type == null) return;
+                    if (pth == null) return;
                     if (k == null) return;
                     let content = "";
                     try {
-                        content = await this.fileRead(["data", "config.json"]);
+                        content = await this.fileRead([type, pth]);
                     } catch (e) {}
                     let data = null;
                     try {
                         data = JSON.parse(content);
                     } catch (e) {}
                     data = util.ensure(data, "obj");
-                    data[k] = v;
+                    if (v == null) delete data[k];
+                    else data[k] = v;
                     content = JSON.stringify(data, null, "\t");
-                    await this.fileWrite(["data", "config.json"], content);
+                    await this.fileWrite([type, pth], content);
+                    this.check();
                 },
-                "db-host": async () => await kfs._fullconfig("dbHost", (v == null) ? null : String(v)),
+                "_full": async (pth=null, k=null, v=null) => await kfs._fulltypes("override", pth, k, v),
+                "_fullthemes": async (k=null, v=null) => await kfs._full("themes.json", k, v),
+                "themes": async () => await kfs._fullthemes("themes", util.ensure(v, "obj")),
+                "active-theme": async () => await kfs._fullthemes("active", (v == null) ? null : String(v)),
+                "theme": async () => await kfs["active-theme"](),
+                "_fulltemplates": async (k=null, v=null) => await kfs._full(["templates", "templates.json"], k, v),
+                "templates": async () => await kfs._fulltemplates("templates", util.ensure(v, "obj")),
+                "active-template": async () => await kfs._fulltemplates("active", (v == null) ? null : String(v)),
+                "template": async () => await kfs["active-template"](),
+                "_fullrobots": async (k=null, v=null) => await kfs._full(["robots", "robots.json"], k, v),
+                "robots": async () => await kfs._fullrobots("robots", util.ensure(v, "obj")),
+                "active-robot": async () => await kfs._fullrobots("active", (v == null) ? null : String(v)),
+                "robot": async () => await kfs["active-robot"](),
+                "_fullholidays": async (k=null, v=null) => await kfs._full(["holidays", "holidays.json"], k, v),
+                "holidays": async () => await kfs._fullholidays("holidays", util.ensure(v, "obj")),
+                "active-holiday": async () => await kfs._fullholidays("active", (v == null) ? null : String(v)),
+                "holiday": async () => await kfs["active-holiday"](),
+                "_fullconfig": async (k=null, v=null) => await kfs._full("config.json", k, v),
+                "_fullconfig_data": async (k=null, v=null) => await kfs._fulltypes("data", "config.json", k, v),
+                "db-host": async () => await kfs._fullconfig_data("dbHost", (v == null) ? null : String(v)),
                 "assets-host": async () => await kfs._fullconfig("assetsHost", String(v)),
                 "socket-host": async () => await kfs._fullconfig("socketHost", (v == null) ? null : String(v)),
                 "scout-url": async () => await kfs._fullconfig("scoutURL", (v == null) ? null : String(v)),
-                "_fullclientconfig": async (k=null, v=null) => {
-                    if (k == null) return;
-                    let content = "";
-                    try {
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
-                    data[k] = v;
-                    content = JSON.stringify(data, null, "\t");
-                },
-                "comp-mode": async () => await kfs._fullclientconfig("isCompMode", !!v),
-                "theme": async () => {
-                    await kfs._fullclientconfig("theme", util.is(v, "obj") ? v : String(v));
-                    await this.send("theme");
-                },
-                "native-theme": async () => {
-                    await kfs._fullclientconfig("nativeTheme", String(v));
-                    electron.nativeTheme.themeSource = await this.get("native-theme");
-                },
-                "holiday-opt": async () => {
-                    await kfs._fullclientconfig("holidayOpt", !!v);
-                },
+                "comp-mode": async () => await kfs._fullconfig("isCompMode", !!v),
+                "native-theme": async () => await kfs._fullconfig("nativeTheme", String(v)),
+                "holiday-opt": async () => await kfs._fullconfig("holidayOpt", !!v),
+                "fs-version": async () => await this.setFSVersion(v),
             };
             if (k in kfs) return await kfs[k]();
             throw new MissingError("Could not set for key: "+k);
