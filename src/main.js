@@ -1366,17 +1366,17 @@ const MAIN = async () => {
             return await this.manager.ytdlDownload(url, options);
         }
 
-        async get(k) {
+        async get(k, ...a) {
             try {
-                return await this.getThis(k);
+                return await this.getThis(k, ...a);
             } catch (e) { if (!(e instanceof MissingError)) throw e; }
-            return await this.manager.get(k);
+            return await this.manager.get(k, ...a);
         }
-        async set(k, v) {
+        async set(k, v, ...a) {
             try {
-                return await this.setThis(k, v);
+                return await this.setThis(k, v, ...a);
             } catch (e) { if (!(e instanceof MissingError)) throw e; }
-            return await this.manager.set(k, v);
+            return await this.manager.set(k, v, ...a);
         }
         async on(k, ...a) {
             try {
@@ -1385,7 +1385,7 @@ const MAIN = async () => {
             return await this.manager.on(k, ...a);
         }
 
-        async getThis(k) {
+        async getThis(k, ...a) {
             if (!this.started) return null;
             k = String(k);
             let kfs = {
@@ -1519,7 +1519,7 @@ const MAIN = async () => {
                     return this.window.getBounds();
                 },
             };
-            if (k in kfs) return await kfs[k]();
+            if (k in kfs) return await kfs[k](...a);
             let namefs = {
                 PANEL: {
                     "client-location": async () => {
@@ -1557,10 +1557,10 @@ const MAIN = async () => {
             };
             if (this.name in namefs)
                 if (k in namefs[this.name])
-                    return await namefs[this.name][k]();
+                    return await namefs[this.name][k](...a);
             throw new MissingError("Could not get for key: "+k);
         }
-        async setThis(k, v) {
+        async setThis(k, v, ...a) {
             if (!this.started) return false;
             k = String(k);
             let kfs = {
@@ -1774,12 +1774,12 @@ const MAIN = async () => {
                     return true;
                 },
             };
-            if (k in kfs) return await kfs[k]();
+            if (k in kfs) return await kfs[k](...a);
             let namefs = {
             };
             if (this.name in namefs)
                 if (k in namefs[this.name])
-                    return await namefs[this.name][k]();
+                    return await namefs[this.name][k](...a);
             throw new MissingError("Could not set for key: "+k);
         }
         async onThis(k, ...a) {
@@ -3340,8 +3340,8 @@ const MAIN = async () => {
                 return null;
             }));
 
-            ipc.handle("get", decorate(async (e, k) => await this.getCallback(e.sender.id, k)));
-            ipc.handle("set", decorate(async (e, k, v) => await this.setCallback(e.sender.id, k, v)));
+            ipc.handle("get", decorate(async (e, k, ...a) => await this.getCallback(e.sender.id, k, ...a)));
+            ipc.handle("set", decorate(async (e, k, v, ...a) => await this.setCallback(e.sender.id, k, v, ...a)));
 
             ipc.handle("on", decorate(async (e, k, ...a) => await this.onCallback(e.sender.id, k, ...a)));
 
@@ -3748,21 +3748,21 @@ const MAIN = async () => {
             return null;
         }
 
-        async get(k) { return await this.getThis(k); }
-        async set(k, v) { return await this.setThis(k, v); }
+        async get(k, ...a) { return await this.getThis(k, ...a); }
+        async set(k, v, ...a) { return await this.setThis(k, v, ...a); }
         async on(k, ...a) { return await this.onThis(k, ...a); }
 
-        async getCallback(id, k) {
-            if (this.hasWindow()) return await this.window.manager.getCallback(id, k);
+        async getCallback(id, k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.getCallback(id, k, ...a);
             let win = this.identifyWindow(id);
             if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
-            return await win.get(k);
+            return await win.get(k, ...a);
         }
-        async setCallback(id, k, v) {
-            if (this.hasWindow()) return await this.window.manager.setCallback(id, k, v);
+        async setCallback(id, k, v, ...a) {
+            if (this.hasWindow()) return await this.window.manager.setCallback(id, k, v, ...a);
             let win = this.identifyWindow(id);
             if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
-            return await win.set(k, v);
+            return await win.set(k, v, ...a);
         }
         async onCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
@@ -3771,8 +3771,8 @@ const MAIN = async () => {
             return await win.on(k, ...a);
         }
 
-        async getThis(k) {
-            if (this.hasWindow()) return await this.window.manager.getThis(k);
+        async getThis(k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.getThis(k, ...a);
             k = String(k);
             let kfs = {
                 "packaged": async () => {
@@ -3939,11 +3939,11 @@ const MAIN = async () => {
                     return String(util.is(repo, "obj") ? repo.url : repo);
                 },
             };
-            if (k in kfs) return await kfs[k]();
+            if (k in kfs) return await kfs[k](...a);
             throw new MissingError("Could not get for key: "+k);
         }
-        async setThis(k, v) {
-            if (this.hasWindow()) return await this.window.manager.setThis(k, v);
+        async setThis(k, v, ...a) {
+            if (this.hasWindow()) return await this.window.manager.setThis(k, v, ...a);
             k = String(k);
             let kfs = {
                 "_fulltyped": async (type=null, pth=null, k=null, v=null) => {
@@ -3993,7 +3993,7 @@ const MAIN = async () => {
                 "holiday-opt": async () => await kfs._fullconfig("holidayOpt", !!v),
                 "fs-version": async () => await this.setFSVersion(v),
             };
-            if (k in kfs) return await kfs[k]();
+            if (k in kfs) return await kfs[k](...a);
             throw new MissingError("Could not set for key: "+k);
         }
         async onThis(k, ...a) {
