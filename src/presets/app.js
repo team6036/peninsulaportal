@@ -307,6 +307,7 @@ export default class App extends core.App {
                                 try {
                                     await window.api.set("theme", id);
                                 } catch (e) { await this.doError("Theme Set Error", "ThemeId: "+id, e); }
+                                await update();
                             });
                         }
                         this.contextMenu = menu;
@@ -314,13 +315,14 @@ export default class App extends core.App {
                         this.placeContextMenu(r.left, r.bottom);
                         menu.elem.style.minWidth = r.width+"px";
                     });
-                    setInterval(async () => {
+                    const update = async () => {
                         if (eThemeBtn.children[0] instanceof HTMLDivElement) {
                             let theme = await window.api.get("theme");
                             theme = util.is(theme, "obj") ? theme : String(theme);
                             eThemeBtn.children[0].textContent = util.is(theme, "obj") ? "Custom" : util.ensure(util.ensure(await window.api.get("themes"), "obj")[theme], "obj").name;
                         }
-                    }, 250);
+                    };
+                    setInterval(update, 250);
                 }
                 const eNativeThemeBtn = document.getElementById("native-theme");
                 if (eNativeThemeBtn instanceof HTMLButtonElement) {
@@ -340,6 +342,7 @@ export default class App extends core.App {
                                 try {
                                     window.api.set("native-theme", id);
                                 } catch (e) { await this.doError("Native Theme Set Error", "NativeThemeId: "+id, e); }
+                                await update();
                             });
                         }
                         this.contextMenu = menu;
@@ -347,7 +350,7 @@ export default class App extends core.App {
                         this.placeContextMenu(r.left, r.bottom);
                         menu.elem.style.minWidth = r.width+"px";
                     });
-                    setInterval(async () => {
+                    const update = async () => {
                         const nativeThemes = {
                             system: { name: "Use System" },
                             dark: { name: "Dark" },
@@ -355,7 +358,8 @@ export default class App extends core.App {
                         };
                         if (eNativeThemeBtn.children[0] instanceof HTMLDivElement)
                             eNativeThemeBtn.children[0].textContent = util.ensure(nativeThemes[await window.api.get("native-theme")], "obj").name;
-                    }, 250);
+                    };
+                    setInterval(update, 250);
                 }
             })();
 
