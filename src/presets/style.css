@@ -14,10 +14,6 @@
     flex-basis: 100%;
 }
 
-#mount > .page {
-    padding: 10px;
-}
-
 #PAGE {
     display: flex;
     flex-direction: row;
@@ -25,4 +21,139 @@
     justify-content: flex-start;
     align-items: stretch;
     align-content: center;
+}
+
+#PAGE > .side {
+    width: min(25%, 300px);
+    max-height: 100%;
+    padding: 40px 20px;
+    padding-left: min(100px, max(20px, calc(100px - (80/100) * (300px - min(25%, 300px)))));
+
+    overflow: auto;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    background-color: var(--v2-8);
+}
+#PAGE > .side > .header {
+    padding: 5px 15px;
+
+    color: var(--v6);
+
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 12px;
+}
+#PAGE > .side > .line {
+    min-height: 1px;
+    max-height: 1px;
+    margin: 10px 0px;
+
+    background-color: var(--v3);
+}
+#PAGE > .side > button {
+    --bg: transparent;
+    --bgh: var(--v2);
+    --bgd: transparent;
+
+    padding: 10px 15px;
+
+    justify-content: flex-start;
+
+    border-radius: 5px;
+
+    font-size: 14px;
+}
+#PAGE > .side > button.this {
+    --bg: var(--v2);
+    --bgh: var(--v3);
+    --bgd: var(--v2);
+}
+#PAGE > .side > .info {
+    padding: 20px 15px;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
+}
+#PAGE > .side > .info > .nav {
+    margin-bottom: 15px;
+    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 10px;
+}
+#PAGE > .side > .info > .nav button {
+    --bg: transparent;
+    --fg: var(--v4);
+    --bgh: transparent;
+    --fgh: var(--v8);
+    --bgd: transparent;
+    --fgd: var(--v3);
+
+    padding: 0px;
+
+    font-size: 16px;
+}
+#PAGE > .side > .info > :not(.nav) {
+    color: var(--v4);
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    font-family: monospace;
+    font-size: 12px;
+}
+#PAGE > .main {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    padding: 40px;
+    overflow: auto;
+}
+#PAGE > .main > div {
+    transform: scale(110%);
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+
+    opacity: 0%;
+    visibility: hidden;
+
+    filter: blur(10px);
+
+    transition: transform var(--t), opacity var(--t), visibility var(--t), filter var(--t);
+}
+#PAGE > .main > div.this {
+    transform: scale(100%);
+
+    opacity: 100%;
+    visibility: inherit;
+
+    filter: blur(0px);
 }

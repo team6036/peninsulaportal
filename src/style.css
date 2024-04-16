@@ -2137,7 +2137,8 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item.show {
     display: flex;
 }
-.form > .item.horizontal {
+.form:not(.horizontal) > .item.horizontal,
+.form.horizontal > .item:not(.not-horizontal) {
     flex-direction: row;
 }
 .form > .item > .header {
@@ -2151,12 +2152,14 @@ p-loading[type="bounce"] > div > div:last-child {
 
     user-select: none;
 }
-.form.center > .item:not(.horizontal) > .header {
+.form.center:not(.horizontal) > .item:not(.not-horizontal) > .header,
+.form.center.horizontal > .item.not-horizontal > .header {
     justify-content: center;
 
     text-align: center;
 }
-.form.right > .item:not(.horizontal) > .header {
+.form.right:not(.horizontal) > .item:not(.not-horizontal) > .header,
+.form.right.horizontal > .item.not-horizontal > .header {
     flex-direction: row-reverse;
 
     text-align: right;
@@ -2164,7 +2167,8 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item > .header.show {
     display: flex;
 }
-.form > .item.horizontal > .header {
+.form > .item.horizontal > .header,
+.form.horizontal > .item:not(.not-horizontal) > .header {
     flex-basis: 100%;
 }
 .form > .item > .header > .name {
@@ -2177,7 +2181,8 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item > .header.sub > .name {
     font-weight: 500;
 }
-.form > .item:not(.horizontal) > .header > .name {
+.form:not(.horizontal) > .item:not(.not-horizontal) > .header > .name,
+.form.horizontal > .item.not-horizontal > .header > .name {
     flex-basis: 100%;
 }
 .form > .item > .header > .type {

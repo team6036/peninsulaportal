@@ -6104,12 +6104,12 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
 
         const form = new core.Form();
+        form.isHorizontal = true;
 
         this.#expr = null;
         this.#exprCompiled = null;
         this.#fExpr = form.addField(new core.Form.TextInput("expression"));
         this.fExpr.type = "";
-        this.fExpr.isHorizontal = true;
         this.fExpr.addHandler("change-value", () => {
             const value = this.fExpr.value;
             this.expr = (value.length > 0) ? value : null;

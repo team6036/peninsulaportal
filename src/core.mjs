@@ -7522,6 +7522,8 @@ export class Form extends util.Target {
         this.#elem = document.createElement("div");
         this.elem.classList.add("form");
 
+        this.isHorizontal = null;
+
         this.isShown = true;
     }
 
@@ -7576,6 +7578,14 @@ export class Form extends util.Target {
         if (!["right", "center"].includes(v)) return;
         this.elem.classList.add(v);
     }
+
+    get isHorizontal() { return this.elem.classList.contains("horizontal"); }
+    set isHorizontal(v) {
+        if (v) this.elem.classList.add("horizontal");
+        else this.elem.classList.remove("horizontal");
+    }
+    get isVertical() { return !this.isHorizontal; }
+    set isVertical(v) { this.isHorizontal = !v; }
 
     get isShown() { return this.elem.classList.contains("show"); }
     set isShown(v) {
@@ -7638,6 +7648,8 @@ Form.Field = class FormField extends util.Target {
         this.addHandler("change-toggleOn", () => (this.eToggleInput.checked = this.toggleOn));
         this.addHandler("change-toggleDisabled", () => (this.eToggleInput.disabled = this.toggleDisabled));
 
+        this.isHorizontal = null;
+
         this.isShown = this.showHeader = this.showContent = true;
         this.showToggle = false;
 
@@ -7696,13 +7708,26 @@ Form.Field = class FormField extends util.Target {
     get eToggleInput() { return this.#eToggleInput; }
     get eContent() { return this.#eContent; }
 
-    get isHorizontal() { return this.elem.classList.contains("horizontal"); }
-    set isHorizontal(v) {
-        if (v) this.elem.classList.add("horizontal");
-        else this.elem.classList.remove("horizontal");
+    get isHorizontal() {
+        if (this.elem.classList.contains("horizontal")) return true;
+        if (this.elem.classList.contains("not-horizontal")) return false;
+        return null;
     }
-    get isVertical() { return !this.isHorizontal; }
-    set isVertical(v) { this.isHorizontal = !v; }
+    set isHorizontal(v) {
+        if (v == true) this.elem.classList.add("horizontal");
+        else this.elem.classList.remove("horizontal");
+        if (v == false) this.elem.classList.add("not-horizontal");
+        else this.elem.classList.remove("not-horizontal");
+    }
+    get isVertical() {
+        let v = this.isHorizontal;
+        if (v == null) return null;
+        return !v;
+    }
+    set isVertical(v) {
+        if (v == null) return this.isHorizontal = null;
+        this.isHorizontal = !v;
+    }
 
     get isShown() { return this.elem.classList.contains("show"); }
     set isShown(v) {
