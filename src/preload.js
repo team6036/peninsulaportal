@@ -40,7 +40,8 @@ contextBridge.exposeInMainWorld("api", {
     getRepoRoot: () => ipcRenderer.invoke("get-root", "repo"),
 
     get: (k, ...a) => ipcRenderer.invoke("get", k, ...a),
-    set: (k, v, ...a) => ipcRenderer.invoke("set", k, v, ...a),
+    set: (k, ...a) => ipcRenderer.invoke("set", k, ...a),
+    del: (k, ...a) => ipcRenderer.invoke("del", k, ...a),
     
     on: f => {
         ipcRenderer.on("send", f);

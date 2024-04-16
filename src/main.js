@@ -140,6 +140,25 @@ const MAIN = async () => {
         }
         return src;
     }
+    function isEmpty(o) {
+        if (util.is(o, "arr")) return o.length <= 0;
+        if (util.is(o, "obj")) return isEmpty(Object.keys(o));
+        return false;
+    }
+    function cleanupEmpties(o) {
+        if (util.is(o, "arr"))
+            return Array.from(o).filter(o => {
+                o = cleanupEmpties(o);
+            });
+        if (util.is(o, "obj")) {
+            for (let k in o) {
+                o[k] = cleanupEmpties(o[k]);
+                if (isEmpty(o[k])) delete o[k];
+            }
+            return o;
+        }
+        return isEmpty(o) ? null : o;
+    }
 
     const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
@@ -1123,7 +1142,7 @@ const MAIN = async () => {
                     checkMessages();
                 };
                 if (!this.canOperate) return finishAndShow();
-                let bounds = util.ensure(await this.on("state-get", "bounds"), "obj");
+                let bounds = util.ensure(await this.get("state", "bounds"), "obj");
                 if (("width" in bounds) && (bounds.width < 50)) return finishAndShow();
                 if (("height" in bounds) && (bounds.height < 50)) return finishAndShow();
                 this.window.setBounds(bounds);
@@ -1148,7 +1167,7 @@ const MAIN = async () => {
                 perm &&= !!(await window.stop());
             this.log(`STOP children - perm: ${perm}`);
             if (!perm) return this.perm = false;
-            if (this.canOperate && this.hasWindow()) await this.on("state-set", "bounds", this.window.getBounds());
+            if (this.canOperate && this.hasWindow()) await this.set("state", "bounds", this.window.getBounds());
             this.#started = false;
             await Promise.all(this.processManager.processes.map(async process => await process.terminate()));
             await Promise.all(this.clientManager.clients.map(async client => {
@@ -1372,11 +1391,17 @@ const MAIN = async () => {
             } catch (e) { if (!(e instanceof MissingError)) throw e; }
             return await this.manager.get(k, ...a);
         }
-        async set(k, v, ...a) {
+        async set(k, ...a) {
             try {
-                return await this.setThis(k, v, ...a);
+                return await this.setThis(k, ...a);
             } catch (e) { if (!(e instanceof MissingError)) throw e; }
-            return await this.manager.set(k, v, ...a);
+            return await this.manager.set(k, ...a);
+        }
+        async del(k, ...a) {
+            try {
+                return await this.delThis(k, ...a);
+            } catch (e) { if (!(e instanceof MissingError)) throw e; }
+            return await this.manager.del(k, ...a);
         }
         async on(k, ...a) {
             try {
@@ -1518,6 +1543,59 @@ const MAIN = async () => {
                     if (!this.hasWindow()) return null;
                     return this.window.getBounds();
                 },
+
+                "_writable": async (pth, k="") => {
+                    k = String(k).split(".").filter(part => part.length > 0);
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(pth);
+                    } catch (e) {}
+                    let o = null;
+                    try {
+                        o = JSON.parse(content);
+                    } catch (e) {}
+                    o = util.ensure(o, "obj");
+                    let stack = o;
+                    while (k.length > 0) {
+                        let name = k.shift();
+                        if (!util.is(stack, "obj")) return null;
+                        if (!(name in stack)) return null;
+                        stack = stack[name];
+                    }
+                    return stack;
+                },
+                "config": async (k="") => await kfs._writable("config.json", k),
+                "root": async () => ((await kfs["config"]("root")) || this.dataPath),
+                "state": async (k="") => await kfs._writable("state.json", k),
+
+                "projects": async () => {
+                    await this.onThis("projects-affirm");
+                    const root = await this.getThis("root");
+                    return util.ensure(await WindowManager.dirList([root, "projects"]), "arr")
+                        .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".json")))
+                        .map(dirent => dirent.name)
+                        .map(name => name.slice(0, -5));
+                },
+                "project": async id => {
+                    await this.onThis("projects-affirm");
+                    id = lib.FSOperator.sanitizeName(id);
+                    const root = await this.getThis("root");
+                    let content = null;
+                    try {
+                        content = await WindowManager.fileRead([root, "projects", id+".json"]);
+                    } catch (e) {}
+                    return content;
+                },
+                "projects-meta": async () => {
+                    await this.onThis("projects-affirm");
+                    const root = await this.getThis("root");
+                    let content = null;
+                    try {
+                        content = await WindowManager.fileRead([root, "projects.json"]);
+                    } catch (e) {}
+                    return content;
+                },
             };
             if (k in kfs) return await kfs[k](...a);
             let namefs = {
@@ -1560,11 +1638,12 @@ const MAIN = async () => {
                     return await namefs[this.name][k](...a);
             throw new MissingError("Could not get for key: "+k);
         }
-        async setThis(k, v, ...a) {
+        async setThis(k, ...a) {
             if (!this.started) return false;
             k = String(k);
+            let v = a[0];
             let kfs = {
-                "menu": async () => {
+                "menu": async v => {
                     this.#menu = null;
                     try {
                         let signal = new util.Target();
@@ -1773,6 +1852,47 @@ const MAIN = async () => {
                         this.window.setTitleBarOverlay(v);
                     return true;
                 },
+
+                "_writable": async (pth, k="", v=null) => {
+                    k = String(k).split(".").filter(part => part.length > 0);
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(pth);
+                    } catch (e) {}
+                    let o = null;
+                    try {
+                        o = JSON.parse(content);
+                    } catch (e) {}
+                    o = util.ensure(o, "obj");
+                    let stack = o;
+                    while (k.length > 0) {
+                        let name = k.shift();
+                        if (!util.is(stack, "obj")) return null;
+                        if (k.length > 0) {
+                            if (!(name in stack)) return null;
+                            stack = stack[name];
+                        } else [stack[name], stack] = [v, stack[name]];
+                    }
+                    o = cleanupEmpties(o);
+                    await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    return stack;
+                },
+                "config": async (k="", v=null) => await kfs._writable("config.json", k, v),
+                "root": async (v=null) => await kfs["config"]("root", v),
+                "state": async (k="", v=null) => await kfs._writable("state.json", k, v),
+
+                "project": async (id, content) => {
+                    await this.onThis("projects-affirm");
+                    id = lib.FSOperator.sanitizeName(id);
+                    const root = await this.getThis("root");
+                    await WindowManager.fileWrite([root, "projects", id+".json"], content);
+                },
+                "projects-meta": async content => {
+                    await this.onThis("projects-affirm");
+                    const root = await this.getThis("root");
+                    await WindowManager.fileWrite([root, "projects.json"], content);
+                },
             };
             if (k in kfs) return await kfs[k](...a);
             let namefs = {
@@ -1781,6 +1901,61 @@ const MAIN = async () => {
                 if (k in namefs[this.name])
                     return await namefs[this.name][k](...a);
             throw new MissingError("Could not set for key: "+k);
+        }
+        async delThis(k, ...a) {
+            if (!this.started) return null;
+            k = String(k);
+            let kfs = {
+                "_writable": async (pth, k="") => {
+                    k = String(k).split(".").filter(part => part.length > 0);
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(pth);
+                    } catch (e) {}
+                    let o = null;
+                    try {
+                        o = JSON.parse(content);
+                    } catch (e) {}
+                    o = util.ensure(o, "obj");
+                    let stack = o;
+                    while (k.length > 0) {
+                        let name = k.shift();
+                        if (!util.is(stack, "obj")) return null;
+                        if (k.length > 0) {
+                            if (!(name in stack)) return null;
+                            stack = stack[name];
+                        } else {
+                            let v = stack[name];
+                            delete stack[name];
+                            stack = v;
+                        }
+                    }
+                    o = cleanupEmpties(o);
+                    await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    return stack;
+                },
+                "config": async (k="") => await kfs._writable("config.json", k),
+                "root": async () => await kfs["config"]("root"),
+                "state": async (k="") => await kfs._writable("state.json", k),
+
+                "project": async id => {
+                    await this.onThis("projects-affirm");
+                    id = lib.FSOperator.sanitizeName(id);
+                    const root = await this.getThis("root");
+                    try {
+                        await WindowManager.fileDelete([root, "projects", id+".json"]);
+                    } catch (e) { return false; }
+                    return true;
+                },
+            };
+            if (k in kfs) return await kfs[k](...a);
+            let namefs = {
+            };
+            if (this.name in namefs)
+                if (k in namefs[this.name])
+                    return await namefs[this.name][k](...a);
+            throw new MissingError("Could not del for key: "+k);
         }
         async onThis(k, ...a) {
             if (!this.started) return null;
@@ -1793,79 +1968,6 @@ const MAIN = async () => {
                 },
                 "close": async () => {
                     await this.stop();
-                },
-                "_config": async () => {
-                    await this.affirm();
-                    let content = "";
-                    try {
-                        content = await this.fileRead("config.json");
-                    } catch (e) {}
-                    let config = null;
-                    try {
-                        config = JSON.parse(content);
-                    } catch (e) {}
-                    config = util.ensure(config, "obj");
-                    return config;
-                },
-                "config-get": async k => {
-                    k = String(k);
-                    let config = await kfs._config();
-                    return config[k];
-                },
-                "config-set": async (k, v) => {
-                    k = String(k);
-                    let config = await kfs._config();
-                    config[k] = v;
-                    await this.fileWrite("config.json", JSON.stringify(config, null, "\t"));
-                    return v;
-                },
-                "config-del": async k => {
-                    k = String(k);
-                    let config = await kfs._config();
-                    let v = config[k];
-                    delete config[k];
-                    await this.fileWrite("config.json", JSON.stringify(config, null, "\t"));
-                    return v;
-                },
-                "root-get": async () => {
-                    return (await kfs["config-get"]("root")) || this.dataPath;
-                },
-                "root-set": async root => {
-                    root = util.ensure(root, "str", this.dataPath);
-                    return await kfs["config-set"]("root", root);
-                },
-                "_state": async () => {
-                    await this.affirm();
-                    let content = "";
-                    try {
-                        content = await this.fileRead("state.json");
-                    } catch (e) {}
-                    let state = null;
-                    try {
-                        state = JSON.parse(content);
-                    } catch (e) {}
-                    state = util.ensure(state, "obj");
-                    return state;
-                },
-                "state-get": async k => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    return state[k];
-                },
-                "state-set": async (k, v) => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    state[k] = v;
-                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
-                    return v;
-                },
-                "state-del": async k => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    let v = state[k];
-                    delete state[k];
-                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
-                    return v;
                 },
                 "capture": async rect => {
                     if (!this.hasWindow()) return;
@@ -1881,67 +1983,11 @@ const MAIN = async () => {
                 "file-save-dialog": async options => {
                     return await electron.dialog.showSaveDialog(this.window, options);
                 },
-                "project-affirm": async () => {
-                    const root = await kfs["root-get"]();
+                "projects-affirm": async () => {
+                    const root = await this.getThis("root");
                     await WindowManager.dirAffirm(root);
                     await WindowManager.fileAffirm([root, "projects.json"]);
                     await WindowManager.dirAffirm([root, "projects"]);
-                },
-                "projects-get": async () => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    return util.ensure(await WindowManager.dirList([root, "projects"]), "arr")
-                        .filter(dirent => (dirent.type == "file" && dirent.name.endsWith(".json")))
-                        .map(dirent => dirent.name)
-                        .map(name => name.slice(0, -5));
-                },
-                "projects-list": async () => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    let dirents = null;
-                    try {
-                        dirents = WindowManager.dirList([root, "projects"]);
-                    } catch (e) {}
-                    return util.ensure(dirents, "arr");
-                },
-                "project-get": async id => {
-                    await kfs["project-affirm"]();
-                    id = lib.FSOperator.sanitizeName(id);
-                    const root = await kfs["root-get"]();
-                    let content = null;
-                    try {
-                        content = await WindowManager.fileRead([root, "projects", id+".json"]);
-                    } catch (e) {}
-                    return content;
-                },
-                "project-set": async (id, content) => {
-                    await kfs["project-affirm"]();
-                    id = lib.FSOperator.sanitizeName(id);
-                    const root = await kfs["root-get"]();
-                    await WindowManager.fileWrite([root, "projects", id+".json"], content);
-                },
-                "project-del": async id => {
-                    await kfs["project-affirm"]();
-                    id = lib.FSOperator.sanitizeName(id);
-                    const root = await kfs["root-get"]();
-                    try {
-                        await WindowManager.fileDelete([root, "projects", id+".json"]);
-                    } catch (e) { return false; }
-                    return true;
-                },
-                "projects-meta-get": async () => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    let content = null;
-                    try {
-                        content = await WindowManager.fileRead([root, "projects.json"]);
-                    } catch (e) {}
-                    return content;
-                },
-                "projects-meta-set": async content => {
-                    await kfs["project-affirm"]();
-                    const root = await kfs["root-get"]();
-                    await WindowManager.fileWrite([root, "projects.json"], content);
                 },
                 "read": async (type, pth) => {
                     if (["wpilog", "ds", "dslog", "dsevents"].includes(type))
@@ -2211,7 +2257,7 @@ const MAIN = async () => {
 
                         let project = null;
                         try {
-                            project = JSON.parse(await kfs["project-get"](id), sublib.REVIVER.f);
+                            project = JSON.parse(await this.get("project", id), sublib.REVIVER.f);
                         } catch (e) {}
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
                         if (!project.hasPath(pthId)) throw new Error("Nonexistent path with id: "+pthId+" for project id: "+id);
@@ -2284,7 +2330,7 @@ const MAIN = async () => {
                             const process = this.processManager.addProcess(new Process("spawn", project.config.scriptPython, [script], { cwd: root }));
                             process.id = "script";
                             const finish = async () => {
-                                const appRoot = await this.on("root-get");
+                                const appRoot = await this.get("root");
                                 const doAppRoot = appRoot != this.dataPath;
                                 await WindowManager.dirAffirm([root, "paths"]);
                                 if (doAppRoot) await WindowManager.dirAffirm([appRoot, "paths"]);
@@ -2375,7 +2421,7 @@ const MAIN = async () => {
 
                         let project = null;
                         try {
-                            project = JSON.parse(await kfs["project-get"](id), sublib.REVIVER.f);
+                            project = JSON.parse(await this.get("project", id), sublib.REVIVER.f);
                         } catch (e) {}
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
 
@@ -3341,7 +3387,8 @@ const MAIN = async () => {
             }));
 
             ipc.handle("get", decorate(async (e, k, ...a) => await this.getCallback(e.sender.id, k, ...a)));
-            ipc.handle("set", decorate(async (e, k, v, ...a) => await this.setCallback(e.sender.id, k, v, ...a)));
+            ipc.handle("set", decorate(async (e, k, ...a) => await this.setCallback(e.sender.id, k, ...a)));
+            ipc.handle("del", decorate(async (e, k, ...a) => await this.delCallback(e.sender.id, k, ...a)));
 
             ipc.handle("on", decorate(async (e, k, ...a) => await this.onCallback(e.sender.id, k, ...a)));
 
@@ -3434,7 +3481,7 @@ const MAIN = async () => {
 
                 this.addWindow(new Window(this, "PORTAL"));
 
-                let windows = await this.on("state-get", "windows");
+                let windows = await this.get("state", "windows");
                 const dfs = (manager, windows) => {
                     windows = util.ensure(windows, "obj");
                     for (let name in windows) {
@@ -3508,12 +3555,12 @@ const MAIN = async () => {
             const dfs = (manager, windows) => {
                 manager.windows.forEach(window => {
                     if (window.isModal) return;
-                    windows[window.name] = {};
+                    windows[window.name] = { _keep: true };
                     dfs(window.windowManager, windows[window.name]);
                 });
             };
             dfs(this, windows);
-            await this.on("state-set", "windows", windows);
+            await this.set("state", "windows", windows);
 
             return await this.clearWindows();
         }
@@ -3749,7 +3796,8 @@ const MAIN = async () => {
         }
 
         async get(k, ...a) { return await this.getThis(k, ...a); }
-        async set(k, v, ...a) { return await this.setThis(k, v, ...a); }
+        async set(k, ...a) { return await this.setThis(k, ...a); }
+        async del(k, ...a) { return await this.delThis(k, ...a); }
         async on(k, ...a) { return await this.onThis(k, ...a); }
 
         async getCallback(id, k, ...a) {
@@ -3758,11 +3806,17 @@ const MAIN = async () => {
             if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
             return await win.get(k, ...a);
         }
-        async setCallback(id, k, v, ...a) {
-            if (this.hasWindow()) return await this.window.manager.setCallback(id, k, v, ...a);
+        async setCallback(id, k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.setCallback(id, k, ...a);
             let win = this.identifyWindow(id);
             if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
-            return await win.set(k, v, ...a);
+            return await win.set(k, ...a);
+        }
+        async delCallback(id, k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.delCallback(id, k, ...a);
+            let win = this.identifyWindow(id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            return await win.del(k, ...a);
         }
         async onCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
@@ -3938,13 +3992,37 @@ const MAIN = async () => {
                     let repo = (await kfs._fullpackage()).repository;
                     return String(util.is(repo, "obj") ? repo.url : repo);
                 },
+
+                "_writable": async (pth, k="") => {
+                    k = String(k).split(".").filter(part => part.length > 0);
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(pth);
+                    } catch (e) {}
+                    let o = null;
+                    try {
+                        o = JSON.parse(content);
+                    } catch (e) {}
+                    o = util.ensure(o, "obj");
+                    let stack = o;
+                    while (k.length > 0) {
+                        let name = k.shift();
+                        if (!util.is(stack, "obj")) return null;
+                        if (!(name in stack)) return null;
+                        stack = stack[name];
+                    }
+                    return stack;
+                },
+                "state": async (k="") => await kfs._writable("state.json", k),
             };
             if (k in kfs) return await kfs[k](...a);
             throw new MissingError("Could not get for key: "+k);
         }
-        async setThis(k, v, ...a) {
-            if (this.hasWindow()) return await this.window.manager.setThis(k, v, ...a);
+        async setThis(k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.setThis(k, ...a);
             k = String(k);
+            let v = a[0];
             let kfs = {
                 "_fulltyped": async (type=null, pth=null, k=null, v=null) => {
                     if (type == null) return;
@@ -3992,9 +4070,74 @@ const MAIN = async () => {
                 "native-theme": async () => await kfs._fullconfig("nativeTheme", String(v)),
                 "holiday-opt": async () => await kfs._fullconfig("holidayOpt", !!v),
                 "fs-version": async () => await this.setFSVersion(v),
+
+                "_writable": async (pth, k="", v=null) => {
+                    k = String(k).split(".").filter(part => part.length > 0);
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(pth);
+                    } catch (e) {}
+                    let o = null;
+                    try {
+                        o = JSON.parse(content);
+                    } catch (e) {}
+                    o = util.ensure(o, "obj");
+                    let stack = o;
+                    while (k.length > 0) {
+                        let name = k.shift();
+                        if (!util.is(stack, "obj")) return null;
+                        if (k.length > 0) {
+                            if (!(name in stack)) return null;
+                            stack = stack[name];
+                        } else [stack[name], stack] = [v, stack[name]];
+                    }
+                    o = cleanupEmpties(o);
+                    await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    return stack;
+                },
+                "state": async (k="", v=null) => await kfs._writable("state.json", k, v),
             };
             if (k in kfs) return await kfs[k](...a);
             throw new MissingError("Could not set for key: "+k);
+        }
+        async delThis(k, ...a) {
+            if (this.hasWindow()) return await this.window.manager.delThis(k, ...a);
+            k = String(k);
+            let kfs = {
+                "_writable": async (pth, k="") => {
+                    k = String(k).split(".").filter(part => part.length > 0);
+                    await this.affirm();
+                    let content = "";
+                    try {
+                        content = await this.fileRead(pth);
+                    } catch (e) {}
+                    let o = null;
+                    try {
+                        o = JSON.parse(content);
+                    } catch (e) {}
+                    o = util.ensure(o, "obj");
+                    let stack = o;
+                    while (k.length > 0) {
+                        let name = k.shift();
+                        if (!util.is(stack, "obj")) return null;
+                        if (k.length > 0) {
+                            if (!(name in stack)) return null;
+                            stack = stack[name];
+                        } else {
+                            let v = stack[name];
+                            delete stack[name];
+                            stack = v;
+                        }
+                    }
+                    o = cleanupEmpties(o);
+                    await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    return stack;
+                },
+                "state": async (k="") => await kfs._writable("state.json", k),
+            };
+            if (k in kfs) return await kfs[k](...a);
+            throw new MissingError("Could not del for key: "+k);
         }
         async onThis(k, ...a) {
             if (this.hasWindow()) return await this.window.manager.onThis(k, ...a);
@@ -4032,39 +4175,6 @@ const MAIN = async () => {
                             res(util.TEXTDECODER.decode(buff));
                         });
                     });
-                },
-                "_state": async () => {
-                    await this.affirm();
-                    let content = "";
-                    try {
-                        content = await this.fileRead("state.json");
-                    } catch (e) {}
-                    let state = null;
-                    try {
-                        state = JSON.parse(content);
-                    } catch (e) {}
-                    state = util.ensure(state, "obj");
-                    return state;
-                },
-                "state-get": async k => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    return state[k];
-                },
-                "state-set": async (k, v) => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    state[k] = v;
-                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
-                    return v;
-                },
-                "state-del": async k => {
-                    k = String(k);
-                    let state = await kfs._state();
-                    let v = state[k];
-                    delete state[k];
-                    await this.fileWrite("state.json", JSON.stringify(state, null, "\t"));
-                    return v;
                 },
                 "open": async url => await electron.shell.openExternal(url),
                 "cleanup": async () => await this.cleanup(),
