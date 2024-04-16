@@ -628,22 +628,22 @@ export class App extends util.Target {
                 await this.postResult("post-setup");
                 let appState = null;
                 try {
-                    appState = await window.api.send("state-get", "app-state");
+                    appState = await window.api.get("state", "app-state");
                 } catch (e) { await this.doError("State Error", "AppState Get", e); }
                 try {
                     await this.loadState(appState);
                 } catch (e) { await this.doError("Load Error", "AppState", e); }
                 let page = "";
                 try {
-                    page = await window.api.send("state-get", "page");
+                    page = await window.api.get("state", "page");
                 } catch (e) { await this.doError("State Error", "CurrentPage Get", e); }
                 let pageState = null;
                 try {
-                    pageState = await window.api.send("state-get", "page-state");
+                    pageState = await window.api.get("state", "page-state");
                 } catch (e) { await this.doError("State Error", "PageState Get", e); }
                 let pagePersistentStates = {};
                 try {
-                    pagePersistentStates = util.ensure(await window.api.send("state-get", "page-persistent-states"), "obj");
+                    pagePersistentStates = util.ensure(await window.api.get("state", "page-persistent-states"), "obj");
                 } catch (e) { await this.doError("State Error", "PagePersistentStates Get", e); }
                 if (this.hasPage(page)) {
                     try {
@@ -990,20 +990,20 @@ export class App extends util.Target {
         });
         this.addHandler("perm", async () => {
             try {
-                await window.api.send("state-set", "app-state", this.state);
+                await window.api.set("state", "app-state", this.state);
             } catch (e) { await this.doError("State Error", "AppState Set", e); }
             if (this.hasPage(this.page)) {
                 try {
-                    await window.api.send("state-set", "page", this.page);
+                    await window.api.set("state", "page", this.page);
                 } catch (e) { await this.doError("State Error", "CurrentPage Set", e); }
                 try {
-                    await window.api.send("state-set", "page-state", this.getPage(this.page).state);
+                    await window.api.set("state", "page-state", this.getPage(this.page).state);
                 } catch (e) { await this.doError("State Error", "PageState Set", e); }
             }
             let pagePersistentStates = {};
             this.pages.forEach(name => (pagePersistentStates[name] = this.getPage(name).persistentState));
             try {
-                await window.api.send("state-set", "page-persistent-states", pagePersistentStates);
+                await window.api.set("state", "page-persistent-states", pagePersistentStates);
             } catch (e) { await this.doError("State Error", "PagePersistentStates Set", e); }
             return true;
         });
@@ -3663,10 +3663,10 @@ export class AppFeature extends App {
     }
     async loadProjects() {
         await this.postResult("load-projects");
-        let projectIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
+        let projectIds = util.ensure(await window.api.get("projects"), "arr").map(id => String(id));
         let projects = [];
         await Promise.all(projectIds.map(async id => {
-            let projectContent = await window.api.send("project-get", id);
+            let projectContent = await window.api.get("project", id);
             let project = JSON.parse(projectContent, this.constructor.REVIVER.f);
             projects.push(project);
         }));
@@ -3687,18 +3687,18 @@ export class AppFeature extends App {
         await this.postResult("save-projects");
         let changes = new Set(this.changes);
         this.clearChanges();
-        let oldIds = util.ensure(await window.api.send("projects-get"), "arr").map(id => String(id));
+        let oldIds = util.ensure(await window.api.get("projects"), "arr").map(id => String(id));
         let newIds = this.projects;
         await Promise.all(oldIds.map(async id => {
             if (newIds.includes(id)) return;
-            await window.api.send("project-del", id);
+            await window.api.del("project", id);
         }));
         await Promise.all(newIds.map(async id => {
             if (!(changes.has("*") || changes.has(":"+id))) return;
             let project = this.getProject(id);
             if (!changes.has("*")) project.meta.modified = util.getTime();
             let projectContent = JSON.stringify(project);
-            await window.api.send("project-set", id, projectContent);
+            await window.api.set("project", id, projectContent);
         }));
         await this.postResult("saved-projects");
     }
