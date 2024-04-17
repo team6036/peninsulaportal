@@ -2215,6 +2215,10 @@ p-loading[type="bounce"] > div > div:last-child {
     align-content: center;
     gap: 5px;
 }
+.form > .item.input.horizontal > .content,
+.form.horizontal > .item.input:not(.not-horizontal) > .content {
+    flex-basis: 50%;
+}
 .form > .item.input > .content > input {
     --use-o: 1;
 
@@ -2288,12 +2292,14 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item.enum.dropdown > .content > button {
     flex-basis: 100%;
 
-    padding: 5px;
+    padding: 5px 10px;
 
     border-radius: 5px;
 }
 .form > .item.enum.dropdown > .content > button > div {
     flex-basis: 100%;
+
+    min-width: max-content;
 }
 .form > .item.enum.select {
     --use-o: 1;
@@ -2328,7 +2334,7 @@ p-loading[type="bounce"] > div > div:last-child {
 
     min-width: calc((100% - (0px * var(--gap))) / var(--n));
     max-width: calc((100% - (0px * var(--gap))) / var(--n));
-    padding: 2px;
+    padding: 2px 5px;
 
     text-transform: uppercase;
     font-size: 12px;
@@ -2381,12 +2387,12 @@ p-loading[type="bounce"] > div > div:last-child {
     --bgd: transparent;
 
     min-width: max-content;
-    padding: 5px;
+    padding: 5px 10px;
 
     border-radius: 5px;
 }
 .form > .item.json > .content > button {
-    padding: 5px;
+    padding: 5px 10px;
 
     border-radius: 5px;
 }
@@ -2402,7 +2408,7 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item.button > .content > button {
     flex-basis: 100%;
 
-    padding: 5px;
+    padding: 5px 10px;
 
     border-radius: 5px;
 }

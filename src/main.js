@@ -49,6 +49,7 @@ const MAIN = async () => {
     lib.FSOperator.fs = fs;
 
     const cp = require("child_process");
+    const { URL } = require("url");
 
     const electron = require("electron");
     let showError = this.showError = async (name, type, e) => {
@@ -1088,7 +1089,7 @@ const MAIN = async () => {
                     this.manager.addHandler("change-remWindow", () => checkForShow());
                 },
                 PANEL: async () => {
-                    const client = this.clientManager.addClient(new Client((await this.get("socket-host"))+"/api/panel"));
+                    const client = this.clientManager.addClient(new Client(new URL("./api/panel", await this.get("socket-host"))));
                     client.id = "logger";
                     client.addHandler("stream-logs", async (fname, payload, meta, ssStream) => {
                         await this.affirm();
@@ -2023,32 +2024,38 @@ const MAIN = async () => {
             if (k in kfs) return await kfs[k](...a);
             let namefs = {
                 PRESETS: {
-                    "cmd-open-app-data-dir": async () => {
+                    // "cmd-open-app-data-dir": async () => {
+                    "cmd-app-data": async () => {
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.manager.dataPath }));
                             process.addHandler("exit", code => res(code));
                             process.addHandler("error", e => rej(e));
                         });
                     },
-                    "cmd-cleanup-app-data-dir": async () => {
-                        await this.on("cleanup");
-                    },
-                    "cmd-open-app-log-dir": async () => {
+                    // "cmd-open-app-log-dir": async () => {
+                    "cmd-app-logs": async () => {
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: WindowManager.makePath(this.manager.dataPath, "logs") }));
                             process.addHandler("exit", code => res(code));
                             process.addHandler("error", e => rej(e));
                         });
                     },
-                    "cmd-clear-app-log-dir": async () => {
+                    // "cmd-cleanup-app-data-dir": async () => {
+                    "cmd-app-data-cleanup": async () => {
+                        await this.on("cleanup");
+                    },
+                    // "cmd-clear-app-log-dir": async () => {
+                    "cmd-app-logs-clear": async () => {
                         let dirents = await this.manager.dirList("logs");
                         let n = 0, nTotal = dirents.length;
                         await Promise.all(dirents.map(async dirent => {
                             await this.manager.fileDelete(["logs", dirent.name]);
                             n++;
-                            this.cacheSet("clear-app-log-dir-progress", n/nTotal);
+                            // this.cacheSet("clear-app-log-dir-progress", n/nTotal);
+                            this.cacheSet("app-logs-clear-progress", n/nTotal);
                         }));
-                        this.cacheSet("clear-app-log-dir-progress", 1);
+                        // this.cacheSet("clear-app-log-dir-progress", 1);
+                        this.cacheSet("app-logs-clear-progress", 1);
                     },
                     "cmd-poll-db-host": async () => {
                         this.on("try-load");
@@ -2881,7 +2888,7 @@ const MAIN = async () => {
                 this.addLoad("find");
                 const host = await this.get("db-host");
                 const doFallback = host == null;
-                const theHost = host + "/api";
+                const theHost = String(new URL("./api/", host));
                 const isCompMode = await this.get("comp-mode");
                 this.remLoad("find");
                 if (doFallback) log(`poll ( host: FALLBACK )`);
@@ -2934,7 +2941,7 @@ const MAIN = async () => {
                         path.join(__dirname, "assets", "fallback", "config.json"), pth,
                         { recursive: true, force: true },
                     );
-                    else await fetchAndPipe(theHost+"/config", pth);
+                    else await fetchAndPipe(new URL("config", theHost), pth);
                     log("config - success");
                 } catch (e) {
                     log(`config - error - ${e}`);
@@ -2951,7 +2958,9 @@ const MAIN = async () => {
                     return await this.tryLoad(version);
                 }
                 log("next host and current host match - continuing");
-                const assetsHost = String(await this.get("assets-host"));
+                let url = new URL(String(await this.get("assets-host")));
+                if (!url.pathname.endsWith("/")) url.pathname += "/";
+                const assetsHost = String(url);
                 const fullConfig = util.ensure(await this.get("_fullconfig"), "obj");
                 const assetsGHUser = fullConfig.assetsGHUser;
                 const assetsGHRepo = fullConfig.assetsGHRepo;
@@ -3020,7 +3029,7 @@ const MAIN = async () => {
                                 path.join(__dirname, "assets", "fallback", "templates.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/templates", pth);
+                            else await fetchAndPipe(new URL("templates", theHost), pth);
                             log("templates.json - success");
                         } catch (e) {
                             log(`templates.json - error - ${e}`);
@@ -3075,7 +3084,7 @@ const MAIN = async () => {
                                 log(`templates/${name}.${tag}`);
                                 this.addLoad(`templates/${name}.${tag}`);
                                 try {
-                                    await fetchAndPipe(assetsHost+"/templates."+name+"."+tag, pth);
+                                    await fetchAndPipe(new URL("templates."+name+"."+tag, assetsHost), pth);
                                     log(`templates/${name}.${tag} - success`);
                                 } catch (e) {
                                     log(`templates/${name}.${tag} - error - ${e}`);
@@ -3094,7 +3103,7 @@ const MAIN = async () => {
                                 path.join(__dirname, "assets", "fallback", "robots.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/robots", pth);
+                            else await fetchAndPipe(new URL("robots", theHost), pth);
                             log("robots.json - success");
                         } catch (e) {
                             log(`robots.json - error - ${e}`);
@@ -3143,7 +3152,7 @@ const MAIN = async () => {
                                 log(`robots/${name}.${tag}`);
                                 this.addLoad(`robots/${name}.${tag}`);
                                 try {
-                                    await fetchAndPipe(assetsHost+"/robots."+name+"."+tag, pth);
+                                    await fetchAndPipe(new URL("robots."+name+"."+tag, assetsHost), pth);
                                     log(`robots/${name}.${tag} - success`);
                                 } catch (e) {
                                     log(`robots/${name}.${tag} - error - ${e}`);
@@ -3162,7 +3171,7 @@ const MAIN = async () => {
                                 path.join(__dirname, "assets", "fallback", "holidays.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/holidays", pth);
+                            else await fetchAndPipe(new URL("holidays", theHost), pth);
                             log("holidays.json - success");
                         } catch (e) {
                             log(`holidays.json - error - ${e}`);
@@ -3221,7 +3230,7 @@ const MAIN = async () => {
                                 log(`holidays/${fullname}`);
                                 this.addLoad(`holidays/${fullname}`);
                                 try {
-                                    await fetchAndPipe(assetsHost+"/holidays."+fullname, pth);
+                                    await fetchAndPipe(new URL("holidays."+fullname, assetsHost), pth);
                                     log(`holidays/${fullname} - success`);
                                 } catch (e) {
                                     log(`holidays/${fullname} - error - ${e}`);
@@ -3266,7 +3275,7 @@ const MAIN = async () => {
                                 path.join(__dirname, "assets", "fallback", "themes.json"), pth,
                                 { recursive: true, force: true },
                             );
-                            else await fetchAndPipe(theHost+"/themes", pth);
+                            else await fetchAndPipe(new URL("themes", theHost), pth);
                             log("themes.json - success");
                         } catch (e) {
                             log(`themes.json - error - ${e}`);
@@ -3277,7 +3286,7 @@ const MAIN = async () => {
                     })(),
                     ...FEATURES.map(async name => {
                         let namefs;
-                        const subhost = theHost+"/"+name.toLowerCase();
+                        const subhost = new URL(name.toLowerCase()+"/", theHost);
                         const sublog = (...a) => log(`[${name}]`, ...a);
                         namefs = {
                             PLANNER: async () => {
@@ -3326,7 +3335,7 @@ const MAIN = async () => {
                                         pth,
                                         { recursive: true, force: true },
                                     );
-                                    else await fetchAndPipe(subhost+"/templates", pth);
+                                    else await fetchAndPipe(new URL("templates", subhost), pth);
                                     sublog("templates.json - success");
                                 } catch (e) {
                                     sublog(`templates.json - error - ${e}`);
@@ -3968,7 +3977,8 @@ const MAIN = async () => {
                 "native-theme": async () => util.ensure((await kfs._fullconfig()).nativeTheme, "str", "system"),
                 "holiday-opt": async () => !!(await kfs._fullconfig()).holidayOpt,
                 "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
-                "cleanup": async () => await this.getCleanup(),
+                // "cleanup": async () => await this.getCleanup(),
+                "cleanup": async () => util.ensure(await this.getCleanup(), "arr").map(pth => WindowManager.makePath(pth)),
                 "fs-version": async () => await this.getFSVersion(),
                 "_fullpackage": async () => {
                     let content = "";

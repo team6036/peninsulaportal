@@ -7782,6 +7782,8 @@ Form.Header = class FormHeader extends Form.Field {
     constructor(name) {
         super("§header");
 
+        this.elem.classList.add("header");
+
         this.showContent = false;
 
         this.header = name;
@@ -7795,6 +7797,8 @@ Form.Header = class FormHeader extends Form.Field {
 Form.SubHeader = class FormHeader extends Form.Field {
     constructor(name) {
         super("§subheader");
+
+        this.elem.classList.add("subheader");
 
         this.showContent = false;
 
@@ -7826,12 +7830,6 @@ Form.NInput = class FormNInput extends Form.Field {
 
         this.#inputType = null;
 
-        this.addHandler("change-disabled", () => {
-            this.inputs.forEach(inp => {
-                inp.disabled = this.disabled;
-            });
-        });
-
         this.addHandler("hook", () => {
             for (let i = 0; i < this.n; i++) {
                 let hooks = [...this.#hooks[0], ...this.#hooks[i+1]];
@@ -7850,6 +7848,7 @@ Form.NInput = class FormNInput extends Form.Field {
 
         this.addHandler("apply", () => {
             for (let i = 0; i < this.n; i++) {
+                this.inputs[i].disabled = this.disabled;
                 this.inputs[i].type = this.inputType;
                 if (this.hasValue(i)) this.setInputValue(i, this.getValue(i));
                 else this.inputs[i].value = "";
@@ -8020,6 +8019,13 @@ Form.NInput = class FormNInput extends Form.Field {
     get isText() { return ["email", "password", "search", "tel", "text", "url"].includes(this.inputType); }
     get isFile() { return ["file"].includes(this.inputType); }
     get isNum() { return ["number", "range"].includes(this.inputType); }
+
+    get focused() {
+        for (let inp of this.inputs)
+            if (document.activeElement == inp)
+                return true;
+        return false;
+    }
 };
 Form.NNumberInput = class FormNNumberInput extends Form.NInput {
     #app;
@@ -8287,6 +8293,10 @@ Form.Input3d = class FormInput3d extends Form.NNumberInput {
 Form.TextInput = class FormTextInput extends Form.NInput {
     constructor(name) {
         super(name, 1, "text");
+
+        this.defineHook(-1, (e, i) => {
+            this.setValue(i, this.getInputValue(i));
+        });
 
         this.inputs.forEach(inp => {
             inp.autocomplete = "off";

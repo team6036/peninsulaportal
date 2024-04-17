@@ -94,7 +94,7 @@ class Collection extends util.Target {
         if (this.#ignore && !ignoreIgnore) return null;
         if (!this.hasHost()) return null;
         try {
-            let resp = await fetch(this.host+"/api/"+this.name);
+            let resp = await fetch(new URL("./api/"+this.name, this.host));
             if (resp.status != 200) throw resp.status;
             return await resp.json();
         } catch (e) { this.app.doError(lib.getName(this.name)+" Get Error", "", e); }
@@ -104,7 +104,7 @@ class Collection extends util.Target {
         if (this.#ignore && !ignoreIgnore) return false;
         if (!this.hasHost()) return false;
         try {
-            let resp = await fetch(this.host+"/api/"+this.name, {
+            let resp = await fetch(new URL("./api/"+this.name, this.host), {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -123,7 +123,7 @@ class Collection extends util.Target {
         if (this.#ignore && !ignoreIgnore) return false;
         if (!this.hasHost()) return false;
         try {
-            let resp = await fetch(this.host+"/api/"+this.name, {
+            let resp = await fetch(new URL("./api/"+this.name, this.host), {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -940,7 +940,7 @@ export default class App extends core.App {
                             let data = null;
                             if (host != null) {
                                 try {
-                                    let resp = await fetch(host+"/api/config");
+                                    let resp = await fetch(new URL("./api/config", host));
                                     if (resp.status != 200) throw resp.status;
                                     data = await resp.json();
                                 } catch (e) { this.app.doError("Config Get Error", "", e); }
@@ -955,7 +955,7 @@ export default class App extends core.App {
                             const host = await window.api.get("db-host");
                             if (host == null) return false;
                             try {
-                                let resp = await fetch(host+"/api/config", {
+                                let resp = await fetch(new URL("./api/config", host), {
                                     method: "PUT",
                                     headers: {
                                         "Content-Type": "application/json",
