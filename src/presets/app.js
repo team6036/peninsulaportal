@@ -71,8 +71,17 @@ export default class App extends core.App {
             }
 
             this.forms = [
-                new App.DatabaseForm(),
+                new App.GeneralForm(this),
+                new App.AppearanceForm(this),
             ];
+            let deltaSum = 0;
+            const timer = new util.Timer(true);
+            this.addHandler("update", delta => {
+                deltaSum += delta;
+                if (!timer.dequeueAll(250)) return;
+                this.forms.forEach(form => form.update(deltaSum));
+                deltaSum = 0;
+            });
         });
     }
 
@@ -133,16 +142,19 @@ export default class App extends core.App {
 }
 App.Form = class AppForm extends util.Target {
     #name;
+    #app;
     
     #elem;
 
     #form;
     #fHeader;
     
-    constructor(name, header=null) {
+    constructor(name, app, header=null) {
         super();
 
         this.#name = String(name);
+        if (!(app instanceof App)) throw new Error("App is not instance of class App");
+        this.#app = app;
 
         this.#elem = document.createElement("div");
 
@@ -150,12 +162,12 @@ App.Form = class AppForm extends util.Target {
         this.elem.appendChild(this.form.elem);
         this.form.isHorizontal = true;
         this.#fHeader = this.form.addField(new core.Form.Header(""));
-        this.fHeader.eName.style.fontSize = "20px";
 
         this.header = header || util.formatText(this.name);
     }
 
     get name() { return this.#name; }
+    get app() { return this.#app; }
 
     get elem() { return this.#elem; }
 
@@ -177,28 +189,154 @@ App.Form = class AppForm extends util.Target {
     set isClosed(v) { this.isOpen = !v; }
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
+
+    update(delta) { this.post("update", delta); }
 };
-App.DatabaseForm = class AppDatabaseForm extends App.Form {
+App.GeneralForm = class AppDatabaseForm extends App.Form {
+    #fAppData;
+    #fAppLogs;
+    #fAppDataCleanup;
+    #fAppLogsClear;
+
     #fDBHost;
     #fAssetsHost;
     #fSocketHost;
     #fScoutURL;
 
-    constructor() {
-        super("database");
+    constructor(app) {
+        super("general", app);
+
+        let ignore = false;
+
+        this.#fAppData = this.form.addField(new core.Form.Button("application-data-directory", "Open"));
+        this.fAppData.addHandler("trigger", async e => await window.api.send("cmd-app-data"));
+        this.#fAppLogs = this.form.addField(new core.Form.Button("application-log-directory", "Open"));
+        this.fAppLogs.addHandler("trigger", async e => await window.api.send("cmd-app-logs"));
+        this.#fAppDataCleanup = this.form.addField(new core.Form.Button("cleanup-application-directory", "Cleanup", "special"));
+        this.fAppDataCleanup.addHandler("trigger", async e => {
+            let pop = this.app.confirm(
+                "Cleanup",
+                "Are you sure you want to cleanup application data?\nHere's the files that will be deleted!",
+            );
+            pop.infos = [(await window.api.get("cleanup")).join("\n")];
+            let result = await pop.whenResult();
+            if (!result) return;
+            await window.api.send("cmd-app-data-cleanup");
+        });
+        this.#fAppLogsClear = this.form.addField(new core.Form.Button("clear-application-log-directory", "Clear", "off"));
+        this.fAppLogsClear.addHandler("trigger", async e => {
+            const id = setInterval(() => {
+                const progress = Math.min(1, Math.max(0, util.ensure(window.cache.get("app-logs-clear-progress"), "num")));
+                if (this.hasApp()) this.app.progress = progress;
+                if (progress < 1) return;
+                if (this.hasApp()) this.app.progress = null;
+            }, 10);
+            await window.api.send("cmd-app-logs-clear");
+            clearInterval(id);
+        });
+
+        this.form.addField(new core.Form.Line());
 
         this.#fDBHost = this.form.addField(new core.Form.TextInput("database-host"));
+        this.fDBHost.showToggle = true;
         this.fDBHost.type = "";
+        this.fDBHost.addHandler("change-value", async () => {
+            if (ignore) return;
+            await window.api.set("db-host", this.fDBHost.value);
+        });
+        this.fDBHost.addHandler("change-toggleOn", async () => {
+            if (ignore) return;
+            await window.api.set("comp-mode", this.fDBHost.toggleOff);
+        });
+
         this.#fAssetsHost = this.form.addField(new core.Form.TextInput("assets-host"));
         this.fAssetsHost.type = "";
         this.#fSocketHost = this.form.addField(new core.Form.TextInput("socket-host"));
         this.fSocketHost.type = "";
         this.#fScoutURL = this.form.addField(new core.Form.TextInput("scout-url"));
         this.fScoutURL.type = "";
+
+        this.fAssetsHost.disabled = this.fSocketHost.disabled = this.fScoutURL.disabled = true;
+
+        this.addHandler("update", async delta => {
+            ignore = true;
+            await Promise.all([
+                async () => {
+                    this.fDBHost.toggleOff = await window.api.get("comp-mode");
+                    if (this.fDBHost.focused) return;
+                    this.fDBHost.value = await window.api.get("db-host");
+                },
+                async () => {
+                    this.fAssetsHost.value = await window.api.get("assets-host");
+                },
+                async () => {
+                    this.fSocketHost.value = await window.api.get("socket-host");
+                },
+                async () => {
+                    this.fScoutURL.value = await window.api.get("scout-url");
+                },
+            ].map(f => f()));
+            ignore = false;
+        });
     }
+
+    get fAppData() { return this.#fAppData; }
+    get fAppLogs() { return this.#fAppLogs; }
+    get fAppDataCleanup() { return this.#fAppDataCleanup; }
+    get fAppLogsClear() { return this.#fAppLogsClear; }
 
     get fDBHost() { return this.#fDBHost; }
     get fAssetsHost() { return this.#fAssetsHost; }
     get fSocketHost() { return this.#fSocketHost; }
     get fScoutURL() { return this.#fScoutURL; }
+};
+App.AppearanceForm = class AppAppearanceForm extends App.Form {
+    #fTheme;
+    #fNativeTheme;
+
+    constructor(app) {
+        super("appearance", app);
+
+        let ignore = false;
+
+        this.#fTheme = this.form.addField(new core.Form.DropdownInput("theme", [], null));
+        this.fTheme.addHandler("change-value", async () => {
+            if (ignore) return;
+            if (!this.fTheme.hasValue()) return;
+            await window.api.set("active-theme", this.fTheme.value);
+        });
+        this.#fNativeTheme = this.form.addField(new core.Form.DropdownInput("native-theme", [
+            { value: "light", name: "Light" },
+            { value: "dark", name: "Dark" },
+            { value: "system", name: "System" },
+        ], null));
+        this.fNativeTheme.addHandler("change-value", async () => {
+            if (ignore) return;
+            if (!this.fNativeTheme.hasValue()) return;
+            await window.api.set("native-theme", this.fNativeTheme.value);
+        });
+
+        this.fTheme.app = this.fNativeTheme.app = this.app;
+
+        this.addHandler("update", async delta => {
+            ignore = true;
+            await Promise.all([
+                async () => {
+                    let themes = util.ensure(await window.api.get("themes"), "obj");
+                    this.fTheme.values = Object.keys(themes).map(k => {
+                        let v = util.ensure(themes[k], "obj");
+                        return { value: k, name: v.name || k };
+                    });
+                    this.fTheme.value = await window.api.get("active-theme");
+                },
+                async () => {
+                    this.fNativeTheme.value = await window.api.get("native-theme");
+                },
+            ].map(f => f()));
+            ignore = false;
+        });
+    }
+
+    get fTheme() { return this.#fTheme; }
+    get fNativeTheme() { return this.#fNativeTheme; }
 };
