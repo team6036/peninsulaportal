@@ -167,3 +167,7 @@
 #PAGE > .main > div > .form > .item.header > .header > .name {
     font-size: 20px;
 }
+
+.form input {
+    --od: transparent;
+}

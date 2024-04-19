@@ -293,6 +293,7 @@ App.GeneralForm = class AppDatabaseForm extends App.Form {
 App.AppearanceForm = class AppAppearanceForm extends App.Form {
     #fTheme;
     #fNativeTheme;
+    #fHoliday;
 
     constructor(app) {
         super("appearance", app);
@@ -315,6 +316,15 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
             if (!this.fNativeTheme.hasValue()) return;
             await window.api.set("native-theme", this.fNativeTheme.value);
         });
+        this.#fHoliday = this.form.addField(new core.Form.NInput("holiday", 1, "url"));
+        this.fHoliday.inputs[0].placeholder = "No holiday";
+        this.fHoliday.showToggle = true;
+        this.fHoliday.type = "";
+        this.fHoliday.disabled = true;
+        this.fHoliday.addHandler("change-toggleOn", async () => {
+            if (ignore) return;
+            await window.api.set("holiday-opt", this.fHoliday.toggleOff);
+        });
 
         this.fTheme.app = this.fNativeTheme.app = this.app;
 
@@ -332,6 +342,10 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
                 async () => {
                     this.fNativeTheme.value = await window.api.get("native-theme");
                 },
+                async () => {
+                    this.fHoliday.toggleOff = await window.api.get("holiday-opt");
+                    this.fHoliday.value = [util.formatText(util.ensure(await window.api.get("active-holiday"), "str"))];
+                },
             ].map(f => f()));
             ignore = false;
         });
@@ -339,4 +353,5 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
 
     get fTheme() { return this.#fTheme; }
     get fNativeTheme() { return this.#fNativeTheme; }
+    get fHoliday() { return this.#fHoliday; }
 };
