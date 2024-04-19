@@ -139,7 +139,7 @@ const MAIN = async () => {
             }
             return dest;
         }
-        return src;
+        return (src == null) ? dest : src;
     }
     function isEmpty(o) {
         if (util.is(o, "arr")) return o.length <= 0;
@@ -216,6 +216,8 @@ const MAIN = async () => {
 
     DATASCHEMA.push(/^planner\/templates\.json$/);
     DATASCHEMA.push(/^planner\/solver.*$/);
+
+    const DATATYPES = ["data", "override"];
 
     class MissingError extends Error {
         constructor(message, ...a) {
@@ -2024,7 +2026,6 @@ const MAIN = async () => {
             if (k in kfs) return await kfs[k](...a);
             let namefs = {
                 PRESETS: {
-                    // "cmd-open-app-data-dir": async () => {
                     "cmd-app-data": async () => {
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.manager.dataPath }));
@@ -2032,7 +2033,6 @@ const MAIN = async () => {
                             process.addHandler("error", e => rej(e));
                         });
                     },
-                    // "cmd-open-app-log-dir": async () => {
                     "cmd-app-logs": async () => {
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: WindowManager.makePath(this.manager.dataPath, "logs") }));
@@ -2040,21 +2040,17 @@ const MAIN = async () => {
                             process.addHandler("error", e => rej(e));
                         });
                     },
-                    // "cmd-cleanup-app-data-dir": async () => {
                     "cmd-app-data-cleanup": async () => {
                         await this.on("cleanup");
                     },
-                    // "cmd-clear-app-log-dir": async () => {
                     "cmd-app-logs-clear": async () => {
                         let dirents = await this.manager.dirList("logs");
                         let n = 0, nTotal = dirents.length;
                         await Promise.all(dirents.map(async dirent => {
                             await this.manager.fileDelete(["logs", dirent.name]);
                             n++;
-                            // this.cacheSet("clear-app-log-dir-progress", n/nTotal);
                             this.cacheSet("app-logs-clear-progress", n/nTotal);
                         }));
-                        // this.cacheSet("clear-app-log-dir-progress", 1);
                         this.cacheSet("app-logs-clear-progress", 1);
                     },
                     "cmd-poll-db-host": async () => {
@@ -2961,16 +2957,16 @@ const MAIN = async () => {
                 let url = new URL(String(await this.get("assets-host")));
                 if (!url.pathname.endsWith("/")) url.pathname += "/";
                 const assetsHost = String(url);
-                const fullConfig = util.ensure(await this.get("_fullconfig"), "obj");
-                const assetsGHUser = fullConfig.assetsGHUser;
-                const assetsGHRepo = fullConfig.assetsGHRepo;
-                const assetsGHRelease = fullConfig.assetsGHRelease;
+                // const fullConfig = util.ensure(await this.get("_fullconfig"), "obj");
+                // const assetsGHUser = fullConfig.assetsGHUser;
+                // const assetsGHRepo = fullConfig.assetsGHRepo;
+                // const assetsGHRelease = fullConfig.assetsGHRelease;
                 let kit = null, releaseId = null, assets = null;
-                if (false && [assetsGHUser, assetsGHRepo, assetsGHRelease].map(v => util.is(v, "str")).all()) {
-                    kit = new octokit.Octokit({
-                        auth: fullConfig.assetsGHAuth,
-                    });
-                }
+                // if (false && [assetsGHUser, assetsGHRepo, assetsGHRelease].map(v => util.is(v, "str")).all()) {
+                //     kit = new octokit.Octokit({
+                //         auth: fullConfig.assetsGHAuth,
+                //     });
+                // }
                 if (doFallback) log("poll ( SKIP HOST )");
                 else {
                     log("poll ( USING HOST )");
@@ -3193,7 +3189,7 @@ const MAIN = async () => {
                             name = String(name);
                             const holiday = holidays[name];
                             await Promise.all([
-                                "svg", "png", // "ico", "icns",
+                                "svg", "png",
                                 "hat1", "hat2",
                             ].map(async tag => {
                                 if (["svg", "png"].includes(tag))
@@ -3202,7 +3198,8 @@ const MAIN = async () => {
                                 if (["hat1", "hat2"].includes(tag))
                                     if ("hat" in holiday && !holiday.hat)
                                         return;
-                                let fullname = name+((tag == "hat1") ? "-hat-1.svg" : (tag == "hat2") ? "-hat-2.svg" : "."+tag);
+                                let fullname = lib.FSOperator.sanitizeName(name);
+                                fullname += ["hat1", "hat2"].includes(tag) ? ("-hat-"+tag.slice(3)+".svg") : ("."+tag);
                                 const pth = path.join(this.dataPath, "data", "holidays", "icons", fullname);
                                 const key = "holidays."+fullname;
                                 if (kit && releaseId && assets && (key in assets)) {
@@ -3847,137 +3844,215 @@ const MAIN = async () => {
                 "loading": async () => {
                     return this.isLoading;
                 },
-                "_fulltyped": async (type=null, pth=null, applier=null) => {
-                    if (type == null) return null;
-                    if (pth == null) return null;
-                    applier = util.ensure(applier, "func");
-                    let data = null;
+
+                "_writable": async (pth, k="") => {
+                    k = String(k).split(".").filter(part => part.length > 0);
+                    await this.affirm();
+                    let content = "";
                     try {
-                        let content = await this.fileRead([type, pth]);
-                        data = util.ensure(JSON.parse(content), "obj");
-                        applier(data, type);
+                        content = await this.fileRead(pth);
                     } catch (e) {}
+                    let o = null;
+                    try {
+                        o = JSON.parse(content);
+                    } catch (e) {}
+                    o = util.ensure(o, "obj");
+                    let stack = o;
+                    while (k.length > 0) {
+                        let name = k.shift();
+                        if (!util.is(stack, "obj")) return null;
+                        if (!(name in stack)) return null;
+                        stack = stack[name];
+                    }
+                    return stack;
+                },
+
+                "themes": async (type=null) => {
+                    let data = {};
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "themes.json"], "themes");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["themes"](type));
+                    }
                     return util.ensure(data, "obj");
                 },
-                "_full": async (pth=null, applier=null) => {
-                    if (pth == null) return null;
-                    let data = {};
-                    for (let type of ["data", "override"])
-                        data = mergeThings(data, await kfs._fulltyped(type, pth, applier));
-                    return data;
-                },
-                "_fullthemes": async () => await kfs._full("themes.json"),
-                "themes": async () => {
-                    return util.ensure((await kfs._fullthemes()).themes, "obj");
-                },
-                "active-theme": async () => {
-                    let active = (await kfs._fullthemes()).active;
-                    let themes = await kfs.themes();
-                    return (active in themes) ? active : null;
-                },
-                "theme": async () => await kfs["active-theme"](),
-                "_fulltemplates": async () => await kfs._full(["templates", "templates.json"], (data, type) => {
-                    let subdata = util.ensure(data.templates, "obj");
-                    for (let k in subdata) {
-                        subdata[k] = util.ensure(subdata[k], "obj");
-                        subdata[k]._source = type;
+                "active-theme": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "themes.json"], "active");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-theme"](type));
                     }
-                }),
-                "templates": async () => {
-                    return util.ensure((await kfs._fulltemplates()).templates, "obj");
+                    return (data == null) ? null : String(data);
                 },
-                "template-images": async () => {
-                    let templates = await kfs.templates();
+                "theme": async (type=null) => await kfs["active-theme"](type),
+                "templates": async (type=null) => {
+                    let data = {};
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "templates.json"], "templates");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["templates"](type));
+                    }
+                    return util.ensure(data, "obj");
+                },
+                "template-images": async (type=null) => {
                     let images = {};
-                    Object.keys(templates).map(name => (images[name] = path.join(this.dataPath, templates[name]._source, "templates", "images", name+".png")));
+                    if (DATATYPES.includes(type)) {
+                        let templates = await kfs["templates"](type);
+                        await Promise.all(Object.keys(templates).map(async name => {
+                            const pth = WindowManager.makePath(this.dataPath, type, "templates", "images", lib.FSOperator.sanitizeName(name)+".png");
+                            if (!(await WindowManager.fileHas(pth))) return;
+                            images[name] = pth;
+                        }));
+                    } else {
+                        for (let type of DATATYPES) images = mergeThings(images, await kfs["template-images"](type));
+                    }
                     return images;
                 },
-                "template-models": async () => {
-                    let templates = await kfs.templates();
+                "template-models": async (type=null) => {
                     let models = {};
-                    Object.keys(templates).map(name => (models[name] = path.join(this.dataPath, templates[name]._source, "templates", "models", name+".glb")));
+                    if (DATATYPES.includes(type)) {
+                        let templates = await kfs["templates"](type);
+                        await Promise.all(Object.keys(templates).map(async name => {
+                            const pth = WindowManager.makePath(this.dataPath, type, "templates", "models", lib.FSOperator.sanitizeName(name)+".glb");
+                            if (!(await WindowManager.fileHas(pth))) return;
+                            models[name] = pth;
+                        }));
+                    } else {
+                        for (let type of DATATYPES) models = mergeThings(models, await kfs["template-models"](type));
+                    }
                     return models;
                 },
-                "active-template": async () => {
-                    let active = (await kfs._fulltemplates()).active;
-                    let templates = await kfs.templates();
-                    return (active in templates) ? active : null;
-                },
-                "template": async () => await kfs["active-template"](),
-                "_fullrobots": async () => await kfs._full(["robots", "robots.json"], (data, type) => {
-                    let subdata = util.ensure(data.robots, "obj");
-                    for (let k in subdata) {
-                        subdata[k] = util.ensure(subdata[k], "obj");
-                        subdata[k]._source = type;
+                "active-template": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "templates.json"], "active");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-template"](type));
                     }
-                }),
-                "robots": async () => {
-                    return util.ensure((await kfs._fullrobots()).robots, "obj");
+                    return (data == null) ? null : String(data);
                 },
-                "robot-models": async () => {
-                    let robots = await kfs.robots();
+                "template": async (type=null) => await kfs["active-template"](type),
+                "robots": async (type=null) => {
+                    let data = {};
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "templates.json"], "templates");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["templates"](type));
+                    }
+                    return util.ensure(data, "obj");
+                },
+                "robot-models": async (type=null) => {
                     let models = {};
-                    Object.keys(robots).map(name => (models[name] = path.join(this.dataPath, robots[name]._source, "robots", "models", name+".glb")));
+                    if (DATATYPES.includes(type)) {
+                        let robots = await kfs["robots"](type);
+                        await Promise.all(Object.keys(robots).map(async name => {
+                            const pth = WindowManager.makePath(this.dataPath, type, "robots", "models", lib.FSOperator.sanitizeName(name)+".glb");
+                            if (!(await WindowManager.fileHas(pth))) return;
+                            models[name] = pth;
+                        }));
+                    } else {
+                        for (let type of DATATYPES) models = mergeThings(models, await kfs["robot-models"](type));
+                    }
                     return models;
                 },
-                "active-robot": async () => {
-                    let active = (await kfs._fullrobots()).active;
-                    let robots = await kfs.robots();
-                    return (active in robots) ? active : null;
+                "active-robot": async (type=null) => {
+                    if (DATATYPES.includes(type)) return await kfs._writable([type, "robots", "robots.json"], "active");
+                    let data = null;
+                    for (let type of DATATYPES) data = mergeThings(data, await kfs["active-robot"](type));
+                    return (data == null) ? null : String(data);
                 },
-                "robot": async () => await kfs["active-robot"](),
-                "_fullholidays": async () => await kfs._full(["holidays", "holidays.json"], (data, type) => {
-                    let subdata = util.ensure(data.holidays, "obj");
-                    for (let k in subdata) {
-                        subdata[k] = util.ensure(subdata[k], "obj");
-                        subdata[k]._source = type;
+                "robot": async (type=null) => await kfs["active-robot"](type),
+                "holidays": async (type=null) => {
+                    let data = {};
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "holidays", "holidays.json"], "holidays");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["holidays"](type));
                     }
-                }),
-                "holidays": async () => {
-                    return util.ensure((await kfs._fullholidays()).holidays, "obj");
+                    return util.ensure(data, "obj");
                 },
-                "holiday-icons": async () => {
-                    let holidays = await kfs.holidays();
+                "holiday-icons": async (type=null) => {
                     let icons = {};
-                    Object.keys(holidays).map(name => {
-                        icons[name] = {};
-                        ["svg", "png", "ico", "icns", "hat1", "hat2"].forEach(type => {
-                            let name2 = name;
-                            if (["hat1", "hat2"].includes(type)) name2 += "-hat-"+type.slice(3)+".svg";
-                            else name2 += "."+type;
-                            icons[name][type] = path.join(this.dataPath, holidays[name]._source, "holidays", "icons", name2);
-                        });
-                    });
+                    if (DATATYPES.includes(type)) {
+                        let holidays = await kfs["holidays"](type);
+                        await Promise.all(Object.keys(holidays).map(async name => {
+                            icons[name] = {};
+                            await Promise.all(["svg", "png", "ico", "icns", "hat1", "hat2"].map(async tag => {
+                                let fullname = lib.FSOperator.sanitizeName(name);
+                                fullname += ["hat1", "hat2"].includes(tag) ? ("-hat-"+tag.slice(3)+".svg") : ("."+tag);
+                                const pth = WindowManager.makePath(this.dataPath, type, "holidays", "icons", fullname);
+                                if (!(await WindowManager.fileHas(pth))) return;
+                                icons[name][tag] = pth;
+                            }));
+                        }));
+                    } else {
+                        for (let type of DATATYPES) icons = mergeThings(icons, await kfs["holiday-icons"](type));
+                    }
                     return icons;
                 },
-                "active-holiday": async () => {
-                    let active = (await kfs._fullholidays()).active;
-                    let holidays = await kfs.holidays();
+                "active-holiday": async (type=null) => {
                     if (await this.get("holiday-opt")) return null;
-                    return (active in holidays) ? active : null;
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "holidays", "holidays.json"], "active");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-holiday"](type));
+                    }
+                    return (data == null) ? null : String(data);
                 },
-                "holiday": async () => await kfs["active-holiday"](),
-                "_fullconfig": async () => await kfs._full("config.json"),
-                "_fullconfig_data": async () => await kfs._fulltyped("data", "config.json"),
-                "db-host": async () => {
-                    let host = (await kfs._fullconfig_data()).dbHost;
-                    return (host == null) ? null : String(host);
+                "holiday": async (type=null) => await kfs["active-holiday"](type),
+                "db-host": async (type=null) => {
+                    type = "data";
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "dbHost");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["db-host"](type));
+                    }
+                    return (data == null) ? null : String(data);
                 },
-                "assets-host": async () => {
-                    return String((await kfs._fullconfig()).assetsHost);
+                "assets-host": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "assetsHost");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["assets-host"](type));
+                    }
+                    return (data == null) ? null : String(data);
                 },
-                "socket-host": async () => {
-                    let host = (await kfs._fullconfig()).socketHost;
-                    return (host == null) ? (await kfs["db-host"]()) : String(host);
+                "socket-host": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "socketHost");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["socket-host"](type));
+                    }
+                    return (data == null) ? (await kfs["db-host"](type)) : String(data);
                 },
-                "scout-url": async () => {
-                    return String((await kfs._fullconfig()).scoutURL);
+                "scout-url": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "scoutURL");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["scout-url"](type));
+                    }
+                    return (data == null) ? null : String(data);
                 },
-                "comp-mode": async () => !!(await kfs._fullconfig()).isCompMode,
-                "native-theme": async () => util.ensure((await kfs._fullconfig()).nativeTheme, "str", "system"),
-                "holiday-opt": async () => !!(await kfs._fullconfig()).holidayOpt,
+                "comp-mode": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "isCompMode");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["comp-mode"](type));
+                    }
+                    return !!data;
+                },
+                "native-theme": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "nativeTheme");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["native-theme"](type));
+                    }
+                    return util.ensure(data, "str", "system");
+                },
+                "holiday-opt": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "holidayOpt");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["holiday-opt"](type));
+                    }
+                    return !!data;
+                },
                 "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
-                // "cleanup": async () => await this.getCleanup(),
                 "cleanup": async () => util.ensure(await this.getCleanup(), "arr").map(pth => WindowManager.makePath(pth)),
                 "fs-version": async () => await this.getFSVersion(),
                 "_fullpackage": async () => {
@@ -4003,27 +4078,6 @@ const MAIN = async () => {
                     return String(util.is(repo, "obj") ? repo.url : repo);
                 },
 
-                "_writable": async (pth, k="") => {
-                    k = String(k).split(".").filter(part => part.length > 0);
-                    await this.affirm();
-                    let content = "";
-                    try {
-                        content = await this.fileRead(pth);
-                    } catch (e) {}
-                    let o = null;
-                    try {
-                        o = JSON.parse(content);
-                    } catch (e) {}
-                    o = util.ensure(o, "obj");
-                    let stack = o;
-                    while (k.length > 0) {
-                        let name = k.shift();
-                        if (!util.is(stack, "obj")) return null;
-                        if (!(name in stack)) return null;
-                        stack = stack[name];
-                    }
-                    return stack;
-                },
                 "state": async (k="") => await kfs._writable("state.json", k),
             };
             if (k in kfs) return await kfs[k](...a);
@@ -4034,53 +4088,6 @@ const MAIN = async () => {
             k = String(k);
             let v = a[0];
             let kfs = {
-                "_fulltyped": async (type=null, pth=null, k=null, v=null) => {
-                    if (type == null) return;
-                    if (pth == null) return;
-                    if (k == null) return;
-                    let content = "";
-                    try {
-                        content = await this.fileRead([type, pth]);
-                    } catch (e) {}
-                    let data = null;
-                    try {
-                        data = JSON.parse(content);
-                    } catch (e) {}
-                    data = util.ensure(data, "obj");
-                    if (v == null) delete data[k];
-                    else data[k] = v;
-                    content = JSON.stringify(data, null, "\t");
-                    await this.fileWrite([type, pth], content);
-                    this.check();
-                },
-                "_full": async (pth=null, k=null, v=null) => await kfs._fulltyped("override", pth, k, v),
-                "_fullthemes": async (k=null, v=null) => await kfs._full("themes.json", k, v),
-                "themes": async () => await kfs._fullthemes("themes", util.ensure(v, "obj")),
-                "active-theme": async () => await kfs._fullthemes("active", (v == null) ? null : String(v)),
-                "theme": async () => await kfs["active-theme"](),
-                "_fulltemplates": async (k=null, v=null) => await kfs._full(["templates", "templates.json"], k, v),
-                "templates": async () => await kfs._fulltemplates("templates", util.ensure(v, "obj")),
-                "active-template": async () => await kfs._fulltemplates("active", (v == null) ? null : String(v)),
-                "template": async () => await kfs["active-template"](),
-                "_fullrobots": async (k=null, v=null) => await kfs._full(["robots", "robots.json"], k, v),
-                "robots": async () => await kfs._fullrobots("robots", util.ensure(v, "obj")),
-                "active-robot": async () => await kfs._fullrobots("active", (v == null) ? null : String(v)),
-                "robot": async () => await kfs["active-robot"](),
-                "_fullholidays": async (k=null, v=null) => await kfs._full(["holidays", "holidays.json"], k, v),
-                "holidays": async () => await kfs._fullholidays("holidays", util.ensure(v, "obj")),
-                "active-holiday": async () => await kfs._fullholidays("active", (v == null) ? null : String(v)),
-                "holiday": async () => await kfs["active-holiday"](),
-                "_fullconfig": async (k=null, v=null) => await kfs._full("config.json", k, v),
-                "_fullconfig_data": async (k=null, v=null) => await kfs._fulltyped("data", "config.json", k, v),
-                "db-host": async () => await kfs._fullconfig_data("dbHost", (v == null) ? null : String(v)),
-                "assets-host": async () => await kfs._fullconfig("assetsHost", String(v)),
-                "socket-host": async () => await kfs._fullconfig("socketHost", (v == null) ? null : String(v)),
-                "scout-url": async () => await kfs._fullconfig("scoutURL", (v == null) ? null : String(v)),
-                "comp-mode": async () => await kfs._fullconfig("isCompMode", !!v),
-                "native-theme": async () => await kfs._fullconfig("nativeTheme", String(v)),
-                "holiday-opt": async () => await kfs._fullconfig("holidayOpt", !!v),
-                "fs-version": async () => await this.setFSVersion(v),
-
                 "_writable": async (pth, k="", v=null) => {
                     k = String(k).split(".").filter(part => part.length > 0);
                     await this.affirm();
@@ -4100,12 +4107,70 @@ const MAIN = async () => {
                         if (k.length > 0) {
                             if (!(name in stack)) return null;
                             stack = stack[name];
-                        } else [stack[name], stack] = [v, stack[name]];
+                        } else {
+                            let v2 = stack[name];
+                            if (v == null) delete stack[name];
+                            else stack[name] = v;
+                            stack = v2;
+                        }
                     }
                     o = cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
                     return stack;
                 },
+
+                "active-theme": async () => {
+                    v = (v == null) ? null : String(v);
+                    let v2 = await this.getThis("active-theme", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "themes.json"], "active", v);
+                },
+                "theme": async () => await kfs["active-theme"](),
+                "active-template": async () => {
+                    v = (v == null) ? null : String(v);
+                    let v2 = await this.getThis("active-template", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "templates", "templates.json"], "active", v);
+                },
+                "template": async () => await kfs["active-template"](),
+                "active-robot": async () => {
+                    v = (v == null) ? null : String(v);
+                    let v2 = await this.getThis("active-robot", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "robots", "robots.json"], "active", v);
+                },
+                "robot": async () => await kfs["active-robot"](),
+                "active-holiday": async () => {
+                    v = (v == null) ? null : String(v);
+                    let v2 = await this.getThis("active-holiday", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "holidays", "holidays.json"], "active", v);
+                },
+                "holiday": async () => await kfs["active-holiday"](),
+                "db-host": async () => {
+                    v = (v == null) ? null : String(v);
+                    return await kfs._writable(["data", "config.json"], "dbHost", v);
+                },
+                "comp-mode": async () => {
+                    v = !!v;
+                    let v2 = await this.getThis("comp-mode", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "config.json"], "isCompMode", v);
+                },
+                "native-theme": async () => {
+                    v = String(v);
+                    let v2 = await this.getThis("native-theme", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "config.json"], "nativeTheme", v);
+                },
+                "holiday-opt": async () => {
+                    v = !!v;
+                    let v2 = await this.getThis("holiday-opt", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "config.json"], "holidayOpt", v);
+                },
+                "fs-version": async () => await this.setFSVersion(v),
+
                 "state": async (k="", v=null) => await kfs._writable("state.json", k, v),
             };
             if (k in kfs) return await kfs[k](...a);
