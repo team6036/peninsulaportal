@@ -1185,26 +1185,7 @@ const MAIN = async () => {
             return this;
         }
         async check() {
-            const theme = await this.get("active-theme");
-            if (this.state.theme != theme) {
-                this.state.theme = theme;
-                this.send("theme");
-            }
-            const nativeTheme = await this.get("native-theme");
-            if (this.state.nativeTheme != nativeTheme) {
-                this.state.nativeTheme = nativeTheme;
-                this.send("native-theme");
-            }
-            const darkWanted = await this.get("dark-wanted");
-            if (this.state.darkWanted != darkWanted) {
-                this.state.darkWanted = darkWanted;
-                this.send("dark-wanted");
-            }
-            const holiday = await this.get("active-holiday");
-            if (this.state.holiday != holiday) {
-                this.state.holiday = holiday;
-                this.send("active-holiday");
-            }
+            this.send("check");
             await this.windowManager.check();
         }
         
@@ -1879,6 +1860,7 @@ const MAIN = async () => {
                     }
                     o = cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    this.rootManager.check();
                     return stack;
                 },
                 "config": async (k="", v=null) => await kfs._writable("config.json", k, v),
@@ -1936,6 +1918,7 @@ const MAIN = async () => {
                     }
                     o = cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    this.rootManager.check();
                     return stack;
                 },
                 "config": async (k="") => await kfs._writable("config.json", k),
@@ -4052,6 +4035,14 @@ const MAIN = async () => {
                     }
                     return !!data;
                 },
+                "reduced-motion": async (type=null) => {
+                    let data = null;
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "reducedMotion");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["reduced-motion"](type));
+                    }
+                    return !!data;
+                },
                 "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
                 "cleanup": async () => util.ensure(await this.getCleanup(), "arr").map(pth => WindowManager.makePath(pth)),
                 "fs-version": async () => await this.getFSVersion(),
@@ -4116,6 +4107,7 @@ const MAIN = async () => {
                     }
                     o = cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    this.rootManager.check();
                     return stack;
                 },
 
@@ -4151,6 +4143,12 @@ const MAIN = async () => {
                     v = (v == null) ? null : String(v);
                     return await kfs._writable(["data", "config.json"], "dbHost", v);
                 },
+                "assets-host": async () => {
+                    v = (v == null) ? null : String(v);
+                    let v2 = await this.getThis("assets-host", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "config.json"], "assetsHost", v);
+                },
                 "comp-mode": async () => {
                     v = !!v;
                     let v2 = await this.getThis("comp-mode", "data");
@@ -4168,6 +4166,12 @@ const MAIN = async () => {
                     let v2 = await this.getThis("holiday-opt", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "config.json"], "holidayOpt", v);
+                },
+                "reduced-motion": async () => {
+                    v = !!v;
+                    let v2 = await this.getThis("reduced-motion", "data");
+                    if (v == v2) v = null;
+                    return await kfs._writable(["override", "config.json"], "reducedMotion", v);
                 },
                 "fs-version": async () => await this.setFSVersion(v),
 
@@ -4207,6 +4211,7 @@ const MAIN = async () => {
                     }
                     o = cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
+                    this.rootManager.check();
                     return stack;
                 },
                 "state": async (k="") => await kfs._writable("state.json", k),
