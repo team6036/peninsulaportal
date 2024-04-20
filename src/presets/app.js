@@ -71,7 +71,7 @@ export default class App extends core.App {
             }
 
             this.forms = [
-                new App.GeneralForm(this),
+                new App.ApplicationForm(this),
                 new App.AppearanceForm(this),
             ];
             let deltaSum = 0;
@@ -192,26 +192,29 @@ App.Form = class AppForm extends util.Target {
 
     update(delta) { this.post("update", delta); }
 };
-App.GeneralForm = class AppDatabaseForm extends App.Form {
+App.ApplicationForm = class AppApplicationForm extends App.Form {
     #fAppData;
     #fAppLogs;
     #fAppDataCleanup;
     #fAppLogsClear;
 
     #fDBHost;
+    #fDBPoll;
     #fAssetsHost;
     #fSocketHost;
     #fScoutURL;
 
     constructor(app) {
-        super("general", app);
+        super("application", app);
 
         let ignore = false;
 
         this.#fAppData = this.form.addField(new core.Form.Button("application-data-directory", "Open"));
         this.fAppData.addHandler("trigger", async e => await window.api.send("cmd-app-data"));
+
         this.#fAppLogs = this.form.addField(new core.Form.Button("application-log-directory", "Open"));
         this.fAppLogs.addHandler("trigger", async e => await window.api.send("cmd-app-logs"));
+
         this.#fAppDataCleanup = this.form.addField(new core.Form.Button("cleanup-application-directory", "Cleanup", "special"));
         this.fAppDataCleanup.addHandler("trigger", async e => {
             let pop = this.app.confirm(
@@ -223,6 +226,7 @@ App.GeneralForm = class AppDatabaseForm extends App.Form {
             if (!result) return;
             await window.api.send("cmd-app-data-cleanup");
         });
+
         this.#fAppLogsClear = this.form.addField(new core.Form.Button("clear-application-log-directory", "Clear", "off"));
         this.fAppLogsClear.addHandler("trigger", async e => {
             const id = setInterval(() => {
@@ -249,14 +253,23 @@ App.GeneralForm = class AppDatabaseForm extends App.Form {
             await window.api.set("comp-mode", this.fDBHost.toggleOff);
         });
 
+        this.#fDBPoll = this.form.addField(new core.Form.Button("poll-database", "Repoll Database"));
+        this.fDBPoll.header = "";
+
         this.#fAssetsHost = this.form.addField(new core.Form.TextInput("assets-host"));
         this.fAssetsHost.type = "";
+        this.fAssetsHost.addHandler("change-value", async () => {
+            if (ignore) return;
+            await window.api.set("assets-host", this.fAssetsHost.value);
+        });
+
         this.#fSocketHost = this.form.addField(new core.Form.TextInput("socket-host"));
         this.fSocketHost.type = "";
+
         this.#fScoutURL = this.form.addField(new core.Form.TextInput("scout-url"));
         this.fScoutURL.type = "";
 
-        this.fAssetsHost.disabled = this.fSocketHost.disabled = this.fScoutURL.disabled = true;
+        this.fSocketHost.disabled = this.fScoutURL.disabled = true;
 
         this.addHandler("update", async delta => {
             ignore = true;
@@ -286,6 +299,7 @@ App.GeneralForm = class AppDatabaseForm extends App.Form {
     get fAppLogsClear() { return this.#fAppLogsClear; }
 
     get fDBHost() { return this.#fDBHost; }
+    get fDBPoll() { return this.#fDBPoll; }
     get fAssetsHost() { return this.#fAssetsHost; }
     get fSocketHost() { return this.#fSocketHost; }
     get fScoutURL() { return this.#fScoutURL; }
@@ -294,6 +308,7 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
     #fTheme;
     #fNativeTheme;
     #fHoliday;
+    #fReducedMotion;
 
     constructor(app) {
         super("appearance", app);
@@ -306,6 +321,7 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
             if (!this.fTheme.hasValue()) return;
             await window.api.set("active-theme", this.fTheme.value);
         });
+
         this.#fNativeTheme = this.form.addField(new core.Form.DropdownInput("native-theme", [
             { value: "light", name: "Light" },
             { value: "dark", name: "Dark" },
@@ -316,6 +332,7 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
             if (!this.fNativeTheme.hasValue()) return;
             await window.api.set("native-theme", this.fNativeTheme.value);
         });
+
         this.#fHoliday = this.form.addField(new core.Form.NInput("holiday", 1, "url"));
         this.fHoliday.inputs[0].placeholder = "No holiday";
         this.fHoliday.showToggle = true;
@@ -324,6 +341,12 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
         this.fHoliday.addHandler("change-toggleOn", async () => {
             if (ignore) return;
             await window.api.set("holiday-opt", this.fHoliday.toggleOff);
+        });
+
+        this.#fReducedMotion = this.form.addField(new core.Form.BooleanInput("reduced-motion"));
+        this.fReducedMotion.addHandler("change-value", async () => {
+            if (ignore) return;
+            await window.api.set("reduced-motion", this.fReducedMotion.value);
         });
 
         this.fTheme.app = this.fNativeTheme.app = this.app;
@@ -346,6 +369,9 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
                     this.fHoliday.toggleOff = await window.api.get("holiday-opt");
                     this.fHoliday.value = [util.formatText(util.ensure(await window.api.get("active-holiday"), "str"))];
                 },
+                async () => {
+                    this.fReducedMotion.value = await window.api.get("reduced-motion");
+                },
             ].map(f => f()));
             ignore = false;
         });
@@ -354,4 +380,5 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
     get fTheme() { return this.#fTheme; }
     get fNativeTheme() { return this.#fNativeTheme; }
     get fHoliday() { return this.#fHoliday; }
+    get fReducedMotion() { return this.#fReducedMotion; }
 };

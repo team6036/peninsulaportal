@@ -825,7 +825,7 @@ export class App extends util.Target {
     }
     async createMarkdown(pth, signal) {
         if (!(signal instanceof util.Target)) signal = new util.Target();
-        this.addHandler("cmd-holiday", holiday => signal.post("holiday", holiday));
+        this.addHandler("cmd-check", holiday => signal.post("holiday", holiday));
         return await App.createMarkdown(pth, signal);
     }
     static evaluateLoad(load) {
@@ -1050,8 +1050,8 @@ export class App extends util.Target {
         this.addHandler("cmd-fullscreen", async v => {
             this.fullscreen = v;
         });
-        this.addHandler("cmd-holiday", async v => {
-            this.holiday = v;
+        this.addHandler("cmd-check", async () => {
+            this.holiday = await window.api.get("holiday");
         });
 
         this.addHandler("cmd-menu-click", async id => {
@@ -1174,10 +1174,13 @@ export class App extends util.Target {
         );
         PROPERTYCACHE.clear();
 
-        let themeUpdating = false;
-        const themeUpdate = async () => {
-            if (themeUpdating) return;
-            themeUpdating = true;
+        let lock = false;
+        const update = async () => {
+            if (lock) return;
+            lock = true;
+            if (await window.api.get("reduced-motion"))
+                document.documentElement.style.setProperty("--t", "0s");
+            else document.documentElement.style.removeProperty("--t");
             let theme = await window.api.get("theme");
             theme = util.is(theme, "obj") ? theme : String(theme);
             let data = 
@@ -1199,12 +1202,10 @@ export class App extends util.Target {
                 m: "#ff00ff",
             };
             this.accent = data.accent || "b";
-            themeUpdating = false;
+            lock = false;
         };
-        this.addHandler("cmd-theme", () => themeUpdate());
-        this.addHandler("cmd-native-theme", () => themeUpdate());
-        this.addHandler("cmd-dark-wanted", () => themeUpdate());
-        await themeUpdate();
+        this.addHandler("cmd-check", update);
+        await update();
 
         await this.postResult("setup");
 
@@ -1263,8 +1264,8 @@ export class App extends util.Target {
                     if (eSpecialFront instanceof HTMLImageElement)
                         eSpecialFront.src = "file://"+holidayIconData.hat1;
                 };
-                this.addHandler("cmd-holiday", async holiday => {
-                    await onHolidayState(holiday);
+                this.addHandler("cmd-check", async () => {
+                    await onHolidayState(await window.api.get("holiday"));
                 });
                 await onHolidayState(await window.api.get("active-holiday"));
             });

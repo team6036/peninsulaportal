@@ -2408,6 +2408,7 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item.button > .content > button {
     flex-basis: 100%;
 
+    min-width: max-content;
     padding: 5px 10px;
 
     border-radius: 5px;
