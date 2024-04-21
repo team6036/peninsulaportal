@@ -1754,40 +1754,52 @@ const MAIN = async () => {
                     return true;
                 },
 
-                "size": async v => {
+                "size": async (v, type=null) => {
                     if (!this.hasWindow()) return false;
+                    type = util.ensure(type, "str");
                     v = new V(v).ceil();
                     let bounds = this.window.getBounds();
-                    let cx = bounds.x+bounds.width/2, cy = bounds.y+bounds.height/2;
                     this.window.setBounds({
-                        x: Math.floor(cx-v.x/2),
-                        y: Math.floor(cy-v.y/2),
+                        x:
+                            type.includes("l") ? bounds.x :
+                            type.includes("r") ? bounds.x+bounds.width-v.x :
+                            Math.floor(bounds.x+bounds.width/2-v.x/2),
+                        y:
+                            type.include("t") ? bounds.y :
+                            type.include("b") ? bounds.y+bounds.height-v.y :
+                            Math.floor(bounds.y+bounds.height/2-v.y/2),
                         width: v.x,
                         height: v.y,
                     });
                     return true;
                 },
-                "width": async v => {
+                "width": async (v, type=null) => {
                     if (!this.hasWindow()) return false;
+                    type = util.ensure(type, "str");
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
-                    let c = bounds.x+bounds.width/2;
                     this.window.setBounds({
-                        x: Math.floor(c-v/2),
+                        x:
+                            type.includes("l") ? bounds.x :
+                            type.includes("r") ? bounds.x+bounds.width-v :
+                            Math.floor(bounds.x+bounds.width/2-v/2),
                         y: bounds.y,
                         width: v,
                         height: bounds.height,
                     });
                     return true;
                 },
-                "height": async v => {
+                "height": async (v, type=null) => {
                     if (!this.hasWindow()) return false;
+                    type = util.ensure(type, "str");
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
-                    let c = bounds.y+bounds.height/2;
                     this.window.setBounds({
                         x: bounds.x,
-                        y: Math.floor(c-v/2),
+                        y:
+                            type.includes("t") ? bounds.y :
+                            type.includes("b") ? bounds.y+bounds.height-v :
+                            Math.floor(bounds.y+bounds.height/2-v/2),
                         width: bounds.width,
                         height: v,
                     });
@@ -1795,32 +1807,46 @@ const MAIN = async () => {
                 },
                 "min-size": async v => {
                     if (!this.hasWindow()) return false;
-                    this.window.setMinimumSize(...new V(v).ceil().xy);
+                    v = new V(v).ceil();
+                    this.window.setMinimumSize(...v.xy);
+                    if (this.window.getBounds().width < v.x) await this.setThis("width", v.x, "tl");
+                    if (this.window.getBounds().height < v.y) await this.setThis("height", v.y, "tl");
                     return true;
                 },
                 "min-width": async v => {
                     if (!this.hasWindow()) return false;
-                    this.window.setMinimumSize(Math.ceil(util.ensure(v, "num")), this.window.getMinimumSize()[1]);
+                    v = Math.ceil(util.ensure(v, "num"));
+                    this.window.setMinimumSize(v, this.window.getMinimumSize()[1]);
+                    if (this.window.getBounds().width < v) await this.setThis("width", v, "tl");
                     return true;
                 },
                 "min-height": async v => {
                     if (!this.hasWindow()) return false;
-                    this.window.setMinimumSize(this.window.getMinimumSize()[0], Math.ceil(util.ensure(v, "num")));
+                    v = Math.ceil(util.ensure(v, "num"));
+                    this.window.setMinimumSize(this.window.getMinimumSize()[0], v);
+                    if (this.window.getBounds().height < v) await this.setThis("height", v, "tl");
                     return true;
                 },
                 "max-size": async v => {
                     if (!this.hasWindow()) return false;
-                    this.window.setMaximumSize(...new V(v).ceil().xy);
+                    v = new V(v).ceil();
+                    this.window.setMaximumSize(...v.xy);
+                    if (this.window.getBounds().width > v.x) await this.setThis("width", v.x, "tl");
+                    if (this.window.getBounds().height > v.y) await this.setThis("height", v.y, "tl");
                     return true;
                 },
                 "max-width": async v => {
                     if (!this.hasWindow()) return false;
-                    this.window.setMaximumSize(Math.ceil(util.ensure(v, "num")), this.window.getMaximumSize()[1]);
+                    v = Math.ceil(util.ensure(v, "num"));
+                    this.window.setMaximumSize(v, this.window.getMaximumSize()[1]);
+                    if (this.window.getBounds().width > v) await this.setThis("width", v, "tl");
                     return true;
                 },
                 "max-height": async v => {
                     if (!this.hasWindow()) return false;
-                    this.window.setMaximumSize(this.window.getMaximumSize()[0], Math.ceil(util.ensure(v, "num")));
+                    v = Math.ceil(util.ensure(v, "num"));
+                    this.window.setMaximumSize(this.window.getMaximumSize()[0], v);
+                    if (this.window.getBounds().height > v) await this.setThis("height", v, "tl");
                     return true;
                 },
                 "bounds": async v => {
