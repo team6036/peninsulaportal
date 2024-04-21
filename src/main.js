@@ -1625,7 +1625,6 @@ const MAIN = async () => {
         async setThis(k, ...a) {
             if (!this.started) return false;
             k = String(k);
-            let v = a[0];
             let kfs = {
                 "menu": async v => {
                     this.#menu = null;
@@ -1652,18 +1651,18 @@ const MAIN = async () => {
                     this.manager.checkMenu();
                 },
 
-                "fullscreen": async () => {
+                "fullscreen": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setFullScreen(!!v);
                     return true;
                 },
-                "fullscreenable": async () => {
+                "fullscreenable": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setFullScreenable(!!v);
                     return true;
                 },
 
-                "closeable": async () => {
+                "closeable": async v => {
                     if (!this.hasWindow()) return false;
                     let maximizable = this.window.isMaximizable();
                     this.window.setClosable(!!v);
@@ -1671,91 +1670,91 @@ const MAIN = async () => {
                     return true;
                 },
 
-                "focused": async () => {
+                "focused": async v => {
                     if (!this.hasWindow()) return false;
                     if (v) this.window.focus();
                     else this.window.blur();
                     return true
                 },
-                "blurred": async () => {
+                "blurred": async v => {
                     if (!this.hasWindow()) return false;
                     if (v) this.window.blur();
                     else this.window.focus();
                     return true;
                 },
-                "focusable": async () => {
+                "focusable": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setFocusable(!!v);
                     return true;
                 },
 
-                "visible": async () => {
+                "visible": async v => {
                     if (!this.hasWindow()) return false;
                     if (v) this.window.show();
                     else this.window.hide();
                     return true;
                 },
-                "hidden": async () => {
+                "hidden": async v => {
                     if (!this.hasWindow()) return false;
                     if (v) this.window.hide();
                     else this.window.show();
                     return true;
                 },
 
-                "maximized": async () => {
+                "maximized": async v => {
                     if (!this.hasWindow()) return false;
                     if (v) this.window.maximize();
                     else this.window.unmaximize();
                     return true;
                 },
-                "maximizable": async () => {
+                "maximizable": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMaximizable(!!v);
                     return true;
                 },
 
-                "minimized": async () => {
+                "minimized": async v => {
                     if (!this.hasWindow()) return false;
                     if (v) this.window.minimize();
                     else this.window.restore();
                     return true;
                 },
-                "minimizable": async () => {
+                "minimizable": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMinimizable(!!v);
                     return true;
                 },
 
-                "enabled": async () => {
+                "enabled": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setEnabled(!!v);
                     return true;
                 },
-                "disabled": async () => {
+                "disabled": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setEnabled(!v);
                     return true;
                 },
 
-                "resizable": async () => {
+                "resizable": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setResizable(!!v);
                     return true;
                 },
 
-                "movable": async () => {
+                "movable": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMovable(!!v);
                     return true;
                 },
 
-                "opacity": async () => {
+                "opacity": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setOpacity(Math.min(1, Math.max(0, util.ensure(v, "num"))));
                     return true;
                 },
 
-                "size": async () => {
+                "size": async v => {
                     if (!this.hasWindow()) return false;
                     v = new V(v).ceil();
                     let bounds = this.window.getBounds();
@@ -1768,7 +1767,7 @@ const MAIN = async () => {
                     });
                     return true;
                 },
-                "width": async () => {
+                "width": async v => {
                     if (!this.hasWindow()) return false;
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
@@ -1781,7 +1780,7 @@ const MAIN = async () => {
                     });
                     return true;
                 },
-                "height": async () => {
+                "height": async v => {
                     if (!this.hasWindow()) return false;
                     v = Math.ceil(util.ensure(v, "num"));
                     let bounds = this.window.getBounds();
@@ -1794,43 +1793,43 @@ const MAIN = async () => {
                     });
                     return true;
                 },
-                "min-size": async () => {
+                "min-size": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(...new V(v).ceil().xy);
                     return true;
                 },
-                "min-width": async () => {
+                "min-width": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(Math.ceil(util.ensure(v, "num")), this.window.getMinimumSize()[1]);
                     return true;
                 },
-                "min-height": async () => {
+                "min-height": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMinimumSize(this.window.getMinimumSize()[0], Math.ceil(util.ensure(v, "num")));
                     return true;
                 },
-                "max-size": async () => {
+                "max-size": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(...new V(v).ceil().xy);
                     return true;
                 },
-                "max-width": async () => {
+                "max-width": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(Math.ceil(util.ensure(v, "num")), this.window.getMaximumSize()[1]);
                     return true;
                 },
-                "max-height": async () => {
+                "max-height": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setMaximumSize(this.window.getMaximumSize()[0], Math.ceil(util.ensure(v, "num")));
                     return true;
                 },
-                "bounds": async () => {
+                "bounds": async v => {
                     if (!this.hasWindow()) return false;
                     this.window.setBounds(v);
                     return true;
                 },
 
-                "title-bar-overlay": async () => {
+                "title-bar-overlay": async v => {
                     if (!this.hasWindow()) return false;
                     if (this.window.setTitleBarOverlay)
                         this.window.setTitleBarOverlay(v);
@@ -3792,25 +3791,25 @@ const MAIN = async () => {
         async getCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.getCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
             return await win.get(k, ...a);
         }
         async setCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.setCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
             return await win.set(k, ...a);
         }
         async delCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.delCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
             return await win.del(k, ...a);
         }
         async onCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id);
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
             return await win.on(k, ...a);
         }
 
@@ -4077,7 +4076,6 @@ const MAIN = async () => {
         async setThis(k, ...a) {
             if (this.hasWindow()) return await this.window.manager.setThis(k, ...a);
             k = String(k);
-            let v = a[0];
             let kfs = {
                 "_writable": async (pth, k="", v=null) => {
                     k = String(k).split(".").filter(part => part.length > 0);
@@ -4111,69 +4109,69 @@ const MAIN = async () => {
                     return stack;
                 },
 
-                "active-theme": async () => {
+                "active-theme": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-theme", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "themes.json"], "active", v);
                 },
-                "theme": async () => await kfs["active-theme"](),
-                "active-template": async () => {
+                "theme": async v => await kfs["active-theme"](v),
+                "active-template": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-template", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "templates", "templates.json"], "active", v);
                 },
-                "template": async () => await kfs["active-template"](),
-                "active-robot": async () => {
+                "template": async v => await kfs["active-template"](v),
+                "active-robot": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-robot", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "robots", "robots.json"], "active", v);
                 },
-                "robot": async () => await kfs["active-robot"](),
-                "active-holiday": async () => {
+                "robot": async v => await kfs["active-robot"](v),
+                "active-holiday": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-holiday", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "holidays", "holidays.json"], "active", v);
                 },
-                "holiday": async () => await kfs["active-holiday"](),
-                "db-host": async () => {
+                "holiday": async v => await kfs["active-holiday"](v),
+                "db-host": async v => {
                     v = (v == null) ? null : String(v);
                     return await kfs._writable(["data", "config.json"], "dbHost", v);
                 },
-                "assets-host": async () => {
+                "assets-host": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("assets-host", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "config.json"], "assetsHost", v);
                 },
-                "comp-mode": async () => {
+                "comp-mode": async v => {
                     v = !!v;
                     let v2 = await this.getThis("comp-mode", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "config.json"], "isCompMode", v);
                 },
-                "native-theme": async () => {
+                "native-theme": async v => {
                     v = String(v);
                     let v2 = await this.getThis("native-theme", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "config.json"], "nativeTheme", v);
                 },
-                "holiday-opt": async () => {
+                "holiday-opt": async v => {
                     v = !!v;
                     let v2 = await this.getThis("holiday-opt", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "config.json"], "holidayOpt", v);
                 },
-                "reduced-motion": async () => {
+                "reduced-motion": async v => {
                     v = !!v;
                     let v2 = await this.getThis("reduced-motion", "data");
                     if (v == v2) v = null;
                     return await kfs._writable(["override", "config.json"], "reducedMotion", v);
                 },
-                "fs-version": async () => await this.setFSVersion(v),
+                "fs-version": async v => await this.setFSVersion(v),
 
                 "state": async (k="", v=null) => await kfs._writable("state.json", k, v),
             };
