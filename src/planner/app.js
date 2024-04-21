@@ -1820,6 +1820,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         });
 
         const subform = form.addField(new core.Form.SubForm("display")).form;
+        subform.isHorizontal = true;
 
         this.#fType = subform.addField(new core.Form.DropdownInput("type", [
             "§default",
