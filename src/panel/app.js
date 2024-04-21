@@ -6129,6 +6129,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#eShowDisplay = this.eShowBox.children[1];
         this.#eDisplayName = document.createElement("div");
         this.eDisplay.appendChild(this.eDisplayName);
+        this.eDisplayName.classList.add("name");
         this.#eRemoveBtn = document.createElement("button");
         this.eDisplay.appendChild(this.eRemoveBtn);
         this.eRemoveBtn.classList.add("icon");
