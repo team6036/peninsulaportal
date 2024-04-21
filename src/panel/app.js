@@ -5210,10 +5210,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         elem.appendChild(form.elem);
                         let modefs = {
                             _: side => {
-                                let input = form.addField(new core.Form.Input1d({
-                                    l: "forward",
-                                    r: "backward",
-                                }[side]+"-view-time"));
+                                let input = form.addField(new core.Form.Input1d("view-time"));
                                 this.addHandler("add", () => (input.app = this.app));
                                 this.addHandler("rem", () => (input.app = this.app));
                                 input.types = ["ms", "s", "min"];
@@ -5228,8 +5225,28 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     let v = Math.max(0, input.value);
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
+                                let use = form.addField(new core.Form.SelectInput("use", [{ value: false, name: "Use log start" }, { value: true, name: "Use pointer" }]));
+                                use.addHandler("change-value", () => {
+                                    let v = !!use.value;
+                                    this.change("viewParams.use", this.viewParams.use, this.viewParams.use=v);
+                                });
                                 this.addHandler("change-viewParams.time", () => (input.value = this.viewParams.time));
+                                this.addHandler("change-viewParams.use", () => {
+                                    input.header =
+                                        this.viewParams.use ?
+                                            {
+                                                l: "Backward",
+                                                r: "Forward",
+                                            }[side]+" View Time" :
+                                        {
+                                            l: "Forward",
+                                            r: "Backward",
+                                        }[side]+" View Time"
+                                    ;
+                                    use.value = this.viewParams.use;
+                                });
                                 this.change("viewParams.time", null, this.viewParams.time=5000);
+                                this.change("viewParams.use", null, this.viewParams.use=false);
                             },
                             left: () => modefs._("l"),
                             right: () => modefs._("r"),
@@ -5372,16 +5389,30 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             if (!this.hasPage() || !this.page.hasSource()) return;
             const source = this.page.source;
-            let minTime = source.tsMin, maxTime = source.tsMax;
+            let minTime = source.tsMin, maxTime = source.tsMax, time = source.ts;
             const graphRange = {
-                left: () => [
-                    minTime,
-                    Math.min(maxTime, minTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
-                ],
-                right: () => [
-                    Math.max(minTime, maxTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
-                    maxTime,
-                ],
+                left: () => (
+                    this.viewParams.use ?
+                        [
+                            Math.max(minTime, time-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                            time,
+                        ] :
+                    [
+                        minTime,
+                        Math.min(maxTime, minTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                    ]
+                ),
+                right: () => (
+                    this.viewParams.use ?
+                        [
+                            time,
+                            Math.min(maxTime, time+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                        ] :
+                    [
+                        Math.max(minTime, maxTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                        maxTime,
+                    ]
+                ),
                 section: () => {
                     let start = util.ensure(this.viewParams.start, "num", minTime);
                     let stop = util.ensure(this.viewParams.stop, "num", maxTime);
