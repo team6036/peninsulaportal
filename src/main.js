@@ -3406,13 +3406,8 @@ const MAIN = async () => {
                 };
             };
 
-            if (bootParams["allow-debug"]) {
-                ipc.on("log", (e, ...a) => console.log(...a));
-                ipc.on("warn", (e, ...a) => console.warn(...a));
-                ipc.on("error", (e, ...a) => console.error(...a));
-            }
-
             ipc.handle("os", decorate(() => OS));
+            ipc.handle("boot-params", decorate(() => bootParams));
 
             const identify = e => {
                 let win = this.identifyWindow(e.sender.id);
@@ -3509,6 +3504,12 @@ const MAIN = async () => {
                 let win = identify(e);
                 return await win.tbaClientInvoke(id, invoke, ...a);
             }));
+
+            if (bootParams["allow-debug"]) {
+                ipc.on("log", (e, ...a) => console.log(...a));
+                ipc.on("warn", (e, ...a) => console.warn(...a));
+                ipc.on("error", (e, ...a) => console.error(...a));
+            }
 
             (async () => {
                 try {

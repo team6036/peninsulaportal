@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("agent", () => AGENT);
 const buildAgent = async () => {
     AGENT = {
         os: await ipcRenderer.invoke("os"),
+        bootParams: await ipcRenderer.invoke("boot-params"),
 
         node: process.versions.node,
         chrome: process.versions.chrome,
