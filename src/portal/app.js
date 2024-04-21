@@ -119,10 +119,13 @@ export default class App extends core.App {
         this.addHandler("pre-setup", () => {
             this.eLoadingTo = document.querySelector("#PAGE > .main > .title");
         });
+        let reducedMotion = false;
+        this.addHandler("cmd-check", async () => (reducedMotion = !!(await window.api.get("reduced-motion"))));
         this.addHandler("post-setup", () => {
             this.#eBackground = document.querySelector("#PAGE > .background");
             this.#eCanvas = document.querySelector("#PAGE > .background > div > #canvas");
             if (this.hasECanvas()) {
+                let opacity = 0;
                 const getScroll = () => (this.hasEContent() ? this.eContent.scrollTop : 0) / window.innerHeight;
                 const getSpeed = () => {
                     let scroll = getScroll();
@@ -131,10 +134,11 @@ export default class App extends core.App {
                 let ff = 10;
                 const parallax = new core.Parallax(this.eCanvas);
                 this.addHandler("update", delta => {
+                    opacity = util.lerpE(opacity, +!reducedMotion, 0.25);
                     parallax.run = ff ? 60 : 1;
                     if (ff) ff--;
                     const scroll = getScroll();
-                    parallax.canvas.style.opacity = (util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
+                    parallax.canvas.style.opacity = (opacity * util.lerp(100, 0, (scroll<0.5) ? 0 : (scroll>1) ? 1 : ((scroll-0.5)/0.5)))+"%";
                     parallax.w = window.innerWidth;
                     parallax.h = window.innerHeight;
                     parallax.speed = getSpeed();

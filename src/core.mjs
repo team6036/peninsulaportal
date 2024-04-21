@@ -663,6 +663,7 @@ export class App extends util.Target {
                     window.requestAnimationFrame(update);
                     let t1 = util.getTime();
                     if (t0 == null || error) return t0 = t1;
+                    if (t1-t0 > 1000) this.post("cmd-check");
                     try {
                         if (this.eMount.classList.contains("runinfo"))
                             this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
@@ -6913,7 +6914,7 @@ export class Parallax extends util.Target {
                                 this.scene.add(speck.object);
                                 specks.push(speck);
                                 speck.addHandler("update", delta => {
-                                    speck.velY -= 0.001;
+                                    speck.velY -= 0.001 * (delta/5);
                                     if (
                                         Math.abs(speck.object.position.x) <= +15 &&
                                         Math.abs(speck.object.position.y) <= +15 &&
@@ -7060,9 +7061,9 @@ Parallax.Speck = class ParallaxSpeck extends util.Target {
             let d = Math.sqrt(vel[0]**2 + vel[1]**2 + vel[2]**2);
             this.l = Math.min(2.5, d * 2.5);
             this.object.position.set(
-                this.object.position.x+vel[0],
-                this.object.position.y+vel[1],
-                this.object.position.z+vel[2],
+                this.object.position.x+vel[0]*(delta/5),
+                this.object.position.y+vel[1]*(delta/5),
+                this.object.position.z+vel[2]*(delta/5),
             );
             this.#headMesh.position.setZ(+this.l/2);
             this.#tailMesh.position.setZ(-this.l/2);
