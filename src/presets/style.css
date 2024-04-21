@@ -165,6 +165,9 @@
     filter: blur(0px);
 }
 #PAGE > .main > div > .form > .item.header > .header > .name {
+    font-size: 30px;
+}
+#PAGE > .main > div > .form > .item.subheader > .header > .name {
     font-size: 20px;
 }
 

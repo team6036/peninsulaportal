@@ -7538,6 +7538,11 @@ export class Form extends util.Target {
         this.clearFields();
         this.addField(v);
     }
+    clearFields() {
+        let fields = this.fields;
+        this.remField(fields);
+        return fields;
+    }
     hasField(field) {
         if (util.is(field, "str")) return !!this.getField(field);
         if (!(field instanceof Form.Field)) return false;
@@ -8457,7 +8462,9 @@ Form.ColorInput = class FormColorInput extends Form.Field {
         });
         const apply = () => {
             this.eInput.value = this.value.toHex(this.useAlpha);
+            this.eInput.disabled = this.disabled;
             this.eColorbox.style.backgroundColor = this.value.toHex(this.useAlpha);
+            this.eColorbox.disabled = this.disabled;
             ignore = true;
             this.eColorPicker.color = this.value;
             this.eColorPicker.useA = this.useAlpha;

@@ -73,15 +73,25 @@ export default class App extends core.App {
             this.forms = [
                 new App.ApplicationForm(this),
                 new App.AppearanceForm(this),
+                new App.ThemesForm(this),
+                new App.TemplatesForm(this),
+                new App.RobotsForm(this),
+                new App.HolidaysForm(this),
             ];
-            let deltaSum = 0;
+            let t0 = null, t1 = null;
+            const update = () => {
+                t1 = util.getTime();
+                if (t0 == null) return t0 = t1;
+                this.forms.forEach(form => form.update(t1-t0));
+                t0 = t1;
+            };
+            update();
             const timer = new util.Timer(true);
             this.addHandler("update", delta => {
-                deltaSum += delta;
-                if (!timer.dequeueAll(250)) return;
-                this.forms.forEach(form => form.update(deltaSum));
-                deltaSum = 0;
+                if (!timer.dequeueAll(1000)) return;
+                update();
             });
+            this.addHandler("cmd-check", update);
         });
     }
 
@@ -132,13 +142,23 @@ export default class App extends core.App {
         v = (v == null) ? null : String(v);
         if (this.form == v) return;
         this.change("form", this.form, this.#form=v);
-        this.forms.forEach(form => (form.isOpen = (form.name == this.form)));
+        this.forms.forEach(form => form.isOpen = (form.name == this.form));
     }
 
     get eMain() { return this.#eMain; }
     hasEMain() { return this.eMain instanceof HTMLDivElement; }
     get eInfo() { return this.#eInfo; }
     hasEInfo() { return this.eInfo instanceof HTMLDivElement; }
+
+    get state() {
+        return {
+            form: this.form,
+        };
+    }
+    async loadState(state) {
+        state = util.ensure(state, "obj");
+        this.form = state.form || ((this.forms.length > 0) ? this.forms[0].name : null);
+    }
 }
 App.Form = class AppForm extends util.Target {
     #name;
@@ -381,4 +401,164 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
     get fNativeTheme() { return this.#fNativeTheme; }
     get fHoliday() { return this.#fHoliday; }
     get fReducedMotion() { return this.#fReducedMotion; }
+};
+App.OverrideForm = class AppOverrideForm extends App.Form {
+    #fAdd;
+
+    static async makeDBI(form) {}
+
+    constructor(name, app) {
+        super(name, app);
+
+        let ignore = false;
+
+        this.form.addField(new core.Form.Line());
+
+        const DBIField = this.form.addField(new core.Form.SubForm("Database Inherited"));
+        DBIField.isHorizontal = false;
+        const DBIForm = DBIField.form;
+        
+        this.form.addField(new core.Form.Line());
+
+        this.#fAdd = this.form.addField(new core.Form.Button("create", "+", "special"));
+
+        this.addHandler("update", async delta => {
+            ignore = true;
+            await Promise.all([
+                async () => await this.constructor.makeDBI(DBIForm),
+            ].map(f => f()));
+            ignore = false;
+        });
+    }
+
+    get fAdd() { return this.#fAdd; }
+};
+App.ThemesForm = class AppThemesForm extends App.OverrideForm {
+    static async makeDBI(form) {
+        if (!(form instanceof core.Form)) return;
+        const themes = util.ensure(await window.api.get("themes", "data"), "obj");
+        for (let name in themes) {
+            const theme = util.ensure(themes[name], "obj");
+            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
+            const formField = form.getField(name);
+            const formForm = formField.form;
+            formField.header = theme.name || name;
+            formField.type = name;
+            formForm.fields = [];
+            formForm.isHorizontal = true;
+
+            formForm.addField(new core.Form.Header("Colors"));
+            const colors = util.ensure(theme.colors, "obj");
+            for (let k in colors) {
+                const field = formForm.addField(new core.Form.ColorInput(k, colors[k]));
+                field.type = "--c"+k;
+                field.disable();
+            }
+
+            formForm.addField(new core.Form.Header("Base"));
+            const base = util.ensure(theme.base, "arr");
+            base.forEach((color, i) => {
+                const field = formForm.addField(new core.Form.ColorInput(i, color));
+                field.type = "--v"+i;
+                field.disable();
+            });
+        }
+        form.fields.forEach(field => {
+            if (field.name in themes) return;
+            form.remField(field);
+        });
+    }
+
+    constructor(app) {
+        super("themes", app);
+
+        this.fAdd.header = "Create Theme";
+    }
+};
+App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
+    static async makeDBI(form) {
+        if (!(form instanceof core.Form)) return;
+        const templates = util.ensure(await window.api.get("templates", "data"), "obj");
+        for (let name in templates) {
+            const template = util.ensure(templates[name], "obj");
+            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
+            const formField = form.getField(name);
+            const formForm = formField.form;
+            formField.header = name;
+            formField.type = name;
+            formForm.fields = [];
+            formForm.isHorizontal = true;
+
+            const fHasImage = formForm.addField(new core.Form.BooleanInput("has-image", !("image" in template && !template.image)));
+            const fHasModel = formForm.addField(new core.Form.BooleanInput("has-model", !("model" in template && !template.model)));
+            fHasImage.disabled = fHasModel.disabled = true;
+            fHasImage.isCheckbox = fHasModel.isCheckbox = true;
+        }
+        form.fields.forEach(field => {
+            if (field.name in templates) return;
+            form.remField(field);
+        });
+    }
+
+    constructor(app) {
+        super("templates", app);
+
+        this.fAdd.header = "Create Template";
+    }
+};
+App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
+    static async makeDBI(form) {
+        if (!(form instanceof core.Form)) return;
+        const robots = util.ensure(await window.api.get("robots", "data"), "obj");
+        for (let name in robots) {
+            const robot = util.ensure(robots[name], "obj");
+            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
+            const formField = form.getField(name);
+            const formForm = formField.form;
+            formField.header = name;
+            formField.type = name;
+            formForm.fields = [];
+            formForm.isHorizontal = true;
+
+            const fHasModel = formForm.addField(new core.Form.BooleanInput("has-model", !("model" in robot && !robot.model)));
+            fHasModel.disabled = true;
+            fHasModel.isCheckbox = true;
+        }
+        form.fields.forEach(field => {
+            if (field.name in robots) return;
+            form.remField(field);
+        });
+    }
+
+    constructor(app) {
+        super("robots", app);
+
+        this.fAdd.header = "Create Robot";
+    }
+};
+App.HolidaysForm = class AppHolidaysForm extends App.OverrideForm {
+    static async makeDBI(form) {
+        if (!(form instanceof core.Form)) return;
+        const holidays = util.ensure(await window.api.get("holidays", "data"), "obj");
+        for (let name in holidays) {
+            const holiday = util.ensure(holidays[name], "obj");
+            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
+            const formField = form.getField(name);
+            const formForm = formField.form;
+            formField.header = holiday.name || name;
+            formField.type = name;
+            formForm.fields = [];
+            formForm.isHorizontal = true;
+        }
+        form.fields.forEach(field => {
+            if (field.name in holidays) return;
+            form.remField(field);
+        });
+    }
+
+    constructor(app) {
+        super("holidays", app);
+
+        this.fAdd.header = "Create Holiday";
+    }
 };

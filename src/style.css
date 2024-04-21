@@ -2420,7 +2420,6 @@ p-loading[type="bounce"] > div > div:last-child {
 .form > .item.line * {
     display: none;
 }
-
 .form > .item.subform > .header > ion-icon {
     transform: rotate(0deg);
 

@@ -3909,9 +3909,9 @@ const MAIN = async () => {
                 "template": async (type=null) => await kfs["active-template"](type),
                 "robots": async (type=null) => {
                     let data = {};
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "templates.json"], "templates");
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "robots", "robots.json"], "robots");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["templates"](type));
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["robots"](type));
                     }
                     return util.ensure(data, "obj");
                 },
@@ -4093,10 +4093,7 @@ const MAIN = async () => {
                             if (!(name in stack)) return null;
                             stack = stack[name];
                         } else {
-                            let v2 = stack[name];
-                            if (v == null) delete stack[name];
-                            else stack[name] = v;
-                            stack = v2;
+                            [stack[name], stack] = [v, stack[name]];
                         }
                     }
                     o = cleanupEmpties(o);
@@ -4108,28 +4105,28 @@ const MAIN = async () => {
                 "active-theme": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-theme", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("active-theme");
                     return await kfs._writable(["override", "themes.json"], "active", v);
                 },
                 "theme": async v => await kfs["active-theme"](v),
                 "active-template": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-template", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("active-template");
                     return await kfs._writable(["override", "templates", "templates.json"], "active", v);
                 },
                 "template": async v => await kfs["active-template"](v),
                 "active-robot": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-robot", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("active-robot");
                     return await kfs._writable(["override", "robots", "robots.json"], "active", v);
                 },
                 "robot": async v => await kfs["active-robot"](v),
                 "active-holiday": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-holiday", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("active-holiday");
                     return await kfs._writable(["override", "holidays", "holidays.json"], "active", v);
                 },
                 "holiday": async v => await kfs["active-holiday"](v),
@@ -4140,31 +4137,31 @@ const MAIN = async () => {
                 "assets-host": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("assets-host", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("assets-host");
                     return await kfs._writable(["override", "config.json"], "assetsHost", v);
                 },
                 "comp-mode": async v => {
                     v = !!v;
                     let v2 = await this.getThis("comp-mode", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("comp-mode");
                     return await kfs._writable(["override", "config.json"], "isCompMode", v);
                 },
                 "native-theme": async v => {
                     v = String(v);
                     let v2 = await this.getThis("native-theme", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("native-theme");
                     return await kfs._writable(["override", "config.json"], "nativeTheme", v);
                 },
                 "holiday-opt": async v => {
                     v = !!v;
                     let v2 = await this.getThis("holiday-opt", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("holiday-opt");
                     return await kfs._writable(["override", "config.json"], "holidayOpt", v);
                 },
                 "reduced-motion": async v => {
                     v = !!v;
                     let v2 = await this.getThis("reduced-motion", "data");
-                    if (v == v2) v = null;
+                    if (v == v2) return await this.delThis("reduced-motion");
                     return await kfs._writable(["override", "config.json"], "reducedMotion", v);
                 },
                 "fs-version": async v => await this.setFSVersion(v),
@@ -4208,6 +4205,22 @@ const MAIN = async () => {
                     this.rootManager.check();
                     return stack;
                 },
+
+                "active-theme": async () => await kfs._writable(["override", "themes.json"], "active"),
+                "theme": async () => await kfs["active-theme"](),
+                "active-template": async () => await kfs._writable(["override", "templates", "templates.json"], "active"),
+                "template": async () => await kfs["active-template"](),
+                "active-robot": async () => await kfs._writable(["override", "robots", "robots.json"], "active"),
+                "robot": async () => await kfs["active-robot"](),
+                "active-holiday": async () => await kfs._writable(["override", "holidays", "holidays.json"], "active"),
+                "holiday": async () => await kfs["active-holiday"](),
+                "db-host": async () => await kfs._writable(["data", "config.json"], "dbHost"),
+                "assets-host": async () => await kfs._writable(["override", "config.json"], "assetsHost"),
+                "comp-mode": async () => await kfs._writable(["override", "config.json"], "isCompMode"),
+                "native-theme": async () => await kfs._writable(["override", "config.json"], "nativeTheme"),
+                "holiday-opt": async () => await kfs._writable(["override", "config.json"], "holidayOpt"),
+                "reduced-motion": async () => await kfs._writable(["override", "config.json"], "reducedMotion"),
+
                 "state": async (k="") => await kfs._writable("state.json", k),
             };
             if (k in kfs) return await kfs[k](...a);
