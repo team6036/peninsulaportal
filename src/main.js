@@ -122,8 +122,10 @@ const MAIN = async () => {
         user: os.userInfo(),
     };
     const args = [...process.argv];
+    args.shift();
+    if (!app.isPackaged) args.shift();
     const bootParams = {};
-    for (let i = 2; i < args.length; i++) {
+    for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         if (arg.startsWith("--") || arg.startsWith("-")) {
             const arg2 = arg.startsWith("--") ? arg.slice(2) : arg.slice(1);
