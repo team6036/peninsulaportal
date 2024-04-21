@@ -2538,10 +2538,6 @@ const MAIN = async () => {
                         await writeLW(
                             path.join(__dirname, "lib.mjs"),
                             path.join(pth, "ptk", "app", "lib.mjs"),
-                            r => r.replaceAll(
-                                "new URL(\"node_modules/mathjs/lib/browser/math.js\",\"file://\"+String(await window.api.getAppRoot()))",
-                                "\"../node_modules/mathjs/lib/browser/math.js\"",
-                            ),
                         );
                         await writeMini(path.join(pth, "ptk", "app", "core.mjs"));
 
