@@ -16,7 +16,9 @@ export class WorkerClient extends util.Target {
 
         this.script = script;
 
-        this.addHandler("cmd-log", data => console.log("WORKER:"+this.script+" ::", ...util.ensure(data, "arr")));
+        this.addHandler("cmd-console.log", data => console.log("WORKER:"+this.script+" ::", ...util.ensure(data, "arr")));
+        this.addHandler("cmd-console.warn", data => console.warn("WORKER:"+this.script+" ::", ...util.ensure(data, "arr")));
+        this.addHandler("cmd-console.error", data => console.error("WORKER:"+this.script+" ::", ...util.ensure(data, "arr")));
         this.addHandler("cmd-error", e => {
             this.post("error", e);
             this.stop();
@@ -88,7 +90,9 @@ export class WorkerBase extends util.Target {
 
         this.#progressT = 0;
 
-        self.console.log = (...a) => this.send("log", a);
+        self.console.log = (...a) => this.send("console.log", a);
+        self.console.warn = (...a) => this.send("console.warn", a);
+        self.console.error = (...a) => this.send("console.error", a);
     }
 
     get self() { return this.#self; }

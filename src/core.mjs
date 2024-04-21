@@ -694,8 +694,6 @@ export class App extends util.Target {
     start() { this.post("start"); }
     update(delta) { this.post("update", delta); }
 
-    async getName() { return lib.getName(await window.api.get("name")); }
-
     getAgent() {
         let agent = window.agent();
         if (agent.os == "web") {
@@ -721,6 +719,9 @@ export class App extends util.Target {
             "App: "+agent.app,
         ];
     }
+    get name() { return window.agent().name; }
+    getName() { return lib.getName(this.name); }
+    get id() { return window.agent().id; }
 
     static async createMarkdown(pth, signal) {
         if (!(signal instanceof util.Target)) signal = new util.Target();
@@ -1009,7 +1010,6 @@ export class App extends util.Target {
             return true;
         });
         this.addHandler("cmd-about", async () => {
-            let name = String(await window.api.get("name"));
             let holiday = await window.api.get("active-holiday");
             const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
             let pop = this.confirm();
@@ -1020,14 +1020,14 @@ export class App extends util.Target {
                 "file://"+util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
             pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
-            pop.title = "Peninsula "+lib.getName(name);
+            pop.title = "Peninsula "+this.getName();
             pop.infos = [this.getAgent().join("\n")];
             let r = await pop.whenResult();
             if (r) return;
             this.post("cmd-documentation");
         });
         this.addHandler("cmd-documentation", async () => {
-            let name = String(await window.api.get("name"));
+            const name = this.getName();
             if (["PANEL", "PLANNER", "PRESETS", "DATABASE"].includes(name))
                 this.addPopup(new App.MarkdownPopup("../docs/"+name.toLowerCase()+"/MAIN.md"));
             else this.addPopup(new App.MarkdownPopup("../README.md"));
@@ -1234,7 +1234,7 @@ export class App extends util.Target {
             Array.from(document.querySelectorAll(".introtitle")).forEach(async elem => {
                 if (elem.children.length <= 0) {
                     elem.innerHTML = "<div><div>p</div><div>eninsula</div></div><div></div>";
-                    elem.children[1].textContent = await this.getName();
+                    elem.children[1].textContent = this.getName();
                 }
                 let both = 0;
                 if (!(elem.querySelector(".special.back") instanceof HTMLImageElement)) {
@@ -1441,7 +1441,7 @@ export class App extends util.Target {
         this.eDynamicStyle.innerHTML = styleStr;
         PROPERTYCACHE.clear();
         this.post("update-dynamic-style");
-        window.api.set("title-bar-overlay", {
+        await window.api.set("title-bar-overlay", {
             color: PROPERTYCACHE.get("--v1"),
             symbolColor: PROPERTYCACHE.get("--v8"),
         });
@@ -1737,10 +1737,8 @@ export class App extends util.Target {
         v = String(v);
         if (this.title == v) return;
         this.#title = v;
-        (async () => {
-            let name = await this.getName();
-            this.eTitle.textContent = (v.length > 0) ? (v+" — "+name) : name;
-        })();
+        let name = this.getName();
+        this.eTitle.textContent = (v.length > 0) ? (v+" — "+name) : name;
     }
 
     get eTitle() { return this.#eTitle; }
@@ -1833,7 +1831,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
             this.#id = null;
             if (util.is(agent, "obj") && agent.os.platform == "darwin")
                 this.#id = await window.modal.spawn(this.constructor.NAME, {
-                    id: await window.api.get("id"),
+                    id: this.hasApp() ? this.app.id : null,
                     props: this.generateParams(),
                 });
             if (this.id == null) {
@@ -2667,7 +2665,7 @@ App.Menu = class AppMenu extends util.Target {
     }
 
     static buildAboutItems() {
-        let itm = new App.Menu.Item("About Peninsula");
+        let itm = new App.Menu.Item("About Peninsula "+lib.getName(window.agent().name));
         itm.id = "about";
         return [itm];
     }
@@ -3809,6 +3807,8 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
         this.#eTitle = document.createElement("div");
         this.elem.appendChild(this.eTitle);
         this.eTitle.classList.add("title");
+        this.eTitle.innerHTML = "<span>Peninsula</span><span></span>";
+        this.eTitle.children[1].textContent = this.app.getName();
         this.#eSubtitle = document.createElement("div");
         this.elem.appendChild(this.eSubtitle);
         this.eSubtitle.classList.add("subtitle");
@@ -3837,12 +3837,6 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
         this.addHandler("enter", async data => {
             this.app.title = "";
         });
-
-        (async () => {
-            const name = await this.app.getName();
-            this.eTitle.innerHTML = "<span>Peninsula</span><span></span>";
-            this.eTitle.children[1].textContent = name;
-        })();
     }
 
     get eTitle() { return this.#eTitle; }

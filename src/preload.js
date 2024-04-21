@@ -11,6 +11,8 @@ const buildAgent = async () => {
         electron: process.versions.electron,
 
         app: await ipcRenderer.invoke("get", "version"),
+        name: await ipcRenderer.invoke("get", "name"),
+        id: await ipcRenderer.invoke("get", "id"),
 
         public: ((await ipcRenderer.invoke("get", "db-host")) == null),
     };
@@ -62,6 +64,12 @@ contextBridge.exposeInMainWorld("api", {
     onMessage: f => {
         ipcRenderer.on("message", f);
         return () => ipcRenderer.removeListener("message", f);
+    },
+
+    console: {
+        log: (...a) => ipcRenderer.send("log", ...a),
+        warn: (...a) => ipcRenderer.send("warn", ...a),
+        error: (...a) => ipcRenderer.send("error", ...a),
     },
 });
 

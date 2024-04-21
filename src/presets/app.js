@@ -37,18 +37,11 @@ export default class App extends core.App {
                 const timer = new util.Timer(true);
                 this.addHandler("update", async () => {
                     if (!timer.dequeueAll(250)) return;
-                    const repoAnchor = this.eInfo.querySelector(":scope > .nav > a#repo");
-                    if (repoAnchor instanceof HTMLAnchorElement)
-                        repoAnchor.href = await window.api.get("repo");
-                    const dbHostAnchor = this.eInfo.querySelector(":scope > .nav > a#db-host");
-                    if (dbHostAnchor instanceof HTMLAnchorElement)
-                        dbHostAnchor.href = await window.api.get("db-host");
-                    const assetsHostAnchor = this.eInfo.querySelector(":scope > .nav > a#assets-host");
-                    if (assetsHostAnchor instanceof HTMLAnchorElement)
-                        assetsHostAnchor.href = await window.api.get("assets-host");
-                    const scoutURLAnchor = this.eInfo.querySelector(":scope > .nav > a#scout-url");
-                    if (scoutURLAnchor instanceof HTMLAnchorElement)
-                        scoutURLAnchor.href = await window.api.get("scout-url");
+                    await Promise.all(["repo", "db-host", "assets-host", "scout-url"].map(async name => {
+                        const anchor = this.eInfo.querySelector(":scope > .nav > a#"+name);
+                        if (!(anchor instanceof HTMLAnchorElement)) return;
+                        anchor.href = await window.api.get(name);
+                    }));
                 });
             }
             this.#eMain = document.querySelector("#PAGE > .main");

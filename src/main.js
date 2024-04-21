@@ -121,6 +121,35 @@ const MAIN = async () => {
         cpus: os.cpus(),
         user: os.userInfo(),
     };
+    const args = [...process.argv];
+    const bootParams = {};
+    for (let i = 2; i < args.length; i++) {
+        const arg = args[i];
+        if (arg.startsWith("--") || arg.startsWith("-")) {
+            const arg2 = arg.startsWith("--") ? arg.slice(2) : arg.slice(1);
+            if (arg.includes("=")) {
+                let k = arg2.split("=")[0];
+                let v = arg2.split("=").slice(1).join("=");
+                try {
+                    v = JSON.parse(v);
+                } catch (e) {}
+                bootParams[k] = v;
+            } else {
+                bootParams[arg2] = true;
+            }
+            continue;
+        }
+        if (arg.includes("=")) {
+            let k = arg.split("=")[0];
+            let v = arg.split("=").slice(1).join("=");
+            try {
+                v = JSON.parse(v);
+            } catch (e) {}
+            bootParams[k] = v;
+        } else {
+            bootParams[arg] = true;
+        }
+    }
 
     function simplify(s) {
         s = String(s);
@@ -1765,8 +1794,8 @@ const MAIN = async () => {
                             type.includes("r") ? bounds.x+bounds.width-v.x :
                             Math.floor(bounds.x+bounds.width/2-v.x/2),
                         y:
-                            type.include("t") ? bounds.y :
-                            type.include("b") ? bounds.y+bounds.height-v.y :
+                            type.includes("t") ? bounds.y :
+                            type.includes("b") ? bounds.y+bounds.height-v.y :
                             Math.floor(bounds.y+bounds.height/2-v.y/2),
                         width: v.x,
                         height: v.y,
@@ -3377,6 +3406,12 @@ const MAIN = async () => {
                 };
             };
 
+            if (bootParams["allow-debug"]) {
+                ipc.on("log", (e, ...a) => console.log(...a));
+                ipc.on("warn", (e, ...a) => console.warn(...a));
+                ipc.on("error", (e, ...a) => console.error(...a));
+            }
+
             ipc.handle("os", decorate(() => OS));
 
             const identify = e => {
@@ -3813,25 +3848,25 @@ const MAIN = async () => {
         async getCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.getCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" (get "+k+")");
             return await win.get(k, ...a);
         }
         async setCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.setCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" (set "+k+")");
             return await win.set(k, ...a);
         }
         async delCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.delCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" (del "+k+")");
             return await win.del(k, ...a);
         }
         async onCallback(id, k, ...a) {
             if (this.hasWindow()) return await this.window.manager.onCallback(id, k, ...a);
             let win = this.identifyWindow(id);
-            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" ("+k+")");
+            if (!win) throw new Error("Nonexistent window corresponding with id: "+id+" (on "+k+")");
             return await win.on(k, ...a);
         }
 
