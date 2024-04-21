@@ -5394,22 +5394,22 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 left: () => (
                     this.viewParams.use ?
                         [
-                            Math.max(minTime, time-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                            Math.max(minTime, time-Math.max(0, util.ensure(this.viewParams.time, "num"))),
                             time,
                         ] :
                     [
                         minTime,
-                        Math.min(maxTime, minTime+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                        Math.min(maxTime, minTime+Math.max(0, util.ensure(this.viewParams.time, "num"))),
                     ]
                 ),
                 right: () => (
                     this.viewParams.use ?
                         [
                             time,
-                            Math.min(maxTime, time+Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                            Math.min(maxTime, time+Math.max(0, util.ensure(this.viewParams.time, "num"))),
                         ] :
                     [
-                        Math.max(minTime, maxTime-Math.max(0, util.ensure(this.viewParams.time, "num", 5000))),
+                        Math.max(minTime, maxTime-Math.max(0, util.ensure(this.viewParams.time, "num"))),
                         maxTime,
                     ]
                 ),
