@@ -3341,11 +3341,14 @@ export class AppFeature extends App {
                 w += Array.from(this.eTitleBar.querySelectorAll(":scope > *:not(.space)"))
                     .map(elem => elem.getBoundingClientRect().width)
                     .sum();
+                w += window.outerWidth - window.innerWidth;
                 await window.api.set("min-width", w);
                 let h = PROPERTYCACHE.get("--TOP");
                 h = util.ensure(parseFloat(h.slice(0, -2)), "num");
+                h += window.outerHeight - window.innerHeight;
                 await window.api.set("min-height", h);
             };
+            new ResizeObserver(checkSizes).observe(document.body);
 
             this.#eTitleBtn = document.createElement("button");
             this.eTitleBar.appendChild(this.eTitleBtn);
