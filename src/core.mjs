@@ -3315,7 +3315,6 @@ export class AppFeature extends App {
 
     static ICON = "help-circle";
     static PROJECTCLASS = lib.Project;
-    static REVIVER = util.REVIVER;
 
     constructor() {
         super();
@@ -3674,7 +3673,7 @@ export class AppFeature extends App {
         let projects = [];
         await Promise.all(projectIds.map(async id => {
             let projectContent = await window.api.get("project", id);
-            let project = JSON.parse(projectContent, this.constructor.REVIVER.f);
+            let project = JSON.parse(projectContent, util.REVIVER.f);
             projects.push(project);
         }));
         this.projects = projects;

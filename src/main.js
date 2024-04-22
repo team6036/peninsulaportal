@@ -1,8 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
-const context = {};
-
 /*
 
    ______   ______   _______   __   _______   ______   ___  __   __      _______
@@ -4508,6 +4506,7 @@ const MAIN = async () => {
 
 };
 (async () => {
+    const context = {};
     try {
         await MAIN.call(context);
     } catch (e) {
