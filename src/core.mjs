@@ -739,15 +739,16 @@ export class App extends util.Target {
         const dfs = async elem => {
             let skip = await (async () => {
                 if (elem instanceof HTMLImageElement && elem.classList.contains("docs-icon")) {
-                    const onHolidayState = async holiday => {
+                    const onHolidayState = async () => {
+                        const holiday = await window.api.get("active-holiday");
                         const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
                         elem.src = 
                             ((holiday == null) || ("icon" in holidayData && !holidayData.icon)) ?
                                 "./assets/app/icon.png" :
                             "file://"+util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").png;
                     };
-                    signal.addHandler("holiday", onHolidayState);
-                    await onHolidayState(await window.api.get("active-holiday"));
+                    signal.addHandler("check", onHolidayState);
+                    await onHolidayState();
                     return true;
                 }
                 if (elem instanceof HTMLAnchorElement) {
@@ -827,7 +828,7 @@ export class App extends util.Target {
     }
     async createMarkdown(pth, signal) {
         if (!(signal instanceof util.Target)) signal = new util.Target();
-        this.addHandler("cmd-check", holiday => signal.post("holiday", holiday));
+        this.addHandler("cmd-check", () => signal.post("check"));
         return await App.createMarkdown(pth, signal);
     }
     static evaluateLoad(load) {
@@ -1010,7 +1011,7 @@ export class App extends util.Target {
             return true;
         });
         this.addHandler("cmd-about", async () => {
-            let holiday = await window.api.get("active-holiday");
+            const holiday = this.holiday;
             const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
             let pop = this.confirm();
             pop.cancel = "Documentation";
@@ -1051,9 +1052,7 @@ export class App extends util.Target {
         this.addHandler("cmd-fullscreen", async v => {
             this.fullscreen = v;
         });
-        this.addHandler("cmd-check", async () => {
-            this.holiday = await window.api.get("holiday");
-        });
+        this.addHandler("cmd-check", async () => (this.holiday = await window.api.get("active-holiday")));
 
         this.addHandler("cmd-menu-click", async id => {
             let itm = this.menu.getItemById(id);
@@ -1253,7 +1252,8 @@ export class App extends util.Target {
                     both++;
                 }
                 if (both < 2) return;
-                const onHolidayState = async holiday => {
+                const onHolidayState = async () => {
+                    const holiday = await window.api.get("active-holiday");
                     const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
                     if (holiday == null || ("hat" in holidayData && !holidayData.hat)) return elem.classList.remove("special");
                     elem.classList.add("special");
@@ -1265,10 +1265,8 @@ export class App extends util.Target {
                     if (eSpecialFront instanceof HTMLImageElement)
                         eSpecialFront.src = "file://"+holidayIconData.hat1;
                 };
-                this.addHandler("cmd-check", async () => {
-                    await onHolidayState(await window.api.get("holiday"));
-                });
-                await onHolidayState(await window.api.get("active-holiday"));
+                this.addHandler("cmd-check", onHolidayState);
+                await onHolidayState();
             });
         };
         setInterval(updatePage, 500);
