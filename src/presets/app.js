@@ -414,6 +414,7 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
         this.form.addField(new core.Form.Line());
 
         this.#fAdd = this.form.addField(new core.Form.Button("create", "+", "special"));
+        this.fAdd.addHandler("trigger", e => this.post("add", e));
 
         this.addHandler("update", async delta => {
             ignore = true;

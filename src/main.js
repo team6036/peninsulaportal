@@ -4032,16 +4032,40 @@ const MAIN = async () => {
                     }
                     return icons;
                 },
-                "active-holiday": async (type=null) => {
+                "active-holiday": async () => {
                     if (await this.get("holiday-opt")) return null;
-                    let data = null;
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "holidays", "holidays.json"], "active");
-                    else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-holiday"](type));
+                    const now = new Date();
+                    const nowDate = now.getDate();
+                    const nowMonth = now.getMonth()+1;
+                    let holidays = await this.getThis("holidays");
+                    for (let name in holidays) {
+                        let holidayData = util.ensure(holidays[name], "obj");
+                        let days = util.ensure(holidayData.days, "arr");
+                        for (let range of days) {
+                            range = util.ensure(range, "arr");
+                            if (range.length != 2) continue;
+                            let [start, stop] = range;
+                            start = util.ensure(start, "arr");
+                            stop = util.ensure(stop, "arr");
+                            if (start.length != 2) continue;
+                            if (stop.length != 2) continue;
+                            start = start.map(v => util.ensure(v, "int"));
+                            stop = stop.map(v => util.ensure(v, "int"));
+                            if (start[0] < 1 || start[0] > 31) continue;
+                            if (start[1] < 1 || start[1] > 12) continue;
+                            if (stop[0] < 1 || stop[0] > 31) continue;
+                            if (stop[1] < 1 || stop[1] > 12) continue;
+                            if (start[1] > stop[1]) continue;
+                            if (start[1] == stop[1] && start[0] > stop[0]) continue;
+                            if (nowMonth < start[1] || nowMonth > stop[1]) continue;
+                            if (nowMonth == start[1] && nowDate < start[0]) continue;
+                            if (nowMonth == stop[1] && nowDate > stop[0]) continue;
+                            return name;
+                        }
                     }
-                    return (data == null) ? null : String(data);
+                    return null;
                 },
-                "holiday": async (type=null) => await kfs["active-holiday"](type),
+                "holiday": async () => await kfs["active-holiday"](),
                 "db-host": async (type=null) => {
                     type = "data";
                     let data = null;
@@ -4192,13 +4216,6 @@ const MAIN = async () => {
                     return await kfs._writable(["override", "robots", "robots.json"], "active", v);
                 },
                 "robot": async v => await kfs["active-robot"](v),
-                "active-holiday": async v => {
-                    v = (v == null) ? null : String(v);
-                    let v2 = await this.getThis("active-holiday", "data");
-                    if (v == v2) return await this.delThis("active-holiday");
-                    return await kfs._writable(["override", "holidays", "holidays.json"], "active", v);
-                },
-                "holiday": async v => await kfs["active-holiday"](v),
                 "db-host": async v => {
                     v = (v == null) ? null : String(v);
                     return await kfs._writable(["data", "config.json"], "dbHost", v);
@@ -4281,8 +4298,6 @@ const MAIN = async () => {
                 "template": async () => await kfs["active-template"](),
                 "active-robot": async () => await kfs._writable(["override", "robots", "robots.json"], "active"),
                 "robot": async () => await kfs["active-robot"](),
-                "active-holiday": async () => await kfs._writable(["override", "holidays", "holidays.json"], "active"),
-                "holiday": async () => await kfs["active-holiday"](),
                 "db-host": async () => await kfs._writable(["data", "config.json"], "dbHost"),
                 "assets-host": async () => await kfs._writable(["override", "config.json"], "assetsHost"),
                 "comp-mode": async () => await kfs._writable(["override", "config.json"], "isCompMode"),
