@@ -329,7 +329,15 @@ export class Unit extends util.Target {
         }
         return v;
     }
+
+    toJSON() {
+        return util.Reviver.revivable(this.constructor, {
+            value: this.value,
+            unit: this.unit,
+        });
+    }
 }
+util.REVIVER.addRule(Unit);
 /*.lw}*/
 
 export class Option extends util.Target {

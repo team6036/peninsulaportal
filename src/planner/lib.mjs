@@ -705,5 +705,4 @@ Project.Path = class ProjectPath extends util.Target {
     }
 }
 
-export const REVIVER = new util.Reviver(util.REVIVER);
-REVIVER.addRuleAndAllSub(Project);
+util.REVIVER.addRuleAndAllSub(Project);

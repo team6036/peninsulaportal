@@ -8562,7 +8562,7 @@ class Project extends lib.Project {
 
     buildWidget() {
         try {
-            let widget = JSON.parse(this.widgetData, REVIVER.f);
+            let widget = JSON.parse(this.widgetData, util.REVIVER.f);
             if (!(widget instanceof Widget)) throw widget;
             return widget;
         } catch (e) {}
@@ -8712,8 +8712,7 @@ Project.Profile = class ProjectProfile extends util.Target {
     }
 };
 
-const REVIVER = new util.Reviver(util.REVIVER);
-REVIVER.addRuleAndAllSub(Container, Panel, Project);
+util.REVIVER.addRuleAndAllSub(Container, Panel, Project);
 
 export default class App extends core.AppFeature {
     #eBlock;
@@ -8724,7 +8723,6 @@ export default class App extends core.AppFeature {
 
     static ICON = "grid";
     static PROJECTCLASS = Project;
-    static REVIVER = REVIVER;
 
     constructor() {
         super();

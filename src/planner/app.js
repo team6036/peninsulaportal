@@ -471,7 +471,6 @@ class RSelectable extends core.Odometry2d.Render {
 export default class App extends core.AppFeature {
     static ICON = "analytics";
     static PROJECTCLASS = sublib.Project;
-    static REVIVER = sublib.REVIVER;
 
     constructor() {
         super();
@@ -1334,7 +1333,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!text.startsWith(util.MAGIC)) return;
                 text = text.slice(util.MAGIC.length);
                 try {
-                    let data = JSON.parse(text, sublib.REVIVER.f);
+                    let data = JSON.parse(text, util.REVIVER.f);
                     if (!util.is(data, "arr")) return;
                     if (!this.hasProject()) return;
                     data.forEach(itm => this.project.addItem(itm));
