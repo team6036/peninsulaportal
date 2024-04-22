@@ -21,6 +21,13 @@ Haha no documentation!
 
 const MAIN = async () => {
 
+    const makePureEscape = v => ("\x1B["+v);
+    const makeEscape = (...a) => makePureEscape(a.join(";")+"m");
+    const CONSOLERESET = makeEscape(0);
+    const CONSOLEDEFAULT = makeEscape(1, 39);
+    const CONSOLEYELLOW = makeEscape(1, 33);
+    const CONSOLERED = makeEscape(1, 31);
+
     const log = (...a) => {
         let now = new Date();
         let yr = now.getFullYear();
@@ -4373,8 +4380,6 @@ const MAIN = async () => {
     log("< BUILT CLASSES >");
 
     const manager = new WindowManager();
-
-    log("< DATAPATH = "+manager.root+" >");
 
     let initializeResolver = new util.Resolver(false);
     async function whenInitialized() { await initializeResolver.whenTrue(); }
