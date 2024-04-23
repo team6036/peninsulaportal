@@ -2721,7 +2721,7 @@ const MAIN = async () => {
                 await showError("WindowManager Initialize", "Affirmation Error", e);
                 return;
             }
-            let version = await this.get("base-version");
+            let version = await this.get("version");
             if (!(await this.canFS(version))) {
                 let fsVersion = await this.get("fs-version");
                 await showError("WindowManager Initialize", "Version Error", "Cannot operate file system due to deprecated application version ("+version+" < "+fsVersion+")");
@@ -2905,7 +2905,7 @@ const MAIN = async () => {
             if (this.hasWindow()) return await this.window.manager.tryLoad();
             if (this.isLoading) return false;
             const log = (...a) => this.log("DB", ...a);
-            let version = await this.get("base-version");
+            let version = await this.get("version");
             this.#isLoading = true;
             let r = await (async () => {
 
@@ -3526,7 +3526,7 @@ const MAIN = async () => {
         }
         async cleanup() {
             if (this.hasWindow()) return await this.window.manager.cleanup();
-            return await WindowManager.cleanup(this.dataPath, await this.get("base-version"));
+            return await WindowManager.cleanup(this.dataPath, await this.get("version"));
         }
 
         static async getFSVersion(pth) {
@@ -3992,11 +3992,8 @@ const MAIN = async () => {
                     data = util.ensure(data, "obj");
                     return data;
                 },
-                "base-version": async () => {
-                    return String((await kfs._fullpackage()).version);
-                },
                 "version": async () => {
-                    return String((await kfs["base-version"]()) + ((await this.get("packaged")) ? "" : "-dev"));
+                    return String((await kfs._fullpackage()).version);
                 },
                 "repo": async () => {
                     let repo = (await kfs._fullpackage()).repository;

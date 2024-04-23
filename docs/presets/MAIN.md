@@ -14,7 +14,6 @@ Additionally, tags can be added to the version like so:
 ```
 <year>.<major>.<patch>-<tag>
 ```
-If you currently actively developing this application, an additional `-dev` tag will be applied to the version. It will not be considered interally and is entirely for visual comprehension.
 
 ## Application Data
 
