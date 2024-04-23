@@ -245,7 +245,7 @@ const MAIN = async () => {
             new RegExp("^"+name+"/config\\.json$"),
             new RegExp("^"+name+"/state\\.json$"),
         );
-        if (!lib.APPFEATURES.includes(name)) return;
+        if (!lib.APPFEATURES.includes(name.toUpperCase())) return;
         DATASCHEMA.push(
             new RegExp("^"+name+"/projects$"),
             new RegExp("^"+name+"/projects/[^/]+\\.json$"),
@@ -2972,23 +2972,23 @@ const MAIN = async () => {
                     this.check();
                 };
 
-                log("db");
-                this.addLoad("db");
+                log("polling host");
+                this.addLoad("poll-host");
                 try {
                     if (hasHost) await fetchAndPipe(theHost, path.join(this.dataPath, "db.json"));
-                    log("db - success");
+                    log("polling host - success");
                 } catch (e) {
-                    log(`db - error - ${e}`);
-                    this.remLoad("db");
-                    this.addLoad("db:"+e);
+                    log(`polling host - error - ${e}`);
+                    this.remLoad("poll-host");
+                    this.addLoad("poll-host:"+e);
                     return false;
                 }
-                this.remLoad("db");
+                this.remLoad("poll-host");
 
-                log("finding next host");
-                this.addLoad("find-next");
+                log("getting next host");
+                this.addLoad("get-next-host");
                 const nextHost = await this.get("db-host");
-                this.remLoad("find-next");
+                this.remLoad("get-next-host");
                 if (nextHost != host) {
                     log("next host and current host mismatch - retrying");
                     this.#isLoading = false;
@@ -3072,14 +3072,15 @@ const MAIN = async () => {
                 log("finding assets - success");
                 this.remLoad("assets");
 
-                let pths = new Set();
-                const dfs = async pth => {
-                    await Promise.all((await this.dirList(pth)).map(async dirent => {
-                        if (dirent.type == "file") return pths.add(WindowManager.makePath(this.dataPath, pth));
-                        await dfs([pth, dirent.name]);
+                let maps = {};
+                await Promise.all(["themes", "templates", "robots", "holidays"].map(async type => {
+                    maps[type] = {};
+                    await Promise.all((await this.dirList(["data", type])).map(async dirent => {
+                        if (dirent.type != "dir") return;
+                        maps[type][dirent.name] = new Set();
+                        (await this.dirList(["data", type, dirent.name])).forEach(subdirent => maps[type][dirent.name].add(subdirent.name));
                     }));
-                };
-                await dfs("data");
+                }));
                 await Promise.all(assetsMap.map(async key => {
                     const asset = String(key);
                     const assetURL = `https://github.com/${assetsOwner}/${assetsRepo}/releases/download/${assetsTag}/${asset}`;
@@ -3137,18 +3138,26 @@ const MAIN = async () => {
                         themes: async () => {
                             if (!["config.json"].includes(name)) throw "Name Error ("+name+")";
                             await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "themes", id, name));
+                            if (!(id in maps[type])) return;
+                            maps[type][id].delete(name);
                         },
                         templates: async () => {
                             if (!["config.json", "model.glb", "image.png"].includes(name)) throw "Name Error ("+name+")";
                             await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "templates", id, name));
+                            if (!(id in maps[type])) return;
+                            maps[type][id].delete(name);
                         },
                         robots: async () => {
                             if (!["config.json"].includes(name) && !name.endsWith(".glb")) throw "Name Error ("+name+")";
                             await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "robots", id, name));
+                            if (!(id in maps[type])) return;
+                            maps[type][id].delete(name);
                         },
                         holidays: async () => {
                             if (!["config.json", "svg.svg", "png.png", "hat-1.svg", "hat-2.svg"].includes(name)) throw "Name Error ("+name+")";
                             await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "holidays", id, name));
+                            if (!(id in maps[type])) return;
+                            maps[type][id].delete(name);
                             if (name != "png.png") return;
                             const input = await fs.promises.readFile(WindowManager.makePath(this.dataPath, "data", "holidays", id, name));
                             await Promise.all([
@@ -3160,12 +3169,14 @@ const MAIN = async () => {
                                     icns: () => png2icons.createICNS(input, png2icons.BILINEAR, 0),
                                 }[tag]();
                                 await fs.promises.writeFile(WindowManager.makePath(this.dataPath, "data", "holidays", id, name2), output);
+                                if (!(id in maps[type])) return;
+                                maps[type][id].delete(name2);
                                 this.check();
                             }));
                         },
                     };
-                    log(`dl ${type} : ${id} / ${name}`);
-                    this.addLoad(`dl-${type}:${id}/${name}`);
+                    log(`dl ${type} : ${id} : ${name}`);
+                    this.addLoad(`dl-${type}:${id}:${name}`);
                     try {
                         if (type in typefs) {
                             try {
@@ -3173,12 +3184,12 @@ const MAIN = async () => {
                             } catch (e) {}
                             await typefs[type]();
                         } else throw "No found type ("+type+")";
-                        log(`dl ${type} : ${id} / ${name} - success`);
+                        log(`dl ${type} : ${id} : ${name} - success`);
                     } catch (e) {
-                        log(`dl ${type} : ${id} / ${name} - error - ${e}`);
-                        this.addLoad(`dl-${type}:${id}/${name}:${e}`);
+                        log(`dl ${type} : ${id} : ${name} - error - ${e}`);
+                        this.addLoad(`dl-${type}:${id}:${name}:${e}`);
                     }
-                    this.remLoad(`dl-${type}:${id}/${name}`);
+                    this.remLoad(`dl-${type}:${id}:${name}`);
                 }));
                 this.check();
                 return true;
@@ -3583,7 +3594,7 @@ const MAIN = async () => {
 
         modalSpawn(name, params) {
             name = String(name);
-            if (!MODALS.includes(name)) return null;
+            if (!lib.MODALS.includes(name)) return null;
             let win = this.addWindow(new Window(this, "modal:"+name), params);
             if (!win) return null;
             return win;

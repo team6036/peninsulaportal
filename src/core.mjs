@@ -833,116 +833,275 @@ export class App extends util.Target {
         return await App.createMarkdown(pth, signal);
     }
     static evaluateLoad(load) {
-        let ogLoad = load = String(load);
-        let _ = document.createElement("div");
-        _.textContent = ogLoad;
-        return _;
+        let loadValue = String(load);
+        load = loadValue.split(":");
         let elem = document.createElement("div");
-        load = load.split(":");
-        let name = load.shift();
+        const name = load.shift();
         (() => {
             let namefs = {
                 "fs-version": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "App data directory verison mismatch: "+load.join(":");
-                    return elem.textContent += "Checking app data version";
+                    if (load.length > 0) {
+                        elem.textContent = "Check data version error: "+load.join(":");
+                        elem.style.color = "var(--cr)";
+                    } else elem.textContent = "Checking data version";
+                    return true;
                 },
-                "find": () => (elem.textContent += "Finding database"),
-                "find-next": () => (elem.textContent += "Finding next database"),
-                "comp-mode": () => (elem.textContent += "Competition mode"),
-                "poll": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
-                    return elem.textContent += "Polling database";
+                "get-host": () => {
+                    if (load.length > 0) {
+                        elem.textContent = "Get host error: "+load.join(":");
+                        elem.style.color = "var(--cr)";
+                    } else elem.textContent = "Getting host";
+                    return true;
                 },
-                "config": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
-                    return elem.textContent += "Configuring";
+                "get-next-host": () => {
+                    if (load.length > 0) {
+                        elem.textContent = "Get next host error: "+load.join(":");
+                        elem.style.color = "var(--cr)";
+                    } else elem.textContent = "Getting next host";
+                    return true;
                 },
-                "templates.json": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
-                    return elem.textContent += "Downloading template datas";
+                "poll-host": () => {
+                    if (load.length > 0) {
+                        elem.textContent = "Poll host error: "+load.join(":");
+                        elem.style.color = "var(--cr)";
+                    } else elem.textContent = "Polling host";
+                    return true;
                 },
-                "robots.json": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Error while downloading robot datas: "+load.join(":");
-                    return elem.textContent += "Downloading robot datas";
+                "assets-data": () => {
+                    if (load.length > 0) {
+                        elem.textContent = "Find assets data error: "+load.join(":");
+                        elem.style.color = "var(--cr)";
+                    } else elem.textContent = "Finding assets data";
+                    return true;
                 },
-                "holidays.json": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Error while downloading holiday datas: "+load.join(":");
-                    return elem.textContent += "Downloading holiday datas";
+                "assets": () => {
+                    if (load.length > 0) {
+                        elem.textContent = "Find assets error: "+load.join(":");
+                        elem.style.color = "var(--cr)";
+                    } else elem.textContent = "Finding assets";
+                    return true;
                 },
-                "themes.json": () => {
-                    if (load.length > 0) elem.style.color = "var(--cr)";
-                    if (load.length > 0) return elem.textContent += "Error while downloading themes: "+load.join(":");
-                    return elem.textContent += "Downloading themes";
+                
+                "config.json": () => {
+                    if (load.length > 0) {
+                        elem.textContent = "Download config error: "+load.join(":");
+                        elem.style.color = "var(--cr)";
+                    } else elem.textContent = "Downloading config";
+                    return true;
                 },
             };
-            if (name in namefs) return namefs[name]();
-            if (name.startsWith("templates/")) {
-                name = name.slice(10);
-                let source = "";
-                if (name.endsWith("-ok")) {
-                    name = name.slice(0, -3);
-                    source = " using OctoKit";
-                }
-                let type = name.slice(-3);
-                type = { png: "image", glb: "model" }[type];
-                name = name.slice(0, -4);
-                if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while downloading template "+type+" "+name+source+": "+load.join(":");
-                return elem.textContent += "Downloading template "+type+" "+name+source;
-            }
-            if (name.startsWith("robots/")) {
-                let type = name.slice(-3);
-                type = { png: "image", glb: "model" }[type];
-                name = name.slice(7, -4);
-                if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while downloading robot "+type+" "+name+": "+load.join(":");
-                return elem.textContent += "Downloading robot "+type+" "+name;
-            }
-            if (name.startsWith("holidays/")) {
-                name = name.slice(9);
-                let action = "downloading";
-                if (name.endsWith("-conv")) {
-                    name = name.slice(0, -5);
-                    action = "converting";
-                }
-                if (load.length > 0) elem.style.color = "var(--cr)";
-                if (load.length > 0) return elem.textContent += "Error while "+action+" holiday icon "+name+": "+load.join(":");
-                return elem.textContent += action[0].toUpperCase()+action.slice(1)+" holiday icon "+name;
-            }
-            if (name.toUpperCase() == name) {
-                let fName = name;
-                name = load.shift();
-                elem.textContent += "["+lib.getName(fName)+"] ";
-                let namefs = {
-                    PLANNER: () => {
+            if (name in namefs) if (namefs[name]()) return;
+            if (name.startsWith("dl-")) {
+                const type = name.split("-").slice(1).join("-");
+                let typefs = {
+                    themes: () => {
+                        if (load.length < 1) return false;
+                        const id = load.shift();
+                        if (id == "config.json") {
+                            if (load.length > 0) {
+                                elem.textContent = `Download themes config error: `+load.join(":");
+                                elem.style.color = "var(--cr)";
+                            } else elem.textContent = `Downloading themes config`;
+                            return true;
+                        }
+                        if (load.length < 1) return false;
+                        const name = load.shift();
                         let namefs = {
-                            "solver": () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0)
-                                    return elem.textContent += "Error while copying default solver: "+load.join(":");
-                                return elem.textContent += "Copying default solver";
-                            },
-                            "templates.json": () => {
-                                if (load.length > 0) elem.style.color = "var(--cr)";
-                                if (load.length > 0)
-                                    return elem.textContent += "Error while downloading template datas: "+load.join(":");
-                                return elem.textContent += "Downloading template datas";
-                            },
+                            "config.json": "config",
                         };
-                        if (name in namefs) return namefs[name]();
+                        if (!(name in namefs)) return false;
+                        if (load.length > 0) {
+                            elem.textContent = `Download theme ${id} ${namefs[name]} error: `+load.join(":");
+                            elem.style.color = "var(--cr)";
+                        } else elem.textContent = `Downloading theme ${id} ${namefs[name]}`;
+                        return true;
+                    },
+                    templates: () => {
+                        if (load.length < 1) return false;
+                        const id = load.shift();
+                        if (id == "config.json") {
+                            if (load.length > 0) {
+                                elem.textContent = `Download templates config error: `+load.join(":");
+                                elem.style.color = "var(--cr)";
+                            } else elem.textContent = `Downloading templates config`;
+                            return true;
+                        }
+                        if (load.length < 1) return false;
+                        const name = load.shift();
+                        let namefs = {
+                            "config.json": "config",
+                            "model.glb": "model",
+                            "image.png": "image",
+                        };
+                        if (!(name in namefs)) return false;
+                        if (load.length > 0) {
+                            elem.textContent = `Download template ${id} ${namefs[name]} error: `+load.join(":");
+                            elem.style.color = "var(--cr)";
+                        } else elem.textContent = `Downloading template ${id} ${namefs[name]}`;
+                        return true;
+                    },
+                    robots: () => {
+                        if (load.length < 1) return false;
+                        const id = load.shift();
+                        if (id == "config.json") {
+                            if (load.length > 0) {
+                                elem.textContent = `Download robots config error: `+load.join(":");
+                                elem.style.color = "var(--cr)";
+                            } else elem.textContent = `Downloading robots config`;
+                            return true;
+                        }
+                        if (load.length < 1) return false;
+                        const name = load.shift();
+                        if (name.endsWith(".glb")) {
+                            if (load.length > 0) {
+                                elem.textContent = `Download robot ${id} ${name.slice(0, -4)} error: `+load.join(":");
+                                elem.style.color = "var(--cr)";
+                            } else elem.textContent = `Downloading robot ${id} ${name.slice(0, -4)}`;
+                            return true;
+                        }
+                        let namefs = {
+                            "config.json": "config",
+                        };
+                        if (!(name in namefs)) return false;
+                        if (load.length > 0) {
+                            elem.textContent = `Download robot ${id} ${namefs[name]} error: `+load.join(":");
+                            elem.style.color = "var(--cr)";
+                        } else elem.textContent = `Downloading robot ${id} ${namefs[name]}`;
+                        return true;
+                    },
+                    holidays: () => {
+                        if (load.length < 1) return false;
+                        const id = load.shift();
+                        if (id == "config.json") {
+                            if (load.length > 0) {
+                                elem.textContent = `Download holidays config error: `+load.join(":");
+                                elem.style.color = "var(--cr)";
+                            } else elem.textContent = `Downloading holidays config`;
+                            return true;
+                        }
+                        if (load.length < 1) return false;
+                        const name = load.shift();
+                        let namefs = {
+                            "config.json": "config",
+                            "svg.svg": "svg icon",
+                            "png.png": "png icon",
+                            "hat-1.svg": "hat 1 svg",
+                            "hat-2.svg": "hat 2 svg",
+                        };
+                        if (!(name in namefs)) return false;
+                        if (load.length > 0) {
+                            elem.textContent = `Download holiday ${id} ${namefs[name]} error: `+load.join(":");
+                            elem.style.color = "var(--cr)";
+                        } else elem.textContent = `Downloading holiday ${id} ${namefs[name]}`;
+                        return true;
                     },
                 };
-                if (name == "search") return elem.textContent += "Searching";
-                if (fName in namefs) return namefs[fName]();
+                if (type in typefs) if (typefs[type]()) return;
             }
+            elem.textContent = loadValue;
             elem.style.color = "var(--cy)";
-            elem.textContent = ogLoad;
+            // let namefs = {
+            //     "fs-version": () => {
+            //         if (load.length > 0) elem.style.color = "var(--cr)";
+            //         if (load.length > 0) return elem.textContent += "App data directory verison mismatch: "+load.join(":");
+            //         return elem.textContent += "Checking app data version";
+            //     },
+            //     "find": () => (elem.textContent += "Finding database"),
+            //     "find-next": () => (elem.textContent += "Finding next database"),
+            //     "comp-mode": () => (elem.textContent += "Competition mode"),
+            //     "poll": () => {
+            //         if (load.length > 0) elem.style.color = "var(--cr)";
+            //         if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
+            //         return elem.textContent += "Polling database";
+            //     },
+            //     "config": () => {
+            //         if (load.length > 0) elem.style.color = "var(--cr)";
+            //         if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
+            //         return elem.textContent += "Configuring";
+            //     },
+            //     "templates.json": () => {
+            //         if (load.length > 0) elem.style.color = "var(--cr)";
+            //         if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
+            //         return elem.textContent += "Downloading template datas";
+            //     },
+            //     "robots.json": () => {
+            //         if (load.length > 0) elem.style.color = "var(--cr)";
+            //         if (load.length > 0) return elem.textContent += "Error while downloading robot datas: "+load.join(":");
+            //         return elem.textContent += "Downloading robot datas";
+            //     },
+            //     "holidays.json": () => {
+            //         if (load.length > 0) elem.style.color = "var(--cr)";
+            //         if (load.length > 0) return elem.textContent += "Error while downloading holiday datas: "+load.join(":");
+            //         return elem.textContent += "Downloading holiday datas";
+            //     },
+            //     "themes.json": () => {
+            //         if (load.length > 0) elem.style.color = "var(--cr)";
+            //         if (load.length > 0) return elem.textContent += "Error while downloading themes: "+load.join(":");
+            //         return elem.textContent += "Downloading themes";
+            //     },
+            // };
+            // if (name in namefs) return namefs[name]();
+            // if (name.startsWith("templates/")) {
+            //     name = name.slice(10);
+            //     let source = "";
+            //     if (name.endsWith("-ok")) {
+            //         name = name.slice(0, -3);
+            //         source = " using OctoKit";
+            //     }
+            //     let type = name.slice(-3);
+            //     type = { png: "image", glb: "model" }[type];
+            //     name = name.slice(0, -4);
+            //     if (load.length > 0) elem.style.color = "var(--cr)";
+            //     if (load.length > 0) return elem.textContent += "Error while downloading template "+type+" "+name+source+": "+load.join(":");
+            //     return elem.textContent += "Downloading template "+type+" "+name+source;
+            // }
+            // if (name.startsWith("robots/")) {
+            //     let type = name.slice(-3);
+            //     type = { png: "image", glb: "model" }[type];
+            //     name = name.slice(7, -4);
+            //     if (load.length > 0) elem.style.color = "var(--cr)";
+            //     if (load.length > 0) return elem.textContent += "Error while downloading robot "+type+" "+name+": "+load.join(":");
+            //     return elem.textContent += "Downloading robot "+type+" "+name;
+            // }
+            // if (name.startsWith("holidays/")) {
+            //     name = name.slice(9);
+            //     let action = "downloading";
+            //     if (name.endsWith("-conv")) {
+            //         name = name.slice(0, -5);
+            //         action = "converting";
+            //     }
+            //     if (load.length > 0) elem.style.color = "var(--cr)";
+            //     if (load.length > 0) return elem.textContent += "Error while "+action+" holiday icon "+name+": "+load.join(":");
+            //     return elem.textContent += action[0].toUpperCase()+action.slice(1)+" holiday icon "+name;
+            // }
+            // if (name.toUpperCase() == name) {
+            //     let fName = name;
+            //     name = load.shift();
+            //     elem.textContent += "["+lib.getName(fName)+"] ";
+            //     let namefs = {
+            //         PLANNER: () => {
+            //             let namefs = {
+            //                 "solver": () => {
+            //                     if (load.length > 0) elem.style.color = "var(--cr)";
+            //                     if (load.length > 0)
+            //                         return elem.textContent += "Error while copying default solver: "+load.join(":");
+            //                     return elem.textContent += "Copying default solver";
+            //                 },
+            //                 "templates.json": () => {
+            //                     if (load.length > 0) elem.style.color = "var(--cr)";
+            //                     if (load.length > 0)
+            //                         return elem.textContent += "Error while downloading template datas: "+load.join(":");
+            //                     return elem.textContent += "Downloading template datas";
+            //                 },
+            //             };
+            //             if (name in namefs) return namefs[name]();
+            //         },
+            //     };
+            //     if (name == "search") return elem.textContent += "Searching";
+            //     if (fName in namefs) return namefs[fName]();
+            // }
+            // elem.style.color = "var(--cy)";
+            // elem.textContent = loadValue;
         })();
         return elem;
     }
