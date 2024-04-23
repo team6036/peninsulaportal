@@ -208,29 +208,37 @@ const MAIN = async () => {
         /^logs$/,
         /^logs\/[^\/]+\.log$/,
 
-        /^dump$/,
-        /^dump\/.*$/,
+        /^dump.*$/,
 
+        /^db\.json$/,
+        /^\.version$/,
         /^state\.json$/,
 
-        /^\.version$/,
-
         /^(data|override)$/,
+
         /^(data|override)\/templates$/,
-        /^(data|override)\/templates\/images$/,
-        /^(data|override)\/templates\/images\/[^\/]+\.(png|png-tmp)$/,
-        /^(data|override)\/templates\/models$/,
-        /^(data|override)\/templates\/models\/[^\/]+\.(glb|glb-tmp)$/,
-        /^(data|override)\/templates\/templates\.json$/,
+        /^(data|override)\/templates\/[^\/]+$/,
+        /^(data|override)\/templates\/[^\/]+\/config\.json$/,
+        /^(data|override)\/templates\/[^\/]+\/[^\/]+\.(glb|png|glb-tmp|png-tmp)$/,
+        /^(data|override)\/templates\/config\.json$/,
+
         /^(data|override)\/robots$/,
-        /^(data|override)\/robots\/models$/,
-        /^(data|override)\/robots\/models\/[^\/]+\.(glb|glb-tmp)$/,
-        /^(data|override)\/robots\/robots\.json$/,
+        /^(data|override)\/robots\/[^\/]+$/,
+        /^(data|override)\/robots\/[^\/]+\/config\.json$/,
+        /^(data|override)\/robots\/[^\/]+\/[^\/]+\.(glb|glb-tmp)$/,
+        /^(data|override)\/robots\/config\.json$/,
+
         /^(data|override)\/holidays$/,
-        /^(data|override)\/holidays\/icons$/,
-        /^(data|override)\/holidays\/icons\/[^\/]+\.(svg|png|ico|icns|svg-tmp|png-tmp|ico-tmp|icns-tmp)$/,
-        /^(data|override)\/holidays\/holidays\.json$/,
-        /^(data|override)\/themes\.json$/,
+        /^(data|override)\/holidays\/[^\/]+$/,
+        /^(data|override)\/holidays\/[^\/]+\/config\.json$/,
+        /^(data|override)\/holidays\/[^\/]+\/[^\/]+\.(svg|png|ico|icns|svg-tmp|png-tmp|ico-tmp|icns-tmp|json)$/,
+        /^(data|override)\/holidays\/config\.json$/,
+
+        /^(data|override)\/themes$/,
+        /^(data|override)\/themes\/[^\/]+$/,
+        /^(data|override)\/themes\/[^\/]+\/config\.json$/,
+        /^(data|override)\/themes\/config\.json$/,
+
         /^(data|override)\/config\.json$/,
     ];
     FEATURES.forEach(name => {
@@ -245,13 +253,16 @@ const MAIN = async () => {
         );
     });
 
-    DATASCHEMA.push(/^panel\/logs$/);
-    DATASCHEMA.push(/^panel\/logs\/[^\/]+\.wpilog$/);
-    DATASCHEMA.push(/^panel\/videos$/);
-    DATASCHEMA.push(/^panel\/videos\/[^\/]+\.(mp4|mov)$/);
+    DATASCHEMA.push(
+        /^panel\/logs$/,
+        /^panel\/logs\/[^\/]+\.wpilog$/,
+        /^panel\/videos$/,
+        /^panel\/videos\/[^\/]+\.(mp4|mov)$/,
+    );
 
-    DATASCHEMA.push(/^planner\/templates\.json$/);
-    DATASCHEMA.push(/^planner\/solver.*$/);
+    DATASCHEMA.push(
+        /^planner\/solver.*$/,
+    );
 
     const DATATYPES = ["data", "override"];
 
@@ -2743,10 +2754,6 @@ const MAIN = async () => {
                 ]));
             app.on("browser-window-blur", () => this.checkMenu());
             app.on("browser-window-focus", () => this.checkMenu());
-            ["themes.json", ["templates", "templates.json"], ["robots", "robots.json"], ["holidays", "holidays.json"], "config.json"].forEach(pth => {
-                fs.watchFile(WindowManager.makePath(this.dataPath, "data", pth), () => this.check());
-                fs.watchFile(WindowManager.makePath(this.dataPath, "override", pth), () => this.check());
-            });
             return true;
         }
         async quit() {
@@ -2901,16 +2908,19 @@ const MAIN = async () => {
             let version = await this.get("base-version");
             this.#isLoading = true;
             let r = await (async () => {
+
                 try {
                     await this.affirm();
                 } catch (e) {
                     await showError("Load", "Affirmation Error", e);
                     return false;
                 }
+
                 this.clearLoads();
+
+                this.addLoad("fs-version");
                 let fsVersion = await this.get("fs-version");
                 log(`fs-version check (${version} ?>= ${fsVersion})`);
-                this.addLoad("fs-version");
                 if (!(await this.canFS(version))) {
                     log(`fs-version mismatch (${version} !>= ${fsVersion})`);
                     this.remLoad("fs-version");
@@ -2918,39 +2928,30 @@ const MAIN = async () => {
                     return false;
                 }
                 log(`fs-version match (${version} >= ${fsVersion})`);
-                this.remLoad("fs-version");
                 await this.set("fs-version", version);
-                log("finding host");
-                this.addLoad("find");
-                const host = await this.get("db-host");
-                const doFallback = host == null;
-                const theHost = String(new URL("./api/", host));
-                const isCompMode = await this.get("comp-mode");
-                this.remLoad("find");
-                if (doFallback) log(`poll ( host: FALLBACK )`);
-                else log(`poll ( host: ${host} )`);
-                if (isCompMode) {
-                    log(`poll - SKIP (COMP MODE)`);
+                this.remLoad("fs-version");
+
+                if (await this.get("comp-mode")) {
+                    log(`SKIP (COMP MODE)`);
                     this.addLoad("comp-mode");
                     return true;
                 }
-                if (doFallback) {
-                    log(`no polling ( FALLBACK )`);
-                } else {
-                    log(`polling`);
-                    this.addLoad("poll");
-                    try {
-                        let resp = await util.timeout(10000, fetch(theHost));
-                        if (resp.status != 200) throw resp.status;
-                    } catch (e) {
-                        log(`polling - fail`);
-                        this.remLoad("poll");
-                        this.addLoad("poll:"+e);
-                        return false;
-                    }
-                    log(`polling - success`);
-                    this.remLoad("poll");
+
+                log("getting host");
+                this.addLoad("get-host");
+                const host = await this.get("db-host");
+                const hasHost = host != null;
+                this.remLoad("get-host");
+                if (!hasHost) {
+                    log("got host - failed");
+                    log(`+ HOST = ${host}`);
+                    return false;
                 }
+                log("got host");
+                log(`+ HOST = ${host}`);
+
+                const theHost = hasHost ? String(new URL("./api/", host)) : null;
+                
                 const fetchAndPipe = async (url, pth) => {
                     // log(`:: f&p(${url})`);
                     let fileName = path.basename(pth);
@@ -2968,22 +2969,22 @@ const MAIN = async () => {
                         });
                     });
                     await fs.promises.rename(tmpPth, thePth);
+                    this.check();
                 };
-                log("config");
-                this.addLoad("config");
+
+                log("db");
+                this.addLoad("db");
                 try {
-                    const pth = path.join(this.dataPath, "data", "config.json");
-                    if (doFallback) await fs.promises.cp(
-                        path.join(__dirname, "assets", "fallback", "config.json"), pth,
-                        { recursive: true, force: true },
-                    );
-                    else await fetchAndPipe(new URL("config", theHost), pth);
-                    log("config - success");
+                    if (hasHost) await fetchAndPipe(theHost, path.join(this.dataPath, "db.json"));
+                    log("db - success");
                 } catch (e) {
-                    log(`config - error - ${e}`);
-                    this.addLoad("config:"+e);
+                    log(`db - error - ${e}`);
+                    this.remLoad("db");
+                    this.addLoad("db:"+e);
+                    return false;
                 }
-                this.remLoad("config");
+                this.remLoad("db");
+
                 log("finding next host");
                 this.addLoad("find-next");
                 const nextHost = await this.get("db-host");
@@ -2994,396 +2995,192 @@ const MAIN = async () => {
                     return await this.tryLoad(version);
                 }
                 log("next host and current host match - continuing");
-                let url = new URL(String(await this.get("assets-host")));
-                if (!url.pathname.endsWith("/")) url.pathname += "/";
-                const assetsHost = String(url);
-                // const fullConfig = util.ensure(await this.get("_fullconfig"), "obj");
-                // const assetsGHUser = fullConfig.assetsGHUser;
-                // const assetsGHRepo = fullConfig.assetsGHRepo;
-                // const assetsGHRelease = fullConfig.assetsGHRelease;
-                let kit = null, releaseId = null, assets = null;
-                // if (false && [assetsGHUser, assetsGHRepo, assetsGHRelease].map(v => util.is(v, "str")).all()) {
-                //     kit = new octokit.Octokit({
-                //         auth: fullConfig.assetsGHAuth,
-                //     });
-                // }
-                if (doFallback) log("poll ( SKIP HOST )");
-                else {
-                    log("poll ( USING HOST )");
-                    log(`poll ( host = ${host} )`);
+                
+                log("finding assets-data");
+                this.addLoad("assets-data");
+                const assetsOwner = await this.get("assets-owner");
+                const assetsRepo = await this.get("assets-repo");
+                const assetsTag = await this.get("assets-tag");
+                const assetsAuth = await this.get("assets-auth");
+                const hasAssets = (assetsOwner != null) && (assetsRepo != null) && (assetsTag != null);
+                const kit = new octokit.Octokit({
+                    auth: assetsAuth,
+                });
+                this.remLoad("assets-data");
+                if (!hasAssets) {
+                    log("found assets-data - failed");
+                    log(`+ OWNER = ${assetsOwner}`);
+                    log(`+ REPO = ${assetsRepo}`);
+                    log(`+ TAG = ${assetsTag}`);
+                    return false;
                 }
-                if (kit) {
-                    log("poll ( USING OCTOKIT )");
-                    log(`poll ( assetsGHUser = ${assetsGHUser} )`);
-                    log(`poll ( assetsGHRepo = ${assetsGHRepo} )`);
-                    log(`poll ( assetsGHRelease = ${assetsGHRelease} )`);
-                } else log("poll ( SKIP OCTOKIT )");
-                log(`poll ( assetsHost = ${assetsHost} )`);
-                if (kit) {
+                log("found assets-data");
+                log(`+ OWNER = ${assetsOwner}`);
+                log(`+ REPO = ${assetsRepo}`);
+                log(`+ TAG = ${assetsTag}`);
+
+                log("finding assets");
+                this.addLoad("assets");
+                const assetsMap = [];
+                try {
+                    let data = null;
                     try {
-                        log("poll OCTOKIT : find release ID");
-                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases`), 2000);
-                        resp = util.ensure(resp, "obj");
-                        if (resp.status != 200 && resp.status != 302) throw resp.status;
-                        let data = util.ensure(resp.data, "arr");
-                        for (let release of data) {
-                            release = util.ensure(release, "obj");
-                            if (release.tag_name != assetsGHRelease) continue;
-                            releaseId = release.id;
-                            break;
-                        }
-                        log(`poll OCTOKIT : find release ID ( id = ${releaseId} )`);
-                    } catch (e) {
-                        releaseId = null;
-                        log(`poll OCTOKIT : find release ID - error - ${e}`);
+                        let content = await this.fileRead(["dump", "assets.json"]);
+                        data = JSON.parse(content);
+                    } catch (e) {}
+                    data = util.ensure(data, "obj");
+                    let time = util.ensure(data.time, "num");
+                    if (util.getTime()-time > 60*1000) {
+                        log("finding assets ( USING OCTO )");
+                        let resp = util.ensure(await kit.request("GET /repos/{owner}/{repo}/releases", {
+                            owner: assetsOwner,
+                            repo: assetsRepo,
+                            headers: {
+                                "X-GitHub-Api-Version": "2022-11-28",
+                            },
+                        }), "obj");
+                        if (![200, 302].includes(resp.status)) throw resp.status;
+                        data = resp.data;
+                        await this.fileWrite(["dump", "assets.json"], JSON.stringify({
+                            time: util.getTime(),
+                            data: data,
+                        }));
+                    } else {
+                        log("finding assets ( USING CACHE )");
+                        data = data.data;
                     }
-                }
-                if (kit && releaseId) {
-                    try {
-                        log("poll OCTOKIT : find assets");
-                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/${releaseId}/assets`), 2000);
-                        resp = util.ensure(resp, "obj");
-                        if (resp.status != 200 && resp.status != 302) throw resp.status;
-                        assets = util.ensure(resp.data, "arr");
-                        let assets2 = {};
+                    let found = false;
+                    let releases = util.ensure(data, "arr");
+                    for (let release of releases) {
+                        release = util.ensure(release, "obj");
+                        if (release.tag_name != assetsTag) continue;
+                        found = true;
+                        let assets = util.ensure(release.assets, "arr");
                         assets.forEach(asset => {
                             asset = util.ensure(asset, "obj");
-                            assets2[asset.name] = asset.id;
+                            assetsMap.push(asset.name);
                         });
-                        assets = assets2;
-                    } catch (e) {
-                        log(`poll OCTOKIT : find assets - error - ${e}`);
+                        break;
                     }
+                    if (!found) throw "No release found";
+                } catch (e) {
+                    log(`finding assets - error - ${e}`);
+                    this.remLoad("assets");
+                    this.addLoad("assets:"+e);
+                    return false;
                 }
-                await Promise.all([
-                    (async () => {
-                        log("templates.json");
-                        this.addLoad("templates.json");
+                log("finding assets - success");
+                this.remLoad("assets");
+
+                let pths = new Set();
+                const dfs = async pth => {
+                    await Promise.all((await this.dirList(pth)).map(async dirent => {
+                        if (dirent.type == "file") return pths.add(WindowManager.makePath(this.dataPath, pth));
+                        await dfs([pth, dirent.name]);
+                    }));
+                };
+                await dfs("data");
+                await Promise.all(assetsMap.map(async key => {
+                    const asset = String(key);
+                    const assetURL = `https://github.com/${assetsOwner}/${assetsRepo}/releases/download/${assetsTag}/${asset}`;
+                    let keyfs = {
+                        "config.json": async () => {
+                            await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "config.json"));
+                            this.check();
+                        },
+                    };
+                    if (key in keyfs) {
+                        log(`${key}`);
+                        this.addLoad(key);
                         try {
-                            const pth = path.join(this.dataPath, "data", "templates", "templates.json");
-                            if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "templates.json"), pth,
-                                { recursive: true, force: true },
-                            );
-                            else await fetchAndPipe(new URL("templates", theHost), pth);
-                            log("templates.json - success");
+                            await keyfs[key]();
+                            log(`${key} - success`);
                         } catch (e) {
-                            log(`templates.json - error - ${e}`);
-                            this.addLoad("templates.json:"+e);
+                            log(`${key} - error - ${e}`);
+                            this.addLoad(key+":"+e);
                         }
-                        this.remLoad("templates.json");
-                        log("checking templates.json");
-                        let content = await this.fileRead(["data", "templates", "templates.json"]);
-                        let data = null;
+                        this.remLoad(key);
+                        return;
+                    }
+                    key = asset.split(".");
+                    if (key.length < 2) return;
+                    const type = key.shift();
+                    if (key.join(".") == "config.json") {
+                        let typefs = {
+                            themes: async () => {
+                                await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "themes", "config.json"));
+                            },
+                            templates: async () => {
+                                await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "templates", "config.json"));
+                            },
+                            robots: async () => {
+                                await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "robots", "config.json"));
+                            },
+                        };
+                        log(`dl ${type} : config`);
+                        this.addLoad(`dl-${type}:config`);
                         try {
-                            data = JSON.parse(content);
-                            log("checking templates.json - success");
+                            if (type in typefs) {
+                                await typefs[type]();
+                            } else throw "No found type ("+type+")";
+                            log(`dl ${type} : config - success`);
                         } catch (e) {
-                            log(`checking templates.json - error - ${e}`);
+                            log(`dl ${type} : config - error - ${e}`);
+                            this.addLoad(`dl-${type}:config:${e}`);
                         }
-                        data = util.ensure(data, "obj");
-                        let templates = util.ensure(data.templates, "obj");
-                        await Promise.all(Object.keys(templates).map(async name => {
-                            name = String(name);
-                            const template = templates[name];
-                            await Promise.all(["images", "models"].map(async section => {
-                                let tag = { images: "png", models: "glb" }[section];
-                                if (section.slice(0, -1) in template)
-                                    if (!template[section.slice(0, -1)]) {
-                                        log(`templates/${name}.${tag} IGNORED`);
-                                        return;
-                                    }
-                                const pth = path.join(this.dataPath, "data", "templates", section, name+"."+tag);
-                                const key = "templates."+name+"."+tag;
-                                if (kit && releaseId && assets && (key in assets)) {
-                                    let successful = false;
-                                    log(`templates/${name}.${tag} using OCTOKIT`);
-                                    this.addLoad(`templates/${name}.${tag}-ok`);
-                                    try {
-                                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/assets/${assets[key]}`, {
-                                            headers: {
-                                                Accept: "application/octet-stream",
-                                            },
-                                        }), 2000);
-                                        resp = util.ensure(resp, "obj");
-                                        if (resp.status != 200 && resp.status != 302) throw resp.status;
-                                        await WindowManager.fileWriteRaw(pth, resp.data);
-                                        successful = true;
-                                        log(`templates/${name}.${tag} using OCTOKIT - success`);
-                                    } catch (e) {
-                                        log(`templates/${name}.${tag} using OCTOKIT - error - ${e}`);
-                                        this.addLoad(`templates/${name}.${tag}-ok:`+e);
-                                    }
-                                    this.remLoad(`templates/${name}.${tag}-ok`);
-                                    if (successful) return;
-                                }
-                                log(`templates/${name}.${tag}`);
-                                this.addLoad(`templates/${name}.${tag}`);
-                                try {
-                                    await fetchAndPipe(new URL("templates."+name+"."+tag, assetsHost), pth);
-                                    log(`templates/${name}.${tag} - success`);
-                                } catch (e) {
-                                    log(`templates/${name}.${tag} - error - ${e}`);
-                                    this.addLoad(`templates/${name}.${tag}:`+e);
-                                }
-                                this.remLoad(`templates/${name}.${tag}`);
-                            }));
-                        }));
-                    })(),
-                    (async () => {
-                        log("robots.json");
-                        this.addLoad("robots.json");
-                        try {
-                            const pth = path.join(this.dataPath, "data", "robots", "robots.json");
-                            if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "robots.json"), pth,
-                                { recursive: true, force: true },
-                            );
-                            else await fetchAndPipe(new URL("robots", theHost), pth);
-                            log("robots.json - success");
-                        } catch (e) {
-                            log(`robots.json - error - ${e}`);
-                            this.addLoad("robots.json:"+e);
-                        }
-                        this.remLoad("robots.json");
-                        log("checking robots.json");
-                        let content = await this.fileRead(["data", "robots", "robots.json"]);
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                            log("checking robots.json - success");
-                        } catch (e) {
-                            log(`checking robots.json - error - ${e}`);
-                        }
-                        data = util.ensure(data, "obj");
-                        let robots = util.ensure(data.robots, "obj");
-                        await Promise.all(Object.keys(robots).map(async name => {
-                            name = String(name);
-                            await Promise.all(["models"].map(async section => {
-                                let tag = { images: "png", models: "glb" }[section];
-                                const pth = path.join(this.dataPath, "data", "robots", section, name+"."+tag);
-                                const key = "robots."+name+"."+tag;
-                                if (kit && releaseId && assets && (key in assets)) {
-                                    let successful = false;
-                                    log(`robots/${name}.${tag} using OCTOKIT`);
-                                    this.addLoad(`robots/${name}.${tag}-ok`);
-                                    try {
-                                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/assets/${assets[key]}`, {
-                                            headers: {
-                                                Accept: "application/octet-stream",
-                                            },
-                                        }), 2000);
-                                        resp = util.ensure(resp, "obj");
-                                        if (resp.status != 200 && resp.status != 302) throw resp.status;
-                                        await WindowManager.fileWriteRaw(pth, resp.data);
-                                        successful = true;
-                                        log(`robots/${name}.${tag} using OCTOKIT - success`);
-                                    } catch (e) {
-                                        log(`robots/${name}.${tag} using OCTOKIT - error - ${e}`);
-                                        this.addLoad(`robots/${name}.${tag}-ok:`+e);
-                                    }
-                                    this.remLoad(`robots/${name}.${tag}-ok`);
-                                    if (successful) return;
-                                }
-                                log(`robots/${name}.${tag}`);
-                                this.addLoad(`robots/${name}.${tag}`);
-                                try {
-                                    await fetchAndPipe(new URL("robots."+name+"."+tag, assetsHost), pth);
-                                    log(`robots/${name}.${tag} - success`);
-                                } catch (e) {
-                                    log(`robots/${name}.${tag} - error - ${e}`);
-                                    this.addLoad(`robots/${name}.${tag}:`+e);
-                                }
-                                this.remLoad(`robots/${name}.${tag}`);
-                            }));
-                        }));
-                    })(),
-                    (async () => {
-                        log("holidays.json");
-                        this.addLoad("holidays.json");
-                        try {
-                            const pth = path.join(this.dataPath, "data", "holidays", "holidays.json");
-                            if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "holidays.json"), pth,
-                                { recursive: true, force: true },
-                            );
-                            else await fetchAndPipe(new URL("holidays", theHost), pth);
-                            log("holidays.json - success");
-                        } catch (e) {
-                            log(`holidays.json - error - ${e}`);
-                            this.addLoad("holidays.json:"+e);
-                        }
-                        this.remLoad("holidays.json");
-                        log("checking holidays.json");
-                        let content = await this.fileRead(["data", "holidays", "holidays.json"]);
-                        let data = null;
-                        try {
-                            data = JSON.parse(content);
-                            log("checking holidays.json - success");
-                        } catch (e) {
-                            log(`checking holidays.json - error - ${e}`);
-                        }
-                        data = util.ensure(data, "obj");
-                        let holidays = util.ensure(data.holidays, "obj");
-                        await Promise.all(Object.keys(holidays).map(async name => {
-                            name = String(name);
-                            const holiday = holidays[name];
-                            await Promise.all([
-                                "svg", "png",
-                                "hat1", "hat2",
-                            ].map(async tag => {
-                                if (["svg", "png"].includes(tag))
-                                    if ("icon" in holiday && !holiday.icon)
-                                        return;
-                                if (["hat1", "hat2"].includes(tag))
-                                    if ("hat" in holiday && !holiday.hat)
-                                        return;
-                                let fullname = lib.FSOperator.sanitizeName(name);
-                                fullname += ["hat1", "hat2"].includes(tag) ? ("-hat-"+tag.slice(3)+".svg") : ("."+tag);
-                                const pth = path.join(this.dataPath, "data", "holidays", "icons", fullname);
-                                const key = "holidays."+fullname;
-                                if (kit && releaseId && assets && (key in assets)) {
-                                    let successful = false;
-                                    log(`holidays/${name}.${tag} using OCTOKIT`);
-                                    this.addLoad(`holidays/${name}.${tag}-ok`);
-                                    try {
-                                        let resp = await util.timeout(kit.request(`GET /repos/${assetsGHUser}/${assetsGHRepo}/releases/assets/${assets[key]}`, {
-                                            headers: {
-                                                Accept: "application/octet-stream",
-                                            },
-                                        }), 2000);
-                                        resp = util.ensure(resp, "obj");
-                                        if (resp.status != 200 && resp.status != 302) throw resp.status;
-                                        await WindowManager.fileWriteRaw(pth, resp.data);
-                                        successful = true;
-                                        log(`holidays/${name}.${tag} using OCTOKIT - success`);
-                                    } catch (e) {
-                                        log(`holidays/${name}.${tag} using OCTOKIT - error - ${e}`);
-                                        this.addLoad(`holidays/${name}.${tag}-ok:`+e);
-                                    }
-                                    this.remLoad(`holidays/${name}.${tag}-ok`);
-                                    if (successful) return;
-                                }
-                                log(`holidays/${fullname}`);
-                                this.addLoad(`holidays/${fullname}`);
-                                try {
-                                    await fetchAndPipe(new URL("holidays."+fullname, assetsHost), pth);
-                                    log(`holidays/${fullname} - success`);
-                                } catch (e) {
-                                    log(`holidays/${fullname} - error - ${e}`);
-                                    this.addLoad(`holidays/${fullname}:`+e);
-                                }
-                                this.remLoad(`holidays/${fullname}`);
-                            }));
-                        }));
-                        await Promise.all(Object.keys(holidays).map(async name => {
-                            name = String(name);
-                            const holiday = holidays[name];
-                            if ("icon" in holiday && !holiday.icon) return;
-                            if (!(await WindowManager.fileHas([this.dataPath, "holidays", "icons", name+".png"]))) return;
-                            let input = await fs.promises.readFile(path.join(this.dataPath, "holidays", "icons", name+".png"));
+                        this.remLoad(`dl-${type}:config`);
+                        return;
+                    }
+                    const id = lib.FSOperator.sanitizeName(key.shift());
+                    const name = key.join(".");
+                    let typefs = {
+                        themes: async () => {
+                            if (!["config.json"].includes(name)) throw "Name Error ("+name+")";
+                            await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "themes", id, name));
+                        },
+                        templates: async () => {
+                            if (!["config.json", "model.glb", "image.png"].includes(name)) throw "Name Error ("+name+")";
+                            await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "templates", id, name));
+                        },
+                        robots: async () => {
+                            if (!["config.json"].includes(name) && !name.endsWith(".glb")) throw "Name Error ("+name+")";
+                            await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "robots", id, name));
+                        },
+                        holidays: async () => {
+                            if (!["config.json", "svg.svg", "png.png", "hat-1.svg", "hat-2.svg"].includes(name)) throw "Name Error ("+name+")";
+                            await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "holidays", id, name));
+                            if (name != "png.png") return;
+                            const input = await fs.promises.readFile(WindowManager.makePath(this.dataPath, "data", "holidays", id, name));
                             await Promise.all([
                                 "ico", "icns",
                             ].map(async tag => {
-                                let pth = name+"."+tag;
-                                log(`holidays/${pth} conversion`);
-                                this.addLoad(`holidays/${pth}-conv`);
-                                try {
-                                    let output = {
-                                        ico: () => png2icons.createICO(input, png2icons.BILINEAR, 0, true, true),
-                                        icns: () => png2icons.createICNS(input, png2icons.BILINEAR, 0),
-                                    }[tag]();
-                                    await fs.promises.writeFile(path.join(this.dataPath, "holidays", "icons", pth), output);
-                                    log(`holidays/${pth} conversion - success`);
-                                } catch (e) {
-                                    log(`holidays/${pth} conversion - error - ${e}`);
-                                    this.addLoad(`holidays/${pth}-conv:`+e);
-                                }
-                                this.remLoad(`holidays/${pth}-conv`);
+                                const name2 = tag+"."+tag;
+                                const output = {
+                                    ico: () => png2icons.createICO(input, png2icons.BILINEAR, 0, true, true),
+                                    icns: () => png2icons.createICNS(input, png2icons.BILINEAR, 0),
+                                }[tag]();
+                                await fs.promises.writeFile(WindowManager.makePath(this.dataPath, "data", "holidays", id, name2), output);
+                                this.check();
                             }));
-                        }));
-                    })(),
-                    (async () => {
-                        log("themes.json");
-                        this.addLoad("themes.json");
-                        try {
-                            const pth = path.join(this.dataPath, "data", "themes.json");
-                            if (doFallback) await fs.promises.cp(
-                                path.join(__dirname, "assets", "fallback", "themes.json"), pth,
-                                { recursive: true, force: true },
-                            );
-                            else await fetchAndPipe(new URL("themes", theHost), pth);
-                            log("themes.json - success");
-                        } catch (e) {
-                            log(`themes.json - error - ${e}`);
-                            this.addLoad("themes.json:"+e);
-                        }
-                        this.remLoad("themes.json");
-                        await this.send("theme");
-                    })(),
-                    ...FEATURES.map(async name => {
-                        let namefs;
-                        const subhost = new URL(name.toLowerCase()+"/", theHost);
-                        const sublog = (...a) => log(`[${name}]`, ...a);
-                        namefs = {
-                            PLANNER: async () => {
-                                await Window.affirm(this, name);
-                                sublog("solver");
-                                this.addLoad(name+":solver");
-                                try {
-                                    if (await WindowManager.dirHas([__dirname, name.toLowerCase(), "solver"]))
-                                        await fs.promises.cp(
-                                            path.join(__dirname, name.toLowerCase(), "solver"),
-                                            path.join(Window.getDataPath(this, name), "solver"),
-                                            { force: true, recursive: true },
-                                        );
-                                    sublog("solver - success");
-                                } catch (e) {
-                                    sublog(`solver - error - ${e}`);
-                                    this.addLoad(name+":solver:"+e);
-                                }
-                                this.remLoad(name+":solver");
-                            },
-                        };
-                        if (name in namefs) await namefs[name]();
-                        sublog("search");
-                        this.addLoad(name+":search");
-                        try {
-                            if (doFallback);
-                            else {
-                                let resp = await util.timeout(10000, fetch(subhost));
-                                if (resp.status != 200) throw resp.status;
-                            }
-                        } catch (e) {
-                            sublog(`search - not found - ${e}`);
-                            this.remLoad(name+":search");
-                            return;
-                        }
-                        sublog("search - found");
-                        this.remLoad(name+":search");
-                        namefs = {
-                            PLANNER: async () => {
-                                sublog("templates.json");
-                                this.addLoad(name+":templates.json");
-                                try {
-                                    const pth = path.join(Window.getDataPath(this, name), "templates.json");
-                                    if (doFallback) await fs.promises.cp(
-                                        path.join(__dirname, "assets", "fallback", "planner", "templates.json"),
-                                        pth,
-                                        { recursive: true, force: true },
-                                    );
-                                    else await fetchAndPipe(new URL("templates", subhost), pth);
-                                    sublog("templates.json - success");
-                                } catch (e) {
-                                    sublog(`templates.json - error - ${e}`);
-                                    this.addLoad(name+":templates.json:"+e);
-                                }
-                                this.remLoad(name+":templates.json");
-                            },
-                        };
-                        if (name in namefs) await namefs[name]();
-                    }),
-                ]);
+                        },
+                    };
+                    log(`dl ${type} : ${id} / ${name}`);
+                    this.addLoad(`dl-${type}:${id}/${name}`);
+                    try {
+                        if (type in typefs) {
+                            try {
+                                await this.dirAffirm(["data", type, id]);
+                            } catch (e) {}
+                            await typefs[type]();
+                        } else throw "No found type ("+type+")";
+                        log(`dl ${type} : ${id} / ${name} - success`);
+                    } catch (e) {
+                        log(`dl ${type} : ${id} / ${name} - error - ${e}`);
+                        this.addLoad(`dl-${type}:${id}/${name}:${e}`);
+                    }
+                    this.remLoad(`dl-${type}:${id}/${name}`);
+                }));
+                this.check();
                 return true;
             })();
             this.#isLoading = false;
@@ -3636,23 +3433,20 @@ const MAIN = async () => {
             await Promise.all(["data", "override"].map(async sect => {
                 await this.dirAffirm([dataPath, sect]);
 
-                await this.fileAffirm([dataPath, sect, "themes.json"]);
+                await this.dirAffirm([dataPath, sect, "themes"]);
+                await this.fileAffirm([dataPath, sect, "themes", "config.json"]);
 
                 await this.dirAffirm([dataPath, sect, "templates"]);
-                await this.fileAffirm([dataPath, sect, "templates", "templates.json"]);
-                await this.dirAffirm([dataPath, sect, "templates", "images"]);
-                await this.dirAffirm([dataPath, sect, "templates", "models"]);
+                await this.fileAffirm([dataPath, sect, "templates", "config.json"]);
 
                 await this.dirAffirm([dataPath, sect, "robots"]);
-                await this.fileAffirm([dataPath, sect, "robots", "robots.json"]);
-                await this.dirAffirm([dataPath, sect, "robots", "models"]);
+                await this.fileAffirm([dataPath, sect, "robots", "config.json"]);
 
                 await this.dirAffirm([dataPath, sect, "holidays"]);
-                await this.fileAffirm([dataPath, sect, "holidays", "holidays.json"]);
-                await this.dirAffirm([dataPath, sect, "holidays", "icons"]);
 
                 await this.fileAffirm([dataPath, sect, "config.json"]);
             }));
+            await this.fileAffirm([dataPath, "db.json"]);
             await this.fileAffirm([dataPath, ".version"]);
             await this.fileAffirm([dataPath, "state.json"]);
             return true;
@@ -3916,37 +3710,62 @@ const MAIN = async () => {
 
                 "themes": async (type=null) => {
                     let data = {};
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "themes.json"], "themes");
-                    else {
+                    if (DATATYPES.includes(type)) {
+                        await Promise.all((await this.dirList([type, "themes"])).map(async dirent => {
+                            if (dirent.type != "dir") return;
+                            try {
+                                let subdata = util.ensure(JSON.parse(await this.fileRead([type, "themes", dirent.name, "config.json"])), "obj");
+                                subdata._source = type;
+                                data[dirent.name] = subdata;
+                            } catch (e) { return; }
+                        }));
+                    } else {
                         for (let type of DATATYPES) data = mergeThings(data, await kfs["themes"](type));
                     }
                     return util.ensure(data, "obj");
                 },
+                "theme": async (id, type=null) => {
+                    let themes = await kfs["themes"](type);
+                    if (!(id in themes)) return null;
+                    return themes[id];
+                },
                 "active-theme": async (type=null) => {
                     let data = null;
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "themes.json"], "active");
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "themes", "config.json"], "active");
                     else {
                         for (let type of DATATYPES) data = mergeThings(data, await kfs["active-theme"](type));
                     }
                     return (data == null) ? null : String(data);
                 },
-                "theme": async (type=null) => await kfs["active-theme"](type),
                 "templates": async (type=null) => {
                     let data = {};
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "templates.json"], "templates");
-                    else {
+                    if (DATATYPES.includes(type)) {
+                        await Promise.all((await this.dirList([type, "templates"])).map(async dirent => {
+                            if (dirent.type != "dir") return;
+                            try {
+                                let subdata = util.ensure(JSON.parse(await this.fileRead([type, "templates", dirent.name, "config.json"])), "obj");
+                                subdata._source = type;
+                                data[dirent.name] = subdata;
+                            } catch (e) { return; }
+                        }));
+                    } else {
                         for (let type of DATATYPES) data = mergeThings(data, await kfs["templates"](type));
                     }
                     return util.ensure(data, "obj");
+                },
+                "template": async (id, type=null) => {
+                    let templates = await kfs["templates"](type);
+                    if (!(id in templates)) return null;
+                    return templates[id];
                 },
                 "template-images": async (type=null) => {
                     let images = {};
                     if (DATATYPES.includes(type)) {
                         let templates = await kfs["templates"](type);
-                        await Promise.all(Object.keys(templates).map(async name => {
-                            const pth = WindowManager.makePath(this.dataPath, type, "templates", "images", lib.FSOperator.sanitizeName(name)+".png");
+                        await Promise.all(Object.keys(templates).map(async id => {
+                            const pth = WindowManager.makePath(this.dataPath, type, "templates", id, "image.png");
                             if (!(await WindowManager.fileHas(pth))) return;
-                            images[name] = pth;
+                            images[id] = pth;
                         }));
                     } else {
                         for (let type of DATATYPES) images = mergeThings(images, await kfs["template-images"](type));
@@ -3957,10 +3776,10 @@ const MAIN = async () => {
                     let models = {};
                     if (DATATYPES.includes(type)) {
                         let templates = await kfs["templates"](type);
-                        await Promise.all(Object.keys(templates).map(async name => {
-                            const pth = WindowManager.makePath(this.dataPath, type, "templates", "models", lib.FSOperator.sanitizeName(name)+".glb");
+                        await Promise.all(Object.keys(templates).map(async id => {
+                            const pth = WindowManager.makePath(this.dataPath, type, "templates", id, "model.glb");
                             if (!(await WindowManager.fileHas(pth))) return;
-                            models[name] = pth;
+                            models[id] = pth;
                         }));
                     } else {
                         for (let type of DATATYPES) models = mergeThings(models, await kfs["template-models"](type));
@@ -3969,29 +3788,41 @@ const MAIN = async () => {
                 },
                 "active-template": async (type=null) => {
                     let data = null;
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "templates.json"], "active");
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "config.json"], "active");
                     else {
                         for (let type of DATATYPES) data = mergeThings(data, await kfs["active-template"](type));
                     }
                     return (data == null) ? null : String(data);
                 },
-                "template": async (type=null) => await kfs["active-template"](type),
                 "robots": async (type=null) => {
                     let data = {};
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "robots", "robots.json"], "robots");
-                    else {
+                    if (DATATYPES.includes(type)) {
+                        await Promise.all((await this.dirList([type, "robots"])).map(async dirent => {
+                            if (dirent.type != "dir") return;
+                            try {
+                                let subdata = util.ensure(JSON.parse(await this.fileRead([type, "robots", dirent.name, "config.json"])), "obj");
+                                subdata._source = type;
+                                data[dirent.name] = subdata;
+                            } catch (e) { return; }
+                        }));
+                    } else {
                         for (let type of DATATYPES) data = mergeThings(data, await kfs["robots"](type));
                     }
                     return util.ensure(data, "obj");
+                },
+                "robot": async (id, type=null) => {
+                    let robots = await kfs["robots"](type);
+                    if (!(id in robots)) return null;
+                    return robots[id];
                 },
                 "robot-models": async (type=null) => {
                     let models = {};
                     if (DATATYPES.includes(type)) {
                         let robots = await kfs["robots"](type);
-                        await Promise.all(Object.keys(robots).map(async name => {
-                            const pth = WindowManager.makePath(this.dataPath, type, "robots", "models", lib.FSOperator.sanitizeName(name)+".glb");
+                        await Promise.all(Object.keys(robots).map(async id => {
+                            const pth = WindowManager.makePath(this.dataPath, type, "robots", id, "model.glb");
                             if (!(await WindowManager.fileHas(pth))) return;
-                            models[name] = pth;
+                            models[id] = pth;
                         }));
                     } else {
                         for (let type of DATATYPES) models = mergeThings(models, await kfs["robot-models"](type));
@@ -3999,32 +3830,45 @@ const MAIN = async () => {
                     return models;
                 },
                 "active-robot": async (type=null) => {
-                    if (DATATYPES.includes(type)) return await kfs._writable([type, "robots", "robots.json"], "active");
                     let data = null;
-                    for (let type of DATATYPES) data = mergeThings(data, await kfs["active-robot"](type));
+                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "robots", "config.json"], "active");
+                    else {
+                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-robot"](type));
+                    }
                     return (data == null) ? null : String(data);
                 },
-                "robot": async (type=null) => await kfs["active-robot"](type),
                 "holidays": async (type=null) => {
                     let data = {};
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "holidays", "holidays.json"], "holidays");
-                    else {
+                    if (DATATYPES.includes(type)) {
+                        await Promise.all((await this.dirList([type, "holidays"])).map(async dirent => {
+                            if (dirent.type != "dir") return;
+                            try {
+                                let subdata = util.ensure(JSON.parse(await this.fileRead([type, "holidays", dirent.name, "config.json"])), "obj");
+                                subdata._source = type;
+                                data[dirent.name] = subdata;
+                            } catch (e) { return; }
+                        }));
+                    } else {
                         for (let type of DATATYPES) data = mergeThings(data, await kfs["holidays"](type));
                     }
                     return util.ensure(data, "obj");
+                },
+                "holiday": async (id, type=null) => {
+                    let holidays = await kfs["holidays"](type);
+                    if (!(id in holidays)) return null;
+                    return holidays[id];
                 },
                 "holiday-icons": async (type=null) => {
                     let icons = {};
                     if (DATATYPES.includes(type)) {
                         let holidays = await kfs["holidays"](type);
-                        await Promise.all(Object.keys(holidays).map(async name => {
-                            icons[name] = {};
+                        await Promise.all(Object.keys(holidays).map(async id => {
+                            icons[id] = {};
                             await Promise.all(["svg", "png", "ico", "icns", "hat1", "hat2"].map(async tag => {
-                                let fullname = lib.FSOperator.sanitizeName(name);
-                                fullname += ["hat1", "hat2"].includes(tag) ? ("-hat-"+tag.slice(3)+".svg") : ("."+tag);
-                                const pth = WindowManager.makePath(this.dataPath, type, "holidays", "icons", fullname);
+                                let name = ["hat1", "hat2"].includes(tag) ? ("hat-"+tag.slice(3)+".svg") : (tag+"."+tag);
+                                const pth = WindowManager.makePath(this.dataPath, type, "holidays", "icons", name);
                                 if (!(await WindowManager.fileHas(pth))) return;
-                                icons[name][tag] = pth;
+                                icons[id][tag] = pth;
                             }));
                         }));
                     } else {
@@ -4037,7 +3881,7 @@ const MAIN = async () => {
                     const now = new Date();
                     const nowDate = now.getDate();
                     const nowMonth = now.getMonth()+1;
-                    let holidays = await this.getThis("holidays");
+                    let holidays = await kfs["holidays"]();
                     for (let name in holidays) {
                         let holidayData = util.ensure(holidays[name], "obj");
                         let days = util.ensure(holidayData.days, "arr");
@@ -4064,24 +3908,6 @@ const MAIN = async () => {
                         }
                     }
                     return null;
-                },
-                "holiday": async () => await kfs["active-holiday"](),
-                "db-host": async (type=null) => {
-                    type = "data";
-                    let data = null;
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "dbHost");
-                    else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["db-host"](type));
-                    }
-                    return (data == null) ? null : String(data);
-                },
-                "assets-host": async (type=null) => {
-                    let data = null;
-                    if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "assetsHost");
-                    else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["assets-host"](type));
-                    }
-                    return (data == null) ? null : String(data);
                 },
                 "socket-host": async (type=null) => {
                     let data = null;
@@ -4130,6 +3956,26 @@ const MAIN = async () => {
                         for (let type of DATATYPES) data = mergeThings(data, await kfs["reduced-motion"](type));
                     }
                     return !!data;
+                },
+                "db-host": async () => {
+                    let data = await kfs._writable("db.json", "dbHost");
+                    return (data == null) ? null : String(data);
+                },
+                "assets-owner": async () => {
+                    let data = await kfs._writable("db.json", "assetsOwner");
+                    return (data == null) ? null : String(data);
+                },
+                "assets-repo": async () => {
+                    let data = await kfs._writable("db.json", "assetsRepo");
+                    return (data == null) ? null : String(data);
+                },
+                "assets-tag": async () => {
+                    let data = await kfs._writable("db.json", "assetsTag");
+                    return (data == null) ? null : String(data);
+                },
+                "assets-auth": async () => {
+                    let data = await kfs._writable("db.json", "assetsAuth");
+                    return (data == null) ? null : String(data);
                 },
                 "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
                 "cleanup": async () => util.ensure(await this.getCleanup(), "arr").map(pth => WindowManager.makePath(pth)),
@@ -4199,32 +4045,19 @@ const MAIN = async () => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-theme", "data");
                     if (v == v2) return await this.delThis("active-theme");
-                    return await kfs._writable(["override", "themes.json"], "active", v);
+                    return await kfs._writable(["override", "themes", "config.json"], "active", v);
                 },
-                "theme": async v => await kfs["active-theme"](v),
                 "active-template": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-template", "data");
                     if (v == v2) return await this.delThis("active-template");
-                    return await kfs._writable(["override", "templates", "templates.json"], "active", v);
+                    return await kfs._writable(["override", "templates", "config.json"], "active", v);
                 },
-                "template": async v => await kfs["active-template"](v),
                 "active-robot": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-robot", "data");
                     if (v == v2) return await this.delThis("active-robot");
-                    return await kfs._writable(["override", "robots", "robots.json"], "active", v);
-                },
-                "robot": async v => await kfs["active-robot"](v),
-                "db-host": async v => {
-                    v = (v == null) ? null : String(v);
-                    return await kfs._writable(["data", "config.json"], "dbHost", v);
-                },
-                "assets-host": async v => {
-                    v = (v == null) ? null : String(v);
-                    let v2 = await this.getThis("assets-host", "data");
-                    if (v == v2) return await this.delThis("assets-host");
-                    return await kfs._writable(["override", "config.json"], "assetsHost", v);
+                    return await kfs._writable(["override", "robots", "config.json"], "active", v);
                 },
                 "comp-mode": async v => {
                     v = !!v;
@@ -4250,6 +4083,11 @@ const MAIN = async () => {
                     if (v == v2) return await this.delThis("reduced-motion");
                     return await kfs._writable(["override", "config.json"], "reducedMotion", v);
                 },
+                "db-host": async v => await kfs._writable("db.json", "dbHost", (v == null) ? null : String(v)),
+                "assets-owner": async v => await kfs._writable("db.json", "assetsOwner", (v == null) ? null : String(v)),
+                "assets-repo": async v => await kfs._writable("db.json", "assetsRepo", (v == null) ? null : String(v)),
+                "assets-tag": async v => await kfs._writable("db.json", "assetsTag", (v == null) ? null : String(v)),
+                "assets-auth": async v => await kfs._writable("db.json", "assetsAuth", (v == null) ? null : String(v)),
                 "fs-version": async v => await this.setFSVersion(v),
 
                 "state": async (k="", v=null) => await kfs._writable("state.json", k, v),
@@ -4292,18 +4130,18 @@ const MAIN = async () => {
                     return stack;
                 },
 
-                "active-theme": async () => await kfs._writable(["override", "themes.json"], "active"),
-                "theme": async () => await kfs["active-theme"](),
-                "active-template": async () => await kfs._writable(["override", "templates", "templates.json"], "active"),
-                "template": async () => await kfs["active-template"](),
-                "active-robot": async () => await kfs._writable(["override", "robots", "robots.json"], "active"),
-                "robot": async () => await kfs["active-robot"](),
-                "db-host": async () => await kfs._writable(["data", "config.json"], "dbHost"),
-                "assets-host": async () => await kfs._writable(["override", "config.json"], "assetsHost"),
+                "active-theme": async () => await kfs._writable(["override", "themes", "config.json"], "active"),
+                "active-template": async () => await kfs._writable(["override", "templates", "config.json"], "active"),
+                "active-robot": async () => await kfs._writable(["override", "robots", "config.json"], "active"),
                 "comp-mode": async () => await kfs._writable(["override", "config.json"], "isCompMode"),
                 "native-theme": async () => await kfs._writable(["override", "config.json"], "nativeTheme"),
                 "holiday-opt": async () => await kfs._writable(["override", "config.json"], "holidayOpt"),
                 "reduced-motion": async () => await kfs._writable(["override", "config.json"], "reducedMotion"),
+                "db-host": async () => await kfs._writable("db.json", "dbHost"),
+                "assets-owner": async () => await kfs._writable("db.json", "assetsOwner"),
+                "assets-repo": async () => await kfs._writable("db.json", "assetsRepo"),
+                "assets-tag": async () => await kfs._writable("db.json", "assetsTag"),
+                "assets-auth": async () => await kfs._writable("db.json", "assetsAuth"),
 
                 "state": async (k="") => await kfs._writable("state.json", k),
             };

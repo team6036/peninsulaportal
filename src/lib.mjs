@@ -258,7 +258,7 @@ export class FSOperator extends util.Target {
 
     static sanitizeName(name) {
         name = String(name)
-            .replaceAll(/[/\\<>:"\|\?\*%,;=]/g, "-")
+            .replaceAll(/[\/\\<>:"\|\?\*%,;=]/g, "-")
             .split("")
             .map(c => c.charCodeAt(0) >= 32 ? c : "")
             .join("");
