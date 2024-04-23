@@ -237,7 +237,7 @@ export default class App extends core.App {
                 const timer = new util.Timer(true);
                 this.addHandler("update", async () => {
                     if (!timer.dequeueAll(250)) return;
-                    await Promise.all(["repo", "db-host", "assets-host", "scout-url"].map(async name => {
+                    await Promise.all(["repo", "db-host", "scout-url"].map(async name => {
                         const anchor = this.eInfo.querySelector(":scope > .nav > a#"+name);
                         if (!(anchor instanceof HTMLAnchorElement)) return;
                         anchor.href = await window.api.get(name);
@@ -246,7 +246,7 @@ export default class App extends core.App {
             }
             this.#eLoads = document.querySelector("#PAGE > .loads");
 
-            ["PANEL", "PLANNER", "PIT", "PYTHONTK"].forEach(name => {
+            lib.APPFEATURES.forEach(name => {
                 let btn;
                 btn = this.addFeatureButton(new FeatureButton(lib.getName(name), lib.getIcon(name)));
                 btn.addHandler("trigger", e => this.post("cmd-spawn", name));

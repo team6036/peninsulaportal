@@ -1033,9 +1033,8 @@ export class App extends util.Target {
         });
         this.addHandler("cmd-documentation", async () => {
             const name = this.getName();
-            if (["PANEL", "PLANNER", "PRESETS"].includes(name))
-                this.addPopup(new App.MarkdownPopup("../docs/"+name.toLowerCase()+"/MAIN.md"));
-            else this.addPopup(new App.MarkdownPopup("../README.md"));
+            if (name == "PORTAL") this.addPopup(new App.MarkdownPopup("../README.md"));
+            else this.addPopup(new App.MarkdownPopup("../docs/"+name.toLowerCase()+"/MAIN.md"));
         });
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
@@ -1556,12 +1555,12 @@ export class App extends util.Target {
     }
     bindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
-        ["PANEL", "PLANNER", "PIT", "PYTHONTK"].forEach(name => {
+        lib.APPFEATURES.forEach(name => {
             let itm = menu.getItemById("spawn:"+name);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
         });
-        ["repo", "db-host", "assets-host", "scout-url"].forEach(id => {
+        ["repo", "db-host", "scout-url"].forEach(id => {
             let itm = menu.getItemById(id);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-helpurl", id));
@@ -1579,12 +1578,12 @@ export class App extends util.Target {
     }
     unbindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
-        ["PANEL", "PLANNER"].forEach(name => {
+        lib.APPFEATURES.forEach(name => {
             let itm = menu.getItemById("spawn:"+name);
             if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
         });
-        ["repo", "db-host", "assets-host", "scout-url"].forEach(id => {
+        ["repo", "db-host", "scout-url"].forEach(id => {
             let itm = menu.getItemById(id);
             if (!itm) return;
             itm.clearLinkedHandlers(this, "trigger");
@@ -2690,9 +2689,9 @@ App.Menu = class AppMenu extends util.Target {
         let itm = new App.Menu.Item("Documentation...", "document-text-outline");
         itms.push(itm);
         itm.id = "documentation";
-        itms.push(...["Github Repository", "Open Database", "Assets Host", "Scout URL"].map((label, i) => {
+        itms.push(...["Github Repository", "Open Database", "Scout URL"].map((label, i) => {
             let itm = new App.Menu.Item(label);
-            itm.id = ["repo", "db-host", "assets-host", "scout-url"][i];
+            itm.id = ["repo", "db-host", "scout-url"][i];
             return itm;
         }));
         return itms;
@@ -2706,7 +2705,7 @@ App.Menu = class AppMenu extends util.Target {
     static buildSpawnItems() {
         let itm = new App.Menu.Item("Features...");
         itm.id = "spawn";
-        ["PANEL", "PLANNER", "PIT", "PYTHONTK"].forEach((name, i) => {
+        lib.APPFEATURES.forEach((name, i) => {
             let subitm = new App.Menu.Item(lib.getName(name));
             subitm.id = "spawn:"+name;
             subitm.accelerator = "CmdOrCtrl+"+(i+1);

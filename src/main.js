@@ -197,9 +197,6 @@ const MAIN = async () => {
         return isEmpty(o) ? null : o;
     }
 
-    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "PIT", "PYTHONTK"];
-    const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
-
     const DATASCHEMA = [
         /\.DS_Store/,
         /thumb\.db/,
@@ -241,12 +238,15 @@ const MAIN = async () => {
 
         /^(data|override)\/config\.json$/,
     ];
-    FEATURES.forEach(name => {
+    lib.FEATURES.forEach(name => {
         name = name.toLowerCase();
         DATASCHEMA.push(
             new RegExp("^"+name+"$"),
             new RegExp("^"+name+"/config\\.json$"),
             new RegExp("^"+name+"/state\\.json$"),
+        );
+        if (!lib.APPFEATURES.includes(name)) return;
+        DATASCHEMA.push(
             new RegExp("^"+name+"/projects$"),
             new RegExp("^"+name+"/projects/[^/]+\\.json$"),
             new RegExp("^"+name+"/projects\\.json$"),
@@ -891,7 +891,7 @@ const MAIN = async () => {
             this.#windowManager = new WindowManager(this);
 
             name = String(name);
-            if (!(FEATURES.includes(name) || (name.startsWith("modal:") && MODALS.includes(name.slice(6)))))
+            if (!(lib.FEATURES.includes(name) || (name.startsWith("modal:") && lib.MODALS.includes(name.slice(6)))))
                 throw new Error(`Name '${name}' is not valid`);
             this.#name = name;
 
@@ -1243,7 +1243,7 @@ const MAIN = async () => {
         get dataPath() { return Window.getDataPath(this.manager, this.name, this.started); }
 
         static getCanOperate(manager, name, started=true) {
-            return (manager instanceof WindowManager) && FEATURES.includes(name) && started;
+            return (manager instanceof WindowManager) && lib.FEATURES.includes(name) && started;
         }
         get canOperate() { return Window.getCanOperate(this.manager, this.name, this.started); }
 
@@ -2743,7 +2743,7 @@ const MAIN = async () => {
                 app.dock.setMenu(electron.Menu.buildFromTemplate([
                     {
                         label: "Features...",
-                        submenu: ["PANEL", "PLANNER", "PIT", "PYTHONTK"].map((name, i) => {
+                        submenu: lib.APPFEATURES.map((name, i) => {
                             return {
                                 label: lib.getName(name),
                                 accelerator: "CmdOrCtrl+"+(i+1),
