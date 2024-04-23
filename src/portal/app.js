@@ -258,11 +258,6 @@ export default class App extends core.App {
             btn = this.addUpperFeatureButton(new UpperFeatureButton("analytics"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
 
-            btn = this.addFeatureButton(new FeatureButton("Database", "server"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "DATABASE"));
-            btn = this.addUpperFeatureButton(new UpperFeatureButton("server"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "DATABASE"));
-
             btn = this.addFeatureButton(new FeatureButton("Pit", "build"));
             btn.addHandler("trigger", e => this.post("cmd-spawn", "PIT"));
             btn = this.addUpperFeatureButton(new UpperFeatureButton("build"));

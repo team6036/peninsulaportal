@@ -71,7 +71,6 @@ const namefs = {
     PRESETS: "Presets",
     PANEL: "Panel",
     PLANNER: "Planner",
-    DATABASE: "Database",
     PIT: "Pit",
     PYTHONTK: "PythonTK",
 };
