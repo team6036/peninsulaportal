@@ -256,12 +256,14 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
 
         this.form.addField(new core.Form.Line());
 
-        this.#fDBHost = this.form.addField(new core.Form.TextInput("database-host"));
+        this.#fDBHost = this.form.addField(new core.Form.NInput("database-host", 1, "url"));
+        this.fDBHost.defineDefaultHook();
         this.fDBHost.showToggle = true;
         this.fDBHost.type = "";
         this.fDBHost.addHandler("change-value", async () => {
+            console.log("*");
             if (ignore) return;
-            await window.api.set("db-host", this.fDBHost.value);
+            await window.api.set("db-host", this.fDBHost.value[0]);
         });
         this.fDBHost.addHandler("change-toggleOn", async () => {
             if (ignore) return;
@@ -271,23 +273,15 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.#fDBPoll = this.form.addField(new core.Form.Button("poll-database", "Repoll Database"));
         this.fDBPoll.header = "";
 
-        this.#fAssetsOwner = this.form.addField(new core.Form.TextInput("assets-github-owner"));
-        this.fAssetsOwner.type = "";
-        this.fAssetsOwner.addHandler("change-value", async () => {
-        });
-        this.#fAssetsRepo = this.form.addField(new core.Form.TextInput("assets-github-repo"));
-        this.fAssetsRepo.type = "";
-        this.fAssetsRepo.addHandler("change-value", async () => {
-        });
-        this.#fAssetsTag = this.form.addField(new core.Form.TextInput("assets-github-tag"));
-        this.fAssetsTag.type = "";
-        this.fAssetsTag.addHandler("change-value", async () => {
-        });
+        this.#fAssetsOwner = this.form.addField(new core.Form.NInput("assets-github-owner", 1, "url"));
+        this.#fAssetsRepo = this.form.addField(new core.Form.NInput("assets-github-repo", 1, "url"));
+        this.#fAssetsTag = this.form.addField(new core.Form.NInput("assets-github-tag", 1, "url"));
+        this.fAssetsOwner.type = this.fAssetsRepo.type = this.fAssetsTag.type = "";
 
-        this.#fSocketHost = this.form.addField(new core.Form.TextInput("socket-host"));
+        this.#fSocketHost = this.form.addField(new core.Form.NInput("socket-host", 1, "url"));
         this.fSocketHost.type = "";
 
-        this.#fScoutURL = this.form.addField(new core.Form.TextInput("scout-url"));
+        this.#fScoutURL = this.form.addField(new core.Form.NInput("scout-url", 1, "url"));
         this.fScoutURL.type = "";
 
         this.fSocketHost.disabled = this.fAssetsOwner.disabled = this.fAssetsRepo.disabled = this.fAssetsTag.disabled = this.fScoutURL.disabled = true;
@@ -298,22 +292,22 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
                 async () => {
                     this.fDBHost.toggleOff = await window.api.get("comp-mode");
                     if (this.fDBHost.focused) return;
-                    this.fDBHost.value = await window.api.get("db-host");
+                    this.fDBHost.value = [await window.api.get("db-host")];
                 },
                 async () => {
-                    this.fAssetsOwner.value = await window.api.get("assets-owner");
+                    this.fAssetsOwner.value = [await window.api.get("assets-owner")];
                 },
                 async () => {
-                    this.fAssetsRepo.value = await window.api.get("assets-repo");
+                    this.fAssetsRepo.value = [await window.api.get("assets-repo")];
                 },
                 async () => {
-                    this.fAssetsTag.value = await window.api.get("assets-tag");
+                    this.fAssetsTag.value = [await window.api.get("assets-tag")];
                 },
                 async () => {
-                    this.fSocketHost.value = await window.api.get("socket-host");
+                    this.fSocketHost.value = [await window.api.get("socket-host")];
                 },
                 async () => {
-                    this.fScoutURL.value = await window.api.get("scout-url");
+                    this.fScoutURL.value = [await window.api.get("scout-url")];
                 },
             ].map(f => f()));
             ignore = false;
