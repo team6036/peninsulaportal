@@ -8721,7 +8721,6 @@ export default class App extends core.AppFeature {
     #eProjectInfoSourceInput;
     #eProjectInfoActionBtn;
 
-    static ICON = "grid";
     static PROJECTCLASS = Project;
 
     constructor() {

@@ -454,7 +454,6 @@ class RSelectable extends core.Odometry2d.Render {
 }
 
 export default class App extends core.AppFeature {
-    static ICON = "analytics";
     static PROJECTCLASS = sublib.Project;
 
     constructor() {
@@ -981,7 +980,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
         const templates = core.GLOBALSTATE.getProperty("templates").value;
         const templateImages = core.GLOBALSTATE.getProperty("template-images").value;
-        const subtemplates = core.GLOBALSTATE.getProperty("subtemplates").value;
 
         let timer = 0;
         this.addHandler("update", delta => {
@@ -2517,7 +2515,6 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         super(page, "options", "settings-outline");
 
         const templates = core.GLOBALSTATE.getProperty("templates").value;
-        const subtemplates = core.GLOBALSTATE.getProperty("subtemplates").value;
 
         let form = new core.Form();
         this.addItem(form.elem);

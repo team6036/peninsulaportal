@@ -80,6 +80,14 @@ const modalnamefs = {
     PROMPT: "Prompt",
     PROGRESS: "Progress",
 };
+const iconfs = {
+    PORTAL: "navigate",
+    PRESETS: "settings-outline",
+    PANEL: "grid",
+    PLANNER: "analytics",
+    PIT: "build",
+    PYTHONTK: "logo-python",
+};
 export function getName(name) {
     name = String(name);
     if (name in namefs) return namefs[name];
@@ -88,6 +96,12 @@ export function getName(name) {
         if (name in modalnamefs) return modalnamefs[name];
     }
     return name;
+}
+export function getIcon(name) {
+    name = String(name);
+    if (name in iconfs) return iconfs[name];
+    if (name.startsWith("modal:")) return "browsers";
+    return null;
 }
 
 let FS = null, PATH = null, FSLOGFUNC = null;
