@@ -8013,6 +8013,11 @@ Form.NInput = class FormNInput extends Form.Field {
         this.hook();
         return f;
     }
+    defineDefaultHook() {
+        this.defineHook(-1, (e, i) => {
+            this.setValue(i, this.getInputValue(i));
+        });
+    }
 
     get inputType() { return this.#inputType; }
     set inputType(v) {
@@ -8302,9 +8307,7 @@ Form.TextInput = class FormTextInput extends Form.NInput {
     constructor(name) {
         super(name, 1, "text");
 
-        this.defineHook(-1, (e, i) => {
-            this.setValue(i, this.getInputValue(i));
-        });
+        this.defineDefaultHook();
 
         this.inputs.forEach(inp => {
             inp.autocomplete = "off";
