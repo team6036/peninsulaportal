@@ -66,6 +66,9 @@ export function findStep(v, n=10) {
 }
 /*.lw}*/
 
+export const APPFEATURES = ["PANEL", "PLANNER", "PIT", "PYTHONTK"];
+export const FEATURES = ["PORTAL", "PRESETS", ...APPFEATURES];
+export const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 const namefs = {
     PORTAL: "Portal",
     PRESETS: "Presets",
