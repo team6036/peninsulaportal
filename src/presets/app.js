@@ -213,7 +213,9 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
 
     #fDBHost;
     #fDBPoll;
-    #fAssetsHost;
+    #fAssetsOwner;
+    #fAssetsRepo;
+    #fAssetsTag;
     #fSocketHost;
     #fScoutURL;
 
@@ -269,11 +271,17 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.#fDBPoll = this.form.addField(new core.Form.Button("poll-database", "Repoll Database"));
         this.fDBPoll.header = "";
 
-        this.#fAssetsHost = this.form.addField(new core.Form.TextInput("assets-host"));
-        this.fAssetsHost.type = "";
-        this.fAssetsHost.addHandler("change-value", async () => {
-            if (ignore) return;
-            await window.api.set("assets-host", this.fAssetsHost.value);
+        this.#fAssetsOwner = this.form.addField(new core.Form.TextInput("assets-github-owner"));
+        this.fAssetsOwner.type = "";
+        this.fAssetsOwner.addHandler("change-value", async () => {
+        });
+        this.#fAssetsRepo = this.form.addField(new core.Form.TextInput("assets-github-repo"));
+        this.fAssetsRepo.type = "";
+        this.fAssetsRepo.addHandler("change-value", async () => {
+        });
+        this.#fAssetsTag = this.form.addField(new core.Form.TextInput("assets-github-tag"));
+        this.fAssetsTag.type = "";
+        this.fAssetsTag.addHandler("change-value", async () => {
         });
 
         this.#fSocketHost = this.form.addField(new core.Form.TextInput("socket-host"));
@@ -282,7 +290,7 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.#fScoutURL = this.form.addField(new core.Form.TextInput("scout-url"));
         this.fScoutURL.type = "";
 
-        this.fSocketHost.disabled = this.fScoutURL.disabled = true;
+        this.fSocketHost.disabled = this.fAssetsOwner.disabled = this.fAssetsRepo.disabled = this.fAssetsTag.disabled = this.fScoutURL.disabled = true;
 
         this.addHandler("update", async delta => {
             ignore = true;
@@ -293,7 +301,13 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
                     this.fDBHost.value = await window.api.get("db-host");
                 },
                 async () => {
-                    this.fAssetsHost.value = await window.api.get("assets-host");
+                    this.fAssetsOwner.value = await window.api.get("assets-owner");
+                },
+                async () => {
+                    this.fAssetsRepo.value = await window.api.get("assets-repo");
+                },
+                async () => {
+                    this.fAssetsTag.value = await window.api.get("assets-tag");
                 },
                 async () => {
                     this.fSocketHost.value = await window.api.get("socket-host");
@@ -313,7 +327,9 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
 
     get fDBHost() { return this.#fDBHost; }
     get fDBPoll() { return this.#fDBPoll; }
-    get fAssetsHost() { return this.#fAssetsHost; }
+    get fAssetsOwner() { return this.#fAssetsOwner; }
+    get fAssetsRepo() { return this.#fAssetsRepo; }
+    get fAssetsTag() { return this.#fAssetsTag; }
     get fSocketHost() { return this.#fSocketHost; }
     get fScoutURL() { return this.#fScoutURL; }
 };

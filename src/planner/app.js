@@ -7,21 +7,6 @@ import * as core from "../core.mjs";
 import * as sublib from "./lib.mjs";
 
 
-core.GLOBALSTATE.addProperty(new core.GlobalState.Property(
-    "subtemplates",
-    async () => {
-        let content = "";
-        try {
-            content = await window.api.fileRead("templates.json");
-        } catch (e) {}
-        try {
-            return JSON.parse(content);
-        } catch (e) {}
-        return {};
-    },
-));
-
-
 class RLabel extends core.Odometry2d.Render {
     #item;
 
@@ -1195,19 +1180,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     async applyTemplate(project, name) {
         if (!(project instanceof sublib.Project)) return false;
         const templates = core.GLOBALSTATE.getProperty("templates").value;
-        let content = "";
-        try {
-            content = await window.api.fileRead("templates.json");
-        } catch (e) {}
-        let subtemplates = null;
-        try {
-            subtemplates = JSON.parse(content);
-        } catch (e) {}
-        subtemplates = util.ensure(util.ensure(subtemplates, "obj").templates, "obj");
         name = (name == null) ? null : String(name);
         if (!(name in templates)) return false;
         const globalTemplate = util.ensure(templates[name], "obj");
-        const template = util.ensure(subtemplates[name], "obj");
+        const template = {};
         template[".size"] = globalTemplate["size"];
         template[".robotW"] = globalTemplate["robotSize"];
         template[".robotMass"] = globalTemplate["robotMass"];

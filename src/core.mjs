@@ -833,6 +833,9 @@ export class App extends util.Target {
     }
     static evaluateLoad(load) {
         let ogLoad = load = String(load);
+        let _ = document.createElement("div");
+        _.textContent = ogLoad;
+        return _;
         let elem = document.createElement("div");
         load = load.split(":");
         let name = load.shift();
@@ -1181,7 +1184,7 @@ export class App extends util.Target {
             if (await window.api.get("reduced-motion"))
                 document.documentElement.style.setProperty("--t", "0s");
             else document.documentElement.style.removeProperty("--t");
-            let theme = await window.api.get("theme");
+            let theme = await window.api.get("active-theme");
             theme = util.is(theme, "obj") ? theme : String(theme);
             let data = 
                 util.is(theme, "obj") ?

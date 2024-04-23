@@ -13,6 +13,8 @@ body {
     max-height: 100%;
 
     background-color: transparent;
+
+    -webkit-app-region: drag;
 }
 #PAGE {
     overflow: hidden;
@@ -25,4 +27,8 @@ body {
     align-content: center;
 
     background-color: transparent;
+}
+
+ion-icon, .title, .content, .info, button {
+    -webkit-app-region: no-drag;
 }
