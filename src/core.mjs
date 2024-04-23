@@ -897,7 +897,7 @@ export class App extends util.Target {
                     themes: () => {
                         if (load.length < 1) return false;
                         const id = load.shift();
-                        if (id == "config.json") {
+                        if (id == "config") {
                             if (load.length > 0) {
                                 elem.textContent = `Download themes config error: `+load.join(":");
                                 elem.style.color = "var(--cr)";
@@ -919,7 +919,7 @@ export class App extends util.Target {
                     templates: () => {
                         if (load.length < 1) return false;
                         const id = load.shift();
-                        if (id == "config.json") {
+                        if (id == "config") {
                             if (load.length > 0) {
                                 elem.textContent = `Download templates config error: `+load.join(":");
                                 elem.style.color = "var(--cr)";
@@ -943,7 +943,7 @@ export class App extends util.Target {
                     robots: () => {
                         if (load.length < 1) return false;
                         const id = load.shift();
-                        if (id == "config.json") {
+                        if (id == "config") {
                             if (load.length > 0) {
                                 elem.textContent = `Download robots config error: `+load.join(":");
                                 elem.style.color = "var(--cr)";
@@ -972,7 +972,7 @@ export class App extends util.Target {
                     holidays: () => {
                         if (load.length < 1) return false;
                         const id = load.shift();
-                        if (id == "config.json") {
+                        if (id == "config") {
                             if (load.length > 0) {
                                 elem.textContent = `Download holidays config error: `+load.join(":");
                                 elem.style.color = "var(--cr)";
@@ -1000,108 +1000,6 @@ export class App extends util.Target {
             }
             elem.textContent = loadValue;
             elem.style.color = "var(--cy)";
-            // let namefs = {
-            //     "fs-version": () => {
-            //         if (load.length > 0) elem.style.color = "var(--cr)";
-            //         if (load.length > 0) return elem.textContent += "App data directory verison mismatch: "+load.join(":");
-            //         return elem.textContent += "Checking app data version";
-            //     },
-            //     "find": () => (elem.textContent += "Finding database"),
-            //     "find-next": () => (elem.textContent += "Finding next database"),
-            //     "comp-mode": () => (elem.textContent += "Competition mode"),
-            //     "poll": () => {
-            //         if (load.length > 0) elem.style.color = "var(--cr)";
-            //         if (load.length > 0) return elem.textContent += "Polling database failed: "+load.join(":");
-            //         return elem.textContent += "Polling database";
-            //     },
-            //     "config": () => {
-            //         if (load.length > 0) elem.style.color = "var(--cr)";
-            //         if (load.length > 0) return elem.textContent += "Configuring failed: "+load.join(":");
-            //         return elem.textContent += "Configuring";
-            //     },
-            //     "templates.json": () => {
-            //         if (load.length > 0) elem.style.color = "var(--cr)";
-            //         if (load.length > 0) return elem.textContent += "Error while downloading template datas: "+load.join(":");
-            //         return elem.textContent += "Downloading template datas";
-            //     },
-            //     "robots.json": () => {
-            //         if (load.length > 0) elem.style.color = "var(--cr)";
-            //         if (load.length > 0) return elem.textContent += "Error while downloading robot datas: "+load.join(":");
-            //         return elem.textContent += "Downloading robot datas";
-            //     },
-            //     "holidays.json": () => {
-            //         if (load.length > 0) elem.style.color = "var(--cr)";
-            //         if (load.length > 0) return elem.textContent += "Error while downloading holiday datas: "+load.join(":");
-            //         return elem.textContent += "Downloading holiday datas";
-            //     },
-            //     "themes.json": () => {
-            //         if (load.length > 0) elem.style.color = "var(--cr)";
-            //         if (load.length > 0) return elem.textContent += "Error while downloading themes: "+load.join(":");
-            //         return elem.textContent += "Downloading themes";
-            //     },
-            // };
-            // if (name in namefs) return namefs[name]();
-            // if (name.startsWith("templates/")) {
-            //     name = name.slice(10);
-            //     let source = "";
-            //     if (name.endsWith("-ok")) {
-            //         name = name.slice(0, -3);
-            //         source = " using OctoKit";
-            //     }
-            //     let type = name.slice(-3);
-            //     type = { png: "image", glb: "model" }[type];
-            //     name = name.slice(0, -4);
-            //     if (load.length > 0) elem.style.color = "var(--cr)";
-            //     if (load.length > 0) return elem.textContent += "Error while downloading template "+type+" "+name+source+": "+load.join(":");
-            //     return elem.textContent += "Downloading template "+type+" "+name+source;
-            // }
-            // if (name.startsWith("robots/")) {
-            //     let type = name.slice(-3);
-            //     type = { png: "image", glb: "model" }[type];
-            //     name = name.slice(7, -4);
-            //     if (load.length > 0) elem.style.color = "var(--cr)";
-            //     if (load.length > 0) return elem.textContent += "Error while downloading robot "+type+" "+name+": "+load.join(":");
-            //     return elem.textContent += "Downloading robot "+type+" "+name;
-            // }
-            // if (name.startsWith("holidays/")) {
-            //     name = name.slice(9);
-            //     let action = "downloading";
-            //     if (name.endsWith("-conv")) {
-            //         name = name.slice(0, -5);
-            //         action = "converting";
-            //     }
-            //     if (load.length > 0) elem.style.color = "var(--cr)";
-            //     if (load.length > 0) return elem.textContent += "Error while "+action+" holiday icon "+name+": "+load.join(":");
-            //     return elem.textContent += action[0].toUpperCase()+action.slice(1)+" holiday icon "+name;
-            // }
-            // if (name.toUpperCase() == name) {
-            //     let fName = name;
-            //     name = load.shift();
-            //     elem.textContent += "["+lib.getName(fName)+"] ";
-            //     let namefs = {
-            //         PLANNER: () => {
-            //             let namefs = {
-            //                 "solver": () => {
-            //                     if (load.length > 0) elem.style.color = "var(--cr)";
-            //                     if (load.length > 0)
-            //                         return elem.textContent += "Error while copying default solver: "+load.join(":");
-            //                     return elem.textContent += "Copying default solver";
-            //                 },
-            //                 "templates.json": () => {
-            //                     if (load.length > 0) elem.style.color = "var(--cr)";
-            //                     if (load.length > 0)
-            //                         return elem.textContent += "Error while downloading template datas: "+load.join(":");
-            //                     return elem.textContent += "Downloading template datas";
-            //                 },
-            //             };
-            //             if (name in namefs) return namefs[name]();
-            //         },
-            //     };
-            //     if (name == "search") return elem.textContent += "Searching";
-            //     if (fName in namefs) return namefs[fName]();
-            // }
-            // elem.style.color = "var(--cy)";
-            // elem.textContent = loadValue;
         })();
         return elem;
     }
