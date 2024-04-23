@@ -245,28 +245,14 @@ export default class App extends core.App {
                 });
             }
             this.#eLoads = document.querySelector("#PAGE > .loads");
-            
-            let btn;
 
-            btn = this.addFeatureButton(new FeatureButton("Panel", "grid"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PANEL"));
-            btn = this.addUpperFeatureButton(new UpperFeatureButton("grid"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PANEL"));
-
-            btn = this.addFeatureButton(new FeatureButton("Planner", "analytics"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
-            btn = this.addUpperFeatureButton(new UpperFeatureButton("analytics"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PLANNER"));
-
-            btn = this.addFeatureButton(new FeatureButton("Pit", "build"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PIT"));
-            btn = this.addUpperFeatureButton(new UpperFeatureButton("build"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PIT"));
-
-            btn = this.addFeatureButton(new FeatureButton("PyTK", "logo-python"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PYTHONTK"));
-            btn = this.addUpperFeatureButton(new UpperFeatureButton("logo-python"));
-            btn.addHandler("trigger", e => this.post("cmd-spawn", "PYTHONTK"));
+            ["PANEL", "PLANNER", "PIT", "PYTHONTK"].forEach(name => {
+                let btn;
+                btn = this.addFeatureButton(new FeatureButton(lib.getName(name), lib.getIcon(name)));
+                btn.addHandler("trigger", e => this.post("cmd-spawn", name));
+                btn = this.addUpperFeatureButton(new UpperFeatureButton(lib.getIcon(name)));
+                btn.addHandler("trigger", e => this.post("cmd-spawn", name));
+            });
 
             let prevLoads = [];
             let lock = false;

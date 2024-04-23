@@ -721,6 +721,7 @@ export class App extends util.Target {
     }
     get name() { return window.agent().name; }
     getName() { return lib.getName(this.name); }
+    getIcon() { return lib.getIcon(this.name); }
     get id() { return window.agent().id; }
 
     static async createMarkdown(pth, signal) {
@@ -1023,7 +1024,7 @@ export class App extends util.Target {
                     "./assets/app/icon.svg" :
                 "file://"+util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj").svg;
             pop.iconColor = "var(--a)";
-            pop.subIcon = util.is(this.constructor.ICON, "str") ? this.constructor.ICON : "";
+            pop.subIcon = util.is(this.getIcon(), "str") ? this.getIcon() : "";
             pop.title = "Peninsula "+this.getName();
             pop.infos = [this.getAgent().join("\n")];
             let r = await pop.whenResult();
@@ -3314,7 +3315,6 @@ export class AppFeature extends App {
     #eProjectInfoDeleteBtn;
     #eSaveBtn;
 
-    static ICON = "help-circle";
     static PROJECTCLASS = lib.Project;
 
     constructor() {
@@ -3435,7 +3435,7 @@ export class AppFeature extends App {
 
             this.#eProjectInfoBtnIcon = document.createElement("ion-icon");
             this.eProjectInfoBtn.insertBefore(this.eProjectInfoBtnIcon, Array.from(this.eProjectInfoBtn.children).at(-1));
-            this.eProjectInfoBtnIcon.name = this.constructor.ICON;
+            this.eProjectInfoBtnIcon.name = this.getIcon();
 
             this.#eProjectInfoBtnName = document.createElement("div");
             this.eProjectInfoBtn.insertBefore(this.eProjectInfoBtnName, Array.from(this.eProjectInfoBtn.children).at(-1));
