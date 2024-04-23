@@ -1032,13 +1032,13 @@ export class App extends util.Target {
         });
         this.addHandler("cmd-documentation", async () => {
             const name = this.getName();
-            if (["PANEL", "PLANNER", "PRESETS", "DATABASE"].includes(name))
+            if (["PANEL", "PLANNER", "PRESETS"].includes(name))
                 this.addPopup(new App.MarkdownPopup("../docs/"+name.toLowerCase()+"/MAIN.md"));
             else this.addPopup(new App.MarkdownPopup("../README.md"));
         });
         this.addHandler("cmd-spawn", async name => {
             name = String(name);
-            if (!this.packaged && ["DATABASE", "PYTHONTK"].includes(name)) {
+            if (!this.packaged && ["PYTHONTK"].includes(name)) {
                 let pop = this.confirm(
                     "Open "+lib.getName(name),
                     "Are you sure you want to open this feature?\nThis feature is in development and might contain bugs",
@@ -1555,7 +1555,7 @@ export class App extends util.Target {
     }
     bindMenu(menu) {
         if (!(menu instanceof App.Menu)) return false;
-        ["PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"].forEach(name => {
+        ["PANEL", "PLANNER", "PIT", "PYTHONTK"].forEach(name => {
             let itm = menu.getItemById("spawn:"+name);
             if (!itm) return;
             itm.addLinkedHandler(this, "trigger", e => this.post("cmd-spawn", name));
@@ -2705,7 +2705,7 @@ App.Menu = class AppMenu extends util.Target {
     static buildSpawnItems() {
         let itm = new App.Menu.Item("Features...");
         itm.id = "spawn";
-        ["PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"].forEach((name, i) => {
+        ["PANEL", "PLANNER", "PIT", "PYTHONTK"].forEach((name, i) => {
             let subitm = new App.Menu.Item(lib.getName(name));
             subitm.id = "spawn:"+name;
             subitm.accelerator = "CmdOrCtrl+"+(i+1);

@@ -197,7 +197,7 @@ const MAIN = async () => {
         return isEmpty(o) ? null : o;
     }
 
-    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"];
+    const FEATURES = ["PORTAL", "PRESETS", "PANEL", "PLANNER", "PIT", "PYTHONTK"];
     const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
 
     const DATASCHEMA = [
@@ -2743,7 +2743,7 @@ const MAIN = async () => {
                 app.dock.setMenu(electron.Menu.buildFromTemplate([
                     {
                         label: "Features...",
-                        submenu: ["PANEL", "PLANNER", "DATABASE", "PIT", "PYTHONTK"].map((name, i) => {
+                        submenu: ["PANEL", "PLANNER", "PIT", "PYTHONTK"].map((name, i) => {
                             return {
                                 label: lib.getName(name),
                                 accelerator: "CmdOrCtrl+"+(i+1),
