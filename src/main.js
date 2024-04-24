@@ -1115,10 +1115,7 @@ const MAIN = async () => {
             namefs = {
                 PORTAL: () => {
                     let resolver = new util.Resolver(false);
-                    let nn = 0;
                     const checkForShow = async () => {
-                        nn++;
-                        let n = nn;
                         if (!this.hasWindow()) return;
                         await this.whenReady();
                         await resolver.whenFalse();
