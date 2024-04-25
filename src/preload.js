@@ -3,9 +3,9 @@ const { ipcRenderer, contextBridge } = require("electron");
 let AGENT = null;
 contextBridge.exposeInMainWorld("agent", () => AGENT);
 const buildAgent = async () => {
-    AGENT = {
-        os: await ipcRenderer.invoke("os"),
-        bootParams: await ipcRenderer.invoke("boot-params"),
+    AGENT = Object.freeze({
+        os: Object.freeze(await ipcRenderer.invoke("os")),
+        bootParams: Object.freeze(await ipcRenderer.invoke("boot-params")),
 
         node: process.versions.node,
         chrome: process.versions.chrome,
@@ -16,7 +16,7 @@ const buildAgent = async () => {
         id: await ipcRenderer.invoke("get", "id"),
 
         public: ((await ipcRenderer.invoke("get", "db-host")) == null),
-    };
+    });
     handlers.forEach(f => f());
     return AGENT;
 };
