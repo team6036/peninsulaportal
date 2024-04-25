@@ -4,8 +4,10 @@ import * as lib from "../../lib.mjs";
 
 import * as core from "../../core.mjs";
 
+import AppModal from "../app.js";
 
-export default class App extends core.AppModal {
+
+export default class App extends AppModal {
     #ieConfirm;
     #ieCancel;
 
