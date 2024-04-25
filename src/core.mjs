@@ -4923,8 +4923,8 @@ export class Odometry2d extends Odometry {
             ctx.globalCompositeOperation = "source-over";
             this.render.render(0);
 
-            let w = Math.floor(lib.Unit.convert(this.w, "cm", this.unit));
-            let h = Math.floor(lib.Unit.convert(this.h, "cm", this.unit));
+            let w = Math.floor(lib.Unit.convert(this.w, "m", this.unit));
+            let h = Math.floor(lib.Unit.convert(this.h, "m", this.unit));
             let step = lib.findStep((w+h)/2, 10);
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = "source-over";
@@ -4940,7 +4940,7 @@ export class Odometry2d extends Odometry {
             let y2 = mxy + 5*quality*(this.axisInteriorX ? -1 : 1);
             let y3 = mxy + 10*quality*(this.axisInteriorX ? -1 : 1);
             for (let i = +this.axisInteriorX; i <= w; i += step) {
-                let x = util.lerp(mnx, mxx, lib.Unit.convert(i, this.unit, "cm") / this.w);
+                let x = util.lerp(mnx, mxx, lib.Unit.convert(i, this.unit, "m") / this.w);
                 ctx.strokeStyle = PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x, y0);
@@ -4961,7 +4961,7 @@ export class Odometry2d extends Odometry {
             let x2 = mnx - 5*quality*(this.axisInteriorY ? -1 : 1);
             let x3 = mnx - 10*quality*(this.axisInteriorY ? -1 : 1);
             for (let i = +this.axisInteriorY; i <= h; i += step) {
-                let y = util.lerp(mxy, mny, lib.Unit.convert(i, this.unit, "cm") / this.h);
+                let y = util.lerp(mxy, mny, lib.Unit.convert(i, this.unit, "m") / this.h);
                 ctx.strokeStyle = PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x0, y);
@@ -5397,8 +5397,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.lineWidth = 1*quality;
                         if (builtinType == "target") {
                             ctx.lineCap = "square";
-                            let w = this.odometry.pageLenToWorld(7.5)/this.odometry.pageLenToWorld(this.w);
-                            let h = this.odometry.pageLenToWorld(7.5)/this.odometry.pageLenToWorld(this.h);
+                            let w = this.odometry.pageLenToWorld(0.075)/this.odometry.pageLenToWorld(this.w);
+                            let h = this.odometry.pageLenToWorld(0.075)/this.odometry.pageLenToWorld(this.h);
                             let pth = [[targetScale-w*2, 1], [1, 1], [1, targetScale-h*2]];
                             for (let xi = 0; xi < 2; xi++) {
                                 let x = xi*2 - 1;
@@ -6124,9 +6124,9 @@ export class Odometry3d extends Odometry {
             planes = this.axisSceneSized.planes;
             let w = this.axisSceneSized.w;
             let h = this.axisSceneSized.h;
-            if (w != this.w/100 || h != this.h/100) {
-                w = this.axisSceneSized.w = this.w/100;
-                h = this.axisSceneSized.h = this.h/100;
+            if (w != this.w || h != this.h) {
+                w = this.axisSceneSized.w = this.w;
+                h = this.axisSceneSized.h = this.h;
                 while (planes.length > 0) {
                     let plane = planes.pop();
                     this.axisSceneSized.remove(plane);

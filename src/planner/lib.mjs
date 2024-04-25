@@ -58,15 +58,15 @@ export class Project extends lib.Project {
                 });
                 a = [a.id, a.template, itms, pths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
             }
-            else if (a instanceof Project.Config) a = [null, {}, {}, [1000, 1000], [100, 100], 0, a, null];
-            else if (a instanceof Project.Meta) a = [null, {}, {}, [1000, 1000], [100, 100], 0, null, a];
-            else if (util.is(a, "str")) a = [null, {}, {}, [1000, 1000], [100, 100], 0, null, a];
+            else if (a instanceof Project.Config) a = [null, {}, {}, 10, 1, 0, a, null];
+            else if (a instanceof Project.Meta) a = [null, {}, {}, 10, 1, 0, null, a];
+            else if (util.is(a, "str")) a = [null, {}, {}, 10, 1, 0, null, a];
             else if (util.is(a, "obj")) a = [a.id, a.template, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
             else a = [{}, {}];
         }
         if (a.length == 2) a = [null, ...a];
-        if (a.length == 3) a = [...a, [1000, 1000]];
-        if (a.length == 4) a = [...a, [100, 100], 100];
+        if (a.length == 3) a = [...a, 10];
+        if (a.length == 4) a = [...a, 1, 100];
         if (a.length == 6) a = [...a, null, false];
         if (a.length == 8) a = [...a, null, null];
         if (a.length == 10) a = [null, ...a];
