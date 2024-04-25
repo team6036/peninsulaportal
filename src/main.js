@@ -2329,9 +2329,9 @@ const MAIN = async () => {
                         const root = path.dirname(script);
 
                         let dataIn = { config: {}, nodes: [], obstacles: [] };
-                        dataIn.config.map_w = project.w / 100;
-                        dataIn.config.map_h = project.h / 100;
-                        dataIn.config.side_length = project.robotW / 100;
+                        dataIn.config.map_w = project.w;
+                        dataIn.config.map_h = project.h;
+                        dataIn.config.side_length = project.robotW;
                         dataIn.config.mass = project.robotMass;
                         project.config.optionKeys.forEach(k => {
                             let v = project.config.getOption(k);
@@ -2344,9 +2344,9 @@ const MAIN = async () => {
                             let itm = project.getItem(id);
                             if (!(itm instanceof sublib.Project.Node)) return;
                             let data = {
-                                x: itm.x/100, y: itm.y/100,
-                                vx: itm.useVelocity ? itm.velocityX/100 : null,
-                                vy: itm.useVelocity ? itm.velocityY/100 : null,
+                                x: itm.x, y: itm.y,
+                                vx: itm.useVelocity ? itm.velocityX : null,
+                                vy: itm.useVelocity ? itm.velocityY : null,
                                 vt: itm.useVelocity ? itm.velocityRot : null,
                                 theta: itm.useHeading ? itm.heading : null,
                             };
@@ -2363,8 +2363,8 @@ const MAIN = async () => {
                             if (!(itm instanceof sublib.Project.Obstacle)) return;
                             if (itm.disabled) return;
                             dataIn.obstacles.push({
-                                x: itm.x/100, y: itm.y/100,
-                                radius: itm.radius/100,
+                                x: itm.x, y: itm.y,
+                                radius: itm.radius,
                             });
                         });
                         let contentIn = JSON.stringify(dataIn, null, "\t");
@@ -2476,8 +2476,8 @@ const MAIN = async () => {
 
                         let project = null;
                         try {
-                            project = JSON.parse(await this.get("project", id), sublib.REVIVER.f);
-                        } catch (e) {}
+                            project = JSON.parse(await this.get("project", id), util.REVIVER.f);
+                        } catch (e) { console.log(e); }
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
 
                         const projectName = lib.FSOperator.sanitizeName(project.meta.name);

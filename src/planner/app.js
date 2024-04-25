@@ -83,12 +83,12 @@ class RLine extends core.Odometry2d.Render {
             if (this.hasItemA()) a.set(this.itemA.pos);
             if (this.hasItemB()) b.set(this.itemB.pos);
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            if (a.distSquared(b) < this.odometry.pageLenToWorld((7.5+5)*2)**2) return;
+            if (a.distSquared(b) < this.odometry.pageLenToWorld((0.075+5)*2)**2) return;
             ctx.strokeStyle = core.PROPERTYCACHE.get("--cg-8");
             ctx.lineWidth = 5*quality;
             ctx.beginPath();
-            ctx.moveTo(...this.odometry.worldToCanvas(a.add(V.dir(a.towards(b), this.odometry.pageLenToWorld(7.5+5)))).xy);
-            ctx.lineTo(...this.odometry.worldToCanvas(b.add(V.dir(b.towards(a), this.odometry.pageLenToWorld(7.5+5)))).xy);
+            ctx.moveTo(...this.odometry.worldToCanvas(a.add(V.dir(a.towards(b), this.odometry.pageLenToWorld(0.075+0.05)))).xy);
+            ctx.lineTo(...this.odometry.worldToCanvas(b.add(V.dir(b.towards(a), this.odometry.pageLenToWorld(0.075+0.05)))).xy);
             ctx.stroke();
         });
 
@@ -150,7 +150,7 @@ class RVisual extends core.Odometry2d.Render {
             let nj, pj, vj, cj;
             for (let i = 0; i < this.#nodes.length; i++) {
                 let ni = this.#nodes[i];
-                if (i > 0 && nj.pos.distSquared(ni.pos) < 1) continue;
+                if (i > 0 && nj.pos.distSquared(ni.pos) < 0.01**2) continue;
                 let pi = this.odometry.worldToCanvas(ni.pos);
                 let vi = ni.velocity.dist();
                 let ci = getColor(vi);
@@ -158,7 +158,7 @@ class RVisual extends core.Odometry2d.Render {
                     [nj, pj, vj, cj] = [ni, pi, vi, ci];
                     continue;
                 }
-                if (pj.distSquared(pi) > 10**2) {
+                if (pj.distSquared(pi) > 0.1**2) {
                     let grad = ctx.createLinearGradient(...pj.xy, ...pi.xy);
                     grad.addColorStop(0, cj.toRGBA());
                     grad.addColorStop(1, ci.toRGBA());
@@ -279,7 +279,7 @@ class RVisualItem3d extends core.Odometry3d.Render {
                     0, true,
                 );
             } else node = nodes[0];
-            this.pos = node.pos.div(100);
+            this.pos = node.pos;
             this.q = [Math.cos(node.heading/2), 0, 0, Math.sin(node.heading/2)];
         });
 
@@ -1060,7 +1060,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (render.renderObject instanceof core.Odometry2d.Robot)
                     render.renderObject.size = this.project.robotW;
                 render = itemRenders[id].d3;
-                render.pos = itms[id].pos.div(100);
+                render.pos = itms[id].pos;
                 render.q = [Math.cos(itms[id].heading/2), 0, 0, Math.sin(itms[id].heading/2)];
             }
 
@@ -1684,8 +1684,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let itms = getSelected();
             let xList = hasX ? itms.map(itm => itm.x) : null;
             let yList = hasY ? itms.map(itm => itm.y) : null;
-            let newCenterX = hasX ? this.fPosition.value.x*100 : null;
-            let newCenterY = hasY ? this.fPosition.value.y*100 : null;
+            let newCenterX = hasX ? this.fPosition.value.x : null;
+            let newCenterY = hasY ? this.fPosition.value.y : null;
             let oldCenterX = hasX ? (Math.max(...xList)+Math.min(...xList))/2 : null;
             let oldCenterY = hasY ? (Math.max(...yList)+Math.min(...yList))/2 : null;
             let relX = hasX ? newCenterX - oldCenterX : 0;
@@ -1751,8 +1751,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let itms = getSelected();
             itms.forEach(itm => {
                 if (!(itm instanceof sublib.Project.Node)) return;
-                if (hasX) itm.velocityX = this.fRobotVelocity.x*100;
-                if (hasY) itm.velocityY = this.fRobotVelocity.y*100;
+                if (hasX) itm.velocityX = this.fRobotVelocity.x;
+                if (hasY) itm.velocityY = this.fRobotVelocity.y;
             });
             this.page.editorRefresh();
         });
@@ -1862,7 +1862,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let itms = getSelected();
             itms.forEach(itm => {
                 if (!(itm instanceof sublib.Project.Obstacle)) return;
-                itm.radius = this.fObstacleRadius.value*100;
+                itm.radius = this.fObstacleRadius.value;
             });
             this.page.editorRefresh();
         });
@@ -1919,7 +1919,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
                 return sameValue;
             };
             this.fPosition.disabled = !has;
-            this.fPosition.value = has ? [xCenter/100, yCenter/100] : null;
+            this.fPosition.value = has ? [xCenter, yCenter] : null;
 
             this.fRobotHeading.toggleDisabled = !has;
             if (allNode) {
@@ -1941,8 +1941,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             if (allNode) {
                 let vx = getSameValue(itm => itm.velocityX);
                 let vy = getSameValue(itm => itm.velocityY);
-                this.fRobotVelocity.x = (vx == null) ? null : vx/100;
-                this.fRobotVelocity.y = (vy == null) ? null : vy/100;
+                this.fRobotVelocity.x = (vx == null) ? null : vx;
+                this.fRobotVelocity.y = (vy == null) ? null : vy;
             } else this.fRobotVelocity.value = null;
             this.fRobotRotVelocity.disabled = !this.fRobotVelocity.toggleOn || !has;
             if (allNode) {
@@ -1983,7 +1983,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.fObstacleRadius.disabled = !has;
             if (allObstacle) {
                 let v = getSameValue(itm => itm.radius);
-                this.fObstacleRadius.value = (v == null) ? null : v/100;
+                this.fObstacleRadius.value = (v == null) ? null : v;
             } else this.fObstacleRadius.value = null;
 
             this.fObstacleEnabled.disabled = !has;
@@ -2054,10 +2054,10 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 const pnode = new sublib.Project.Node();
                 this.page.project.addItem(pnode);
                 ids.push(pnode.id);
-                pnode.pos = new V(node.x, node.y).mul(100);
+                pnode.pos = [node.x, node.y];
                 pnode.heading = node.theta;
                 pnode.useHeading = node.theta != null;
-                pnode.velocity = new V(node.vx, node.vy).mul(100);
+                pnode.velocity = [node.vx, node.vy];
                 pnode.velocityRot = node.vt;
                 pnode.useVelocity = node.vx != null && node.vy != null && node.vt != null;
                 const blacklist = ["x", "y", "vx", "vy", "vt", "theta"];
@@ -2070,8 +2070,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                 obstacle = util.ensure(obstacle, "obj");
                 const pobstacle = new sublib.Project.Obstacle();
                 this.page.project.addItem(pobstacle);
-                pobstacle.pos = new V(obstacle.x, obstacle.y).mul(100);
-                pobstacle.radius = obstacle.radius*100;
+                pobstacle.pos = [obstacle.x, obstacle.y];
+                pobstacle.radius = obstacle.radius;
             });
             const ppth = new sublib.Project.Path();
             this.page.project.addPath(ppth);
@@ -2209,9 +2209,9 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     theVisual.visual.nodes = util.ensure(data.state, "arr").map(node => {
                         node = util.ensure(node, "obj");
                         node = new sublib.Project.Node(
-                            new V(node.x, node.y).mul(100),
+                            [node.x, node.y],
                             node.theta, true,
-                            new V(node.vx, node.vy).mul(100),
+                            [node.vx, node.vy],
                             0, true,
                         );
                         return node;
@@ -2553,8 +2553,8 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             const hasX = this.fSize.hasValue("x");
             const hasY = this.fSize.hasValue("y");
             if (this.page.hasProject()) {
-                if (hasX) this.page.project.x = this.fSize.x;
-                if (hasY) this.page.project.y = this.fSize.y;
+                if (hasX) this.page.project.w = this.fSize.x;
+                if (hasY) this.page.project.h = this.fSize.y;
             }
             this.page.editorRefresh();
         });
@@ -2571,7 +2571,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         this.fRobotSize.addHandler("change-value", () => {
             if (!this.fRobotSize.hasValue()) return;
             if (this.page.hasProject())
-                this.page.project.robotSize = this.fRobotSize.value * 100;
+                this.page.project.robotSize = this.fRobotSize.value;
             this.page.editorRefresh();
         });
 
@@ -2642,9 +2642,9 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
             this.fTemplateApply.disabled = !has || !this.page.project.hasTemplate();
             this.fSize.isShown = has && !this.page.project.hasTemplate();
             this.fSize.disabled = !has;
-            this.fSize.value = has ? this.page.project.size.div(100) : null;
+            this.fSize.value = has ? this.page.project.size : null;
             this.fRobotSize.disabled = !has;
-            this.fRobotSize.value = has ? this.page.project.robotSize.div(100).x : null;
+            this.fRobotSize.value = has ? this.page.project.robotSize.x : null;
             this.fRobotMass.disabled = !has;
             this.fRobotMass.value = has ? this.page.project.robotMass : null;
             this.fOptions.disabled = !has;

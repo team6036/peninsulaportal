@@ -39,7 +39,7 @@ class RLine extends core.Odometry2d.Render {
     #color;
     #size;
 
-    constructor(odometry, color, size=7.5) {
+    constructor(odometry, color, size=0.075) {
         super(odometry);
 
         this.#waypoints = [];
@@ -7105,7 +7105,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.addHandler("add", () => (this.fSize.app = this.app));
         this.addHandler("rem", () => (this.fSize.app = null));
         this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
-        this.fSize.baseType = "cm";
+        this.fSize.baseType = "m";
         this.fSize.step = 0.1;
         this.fSize.inputs.forEach((inp, i) => {
             inp.placeholder = ["Width", "Height"][i];
@@ -7123,7 +7123,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.addHandler("add", () => (this.fRobotSize.app = this.app));
         this.addHandler("rem", () => (this.fRobotSize.app = null));
         this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
-        this.fRobotSize.baseType = "cm";
+        this.fRobotSize.baseType = "m";
         this.fRobotSize.step = 0.1;
         this.fRobotSize.inputs.forEach((inp, i) => {
             inp.placeholder = ["Width", "Height"][i];
@@ -7303,8 +7303,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
             else a = [[], core.GLOBALSTATE.getProperty("active-template").value];
         }
-        if (a.length == 2) a = [...a, 1000];
-        if (a.length == 3) a = [...a, 100];
+        if (a.length == 2) a = [...a, 10];
+        if (a.length == 3) a = [...a, 1];
         if (a.length == 4) a = [...a, 0.5];
         if (a.length == 5) a = [...a.slice(0, 4), "m", "deg", "blue+", a[4]];
 
@@ -7580,7 +7580,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         const convertPos = (...v) => {
             v = new V(...v);
             if (!this.hasTab()) return v;
-            v = v.map(v => lib.Unit.convert(v, this.tab.lengthUnits, "cm"));
+            v = v.map(v => lib.Unit.convert(v, this.tab.lengthUnits, "m"));
             if (!this.tab.origin.startsWith("blue")) v.x = this.tab.odometry.w-v.x;
             if (!this.tab.origin.endsWith("+")) v.y = this.tab.odometry.h-v.y;
             return v;
@@ -7627,7 +7627,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     return pose;
                 });;
                 if (m == this.value.length) {
-                    while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
+                    while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 0.025)));
                     if (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.splice(l));
                     for (let i = 0; i < l; i++) {
                         const render = trailRenders[i];
@@ -7657,7 +7657,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                         if (i <= 0) return trailL = l;
                         trailL = Math.min(trailL, l);
                     });
-                    while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
+                    while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 0.025)));
                     if (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.splice(l));
                     for (let i = 0; i < l; i++) {
                         const render = trailRenders[i];
