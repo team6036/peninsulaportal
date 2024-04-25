@@ -5268,6 +5268,18 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
 
     #selected;
 
+    static TYPES = [
+        "§default",
+        "§node",
+        "§box",
+        "§target",
+        "§arrow",
+        "§arrow-h",
+        "§arrow-t",
+        "§2023-cone",
+        "§2023-cube",
+        "§2024-note",
+    ];
     static getTypeName(type) {
         let names = {
             "§default": "Default",
@@ -5605,6 +5617,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
     get type() { return this.#type; }
     set type(v) {
         v = (v == null) ? null : String(v);
+        if (v != null && v.startsWith("§") && !Odometry2d.Robot.TYPES.includes(v)) v = Odometry2d.Robot.TYPES[0];
         if (this.type == v) return;
         this.#builtinType = (v == null || !v.startsWith("§")) ? null : v.slice(1);
         this.change("type", this.type, this.#type=v);
@@ -6528,6 +6541,20 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         }
     }
 
+    static TYPES = [
+        "§node",
+        "§cube",
+        "§arrow+x",
+        "§arrow-x",
+        "§arrow+y",
+        "§arrow-y",
+        "§arrow+z",
+        "§arrow-z",
+        "§axes",
+        "§2023-cone",
+        "§2023-cube",
+        "§2024-note",
+    ];
     static getTypeName(type) {
         let names = {
             "§node": "Node",
@@ -6830,6 +6857,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     get type() { return this.#type; }
     set type(v) {
         v = (v == null) ? null : String(v);
+        if (v != null && v.startsWith("§") && !Odometry2d.Robot.TYPES.includes(v)) v = Odometry2d.Robot.TYPES[0];
         if (this.type == v) return;
         this.#builtinType = (v == null || !v.startsWith("§")) ? null : v.slice(1);
         this.change("type", this.type, this.#type=v);

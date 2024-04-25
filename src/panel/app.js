@@ -1428,7 +1428,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 a = [a.searchPart, a.query];
             }
             else if (util.is(a, "obj")) a = [a.searchPart, a.query];
-            else a = [null, ""];
+            // else a = [null, ""];
+            else a = [null, a];
         }
 
         [this.searchPart, this.query] = a;
@@ -2540,24 +2541,6 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         this.eSideHeader.appendChild(this.eFollowBtn);
         this.eFollowBtn.innerHTML = "<ion-icon src='./assets/icons/jump.svg'></ion-icon>";
 
-        if (a.length <= 0 || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.TableTab) a = [a.vars, a.tsNow, a.tsOverride];
-            else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.TableTab.Variable) a = [a, 0];
-                else {
-                    a = new Panel.TableTab(...a);
-                    a = [a.vars, a.tsNow, a.tsOverride];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.vars, a.tsNow, a.tsOverride];
-            else a = [[], 0];
-        }
-        if (a.length == 2) a = [...a, false];
-
-        [this.vars, this.tsNow, this.tsOverride] = a;
-
         this.eTSInput.addEventListener("change", e => {
             let v = this.eTSInput.value;
             if (v.length <= 0) return;
@@ -2621,6 +2604,24 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             }
             this.vars.forEach(v => v.update(delta));
         });
+
+        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length == 1) {
+            a = a[0];
+            if (a instanceof Panel.TableTab) a = [a.vars, a.tsNow, a.tsOverride];
+            else if (util.is(a, "arr")) {
+                if (a[0] instanceof Panel.TableTab.Variable) a = [a, 0];
+                else {
+                    a = new Panel.TableTab(...a);
+                    a = [a.vars, a.tsNow, a.tsOverride];
+                }
+            }
+            else if (util.is(a, "obj")) a = [a.vars, a.tsNow, a.tsOverride];
+            else a = [[], 0];
+        }
+        if (a.length == 2) a = [...a, false];
+
+        [this.vars, this.tsNow, this.tsOverride] = a;
     }
 
     get vars() { return [...this.#vars]; }
@@ -3052,7 +3053,8 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
             if (a instanceof Panel.WebViewTab) a = [a.src];
             else if (util.is(a, "arr")) a = [new Panel.WebViewTab(...a).src];
             else if (util.is(a, "obj")) a = [a.src];
-            else a = [""];
+            // else a = [""];
+            else a = [a];
         }
 
         [this.src] = a;
@@ -4659,20 +4661,19 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             this.eVideo.src = "file://"+(await window.api.send("video-get", this.video));
         });
 
-        if (a.length <= 0 || a.length > 3) a = [null];
+        if (a.length <= 0 || a.length > 1) a = [null];
         if (a.length == 1) {
             a = a[0];
-            if (a instanceof Panel.VideoSyncTab) a = [a.video, a.offsets, a.locked];
+            if (a instanceof Panel.VideoSyncTab) a = [a.video];
             else if (util.is(a, "arr")) {
                 a = new Panel.VideoSyncTab(...a);
-                a = [a.video, a.offsets, a.locked];
+                a = [a.video];
             }
-            else if (util.is(a, "obj")) a = [a.video, a.offsets, a.locked];
-            else a = [String(a), {}];
+            else if (util.is(a, "obj")) a = [a.video];
+            else a = [a];
         }
-        if (a.length == 2) a = [...a, false];
 
-        [this.video, this.offsets, this.locked] = a;
+        [this.video] = a;
     }
 
     get video() { return this.#video; }
@@ -7471,7 +7472,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
                     a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to(), a.trail, a.useTrail];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost || a.isGhost, (["default", "node", "box", "arrow"].includes(a.type) ? ("§"+a.type) : a.type), a.shownHook, a.ghostHook, a.trail, a.useTrail];
+            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook, a.ghostHook, a.trail, a.useTrail];
             else a = [[], null];
         }
         if (a.length == 2) a = [a[0], true, a[1]];
@@ -7508,6 +7509,7 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
     get type() { return this.#type; }
     set type(v) {
         v = (v == null) ? null : String(v);
+        if (v != null && v.startsWith("§") && !core.Odometry2d.Robot.TYPES.includes(v)) v = core.Odometry2d.Robot.TYPES[0];
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
@@ -8221,7 +8223,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
                     a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.to(), a.ghostHook.to(), a.solidHook.to()];
                 }
             }
-            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost || a.isGhost, a.solid || a.isSolid, a.type, a.shownHook, a.ghostHook, a.solidHook];
+            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook, a.ghostHook, a.solidHook];
             else a = [null, null];
         }
         if (a.length == 2) a = [a[0], true, a[1], false, false];
@@ -8276,7 +8278,8 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     }
     get type() { return this.#type; }
     set type(v) {
-        v = String(v);
+        v = (v == null) ? null : String(v);
+        if (v != null && v.startsWith("§") && !core.Odometry2d.Robot.TYPES.includes(v)) v = core.Odometry2d.Robot.TYPES[0];
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
         if (this.eDisplayType.children[0] instanceof HTMLDivElement)
