@@ -1792,7 +1792,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.page.editorRefresh();
         });
 
-        const subform = form.addField(new core.Form.SubForm("display")).form;
+        const subformField = form.addField(new core.Form.SubForm("display"));
+        forNode.push(subformField);
+        const subform = subformField.form;
         subform.isHorizontal = true;
 
         this.#fType = subform.addField(new core.Form.DropdownInput("type", [
@@ -1804,7 +1806,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             "§arrow-t",
             "§target",
         ].map(type => { return { value: type, name: core.Odometry2d.Robot.getTypeName(type) }; })));
-        forNode.push(this.fType);
         this.fType.app = this.app;
         this.fType.addHandler("change-value", () => {
             if (!this.fType.hasValue()) return;
@@ -1817,7 +1818,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         });
 
         this.#fColor = subform.addField(new core.Form.ColorInput("color"));
-        forNode.push(this.fColor);
         this.fColor.eColorPicker.showPicker = this.fColor.eColorPicker.showH = this.fColor.eColorPicker.showS = this.fColor.eColorPicker.showV = this.fColor.useAlpha = false;
         this.fColor.eInput.style.display = "none";
         this.fColor.addHandler("change-value", () => {
@@ -1838,7 +1838,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         });
 
         this.#fGhost = subform.addField(new core.Form.BooleanInput("ghost"));
-        forNode.push(this.fGhost);
         this.fGhost.addHandler("change-value", () => {
             let itms = getSelected();
             itms.forEach(itm => {
