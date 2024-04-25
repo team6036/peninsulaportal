@@ -28,6 +28,20 @@ export class Project extends lib.Project {
         this.size.addHandler("change", (c, f, t) => this.change("size."+c, f, t));
         this.robotSize.addHandler("change", (c, f, t) => this.change("robotSize."+c, f, t));
 
+        this.addHandler("change", () => {
+            let names = new Set();
+            this.paths.forEach(id => {
+                let path = this.getPath(id);
+                if (path.name.length <= 0) path.name = "New Path";
+                if (names.has(path.name)) {
+                    let n = 1;
+                    while (names.has(path.name+ " ("+n+")")) n++;
+                    path.name += " ("+n+")";
+                }
+                names.add(path.name);
+            });
+        });
+
         if (a.length <= 0 || [5, 7, 9].includes(a.length) || a.length > 11) a = [null];
         if (a.length == 1) {
             a = a[0];
@@ -72,20 +86,6 @@ export class Project extends lib.Project {
         if (a.length == 10) a = [null, ...a];
 
         [this.id, this.template, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.sidePos, this.maximized, this.config, this.meta] = a;
-
-        this.addHandler("change", () => {
-            let names = new Set();
-            this.paths.forEach(id => {
-                let path = this.getPath(id);
-                if (path.name.length <= 0) path.name = "New Path";
-                if (names.has(path.name)) {
-                    let n = 1;
-                    while (names.has(path.name+ " ("+n+")")) n++;
-                    path.name += " ("+n+")";
-                }
-                names.add(path.name);
-            });
-        });
     }
 
     get template() { return this.#template; }
@@ -445,7 +445,7 @@ Project.Node = class ProjectNode extends Project.Item {
                 a = new Project.Node(...a);
                 a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type, a.color, a.ghost];
             }
-            else if (util.is(a, "obj")) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type || "§default", a.color || "cb", a.ghost];
+            else if (util.is(a, "obj")) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type, a.color, a.ghost];
             else a = [a, 0];
         }
         if (a.length == 2) a = [...a, 100];
@@ -531,7 +531,7 @@ Project.Node = class ProjectNode extends Project.Item {
 
     get type() { return this.#type; }
     set type(v) {
-        v = String(v);
+        v = (v == null) ? null : String(v);
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
     }

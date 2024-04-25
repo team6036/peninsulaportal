@@ -906,7 +906,8 @@ export class Result extends Target {
             else if (is(a, "bool")) a = [a, a];
             else a = [true, a];
         }
-        if (a.length == 2) a = [!!a[0], a[1], null, null];
+        // if (a.length == 2) a = [!!a[0], a[1], null, null];
+        if (a.length == 2) a = [...a, null, null];
 
         [this.successful, this.value, this.error, this.reason] = a;
     }
