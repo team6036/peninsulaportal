@@ -120,12 +120,12 @@ const MAIN = async () => {
 
     const zlib = require("zlib");
 
-    const OS = {
+    const OS = Object.freeze({
         arch: os.arch(),
         platform: os.platform(),
         cpus: os.cpus(),
         user: os.userInfo(),
-    };
+    });
     const args = [...process.argv];
     args.shift();
     if (!app.isPackaged) args.shift();
@@ -157,6 +157,7 @@ const MAIN = async () => {
             bootParams[arg] = true;
         }
     }
+    Object.freeze(bootParams);
 
     function simplify(s) {
         s = String(s);
