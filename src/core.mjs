@@ -5410,8 +5410,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             if (hovered) {
                 hName.name = this.name;
                 hName.eName.style.color = "var(--"+this.color+")";
-                hPosX.value = this.x/100;
-                hPosY.value = this.y/100;
+                hPosX.value = this.x;
+                hPosY.value = this.y;
                 hDir.value = this.heading;
                 if (useVelocity != this.useVelocity) {
                     useVelocity = this.useVelocity;
@@ -5419,8 +5419,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                     else hint.remEntry(hVelX, hVelY);
                 }
                 if (useVelocity) {
-                    hVelX.value = this.velocityX/100;
-                    hVelY.value = this.velocityY/100;
+                    hVelX.value = this.velocityX;
+                    hVelY.value = this.velocityY;
                 }
                 this.odometry.addHint(hint);
                 hint.place(this.odometry.worldToPage(this.pos));
@@ -5674,6 +5674,10 @@ export class Odometry3d extends Odometry {
         this.loadingRobots[name] = t1;
         return await new Promise((res, rej) => {
             LOADER.load(robotModels[name], gltf => {
+                const robot = util.ensure(robots[name], "obj");
+                const zero = util.ensure(robot.zero, "obj");
+                const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
+                const translations = new util.V3(zero.translations);
                 this.loadedRobots[name] = {};
                 const scene = gltf.scene;
                 ["basic", "cinematic"].forEach(type => {
@@ -5688,14 +5692,14 @@ export class Odometry3d extends Odometry {
                         if (score*s < 0.5) return;
                         obj.material._allianceMaterial = true;
                     });
-                    obj.quaternion.copy(THREE.Quaternion.fromRotationSequence(util.ensure(robots[name], "obj").rotations));
+                    obj.quaternion.copy(rotations);
                     [obj, pobj] = [new THREE.Object3D(), obj];
                     obj.add(pobj);
                     bbox = new THREE.Box3().setFromObject(obj);
                     obj.position.set(
-                        obj.position.x - (bbox.max.x+bbox.min.x)/2,
-                        obj.position.y - (bbox.max.y+bbox.min.y)/2,
-                        obj.position.z - bbox.min.z,
+                        obj.position.x - (bbox.max.x+bbox.min.x)/2 + translations.x,
+                        obj.position.y - (bbox.max.y+bbox.min.y)/2 + translations.y,
+                        obj.position.z - bbox.min.z + translations.z,
                     );
                     [obj, pobj] = [new THREE.Object3D(), obj];
                     obj.add(pobj);
@@ -6585,8 +6589,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 this.odometry.requestRedraw();
             }
             this.theObject.position.set(
-                this.x - this.odometry.size.x/200,
-                this.y - this.odometry.size.y/200,
+                this.x - this.odometry.size.x/2,
+                this.y - this.odometry.size.y/2,
                 this.z,
             );
             this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
