@@ -5187,7 +5187,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 });
             });
         };
-        dfs(menu, this.menuStructure);
+        dfs(menu, [
+            ...this.menuStructure,
+        ]);
         return signal;
     }
 
@@ -6413,6 +6415,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             "§2024-note": "2024 Note",
         };
         if (type in names) return names[type];
+        let robots = util.ensure(GLOBALSTATE.getProperty("robots").value, "obj");
+        if (type in robots) return String(util.ensure(robots[type], "obj").name || type);
         return String(type);
     }
     static menuStructure = [
@@ -6466,7 +6470,12 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 });
             });
         };
-        dfs(menu, this.menuStructure);
+        let robots = util.ensure(GLOBALSTATE.getProperty("robots").value, "obj");
+        dfs(menu, [
+            ...this.menuStructure,
+            null,
+            ...Object.keys(robots),
+        ]);
         return signal;
     }
     

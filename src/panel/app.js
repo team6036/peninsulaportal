@@ -8083,19 +8083,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         let r2 = [r].flatten();
         r2.forEach(r => {
             const onType = async () => {
-                let robots = util.ensure(await window.api.get("robots"), "obj");
-                let current = r.type;
                 if (!this.hasApp()) return;
-                let itm;
                 let menu = new core.App.Menu();
                 core.Odometry3d.Render.buildMenu(menu, r.type).addHandler("type", k => (r.type = k));
-                menu.addItem(new core.App.Menu.Divider());
-                Object.keys(robots).forEach(k => {
-                    itm = menu.addItem(new core.App.Menu.Item(k, (current == k) ? "checkmark" : ""));
-                    itm.addHandler("trigger", e => {
-                        r.type = k;
-                    });
-                });
                 this.app.contextMenu = menu;
                 let rect = r.eDisplayType.getBoundingClientRect();
                 this.app.placeContextMenu(rect.left, rect.bottom);
@@ -8239,14 +8229,6 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         itm = menu.addItem(new core.App.Menu.Item("Types"));
         let submenu = itm.menu;
         core.Odometry3d.Render.buildMenu(submenu, this.type).addHandler("type", k => (this.type = k));
-        submenu.addItem(new core.App.Menu.Divider());
-        let robots = util.ensure(await window.api.get("robots"), "obj");
-        Object.keys(robots).forEach(k => {
-            itm = submenu.addItem(new core.App.Menu.Item(k, (this.type == k) ? "checkmark" : ""));
-            itm.addHandler("trigger", e => {
-                this.type = k;
-            });
-        });
         itm = menu.addItem(new core.App.Menu.Item("Ghost", this.ghost ? "checkmark" : ""));
         itm.addHandler("trigger", e => {
             this.ghost = !this.ghost;
