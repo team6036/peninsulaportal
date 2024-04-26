@@ -964,14 +964,14 @@ export class Color extends Target {
         this.set(...a);
     }
 
-    set(...a) {
+    static args(...a) {
         if (a.length <= 0 || [2].includes(a.length) || a.length > 4) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Color) a = a.rgba;
             else if (a instanceof V3) a = [...a.xyz, 1];
             else if (a instanceof V4) a = a.wxyz;
-            else if (is(a, "arr")) return this.set(...a);
+            else if (is(a, "arr")) return this.args(...a);
             else if (is(a, "obj")) a = [a.r, a.g, a.b, a.a];
             else if (is(a, "num")) {
                 if (a < 0) a = new Array(3).fill(-a);
@@ -1025,9 +1025,11 @@ export class Color extends Target {
             else a = [0, 0, 0];
         }
         if (a.length == 3) a = [...a, 1];
-
-        [this.r, this.g, this.b, this.a] = a;
-
+        return a;
+    }
+    args(...a) { return this.constructor.args(...a); }
+    set(...a) {
+        [this.r, this.g, this.b, this.a] = this.args(...a);
         return this;
     }
 
@@ -1067,12 +1069,12 @@ export class Color extends Target {
     set rgba(v) { this.set(v); }
 
     diff(...v) {
-        v = new Color(...v);
+        v = this.args(...v);
         return (
-            Math.abs(this.r-v.r) +
-            Math.abs(this.g-v.g) +
-            Math.abs(this.b-v.b) +
-            Math.abs(this.a-v.a)
+            Math.abs(this.r-v[0]) +
+            Math.abs(this.g-v[1]) +
+            Math.abs(this.b-v[2]) +
+            Math.abs(this.a-v[3])
         ) / 4;
     }
 
@@ -1147,11 +1149,11 @@ export class Color extends Target {
     }
 
     equals(...v) {
-        v = new Color(...v);
-        if (this.r != v.r) return false;
-        if (this.g != v.g) return false;
-        if (this.b != v.b) return false;
-        if (this.a != v.a) return false;
+        v = this.args(...v);
+        if (this.r != v[0]) return false;
+        if (this.g != v[1]) return false;
+        if (this.b != v[2]) return false;
+        if (this.a != v[3]) return false;
         return true;
     }
 
@@ -1199,20 +1201,22 @@ export class Range extends Target {
         this.set(...a);
     }
 
-    set(...a) {
+    static args(...a) {
         if (a.length <= 0 || [3].includes(a.length) || a.length > 2) a = [null];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof Range) a = [a.l, a.r, a.lInclude, a.rInclude];
-            else if (is(a, "arr")) return this.set(...a);
+            else if (is(a, "arr")) return this.args(...a);
             else if (is(a, "obj")) a = [a.l, a.r, a.lInclude, a.rInclude];
             else if (is(a, "any_num")) a = [a, Infinity];
             else a = [-Infinity, Infinity];
         }
         if (a.length == 2) a = [...a, true, true];
-
-        [this.l, this.r, this.lInclude, this.rInclude] = a;
-
+        return a;
+    }
+    args(...a) { return this.constructor.args(...a); }
+    set(...a) {
+        [this.l, this.r, this.lInclude, this.rInclude] = this.args(...a);
         return this;
     }
 
@@ -1294,23 +1298,26 @@ export class V extends Target {
 
     get length() { return 2; }
 
-    set(...a) {
+    static args(...a) {
         if (a.length <= 0 || a.length > 2) a = [0];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof V) a = a.xy;
             else if (a instanceof V3) a = [a.x, a.y];
             else if (a instanceof V4) a = [a.x, a.y];
-            else if (is(a, "arr")) return this.set(...a);
+            else if (is(a, "arr")) return this.args(...a);
             else if (is(a, "obj")) a = [a.x, a.y];
             else if (is(a, "num")) a = [a, a];
             else a = [0, 0];
         }
-
-        [this.x, this.y] = a;
-
+        return a;
+    }
+    args(...a) { return this.constructor.args(...a); }
+    set(...a) {
+        [this.x, this.y] = this.args(...a);
         return this;
     }
+    clone() { return new V(this); }
 
     get x() { return this.#x; }
     set x(v) {
@@ -1328,24 +1335,24 @@ export class V extends Target {
     set xy(v) { this.set(v); }
 
     add(...a) {
-        a = new V(...a);
-        return new V(this.x+a.x, this.y+a.y);
+        a = this.args(...a);
+        return new V(this.x+a[0], this.y+a[1]);
     }
     sub(...a) {
-        a = new V(...a);
-        return new V(this.x-a.x, this.y-a.y);
+        a = this.args(...a);
+        return new V(this.x-a[0], this.y-a[1]);
     }
     mul(...a) {
-        a = new V(...a);
-        return new V(this.x*a.x, this.y*a.y);
+        a = this.args(...a);
+        return new V(this.x*a[0], this.y*a[1]);
     }
     div(...a) {
-        a = new V(...a);
-        return new V(this.x/a.x, this.y/a.y);
+        a = this.args(...a);
+        return new V(this.x/a[0], this.y/a[1]);
     }
     pow(...a) {
-        a = new V(...a);
-        return new V(this.x**a.x, this.y**a.y);
+        a = this.args(...a);
+        return new V(this.x**a[0], this.y**a[1]);
     }
 
     map(f) {
@@ -1360,35 +1367,32 @@ export class V extends Target {
         d = ensure(d, "num");
         return new V(this.x*cos(d)+this.y*sin(d), this.x*cos(d-90)+this.y*sin(d-90));
     }
-    rotate(d, o) {
-        o = new V(o);
-        return this.sub(o).rotateOrigin(d).add(o);
-    }
+    rotate(d, o) { return this.sub(o).irotateOrigin(d).iadd(o); }
     normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V(this); }
 
     iadd(...a) {
-        a = new V(...a);
-        this.x += a.x; this.y += a.y;
+        a = this.args(...a);
+        this.x += a[0]; this.y += a[1];
         return this;
     }
     isub(...a) {
-        a = new V(...a);
-        this.x -= a.x; this.y -= a.y;
+        a = this.args(...a);
+        this.x -= a[0]; this.y -= a[1];
         return this;
     }
     imul(...a) {
-        a = new V(...a);
-        this.x *= a.x; this.y *= a.y;
+        a = this.args(...a);
+        this.x *= a[0]; this.y *= a[1];
         return this;
     }
     idiv(...a) {
-        a = new V(...a);
-        this.x /= a.x; this.y /= a.y;
+        a = this.args(...a);
+        this.x /= a[0]; this.y /= a[1];
         return this;
     }
     ipow(...a) {
-        a = new V(...a);
-        this.x **= a.x; this.y **= a.y;
+        a = this.args(...a);
+        this.x **= a[0]; this.y **= a[1];
         return this;
     }
 
@@ -1401,22 +1405,26 @@ export class V extends Target {
     iceil() { return this.imap(Math.ceil); }
     iround() { return this.imap(Math.round); }
 
-    irotateOrigin(d) { return this.set(this.rotateOrigin(d)); }
-    irotate(d, o) { return this.set(this.rotate(d, o)); }
-    inormalize() { return this.set(this.normalize()); }
+    irotateOrigin(d) {
+        d = ensure(d, "num");
+        [this.x, this.y] = [this.x*cos(d)+this.y*sin(d), this.x*cos(d-90)+this.y*sin(d-90)];
+        return this;
+    }
+    irotate(d, o) { return this.isub(o).irotateOrigin(d).iadd(o); }
+    inormalize() { return (this.dist(0) > 0) ? this.idiv(this.dist(0)) : this[0]; }
 
     distSquared(...v) {
-        v = new V(...v);
-        return (this.x-v.x)**2 + (this.y-v.y)**2;
+        v = this.args(...v);
+        return (this.x-v[0])**2 + (this.y-v[1])**2;
     }
     dist(...v) { return Math.sqrt(this.distSquared(...v)); }
     towards(...v) {
-        v = new V(...v);
-        return (180/Math.PI)*Math.atan2(v.y-this.y, v.x-this.x);
+        v = this.args(...v);
+        return (180/Math.PI)*Math.atan2(v[1]-this.y, v[0]-this.x);
     }
     equals(...v) {
-        v = new V(...v);
-        return (this.x == v.x) && (this.y == v.y); 
+        v = this.args(...v);
+        return (this.x == v[0]) && (this.y == v[1]); 
     }
 
     static dir(d, m=1) {
@@ -1456,24 +1464,27 @@ export class V3 extends Target {
 
     get length() { return 3; }
 
-    set(...a) {
+    static args(...a) {
         if (a.length <= 0 || a.length > 3) a = [0];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof V3) a = [a.x, a.y, a.z];
             else if (a instanceof V) a = [a.x, a.y, 0];
             else if (a instanceof V4) a = [a.x, a.y, a.z];
-            else if (is(a, "arr")) return this.set(...a);
+            else if (is(a, "arr")) return this.args(...a);
             else if (is(a, "obj")) a = [a.x, a.y, a.z];
             else if (is(a, "num")) a = [a, a, a];
             else a = [0, 0, 0];
         }
         if (a.length == 2) a = [...a, 0];
-
-        [this.x, this.y, this.z] = a;
-
+        return a;
+    }
+    args(...a) { return this.constructor.args(...a); }
+    set(...a) {
+        [this.x, this.y, this.z] = this.args(...a);
         return this;
     }
+    clone() { return new V3(this); }
 
     get x() { return this.#x; }
     set x(v) {
@@ -1497,33 +1508,33 @@ export class V3 extends Target {
     set xyz(v) { this.set(v); }
 
     add(...a) {
-        a = new V3(...a);
-        return new V3(this.x+a.x, this.y+a.y, this.z+a.z);
+        a = this.args(...a);
+        return new V3(this.x+a[0], this.y+a[1], this.z+a[2]);
     }
     sub(...a) {
-        a = new V3(...a);
-        return new V3(this.x-a.x, this.y-a.y, this.z-a.z);
+        a = this.args(...a);
+        return new V3(this.x-a[0], this.y-a[1], this.z-a[2]);
     }
     mul(...a) {
-        a = new V3(...a);
-        return new V3(this.x*a.x, this.y*a.y, this.z*a.z);
+        a = this.args(...a);
+        return new V3(this.x*a[0], this.y*a[1], this.z*a[2]);
     }
     div(...a) {
-        a = new V3(...a);
-        return new V3(this.x/a.x, this.y/a.y, this.z/a.z);
+        a = this.args(...a);
+        return new V3(this.x/a[0], this.y/a[1], this.z/a[2]);
     }
     pow(...a) {
-        a = new V3(...a);
-        return new V3(this.x**a.x, this.y**a.y, this.z**a.z);
+        a = this.args(...a);
+        return new V3(this.x**a[0], this.y**a[1], this.z**a[2]);
     }
 
     map(f) {
         return new V3(f(this.x), f(this.y), f(this.z));
     }
-    abs() { return this.map(v => Math.abs(v)); }
-    floor() { return this.map(v => Math.floor(v)); }
-    ceil() { return this.map(v => Math.ceil(v)); }
-    round() { return this.map(v => Math.round(v)); }
+    abs() { return this.map(Math.abs); }
+    floor() { return this.map(Math.floor); }
+    ceil() { return this.map(Math.ceil); }
+    round() { return this.map(Math.round); }
 
     rotateOrigin(...d) {
         d = new V3(...d);
@@ -1532,22 +1543,44 @@ export class V3 extends Target {
         return V3.dir(d, m);
     }
     rotate(d, o) {
-        o = new V3(o);
         return this.sub(o).rotateOrigin(d).add(o);
     }
     normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V3(this); }
 
-    iadd(...a) { return this.set(this.add(...a)); }
-    isub(...a) { return this.set(this.sub(...a)); }
-    imul(...a) { return this.set(this.mul(...a)); }
-    idiv(...a) { return this.set(this.div(...a)); }
-    ipow(...a) { return this.set(this.pow(...a)); }
+    iadd(...a) {
+        a = this.args(...a);
+        this.x += a[0]; this.y += a[1]; this.z += a[2];
+        return this;
+    }
+    isub(...a) {
+        a = this.args(...a);
+        this.x -= a[0]; this.y -= a[1]; this.z -= a[2];
+        return this;
+    }
+    imul(...a) {
+        a = this.args(...a);
+        this.x *= a[0]; this.y *= a[1]; this.z *= a[2];
+        return this;
+    }
+    idiv(...a) {
+        a = this.args(...a);
+        this.x /= a[0]; this.y /= a[1]; this.z /= a[2];
+        return this;
+    }
+    ipow(...a) {
+        a = this.args(...a);
+        this.x **= a[0]; this.y **= a[1]; this.z **= a[2];
+        return this;
+    }
 
-    imap(f) { return this.set(this.map(f)); }
-    iabs() { return this.set(this.abs()); }
-    ifloor() { return this.set(this.floor()); }
-    iceil() { return this.set(this.ceil()); }
-    iround() { return this.set(this.round()); }
+    imap(f) {
+        this.x = f(this.x); this.y = f(this.y); this.z = f(this.z);
+        return this;
+    }
+    iabs() { return this.imap(Math.abs); }
+    ifloor() { return this.imap(Math.floor); }
+    iceil() { return this.imap(Math.ceil); }
+    iround() { return this.imap(Math.round); }
 
     irotateOrigin(d) { return this.set(this.rotateOrigin(d)); }
     irotate(d, o) { return this.set(this.rotate(d, o)); }
@@ -1559,16 +1592,16 @@ export class V3 extends Target {
     }
     dist(...v) { return Math.sqrt(this.distSquared(...v)); }
     towards(...v) {
-        v = new V3(...v);
+        v = this.args(...v);
         let thisFlat = new V(this.x, this.z);
-        let thatFlat = new V(v.x, v.z);
+        let thatFlat = new V(v[0], v[2]);
         let azimuth = thisFlat.towards(thatFlat);
         let elevation = new V().towards(thisFlat.dist(thatFlat), v.y-this.y);
         return new V3(elevation, azimuth, 0);
     }
     equals(...v) {
-        v = new V3(...v);
-        return (this.x == v.x) && (this.y == v.y) && (this.z == v.z);
+        v = this.args(...v);
+        return (this.x == v[0]) && (this.y == v[1]) && (this.z == v[2]);
     }
 
     static dir(d, m=1) {
@@ -1577,7 +1610,7 @@ export class V3 extends Target {
         let azimuth = V.dir(d.y);
         let elevation = V.dir(d.x);
         azimuth.imul(elevation.x);
-        return new V3(azimuth.x, elevation.y, azimuth.y).mul(m);
+        return new V3(azimuth.x, elevation.y, azimuth.y).imul(m);
     }
 
     toString() { return "<"+this.xyz.join(", ")+">" }
@@ -1616,25 +1649,28 @@ export class V4 extends Target {
 
     get length() { return 4; }
 
-    set(...a) {
+    static args(...a) {
         if (a.length <= 0 || a.length > 4) a = [0];
         if (a.length == 1) {
             a = a[0];
             if (a instanceof V4) a = a.wxyz;
             else if (a instanceof V) a = [0, a.x, a.y, 0];
             else if (a instanceof V3) a = [0, a.x, a.y, a.z];
-            else if (is(a, "arr")) return this.set(...a);
+            else if (is(a, "arr")) return this.args(...a);
             else if (is(a, "obj")) a = [a.w, a.x, a.y, a.z];
             else if (is(a, "num")) a = [a, a, a, a];
             else a = [0, 0, 0, 0];
         }
         if (a.length == 2) a = [...a, 0];
         if (a.length == 3) a = [0, ...a];
-
-        [this.w, this.x, this.y, this.z] = a;
-
+        return a;
+    }
+    args(...a) { return this.constructor.args(...a); }
+    set(...a) {
+        [this.w, this.x, this.y, this.z] = this.args(...a);
         return this;
     }
+    clone() { return new V4(this); }
 
     get w() { return this.#w; }
     set w(v) {
@@ -1675,33 +1711,33 @@ export class V4 extends Target {
     set tblr(v) { [this.t, this.b, this.l, this.r] = new V4(v).tblr; }
 
     add(...a) {
-        a = new V4(...a);
-        return new V4(this.w+a.w, this.x+a.x, this.y+a.y, this.z+a.z);
+        a = this.args(...a);
+        return new V4(this.w+a[0], this.x+a[1], this.y+a[2], this.z+a[4]);
     }
     sub(...a) {
-        a = new V4(...a);
-        return new V4(this.w-a.w, this.x-a.x, this.y-a.y, this.z-a.z);
+        a = this.args(...a);
+        return new V4(this.w-a[0], this.x-a[1], this.y-a[2], this.z-a[4]);
     }
     mul(...a) {
-        a = new V4(...a);
-        return new V4(this.w*a.w, this.x*a.x, this.y*a.y, this.z*a.z);
+        a = this.args(...a);
+        return new V4(this.w*a[0], this.x*a[1], this.y*a[2], this.z*a[4]);
     }
     div(...a) {
-        a = new V4(...a);
-        return new V4(this.w/a.w, this.x/a.x, this.y/a.y, this.z/a.z);
+        a = this.args(...a);
+        return new V4(this.w/a[0], this.x/a[1], this.y/a[2], this.z/a[4]);
     }
     pow(...a) {
-        a = new V4(...a);
-        return new V4(this.w**a.w, this.x**a.x, this.y**a.y, this.z**a.z);
+        a = this.args(...a);
+        return new V4(this.w**a[0], this.x**a[1], this.y**a[2], this.z**a[4]);
     }
 
     map(f) {
         return new V4(f(this.w), f(this.x), f(this.y), f(this.z));
     }
-    abs() { return this.map(v => Math.abs(v)); }
-    floor() { return this.map(v => Math.floor(v)); }
-    ceil() { return this.map(v => Math.ceil(v)); }
-    round() { return this.map(v => Math.round(v)); }
+    abs() { return this.map(Math.abs); }
+    floor() { return this.map(Math.floor); }
+    ceil() { return this.map(Math.ceil); }
+    round() { return this.map(Math.round); }
 
     normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V4(this); }
 
@@ -1720,13 +1756,13 @@ export class V4 extends Target {
     inormalize() { return this.set(this.normalize()); }
 
     distSquared(...v) {
-        v = new V4(...v);
-        return (this.w-v.w)**2 + (this.x-v.x)**2 + (this.y-v.y)**2 + (this.z-v.z)**2;
+        v = this.args(...v);
+        return (this.w-v[0])**2 + (this.x-v[1])**2 + (this.y-v[2])**2 + (this.z-v[3])**2;
     }
     dist(...v) { return Math.sqrt(this.distSquared(...v)); }
     equals(...v) {
-        v = new V4(...v);
-        return (this.w == v.w) && (this.x == v.x) && (this.y == v.y) && (this.z == v.z);
+        v = this.args(...v);
+        return (this.w == v[0]) && (this.x == v[1]) && (this.y == v[2]) && (this.z == v[3]);
     }
 
     toString() { return "<"+this.wxyz.join(", ")+">" }

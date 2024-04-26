@@ -11,6 +11,9 @@ import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer
 export { THREE };
 
 export const LOADER = new GLTFLoader();
+Object.getPrototypeOf(LOADER).loadPromised = async function(url) {
+    return await new Promise((res, rej) => this.load(url, res, null, rej));
+};
 
 THREE.Quaternion.fromRotationSequence = (...seq) => {
     if (seq.length == 1 && util.is(seq[0], "arr")) return THREE.Quaternion.fromRotationSequence(...seq[0]);
@@ -1314,16 +1317,20 @@ export class App extends util.Target {
                 if (both < 2) return;
                 const onHolidayState = async () => {
                     const holiday = await window.api.get("active-holiday");
-                    const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
-                    if (holiday == null || ("hat" in holidayData && !holidayData.hat)) return elem.classList.remove("special");
-                    elem.classList.add("special");
+                    if (holiday == null) return elem.classList.remove("special");
                     const holidayIconData = util.ensure(util.ensure(await window.api.get("holiday-icons"), "obj")[holiday], "obj");
-                    let eSpecialBack = elem.querySelector(".special.back");
-                    if (eSpecialBack instanceof HTMLImageElement)
-                        eSpecialBack.src = "file://"+holidayIconData.hat2;
-                    let eSpecialFront = elem.querySelector(".special.front");
-                    if (eSpecialFront instanceof HTMLImageElement)
-                        eSpecialFront.src = "file://"+holidayIconData.hat1;
+                    if (!("hat1" in holidayIconData) && !("hat2" in holidayIconData)) return elem.classList.remove("special");
+                    elem.classList.add("special");
+                    if ("hat2" in holidayIconData) {
+                        let eSpecialBack = elem.querySelector(".special.back");
+                        if (eSpecialBack instanceof HTMLImageElement)
+                            eSpecialBack.src = "file://"+holidayIconData.hat2;
+                    }
+                    if ("hat1" in holidayIconData) {
+                        let eSpecialFront = elem.querySelector(".special.front");
+                        if (eSpecialFront instanceof HTMLImageElement)
+                            eSpecialFront.src = "file://"+holidayIconData.hat1;
+                    }
                 };
                 this.addHandler("cmd-check", onHolidayState);
                 await onHolidayState();
@@ -4922,7 +4929,7 @@ export class Odometry2d extends Odometry {
 
     worldToCanvas(...p) {
         const scale = this.scale;
-        let [x, y] = new V(...p).xy;
+        let [x, y] = V.args(...p);
         x = (x - this.w/2) * (scale*this.quality) + this.canvas.width/2;
         y = (this.h/2 - y) * (scale*this.quality) + this.canvas.height/2;
         return new V(x, y);
@@ -4933,7 +4940,7 @@ export class Odometry2d extends Odometry {
     }
     canvasToWorld(...p) {
         const scale = this.scale;
-        let [x, y] = new V(...p).xy;
+        let [x, y] = V.args(...p);
         x = (x - this.canvas.width/2) / (scale*this.quality) + this.w/2;
         y = this.h/2 - (y - this.canvas.height/2) / (scale*this.quality);
         return new V(x, y);
@@ -4943,7 +4950,7 @@ export class Odometry2d extends Odometry {
         return l/(this.scale*this.quality);
     }
     canvasToPage(...p) {
-        let [x, y] = new V(...p).xy;
+        let [x, y] = V.args(...p);
         let r = this.canvas.getBoundingClientRect();
         x /= this.quality; y /= this.quality;
         x += r.left; y += r.top;
@@ -4954,7 +4961,7 @@ export class Odometry2d extends Odometry {
         return l/this.quality;
     }
     pageToCanvas(...p) {
-        let [x, y] = new V(...p).xy;
+        let [x, y] = V.args(...p);
         let r = this.canvas.getBoundingClientRect();
         x -= r.left; y -= r.top;
         x *= this.quality; y *= this.quality;
@@ -5084,7 +5091,7 @@ Odometry2d.Render = class Odometry2dRender extends util.Target {
     }
 
     render(z=null) {
-        this.#rPos = new V(this.hasParent() ? this.parent.rPos : 0).add(this.pos);
+        this.#rPos = new V(this.hasParent() ? this.parent.rPos : 0).iadd(this.pos);
         this.#rAlpha = (this.hasParent() ? this.parent.rAlpha : 1) * this.alpha;
         this.odometry.ctx.globalAlpha = this.rAlpha;
         this.post("render");
@@ -5240,10 +5247,10 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.lineJoin = "miter";
                         ctx.beginPath();
                         let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
-                            .map(v => this.size.sub(this.odometry.pageLenToWorld(7.5)).div(2).mul(v))
+                            .map(v => this.size.clone().isub(this.odometry.pageLenToWorld(7.5)).idiv(2).imul(v))
                             .map(v => v.rotateOrigin(this.heading));
                         for (let i = 0; i < pth.length; i++) {
-                            let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
+                            let p = this.odometry.worldToCanvas(pth[i].iadd(this.rPos));
                             if (i > 0) ctx.lineTo(...p.xy);
                             else ctx.moveTo(...p.xy);
                         }
@@ -5262,10 +5269,10 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                                     let y = yi*2 - 1;
                                     ctx.beginPath();
                                     let pth2 = pth
-                                        .map(v => this.size.div(2).mul(v).mul(x, y))
-                                        .map(v => v.rotateOrigin(this.heading));
+                                        .map(v => this.size.clone().idiv(2).imul(v).imul(x, y))
+                                        .map(v => v.irotateOrigin(this.heading));
                                     for (let i = 0; i < pth2.length; i++) {
-                                        let p = this.odometry.worldToCanvas(this.rPos.add(pth2[i]));
+                                        let p = this.odometry.worldToCanvas(pth2[i].iadd(this.rPos));
                                         if (i > 0) ctx.lineTo(...p.xy);
                                         else ctx.moveTo(...p.xy);
                                     }
@@ -5275,10 +5282,10 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         } else {
                             ctx.beginPath();
                             let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
-                                .map(v => this.size.div(2).mul(v))
-                                .map(v => v.rotateOrigin(this.heading));
+                                .map(v => this.size.clone().idiv(2).imul(v))
+                                .map(v => v.irotateOrigin(this.heading));
                             for (let i = 0; i < pth.length; i++) {
-                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
+                                let p = this.odometry.worldToCanvas(pth[i].iadd(this.rPos));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
@@ -5294,29 +5301,29 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         let dir = this.heading;
                         let tail =
                             (builtinType == "arrow-h") ?
-                                this.rPos.add(V.dir(dir, -this.w)) :
+                                V.dir(dir, -this.w).iadd(this.rPos) :
                             (builtinType == "arrow-t") ?
                                 this.rPos :
-                            this.rPos.add(V.dir(dir, -this.w/2));
+                            V.dir(dir, -this.w/2).iadd(this.rPos);
                         let head =
                             (builtinType == "arrow-h") ?
                                 this.rPos :
                             (builtinType == "arrow-t") ?
-                                this.rPos.add(V.dir(dir, +this.w)) :
-                            this.rPos.add(V.dir(dir, +this.w/2));
+                                V.dir(dir, +this.w).iadd(this.rPos) :
+                            V.dir(dir, +this.w/2).iadd(this.rPos);
                         ctx.beginPath();
                         ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
                         ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
-                        ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir-135, this.odometry.pageLenToWorld(15)))).xy);
+                        ctx.lineTo(...this.odometry.worldToCanvas(V.dir(dir-135, this.odometry.pageLenToWorld(15)).iadd(head)).xy);
                         ctx.moveTo(...this.odometry.worldToCanvas(head).xy);
-                        ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(15)))).xy);
+                        ctx.lineTo(...this.odometry.worldToCanvas(V.dir(dir+135, this.odometry.pageLenToWorld(15)).iadd(head)).xy);
                         ctx.stroke();
                     } else {
                         ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? "v8" : "v8-8"));
                         ctx.lineWidth = 1*quality;
                         ctx.lineJoin = "round";
                         ctx.beginPath();
-                        ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.heading, this.w/2))).xy, 5*quality, 0, 2*Math.PI);
+                        ctx.arc(...this.odometry.worldToCanvas(V.dir(this.heading, this.w/2).iadd(this.rPos)).xy, 5*quality, 0, 2*Math.PI);
                         ctx.closePath();
                         ctx.fill();
                     }
@@ -5340,10 +5347,10 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.lineJoin = "round";
                             ctx.beginPath();
                             let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
-                                .map(v => new V(10.5).mul(v))
-                                .map(v => v.rotateOrigin(this.heading));
+                                .map(v => new V(10.5).imul(v))
+                                .map(v => v.irotateOrigin(this.heading));
                             for (let i = 0; i < pth.length; i++) {
-                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
+                                let p = this.odometry.worldToCanvas(pth[i].iadd(this.rPos));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
@@ -5362,10 +5369,10 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.lineJoin = "round";
                             ctx.beginPath();
                             let pth = [[+1,+1], [-1,+1], [-1,-1], [+1,-1]]
-                                .map(v => new V(12).mul(v))
-                                .map(v => v.rotateOrigin(this.heading));
+                                .map(v => new V(12).imul(v))
+                                .map(v => v.irotateOrigin(this.heading));
                             for (let i = 0; i < pth.length; i++) {
-                                let p = this.odometry.worldToCanvas(this.rPos.add(pth[i]));
+                                let p = this.odometry.worldToCanvas(pth[i].iadd(this.rPos));
                                 if (i > 0) ctx.lineTo(...p.xy);
                                 else ctx.moveTo(...p.xy);
                             }
@@ -5402,9 +5409,9 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 ctx.beginPath();
                 ctx.moveTo(...this.odometry.worldToCanvas(tail).xy);
                 ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
-                ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir-135, this.odometry.pageLenToWorld(5)))).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(V.dir(dir-135, this.odometry.pageLenToWorld(5)).iadd(head)).xy);
                 ctx.lineTo(...this.odometry.worldToCanvas(head).xy);
-                ctx.lineTo(...this.odometry.worldToCanvas(head.add(V.dir(dir+135, this.odometry.pageLenToWorld(5)))).xy);
+                ctx.lineTo(...this.odometry.worldToCanvas(V.dir(dir+135, this.odometry.pageLenToWorld(5)).iadd(head)).xy);
                 ctx.stroke();
             }
             if (hovered) {
@@ -5433,7 +5440,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         let m = this.odometry.worldMouse;
         if (this.hasType() && this.hasBuiltinType()) {
             if (this.showVelocity && this.rPos.add(this.velocity).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "velocity";
-            if (this.rPos.add(V.dir(this.heading, this.w/2)).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "heading";
+            if (V.dir(this.heading, this.w/2).iadd(this.rPos).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "heading";
             let d = this.rPos.distSquared(m);
             if (d < this.odometry.pageLenToWorld(7.5)**2) return "main";
             if (d < this.odometry.pageLenToWorld((this.w+this.h)/4)**2) return "body";
@@ -5526,11 +5533,11 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
             if (this.selected) ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(...this.odometry.worldToCanvas(this.rPos).xy);
-            ctx.lineTo(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.dir, this.radius))).xy);
+            ctx.lineTo(...this.odometry.worldToCanvas(V.dir(this.dir, this.radius).iadd(this.rPos)).xy);
             ctx.stroke();
             ctx.fillStyle = PROPERTYCACHE.get("--"+((this.hovered == "radius") ? "a" : "v8"));
             ctx.beginPath();
-            ctx.arc(...this.odometry.worldToCanvas(this.rPos.add(V.dir(this.dir, this.radius))).xy, 5*quality, 0, 2*Math.PI);
+            ctx.arc(...this.odometry.worldToCanvas(V.dir(this.dir, this.radius).iadd(this.rPos)).xy, 5*quality, 0, 2*Math.PI);
             ctx.fill();
         });
     }
@@ -5538,7 +5545,7 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
     get hovered() {
         if (!this.canHover) return null;
         let m = this.odometry.worldMouse;
-        if (this.rPos.add(V.dir(this.dir, this.radius)).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "radius";
+        if (V.dir(this.dir, this.radius).iadd(this.rPos).distSquared(m) < this.odometry.pageLenToWorld(5)**2) return "radius";
         if (this.rPos.distSquared(m) < this.radius**2) return "main";
         return null;
     }
@@ -5624,7 +5631,6 @@ export class Odometry3d extends Odometry {
         if (!(name in templates)) return null;
         if (!(name in templateModels)) return null;
         const template = util.ensure(templates[name], "obj");
-        if ("model" in template && !template.model) return;
         if (this.loadedFields[name]) {
             if (this.loadedFields[name][type])
                 return this.loadedFields[name][type];
@@ -5634,85 +5640,104 @@ export class Odometry3d extends Odometry {
         let t1 = util.getTime();
         if (t1-t0 < 1000) return null;
         this.loadingFields[name] = t1;
-        return await new Promise((res, rej) => {
-            LOADER.load(templateModels[name], gltf => {
-                this.loadedFields[name] = {};
-                const scene = gltf.scene;
-                ["basic", "cinematic"].forEach(type => {
-                    const obj = this.loadedFields[name][type] = scene.clone();
-                    obj.traverse(obj => {
-                        if (!obj.isMesh) return;
-                        this.#traverseObject(obj, type);
-                    });
-                });
-                scene.traverse(obj => {
+        try {
+            const gltf = await LOADER.loadPromised(templateModels[name]);
+            this.loadedFields[name] = {};
+            const scene = gltf.scene;
+            ["basic", "cinematic"].forEach(type => {
+                const obj = this.loadedFields[name][type] = scene.clone();
+                obj.traverse(obj => {
                     if (!obj.isMesh) return;
-                    obj.material.dispose();
+                    this.#traverseObject(obj, type);
                 });
-                if (!this.loadedFields[name][type]) return null;
-                res(this.loadedFields[name][type]);
-            }, null, err => res(null));
-        });
+            });
+            scene.traverse(obj => {
+                if (!obj.isMesh) return;
+                obj.material.dispose();
+            });
+        } catch (e) {}
+        if (!this.loadedFields[name]) return null;
+        if (!this.loadedFields[name][type]) return null;
+        return this.loadedFields[name][type];
     }
-    static async loadRobot(name, type) {
+    static async loadRobot(name, type, component=null) {
         name = String(name);
         type = String(type);
         const robots = GLOBALSTATE.getProperty("robots").value;
         const robotModels = GLOBALSTATE.getProperty("robot-models").value;
         if (!(name in robots)) return null;
         if (!(name in robotModels)) return null;
+        if (component == null) {
+            if (!robotModels[name].default) return null;
+        } else {
+            if (!(component in robotModels[name].components)) return null;
+        }
         const robot = util.ensure(robots[name], "obj");
-        if ("model" in robot && !robot.model) return;
         if (this.loadedRobots[name]) {
-            if (this.loadedRobots[name][type])
-                return this.loadedRobots[name][type];
-            return null;
+            if (this.loadedRobots[name][type]) {
+                if (component == null) {
+                    if (this.loadedRobots[name][type].default)
+                        return this.loadedRobots[name][type].default;
+                } else {
+                    if (this.loadedRobots[name][type].components[component])
+                        return this.loadedRobots[name][type].components[component];
+                }
+            }
         }
         let t0 = util.ensure(this.loadingRobots[name], "num");
         let t1 = util.getTime();
         if (t1-t0 < 1000) return null;
         this.loadingRobots[name] = t1;
-        return await new Promise((res, rej) => {
-            LOADER.load(robotModels[name], gltf => {
-                const robot = util.ensure(robots[name], "obj");
-                const zero = util.ensure(robot.zero, "obj");
-                const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
-                const translations = new util.V3(zero.translations);
-                this.loadedRobots[name] = {};
-                const scene = gltf.scene;
-                ["basic", "cinematic"].forEach(type => {
-                    let obj, pobj, bbox;
-                    obj = scene.clone();
-                    obj.traverse(obj => {
-                        if (!obj.isMesh) return;
-                        this.#traverseObject(obj, type);
-                        const color = new util.Color(obj.material.color.r*255, obj.material.color.g*255, obj.material.color.b*255);
-                        const h = color.h, s = color.s, thresh = 60;
-                        const score = Math.min(1, Math.max(0, (1-Math.min(Math.abs(h-210)/thresh, Math.abs(h-0)/thresh, Math.abs(h-360)/thresh))));
-                        if (score*s < 0.5) return;
-                        obj.material._allianceMaterial = true;
-                    });
-                    obj.quaternion.copy(rotations);
-                    [obj, pobj] = [new THREE.Object3D(), obj];
-                    obj.add(pobj);
-                    bbox = new THREE.Box3().setFromObject(obj);
-                    obj.position.set(
-                        obj.position.x - (bbox.max.x+bbox.min.x)/2 + translations.x,
-                        obj.position.y - (bbox.max.y+bbox.min.y)/2 + translations.y,
-                        obj.position.z - bbox.min.z + translations.z,
-                    );
-                    [obj, pobj] = [new THREE.Object3D(), obj];
-                    obj.add(pobj);
-                    this.loadedRobots[name][type] = obj;
-                });
-                scene.traverse(obj => {
+        const zero = util.ensure(robot.zero, "obj");
+        const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
+        const translations = new util.V3(zero.translations);
+        const pth = (component == null) ? robotModels[name].default : robotModels[name].components[component];
+        try {
+            const gltf = await LOADER.loadPromised(pth);
+            this.loadedRobots[name] = {};
+            const scene = gltf.scene;
+            ["basic", "cinematic"].forEach(type => {
+                let obj, pobj, bbox;
+                obj = scene.clone();
+                obj._doAlliance = ("alliance-detect" in robot) ? !!robot["alliance-detect"] : true;
+                obj.traverse(obj => {
                     if (!obj.isMesh) return;
-                    obj.material.dispose();
+                    this.#traverseObject(obj, type);
+                    if (!obj._doAlliance) return;
+                    const color = new util.Color(obj.material.color.r*255, obj.material.color.g*255, obj.material.color.b*255);
+                    const h = color.h, s = color.s, thresh = 60;
+                    const score = Math.min(1, Math.max(0, (1-Math.min(Math.abs(h-210)/thresh, Math.abs(h-0)/thresh, Math.abs(h-360)/thresh))));
+                    if (score*s < 0.5) return;
+                    obj.material._allianceMaterial = true;
                 });
-                if (!this.loadedRobots[name][type]) return null;
-                res(this.loadedRobots[name][type]);
-            }, null, err => res(null));
-        });
+                obj.quaternion.copy(rotations);
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                bbox = new THREE.Box3().setFromObject(obj);
+                obj.position.set(
+                    obj.position.x - (bbox.max.x+bbox.min.x)/2 + translations.x,
+                    obj.position.y - (bbox.max.y+bbox.min.y)/2 + translations.y,
+                    obj.position.z - bbox.min.z + translations.z,
+                );
+                [obj, pobj] = [new THREE.Object3D(), obj];
+                obj.add(pobj);
+                if (!this.loadedRobots[name][type]) this.loadedRobots[name][type] = { components: {} };
+                if (component == null) this.loadedRobots[name][type].default = obj;
+                else this.loadedRobots[name][type].components[component] = obj;
+            });
+            scene.traverse(obj => {
+                if (!obj.isMesh) return;
+                obj.material.dispose();
+            });
+        } catch (e) {}
+        if (!this.loadedRobots[name]) return null;
+        if (!this.loadedRobots[name][type]) return null;
+        if (component == null) {
+            if (!this.loadedRobots[name][type].default) return null;
+            return this.loadedRobots[name][type].default;
+        }
+        if (!this.loadedRobots[name][type].components[component]) return null;
+        return this.loadedRobots[name][type].components[component];
     }
 
     constructor(elem) {
@@ -5757,7 +5782,8 @@ export class Odometry3d extends Odometry {
             x = (x*2)-1; y = (y*2)-1;
             if (this.controlType == "free" && this.controls.isLocked) x = y = 0;
             this.raycaster.setFromCamera(new THREE.Vector2(x, -y), this.camera);
-            this.#raycastIntersections = this.raycaster.intersectObject(this.scene, true);
+            // TODO: find way to raycast just for a single object / pose
+            // this.#raycastIntersections = this.raycaster.intersectObjects(this.renders.filter(render => render.hasObject()).map(render => render.theObject.children[0].children[0]), false);
         });
         const updateCamera = () => {
             if (this.renderType == "proj") {
@@ -5954,7 +5980,7 @@ export class Odometry3d extends Odometry {
             this.axisSceneSized.xAxis.material.color.set(colorR.toHex(false));
             this.axisSceneSized.yAxis.material.color.set(colorG.toHex(false));
             this.axisSceneSized.zAxis.material.color.set(colorB.toHex(false));
-            this.axisSceneSized.axes.position.set(...this.size.div(-200).xy, 0);
+            this.axisSceneSized.axes.position.set(...this.size.div(-2).xy, 0);
             let planes, i;
             planes = this.axisScene.planes;
             let size = 10;
@@ -6055,7 +6081,7 @@ export class Odometry3d extends Odometry {
                     let x = xP - xN;
                     let y = yP - yN;
                     let z = zP - zN;
-                    velocity.iadd(new util.V3(x, y, z).mul(keys.has("ShiftRight") ? 0.1 : 1).mul(delta/1000));
+                    velocity.iadd(new util.V3(x, y, z).imul(keys.has("ShiftRight") ? 0.1 : 1).imul(delta/1000));
                     velocity.imul(0.9);
                     velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));
                     this.controls.moveRight(velocity.x);
@@ -6550,7 +6576,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 this.object = modelObject;
                 if (this.hasObject()) {
                     let elem = document.createElement("div");
-                    this.theObject.add(new CSS2DObject(elem));
+                    this.theObject._cssObj = new CSS2DObject(elem);
+                    this.theObject.add(this.theObject._cssObj);
                     this.theObject.traverse(obj => {
                         if (!obj.isMesh) return;
                         obj.material.transparent = true;
@@ -6595,23 +6622,21 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             );
             this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
             let hovered = false;
-            let cssObj = null;
-            this.theObject.traverse(obj => {
-                if (!cssObj)
-                    if (obj instanceof CSS2DObject)
-                        cssObj = obj;
-                if (!hovered)
-                    if (this.odometry.raycastIntersections[0])
-                        if (obj == this.odometry.raycastIntersections[0].object)
-                            hovered = true;
-                if (!obj.isMesh) return;
-                if (!obj.material._allianceMaterial) {
-                    if (!this.hasType()) return;
-                    if (!this.hasBuiltinType()) return;
-                    if (this.builtinType == "axis") return;
-                }
-                obj.material.color.set(color.toHex(false));
-            });
+            let cssObj = this.theObject._cssObj;
+            if (this.object._doAlliance)
+                this.theObject.traverse(obj => {
+                    // if (!hovered)
+                    //     if (this.odometry.raycastIntersections[0])
+                    //         if (obj == this.odometry.raycastIntersections[0].object)
+                    //             hovered = true;
+                    if (!obj.isMesh) return;
+                    if (!obj.material._allianceMaterial) {
+                        if (!this.hasType()) return;
+                        if (!this.hasBuiltinType()) return;
+                        if (this.builtinType == "axis") return;
+                    }
+                    obj.material.color.set(color.toHex(false));
+                });
             let type = this.display.type;
             let data = util.ensure(this.display.data, "arr");
             if (hovered) {
@@ -6846,7 +6871,7 @@ export class Parallax extends util.Target {
                                     util.choose(radii), 0,
                                 );
                                 speck.object.position.set(...pos.xyz);
-                                [speck.velX, speck.velY, speck.velZ] = mag.mul(util.lerp(0.05, 0.15, Math.random())).xyz;
+                                [speck.velX, speck.velY, speck.velZ] = mag.imul(util.lerp(0.05, 0.15, Math.random())).xyz;
                                 this.scene.add(speck.object);
                                 specks.push(speck);
                                 speck.addHandler("update", delta => {

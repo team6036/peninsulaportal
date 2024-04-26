@@ -43,14 +43,14 @@ class RLabel extends core.Odometry2d.Render {
             ];
             let offset = [0, 5];
             for (let i = 0; i < pth.length; i++) {
-                let p = this.odometry.worldToCanvas(this.pos).add(new V(pth[i]).add(offset).mul(+1,-1).mul(quality));
+                let p = this.odometry.worldToCanvas(this.pos).iadd(pth[i].clone().iadd(offset).imul(+1,-1).imul(quality));
                 if (i > 0) ctx.lineTo(...p.xy);
                 else ctx.moveTo(...p.xy);
             }
             ctx.closePath();
             ctx.fill();
             ctx.fillStyle = core.PROPERTYCACHE.get("--v8");
-            let p = this.odometry.worldToCanvas(this.pos).add(new V(0,15).add(offset).mul(+1,-1).mul(quality));
+            let p = this.odometry.worldToCanvas(this.pos).iadd(new V(0,15).iadd(offset).imul(+1,-1).imul(quality));
             ctx.fillText(this.text, ...p.xy);
         });
     }
@@ -87,8 +87,11 @@ class RLine extends core.Odometry2d.Render {
             ctx.strokeStyle = core.PROPERTYCACHE.get("--cg-8");
             ctx.lineWidth = 5*quality;
             ctx.beginPath();
-            ctx.moveTo(...this.odometry.worldToCanvas(a.add(V.dir(a.towards(b), this.odometry.pageLenToWorld(0.075+0.05)))).xy);
-            ctx.lineTo(...this.odometry.worldToCanvas(b.add(V.dir(b.towards(a), this.odometry.pageLenToWorld(0.075+0.05)))).xy);
+            let dA2B = a.towards(b);
+            let dB2A = dA2B + 180;
+            let l = this.odometry.pageLenToWorld(0.075+0.05);
+            ctx.moveTo(...this.odometry.worldToCanvas(V.dir(dA2B, l).iadd(a)).xy);
+            ctx.lineTo(...this.odometry.worldToCanvas(V.dir(dB2A, l).iadd(b)).xy);
             ctx.stroke();
         });
 
@@ -434,7 +437,7 @@ class RSelectable extends core.Odometry2d.Render {
         if (this.item instanceof sublib.Project.Node) {
             let partfs = {
                 velocity: () => {
-                    this.item.velocity = pos.sub(this.item.pos);
+                    this.item.velocity = pos.isub(this.item.pos);
                 },
                 heading: () => {
                     this.item.heading = (Math.PI/180) * this.item.pos.towards(pos);

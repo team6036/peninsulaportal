@@ -7619,6 +7619,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     render.pos = convertPos(this.value[3*i+0], this.value[3*i+1]);
                     render.heading = convertAngle(this.value[3*i+2]);
                     render.type = this.pose.type;
+                    render.showVelocity = false;
                 }
                 const n = util.ensure(this.trail.n, "int");
                 let m = 0;

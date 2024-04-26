@@ -608,7 +608,7 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
     enable() { return this.enabled = true; }
 
     getBBox() {
-        return new util.Rect(this.pos.sub(this.radius), new V(this.radius).mul(2));
+        return new util.Rect(this.pos.sub(this.radius), new V(this.radius).imul(2));
     }
 
     toJSON() {
