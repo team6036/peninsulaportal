@@ -3829,9 +3829,17 @@ const MAIN = async () => {
                     if (DATATYPES.includes(type)) {
                         let robots = await kfs["robots"](type);
                         await Promise.all(Object.keys(robots).map(async id => {
-                            const pth = WindowManager.makePath(this.dataPath, type, "robots", id, "model.glb");
-                            if (!(await WindowManager.fileHas(pth))) return;
-                            models[id] = pth;
+                            models[id] = { components: {} };
+                            let robot = util.ensure(robots[id], "obj");
+                            await Promise.all([
+                                robot.default || "model",
+                                ...Object.keys(util.ensure(robot.components, "obj")),
+                            ].map(async (name, i) => {
+                                const pth = WindowManager.makePath(this.dataPath, type, "robots", id, lib.FSOperator.sanitizeName(name)+".glb");
+                                if (!(await WindowManager.fileHas(pth))) return;
+                                if (i > 0) models[id].components[name] = pth;
+                                else models[id].default = pth;
+                            }));
                         }));
                     } else {
                         for (let type of DATATYPES) models = mergeThings(models, await kfs["robot-models"](type));

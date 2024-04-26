@@ -492,11 +492,6 @@ App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
             formField.type = name;
             formForm.fields = [];
             formForm.isHorizontal = true;
-
-            const fHasImage = formForm.addField(new core.Form.BooleanInput("has-image", !("image" in template && !template.image)));
-            const fHasModel = formForm.addField(new core.Form.BooleanInput("has-model", !("model" in template && !template.model)));
-            fHasImage.disabled = fHasModel.disabled = true;
-            fHasImage.isCheckbox = fHasModel.isCheckbox = true;
         }
         form.fields.forEach(field => {
             if (field.name in templates) return;
@@ -523,10 +518,6 @@ App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
             formField.type = name;
             formForm.fields = [];
             formForm.isHorizontal = true;
-
-            const fHasModel = formForm.addField(new core.Form.BooleanInput("has-model", !("model" in robot && !robot.model)));
-            fHasModel.disabled = true;
-            fHasModel.isCheckbox = true;
         }
         form.fields.forEach(field => {
             if (field.name in robots) return;
