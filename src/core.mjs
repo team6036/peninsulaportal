@@ -8505,9 +8505,9 @@ Form.EnumInput = class FormEnumInput extends Form.Field {
         this.value = value;
     }
 
-    get values() { return [...this.#values]; }
+    get values() { return this.#values; }
     set values(v) {
-        this.#values = util.ensure(v, "arr");
+        this.#values = v;
         this.change("values", null, this.values);
     }
     get value() { return super.value; }
@@ -8525,25 +8525,39 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
     constructor(name, values, value) {
         super(name, values, value);
 
+        this.#app = null;
+
         this.elem.classList.add("dropdown");
 
         this.#eBtn = document.createElement("button");
         this.eContent.appendChild(this.eBtn);
         this.eBtn.classList.add("normal");
+        this.eBtn.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
         
         this.eBtn.addEventListener("click", e => {
-            if (!this.hasApp()) return;
             e.stopPropagation();
-            let itm;
-            let menu = new App.Menu();
-            this.values.forEach(data => {
-                if (data == null) return menu.addItem(new App.Menu.Divider());
-                itm = menu.addItem(new App.Menu.Item(
-                    util.is(data, "obj") ? data.name : data,
-                    (util.is(data, "obj") ? data.value : data) == this.value ? "checkmark" : "",
-                ));
-                itm.addHandler("trigger", e => (this.value = (util.is(data, "obj") ? data.value : data)));
-            });
+            this.post("trigger", e);
+            if (!this.hasApp()) return;
+            let menu = (this.values instanceof App.Menu) ? this.values : util.is(this.values, "func") ? this.values() : null;
+            if (!(menu instanceof App.Menu)) {
+                menu = new App.Menu();
+                const dfs = (data, menu) => {
+                    util.ensure(data, "arr").forEach(data => {
+                        if (data == null) return menu.addItem(new App.Menu.Divider());
+                        let itm = menu.addItem(new App.Menu.Item(
+                            util.is(data, "obj") ? data.name : data,
+                            ((util.is(data, "obj") ? data.value : data) == this.value) ? "checkmark" : "",
+                        ));
+                        itm.addHandler("trigger", e => {
+                            if (util.is(data, "obj"))
+                                if (!("value" in data)) return;
+                            this.value = util.is(data, "obj") ? data.value : data;
+                        });
+                        dfs(data.sub, itm.menu);
+                    });
+                };
+                dfs(this.values, menu);
+            }
             this.app.contextMenu = menu;
             let r = this.eBtn.getBoundingClientRect();
             this.app.placeContextMenu(r.left, r.bottom);
@@ -8555,20 +8569,21 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
         });
 
         const apply = () => {
-            this.eBtn.innerHTML = "";
-            this.eBtn.appendChild(document.createElement("div"));
-            this.eBtn.lastChild.textContent = "None";
-            this.eBtn.appendChild(document.createElement("ion-icon"));
-            this.eBtn.lastChild.name = "chevron-forward";
-            for (let data of this.values) {
-                if ((util.is(data, "obj") ? data.value : data) != this.value) continue;
-                this.eBtn.innerHTML = "";
-                this.eBtn.appendChild(document.createElement("div"));
-                this.eBtn.lastChild.textContent = (util.is(data, "obj") ? data.name : data);
-                this.eBtn.appendChild(document.createElement("ion-icon"));
-                this.eBtn.lastChild.name = "chevron-forward";
-                break;
-            }
+            if (this.values instanceof App.Menu) return;
+            if (util.is(this.values, "func")) return;
+            this.btn = "None";
+            const dfs = data => {
+                util.ensure(data, "arr").forEach(data => {
+                    if (data == null) return;
+                    if (util.is(data, "obj")) {
+                        if (!("value" in data)) return;
+                        if (data.value == this.value) this.btn = data.name;
+                        dfs(data.sub);
+                    }
+                    if (data == this.value) this.btn = data;
+                });
+            };
+            dfs(this.values);
         };
         this.addHandler("change", apply);
         apply();
@@ -8583,6 +8598,14 @@ Form.DropdownInput = class FormDropdownInput extends Form.EnumInput {
     hasApp() { return !!this.app; }
 
     get eBtn() { return this.#eBtn; }
+    get btn() {
+        if (!this.eBtn.children[0]) return;
+        this.eBtn.children[0].textContent;
+    }
+    set btn(v) {
+        if (!this.eBtn.children[0]) return;
+        this.eBtn.children[0].textContent = v;
+    }
 };
 Form.SelectInput = class FormSelectInput extends Form.EnumInput {
     #useOutline;
@@ -8625,6 +8648,9 @@ Form.SelectInput = class FormSelectInput extends Form.EnumInput {
         this.addHandler("change", apply);
         apply();
     }
+
+    get values() { return [...super.values]; }
+    set values(v) { super.values = util.ensure(v, "arr"); }
 
     get useOutline() { return this.#useOutline; }
     set useOutline(v) {
@@ -8906,6 +8932,17 @@ Form.SubForm = class FormSubForm extends Form.Field {
     }
 
     get form() { return this.#form; }
+};
+Form.HTML = class FormHTML extends Form.Field {
+    constructor(name, elem) {
+        super(name);
+
+        this.elem.classList.add("html");
+
+        this.showHeader = false;
+
+        if (elem instanceof HTMLElement) this.eContent.appendChild(elem);
+    }
 };
 
 export class DropTarget extends util.Target {

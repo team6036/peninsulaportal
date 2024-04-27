@@ -188,6 +188,7 @@ export default class App extends core.App {
                 form.addField(new core.Form.DirentInput("dirent-inp", "/path/to/file.txt"));
                 form.addField(new core.Form.DropdownInput("dropdown-inp", ["a", "b", "c"], null)).app = this;
                 form.addField(new core.Form.Header("Header"));
+                form.addField(new core.Form.HTML(""));
                 form.addField(new core.Form.Input1d("inp-1d", 1));
                 form.addField(new core.Form.Input2d("inp-2d", [2, 3]));
                 form.addField(new core.Form.Input3d("inp-3d", [4, 5, 6]));
