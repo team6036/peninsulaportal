@@ -8218,7 +8218,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             else a = [null, null];
         }
         if (a.length == 2) a = [a[0], true, a[1], false, false];
-        if (a.length == 5) a = [...a, "KitBot"];
+        if (a.length == 5) a = [...a, core.GLOBALSTATE.getProperty("active-robot").value];
         if (a.length == 6) a = [...a, null, null, null];
 
         [this.path, this.shown, this.color, this.ghost, this.solid, this.type, this.shownHook, this.ghostHook, this.solidHook] = a;

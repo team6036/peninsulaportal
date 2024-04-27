@@ -6614,7 +6614,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                     this.theObject.add(this.theObject._cssObj);
                     this.theObject.traverse(obj => {
                         if (!obj.isMesh) return;
-                        obj.material.transparent = true;
+                        if (!("_transparent" in obj.material))
+                            obj.material._transparent = obj.material.transparent;
                         if (!("_opacity" in obj.material))
                             obj.material._opacity = obj.material.opacity;
                         if (!("_color" in obj.material))
@@ -6630,10 +6631,13 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 this.theObject.traverse(obj => {
                     if (!obj.isMesh) return;
                     if (this.isGhost) {
+                        obj.material.transparent = true;
                         obj.material.opacity = obj.material._opacity * 0.25;
                     } else {
+                        obj.material.transparent = obj.material._transparent;
                         obj.material.opacity = obj.material._opacity;
                     }
+                    obj.material.needsUpdate = true;
                 });
                 this.odometry.requestRedraw();
             }
