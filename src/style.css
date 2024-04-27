@@ -751,7 +751,8 @@ article.md.lighter table td {
     opacity: 100%;
     visibility: inherit;
 }
-#mount > #runinfo {
+
+#runinfo {
     z-index: 1000;
 
     position: absolute;
@@ -760,7 +761,13 @@ article.md.lighter table td {
 
     padding: 5px;
 
-    display: none;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    align-content: center;
+    gap: 5px;
 
     background-color: #0008;
     color: #fff;
@@ -771,8 +778,29 @@ article.md.lighter table td {
     word-wrap: break-word;
     white-space: pre-wrap;
 }
-#mount.runinfo > #runinfo {
-    display: block;
+#runinfo:not(.this) {
+    display: none;
+}
+#runinfo > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: stretch;
+    align-content: center;
+}
+#runinfo > div > div {
+    flex-basis: 100%;
+
+    min-width: max-content;
+
+    text-align: center;
+}
+#runinfo > div > div:first-child {
+    text-align: left;
+}
+#runinfo > div > div:last-child {
+    text-align: right;
 }
 
 #overlay {
