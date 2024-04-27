@@ -6479,7 +6479,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             "§2024-note": "2024 Note",
         };
         if (type in names) return names[type];
-        let robots = util.ensure(GLOBALSTATE.getProperty("robots").value, "obj");
+        let robots = GLOBALSTATE.getProperty("robots").value;
         if (type in robots) return String(util.ensure(robots[type], "obj").name || type);
         return String(type);
     }
@@ -6534,7 +6534,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 });
             });
         };
-        let robots = util.ensure(GLOBALSTATE.getProperty("robots").value, "obj");
+        let robots = GLOBALSTATE.getProperty("robots").value;
         dfs(menu, [
             ...this.menuStructure,
             null,

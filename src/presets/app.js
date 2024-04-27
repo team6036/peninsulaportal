@@ -482,7 +482,7 @@ App.ThemesForm = class AppThemesForm extends App.OverrideForm {
 App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
     static async makeDBI(form) {
         if (!(form instanceof core.Form)) return;
-        const templates = util.ensure(await window.api.get("templates", "data"), "obj");
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
         for (let name in templates) {
             const template = util.ensure(templates[name], "obj");
             if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
@@ -508,7 +508,7 @@ App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
 App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
     static async makeDBI(form) {
         if (!(form instanceof core.Form)) return;
-        const robots = util.ensure(await window.api.get("robots", "data"), "obj");
+        const robots = core.GLOBALSTATE.getProperty("robots").value;
         for (let name in robots) {
             const robot = util.ensure(robots[name], "obj");
             if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
