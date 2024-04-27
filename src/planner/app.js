@@ -256,7 +256,7 @@ class RVisualItem3d extends core.Odometry3d.Render {
     #interp;
 
     constructor(odometry, visual) {
-        super(odometry, 0, 0, "KitBot");
+        super(odometry, 0, 0, core.GLOBALSTATE.getProperty("active-robot").value);
 
         this.#visual = null;
         this.#interp = 0;
@@ -1052,7 +1052,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!(id in itemRenders)) {
                     itemRenders[id] = {
                         d2: this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, null)),
-                        d3: this.odometry3d.addRender(new core.Odometry3d.Render(this.odometry3d, 0, 0, "KitBot")),
+                        d3: this.odometry3d.addRender(new core.Odometry3d.Render(this.odometry3d, 0, 0, core.GLOBALSTATE.getProperty("active-robot").value)),
                     };
                     itemRenders[id].d3.color = "--cb";
                 }
