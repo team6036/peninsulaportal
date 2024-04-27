@@ -1428,7 +1428,6 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 a = [a.searchPart, a.query];
             }
             else if (util.is(a, "obj")) a = [a.searchPart, a.query];
-            // else a = [null, ""];
             else a = [null, a];
         }
 
@@ -1748,7 +1747,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
 
     get query() { return this.eSearchInput.value; }
     set query(v) {
-        v = String(v);
+        v = util.ensure(v, "str");
         this.change("query", this.query, this.eSearchInput.value=v);
     }
 
@@ -3053,7 +3052,6 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
             if (a instanceof Panel.WebViewTab) a = [a.src];
             else if (util.is(a, "arr")) a = [new Panel.WebViewTab(...a).src];
             else if (util.is(a, "obj")) a = [a.src];
-            // else a = [""];
             else a = [a];
         }
 
@@ -6128,6 +6126,9 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.#color = null;
         this.#ghost = null;
 
+        const form = new core.Form();
+        form.isHorizontal = true;
+
         this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
         this.shownHook.toggle.show();
         this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
@@ -6135,8 +6136,13 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.ghostHook.toggle.show();
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
 
-        const form = new core.Form();
-        form.isHorizontal = true;
+        const subformField = form.addField(new core.Form.SubForm("hooks"));
+        subformField.isHorizontal = false;
+        const subform = subformField.form;
+        subform.addField(
+            new core.Form.HTML("visibility-hook", this.shownHook.elem),
+            new core.Form.HTML("ghost-hook", this.ghostHook.elem),
+        );
 
         this.#expr = null;
         this.#exprCompiled = null;
@@ -6195,8 +6201,6 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             this.ghost = !this.ghost;
         });
 
-        this.eContent.appendChild(this.shownHook.elem);
-        this.eContent.appendChild(this.ghostHook.elem);
         this.eContent.appendChild(form.elem);
 
         this.eDisplay.addEventListener("contextmenu", e => {
@@ -6710,6 +6714,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     #shown;
     #color;
 
+    #fHooks;
     #shownHook;
 
     #state;
@@ -6734,9 +6739,16 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         this.#shown = null;
         this.#color = null;
 
+        const form = new core.Form();
+
+        this.#fHooks = form.addField(new core.Form.SubForm("hooks"));
+        const subform = this.fHooks.form;
+
         this.#shownHook = new Panel.ToolCanvasTab.Hook("Visibility Hook", null);
         this.shownHook.toggle.show();
         this.shownHook.addHandler("change", (c, f, t) => this.change("shownHook."+c, f, t));
+
+        subform.addField(new core.Form.HTML("visibility-hook", this.shownHook.elem));
 
         this.#state = new this.constructor.State();
 
@@ -6786,10 +6798,10 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             });
         });
 
-        this.eContent.appendChild(this.shownHook.elem);
+        this.eContent.appendChild(form.elem);
 
         this.eDisplay.addEventListener("contextmenu", async e => {
-            let menu = await this.makeContextMenu();
+            let menu = this.makeContextMenu();
             if (!this.state.hasApp()) return;
             this.state.app.contextMenu = menu;
             this.state.app.placeContextMenu(e.pageX, e.pageY);
@@ -6827,7 +6839,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         [this.path, this.shown, this.color, this.shownHook] = a;
     }
 
-    async makeContextMenu() {
+    makeContextMenu() {
         let itm;
         let menu = new core.App.Menu();
         itm = menu.addItem(new core.App.Menu.Item(this.isOpen ? "Close" : "Open"));
@@ -6888,6 +6900,8 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         });
     }
     hasColor() { return this.color != null; }
+
+    get fHooks() { return this.#fHooks; }
 
     get hooks() { return [this.shownHook]; }
     get shownHook() { return this.#shownHook; }
@@ -7279,7 +7293,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
                     let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
                     hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 });
-                pose.state.pose = pose.isShown ? pose : null;
+                pose.state.pose = pose;
                 let node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = node ? this.getValue(node) : null;
                 pose.state.trail = (pose.useTrail && node) ? this.getValueRange(node, source.playback.ts-pose.trail, source.playback.ts) : null;
@@ -7310,34 +7324,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         if (a.length == 5) a = [...a.slice(0, 4), "m", "deg", "blue+", a[4]];
 
         [this.poses, this.template, this.size, this.robotSize, this.lengthUnits, this.angleUnits, this.origin, this.optionState] = a;
-    }
-
-    addPose(...poses) {
-        let r = super.addPose(...poses);
-        let r2 = [r].flatten();
-        r2.forEach(r => {
-            const onType = () => {
-                let current = r.type;
-                if (!this.hasApp()) return;
-                let itm;
-                let menu = new core.App.Menu();
-                core.Odometry2d.Robot.buildMenu(menu, r.type).addHandler("type", k => (r.type = k));
-                this.app.contextMenu = menu;
-                let rect = r.eDisplayType.getBoundingClientRect();
-                this.app.placeContextMenu(rect.left, rect.bottom);
-                menu.elem.style.minWidth = rect.width+"px";
-            };
-            r.addLinkedHandler(this, "type", onType);
-        });
-        return r;
-    }
-    remPose(...poses) {
-        let r = super.remPose(...poses);
-        let r2 = [r].flatten();
-        r2.forEach(r => {
-            r.clearLinkedHandlers(this, "type");
-        });
-        return r;
     }
 
     get odometry() { return this.#odometry; }
@@ -7402,30 +7388,37 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTab.Pose {
     #ghost;
     #type;
+    #trail;
+    #useTrail;
 
     #ghostHook;
 
-    #trail;
-    #useTrail;
     #fTrail;
+    #fType;
 
     #eGhostBtn;
-    #eDisplayType;
 
     constructor(...a) {
         super();
 
         this.#ghost = false;
         this.#type = null;
+        this.#trail = null;
+        this.#useTrail = null;
+
+        const subform = this.fHooks.form;
 
         this.#ghostHook = new Panel.ToolCanvasTab.Hook("Ghost Hook", null);
         this.ghostHook.toggle.show();
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
 
+        subform.addField(new core.Form.HTML("ghost-hook", this.ghostHook.elem));
+
         const form = new core.Form();
 
         this.#trail = null;
         this.#useTrail = null;
+
         this.#fTrail = form.addField(new core.Form.Input1d("trail-duration"));
         this.fTrail.types = ["ms", "s", "min"];
         this.fTrail.baseType = "ms";
@@ -7438,10 +7431,19 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.fTrail.addHandler("change-value", () => {
             this.trail = this.fTrail.value;
         });
-        this.trail = 0;
-        this.useTrail = false;
 
-        this.eContent.appendChild(this.ghostHook.elem);
+        this.#fType = form.addField(new core.Form.DropdownInput("display-type", () => {
+            let menu = new core.App.Menu();
+            core.Odometry2d.Robot.buildMenu(menu, this.type).addHandler("type", k => (this.type = k));
+            return menu;
+        }));
+        this.fType.showHeader = false;
+        this.fType.addHandler("change", () => {
+            this.fType.btn = core.Odometry2d.Robot.getTypeName(this.fType.value);
+        });
+        this.fType.addHandler("trigger", e => (this.fType.app = this.state.app));
+        this.addHandler("change-type", () => (this.fType.value = this.type));
+
         this.eContent.appendChild(form.elem);
 
         this.#eGhostBtn = document.createElement("button");
@@ -7452,14 +7454,8 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
             this.ghost = !this.ghost;
         });
 
-        this.#eDisplayType = document.createElement("button");
-        this.eContent.appendChild(this.eDisplayType);
-        this.eDisplayType.classList.add("display");
-        this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eDisplayType.addEventListener("click", e => {
-            e.stopPropagation();
-            this.post("type");
-        });
+        this.trail = 0;
+        this.useTrail = false;
 
         if (a.length <= 0 || [6].includes(a.length) || a.length > 9) a = [null];
         if (a.length == 1) {
@@ -7485,9 +7481,9 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         [this.path, this.shown, this.color, this.ghost, this.type, this.shownHook, this.ghostHook, this.trail, this.useTrail] = a;
     }
     
-    async makeContextMenu() {
+    makeContextMenu() {
         let itm;
-        let menu = await super.makeContextMenu();
+        let menu = super.makeContextMenu();
         itm = menu.addItem(new core.App.Menu.Item("Types"));
         core.Odometry2d.Robot.buildMenu(itm.menu, this.type).addHandler("type", k => (this.type = k));
         itm = menu.addItem(new core.App.Menu.Item("Ghost", this.ghost ? "checkmark" : ""));
@@ -7512,8 +7508,6 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         if (v != null && v.startsWith("§") && !core.Odometry2d.Robot.TYPES.includes(v)) v = core.Odometry2d.Robot.TYPES[0];
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
-        if (this.eDisplayType.children[0] instanceof HTMLDivElement)
-            this.eDisplayType.children[0].textContent = core.Odometry2d.Robot.getTypeName(this.type);
     }
 
     get hooks() { return [this.shownHook, this.ghostHook]; }
@@ -7541,11 +7535,14 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.change("useTrail", this.useTrail, this.#useTrail=v);
         this.fTrail.toggleOn = this.useTrail;
         this.fTrail.disabled = !this.useTrail;
+        this.fTrail.showContent = this.useTrail;
+        this.fTrail.eTypeBtn.style.display = this.useTrail ? "" : "none";
     }
+
     get fTrail() { return this.#fTrail; }
+    get fType() { return this.#fType; }
 
     get eGhostBtn() { return this.#eGhostBtn; }
-    get eDisplayType() { return this.#eDisplayType; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -7602,9 +7599,10 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             const renders = this.#renders;
             const trailRenders = this.#trailRenders;
             if (this.value.length <= 0) return this.pose.disable("No data");
+            const value = this.pose.shown ? this.value : [];
             this.pose.enable();
-            if (this.value.length % 3 == 0) {
-                let l = this.value.length / 3;
+            if (value.length > 0 && value.length % 3 == 0) {
+                let l = value.length / 3;
                 while (renders.length < l) renders.push(this.tab.odometry.render.addRender(new core.Odometry2d.Robot(this.tab.odometry.render)));
                 if (renders.length > l) this.tab.odometry.render.remRender(renders.splice(l));
                 let color = this.pose.color.slice(2);
@@ -7616,8 +7614,8 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     render.colorH = colorH;
                     render.alpha = this.pose.isGhost ? 0.5 : 1;
                     render.size = (this.tab.template in templates) ? util.ensure(templates[this.tab.template], "obj").robotSize : this.tab.robotSize;
-                    render.pos = convertPos(this.value[3*i+0], this.value[3*i+1]);
-                    render.heading = convertAngle(this.value[3*i+2]);
+                    render.pos = convertPos(value[3*i+0], value[3*i+1]);
+                    render.heading = convertAngle(value[3*i+2]);
                     render.type = this.pose.type;
                     render.showVelocity = false;
                 }
@@ -7628,8 +7626,8 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     if (i > 0) m = Math.min(m, pose.length);
                     else m = pose.length;
                     return pose;
-                });;
-                if (m == this.value.length) {
+                });
+                if (m == value.length) {
                     while (trailRenders.length < l) trailRenders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 0.025)));
                     if (trailRenders.length > l) this.tab.odometry.render.remRender(trailRenders.splice(l));
                     for (let i = 0; i < l; i++) {
@@ -7643,16 +7641,16 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     }
                 } else if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
                 this.pose.fTrail.isShown = true;
-                this.pose.eDisplayType.disabled = false;
-            } else if (this.value.length % 2 == 0) {
+                this.pose.fType.disabled = false;
+            } else if (value.length > 0 && value.length % 2 == 0) {
                 while (renders.length < 1) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render)));
                 if (renders.length > 1) this.tab.odometry.render.remRender(renders.splice(1));
                 const render = renders[0];
-                let l = this.value.length/2;
+                let l = value.length/2;
                 if (render.nWaypoints < l) render.addWaypoint(new Array(l-render.nWaypoints).fill(0));
                 if (render.nWaypoints > l) render.popWaypoint(Array.from(new Array(render.nWaypoints-l).keys()));
                 for (let i = 0; i < l; i++)
-                    render.getWaypoint(i).set(convertPos(this.value[i*2+0], this.value[i*2+1]));
+                    render.getWaypoint(i).set(convertPos(value[i*2+0], value[i*2+1]));
                 if (this.trail.length == this.value.length) {
                     let trailL = 0;
                     this.trail.forEach((trail, i) => {
@@ -7673,11 +7671,11 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
                     }
                 } else if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
                 this.pose.fTrail.isShown = false;
-                this.pose.eDisplayType.disabled = true;
+                this.pose.fType.disabled = true;
             } else {
                 if (renders.length > 0) this.tab.odometry.render.remRender(renders.splice(0));
                 if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
-                this.pose.disable("Unable to extrapolate type, length = "+this.value.length);
+                if (value.length > 0) this.pose.disable("Unable to extrapolate type, length = "+value.length);
             }
         });
     }
@@ -8002,7 +8000,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                     let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
                     hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
                 });
-                pose.state.pose = pose.isShown ? pose : null;
+                pose.state.pose = pose;
                 let node = source ? source.tree.lookup(pose.path) : null;
                 pose.state.value = this.getValue(node);
                 pose.state.update(delta);
@@ -8079,32 +8077,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     get odometry() { return this.#odometry; }
 
-    addPose(...poses) {
-        let r = super.addPose(...poses);
-        let r2 = [r].flatten();
-        r2.forEach(r => {
-            const onType = async () => {
-                if (!this.hasApp()) return;
-                let menu = new core.App.Menu();
-                core.Odometry3d.Render.buildMenu(menu, r.type).addHandler("type", k => (r.type = k));
-                this.app.contextMenu = menu;
-                let rect = r.eDisplayType.getBoundingClientRect();
-                this.app.placeContextMenu(rect.left, rect.bottom);
-                menu.elem.style.minWidth = rect.width+"px";
-            };
-            r.addLinkedHandler(this, "type", onType);
-        });
-        return r;
-    }
-    remPose(...poses) {
-        let r = super.remPose(...poses);
-        let r2 = [r].flatten();
-        r2.forEach(r => {
-            r.clearLinkedHandlers(this, "type");
-        });
-        return r;
-    }
-
     get lengthUnits() { return this.#lengthUnits; }
     set lengthUnits(v) {
         v = String(v);
@@ -8157,9 +8129,10 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     #ghostHook;
     #solidHook;
 
+    #fType;
+
     #eGhostBtn;
     #eSolidBtn;
-    #eDisplayType;
 
     constructor(...a) {
         super();
@@ -8168,6 +8141,8 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.#solid = null;
         this.#type = "";
 
+        const subform = this.fHooks.form;
+
         this.#ghostHook = new Panel.ToolCanvasTab.Hook("Ghost Hook", null);
         this.ghostHook.toggle.show();
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
@@ -8175,8 +8150,26 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.solidHook.toggle.show();
         this.solidHook.addHandler("change", (c, f, t) => this.change("solidHook."+c, f, t));
 
-        this.eContent.appendChild(this.ghostHook.elem);
-        this.eContent.appendChild(this.solidHook.elem);
+        subform.addField(
+            new core.Form.HTML("ghost-hook", this.ghostHook.elem),
+            new core.Form.HTML("solid-hook", this.solidHook.elem),
+        );
+
+        const form = new core.Form();
+
+        this.#fType = form.addField(new core.Form.DropdownInput("display-type", () => {
+            let menu = new core.App.Menu();
+            core.Odometry3d.Render.buildMenu(menu, this.type).addHandler("type", k => (this.type = k));
+            return menu;
+        }));
+        this.fType.showHeader = false;
+        this.fType.addHandler("change", () => {
+            this.fType.btn = core.Odometry3d.Render.getTypeName(this.fType.value);
+        });
+        this.fType.addHandler("trigger", e => (this.fType.app = this.state.app));
+        this.addHandler("change-type", () => (this.fType.value = this.type));
+
+        this.eContent.appendChild(form.elem);
 
         this.#eGhostBtn = document.createElement("button");
         this.eColorPicker.appendChild(this.eGhostBtn);
@@ -8192,15 +8185,6 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.eSolidBtn.addEventListener("click", e => {
             e.stopPropagation();
             this.solid = !this.solid;
-        });
-
-        this.#eDisplayType = document.createElement("button");
-        this.eContent.appendChild(this.eDisplayType);
-        this.eDisplayType.classList.add("display");
-        this.eDisplayType.innerHTML = "<div></div><ion-icon name='chevron-forward'></ion-icon>";
-        this.eDisplayType.addEventListener("click", e => {
-            e.stopPropagation();
-            this.post("type");
         });
 
         if (a.length <= 0 || [3, 4, 5, 7, 8].includes(a.length) || a.length > 9) a = [null];
@@ -8224,9 +8208,9 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         [this.path, this.shown, this.color, this.ghost, this.solid, this.type, this.shownHook, this.ghostHook, this.solidHook] = a;
     }
 
-    async makeContextMenu() {
+    makeContextMenu() {
         let itm;
-        let menu = await super.makeContextMenu();
+        let menu = super.makeContextMenu();
         itm = menu.addItem(new core.App.Menu.Item("Types"));
         let submenu = itm.menu;
         core.Odometry3d.Render.buildMenu(submenu, this.type).addHandler("type", k => (this.type = k));
@@ -8265,8 +8249,6 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         if (v != null && v.startsWith("§") && !core.Odometry2d.Robot.TYPES.includes(v)) v = core.Odometry2d.Robot.TYPES[0];
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
-        if (this.eDisplayType.children[0] instanceof HTMLDivElement)
-            this.eDisplayType.children[0].textContent = core.Odometry3d.Render.getTypeName(this.type);
     }
 
     get hooks() { return [this.shownHook, this.ghostHook, this.solidHook]; }
@@ -8288,10 +8270,11 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             return !this.solidHook.value;
         return this.solidHook.value;
     }
+    
+    get fType() { return this.#fType; }
 
     get eGhostBtn() { return this.#eGhostBtn; }
     get eSolidBtn() { return this.#eSolidBtn; }
-    get eDisplayType() { return this.#eDisplayType; }
 
     toJSON() {
         return util.Reviver.revivable(this.constructor, {
@@ -8324,15 +8307,16 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             if (!this.hasPose()) return;
             const renders = this.#renders;
             if (this.value.length <= 0) return this.pose.disable("No data");
+            const value = this.pose.shown ? this.value : [];
             this.pose.enable();
-            if (this.value.length % 7 == 0 || this.value.length % 3 == 0) {
-                let l = this.value.length;
+            if (value.length > 0 && (value.length % 7 == 0 || value.length % 3 == 0)) {
+                let l = value.length;
                 let type = (l % 7 == 0) ? 7 : (l % 3 == 0) ? 3 : 0;
                 l /= type;
                 while (renders.length < l) renders.push(this.tab.odometry.addRender(new core.Odometry3d.Render(this.tab.odometry)));
-                while (renders.length > l) this.tab.odometry.remRender(renders.pop());
+                if (renders.length > l) this.tab.odometry.remRender(renders.splice(l));
                 for (let i = 0; i < l; i++) {
-                    let value = this.value.slice(i*type, (i+1)*type);
+                    const v = value.slice(i*type, (i+1)*type);
                     const render = renders[i];
                     render.name = this.pose.path;
                     render.color = this.pose.color;
@@ -8341,11 +8325,14 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     render.display.type = type;
                     render.display.data = value;
                     render.type = this.pose.type;
-                    const positioning = generatePositioning(value, this.tab.lengthUnits, this.tab.angleUnits);
+                    const positioning = generatePositioning(v, this.tab.lengthUnits, this.tab.angleUnits);
                     render.pos = positioning.pos;
                     render.q = positioning.q;
                 }
-            } else this.pose.disable("Unable to extrapolate type, length = "+this.value.length);
+            } else {
+                if (renders.length > 0) this.tab.odometry.remRender(renders.splice(0));
+                if (value.length > 0) this.pose.disable("Unable to extrapolate type, length = "+value.length);
+            }
         });
     }
 

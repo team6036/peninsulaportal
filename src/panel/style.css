@@ -2271,22 +2271,9 @@
     --fgh: var(--cg5);
     --fgd: var(--cg2);
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > button.display {
-    --use-o: 1;
-
-    position: relative;
-
-    padding: 5px;
-
-    border-radius: 5px;
-}
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content > button.display > ion-icon {
-    position: absolute;
-    top: 50%;
-    right: 5px;
-    transform: translateY(-50%);
-}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content .form {
+    --gap: 5px;
+
     padding: 0px;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.canvas > .options > .section.list > .item > .content .form > .item > .header {

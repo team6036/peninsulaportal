@@ -1494,7 +1494,7 @@ p-loading[type="bounce"] > div > div:last-child {
     opacity: 0%;
     visibility: hidden;
 
-    transition: opacity var(--t), visibility var(--t);;
+    transition: opacity var(--t), visibility var(--t);
 }
 .popup:not(.override).in {
     opacity: 100%;
@@ -2468,6 +2468,12 @@ p-loading[type="bounce"] > div > div:last-child {
 }
 .form > .item.subform.this > .content {
     display: flex;
+}
+.form > .item.html > .header {
+    display: none;
+}
+.form > .item.html > .content {
+    flex-basis: 100%;
 }
 
 .droptarget {
