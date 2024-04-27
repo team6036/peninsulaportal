@@ -625,58 +625,122 @@ export class App extends util.Target {
             let id = setInterval(async () => {
                 if (document.readyState != "complete") return;
                 clearInterval(id);
+
                 await GLOBALSTATE.get();
+
                 await this.postResult("pre-setup");
+
                 await this.setup();
+
+                const eRunInfoCanvas = document.createElement("canvas");
+                this.eRunInfo.appendChild(eRunInfoCanvas);
+                eRunInfoCanvas.width = 400;
+                eRunInfoCanvas.height = 200;
+                eRunInfoCanvas.style.width = "200px";
+                eRunInfoCanvas.style.height = "100px";
+                const ctx = eRunInfoCanvas.getContext("2d");
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 1;
+
+                const eRunInfoDeltaEntry = document.createElement("div");
+                this.eRunInfo.appendChild(eRunInfoDeltaEntry);
+                eRunInfoDeltaEntry.innerHTML = "<div>DELTA (ms):</div><div></div>";
+                const eRunInfoDeltaEntryValue = eRunInfoDeltaEntry.children[1];
+
+                const eRunInfoFPSInstEntry = document.createElement("div");
+                this.eRunInfo.appendChild(eRunInfoFPSInstEntry);
+                eRunInfoFPSInstEntry.innerHTML = "<div>FPS (inst):</div><div></div>";
+                const eRunInfoFPSInstEntryValue = eRunInfoFPSInstEntry.children[1];
+
+                const eRunInfoFPSEntry = document.createElement("div");
+                this.eRunInfo.appendChild(eRunInfoFPSEntry);
+                eRunInfoFPSEntry.innerHTML = "<div>FPS:</div><div></div>";
+                const eRunInfoFPSEntryValue = eRunInfoFPSEntry.children[1];
+
                 await this.postResult("post-setup");
+
                 let appState = null;
                 try {
                     appState = await window.api.get("state", "app-state");
                 } catch (e) { await this.doError("State Error", "AppState Get", e); }
+
                 try {
                     await this.loadState(appState);
                 } catch (e) { await this.doError("Load Error", "AppState", e); }
+
                 let page = "";
                 try {
                     page = await window.api.get("state", "page");
                 } catch (e) { await this.doError("State Error", "CurrentPage Get", e); }
+
                 let pageState = null;
                 try {
                     pageState = await window.api.get("state", "page-state");
                 } catch (e) { await this.doError("State Error", "PageState Get", e); }
+
                 let pagePersistentStates = {};
                 try {
                     pagePersistentStates = util.ensure(await window.api.get("state", "page-persistent-states"), "obj");
                 } catch (e) { await this.doError("State Error", "PagePersistentStates Get", e); }
+
                 if (this.hasPage(page)) {
                     try {
                         await this.getPage(page).loadState(util.ensure(pageState, "obj"));
                     } catch (e) { await this.doError("Load Error", "State, PageName: "+page, e); }
                     if (this.page != page) this.page = page;
                 }
+
                 for (let name in pagePersistentStates) {
                     if (!this.hasPage(name)) continue;
                     try {
                         await this.getPage(name).loadPersistentState(util.ensure(pagePersistentStates[name], "obj"));
                     } catch (e) { await this.doError("Load Error", "PersistentState, PageName: "+name, e); }
                 }
+
                 let t0 = null, error = false;
                 let fps = 0, fpst = 0, fpsn = 0;
+                let buff = [];
+
                 const update = async () => {
                     window.requestAnimationFrame(update);
                     let t1 = util.getTime();
                     if (t0 == null || error) return t0 = t1;
-                    if (t1-t0 > 1000) this.post("cmd-check");
+                    const delta = t1-t0;
+                    if (delta > 1000) this.post("cmd-check");
                     try {
-                        if (this.eMount.classList.contains("runinfo"))
-                            this.eRunInfo.innerText = `DELTA: ${String(t1-t0).padStart(15-10, " ")} ms\nFPS: ${String(fps).padStart(15-5, " ")}`;
-                        fpst += t1-t0; fpsn++;
+                        if (this.runInfoShown) {
+                            buff.unshift(delta);
+                            let l = ctx.canvas.width;
+                            if (buff.length > l) buff.splice(l);
+                            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                            ctx.beginPath();
+                            let py = null;
+                            for (let i = 0; i < l; i++) {
+                                if (i >= buff.length) break;
+                                let x = ctx.canvas.width * (1 - i/l);
+                                let y = ctx.canvas.height * (1 - buff[i]/Math.max(100, ...buff));
+                                x = Math.round(x);
+                                y = Math.round(y);
+                                console.log(x, y, py);
+                                if (py == null) ctx.moveTo(x, y);
+                                else {
+                                    ctx.lineTo(x, py);
+                                    ctx.lineTo(x, y);
+                                }
+                                py = y;
+                            }
+                            ctx.stroke();
+                            eRunInfoDeltaEntryValue.textContent = delta;
+                            eRunInfoFPSInstEntryValue.textContent = Math.floor(1000/delta);
+                            eRunInfoFPSEntryValue.textContent = fps;
+                        }
+                        fpst += delta; fpsn++;
                         if (fpst >= 1000) {
                             fpst -= 1000;
                             fps = fpsn;
                             fpsn = 0;
                         }
-                        this.update(t1-t0);
+                        this.update(delta);
                     } catch (e) {
                         error = true;
                         await this.doError("Update Error", "", e);
@@ -1169,6 +1233,7 @@ export class App extends util.Target {
         this.eRunInfo.remove();
         this.eMount.appendChild(this.eRunInfo);
         this.eRunInfo.id = "runinfo";
+        this.eRunInfo.innerHTML = "";
         document.body.addEventListener("keydown", e => {
             if (!(e.code == "KeyI" && (e.ctrlKey || e.metaKey) && !e.altKey)) return;
             e.stopPropagation();
@@ -1822,15 +1887,17 @@ export class App extends util.Target {
     get eMount() { return this.#eMount; }
     get eOverlay() { return this.#eOverlay; }
     get eRunInfo() { return this.#eRunInfo; }
-    get runInfoShown() { return this.eMount.classList.contains("runinfo"); }
+    get runInfoShown() { return this.eRunInfo.classList.contains("this"); }
     set runInfoShown(v) {
         v = !!v;
         if (this.runInfoShown == v) return;
-        if (v) this.eMount.classList.add("runinfo");
-        else this.eMount.classList.remove("runinfo");
+        if (v) this.eRunInfo.classList.add("this");
+        else this.eRunInfo.classList.remove("this");
     }
     get runInfoHidden() { return !this.runInfoShown; }
     set runInfoHidden(v) { this.runInfoShown = !v; }
+    showRunInfo() { return this.runInfoShown = true; }
+    hideRunInfo() { return this.runInfoHidden = true; }
 
     get progress() {
         if (!this.eTitleBar.classList.contains("progress")) return null;
@@ -5595,33 +5662,13 @@ export class Odometry3d extends Odometry {
     #origin;
     
     static #traverseObject(obj, type) {
-        const material = obj.material;
-        obj.material = material.clone();
-        material.dispose();
-        if (type == "basic") {
-            if (!(obj.material instanceof THREE.MeshStandardMaterial)) return;
-            obj.material.metalness = 0;
-            obj.material.roughness = 1;
-            return;
-        }
-        if (type == "cinematic") {
-            if (!(obj.material instanceof THREE.MeshStandardMaterial)) return;
-            const material = new THREE.MeshLambertMaterial({
-                color: obj.material.color,
-                transparent: obj.material.transparent,
-                opacity: obj.material.opacity,
-            });
-            if (obj.name.toLowerCase().includes("carpet")) {
-                obj.castShadow = false;
-                obj.receiveShadow = true;
-            } else {
-                obj.castShadow = !obj.material.transparent;
-                obj.receiveShadow = !obj.material.transparent;
-            }
-            obj.material.dispose();
-            obj.material = material;
-            return;
-        }
+        const material = new THREE.MeshLambertMaterial({
+            color: obj.material.color,
+            transparent: obj.material.transparent,
+            opacity: obj.material.opacity,
+        });
+        obj.material.dispose();
+        obj.material = material;
     }
     static async loadField(name, type) {
         name = String(name);
@@ -5828,8 +5875,6 @@ export class Odometry3d extends Odometry {
             geometry,
             new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
-        xAxis.castShadow = true;
-        xAxis.receiveShadow = false;
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
@@ -5837,16 +5882,12 @@ export class Odometry3d extends Odometry {
             geometry,
             new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
-        yAxis.castShadow = true;
-        yAxis.receiveShadow = false;
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         zAxis = this.axisScene.zAxis = new THREE.Mesh(
             geometry,
             new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
-        zAxis.castShadow = true;
-        zAxis.receiveShadow = false;
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
@@ -5860,8 +5901,6 @@ export class Odometry3d extends Odometry {
             geometry,
             new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
-        xAxis.castShadow = true;
-        xAxis.receiveShadow = false;
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
@@ -5869,16 +5908,12 @@ export class Odometry3d extends Odometry {
             geometry,
             new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
-        yAxis.castShadow = true;
-        yAxis.receiveShadow = false;
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         zAxis = this.axisSceneSized.zAxis = new THREE.Mesh(
             geometry,
             new THREE.MeshLambertMaterial({ color: 0xffffff }),
         );
-        zAxis.castShadow = true;
-        zAxis.receiveShadow = false;
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
@@ -5912,7 +5947,6 @@ export class Odometry3d extends Odometry {
                 lights[1].push(light);
                 light.position.set(x0, y0, z0);
                 light.target.position.set(x1, y1, z1);
-                light.castShadow = true;
                 light.shadow.mapSize.width = 1024;
                 light.shadow.mapSize.height = 1024;
                 light.shadow.bias = -0.01;
@@ -5973,87 +6007,93 @@ export class Odometry3d extends Odometry {
             let colorG = PROPERTYCACHE.getColor("--cg");
             let colorB = PROPERTYCACHE.getColor("--cb");
             let colorV = PROPERTYCACHE.getColor("--v2");
+
             planeMaterial.color.set(colorV.toHex(false));
-            this.axisScene.xAxis.material.color.set(colorR.toHex(false));
-            this.axisScene.yAxis.material.color.set(colorG.toHex(false));
-            this.axisScene.zAxis.material.color.set(colorB.toHex(false));
-            this.axisSceneSized.xAxis.material.color.set(colorR.toHex(false));
-            this.axisSceneSized.yAxis.material.color.set(colorG.toHex(false));
-            this.axisSceneSized.zAxis.material.color.set(colorB.toHex(false));
-            this.axisSceneSized.axes.position.set(...this.size.div(-2).xy, 0);
-            let planes, i;
-            planes = this.axisScene.planes;
-            let size = 10;
-            i = 0;
-            for (let x = 0; x < size; x++) {
-                for (let y = 0; y < size; y++) {
-                    if ((x+y) % 2 == 0) continue;
-                    if (i >= planes.length) {
-                        let plane = new THREE.Mesh(
-                            singlePlaneGeometry,
-                            planeMaterial,
-                        );
-                        plane.castShadow = false;
-                        plane.receiveShadow = true;
-                        planes.push(plane);
-                        this.axisScene.add(plane);
-                        this.requestRedraw();
+
+            if (this.field == this.axisScene) {
+
+                this.axisScene.xAxis.material.color.set(colorR.toHex(false));
+                this.axisScene.yAxis.material.color.set(colorG.toHex(false));
+                this.axisScene.zAxis.material.color.set(colorB.toHex(false));
+
+                let planes = this.axisScene.planes;
+                let size = 10;
+                let i = 0;
+                for (let x = 0; x < size; x++) {
+                    for (let y = 0; y < size; y++) {
+                        if ((x+y) % 2 == 0) continue;
+                        if (i >= planes.length) {
+                            let plane = new THREE.Mesh(
+                                singlePlaneGeometry,
+                                planeMaterial,
+                            );
+                            planes.push(plane);
+                            this.axisScene.add(plane);
+                            this.requestRedraw();
+                        }
+                        let plane = planes[i++];
+                        plane.position.set(0.5+1*(x-size/2), 0.5+1*(y-size/2), 0);
                     }
-                    let plane = planes[i++];
-                    plane.position.set(0.5+1*(x-size/2), 0.5+1*(y-size/2), 0);
                 }
+                while (planes.length > i) {
+                    let plane = planes.pop();
+                    this.axisScene.remove(plane);
+                    this.requestRedraw();
+                }
+
             }
-            while (planes.length > i) {
-                let plane = planes.pop();
-                this.axisScene.remove(plane);
-                this.requestRedraw();
-            }
-            planes = this.axisSceneSized.planes;
-            let w = this.axisSceneSized.w;
-            let h = this.axisSceneSized.h;
-            if (w != this.w || h != this.h) {
-                w = this.axisSceneSized.w = this.w;
-                h = this.axisSceneSized.h = this.h;
-                while (planes.length > 0) {
+            if (this.field == this.axisSceneSized) {
+
+                this.axisSceneSized.xAxis.material.color.set(colorR.toHex(false));
+                this.axisSceneSized.yAxis.material.color.set(colorG.toHex(false));
+                this.axisSceneSized.zAxis.material.color.set(colorB.toHex(false));
+                this.axisSceneSized.axes.position.set(...this.size.div(-2).xy, 0);
+
+                let planes = this.axisSceneSized.planes;
+                let w = this.axisSceneSized.w;
+                let h = this.axisSceneSized.h;
+                if (w != this.w || h != this.h) {
+                    w = this.axisSceneSized.w = this.w;
+                    h = this.axisSceneSized.h = this.h;
+                    while (planes.length > 0) {
+                        let plane = planes.pop();
+                        this.axisSceneSized.remove(plane);
+                        plane.geometry.dispose();
+                    };
+                    this.requestRedraw();
+                }
+                let i = 0;
+                for (let x = 0; x < w; x++) {
+                    for (let y = 0; y < h; y++) {
+                        if ((x+y) % 2 > 0) continue;
+                        if (i >= planes.length) {
+                            let plane = new THREE.Mesh(
+                                new THREE.PlaneGeometry(0, 0),
+                                planeMaterial,
+                            );
+                            plane.geometry.w = plane.geometry.h = 0;
+                            planes.push(plane);
+                            this.axisSceneSized.add(plane);
+                            this.requestRedraw();
+                        }
+                        let plane = planes[i++];
+                        let pw = Math.min(1, w-x), ph = Math.min(1, h-y);
+                        if (plane.geometry.w != pw || plane.geometry.h != ph) {
+                            plane.geometry.dispose();
+                            plane.geometry = new THREE.PlaneGeometry(pw, ph);
+                            plane.geometry.w = pw;
+                            plane.geometry.h = ph;
+                            this.requestRedraw();
+                        }
+                        plane.position.set(x+pw/2-w/2, y+ph/2-h/2, 0);
+                    }
+                }
+                while (planes.length > i) {
                     let plane = planes.pop();
                     this.axisSceneSized.remove(plane);
                     plane.geometry.dispose();
-                };
-                this.requestRedraw();
-            }
-            i = 0;
-            for (let x = 0; x < w; x++) {
-                for (let y = 0; y < h; y++) {
-                    if ((x+y) % 2 > 0) continue;
-                    if (i >= planes.length) {
-                        let plane = new THREE.Mesh(
-                            new THREE.PlaneGeometry(0, 0),
-                            planeMaterial,
-                        );
-                        plane.castShadow = false;
-                        plane.receiveShadow = true;
-                        plane.geometry.w = plane.geometry.h = 0;
-                        planes.push(plane);
-                        this.axisSceneSized.add(plane);
-                        this.requestRedraw();
-                    }
-                    let plane = planes[i++];
-                    let pw = Math.min(1, w-x), ph = Math.min(1, h-y);
-                    if (plane.geometry.w != pw || plane.geometry.h != ph) {
-                        plane.geometry.dispose();
-                        plane.geometry = new THREE.PlaneGeometry(pw, ph);
-                        plane.geometry.w = pw;
-                        plane.geometry.h = ph;
-                        this.requestRedraw();
-                    }
-                    plane.position.set(x+pw/2-w/2, y+ph/2-h/2, 0);
+                    this.requestRedraw();
                 }
-            }
-            while (planes.length > i) {
-                let plane = planes.pop();
-                this.axisSceneSized.remove(plane);
-                plane.geometry.dispose();
-                this.requestRedraw();
             }
 
             if (!fieldLock)
@@ -6091,15 +6131,16 @@ export class Odometry3d extends Odometry {
                     velocity.imul(0);
                 }
             }
-            this.camera.position.x = Math.round(this.camera.position.x*1000)/1000;
-            this.camera.position.y = Math.round(this.camera.position.y*1000)/1000;
-            this.camera.position.z = Math.round(this.camera.position.z*1000)/1000;
             let cam2 = [
                 this.camera.position.x, this.camera.position.y, this.camera.position.z,
                 this.camera.quaternion.w, this.camera.quaternion.x, this.camera.quaternion.y, this.camera.quaternion.z,
             ];
             for (let i = 0; i < 7; i++) {
-                if (cam[i] == cam2[i]) continue;
+                if (i < 3) {
+                    if (Math.abs(cam[i] - cam2[i]) < util.EPSILON) continue;
+                } else {
+                    if (cam[i] == cam2[i]) continue;
+                }
                 cam[i] = cam2[i];
                 this.requestRedraw();
             }
@@ -6238,7 +6279,7 @@ export class Odometry3d extends Odometry {
         [v, this.#renderType] = [this.renderType, v];
         let renderfs;
         renderfs = {
-            proj: () => new THREE.PerspectiveCamera(75, 1, 0.1, 1000),
+            proj: () => new THREE.PerspectiveCamera(75, 1, 0.15, 1000),
             iso: () => new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000),
         };
         this.#camera = (this.renderType in renderfs) ? renderfs[this.renderType]() : null;
@@ -6302,13 +6343,11 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             new THREE.SphereGeometry(0.1, 8, 8),
             material,
         );
-        node.castShadow = node.receiveShadow = true;
         this.LOADEDOBJECTS["node"] = node;
         const cube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
             material,
         );
-        cube.castShadow = cube.receiveShadow = true;
         this.LOADEDOBJECTS["cube"] = cube;
         const radius = 0.05, arrowLength = 0.25, arrowRadius = 0.1;
         const arrow = new THREE.Object3D();
@@ -6316,7 +6355,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             new THREE.ConeGeometry(arrowRadius, arrowLength, 8),
             material,
         );
-        arrow.castShadow = arrow.receiveShadow = true;
         tip.position.set(0, (1-arrowLength)/2, 0);
         arrow.add(tip);
         const line = new THREE.Mesh(
@@ -6348,7 +6386,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             }
         }
         const axes = new THREE.Object3D();
-        axes.castShadow = axes.receiveShadow = true;
         const length = 1;
         const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
         let xAxis, yAxis, zAxis;
@@ -6379,7 +6416,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         {
             // 2023
             const cone = new THREE.Object3D();
-            cone.castShadow = cone.receiveShadow = true;
             const r = 0.105, h = 0.33;
             const coneInner = new THREE.Mesh(
                 new THREE.ConeGeometry(r, h, 12),
@@ -6390,7 +6426,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             cone.add(coneInner);
             this.LOADEDOBJECTS["2023-cone"] = cone;
             const cube = new THREE.Object3D();
-            cube.castShadow = cube.receiveShadow = true;
             const s = 0.24;
             const cubeInner = new THREE.Mesh(
                 new THREE.BoxGeometry(s, s, s),
@@ -6403,7 +6438,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         {
             // 2024
             const note = new THREE.Object3D();
-            note.castShadow = note.receiveShadow = false;
             const r1 = 0.18, r2 = 0.125;
             const noteInner = new THREE.Mesh(
                 new THREE.TorusGeometry(r1-(r1-r2)/2, (r1-r2)/2, 8, 12),
@@ -6757,7 +6791,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 if (obj instanceof CSS2DObject)
                     obj.removeFromParent();
                 if (!obj.isMesh) return;
-                obj.geometry.dispose();
                 obj.material.dispose();
             });
             this.#theObject = null;
@@ -6772,8 +6805,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
                 obj.material = obj.material.clone();
                 obj.material._allianceMaterial = allianceMaterial;
             });
-            if (this.showObject) this.theObject.scale.set(1, 1, 1);
-            else this.theObject.scale.set(0, 0, 0);
+            this.theObject.visible = this.showObject;
             this.odometry.wpilibGroup.add(this.theObject);
         }
         this.odometry.requestRedraw();
@@ -6785,9 +6817,10 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         if (this.showObject == v) return;
         this.change("showObject", this.showObject, this.#showObject=v);
         if (!this.hasObject()) return;
-        if (this.showObject) this.theObject.scale.set(1, 1, 1);
-        else this.theObject.scale.set(0, 0, 0);
+        this.theObject.visible = this.showObject;
     }
+    get hideObject() { return !this.showObject; }
+    set hideObject(v) { this.showObject = !v; }
 
     update(delta) { this.post("update", delta); }
 };
