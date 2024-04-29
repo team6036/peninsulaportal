@@ -5738,7 +5738,7 @@ export class Odometry3d extends Odometry {
         const data = (component == null) ? robot : util.ensure(components[component], "obj");
         const zero = util.ensure(data.zero, "obj");
         const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
-        const translations = new util.V3(zero.translations);
+        const translations = (zero.translations == "auto") ? "auto" : new util.V3(zero.translations);
 
         if (!(name in robotModels)) return null;
         if (component == null) {
@@ -5780,10 +5780,15 @@ export class Odometry3d extends Odometry {
                 [obj, pobj] = [new THREE.Object3D(), obj];
                 obj.add(pobj);
                 bbox = new THREE.Box3().setFromObject(obj);
+                let translation = (translations == "auto") ? new util.V3(
+                    -(bbox.max.x+bbox.min.x)/2,
+                    -(bbox.max.y+bbox.min.y)/2,
+                    -bbox.min.z,
+                ) : translations;
                 obj.position.set(
-                    obj.position.x + translations.x,
-                    obj.position.y + translations.y,
-                    obj.position.z + translations.z,
+                    obj.position.x + translation.x,
+                    obj.position.y + translation.y,
+                    obj.position.z + translation.z,
                 );
                 [obj, pobj] = [new THREE.Object3D(), obj];
                 obj.add(pobj);
@@ -6582,7 +6587,9 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
         this.addHandler("rem", () => {
             this.object = null;
-            this.odometry.remHint(hint);
+            this.defaultComponent.onRem();
+            for (let k in this.#components)
+                this.#components[k].onRem();
         });
 
         this.addHandler("update", delta => {
@@ -6643,7 +6650,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#builtinType = (v == null || !v.startsWith("§")) ? null : v.slice(1);
         this.change("type", this.type, this.#type=v);
         for (let k in this.#components)
-            this.#components[k].object = null;
+            this.#components[k].onRem();
         this.#components = {};
         if (this.hasBuiltinType()) return;
         const robots = GLOBALSTATE.getProperty("robots").value;
@@ -6700,6 +6707,11 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
 
         let loadLock = false;
         let modelObject = null, theModelObject = null;
+
+        this.addHandler("rem", () => {
+            this.object = null;
+            this.odometry.remHint(hint);
+        });
 
         this.addHandler("update", delta => {
             let color =
