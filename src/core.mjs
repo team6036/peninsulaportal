@@ -5710,16 +5710,8 @@ export class Odometry3d extends Odometry {
     static async loadRobot(name, type, component=null) {
         name = String(name);
         type = String(type);
-        const robots = GLOBALSTATE.getProperty("robots").value;
-        const robotModels = GLOBALSTATE.getProperty("robot-models").value;
-        if (!(name in robots)) return null;
-        if (!(name in robotModels)) return null;
-        if (component == null) {
-            if (!robotModels[name].default) return null;
-        } else {
-            if (!(component in robotModels[name].components)) return null;
-        }
-        const robot = util.ensure(robots[name], "obj");
+        component = (component == null) ? null : String(component);
+
         if (this.loadedRobots[name]) {
             if (this.loadedRobots[name][type]) {
                 if (component == null) {
@@ -5731,17 +5723,44 @@ export class Odometry3d extends Odometry {
                 }
             }
         }
+
+        const robots = GLOBALSTATE.getProperty("robots").value;
+        const robotModels = GLOBALSTATE.getProperty("robot-models").value;
+
+        if (!(name in robots)) return null;
+        const robot = util.ensure(robots[name], "obj");
+        const components = util.ensure(robot.components, "obj");
+        if (component == null) {
+        } else {
+            if (!(component in components))
+                return null;
+        }
+        const data = (component == null) ? robot : util.ensure(components[component], "obj");
+        const zero = util.ensure(data.zero, "obj");
+        const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
+        const translations = new util.V3(zero.translations);
+
+        if (!(name in robotModels)) return null;
+        if (component == null) {
+            if (!robotModels[name].default) return null;
+        } else {
+            if (!robotModels[name].components[component]) return null;
+        }
+        const pth = (component == null) ? robotModels[name].default : robotModels[name].components[component];
+
         let t0 = util.ensure(this.loadingRobots[name], "num");
         let t1 = util.getTime();
         if (t1-t0 < 1000) return null;
         this.loadingRobots[name] = t1;
-        const zero = util.ensure(robot.zero, "obj");
-        const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
-        const translations = new util.V3(zero.translations);
-        const pth = (component == null) ? robotModels[name].default : robotModels[name].components[component];
+
+        if (!this.loadedRobots[name]) this.loadedRobots[name] = {};
+        ["basic", "cinematic"].forEach(type => {
+            if (this.loadedRobots[name][type]) return;
+            this.loadedRobots[name][type] = { components: {} };
+        });
+
         try {
             const gltf = await LOADER.loadPromised(pth);
-            this.loadedRobots[name] = {};
             const scene = gltf.scene;
             ["basic", "cinematic"].forEach(type => {
                 let obj, pobj, bbox;
@@ -5762,14 +5781,15 @@ export class Odometry3d extends Odometry {
                 obj.add(pobj);
                 bbox = new THREE.Box3().setFromObject(obj);
                 obj.position.set(
-                    obj.position.x - (bbox.max.x+bbox.min.x)/2 + translations.x,
-                    obj.position.y - (bbox.max.y+bbox.min.y)/2 + translations.y,
-                    obj.position.z - bbox.min.z + translations.z,
+                    obj.position.x + translations.x,
+                    obj.position.y + translations.y,
+                    obj.position.z + translations.z,
                 );
                 [obj, pobj] = [new THREE.Object3D(), obj];
                 obj.add(pobj);
-                if (!this.loadedRobots[name][type]) this.loadedRobots[name][type] = { components: {} };
-                if (component == null) this.loadedRobots[name][type].default = obj;
+                obj.name = "§§§"+(component == null ? "" : component);
+                if (component == null)
+                    this.loadedRobots[name][type].default = obj;
                 else this.loadedRobots[name][type].components[component] = obj;
             });
             scene.traverse(obj => {
@@ -5777,8 +5797,10 @@ export class Odometry3d extends Odometry {
                 obj.material.dispose();
             });
         } catch (e) {}
+
         if (!this.loadedRobots[name]) return null;
         if (!this.loadedRobots[name][type]) return null;
+
         if (component == null) {
             if (!this.loadedRobots[name][type].default) return null;
             return this.loadedRobots[name][type].default;
@@ -6320,8 +6342,8 @@ export class Odometry3d extends Odometry {
 Odometry3d.Render = class Odometry3dRender extends util.Target {
     #odometry;
     
-    #pos;
-    #q;
+    #components;
+    #defaultComponent;
 
     #name;
     #color;
@@ -6331,10 +6353,6 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
 
     #type;
     #builtinType;
-
-    #object;
-    #theObject;
-    #showObject;
 
     static LOADEDOBJECTS = {};
     static {
@@ -6549,11 +6567,9 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         if (!(odometry instanceof Odometry3d)) throw new Error("Odometry is not of class Odometry3d");
         this.#odometry = odometry;
 
-        this.#pos = new util.V3();
-        this.pos.addHandler("change", (c, f, t) => this.change("pos."+c, f, t));
-        this.#q = new util.V4();
-        this.q.addHandler("change", (c, f, t) => this.change("q."+c, f, t));
-        this.addHandler("change", (c, f, t) => this.odometry.requestRedraw());
+        this.addHandler("change", (c, f, t) => this.requestRedraw());
+        this.#components = {};
+        this.#defaultComponent = new this.constructor.Component(this, null);
 
         this.#name = "";
         this.#color = "";
@@ -6564,157 +6580,15 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#type = null;
         this.#builtinType = null;
 
-        this.#object = null;
-        this.#theObject = null;
-        this.#showObject = true;
-
-        let robotLock = false;
-        let modelObject = null, theModelObject = null;
-
-        const hint = new App.Hint();
-        let hintType = null;
-        const hName = hint.addEntry(new App.Hint.NameEntry(""));
-        const hPosX = new App.Hint.KeyValueEntry("X", 0);
-        const hPosY = new App.Hint.KeyValueEntry("Y", 0);
-        const hPosZ = new App.Hint.KeyValueEntry("Z", 0);
-        const hDirD = new App.Hint.KeyValueEntry("Dir", 0);
-        const hDirW = new App.Hint.KeyValueEntry("QW", 0);
-        const hDirX = new App.Hint.KeyValueEntry("QX", 0);
-        const hDirY = new App.Hint.KeyValueEntry("QY", 0);
-        const hDirZ = new App.Hint.KeyValueEntry("QZ", 0);
-
         this.addHandler("rem", () => {
             this.object = null;
             this.odometry.remHint(hint);
         });
 
         this.addHandler("update", delta => {
-            let color =
-                (this.hasColor() && this.color.startsWith("--")) ?
-                    PROPERTYCACHE.getColor(this.color) :
-                new util.Color(this.color);
-            if (this.hasType()) {
-                if (this.hasBuiltinType()) theModelObject = this.constructor.LOADEDOBJECTS[this.builtinType];
-                else if (!robotLock)
-                    (async () => {
-                        robotLock = true;
-                        theModelObject = await Odometry3d.loadRobot(
-                            this.type,
-                            this.odometry.isCinematic ? "cinematic" : "basic",
-                        );
-                        robotLock = false;
-                    })();
-            } else theModelObject = null;
-            if (modelObject != theModelObject) {
-                modelObject = theModelObject;
-                this.object = modelObject;
-                if (this.hasObject()) {
-                    let elem = document.createElement("div");
-                    this.theObject._cssObj = new CSS2DObject(elem);
-                    this.theObject.add(this.theObject._cssObj);
-                    this.theObject.traverse(obj => {
-                        if (!obj.isMesh) return;
-                        if (!("_transparent" in obj.material))
-                            obj.material._transparent = obj.material.transparent;
-                        if (!("_opacity" in obj.material))
-                            obj.material._opacity = obj.material.opacity;
-                        if (!("_color" in obj.material))
-                            obj.material._color = obj.material.color.clone();
-                    });
-                    this.theObject.isGhost = this.theObject.isSolid = null;
-                }
-                this.odometry.requestRedraw();
-            }
-            if (!this.hasObject()) return;
-            if (this.theObject.isGhost != this.isGhost) {
-                this.theObject.isGhost = this.isGhost;
-                this.theObject.traverse(obj => {
-                    if (!obj.isMesh) return;
-                    if (this.isGhost) {
-                        obj.material.transparent = true;
-                        obj.material.opacity = obj.material._opacity * 0.25;
-                    } else {
-                        obj.material.transparent = obj.material._transparent;
-                        obj.material.opacity = obj.material._opacity;
-                    }
-                    obj.material.needsUpdate = true;
-                });
-                this.odometry.requestRedraw();
-            }
-            if (this.theObject.isSolid != this.isSolid) {
-                this.theObject.isSolid = this.isSolid;
-                this.theObject.traverse(obj => {
-                    if (!obj.isMesh) return;
-                    if (this.isSolid) {
-                        obj.material.color.set(color.toHex(false));
-                    } else {
-                        obj.material.color.set(obj.material._color);
-                    }
-                });
-                this.odometry.requestRedraw();
-            }
-            this.theObject.position.set(
-                this.x - this.odometry.size.x/2,
-                this.y - this.odometry.size.y/2,
-                this.z,
-            );
-            this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
-            let hovered = false;
-            let cssObj = this.theObject._cssObj;
-            if (this.object._doAlliance)
-                this.theObject.traverse(obj => {
-                    // if (!hovered)
-                    //     if (this.odometry.raycastIntersections[0])
-                    //         if (obj == this.odometry.raycastIntersections[0].object)
-                    //             hovered = true;
-                    if (!obj.isMesh) return;
-                    if (!obj.material._allianceMaterial) {
-                        if (!this.hasType()) return;
-                        if (!this.hasBuiltinType()) return;
-                        if (this.builtinType == "axis") return;
-                    }
-                    obj.material.color.set(color.toHex(false));
-                });
-            let type = this.display.type;
-            let data = util.ensure(this.display.data, "arr");
-            if (hovered) {
-                this.odometry.addHint(hint);
-                if (hintType != type) {
-                    hintType = type;
-                    if (hintType == 7) {
-                        hint.remEntry(hDirD);
-                        hint.addEntry(hPosX, hPosY, hPosZ, hDirW, hDirX, hDirY, hDirZ);
-                    } else if (hintType == 3) {
-                        hint.remEntry(hPosZ, hDirW, hDirX, hDirY, hDirZ);
-                        hint.addEntry(hPosX, hPosY, hDirD);
-                    } else {
-                        hint.remEntry(hPosX, hPosY, hPosZ, hDirD, hDirW, hDirX, hDirY, hDirZ);
-                    }
-                }
-                hName.name = this.name;
-                hName.eName.style.color = color.toRGBA();
-                if (hintType == 7) {
-                    [
-                        hPosX.value,
-                        hPosY.value,
-                        hPosZ.value,
-                        hDirW.value,
-                        hDirX.value,
-                        hDirY.value,
-                        hDirZ.value,
-                    ] = data;
-                } else if (hintType == 3) {
-                    [
-                        hPosX.value,
-                        hPosY.value,
-                        hDirD.value,
-                    ] = data;
-                }
-                if (cssObj) {
-                    let r = cssObj.element.getBoundingClientRect();
-                    hint.place(r.left, r.top);
-                }
-            } else this.odometry.remHint(hint);
+            this.defaultComponent.update(delta);
+            for (let k in this.#components)
+                this.#components[k].update(delta);
         });
 
         this.pos = pos;
@@ -6725,26 +6599,15 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     }
 
     get odometry() { return this.#odometry; }
+    requestRedraw() { return this.odometry.requestRedraw(); }
 
-    get pos() { return this.#pos; }
-    set pos(v) { this.#pos.set(v); }
-    get x() { return this.pos.x; }
-    set x(v) { this.pos.x = v; }
-    get y() { return this.pos.y; }
-    set y(v) { this.pos.y = v; }
-    get z() { return this.pos.z; }
-    set z(v) { this.pos.z = v; }
-
-    get q() { return this.#q; }
-    set q(v) { this.q.set(v); }
-    get qw() { return this.q.w; }
-    set qw(v) { this.q.w = v; }
-    get qx() { return this.q.x; }
-    set qx(v) { this.q.x = v; }
-    get qy() { return this.q.y; }
-    set qy(v) { this.q.y = v; }
-    get qz() { return this.q.z; }
-    set qz(v) { this.q.z = v; }
+    get components() { return Object.keys(this.#components); }
+    hasComponent(k) { return String(k) in this.#components; }
+    getComponent(k) {
+        if (!this.hasComponent(k)) return null;
+        return this.#components[String(k)];
+    }
+    get defaultComponent() { return this.#defaultComponent; }
     
     get name() { return this.#name; }
     set name(v) { this.#name = String(v); }
@@ -6779,16 +6642,230 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         if (this.type == v) return;
         this.#builtinType = (v == null || !v.startsWith("§")) ? null : v.slice(1);
         this.change("type", this.type, this.#type=v);
+        for (let k in this.#components)
+            this.#components[k].object = null;
+        this.#components = {};
+        if (this.hasBuiltinType()) return;
+        const robots = GLOBALSTATE.getProperty("robots").value;
+        const robot = util.ensure(robots[this.type], "obj");
+        const components = util.ensure(robot.components, "obj");
+        for (let k in components)
+            this.#components[k] = new this.constructor.Component(this, k);
     }
     get builtinType() { return this.#builtinType; }
     hasType() { return this.type != null; }
     hasBuiltinType() { return this.builtinType != null; }
+
+    update(delta) { this.post("update", delta); }
+};
+Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Target {
+    #render;
+    #component;
+
+    #pos;
+    #q;
+
+    #object;
+    #theObject;
+    #showObject;
+
+    constructor(render, component=null) {
+        super();
+
+        if (!(render instanceof Odometry3d.Render)) throw new Error("Render is not of class Odometry3dRender");
+        this.#render = render;
+        this.#component = (component == null) ? null : String(component);
+        
+        this.#pos = new util.V3();
+        this.pos.addHandler("change", (c, f, t) => this.change("pos."+c, f, t));
+        this.#q = new util.V4();
+        this.q.addHandler("change", (c, f, t) => this.change("q."+c, f, t));
+        this.addHandler("change", (c, f, t) => this.requestRedraw());
+
+        const hint = new App.Hint();
+        let hintType = null;
+        const hName = hint.addEntry(new App.Hint.NameEntry(""));
+        const hPosX = new App.Hint.KeyValueEntry("X", 0);
+        const hPosY = new App.Hint.KeyValueEntry("Y", 0);
+        const hPosZ = new App.Hint.KeyValueEntry("Z", 0);
+        const hDirD = new App.Hint.KeyValueEntry("Dir", 0);
+        const hDirW = new App.Hint.KeyValueEntry("QW", 0);
+        const hDirX = new App.Hint.KeyValueEntry("QX", 0);
+        const hDirY = new App.Hint.KeyValueEntry("QY", 0);
+        const hDirZ = new App.Hint.KeyValueEntry("QZ", 0);
+
+        this.#object = null;
+        this.#theObject = null;
+        this.#showObject = true;
+
+        let loadLock = false;
+        let modelObject = null, theModelObject = null;
+
+        this.addHandler("update", delta => {
+            let color =
+                (this.render.hasColor() && this.render.color.startsWith("--")) ?
+                    PROPERTYCACHE.getColor(this.render.color) :
+                new util.Color(this.render.color);
+            if (this.render.hasType()) {
+                if (this.render.hasBuiltinType()) theModelObject = this.render.constructor.LOADEDOBJECTS[this.render.builtinType];
+                else if (!loadLock)
+                    (async () => {
+                        loadLock = true;
+                        theModelObject = await Odometry3d.loadRobot(
+                            this.render.type,
+                            this.odometry.isCinematic ? "cinematic" : "basic",
+                            this.component,
+                        );
+                        loadLock = false;
+                    })();
+            } else theModelObject = null;
+            if (modelObject != theModelObject) {
+                modelObject = theModelObject;
+                this.object = modelObject;
+                if (this.hasObject()) {
+                    this.theObject._cssObj = new CSS2DObject(document.createElement("div"));
+                    this.theObject.add(this.theObject._cssObj);
+                    this.theObject.traverse(obj => {
+                        if (!obj.isMesh) return;
+                        if (!("_transparent" in obj.material))
+                            obj.material._transparent = obj.material.transparent;
+                        if (!("_opacity" in obj.material))
+                            obj.material._opacity = obj.material.opacity;
+                        if (!("_color" in obj.material))
+                            obj.material._color = obj.material.color.clone();
+                    });
+                    this.theObject.isGhost = this.theObject.isSolid = null;
+                }
+                this.requestRedraw();
+            }
+            if (!this.hasObject()) return;
+            const cssObj = this.theObject._cssObj;
+            if (this.theObject.isGhost != this.render.isGhost) {
+                this.theObject.isGhost = this.render.isGhost;
+                this.theObject.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    if (this.render.isGhost) {
+                        obj.material.transparent = true;
+                        obj.material.opacity = obj.material._opacity * 0.25;
+                    } else {
+                        obj.material.transparent = obj.material._transparent;
+                        obj.material.opacity = obj.material._opacity;
+                    }
+                    obj.material.needsUpdate = true;
+                });
+                this.requestRedraw();
+            }
+            let hovered = false;
+            if (this.theObject.isSolid != this.render.isSolid) {
+                this.theObject.isSolid = this.render.isSolid;
+                this.theObject.traverse(obj => {
+                    // if (!hovered)
+                    //     if (this.odometry.raycastIntersections[0])
+                    //         if (obj == this.odometry.raycastIntersections[0].object)
+                    //             hovered = true;
+                    if (!obj.isMesh) return;
+                    if (this.isSolid) {
+                        obj.material.color.set(color.toHex(false));
+                    } else {
+                        obj.material.color.set(obj.material._color);
+                    }
+                });
+                this.requestRedraw();
+            }
+            this.theObject.position.set(
+                this.x - this.odometry.size.x/2 + (this.isDefault() ? 0 : this.render.defaultComponent.x),
+                this.y - this.odometry.size.y/2 + (this.isDefault() ? 0 : this.render.defaultComponent.y),
+                this.z + (this.isDefault() ? 0 : this.render.defaultComponent.z),
+            );
+            this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
+            if (!this.isDefault() && this.render.defaultComponent.hasObject())
+                this.theObject.quaternion.premultiply(this.render.defaultComponent.theObject.quaternion);
+            if (this.object._doAlliance)
+                this.theObject.traverse(obj => {
+                    if (!obj.isMesh) return;
+                    if (!obj.material._allianceMaterial) {
+                        if (!this.hasType()) return;
+                        if (!this.hasBuiltinType()) return;
+                        if (this.builtinType == "axis") return;
+                    }
+                    obj.material.color.set(color.toHex(false));
+                });
+            let type = this.render.display.type;
+            let data = util.ensure(this.render.display.data, "arr");
+            if (hovered && this.isDefault()) {
+                this.odometry.addHint(hint);
+                if (hintType != type) {
+                    hintType = type;
+                    if (hintType == 7) {
+                        hint.remEntry(hDirD);
+                        hint.addEntry(hPosX, hPosY, hPosZ, hDirW, hDirX, hDirY, hDirZ);
+                    } else if (hintType == 3) {
+                        hint.remEntry(hPosZ, hDirW, hDirX, hDirY, hDirZ);
+                        hint.addEntry(hPosX, hPosY, hDirD);
+                    } else {
+                        hint.remEntry(hPosX, hPosY, hPosZ, hDirD, hDirW, hDirX, hDirY, hDirZ);
+                    }
+                }
+                hName.name = this.render.name;
+                hName.eName.style.color = color.toRGBA();
+                if (hintType == 7) {
+                    [
+                        hPosX.value,
+                        hPosY.value,
+                        hPosZ.value,
+                        hDirW.value,
+                        hDirX.value,
+                        hDirY.value,
+                        hDirZ.value,
+                    ] = data;
+                } else if (hintType == 3) {
+                    [
+                        hPosX.value,
+                        hPosY.value,
+                        hDirD.value,
+                    ] = data;
+                }
+                if (cssObj) {
+                    let r = cssObj.element.getBoundingClientRect();
+                    hint.place(r.left, r.top);
+                }
+            } else this.odometry.remHint(hint);
+        });
+    }
+
+    get render() { return this.#render; }
+    get odometry() { return this.render.odometry; }
+    requestRedraw() { return this.render.requestRedraw(); }
+
+    get component() { return this.#component; }
+    isDefault() { return this.component == null; }
+
+    get pos() { return this.#pos; }
+    set pos(v) { this.#pos.set(v); }
+    get x() { return this.pos.x; }
+    set x(v) { this.pos.x = v; }
+    get y() { return this.pos.y; }
+    set y(v) { this.pos.y = v; }
+    get z() { return this.pos.z; }
+    set z(v) { this.pos.z = v; }
+
+    get q() { return this.#q; }
+    set q(v) { this.q.set(v); }
+    get qw() { return this.q.w; }
+    set qw(v) { this.q.w = v; }
+    get qx() { return this.q.x; }
+    set qx(v) { this.q.x = v; }
+    get qy() { return this.q.y; }
+    set qy(v) { this.q.y = v; }
+    get qz() { return this.q.z; }
+    set qz(v) { this.q.z = v; }
 
     get object() { return this.#object; }
     get theObject() { return this.#theObject; }
     set object(v) {
         v = (v instanceof THREE.Object3D) ? v : null;
         if (this.object == v) return;
+
         if (this.hasObject()) {
             this.odometry.wpilibGroup.remove(this.theObject);
             this.theObject.traverse(obj => {
@@ -6799,7 +6876,9 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             });
             this.#theObject = null;
         }
+
         this.#object = v;
+
         if (this.hasObject()) {
             this.#theObject = this.object.clone();
             this.theObject.traverse(obj => {
@@ -6812,7 +6891,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             this.theObject.visible = this.showObject;
             this.odometry.wpilibGroup.add(this.theObject);
         }
-        this.odometry.requestRedraw();
+
+        this.requestRedraw();
     }
     hasObject() { return !!this.object; }
     get showObject() { return this.#showObject; }
