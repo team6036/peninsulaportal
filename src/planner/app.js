@@ -282,8 +282,8 @@ class RVisualItem3d extends core.Odometry3d.Render {
                     0, true,
                 );
             } else node = nodes[0];
-            this.pos = node.pos;
-            this.q = [Math.cos(node.heading/2), 0, 0, Math.sin(node.heading/2)];
+            this.defaultComponent.pos = node.pos;
+            this.defaultComponent.q = [Math.cos(node.heading/2), 0, 0, Math.sin(node.heading/2)];
         });
 
         this.visual = visual;
@@ -1063,8 +1063,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (render.renderObject instanceof core.Odometry2d.Robot)
                     render.renderObject.size = this.project.robotW;
                 render = itemRenders[id].d3;
-                render.pos = itms[id].pos;
-                render.q = [Math.cos(itms[id].heading/2), 0, 0, Math.sin(itms[id].heading/2)];
+                render.defaultComponent.pos = itms[id].pos;
+                render.defaultComponent.q = [Math.cos(itms[id].heading/2), 0, 0, Math.sin(itms[id].heading/2)];
             }
 
             this.panels.forEach(name => this.getPanel(name).update(delta));
