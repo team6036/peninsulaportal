@@ -9805,14 +9805,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
             this.eMain.style.setProperty("--side", (100*(this.hasProject() ? Math.max(0, this.project.sidePos) : 0))+"%");
 
-            if (timer > 0) return timer -= delta;
-            timer = 5000;
-            if (!this.hasProject()) return;
-            let r = this.eContent.getBoundingClientRect();
-            this.project.meta.thumb = await App.capture({
-                x: Math.round(r.left), y: Math.round(r.top),
-                width: Math.round(r.width), height: Math.round(r.height),
-            });
+            // if (timer > 0) return timer -= delta;
+            // timer = 5000;
+            // if (!this.hasProject()) return;
+            // let r = this.eContent.getBoundingClientRect();
+            // this.project.meta.thumb = await App.capture({
+            //     x: Math.round(r.left), y: Math.round(r.top),
+            //     width: Math.round(r.width), height: Math.round(r.height),
+            // });
         });
 
         this.addHandler("enter", async data => {

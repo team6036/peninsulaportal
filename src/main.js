@@ -2045,6 +2045,49 @@ const MAIN = async () => {
                     await WindowManager.fileAffirm([root, "projects.json"]);
                     await WindowManager.dirAffirm([root, "projects"]);
                 },
+                "project-export": async (pthDst, id) => {
+                    // 8TZ31UQt-Q
+                    pthDst = String(pthDst)+".p"+this.name.toLowerCase();
+                    const pthSrc = WindowManager.makePath(await this.getThis("root"), "projects", lib.FSOperator.sanitizeName(id)+".json");
+                    await new Promise(async (res, rej) => {
+                        const z = new zlib.createDeflate();
+                        z.on("error", rej);
+
+                        const streamIn = fs.createReadStream(pthSrc);
+                        streamIn.on("error", rej);
+                        const streamOut = fs.createWriteStream(pthDst);
+                        streamOut.on("error", rej);
+
+                        streamOut.on("finish", res);
+
+                        streamIn.pipe(z).pipe(streamOut);
+                    });
+                    return pthDst;
+                },
+                "project-import": async pthSrc => {
+                    const pthDst = WindowManager.makePath(await this.getThis("root"), "projects", ".json");
+                    await new Promise(async (res, rej) => {
+                        const z = new zlib.createInflate();
+                        z.on("error", rej);
+
+                        const streamIn = fs.createReadStream(pthSrc);
+                        streamIn.on("error", rej);
+                        const streamOut = fs.createWriteStream(pthDst);
+                        streamOut.on("error", rej);
+
+                        streamOut.on("finish", res);
+
+                        streamIn.pipe(z).pipe(streamOut);
+                    });
+                    let content = await this.getThis("project", "");
+                    let data = JSON.parse(content);
+                    if (
+                        data &&
+                        data["%a"] &&
+                        data["%a"][0]
+                    ) data["%a"][0].id = null;
+                    await this.setThis("project", "", JSON.stringify(data));
+                },
                 "read": async (type, pth) => {
                     if (["wpilog", "ds", "dslog", "dsevents"].includes(type))
                         return await WindowManager.fileReadRaw(pth);
