@@ -3940,7 +3940,37 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             itm.disabled = ids.length <= 0;
             itm.addHandler("trigger", async e => {
                 for (let i = 0; i < ids.length; i++)
-                    await this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
+                    this.app.post("cmd-savecopy", this.app.getProject(ids[i]));
+            });
+            menu.addItem(new App.Menu.Divider());
+            itm = menu.addItem(new App.Menu.Item("Export"));
+            itm.disabled = ids.length != 1;
+            itm.addHandler("trigger", async e => {
+                try {
+                    const result = util.ensure(await App.fileSaveDialog({
+                        title: "Export "+this.app.getName()+" Project...",
+                        buttonLabel: "Save",
+                    }), "obj");
+                    if (result.canceled) return;
+                    const pth = result.filePath;
+                    await window.api.send("project-export", pth, ids[0]);
+                } catch (e) { this.app.doError("Project Export Error", ids[0], e); }
+            });
+            itm = menu.addItem(new App.Menu.Item("Import"));
+            itm.addHandler("trigger", async e => {
+                try {
+                    const result = util.ensure(await App.fileOpenDialog({
+                        title: "Import "+this.app.getName()+" Project...",
+                        buttonLabel: "Open",
+                        properties: [
+                            "openFile",
+                        ],
+                    }), "obj");
+                    if (result.canceled) return;
+                    const pth = result.filePaths[0];
+                    await window.api.send("project-import", pth);
+                } catch (e) { this.app.doError("Project Import Error", "", e); }
+                this.app.loadProjectsClean();
             });
             this.app.contextMenu = menu;
             e = util.ensure(e, "obj");
@@ -4224,8 +4254,6 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         this.elemList.addEventListener("dblclick", dblClick);
         this.elemGrid.addEventListener("dblclick", dblClick);
 
-        this.project = project;
-
         this.eListIcon.name = "document-outline";
         this.eGridIcon.name = "document-outline";
 
@@ -4244,6 +4272,8 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
             this.name = this.project.meta.name;
             this.time = this.project.meta.modified;
         });
+
+        this.project = project;
     }
 
     get project() { return this.#project; }
@@ -4252,11 +4282,7 @@ AppFeature.ProjectsPage.Button = class AppFeatureProjectsPageButton extends util
         if (this.project == v) return;
         if (this.hasProject()) this.project.clearLinkedHandlers(this, "change");
         this.change("project", this.project, this.#project=v);
-        if (this.hasProject()) {
-            this.project.addLinkedHandler(this, "change", (c, f, t) => this.change("project."+c, f, t));
-            this.name = this.project.meta.name;
-            this.time = this.project.meta.modified;
-        }
+        if (this.hasProject()) this.project.addLinkedHandler(this, "change", (c, f, t) => this.change("project."+c, f, t));
     }
     hasProject() { return !!this.project; }
 
