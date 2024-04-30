@@ -721,7 +721,6 @@ export class App extends util.Target {
                                 let y = ctx.canvas.height * (1 - buff[i]/Math.max(100, ...buff));
                                 x = Math.round(x);
                                 y = Math.round(y);
-                                console.log(x, y, py);
                                 if (py == null) ctx.moveTo(x, y);
                                 else {
                                     ctx.lineTo(x, py);
@@ -3946,30 +3945,30 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
             itm = menu.addItem(new App.Menu.Item("Export"));
             itm.disabled = ids.length != 1;
             itm.addHandler("trigger", async e => {
+                const result = util.ensure(await App.fileSaveDialog({
+                    title: "Export "+this.app.getName()+" Project...",
+                    buttonLabel: "Save",
+                }), "obj");
+                if (result.canceled) return;
+                const pth = result.filePath;
                 try {
-                    const result = util.ensure(await App.fileSaveDialog({
-                        title: "Export "+this.app.getName()+" Project...",
-                        buttonLabel: "Save",
-                    }), "obj");
-                    if (result.canceled) return;
-                    const pth = result.filePath;
                     await window.api.send("project-export", pth, ids[0]);
-                } catch (e) { this.app.doError("Project Export Error", ids[0], e); }
+                } catch (e) { this.app.doError("Project Export Error", ids[0]+", "+pth, e); }
             });
             itm = menu.addItem(new App.Menu.Item("Import"));
             itm.addHandler("trigger", async e => {
+                const result = util.ensure(await App.fileOpenDialog({
+                    title: "Import "+this.app.getName()+" Project...",
+                    buttonLabel: "Open",
+                    properties: [
+                        "openFile",
+                    ],
+                }), "obj");
+                if (result.canceled) return;
+                const pth = result.filePaths[0];
                 try {
-                    const result = util.ensure(await App.fileOpenDialog({
-                        title: "Import "+this.app.getName()+" Project...",
-                        buttonLabel: "Open",
-                        properties: [
-                            "openFile",
-                        ],
-                    }), "obj");
-                    if (result.canceled) return;
-                    const pth = result.filePaths[0];
                     await window.api.send("project-import", pth);
-                } catch (e) { this.app.doError("Project Import Error", "", e); }
+                } catch (e) { this.app.doError("Project Import Error", pth, e); }
                 this.app.loadProjectsClean();
             });
             this.app.contextMenu = menu;
@@ -9052,14 +9051,17 @@ Form.SubForm = class FormSubForm extends Form.Field {
     get form() { return this.#form; }
 };
 Form.HTML = class FormHTML extends Form.Field {
-    constructor(name, elem) {
+    constructor(name, ...elems) {
         super(name);
 
         this.elem.classList.add("html");
 
         this.showHeader = false;
 
-        if (elem instanceof HTMLElement) this.eContent.appendChild(elem);
+        elems.flatten().forEach(elem => {
+            if (elem instanceof HTMLElement)
+                this.eContent.appendChild(elem);
+        });
     }
 };
 

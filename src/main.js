@@ -119,6 +119,80 @@ const MAIN = async () => {
     const octokit = require("octokit");
 
     const zlib = require("zlib");
+    const zlibCompress = async (src, dst) => {
+        await new Promise(async (res, rej) => {
+            const z = new zlib.createDeflate();
+            z.on("error", rej);
+
+            const streamIn = fs.createReadStream(src);
+            streamIn.on("error", rej);
+            const streamOut = fs.createWriteStream(dst);
+            streamOut.on("error", rej);
+
+            streamOut.on("finish", res);
+
+            streamIn.pipe(z).pipe(streamOut);
+        });
+        return true;
+    };
+    const zlibDecompress = async (src, dst) => {
+        await new Promise(async (res, rej) => {
+            const z = new zlib.createInflate();
+            z.on("error", rej);
+
+            const streamIn = fs.createReadStream(src);
+            streamIn.on("error", rej);
+            const streamOut = fs.createWriteStream(dst);
+            streamOut.on("error", rej);
+
+            streamOut.on("finish", res);
+
+            streamIn.pipe(z).pipe(streamOut);
+        });
+        return true;
+    };
+    const tar = require("tar");
+    const tarCompress = async (src, dst) => {
+        await new Promise((res, rej) => {
+            const stream = fs.createWriteStream(dst);
+            stream.on("error", rej);
+
+            const t = tar.create(
+                {
+                    sync: false,
+                    gzip: true,
+                    cwd: path.dirname(src),
+                    preservePaths: false,
+                },
+                [path.basename(src)],
+            );
+            t.on("error", rej);
+
+            stream.on("finish", res);
+
+            t.pipe(stream);
+        });
+        return true;
+    };
+    const tarDecompress = async (src, dst) => {
+        await new Promise((res, rej) => {
+            const stream = fs.createReadStream(src);
+            stream.on('error', rej);
+
+            const t = tar.extract(
+                {
+                    sync: false,
+                    cwd: dst,
+                    preservePaths: false,
+                },
+            );
+            t.on("error", rej);
+
+            t.on("finish", res);
+
+            stream.pipe(t);
+        });
+    };
 
     const OS = Object.freeze({
         arch: os.arch(),
@@ -2046,39 +2120,14 @@ const MAIN = async () => {
                     await WindowManager.dirAffirm([root, "projects"]);
                 },
                 "project-export": async (pthDst, id) => {
-                    // 8TZ31UQt-Q
-                    pthDst = String(pthDst)+".p"+this.name.toLowerCase();
+                    pthDst += ".p"+this.name.toLowerCase();
                     const pthSrc = WindowManager.makePath(await this.getThis("root"), "projects", lib.FSOperator.sanitizeName(id)+".json");
-                    await new Promise(async (res, rej) => {
-                        const z = new zlib.createDeflate();
-                        z.on("error", rej);
-
-                        const streamIn = fs.createReadStream(pthSrc);
-                        streamIn.on("error", rej);
-                        const streamOut = fs.createWriteStream(pthDst);
-                        streamOut.on("error", rej);
-
-                        streamOut.on("finish", res);
-
-                        streamIn.pipe(z).pipe(streamOut);
-                    });
+                    await zlibCompress(pthSrc, pthDst);
                     return pthDst;
                 },
                 "project-import": async pthSrc => {
                     const pthDst = WindowManager.makePath(await this.getThis("root"), "projects", ".json");
-                    await new Promise(async (res, rej) => {
-                        const z = new zlib.createInflate();
-                        z.on("error", rej);
-
-                        const streamIn = fs.createReadStream(pthSrc);
-                        streamIn.on("error", rej);
-                        const streamOut = fs.createWriteStream(pthDst);
-                        streamOut.on("error", rej);
-
-                        streamOut.on("finish", res);
-
-                        streamIn.pipe(z).pipe(streamOut);
-                    });
+                    await zlibDecompress(pthSrc, pthDst);
                     let content = await this.getThis("project", "");
                     let data = JSON.parse(content);
                     if (
@@ -2521,7 +2570,7 @@ const MAIN = async () => {
                         let project = null;
                         try {
                             project = JSON.parse(await this.get("project", id), util.REVIVER.f);
-                        } catch (e) { console.log(e); }
+                        } catch (e) {}
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
 
                         const projectName = lib.FSOperator.sanitizeName(project.meta.name);
@@ -3772,7 +3821,10 @@ const MAIN = async () => {
                             } catch (e) { return; }
                         }));
                     } else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["themes"](type));
+                        for (let type of DATATYPES) {
+                            let data2 = await kfs["themes"](type);
+                            for (let k in data2) data[k] = data2[k];
+                        }
                     }
                     return util.ensure(data, "obj");
                 },
@@ -3789,6 +3841,7 @@ const MAIN = async () => {
                     }
                     return (data == null) ? null : String(data);
                 },
+
                 "templates": async (type=null) => {
                     let data = {};
                     if (DATATYPES.includes(type)) {
@@ -3801,7 +3854,10 @@ const MAIN = async () => {
                             } catch (e) { return; }
                         }));
                     } else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["templates"](type));
+                        for (let type of DATATYPES) {
+                            let data2 = await kfs["templates"](type);
+                            for (let k in data2) data[k] = data2[k];
+                        }
                     }
                     return util.ensure(data, "obj");
                 },
@@ -3820,7 +3876,10 @@ const MAIN = async () => {
                             images[id] = pth;
                         }));
                     } else {
-                        for (let type of DATATYPES) images = mergeThings(images, await kfs["template-images"](type));
+                        for (let type of DATATYPES) {
+                            let images2 = await kfs["template-images"](type);
+                            for (let k in images2) images[k] = images2[k];
+                        }
                     }
                     return images;
                 },
@@ -3834,7 +3893,10 @@ const MAIN = async () => {
                             models[id] = pth;
                         }));
                     } else {
-                        for (let type of DATATYPES) models = mergeThings(models, await kfs["template-models"](type));
+                        for (let type of DATATYPES) {
+                            let models2 = await kfs["template-models"](type);
+                            for (let k in models2) models[k] = models2[k];
+                        }
                     }
                     return models;
                 },
@@ -3846,6 +3908,7 @@ const MAIN = async () => {
                     }
                     return (data == null) ? null : String(data);
                 },
+                
                 "robots": async (type=null) => {
                     let data = {};
                     if (DATATYPES.includes(type)) {
@@ -3885,7 +3948,10 @@ const MAIN = async () => {
                             }));
                         }));
                     } else {
-                        for (let type of DATATYPES) models = mergeThings(models, await kfs["robot-models"](type));
+                        for (let type of DATATYPES) {
+                            let models2 = await kfs["robot-models"](type);
+                            for (let k in models2) models[k] = models2[k];
+                        }
                     }
                     return models;
                 },
@@ -3897,6 +3963,7 @@ const MAIN = async () => {
                     }
                     return (data == null) ? null : String(data);
                 },
+
                 "holidays": async (type=null) => {
                     let data = {};
                     if (DATATYPES.includes(type)) {
@@ -3932,10 +3999,14 @@ const MAIN = async () => {
                             }));
                         }));
                     } else {
-                        for (let type of DATATYPES) icons = mergeThings(icons, await kfs["holiday-icons"](type));
+                        for (let type of DATATYPES) {
+                            let icons2 = await kfs["holiday-icons"](type);
+                            for (let k in icons2) icons[k] = icons2[k];
+                        }
                     }
                     return icons;
                 },
+
                 "active-holiday": async () => {
                     if (await this.get("holiday-opt")) return null;
                     const now = new Date();
@@ -4017,6 +4088,7 @@ const MAIN = async () => {
                     }
                     return !!data;
                 },
+
                 "db-host": async () => {
                     let data = await kfs._writable("db.json", "dbHost");
                     return (data == null) ? null : String(data);
@@ -4037,9 +4109,11 @@ const MAIN = async () => {
                     let data = await kfs._writable("db.json", "assetsAuth");
                     return (data == null) ? null : String(data);
                 },
+
                 "dark-wanted": async () => electron.nativeTheme.shouldUseDarkColors,
                 "cleanup": async () => util.ensure(await this.getCleanup(), "arr").map(pth => WindowManager.makePath(pth)),
                 "fs-version": async () => await this.getFSVersion(),
+
                 "_fullpackage": async () => {
                     let content = "";
                     try {
@@ -4116,6 +4190,7 @@ const MAIN = async () => {
                     if (v == v2) return await this.delThis("active-robot");
                     return await kfs._writable(["override", "robots", "config.json"], "active", v);
                 },
+
                 "comp-mode": async v => {
                     v = !!v;
                     let v2 = await this.getThis("comp-mode", "data");
@@ -4140,6 +4215,7 @@ const MAIN = async () => {
                     if (v == v2) return await this.delThis("reduced-motion");
                     return await kfs._writable(["override", "config.json"], "reducedMotion", v);
                 },
+
                 "db-host": async v => await kfs._writable("db.json", "dbHost", (v == null) ? null : String(v)),
                 "assets-owner": async v => await kfs._writable("db.json", "assetsOwner", (v == null) ? null : String(v)),
                 "assets-repo": async v => await kfs._writable("db.json", "assetsRepo", (v == null) ? null : String(v)),
@@ -4188,12 +4264,18 @@ const MAIN = async () => {
                 },
 
                 "active-theme": async () => await kfs._writable(["override", "themes", "config.json"], "active"),
+                "theme": async id => await this.dirDelete(["override", "themes", lib.FSOperator.sanitizeName(id)]),
                 "active-template": async () => await kfs._writable(["override", "templates", "config.json"], "active"),
+                "template": async id => await this.dirDelete(["override", "templates", lib.FSOperator.sanitizeName(id)]),
                 "active-robot": async () => await kfs._writable(["override", "robots", "config.json"], "active"),
+                "robot": async id => await this.dirDelete(["override", "robots", lib.FSOperator.sanitizeName(id)]),
+                "holiday": async id => await this.dirDelete(["override", "holidays", lib.FSOperator.sanitizeName(id)]),
+
                 "comp-mode": async () => await kfs._writable(["override", "config.json"], "isCompMode"),
                 "native-theme": async () => await kfs._writable(["override", "config.json"], "nativeTheme"),
                 "holiday-opt": async () => await kfs._writable(["override", "config.json"], "holidayOpt"),
                 "reduced-motion": async () => await kfs._writable(["override", "config.json"], "reducedMotion"),
+
                 "db-host": async () => await kfs._writable("db.json", "dbHost"),
                 "assets-owner": async () => await kfs._writable("db.json", "assetsOwner"),
                 "assets-repo": async () => await kfs._writable("db.json", "assetsRepo"),
@@ -4245,6 +4327,29 @@ const MAIN = async () => {
                 "open": async url => await electron.shell.openExternal(url),
                 "cleanup": async () => await this.cleanup(),
                 "try-load": async () => await this.tryLoad(),
+
+                "_export": async (k, pthDst, id, type=null) => {
+                    let datas = await this.getThis(k, type);
+                    if (!(id in datas)) throw new Error(util.formatText(k)+" with id: "+id+" does not exist");
+                    const source = datas[id]._source;
+                    if (!["data", "override"].includes(source)) throw new Error(util.formatText(k)+" with id: "+id+" has an invalid source ("+source+")");
+                    pthDst += ".pd"+String(k).slice(0, -1);
+                    const pthSrc = WindowManager.makePath(this.dataPath, source, k, lib.FSOperator.sanitizeName(id));
+                    await tarCompress(pthSrc, pthDst);
+                    return pthDst;
+                },
+                "_import": async (k, pthSrc) => {
+                    const pthDst = WindowManager.makePath(this.dataPath, "override", k);
+                    await tarDecompress(pthSrc, pthDst);
+                },
+                "theme-export": async (pthDst, id, type=null) => await kfs._export("themes", pthDst, id, type),
+                "theme-import": async pthSrc => await kfs._import("themes", pthSrc),
+                "template-export": async (pthDst, id, type=null) => await kfs._export("templates", pthDst, id, type),
+                "template-import": async pthSrc => await kfs._import("templates", pthSrc),
+                "robot-export": async (pthDst, id, type=null) => await kfs._export("robots", pthDst, id, type),
+                "robot-import": async pthSrc => await kfs._import("robots", pthSrc),
+                "holiday-export": async (pthDst, id, type=null) => await kfs._export("holidays", pthDst, id, type),
+                "holiday-import": async pthSrc => await kfs._import("holidays", pthSrc),
             };
             if (k in kfs) return await kfs[k](...a);
             throw new MissingError("Could not on for key: "+k);
