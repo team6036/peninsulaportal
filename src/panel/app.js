@@ -5211,7 +5211,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             _: side => {
                                 let input = form.addField(new core.Form.Input1d("view-time"));
                                 this.addHandler("add", () => (input.app = this.app));
-                                this.addHandler("rem", () => (input.app = this.app));
+                                this.addHandler("rem", () => (input.app = null));
                                 input.types = ["ms", "s", "min"];
                                 input.baseType = "ms";
                                 input.activeType = "s";
@@ -5252,7 +5252,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             section: () => {
                                 let startInput = form.addField(new core.Form.Input1d("range-start"));
                                 this.addHandler("add", () => (startInput.app = this.app));
-                                this.addHandler("rem", () => (startInput.app = this.app));
+                                this.addHandler("rem", () => (startInput.app = null));
                                 startInput.types = ["ms", "s", "min"];
                                 startInput.baseType = "ms";
                                 startInput.activeType = "s";
@@ -5266,7 +5266,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                 });
                                 let stopInput = form.addField(new core.Form.Input1d("range-start"));
                                 this.addHandler("add", () => (stopInput.app = this.app));
-                                this.addHandler("rem", () => (stopInput.app = this.app));
+                                this.addHandler("rem", () => (stopInput.app = null));
                                 stopInput.types = ["ms", "s", "min"];
                                 stopInput.baseType = "ms";
                                 stopInput.activeType = "s";
@@ -6495,7 +6495,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         this.template = this.fTemplate.value == "§null" ? null : this.fTemplate.value;
                     });
                     this.addHandler("add", () => (this.fTemplate.app = this.app));
-                    this.addHandler("rem", () => (this.fTemplate.app = this.app));
+                    this.addHandler("rem", () => (this.fTemplate.app = null));
                 },
                 o: () => {
                     elem.classList.add("options");

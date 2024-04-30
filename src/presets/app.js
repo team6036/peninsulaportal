@@ -261,7 +261,6 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.fDBHost.showToggle = true;
         this.fDBHost.type = "";
         this.fDBHost.addHandler("change-value", async () => {
-            console.log("*");
             if (ignore) return;
             await window.api.set("db-host", this.fDBHost.value[0]);
         });
@@ -406,154 +405,360 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
     get fReducedMotion() { return this.#fReducedMotion; }
 };
 App.OverrideForm = class AppOverrideForm extends App.Form {
-    #fAdd;
+    #items;
 
-    static async makeDBI(form) {}
+    #fImport;
+    #fAdd;
 
     constructor(name, app) {
         super(name, app);
+
+        this.#items = {};
 
         let ignore = false;
 
         this.form.addField(new core.Form.Line());
 
-        const DBIField = this.form.addField(new core.Form.SubForm("Database Inherited"));
-        DBIField.isHorizontal = false;
-        const DBIForm = DBIField.form;
+        const inheritedField = this.form.addField(new core.Form.SubForm("Database Inherited"));
+        inheritedField.isHorizontal = false;
+        const inheritedForm = inheritedField.form;
         
         this.form.addField(new core.Form.Line());
 
+        this.#fImport = this.form.addField(new core.Form.Button("import", "Import", "special"));
+        this.fImport.addHandler("trigger", e => this.post("import", e));
         this.#fAdd = this.form.addField(new core.Form.Button("create", "+", "special"));
         this.fAdd.addHandler("trigger", e => this.post("add", e));
 
         this.addHandler("update", async delta => {
             ignore = true;
             await Promise.all([
-                async () => await this.constructor.makeDBI(DBIForm),
+                async () => {
+                    const data = util.ensure(await this.getInherited(), "obj");
+                    for (let k in data) {
+                        if (!(k in this.#items)) {
+                            this.#items[k] = new this.constructor.Item(k, this);
+                            inheritedForm.addField(this.#items[k].formField);
+                            this.#items[k].onAdd();
+                        }
+                        this.#items[k].apply(data[k]);
+                        this.#items[k].update(delta);
+                    }
+                    for (let k in this.#items) {
+                        if (k in data) continue;
+                        this.#items[k].onRem();
+                        inheritedForm.remField(this.#items[k].formField);
+                        delete this.#items[k];
+                    }
+                },
             ].map(f => f()));
             ignore = false;
         });
     }
 
+    get fImport() { return this.#fImport; }
     get fAdd() { return this.#fAdd; }
+
+    async getInherited() { return null; }
 };
-App.ThemesForm = class AppThemesForm extends App.OverrideForm {
-    static async makeDBI(form) {
-        if (!(form instanceof core.Form)) return;
-        const themes = util.ensure(await window.api.get("themes", "data"), "obj");
-        for (let name in themes) {
-            const theme = util.ensure(themes[name], "obj");
-            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
-            const formField = form.getField(name);
-            const formForm = formField.form;
-            formField.header = theme.name || name;
-            formField.type = name;
-            formForm.fields = [];
-            formForm.isHorizontal = true;
+App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
+    #k;
 
-            formForm.addField(new core.Form.Header("Colors"));
-            const colors = util.ensure(theme.colors, "obj");
-            for (let k in colors) {
-                const field = formForm.addField(new core.Form.ColorInput(k, colors[k]));
-                field.type = "--c"+k;
-                field.disable();
-            }
+    #appForm;
+    #formField;
 
-            formForm.addField(new core.Form.Header("Base"));
-            const base = util.ensure(theme.base, "arr");
-            base.forEach((color, i) => {
-                const field = formForm.addField(new core.Form.ColorInput(i, color));
-                field.type = "--v"+i;
-                field.disable();
-            });
-        }
-        form.fields.forEach(field => {
-            if (field.name in themes) return;
-            form.remField(field);
-        });
+    constructor(k, appForm) {
+        super();
+
+        this.#k = String(k);
+
+        if (!(appForm instanceof App.OverrideForm)) throw new Error("AppForm is not of class AppOverrideForm");
+        this.#appForm = appForm;
+        this.#formField = new core.Form.SubForm(this.k);
     }
 
+    get k() { return this.#k; }
+
+    get appForm() { return this.#appForm; }
+    get app() { return this.appForm.app; }
+    get formField() { return this.#formField; }
+    get form() { return this.formField.form; }
+
+    apply(data) { this.post("apply", data); }
+
+    update(delta) { this.post("update", delta); }
+};
+App.ThemesForm = class AppThemesForm extends App.OverrideForm {
     constructor(app) {
         super("themes", app);
 
+        this.fImport.header = "Import Theme";
         this.fAdd.header = "Create Theme";
+
+        this.addHandler("import", async e => {
+            const result = util.ensure(await App.fileOpenDialog({
+                title: "Import Theme...",
+                buttonLabel: "Open",
+                properties: [
+                    "openFile",
+                ],
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePaths[0];
+            try {
+                await window.api.send("theme-import", pth);
+            } catch (e) { this.app.doError("Theme Import Error", pth, e); }
+        });
+    }
+
+    async getInherited() { return await window.api.get("themes", "data"); }
+};
+App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
+    constructor(...a) {
+        super(...a);
+
+        this.form.isHorizontal = true;
+        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
+        exportField.showHeader = false;
+        exportField.addHandler("trigger", async e => {
+            const result = util.ensure(await App.fileSaveDialog({
+                title: "Export Theme...",
+                buttonLabel: "Save",
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePath;
+            try {
+                await window.api.send("theme-export", pth, this.k, "data");
+            } catch (e) { this.app.doError("Theme Export Error", this.k+", "+pth, e); }
+        });
+
+        const colorsFormField = this.form.addField(new core.Form.SubForm("colors"));
+        colorsFormField.isHorizontal = false;
+        const colorsForm = colorsFormField.form;
+        colorsForm.isHorizontal = true;
+        colorsForm.elem.style.padding = "0px";
+        const colorsHTMLField = colorsForm.addField(new core.Form.HTML(""));
+        const colorForms = new Array(2).fill(null).map(_ => {
+            const form = new core.Form();
+            form.isHorizontal = true;
+            form.elem.style.padding = "0px";
+            colorsHTMLField.eContent.appendChild(form.elem);
+            return form;
+        });
+        const colorFields = {};
+
+        const baseFormField = this.form.addField(new core.Form.SubForm("base"));
+        baseFormField.isHorizontal = false;
+        const baseForm = baseFormField.form;
+        baseForm.isHorizontal = true;
+        const baseFields = [];
+
+        this.addHandler("apply", data => {
+            data = util.ensure(data, "obj");
+
+            this.formField.header = data.name || this.k;
+            this.formField.type = this.k;
+
+            const colors = util.ensure(data.colors, "obj");
+            for (let k in colors) {
+                if (!(k in colorFields)) {
+                    let j = 0;
+                    for (let jj = 1; jj < colorForms.length; jj++)
+                        if (colorForms[jj].fields.length < colorForms[j].fields.length)
+                            j = jj;
+                    colorFields[k] = {
+                        form: colorForms[j],
+                        field: colorForms[j].addField(new core.Form.ColorInput({
+                            r: "Red",
+                            o: "Orange",
+                            y: "Yellow",
+                            g: "Green",
+                            c: "Cyan",
+                            b: "Blue",
+                            p: "Purple",
+                            m: "Magenta",
+                        }[k] || k, null)),
+                    };
+                }
+                const field = colorFields[k].field;
+                field.value = colors[k];
+                field.type = "--c"+k;
+                field.disable();
+            }
+            for (let k in colorFields) {
+                if (k in colors) continue;
+                colorFields[k].form.remField(colorFields[k].field);
+                delete colorFields[k];
+            }
+
+            const base = util.ensure(data.base, "arr");
+            while (baseFields.length < base.length) baseFields.push(baseForm.addField(new core.Form.ColorInput(baseFields.length, null)));
+            while (baseFields.length > base.length) baseForm.remField(baseFields.pop());
+            base.forEach((color, i) => {
+                const field = baseFields[i];
+                field.value = color;
+                field.type = "--v"+i;
+                field.disable();
+            });
+        });
     }
 };
 App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
-    static async makeDBI(form) {
-        if (!(form instanceof core.Form)) return;
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
-        for (let name in templates) {
-            const template = util.ensure(templates[name], "obj");
-            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
-            const formField = form.getField(name);
-            const formForm = formField.form;
-            formField.header = name;
-            formField.type = name;
-            formForm.fields = [];
-            formForm.isHorizontal = true;
-        }
-        form.fields.forEach(field => {
-            if (field.name in templates) return;
-            form.remField(field);
-        });
-    }
-
     constructor(app) {
         super("templates", app);
 
+        this.fImport.header = "Import Template";
         this.fAdd.header = "Create Template";
+
+        this.addHandler("import", async e => {
+            const result = util.ensure(await App.fileOpenDialog({
+                title: "Import Template...",
+                buttonLabel: "Open",
+                properties: [
+                    "openFile",
+                ],
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePaths[0];
+            try {
+                await window.api.send("template-import", pth);
+            } catch (e) { this.app.doError("Template Import Error", pth, e); }
+        });
+    }
+
+    async getInherited() { return await window.api.get("templates", "data"); }
+};
+App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.Item {
+    constructor(...a) {
+        super(...a);
+
+        this.form.isHorizontal = true;
+
+        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
+        exportField.showHeader = false;
+        exportField.addHandler("trigger", async e => {
+            const result = util.ensure(await App.fileSaveDialog({
+                title: "Export Template...",
+                buttonLabel: "Save",
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePath;
+            try {
+                await window.api.send("template-export", pth, this.k, "data");
+            } catch (e) { this.app.doError("Template Export Error", this.k+", "+pth, e); }
+        });
+
+        this.addHandler("apply", data => {
+            data = util.ensure(data, "obj");
+
+            this.formField.header = data.name || this.k;
+            this.formField.type = this.k;
+        });
     }
 };
 App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
-    static async makeDBI(form) {
-        if (!(form instanceof core.Form)) return;
-        const robots = core.GLOBALSTATE.getProperty("robots").value;
-        for (let name in robots) {
-            const robot = util.ensure(robots[name], "obj");
-            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
-            const formField = form.getField(name);
-            const formForm = formField.form;
-            formField.header = name;
-            formField.type = name;
-            formForm.fields = [];
-            formForm.isHorizontal = true;
-        }
-        form.fields.forEach(field => {
-            if (field.name in robots) return;
-            form.remField(field);
-        });
-    }
-
     constructor(app) {
         super("robots", app);
 
+        this.fImport.header = "Import Robot";
         this.fAdd.header = "Create Robot";
-    }
-};
-App.HolidaysForm = class AppHolidaysForm extends App.OverrideForm {
-    static async makeDBI(form) {
-        if (!(form instanceof core.Form)) return;
-        const holidays = util.ensure(await window.api.get("holidays", "data"), "obj");
-        for (let name in holidays) {
-            const holiday = util.ensure(holidays[name], "obj");
-            if (!form.getField(name)) form.addField(new core.Form.SubForm(name));
-            const formField = form.getField(name);
-            const formForm = formField.form;
-            formField.header = holiday.name || name;
-            formField.type = name;
-            formForm.fields = [];
-            formForm.isHorizontal = true;
-        }
-        form.fields.forEach(field => {
-            if (field.name in holidays) return;
-            form.remField(field);
+
+        this.addHandler("import", async e => {
+            const result = util.ensure(await App.fileOpenDialog({
+                title: "Import Robot...",
+                buttonLabel: "Open",
+                properties: [
+                    "openFile",
+                ],
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePaths[0];
+            try {
+                await window.api.send("robot-import", pth);
+            } catch (e) { this.app.doError("Robot Import Error", pth, e); }
         });
     }
 
+    async getInherited() { return await window.api.get("robots", "data"); }
+};
+App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
+    constructor(...a) {
+        super(...a);
+
+        this.form.isHorizontal = true;
+
+        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
+        exportField.showHeader = false;
+        exportField.addHandler("trigger", async e => {
+            const result = util.ensure(await App.fileSaveDialog({
+                title: "Export Robot...",
+                buttonLabel: "Save",
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePath;
+            try {
+                await window.api.send("robot-export", pth, this.k, "data");
+            } catch (e) { this.app.doError("Robot Export Error", this.k+", "+pth, e); }
+        });
+
+        this.addHandler("apply", data => {
+            data = util.ensure(data, "obj");
+
+            this.formField.header = data.name || this.k;
+            this.formField.type = this.k;
+        });
+    }
+};
+App.HolidaysForm = class AppHolidaysForm extends App.OverrideForm {
     constructor(app) {
         super("holidays", app);
 
+        this.fImport.header = "Import Holiday";
         this.fAdd.header = "Create Holiday";
+
+        this.addHandler("import", async e => {
+            const result = util.ensure(await App.fileOpenDialog({
+                title: "Import Holiday...",
+                buttonLabel: "Open",
+                properties: [
+                    "openFile",
+                ],
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePaths[0];
+            try {
+                await window.api.send("holiday-import", pth);
+            } catch (e) { this.app.doError("Holiday Import Error", pth, e); }
+        });
+    }
+
+    async getInherited() { return await window.api.get("holidays", "data"); }
+};
+App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item {
+    constructor(...a) {
+        super(...a);
+
+        this.form.isHorizontal = true;
+
+        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
+        exportField.showHeader = false;
+        exportField.addHandler("trigger", async e => {
+            const result = util.ensure(await App.fileSaveDialog({
+                title: "Export Holiday...",
+                buttonLabel: "Save",
+            }), "obj");
+            if (result.canceled) return;
+            const pth = result.filePath;
+            try {
+                await window.api.send("holiday-export", pth, name, "data");
+            } catch (e) { this.app.doError("Holiday Export Error", name+", "+pth, e); }
+        });
+
+        this.addHandler("apply", data => {
+            data = util.ensure(data, "obj");
+
+            this.formField.header = data.name || this.k;
+            this.formField.type = this.k;
+        });
     }
 };
