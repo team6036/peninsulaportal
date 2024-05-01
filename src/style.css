@@ -1930,6 +1930,11 @@ p-loading[type="bounce"] > div > div:last-child {
     position: relative;
 
     background-color: var(--v1);
+
+    border: 1px solid transparent;
+}
+.odom:has(> canvas:focus) {
+    border: 1px solid var(--v4);
 }
 .odom > canvas {
     position: absolute;
@@ -1938,11 +1943,8 @@ p-loading[type="bounce"] > div > div:last-child {
 
     transform-origin: 0% 0%;
 
-    border: 1px solid transparent;
+    border: none;
     outline: none;
-}
-.odom > canvas:focus {
-    border: 1px solid var(--v4);
 }
 .odom > .overlay {
     position: absolute;

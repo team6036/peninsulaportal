@@ -71,20 +71,14 @@ export default class App extends core.App {
                 new App.RobotsForm(this),
                 new App.HolidaysForm(this),
             ];
-            let t0 = null, t1 = null;
-            const update = () => {
-                t1 = util.getTime();
-                if (t0 == null) return t0 = t1;
-                this.forms.forEach(form => form.update(t1-t0));
-                t0 = t1;
-            };
-            update();
+            const pull = () => this.forms.forEach(form => form.pull());
             const timer = new util.Timer(true);
             this.addHandler("update", delta => {
+                this.forms.forEach(form => form.update(delta));
                 if (!timer.dequeueAll(1000)) return;
-                update();
+                pull();
             });
-            this.addHandler("cmd-check", update);
+            this.addHandler("cmd-check", pull);
         });
     }
 
@@ -204,6 +198,7 @@ App.Form = class AppForm extends util.Target {
     close() { return this.isClosed = true; }
 
     update(delta) { this.post("update", delta); }
+    pull() { this.post("pull"); }
 };
 App.ApplicationForm = class AppApplicationForm extends App.Form {
     #fAppData;
@@ -285,7 +280,7 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
 
         this.fSocketHost.disabled = this.fAssetsOwner.disabled = this.fAssetsRepo.disabled = this.fAssetsTag.disabled = this.fScoutURL.disabled = true;
 
-        this.addHandler("update", async delta => {
+        this.addHandler("pull", async () => {
             ignore = true;
             await Promise.all([
                 async () => {
@@ -373,7 +368,7 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
 
         this.fTheme.app = this.fNativeTheme.app = this.app;
 
-        this.addHandler("update", async delta => {
+        this.addHandler("pull", async () => {
             ignore = true;
             await Promise.all([
                 async () => {
@@ -405,15 +400,11 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
     get fReducedMotion() { return this.#fReducedMotion; }
 };
 App.OverrideForm = class AppOverrideForm extends App.Form {
-    #items;
-
     #fImport;
     #fAdd;
 
     constructor(name, app) {
         super(name, app);
-
-        this.#items = {};
 
         let ignore = false;
 
@@ -430,29 +421,83 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
         this.#fAdd = this.form.addField(new core.Form.Button("create", "+", "special"));
         this.fAdd.addHandler("trigger", e => this.post("add", e));
 
-        this.addHandler("update", async delta => {
+        this.form.addField(new core.Form.Line());
+
+        const dataItems = {};
+
+        const overrides = {};
+        const overrideItems = {};
+
+        let lock = false;
+        this.addHandler("pull", async () => {
             ignore = true;
             await Promise.all([
                 async () => {
                     const data = util.ensure(await this.getInherited(), "obj");
                     for (let k in data) {
-                        if (!(k in this.#items)) {
-                            this.#items[k] = new this.constructor.Item(k, this);
-                            inheritedForm.addField(this.#items[k].formField);
-                            this.#items[k].onAdd();
+                        if (!(k in dataItems)) {
+                            dataItems[k] = new this.constructor.Item(k, this);
+                            inheritedForm.addField(dataItems[k].formField);
+                            dataItems[k].onAdd();
+                            dataItems[k].disable();
                         }
-                        this.#items[k].apply(data[k]);
-                        this.#items[k].update(delta);
+                        dataItems[k].apply(data[k]);
                     }
-                    for (let k in this.#items) {
+                    for (let k in dataItems) {
                         if (k in data) continue;
-                        this.#items[k].onRem();
-                        inheritedForm.remField(this.#items[k].formField);
-                        delete this.#items[k];
+                        dataItems[k].onRem();
+                        inheritedForm.remField(dataItems[k].formField);
+                        delete dataItems[k];
                     }
                 },
             ].map(f => f()));
             ignore = false;
+            if (lock) return;
+            lock = true;
+            for (let id in changes)
+                for (let k in changes[id])
+                    await this.applyChange(id, k, changes[id][k]);
+            changes = {};
+            let overrides2 = util.ensure(await this.getOverrides(), "obj");
+            for (let k in overrides2)
+                overrides[k] = overrides2[k];
+            for (let k in overrides)
+                if (!(k in overrides2))
+                    delete overrides[k];
+            update();
+            lock = false;
+        });
+
+        let changes = {};
+        const update = () => {
+            for (let k in overrides) {
+                if (!(k in overrideItems)) {
+                    overrideItems[k] = new this.constructor.Item(k, this);
+                    this.form.addField(overrideItems[k].formField);
+                    overrideItems[k].addLinkedHandler(this, "change", (c, f, t) => {
+                        if (!c.startsWith("data.")) return;
+                        c = c.slice(5);
+                        if (!changes[k]) changes[k] = {};
+                        changes[k][c] = t;
+                    });
+                    overrideItems[k].onAdd();
+                }
+                overrideItems[k].apply(overrides[k]);
+            }
+            for (let k in overrideItems) {
+                if (k in overrides) continue;
+                overrideItems[k].clearLinkedHandlers(this, "change");
+                overrideItems[k].onRem();
+                this.form.remField(overrideItems[k].formField);
+                delete overrideItems[k];
+            }
+        };
+
+        this.addHandler("update", delta => {
+            for (let k in dataItems)
+                dataItems[k].update(delta);
+            for (let k in overrideItems)
+                overrideItems[k].update(delta);
         });
     }
 
@@ -460,12 +505,17 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
     get fAdd() { return this.#fAdd; }
 
     async getInherited() { return null; }
+    async getOverrides() { return null; }
+
+    async applyChange(id, k, v) {}
 };
 App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
     #k;
 
     #appForm;
     #formField;
+
+    #disabled;
 
     constructor(k, appForm) {
         super();
@@ -475,6 +525,9 @@ App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
         if (!(appForm instanceof App.OverrideForm)) throw new Error("AppForm is not of class AppOverrideForm");
         this.#appForm = appForm;
         this.#formField = new core.Form.SubForm(this.k);
+        this.formField.isHorizontal = false;
+
+        this.#disabled = false;
     }
 
     get k() { return this.#k; }
@@ -483,6 +536,17 @@ App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
     get app() { return this.appForm.app; }
     get formField() { return this.#formField; }
     get form() { return this.formField.form; }
+
+    get disabled() { return this.#disabled; }
+    set disabled(v) {
+        v = !!v;
+        if (this.disabled == v) return;
+        this.change("disabled", this.disabled, this.#disabled=v);
+    }
+    get enabled() { return !this.disabled; }
+    set enabled(v) { this.disabled = !v; }
+    disable() { return this.disabled = true; }
+    enable() { return this.enabled = true; }
 
     apply(data) { this.post("apply", data); }
 
@@ -509,28 +573,84 @@ App.ThemesForm = class AppThemesForm extends App.OverrideForm {
                 await window.api.send("theme-import", pth);
             } catch (e) { this.app.doError("Theme Import Error", pth, e); }
         });
+
+        this.addHandler("add", async () => {
+            let k = await this.app.doPrompt("Theme Key", "Enter a unique key identifier");
+            if (k == null) return;
+            if (await window.api.get("theme", k))
+                return this.app.doWarn("Theme Key", "This key ("+k+") already exists!");
+            await window.api.send("theme-make", k, {
+                name: util.formatText(k),
+                colors: {
+                    r: "#ff0000",
+                    o: "#ff8800",
+                    y: "#ffff00",
+                    g: "#00ff00",
+                    c: "#00ffff",
+                    b: "#0088ff",
+                    p: "#8800ff",
+                    m: "#ff00ff",
+                },
+                base: Array.from(new Array(9).keys()).map(i => new util.Color(new Array(3).fill(255*i/8)).toHex(false)),
+            });
+            this.update(null);
+        });
     }
 
     async getInherited() { return await window.api.get("themes", "data"); }
+    async getOverrides() { return await window.api.get("themes", "override"); }
+
+    async applyChange(id, k, v) { await window.api.set("theme", id, k, v); }
 };
 App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
     constructor(...a) {
         super(...a);
 
         this.form.isHorizontal = true;
-        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
-        exportField.showHeader = false;
-        exportField.addHandler("trigger", async e => {
-            const result = util.ensure(await App.fileSaveDialog({
-                title: "Export Theme...",
-                buttonLabel: "Save",
-            }), "obj");
-            if (result.canceled) return;
-            const pth = result.filePath;
-            try {
-                await window.api.send("theme-export", pth, this.k, "data");
-            } catch (e) { this.app.doError("Theme Export Error", this.k+", "+pth, e); }
+        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+            { text: "Export", type: "special" },
+            { text: "Remove", type: "off" },
+            { text: "Change Key", type: "normal" },
+        ]));
+        buttonsField.showHeader = false;
+        buttonsField.addHandler("trigger", async (i, e) => {
+            if (i == 0) {
+                const result = util.ensure(await App.fileSaveDialog({
+                    title: "Export Theme...",
+                    buttonLabel: "Save",
+                }), "obj");
+                if (result.canceled) return;
+                const pth = result.filePath;
+                try {
+                    await window.api.send("theme-export", pth, this.k, "data");
+                } catch (e) { this.app.doError("Theme Export Error", this.k+", "+pth, e); }
+                return;
+            }
+            if (i == 1) {
+                try {
+                    await window.api.del("theme", this.k);
+                } catch (e) { this.app.doError("Theme Delete Error", this.k, e); }
+                return;
+            }
+            if (i == 2) {
+                let k = await this.app.doPrompt("Theme Key", "Enter a unique key identifier", this.k);
+                if (k == null) return;
+                if (await window.api.get("theme", k))
+                    return this.app.doWarn("Theme Key", "This key ("+k+") already exists!");
+                try {
+                    await window.api.send("theme-rekey", this.k, k);
+                } catch (e) { this.app.doError("Theme Rekey Error", this.k+", "+k, e); }
+                return;
+            }
         });
+
+        let nameFieldIgnore = false;
+        const nameField = this.form.addField(new core.Form.TextInput("name"));
+        nameField.addHandler("change-value", () => {
+            if (nameFieldIgnore) return;
+            this.change("data.name", null, nameField.value);
+        });
+        nameField.type = "";
 
         const colorsFormField = this.form.addField(new core.Form.SubForm("colors"));
         colorsFormField.isHorizontal = false;
@@ -553,11 +673,25 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
         baseForm.isHorizontal = true;
         const baseFields = [];
 
+        const update = () => {
+            buttonsField.eContent.children[1].disabled = this.disabled;
+            nameField.disabled = this.disabled;
+            for (let k in colorFields)
+                colorFields[k].field.disabled = this.disabled;
+            baseFields.forEach(field => (field.disabled = this.disabled));
+        };
+
+        this.addHandler("change-disable", update);
+
         this.addHandler("apply", data => {
             data = util.ensure(data, "obj");
 
             this.formField.header = data.name || this.k;
             this.formField.type = this.k;
+
+            nameFieldIgnore = true;
+            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
+            nameFieldIgnore = false;
 
             const colors = util.ensure(data.colors, "obj");
             for (let k in colors) {
@@ -579,27 +713,50 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
                             m: "Magenta",
                         }[k] || k, null)),
                     };
+                    colorFields[k].field.useAlpha = false;
+                    colorFields[k].field.addLinkedHandler(this, "change-value", () => {
+                        if (colorFields[k]._ignore) return;
+                        this.change("data.colors."+k, null, colorFields[k].field.value.toHex(false));
+                    });
                 }
                 const field = colorFields[k].field;
-                field.value = colors[k];
+                colorFields[k]._ignore = true;
+                if (!field.focused) field.value = colors[k];
+                colorFields[k]._ignore = false;
                 field.type = "--c"+k;
-                field.disable();
             }
             for (let k in colorFields) {
                 if (k in colors) continue;
+                colorFields[k].field.clearLinkedHandlers(this, "change-value");
                 colorFields[k].form.remField(colorFields[k].field);
                 delete colorFields[k];
             }
 
             const base = util.ensure(data.base, "arr");
-            while (baseFields.length < base.length) baseFields.push(baseForm.addField(new core.Form.ColorInput(baseFields.length, null)));
-            while (baseFields.length > base.length) baseForm.remField(baseFields.pop());
+            while (baseFields.length < base.length) {
+                let i = baseFields.length;
+                baseFields.push({
+                    field: baseForm.addField(new core.Form.ColorInput(i, null)),
+                });
+                baseFields[i].field.addLinkedHandler(this, "change-value", () => {
+                    if (baseFields[i]._ignore) return;
+                    this.change("data.base."+i, null, baseFields[i].field.value.toHex(false));
+                });
+            }
+            while (baseFields.length > base.length) {
+                let i = baseFields.length-1;
+                baseFields[i].field.clearLinkedHandlers(this, "change-value");
+                baseForm.remField(baseFields.pop().field);
+            }
             base.forEach((color, i) => {
-                const field = baseFields[i];
-                field.value = color;
+                const field = baseFields[i].field;
+                baseFields[i]._ignore = true;
+                if (!field.focused) field.value = color;
+                baseFields[i]._ignore = false;
                 field.type = "--v"+i;
-                field.disable();
             });
+
+            update();
         });
     }
 };
@@ -627,6 +784,9 @@ App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
     }
 
     async getInherited() { return await window.api.get("templates", "data"); }
+    async getOverrides() { return await window.api.get("templates", "override"); }
+
+    async applyChange(id, k, v) { await window.api.set("template", id, k, v); }
 };
 App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.Item {
     constructor(...a) {
@@ -634,25 +794,87 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
 
         this.form.isHorizontal = true;
 
-        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
-        exportField.showHeader = false;
-        exportField.addHandler("trigger", async e => {
-            const result = util.ensure(await App.fileSaveDialog({
-                title: "Export Template...",
-                buttonLabel: "Save",
-            }), "obj");
-            if (result.canceled) return;
-            const pth = result.filePath;
-            try {
-                await window.api.send("template-export", pth, this.k, "data");
-            } catch (e) { this.app.doError("Template Export Error", this.k+", "+pth, e); }
+        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+            { text: "Export", type: "special" },
+            { text: "Remove", type: "off" },
+            { text: "Change Key", type: "normal" },
+        ]));
+        buttonsField.showHeader = false;
+        buttonsField.addHandler("trigger", async (i, e) => {
+            if (i == 0) {
+                const result = util.ensure(await App.fileSaveDialog({
+                    title: "Export Template...",
+                    buttonLabel: "Save",
+                }), "obj");
+                if (result.canceled) return;
+                const pth = result.filePath;
+                try {
+                    await window.api.send("template-export", pth, this.k, "data");
+                } catch (e) { this.app.doError("Template Export Error", this.k+", "+pth, e); }
+                return;
+            }
+            if (i == 1) {
+                try {
+                    await window.api.del("template", this.k);
+                } catch (e) { this.app.doError("Template Delete Error", this.k, e); }
+                return;
+            }
+            if (i == 2) {
+                let k = await this.app.doPrompt("Template Key", "Enter a unique key identifier", this.k);
+                if (k == null) return;
+                if (await window.api.get("template", k))
+                    return this.app.doWarn("Template Key", "This key ("+k+") already exists!");
+                try {
+                    await window.api.send("template-rekey", this.k, k);
+                } catch (e) { this.app.doError("Template Rekey Error", this.k+", "+k, e); }
+                return;
+            }
         });
+
+        let nameFieldIgnore = false;
+        const nameField = this.form.addField(new core.Form.TextInput("name"));
+        nameField.addHandler("change-value", () => {
+            if (nameFieldIgnore) return;
+            this.change("data.name", null, nameField.value);
+        });
+        nameField.type = "";
+
+        const odometry2d = new core.Odometry2d();
+        const odometry3d = new core.Odometry3d();
+        odometry2d.template = odometry3d.template = this.k;
+        odometry2d.imageAlpha = 0.5;
+        odometry2d.drawGrid = false;
+
+        this.form.addField(new core.Form.HTML("odom2d", odometry2d.elem, odometry3d.elem));
+
+        this.addHandler("rem", () => {
+            odometry3d.renderer.forceContextLoss();
+        });
+
+        const update = () => {
+            buttonsField.eContent.children[1].disabled = this.disabled;
+            nameField.disabled = this.disabled;
+        };
+
+        this.addHandler("change-disabled", update);
 
         this.addHandler("apply", data => {
             data = util.ensure(data, "obj");
 
             this.formField.header = data.name || this.k;
             this.formField.type = this.k;
+
+            nameFieldIgnore = true;
+            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
+            nameFieldIgnore = false;
+
+            update();
+        });
+
+        this.addHandler("update", delta => {
+            if (this.formField.isClosed) return odometry3d.repositionCamera();
+            odometry2d.update(delta);
+            odometry3d.update(delta);
         });
     }
 };
@@ -680,6 +902,9 @@ App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
     }
 
     async getInherited() { return await window.api.get("robots", "data"); }
+    async getOverrides() { return await window.api.get("robots", "override"); }
+
+    async applyChange(id, k, v) { await window.api.set("robot", id, k, v); }
 };
 App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
     constructor(...a) {
@@ -687,25 +912,69 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
 
         this.form.isHorizontal = true;
 
-        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
-        exportField.showHeader = false;
-        exportField.addHandler("trigger", async e => {
-            const result = util.ensure(await App.fileSaveDialog({
-                title: "Export Robot...",
-                buttonLabel: "Save",
-            }), "obj");
-            if (result.canceled) return;
-            const pth = result.filePath;
-            try {
-                await window.api.send("robot-export", pth, this.k, "data");
-            } catch (e) { this.app.doError("Robot Export Error", this.k+", "+pth, e); }
+        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+            { text: "Export", type: "special" },
+            { text: "Remove", type: "off" },
+            { text: "Change Key", type: "normal" },
+        ]));
+        buttonsField.showHeader = false;
+        buttonsField.addHandler("trigger", async (i, e) => {
+            if (i == 0) {
+                const result = util.ensure(await App.fileSaveDialog({
+                    title: "Export Robot...",
+                    buttonLabel: "Save",
+                }), "obj");
+                if (result.canceled) return;
+                const pth = result.filePath;
+                try {
+                    await window.api.send("robot-export", pth, this.k, "data");
+                } catch (e) { this.app.doError("Robot Export Error", this.k+", "+pth, e); }
+                return;
+            }
+            if (i == 1) {
+                try {
+                    await window.api.del("robot", this.k);
+                } catch (e) { this.app.doError("Robot Delete Error", this.k, e); }
+                return;
+            }
+            if (i == 2) {
+                let k = await this.app.doPrompt("Robot Key", "Enter a unique key identifier", this.k);
+                if (k == null) return;
+                if (await window.api.get("robot", k))
+                    return this.app.doWarn("Robot Key", "This key ("+k+") already exists!");
+                try {
+                    await window.api.send("robot-rekey", this.k, k);
+                } catch (e) { this.app.doError("Robot Rekey Error", this.k+", "+k, e); }
+                return;
+            }
         });
+
+        let nameFieldIgnore = false;
+        const nameField = this.form.addField(new core.Form.TextInput("name"));
+        nameField.addHandler("change-value", () => {
+            if (nameFieldIgnore) return;
+            this.change("data.name", null, nameField.value);
+        });
+        nameField.type = "";
+
+        const update = () => {
+            buttonsField.eContent.children[1].disabled = this.disabled;
+            nameField.disabled = this.disabled;
+        };
+
+        this.addHandler("change-disabled", update);
 
         this.addHandler("apply", data => {
             data = util.ensure(data, "obj");
 
             this.formField.header = data.name || this.k;
             this.formField.type = this.k;
+
+            nameFieldIgnore = true;
+            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
+            nameFieldIgnore = false;
+
+            update();
         });
     }
 };
@@ -733,6 +1002,9 @@ App.HolidaysForm = class AppHolidaysForm extends App.OverrideForm {
     }
 
     async getInherited() { return await window.api.get("holidays", "data"); }
+    async getOverrides() { return await window.api.get("holidays", "override"); }
+
+    async applyChange(id, k, v) { await window.api.set("holiday", id, k, v); }
 };
 App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item {
     constructor(...a) {
@@ -740,25 +1012,69 @@ App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item 
 
         this.form.isHorizontal = true;
 
-        const exportField = this.form.addField(new core.Form.Button("export", "Export", "special"));
-        exportField.showHeader = false;
-        exportField.addHandler("trigger", async e => {
-            const result = util.ensure(await App.fileSaveDialog({
-                title: "Export Holiday...",
-                buttonLabel: "Save",
-            }), "obj");
-            if (result.canceled) return;
-            const pth = result.filePath;
-            try {
-                await window.api.send("holiday-export", pth, name, "data");
-            } catch (e) { this.app.doError("Holiday Export Error", name+", "+pth, e); }
+        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+            { text: "Export", type: "special" },
+            { text: "Remove", type: "off" },
+            { text: "Change Key", type: "normal" },
+        ]));
+        buttonsField.showHeader = false;
+        buttonsField.addHandler("trigger", async (i, e) => {
+            if (i == 0) {
+                const result = util.ensure(await App.fileSaveDialog({
+                    title: "Export Holiday...",
+                    buttonLabel: "Save",
+                }), "obj");
+                if (result.canceled) return;
+                const pth = result.filePath;
+                try {
+                    await window.api.send("holiday-export", pth, this.k, "data");
+                } catch (e) { this.app.doError("Holiday Export Error", this.k+", "+pth, e); }
+                return;
+            }
+            if (i == 1) {
+                try {
+                    await window.api.del("holiday", this.k);
+                } catch (e) { this.app.doError("Holiday Delete Error", this.k, e); }
+                return;
+            }
+            if (i == 2) {
+                let k = await this.app.doPrompt("Holiday Key", "Enter a unique key identifier", this.k);
+                if (k == null) return;
+                if (await window.api.get("holiday", k))
+                    return this.app.doWarn("Holiday Key", "This key ("+k+") already exists!");
+                try {
+                    await window.api.send("holiday-rekey", this.k, k);
+                } catch (e) { this.app.doError("Holiday Rekey Error", this.k+", "+k, e); }
+                return;
+            }
         });
+
+        let nameFieldIgnore = false;
+        const nameField = this.form.addField(new core.Form.TextInput("name"));
+        nameField.addHandler("change-value", () => {
+            if (nameFieldIgnore) return;
+            this.change("data.name", null, nameField.value);
+        });
+        nameField.type = "";
+
+        const update = () => {
+            buttonsField.eContent.children[1].disabled = this.disabled;
+            nameField.disabled = this.disabled;
+        };
+
+        this.addHandler("change-disabled", update);
 
         this.addHandler("apply", data => {
             data = util.ensure(data, "obj");
 
             this.formField.header = data.name || this.k;
             this.formField.type = this.k;
+
+            nameFieldIgnore = true;
+            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
+            nameFieldIgnore = false;
+
+            update();
         });
     }
 };

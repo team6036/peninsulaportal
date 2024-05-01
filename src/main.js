@@ -255,13 +255,11 @@ const MAIN = async () => {
     function isEmpty(o) {
         if (util.is(o, "arr")) return o.length <= 0;
         if (util.is(o, "obj")) return isEmpty(Object.keys(o));
-        return false;
+        return o == null;
     }
     function cleanupEmpties(o) {
         if (util.is(o, "arr"))
-            return Array.from(o).filter(o => {
-                o = cleanupEmpties(o);
-            });
+            return Array.from(o).map(o => cleanupEmpties(o)).filter(o => !isEmpty(o));
         if (util.is(o, "obj")) {
             for (let k in o) {
                 o[k] = cleanupEmpties(o[k]);
@@ -1682,7 +1680,7 @@ const MAIN = async () => {
                 },
                 "project": async id => {
                     await this.onThis("projects-affirm");
-                    id = lib.FSOperator.sanitizeName(id);
+                    id = lib.keyify(lib.sanitize(id));
                     const root = await this.getThis("root");
                     let content = null;
                     try {
@@ -2013,7 +2011,7 @@ const MAIN = async () => {
 
                 "project": async (id, content) => {
                     await this.onThis("projects-affirm");
-                    id = lib.FSOperator.sanitizeName(id);
+                    id = lib.keyify(lib.sanitize(id));
                     const root = await this.getThis("root");
                     await WindowManager.fileWrite([root, "projects", id+".json"], content);
                 },
@@ -2071,7 +2069,7 @@ const MAIN = async () => {
 
                 "project": async id => {
                     await this.onThis("projects-affirm");
-                    id = lib.FSOperator.sanitizeName(id);
+                    id = lib.keyify(lib.sanitize(id));
                     const root = await this.getThis("root");
                     try {
                         await WindowManager.fileDelete([root, "projects", id+".json"]);
@@ -2121,7 +2119,7 @@ const MAIN = async () => {
                 },
                 "project-export": async (pthDst, id) => {
                     pthDst += ".p"+this.name.toLowerCase();
-                    const pthSrc = WindowManager.makePath(await this.getThis("root"), "projects", lib.FSOperator.sanitizeName(id)+".json");
+                    const pthSrc = WindowManager.makePath(await this.getThis("root"), "projects", lib.keyify(lib.sanitize(id))+".json");
                     await zlibCompress(pthSrc, pthDst);
                     return pthDst;
                 },
@@ -2174,15 +2172,15 @@ const MAIN = async () => {
                     "cmd-app-data": async () => {
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: this.manager.dataPath }));
-                            process.addHandler("exit", code => res(code));
-                            process.addHandler("error", e => rej(e));
+                            process.addHandler("exit", res);
+                            process.addHandler("error", rej);
                         });
                     },
                     "cmd-app-logs": async () => {
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "open", ["."], { cwd: WindowManager.makePath(this.manager.dataPath, "logs") }));
-                            process.addHandler("exit", code => res(code));
-                            process.addHandler("error", e => rej(e));
+                            process.addHandler("exit", res);
+                            process.addHandler("error", rej);
                         });
                     },
                     "cmd-app-data-cleanup": async () => {
@@ -2193,8 +2191,7 @@ const MAIN = async () => {
                         let n = 0, nTotal = dirents.length;
                         await Promise.all(dirents.map(async dirent => {
                             await this.manager.fileDelete(["logs", dirent.name]);
-                            n++;
-                            this.cacheSet("app-logs-clear-progress", n/nTotal);
+                            this.cacheSet("app-logs-clear-progress", (++n)/nTotal);
                         }));
                         this.cacheSet("app-logs-clear-progress", 1);
                     },
@@ -2328,20 +2325,20 @@ const MAIN = async () => {
                             .map(dirent => dirent.name);
                     },
                     "video-has": async name => {
-                        name = lib.FSOperator.sanitizeName(name);
+                        name = lib.sanitize(name);
                         await this.dirAffirm("videos");
                         return !!(await this.fileHas(["videos", name]));
                     },
                     "video-get": async name => {
-                        name = lib.FSOperator.sanitizeName(name);
+                        name = lib.sanitize(name);
                         await this.dirAffirm("videos");
                         if (!(await this.fileHas(["videos", name])))
                             return null;
                         return WindowManager.makePath(this.dataPath, "videos", name);
                     },
                     "video-rename": async (from, to) => {
-                        from = lib.FSOperator.sanitizeName(from);
-                        to = lib.FSOperator.sanitizeName(to);
+                        from = lib.sanitize(from);
+                        to = lib.sanitize(to);
                         await this.dirAffirm("videos");
                         if (!(await this.fileHas(["videos", from])))
                             return null;
@@ -2374,7 +2371,7 @@ const MAIN = async () => {
                     },
                     "video-add-file": async (pth, name=null) => {
                         pth = WindowManager.makePath(pth);
-                        name = (name == null) ? path.basename(pth) : (lib.FSOperator.sanitizeName(name)+path.extname(pth));
+                        name = (name == null) ? path.basename(pth) : (lib.sanitize(name)+path.extname(pth));
                         await this.dirAffirm("videos");
                         await this.fileDeny(["videos", name]);
                         const pth2 = WindowManager.makePath(this.dataPath, "videos", name);
@@ -2387,7 +2384,7 @@ const MAIN = async () => {
                         return null;
                     },
                     "video-rem": async name => {
-                        name = lib.FSOperator.sanitizeName(name);
+                        name = lib.sanitize(name);
                         await this.dirAffirm("videos");
                         return (await this.fileDeny(["videos", name])) ? name : null;
                     },
@@ -2411,8 +2408,8 @@ const MAIN = async () => {
                         if (!project.hasPath(pthId)) throw new Error("Nonexistent path with id: "+pthId+" for project id: "+id);
                         let pth = project.getPath(pthId);
 
-                        const projectName = lib.FSOperator.sanitizeName(project.meta.name);
-                        const pthName = lib.FSOperator.sanitizeName(pth.name);
+                        const projectName = lib.sanitize(project.meta.name);
+                        const pthName = lib.sanitize(pth.name);
 
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
                         if (script == null) throw new Error("No script for project with id: "+id);
@@ -2573,7 +2570,7 @@ const MAIN = async () => {
                         } catch (e) {}
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
 
-                        const projectName = lib.FSOperator.sanitizeName(project.meta.name);
+                        const projectName = lib.sanitize(project.meta.name);
 
                         let script = project.config.scriptUseDefault ? WindowManager.makePath(this.dataPath, "solver", "solver.py") : project.config.script;
                         if (script == null) return {};
@@ -2591,7 +2588,7 @@ const MAIN = async () => {
                             let pthId = null;
                             for (let id of project.paths) {
                                 let pth = project.getPath(id);
-                                if (lib.FSOperator.sanitizeName(pth.name) != name) continue;
+                                if (lib.sanitize(pth.name) != name) continue;
                                 pthId = id;
                                 break;
                             }
@@ -2709,8 +2706,8 @@ const MAIN = async () => {
 
                         await new Promise((res, rej) => {
                             const process = this.processManager.addProcess(new Process("spawn", "npm", ["install"], { cwd: path.join(pth, "ptk") }));
-                            process.addHandler("exit", code => res(code));
-                            process.addHandler("error", e => rej(e));
+                            process.addHandler("exit", res);
+                            process.addHandler("error", rej);
                         });
                     },
                 },
@@ -3055,7 +3052,7 @@ const MAIN = async () => {
                         stream.on("open", () => {
                             resp.body.pipe(stream);
                             resp.body.on("end", () => res(true));
-                            resp.body.on("error", e => rej(e));
+                            resp.body.on("error", rej);
                         });
                     });
                     await fs.promises.rename(tmpPth, thePth);
@@ -3222,7 +3219,7 @@ const MAIN = async () => {
                         this.remLoad(`dl-${type}:config`);
                         return;
                     }
-                    const id = lib.FSOperator.sanitizeName(key.shift());
+                    const id = lib.keyify(lib.sanitize(key.shift()));
                     const name = key.join(".");
                     let typefs = {
                         themes: async () => {
@@ -3319,17 +3316,6 @@ const MAIN = async () => {
                 if (!(win instanceof Window)) throw new Error("Nonexistent window corresponding with id: "+e.sender.id);
                 return win;
             };
-            
-            ipc.handle("get-root", decorate(async (e, type) => {
-                let win = identify(e);
-                if (type == "app") return __dirname;
-                if (type == "window") {
-                    if (win.isModal) return path.join(__dirname, "modal", win.name.slice(6).toLowerCase());
-                    return path.join(__dirname, win.name.toLowerCase());
-                }
-                if (type == "repo") return path.join(__dirname, "..");
-                return null;
-            }));
 
             ipc.handle("get", decorate(async (e, k, ...a) => await this.getCallback(e.sender.id, k, ...a)));
             ipc.handle("set", decorate(async (e, k, ...a) => await this.setCallback(e.sender.id, k, ...a)));
@@ -3447,23 +3433,6 @@ const MAIN = async () => {
                     }
                 };
                 dfs(this, windows);
-
-                (async () => {
-                    await util.wait(2000);
-                    const buildTree = async (pth, indent) => {
-                        let dirents = await WindowManager.dirList(pth);
-                        let tree = [];
-                        for (let dirent of dirents) {
-                            if (dirent.name[0] == ".") continue;
-                            if (pth.endsWith("node_modules") && !["three", "ionicons"].includes(dirent.name)) continue;
-                            if (pth.endsWith(path.join(__dirname, "..")) && ["build", "dist", "temp"].includes(dirent.name)) continue;
-                            tree.push(new Array(indent).fill("| ").join("")+dirent.name);
-                            if (dirent.type == "dir") tree.push(...(await buildTree(path.join(pth, dirent.name), indent+1)));
-                        }
-                        return tree;
-                    };
-                    showError("Info", null, (await buildTree(path.join(__dirname, ".."), 0)).join("\n"));
-                });
 
                 (async () => {
                     let pths = await this.getCleanup();
@@ -3941,7 +3910,7 @@ const MAIN = async () => {
                                 robot.default || "model",
                                 ...Object.keys(util.ensure(robot.components, "obj")),
                             ].map(async (name, i) => {
-                                const pth = WindowManager.makePath(this.dataPath, type, "robots", id, lib.FSOperator.sanitizeName(name)+".glb");
+                                const pth = WindowManager.makePath(this.dataPath, type, "robots", id, lib.sanitize(name)+".glb");
                                 if (!(await WindowManager.fileHas(pth))) return;
                                 if (i > 0) models[id].components[name] = pth;
                                 else models[id].default = pth;
@@ -4178,17 +4147,33 @@ const MAIN = async () => {
                     if (v == v2) return await this.delThis("active-theme");
                     return await kfs._writable(["override", "themes", "config.json"], "active", v);
                 },
+                "theme": async (id, k="", v=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    return await kfs._writable(["override", "themes", id, "config.json"], k, v);
+                },
                 "active-template": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-template", "data");
                     if (v == v2) return await this.delThis("active-template");
                     return await kfs._writable(["override", "templates", "config.json"], "active", v);
                 },
+                "template": async (id, k="", v=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    return await kfs._writable(["override", "templates", id, "config.json"], k, v);
+                },
                 "active-robot": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-robot", "data");
                     if (v == v2) return await this.delThis("active-robot");
                     return await kfs._writable(["override", "robots", "config.json"], "active", v);
+                },
+                "robot": async (id, k="", v=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    return await kfs._writable(["override", "robots", id, "config.json"], k, v);
+                },
+                "holiday": async (id, k="", v=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    return await kfs._writable(["override", "holidays", id, "config.json"], k, v);
                 },
 
                 "comp-mode": async v => {
@@ -4264,12 +4249,12 @@ const MAIN = async () => {
                 },
 
                 "active-theme": async () => await kfs._writable(["override", "themes", "config.json"], "active"),
-                "theme": async id => await this.dirDelete(["override", "themes", lib.FSOperator.sanitizeName(id)]),
+                "theme": async id => await this.dirDelete(["override", "themes", lib.keyify(lib.sanitize(id))]),
                 "active-template": async () => await kfs._writable(["override", "templates", "config.json"], "active"),
-                "template": async id => await this.dirDelete(["override", "templates", lib.FSOperator.sanitizeName(id)]),
+                "template": async id => await this.dirDelete(["override", "templates", lib.keyify(lib.sanitize(id))]),
                 "active-robot": async () => await kfs._writable(["override", "robots", "config.json"], "active"),
-                "robot": async id => await this.dirDelete(["override", "robots", lib.FSOperator.sanitizeName(id)]),
-                "holiday": async id => await this.dirDelete(["override", "holidays", lib.FSOperator.sanitizeName(id)]),
+                "robot": async id => await this.dirDelete(["override", "robots", lib.keyify(lib.sanitize(id))]),
+                "holiday": async id => await this.dirDelete(["override", "holidays", lib.keyify(lib.sanitize(id))]),
 
                 "comp-mode": async () => await kfs._writable(["override", "config.json"], "isCompMode"),
                 "native-theme": async () => await kfs._writable(["override", "config.json"], "nativeTheme"),
@@ -4329,27 +4314,46 @@ const MAIN = async () => {
                 "try-load": async () => await this.tryLoad(),
 
                 "_export": async (k, pthDst, id, type=null) => {
+                    k = lib.keyify(lib.sanitize(k));
                     let datas = await this.getThis(k, type);
                     if (!(id in datas)) throw new Error(util.formatText(k)+" with id: "+id+" does not exist");
                     const source = datas[id]._source;
                     if (!["data", "override"].includes(source)) throw new Error(util.formatText(k)+" with id: "+id+" has an invalid source ("+source+")");
-                    pthDst += ".pd"+String(k).slice(0, -1);
-                    const pthSrc = WindowManager.makePath(this.dataPath, source, k, lib.FSOperator.sanitizeName(id));
+                    pthDst += ".pd"+k.slice(0, -1);
+                    const pthSrc = WindowManager.makePath(this.dataPath, source, k, lib.keyify(lib.sanitize(id)));
                     await tarCompress(pthSrc, pthDst);
                     return pthDst;
                 },
                 "_import": async (k, pthSrc) => {
+                    k = lib.keyify(lib.sanitize(k));
                     const pthDst = WindowManager.makePath(this.dataPath, "override", k);
                     await tarDecompress(pthSrc, pthDst);
                 },
+                "_rekey": async (k, idSrc, idDst) => {
+                    k = lib.keyify(lib.sanitize(k));
+                    await fs.promises.rename(
+                        WindowManager.makePath(this.dataPath, "override", k, lib.keyify(lib.sanitize(idSrc))),
+                        WindowManager.makePath(this.dataPath, "override", k, lib.keyify(lib.sanitize(idDst))),
+                    );
+                },
                 "theme-export": async (pthDst, id, type=null) => await kfs._export("themes", pthDst, id, type),
                 "theme-import": async pthSrc => await kfs._import("themes", pthSrc),
+                "theme-rekey": async (idSrc, idDst) => await kfs._rekey("themes", idSrc, idDst),
+                "theme-make": async (id, template) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    await this.dirAffirm(["override", "themes", id]);
+                    await this.fileAffirm(["override", "themes", id, "config.json"], JSON.stringify(template));
+                    return id;
+                },
                 "template-export": async (pthDst, id, type=null) => await kfs._export("templates", pthDst, id, type),
                 "template-import": async pthSrc => await kfs._import("templates", pthSrc),
+                "template-rekey": async (idSrc, idDst) => await kfs._rekey("templates", idSrc, idDst),
                 "robot-export": async (pthDst, id, type=null) => await kfs._export("robots", pthDst, id, type),
                 "robot-import": async pthSrc => await kfs._import("robots", pthSrc),
+                "robot-rekey": async (idSrc, idDst) => await kfs._rekey("robots", idSrc, idDst),
                 "holiday-export": async (pthDst, id, type=null) => await kfs._export("holidays", pthDst, id, type),
                 "holiday-import": async pthSrc => await kfs._import("holidays", pthSrc),
+                "holiday-rekey": async (idSrc, idDst) => await kfs._rekey("holidays", idSrc, idDst),
             };
             if (k in kfs) return await kfs[k](...a);
             throw new MissingError("Could not on for key: "+k);

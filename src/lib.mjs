@@ -66,6 +66,20 @@ export function findStep(v, n=10) {
 }
 /*.lw}*/
 
+export function keyify(s) {
+    return String(s).split("").filter(c => util.BASE64.includes(c)).join("");
+}
+export function sanitize(s) {
+    s = String(s)
+        .replaceAll(/[\/\\<>:"\|\?\*%,;=]/g, "-")
+        .split("")
+        .map(c => c.charCodeAt(0) >= 32 ? c : "")
+        .join("");
+    while (s.endsWith(".") || s.endsWith(" ")) s = s.slice(0, -1);
+    while (s.startsWith(".") || s.startsWith(" ")) s = s.slice(1);
+    return s;
+}
+
 export const APPFEATURES = ["PANEL", "PLANNER", "PIT", "PYTHONTK"];
 export const FEATURES = ["PORTAL", "PRESETS", ...APPFEATURES];
 export const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
@@ -271,17 +285,6 @@ export class FSOperator extends util.Target {
     async dirDeny(pth) { return await this.constructor.dirDeny([this.root, pth]); }
 
     static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
-
-    static sanitizeName(name) {
-        name = String(name)
-            .replaceAll(/[\/\\<>:"\|\?\*%,;=]/g, "-")
-            .split("")
-            .map(c => c.charCodeAt(0) >= 32 ? c : "")
-            .join("");
-        while (name.endsWith(".") || name.endsWith(" ")) name = name.slice(0, -1);
-        while (name.startsWith(".") || name.startsWith(" ")) name = name.slice(1);
-        return name;
-    }
 }
 
 /*.lw{*/

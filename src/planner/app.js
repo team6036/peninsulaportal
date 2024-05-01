@@ -43,7 +43,7 @@ class RLabel extends core.Odometry2d.Render {
             ];
             let offset = [0, 5];
             for (let i = 0; i < pth.length; i++) {
-                let p = this.odometry.worldToCanvas(this.pos).iadd(pth[i].clone().iadd(offset).imul(+1,-1).imul(quality));
+                let p = this.odometry.worldToCanvas(this.pos).iadd(new V(pth[i]).iadd(offset).imul(+1,-1).imul(quality));
                 if (i > 0) ctx.lineTo(...p.xy);
                 else ctx.moveTo(...p.xy);
             }
@@ -981,21 +981,18 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.addHandler("change-project.maximized", () => this.format());
         this.addHandler("change-project.sidePos", () => this.format());
 
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
-        const templateImages = core.GLOBALSTATE.getProperty("template-images").value;
-
         let timer = 0;
         this.addHandler("update", delta => {
             if (this.odometry2d.elem.classList.contains("this")) {
                 this.odometry2d.update(delta);
-                this.odometry2d.size = this.hasProject() ? this.project.size : 0;
-                this.odometry2d.imageSrc = (this.hasProject() && this.project.hasTemplate()) ? "file://"+templateImages[this.project.template] : null;
+                this.odometry2d.template = this.hasProject() ? this.project.template : null;
+                this.odometry2d.emptySize = this.hasProject() ? this.project.size : 0;
             }
 
             if (this.odometry3d.elem.classList.contains("this")) {
                 this.odometry3d.update(delta);
-                this.odometry3d.size = this.hasProject() ? this.project.size : 0;
                 this.odometry3d.template = this.hasProject() ? this.project.template : null;
+                this.odometry3d.emptySize = this.hasProject() ? this.project.size : 0;
             }
 
             if (!this.choosing)
@@ -1185,7 +1182,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (!(name in templates)) return false;
         const globalTemplate = util.ensure(templates[name], "obj");
         const template = {};
-        template[".size"] = globalTemplate["size"];
         template[".robotW"] = globalTemplate["robotSize"];
         template[".robotMass"] = globalTemplate["robotMass"];
         for (let k in template) {
