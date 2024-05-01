@@ -174,3 +174,18 @@
 .form input {
     --od: transparent;
 }
+#PAGE > .main > div .form > .item.html > .content:has(> .odom) {
+    flex-wrap: wrap;
+    justify-content: stretch;
+    align-items: stretch;
+    align-content: stretch;
+}
+#PAGE > .main > div .form > .item.html > .content > .odom {
+    flex-basis: auto;
+
+    min-width: 450px;
+    min-height: 300px;
+
+    background-color: var(--v2-8);
+    border-radius: 5px;
+}

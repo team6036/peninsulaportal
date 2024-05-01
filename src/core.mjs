@@ -502,6 +502,23 @@ export class PTooltip extends HTMLElement {
         this.#eTitle.classList.add("title");
         this.#ePicker = document.createElement("div");
         this.#ePicker.classList.add("picker");
+        this.#ePicker.addEventListener("mousedown", e => {
+            e.stopPropagation();
+            e.preventDefault();
+            const mouseup = () => {
+                document.body.removeEventListener("mouseup", mouseup);
+                document.body.removeEventListener("mousemove", mousemove);
+            };
+            const mousemove = e => {
+                let r = this.#ePicker.getBoundingClientRect();
+                let x = (e.pageX - r.left) / r.width;
+                let y = (e.pageY - r.top) / r.height;
+                this.color.s = x;
+                this.color.v = 1-y;
+            };
+            document.body.addEventListener("mouseup", mouseup);
+            document.body.addEventListener("mousemove", mousemove);
+        });
         this.#ePickerThumb = document.createElement("div");
         this.#ePicker.appendChild(this.#ePickerThumb);
         this.#eSliders = document.createElement("div");
@@ -1137,6 +1154,7 @@ export class App extends util.Target {
             } catch (e) { await this.doError("State Error", "PagePersistentStates Set", e); }
             return true;
         });
+        this.addHandler("cmd-check", async () => await GLOBALSTATE.get());
         this.addHandler("cmd-about", async () => {
             const holiday = this.holiday;
             const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
@@ -4694,7 +4712,10 @@ export class Odometry extends util.Target {
 
     #doRender;
 
+    #template;
+
     #size;
+    #emptySize;
 
     #hints;
 
@@ -4715,7 +4736,10 @@ export class Odometry extends util.Target {
 
         this.#doRender = true;
 
+        this.#template = null;
+
         this.#size = new V();
+        this.#emptySize = new V();
 
         this.#hints = new Set();
 
@@ -4724,9 +4748,16 @@ export class Odometry extends util.Target {
 
         this.quality = 2;
 
-        this.size = 1000;
+        this.size = 0;
+        this.emptySize = 10;
+
+        const templatesProperty = GLOBALSTATE.getProperty("templates");
 
         this.addHandler("update", delta => {
+            const templates = templatesProperty.value;
+            if (this.hasTemplate() && templates[this.template])
+                this.size = templates[this.template].size;
+            else this.size = this.emptySize;
             if (!this.doRender) return;
             this.rend(delta);
         });
@@ -4747,6 +4778,21 @@ export class Odometry extends util.Target {
 
     get doRender() { return this.#doRender; }
     set doRender(v) { this.#doRender = !!v; }
+
+    get template() { return this.#template; }
+    set template(v) {
+        v = (v == null) ? null : String(v);
+        if (this.template == v) return;
+        this.change("template", this.template, this.#template=v);
+    }
+    hasTemplate() { return this.template != null; }
+
+    get emptySize() { return this.#emptySize; }
+    set emptySize(v) { this.#emptySize.set(v); }
+    get eW() { return this.emptySize.x; }
+    set eW(v) { this.emptySize.x = v; }
+    get eH() { return this.emptySize.y; }
+    set eH(v) { this.emptySize.y = v; }
 
     get size() { return this.#size; }
     set size(v) { this.#size.set(v); }
@@ -4799,10 +4845,12 @@ export class Odometry2d extends Odometry {
 
     #image;
     #imageShow;
+    #imageAlpha;
 
     #padding;
     #axisInteriorX;
     #axisInteriorY;
+    #drawGrid;
 
     #unit;
 
@@ -4812,6 +4860,16 @@ export class Odometry2d extends Odometry {
     static AFTERIMAGE = 2;
     static BEFOREBORDER = 2;
     static AFTERBORDER = 3;
+
+    static async loadField(name) {
+        name = String(name);
+        const templates = GLOBALSTATE.getProperty("templates").value;
+        const templateImages = GLOBALSTATE.getProperty("template-images").value;
+        if (!(name in templates)) return null;
+        if (!(name in templateImages)) return null;
+        const template = util.ensure(templates[name], "obj");
+        return templateImages[name];
+    }
 
     constructor(elem) {
         super(elem);
@@ -4838,10 +4896,12 @@ export class Odometry2d extends Odometry {
 
         this.#image = new Image();
         this.#imageShow = null;
+        this.#imageAlpha = 0.25;
 
         this.#padding = new util.V4();
         this.#axisInteriorX = false;
         this.#axisInteriorY = false;
+        this.#drawGrid = true;
 
         this.#unit = null;
 
@@ -4849,9 +4909,18 @@ export class Odometry2d extends Odometry {
 
         this.unit = "m";
 
+        let fieldLock = false;
+
         const timer = new util.Timer(true);
         this.addHandler("render", delta => {
             if (timer.dequeueAll(250)) update();
+
+            if (!fieldLock)
+                (async () => {
+                    fieldLock = true;
+                    this.imageSrc = await Odometry2d.loadField(this.template);
+                    fieldLock = false;
+                })();
 
             const ctx = this.ctx, quality = this.quality, padding = this.padding, scale = this.scale;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -4882,11 +4951,13 @@ export class Odometry2d extends Odometry {
             let y3 = mxy + 10*quality*(this.axisInteriorX ? -1 : 1);
             for (let i = +this.axisInteriorX; i <= w; i += step) {
                 let x = util.lerp(mnx, mxx, lib.Unit.convert(i, this.unit, "m") / this.w);
-                ctx.strokeStyle = PROPERTYCACHE.get("--v2");
-                ctx.beginPath();
-                ctx.moveTo(x, y0);
-                ctx.lineTo(x, y1);
-                ctx.stroke();
+                if (this.drawGrid) {
+                    ctx.strokeStyle = PROPERTYCACHE.get("--v2");
+                    ctx.beginPath();
+                    ctx.moveTo(x, y0);
+                    ctx.lineTo(x, y1);
+                    ctx.stroke();
+                }
                 ctx.strokeStyle = PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
@@ -4903,11 +4974,13 @@ export class Odometry2d extends Odometry {
             let x3 = mnx - 10*quality*(this.axisInteriorY ? -1 : 1);
             for (let i = +this.axisInteriorY; i <= h; i += step) {
                 let y = util.lerp(mxy, mny, lib.Unit.convert(i, this.unit, "m") / this.h);
-                ctx.strokeStyle = PROPERTYCACHE.get("--v2");
-                ctx.beginPath();
-                ctx.moveTo(x0, y);
-                ctx.lineTo(x1, y);
-                ctx.stroke();
+                if (this.drawGrid) {
+                    ctx.strokeStyle = PROPERTYCACHE.get("--v2");
+                    ctx.beginPath();
+                    ctx.moveTo(x0, y);
+                    ctx.lineTo(x1, y);
+                    ctx.stroke();
+                }
                 ctx.strokeStyle = PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x1, y);
@@ -4929,7 +5002,7 @@ export class Odometry2d extends Odometry {
             try {
                 if (this.#imageShow) {
                     let imageScale = ((this.w/this.#image.width)+(this.h/this.#image.height))/2;
-                    ctx.globalAlpha = 0.25;
+                    ctx.globalAlpha = this.imageAlpha;
                     ctx.globalCompositeOperation = "overlay";
                     ctx.drawImage(
                         this.#image,
@@ -4973,6 +5046,12 @@ export class Odometry2d extends Odometry {
         this.#imageShow = v;
         this.#image.src = v;
     }
+    get imageAlpha() { return this.#imageAlpha; }
+    set imageAlpha(v) {
+        v = Math.min(1, Math.max(0, util.ensure(v, "num")));
+        if (this.imageAlpha == v) return;
+        this.change("imageAlpha", this.imageAlpha, this.#imageAlpha=v);
+    }
 
     get padding() { return this.#padding; }
     set padding(v) { this.#padding.set(v); }
@@ -5001,6 +5080,13 @@ export class Odometry2d extends Odometry {
     }
     get axisExteriorY() { return !this.axisInteriorY; }
     set axisExteriorY(v) { this.axisInteriorY = !v; }
+
+    get drawGrid() { return this.#drawGrid; }
+    set drawGrid(v) {
+        v = !!v;
+        if (this.drawGrid == v) return;
+        this.#drawGrid = v;
+    }
 
     get unit() { return this.#unit; }
     set unit(v) { this.#unit = String(v); }
@@ -5676,8 +5762,6 @@ export class Odometry3d extends Odometry {
     #axisScene;
     #axisSceneSized;
 
-    #template;
-
     #field;
     #theField;
 
@@ -5971,8 +6055,6 @@ export class Odometry3d extends Odometry {
         axes.add(zAxis);
         this.axisSceneSized.planes = [];
 
-        this.#template = null;
-
         this.#field = null;
         this.#theField = null;
 
@@ -6260,14 +6342,6 @@ export class Odometry3d extends Odometry {
     get axisScene() { return this.#axisScene; }
     get axisSceneSized() { return this.#axisSceneSized; }
 
-    get template() { return this.#template; }
-    set template(v) {
-        v = (v == null) ? null : String(v);
-        if (this.template == v) return;
-        this.change("template", this.template, this.#template=v);
-    }
-    hasTemplate() { return this.template != null; }
-
     get field() { return this.#field; }
     get theField() { return this.#theField; }
     set field(v) {
@@ -6329,21 +6403,23 @@ export class Odometry3d extends Odometry {
         if (!["proj", "iso"].includes(v)) v = "proj";
         if (this.renderType == v) return;
         [v, this.#renderType] = [this.renderType, v];
-        let renderfs;
-        renderfs = {
+        let renderfs = {
             proj: () => new THREE.PerspectiveCamera(75, 1, 0.15, 1000),
             iso: () => new THREE.OrthographicCamera(0, 0, 0, 0, 0.1, 1000),
         };
         this.#camera = (this.renderType in renderfs) ? renderfs[this.renderType]() : null;
-        renderfs = {
+        this.repositionCamera();
+        this.change("renderType", v, this.renderType);
+        this.updateControls();
+        this.requestRedraw();
+    }
+    repositionCamera() {
+        let renderfs = {
             proj: [0, 7.5, -7.5],
             iso: [10, 10, -10],
         };
         this.camera.position.set(...((this.renderType in renderfs) ? renderfs[this.renderType] : [0, 0, 0]));
         this.camera.lookAt(0, 0, 0);
-        this.change("renderType", v, this.renderType);
-        this.updateControls();
-        this.requestRedraw();
     }
     get controlType() { return this.#controlType; }
     set controlType(v) {
@@ -8529,6 +8605,8 @@ Form.DirentInput = class FormDirentInput extends Form.Field {
     set dialogFilters(v) { this.#dialogFilters = util.ensure(v, "arr"); }
     get dialogProperties() { return this.#dialogProperties; }
     set dialogProperties(v) { this.#dialogProperties = util.ensure(v, "arr"); }
+
+    get focused() { return this.eInput.focused; }
 };
 Form.ColorInput = class FormColorInput extends Form.Field {
     #useAlpha;
@@ -8543,10 +8621,6 @@ Form.ColorInput = class FormColorInput extends Form.Field {
         this.elem.classList.add("color");
         
         super.value = new util.Color();
-
-        this.addHandler("change-disabled", () => {
-            this.eInput.disabled = this.eColorbox.disabled = this.disabled;
-        });
         
         this.value.addHandler("change", (c, f, t) => this.change("value", null, this.value));
         this.#useAlpha = null;
@@ -8580,10 +8654,10 @@ Form.ColorInput = class FormColorInput extends Form.Field {
             this.value.set(this.eInput.value);
         });
         const apply = () => {
+            this.eInput.disabled = this.eColorbox.disabled = this.disabled;
+
             this.eInput.value = this.value.toHex(this.useAlpha);
-            this.eInput.disabled = this.disabled;
             this.eColorbox.style.backgroundColor = this.value.toHex(this.useAlpha);
-            this.eColorbox.disabled = this.disabled;
             ignore = true;
             this.eColorPicker.color = this.value;
             this.eColorPicker.useA = this.useAlpha;
@@ -8607,6 +8681,8 @@ Form.ColorInput = class FormColorInput extends Form.Field {
     get eColorbox() { return this.#eColorbox; }
     get eColorPicker() { return this.#eColorPicker; }
     get eInput() { return this.#eInput; }
+
+    get focused() { return this.eInput.focused; }
 };
 Form.EnumInput = class FormEnumInput extends Form.Field {
     #values;
@@ -9015,6 +9091,33 @@ Form.Button = class FormButton extends Form.Field {
         });
     }
 };
+Form.Buttons = class FormButtons extends Form.Field {
+    constructor(name, buttons) {
+        super(name);
+
+        this.elem.classList.add("button");
+        
+        const btns = util.ensure(buttons, "arr").map((data, i) => {
+            data = util.ensure(data, "obj");
+            const btn = document.createElement("button");
+            this.eContent.appendChild(btn);
+            btn.addEventListener("click", e => {
+                e.stopPropagation();
+                this.post("trigger", i, e);
+            });
+            btn.textContent = data.text;
+            ["normal", "special", "on", "off"].forEach(name => {
+                if (name == data.type) btn.classList.add(name);
+                else btn.classList.remove(name);
+            });
+            return btn;
+        });
+
+        this.addHandler("change-disabled", () => {
+            btns.forEach(btn => (btn.disabled = this.disabled));
+        });
+    }
+};
 Form.Line = class FormLine extends Form.Field {
     constructor(color="var(--v2)") {
         super("§");
@@ -9039,14 +9142,22 @@ Form.SubForm = class FormSubForm extends Form.Field {
         this.eHeader.firstChild.name = "chevron-forward";
         this.eHeader.addEventListener("click", e => {
             e.stopPropagation();
-            if (this.elem.classList.contains("this"))
-                this.elem.classList.remove("this");
-            else this.elem.classList.add("this");
+            this.isOpen = !this.isOpen;
         });
 
         this.#form = new Form();
         this.eContent.appendChild(this.form.elem);
     }
+
+    get isOpen() { return this.elem.classList.contains("this"); }
+    set isOpen(v) {
+        if (v) this.elem.classList.add("this");
+        else this.elem.classList.remove("this");
+    }
+    get isClosed() { return !this.isOpen; }
+    set isClosed(v) { this.isOpen = !v; }
+    open() { return this.isOpen = true; }
+    close() { return this.isClosed = true; }
 
     get form() { return this.#form; }
 };

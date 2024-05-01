@@ -7261,9 +7261,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         this.quality = this.odometry.quality;
 
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
-        const templateImages = core.GLOBALSTATE.getProperty("template-images").value;
-
         const updateSize = () => {
             this.fSize.value = this.size;
             this.fRobotSize.value = this.robotSize;
@@ -7281,8 +7278,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
             if (core.GLOBALSTATE.getting) return;
 
-            this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
-            this.odometry.imageSrc = (this.template in templateImages) ? "file://"+templateImages[this.template] : null;
+            this.odometry.template = this.template;
+            this.odometry.emptySize = this.size;
 
             if (this.isClosed) return;
             const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
@@ -7572,7 +7569,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         this.#renders = [];
         this.#trailRenders = [];
 
-        const templates = core.GLOBALSTATE.getProperty("templates").value
+        const templates = core.GLOBALSTATE.getProperty("templates").value;
 
         const convertPos = (...v) => {
             v = new V(...v);
@@ -7970,8 +7967,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         new ResizeObserver(updateResize).observe(optionsForm.elem);
         this.addHandler("add", updateResize);
 
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
-
         this.addHandler("change-lengthUnits", () => {
             this.fCameraPos.activeType = this.lengthUnits;
         });
@@ -8048,8 +8043,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 this.fCameraPos["xyz"[i]] = this.odometry.camera.position["xyz"[i]];
             ignore = false;
 
-            this.odometry.size = (this.template in templates) ? util.ensure(templates[this.template], "obj").size : this.size;
             this.odometry.template = this.template;
+            this.odometry.emptySize = this.size;
 
             this.odometry.update(delta);
         });
