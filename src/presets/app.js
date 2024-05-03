@@ -1136,8 +1136,32 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
         });
         fDefault.type = "(no file extension)";
 
+        const odometry3d = new core.Odometry3d();
+        const fOdom3d = this.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
+        const odom3dDropTarget = new core.DropTarget(fOdom3d.elem, async e => {
+            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+            items = items.filter(item => item instanceof File);
+            if (items.length <= 0) return;
+            await window.api.set("robot-default", this.k, k, items[0].path);
+        });
+
         const fComponentsForm = this.form.addField(new core.Form.SubForm("components"));
         const componentsForm = fComponentsForm.form;
+        componentsForm.isHorizontal = true;
+        const fAddComponent = componentsForm.addField(new core.Form.Button("add-component", "Add", "special"));
+        fAddComponent.addHandler("trigger", async e => {
+            let k = await this.app.doPrompt("Robot Component Key", "Enter a unique key identifier");
+            if (k == null) return;
+            const robot = util.ensure(await window.api.get("robot", k), "obj");
+            const components = util.ensure(robot.components, "obj");
+            if (k in components)
+                return this.app.doWarn("Robot Component Key", "This key ("+k+") already exists!");
+            this.change("data.components."+k, null, {
+                name: util.formatText(k),
+            });
+        });
         const fComponents = {};
 
         const update = () => {
@@ -1145,10 +1169,12 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             fButtons.eContent.children[2].disabled =
             fName.disabled =
             fBumperDetect.disabled =
-            fDefault.disabled = this.disabled;
+            fDefault.disabled =
+            odom3dDropTarget.disabled = this.disabled;
             for (let k in fComponents) {
                 fComponents[k].fRemove.disabled =
-                fComponents[k].fName.disabled = this.disabled;
+                fComponents[k].fName.disabled =
+                fComponents[k].dropTarget.disabled = this.disabled;
             }
         };
 
@@ -1178,6 +1204,10 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     const fRemove = fComponents[k].fRemove = fForm.form.addField(new core.Form.Button("remove-component", "Remove", "off"));
                     fRemove.addHandler("trigger", async e => {
                         if (ignore) return;
+                        try {
+                            await window.api.del("robot-component", this.k, k);
+                            await window.api.del("robot", this.k, "components."+k);
+                        } catch (e) { this.app.doError("Robot Component Removal Error", this.k+", "+k, e); }
                     });
                     const fName = fComponents[k].fName = fForm.form.addField(new core.Form.TextInput("name"));
                     fName.addHandler("change-value", async () => {
@@ -1187,6 +1217,14 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     fName.type = "";
                     const odometry3d = fComponents[k].odometry3d = new core.Odometry3d();
                     const fOdom3d = fComponents[k].fOdom3d = fForm.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
+                    fComponents[k].dropTarget = new core.DropTarget(fOdom3d.eContent, async e => {
+                        let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+                        items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+                        if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+                        items = items.filter(item => item instanceof File);
+                        if (items.length <= 0) return;
+                        await window.api.set("robot-component", this.k, k, items[0].path);
+                    });
                 }
                 const fForm = fComponents[k].fForm;
                 fForm.header = component.name || k;
@@ -1197,7 +1235,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             for (let k in fComponents) {
                 if (k in components) continue;
                 fComponents[k].odometry3d.renderer.forceContextLoss();
-                fComponentsForm.remField(fComponents[k].fForm);
+                componentsForm.remField(fComponents[k].fForm);
                 delete fComponents[k];
             }
 
@@ -1206,6 +1244,8 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             update();
         });
 
+        let loadLock = false;
+        let object = null, theObject = null, wantedObject = null;
         this.addHandler("update", delta => {
             for (let k in fComponents) {
                 if (this.fForm.isOpen && fComponents[k].fForm.isOpen) {
@@ -1213,15 +1253,30 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     if (!fComponents[k].loadLock)
                         (async () => {
                             fComponents[k].loadLock = true;
-                            fComponents[k].theObject = await core.Odometry3d.loadRobot(this.k, "basic", k);
+                            fComponents[k].wantedObject = await core.Odometry3d.loadRobot(this.k, "basic", k);
                             fComponents[k].loadLock = false;
                         })();
-                    if (fComponents[k].object != fComponents[k].theObject) {
-                        if (fComponents[k].object) fComponents[k].odometry3d.wpilibGroup.remove(fComponents[k].object);
-                        fComponents[k].object = fComponents[k].theObject.clone();
-                        if (fComponents[k].object) fComponents[k].odometry3d.wpilibGroup.add(fComponents[k].object);
+                    if (fComponents[k].object != fComponents[k].wantedObject) {
+                        if (fComponents[k].theObject) fComponents[k].odometry3d.wpilibGroup.remove(fComponents[k].theObject);
+                        fComponents[k].object = fComponents[k].wantedObject;
+                        fComponents[k].theObject = fComponents[k].object.clone();
+                        if (fComponents[k].theObject) fComponents[k].odometry3d.wpilibGroup.add(fComponents[k].theObject);
                     }
                 } else fComponents[k].odometry3d.repositionCamera(0.1);
+            }
+            if (this.fForm.isClosed) return odometry3d.repositionCamera(0.1);
+            odometry3d.update(delta);
+            if (!loadLock)
+                (async () => {
+                    loadLock = true;
+                    wantedObject = await core.Odometry3d.loadRobot(this.k, "basic");
+                    loadLock = false;
+                })();
+            if (object != wantedObject) {
+                if (theObject) odometry3d.wpilibGroup.remove(theObject);
+                object = wantedObject;
+                theObject = object.clone();
+                if (theObject) odometry3d.wpilibGroup.add(theObject);
             }
         });
     }
