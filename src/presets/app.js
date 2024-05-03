@@ -170,6 +170,8 @@ App.Form = class AppForm extends util.Target {
         this.form.isHorizontal = true;
         this.#fHeader = this.form.addField(new core.Form.Header(""));
 
+        this.form.addField(new core.Form.Line());
+
         this.header = header || util.formatText(this.name);
     }
 
@@ -278,7 +280,11 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.#fScoutURL = this.form.addField(new core.Form.NInput("scout-url", 1, "url"));
         this.fScoutURL.type = "";
 
-        this.fSocketHost.disabled = this.fAssetsOwner.disabled = this.fAssetsRepo.disabled = this.fAssetsTag.disabled = this.fScoutURL.disabled = true;
+        this.fSocketHost.disabled =
+        this.fAssetsOwner.disabled =
+        this.fAssetsRepo.disabled =
+        this.fAssetsTag.disabled =
+        this.fScoutURL.disabled = true;
 
         this.addHandler("pull", async () => {
             ignore = true;
@@ -406,13 +412,8 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
     constructor(name, app) {
         super(name, app);
 
-        let ignore = false;
-
-        this.form.addField(new core.Form.Line());
-
-        const inheritedField = this.form.addField(new core.Form.SubForm("Database Inherited"));
-        inheritedField.isHorizontal = false;
-        const inheritedForm = inheritedField.form;
+        const fInherited = this.form.addField(new core.Form.SubForm("Database Inherited"));
+        const inheritedForm = fInherited.form;
         
         this.form.addField(new core.Form.Line());
 
@@ -430,14 +431,13 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
 
         let lock = false;
         this.addHandler("pull", async () => {
-            ignore = true;
             await Promise.all([
                 async () => {
                     const data = util.ensure(await this.getInherited(), "obj");
                     for (let k in data) {
                         if (!(k in dataItems)) {
                             dataItems[k] = new this.constructor.Item(k, this);
-                            inheritedForm.addField(dataItems[k].formField);
+                            inheritedForm.addField(dataItems[k].fForm);
                             dataItems[k].onAdd();
                             dataItems[k].disable();
                         }
@@ -446,12 +446,11 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
                     for (let k in dataItems) {
                         if (k in data) continue;
                         dataItems[k].onRem();
-                        inheritedForm.remField(dataItems[k].formField);
+                        inheritedForm.remField(dataItems[k].fForm);
                         delete dataItems[k];
                     }
                 },
             ].map(f => f()));
-            ignore = false;
             if (lock) return;
             lock = true;
             for (let id in changes)
@@ -473,7 +472,7 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
             for (let k in overrides) {
                 if (!(k in overrideItems)) {
                     overrideItems[k] = new this.constructor.Item(k, this);
-                    this.form.addField(overrideItems[k].formField);
+                    this.form.addField(overrideItems[k].fForm);
                     overrideItems[k].addLinkedHandler(this, "change", (c, f, t) => {
                         if (!c.startsWith("data.")) return;
                         c = c.slice(5);
@@ -488,7 +487,7 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
                 if (k in overrides) continue;
                 overrideItems[k].clearLinkedHandlers(this, "change");
                 overrideItems[k].onRem();
-                this.form.remField(overrideItems[k].formField);
+                this.form.remField(overrideItems[k].fForm);
                 delete overrideItems[k];
             }
         };
@@ -513,7 +512,7 @@ App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
     #k;
 
     #appForm;
-    #formField;
+    #fForm;
 
     #disabled;
 
@@ -524,8 +523,7 @@ App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
 
         if (!(appForm instanceof App.OverrideForm)) throw new Error("AppForm is not of class AppOverrideForm");
         this.#appForm = appForm;
-        this.#formField = new core.Form.SubForm(this.k);
-        this.formField.isHorizontal = false;
+        this.#fForm = new core.Form.SubForm(this.k);
 
         this.#disabled = false;
     }
@@ -534,8 +532,8 @@ App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
 
     get appForm() { return this.#appForm; }
     get app() { return this.appForm.app; }
-    get formField() { return this.#formField; }
-    get form() { return this.formField.form; }
+    get fForm() { return this.#fForm; }
+    get form() { return this.fForm.form; }
 
     get disabled() { return this.#disabled; }
     set disabled(v) {
@@ -563,6 +561,10 @@ App.ThemesForm = class AppThemesForm extends App.OverrideForm {
             const result = util.ensure(await App.fileOpenDialog({
                 title: "Import Theme...",
                 buttonLabel: "Open",
+                filters: [{
+                    name: "PDTheme",
+                    extensions: ["pdtheme"],
+                }],
                 properties: [
                     "openFile",
                 ],
@@ -606,14 +608,16 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
     constructor(...a) {
         super(...a);
 
+        let ignore = false;
+
         this.form.isHorizontal = true;
-        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+        const fButtons = this.form.addField(new core.Form.Buttons("", [
             { text: "Export", type: "special" },
             { text: "Remove", type: "off" },
             { text: "Change Key", type: "normal" },
         ]));
-        buttonsField.showHeader = false;
-        buttonsField.addHandler("trigger", async (i, e) => {
+        fButtons.header = "";
+        fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
                 const result = util.ensure(await App.fileSaveDialog({
                     title: "Export Theme...",
@@ -644,63 +648,61 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
             }
         });
 
-        let nameFieldIgnore = false;
-        const nameField = this.form.addField(new core.Form.TextInput("name"));
-        nameField.addHandler("change-value", () => {
-            if (nameFieldIgnore) return;
-            this.change("data.name", null, nameField.value);
+        const fName = this.form.addField(new core.Form.TextInput("name"));
+        fName.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.name", null, (fName.value.length > 0) ? fName.value : null);
         });
-        nameField.type = "";
+        fName.type = "";
 
-        const colorsFormField = this.form.addField(new core.Form.SubForm("colors"));
-        colorsFormField.isHorizontal = false;
-        const colorsForm = colorsFormField.form;
+        const fColorsForm = this.form.addField(new core.Form.SubForm("colors"));
+        const colorsForm = fColorsForm.form;
         colorsForm.isHorizontal = true;
         colorsForm.elem.style.padding = "0px";
-        const colorsHTMLField = colorsForm.addField(new core.Form.HTML(""));
+        const fColorsHTML = colorsForm.addField(new core.Form.HTML(""));
         const colorForms = new Array(2).fill(null).map(_ => {
             const form = new core.Form();
             form.isHorizontal = true;
             form.elem.style.padding = "0px";
-            colorsHTMLField.eContent.appendChild(form.elem);
+            fColorsHTML.eContent.appendChild(form.elem);
             return form;
         });
-        const colorFields = {};
+        const fColors = {};
 
-        const baseFormField = this.form.addField(new core.Form.SubForm("base"));
-        baseFormField.isHorizontal = false;
-        const baseForm = baseFormField.form;
+        const fBaseForm = this.form.addField(new core.Form.SubForm("base"));
+        const baseForm = fBaseForm.form;
         baseForm.isHorizontal = true;
-        const baseFields = [];
+        const fBases = [];
 
         const update = () => {
-            buttonsField.eContent.children[1].disabled = this.disabled;
-            nameField.disabled = this.disabled;
-            for (let k in colorFields)
-                colorFields[k].field.disabled = this.disabled;
-            baseFields.forEach(field => (field.disabled = this.disabled));
+            fButtons.eContent.children[1].disabled =
+            fButtons.eContent.children[2].disabled =
+            fName.disabled = this.disabled;
+            for (let k in fColors)
+                fColors[k].field.disabled = this.disabled;
+            fBases.forEach(field => (field.disabled = this.disabled));
         };
 
         this.addHandler("change-disable", update);
 
         this.addHandler("apply", data => {
+            ignore = true;
+
             data = util.ensure(data, "obj");
 
-            this.formField.header = data.name || this.k;
-            this.formField.type = this.k;
+            this.fForm.header = data.name || this.k;
+            this.fForm.type = this.k;
 
-            nameFieldIgnore = true;
-            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
-            nameFieldIgnore = false;
+            if (!fName.focused) fName.value = util.ensure(data.name, "str");
 
             const colors = util.ensure(data.colors, "obj");
             for (let k in colors) {
-                if (!(k in colorFields)) {
+                if (!(k in fColors)) {
                     let j = 0;
                     for (let jj = 1; jj < colorForms.length; jj++)
                         if (colorForms[jj].fields.length < colorForms[j].fields.length)
                             j = jj;
-                    colorFields[k] = {
+                    fColors[k] = {
                         form: colorForms[j],
                         field: colorForms[j].addField(new core.Form.ColorInput({
                             r: "Red",
@@ -713,48 +715,46 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
                             m: "Magenta",
                         }[k] || k, null)),
                     };
-                    colorFields[k].field.useAlpha = false;
-                    colorFields[k].field.addLinkedHandler(this, "change-value", () => {
-                        if (colorFields[k]._ignore) return;
-                        this.change("data.colors."+k, null, colorFields[k].field.value.toHex(false));
+                    fColors[k].field.useAlpha = false;
+                    fColors[k].field.addLinkedHandler(this, "change-value", () => {
+                        if (ignore) return;
+                        this.change("data.colors."+k, null, fColors[k].field.value.toHex(false));
                     });
                 }
-                const field = colorFields[k].field;
-                colorFields[k]._ignore = true;
+                const field = fColors[k].field;
                 if (!field.focused) field.value = colors[k];
-                colorFields[k]._ignore = false;
                 field.type = "--c"+k;
             }
-            for (let k in colorFields) {
+            for (let k in fColors) {
                 if (k in colors) continue;
-                colorFields[k].field.clearLinkedHandlers(this, "change-value");
-                colorFields[k].form.remField(colorFields[k].field);
-                delete colorFields[k];
+                fColors[k].field.clearLinkedHandlers(this, "change-value");
+                fColors[k].form.remField(fColors[k].field);
+                delete fColors[k];
             }
 
             const base = util.ensure(data.base, "arr");
-            while (baseFields.length < base.length) {
-                let i = baseFields.length;
-                baseFields.push({
+            while (fBases.length < base.length) {
+                let i = fBases.length;
+                fBases.push({
                     field: baseForm.addField(new core.Form.ColorInput(i, null)),
                 });
-                baseFields[i].field.addLinkedHandler(this, "change-value", () => {
-                    if (baseFields[i]._ignore) return;
-                    this.change("data.base."+i, null, baseFields[i].field.value.toHex(false));
+                fBases[i].field.addLinkedHandler(this, "change-value", () => {
+                    if (ignore) return;
+                    this.change("data.base."+i, null, fBases[i].field.value.toHex(false));
                 });
             }
-            while (baseFields.length > base.length) {
-                let i = baseFields.length-1;
-                baseFields[i].field.clearLinkedHandlers(this, "change-value");
-                baseForm.remField(baseFields.pop().field);
+            while (fBases.length > base.length) {
+                let i = fBases.length-1;
+                fBases[i].field.clearLinkedHandlers(this, "change-value");
+                baseForm.remField(fBases.pop().field);
             }
             base.forEach((color, i) => {
-                const field = baseFields[i].field;
-                baseFields[i]._ignore = true;
+                const field = fBases[i].field;
                 if (!field.focused) field.value = color;
-                baseFields[i]._ignore = false;
                 field.type = "--v"+i;
             });
+
+            ignore = false;
 
             update();
         });
@@ -771,6 +771,10 @@ App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
             const result = util.ensure(await App.fileOpenDialog({
                 title: "Import Template...",
                 buttonLabel: "Open",
+                filters: [{
+                    name: "PDTemplate",
+                    extensions: ["pdtemplate"],
+                }],
                 properties: [
                     "openFile",
                 ],
@@ -780,6 +784,20 @@ App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
             try {
                 await window.api.send("template-import", pth);
             } catch (e) { this.app.doError("Template Import Error", pth, e); }
+        });
+
+        this.addHandler("add", async () => {
+            let k = await this.app.doPrompt("Template Key", "Enter a unique key identifier");
+            if (k == null) return;
+            if (await window.api.get("template", k))
+                return this.app.doWarn("Template Key", "This key ("+k+") already exists!");
+            await window.api.send("template-make", k, {
+                name: util.formatText(k),
+                size: [10, 10],
+                robotSize: 1,
+                robotMass: 100,
+            });
+            this.update(null);
         });
     }
 
@@ -792,15 +810,17 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
     constructor(...a) {
         super(...a);
 
+        let ignore = false;
+
         this.form.isHorizontal = true;
 
-        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+        const fButtons = this.form.addField(new core.Form.Buttons("", [
             { text: "Export", type: "special" },
             { text: "Remove", type: "off" },
             { text: "Change Key", type: "normal" },
         ]));
-        buttonsField.showHeader = false;
-        buttonsField.addHandler("trigger", async (i, e) => {
+        fButtons.header = "";
+        fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
                 const result = util.ensure(await App.fileSaveDialog({
                     title: "Export Template...",
@@ -831,13 +851,57 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
             }
         });
 
-        let nameFieldIgnore = false;
-        const nameField = this.form.addField(new core.Form.TextInput("name"));
-        nameField.addHandler("change-value", () => {
-            if (nameFieldIgnore) return;
-            this.change("data.name", null, nameField.value);
+        const fName = this.form.addField(new core.Form.TextInput("name"));
+        fName.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.name", null, (fName.value.length > 0) ? fName.value : null);
         });
-        nameField.type = "";
+        fName.type = "";
+
+        const fSize = this.form.addField(new core.Form.Input2d("size"));
+        this.addHandler("add", () => (fSize.app = this.app));
+        this.addHandler("rem", () => (fSize.app = null));
+        fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        fSize.baseType = fSize.activeType = "m";
+        fSize.step = 0.1;
+        fSize.inputs.forEach((inp, i) => {
+            inp.placeholder = ["Width", "Height"][i];
+            inp.min = 0;
+        });
+        fSize.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.size", null, fSize.value.xy);
+        });
+
+        const fRobotSize = this.form.addField(new core.Form.Input1d("robot-size"));
+        this.addHandler("add", () => (fRobotSize.app = this.app));
+        this.addHandler("rem", () => (fRobotSize.app = null));
+        fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        fRobotSize.baseType = fRobotSize.activeType = "m";
+        fRobotSize.step = 0.1;
+        fRobotSize.inputs.forEach((inp, i) => {
+            inp.placeholder = ["...", "Height"][i];
+            inp.min = 0;
+        });
+        fRobotSize.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.robotSize", null, fRobotSize.value);
+        });
+
+        const fRobotMass = this.form.addField(new core.Form.Input1d("robot-mass"));
+        this.addHandler("add", () => (fRobotMass.app = this.app));
+        this.addHandler("rem", () => (fRobotMass.app = null));
+        fRobotMass.types = ["kg", "lb"];
+        fRobotMass.baseType = fRobotMass.activeType = "kg";
+        fRobotMass.step = 0.1;
+        fRobotMass.inputs.forEach((inp, i) => {
+            inp.placeholder = "...";
+            inp.min = 0;
+        });
+        fRobotMass.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.robotMass", null, fRobotMass.value);
+        });
 
         const odometry2d = new core.Odometry2d();
         const odometry3d = new core.Odometry3d();
@@ -845,34 +909,131 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         odometry2d.imageAlpha = 0.5;
         odometry2d.drawGrid = false;
 
-        this.form.addField(new core.Form.HTML("odom2d", odometry2d.elem, odometry3d.elem));
+        const setImage = async pth => {
+            try {
+                await window.api.set("template-image", this.k, pth);
+            } catch (e) { this.app.doError("Template Image Set Error", this.k+", "+pth, e); }
+        }
+        const setModel = async pth => {
+            try {
+                await window.api.set("template-model", this.k, pth);
+            } catch (e) { this.app.doError("Template Model Set Error", this.k+", "+pth, e); }
+        }
+
+        let fForm;
+
+        fForm = this.form.addField(new core.Form.SubForm("2D"));
+        fForm.form.isHorizontal = true;
+        const fOdom2dChange = fForm.form.addField(new core.Form.Button("change-image", "Change", "special"));
+        fOdom2dChange.addHandler("trigger", async e => {
+            let result = util.ensure(await App.fileOpenDialog({
+                title: "Select New Image...",
+                buttonLabel: "Use",
+                filters: [{
+                    name: "Image",
+                    extensions: ["png"],
+                }],
+                properties: [
+                    "openFile",
+                ],
+            }));
+            if (result.canceled) return;
+            await setImage(result.filePaths[0]);
+        });
+        const fOdom2dRemove = fForm.form.addField(new core.Form.Button("remove-image", "Remove", "off"));
+        fOdom2dRemove.addHandler("trigger", async e => {
+            try {
+                await window.api.del("template-image", this.k);
+            } catch (e) { this.app.doError("Template Image Removal Error", this.k, e); }
+        });
+        const fOdom2d = fForm.form.addField(new core.Form.HTML("odom2d", odometry2d.elem));
+        const odom2dDropTarget = new core.DropTarget(fOdom2d.eContent, async e => {
+            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+            items = items.filter(item => item instanceof File);
+            if (items.length <= 0) return;
+            await setImage(items[0].path);
+        });
+
+        fForm = this.form.addField(new core.Form.SubForm("3D"));
+        fForm.form.isHorizontal = true;
+        const fOdom3dChange = fForm.form.addField(new core.Form.Button("change-model", "Change", "special"));
+        fOdom3dChange.addHandler("trigger", async e => {
+            let result = util.ensure(await App.fileOpenDialog({
+                title: "Select New Model...",
+                buttonLabel: "Use",
+                filters: [{
+                    name: "GLTF Model",
+                    extensions: ["glb"],
+                }],
+                properties: [
+                    "openFile",
+                ],
+            }));
+            if (result.canceled) return;
+            await setModel(result.filePaths[0]);
+        });
+        const fOdom3dRemove = fForm.form.addField(new core.Form.Button("remove-model", "Remove", "off"));
+        fOdom3dRemove.addHandler("trigger", async e => {
+            try {
+                await window.api.del("template-model", this.k);
+            } catch (e) { this.app.doError("Template Model Removal Error", this.k, e); }
+        });
+        const fOdom3d = fForm.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
+        const odom3dDropTarget = new core.DropTarget(fOdom3d.eContent, async e => {
+            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
+            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+            items = items.filter(item => item instanceof File);
+            if (items.length <= 0) return;
+            await setModel(items[0].path);
+        });
 
         this.addHandler("rem", () => {
             odometry3d.renderer.forceContextLoss();
         });
 
         const update = () => {
-            buttonsField.eContent.children[1].disabled = this.disabled;
-            nameField.disabled = this.disabled;
+            fButtons.eContent.children[1].disabled =
+            fButtons.eContent.children[2].disabled =
+            fName.disabled =
+            fSize.disabled =
+            fRobotSize.disabled =
+            fRobotMass.disabled =
+            fOdom2dChange.disabled =
+            fOdom2dRemove.disabled =
+            odom2dDropTarget.disabled =
+            fOdom3dChange.disabled =
+            fOdom3dRemove.disabled =
+            odom3dDropTarget.disabled = this.disabled;
         };
 
         this.addHandler("change-disabled", update);
 
         this.addHandler("apply", data => {
+            ignore = true;
+
             data = util.ensure(data, "obj");
 
-            this.formField.header = data.name || this.k;
-            this.formField.type = this.k;
+            this.fForm.header = data.name || this.k;
+            this.fForm.type = this.k;
 
-            nameFieldIgnore = true;
-            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
-            nameFieldIgnore = false;
+            if (!fName.focused) fName.value = util.ensure(data.name, "str");
+
+            if (!fSize.focused) fSize.value = data.size;
+
+            if (!fRobotSize.focused) fRobotSize.value = data.robotSize;
+
+            if (!fRobotMass.focused) fRobotMass.value = data.robotMass;
+
+            ignore = false;
 
             update();
         });
 
         this.addHandler("update", delta => {
-            if (this.formField.isClosed) return odometry3d.repositionCamera();
+            if (this.fForm.isClosed) return odometry3d.repositionCamera();
             odometry2d.update(delta);
             odometry3d.update(delta);
         });
@@ -889,6 +1050,10 @@ App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
             const result = util.ensure(await App.fileOpenDialog({
                 title: "Import Robot...",
                 buttonLabel: "Open",
+                filters: [{
+                    name: "PDRobot",
+                    extensions: ["pdrobot"],
+                }],
                 properties: [
                     "openFile",
                 ],
@@ -910,15 +1075,17 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
     constructor(...a) {
         super(...a);
 
+        let ignore = false;
+
         this.form.isHorizontal = true;
 
-        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+        const fButtons = this.form.addField(new core.Form.Buttons("", [
             { text: "Export", type: "special" },
             { text: "Remove", type: "off" },
             { text: "Change Key", type: "normal" },
         ]));
-        buttonsField.showHeader = false;
-        buttonsField.addHandler("trigger", async (i, e) => {
+        fButtons.header = "";
+        fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
                 const result = util.ensure(await App.fileSaveDialog({
                     title: "Export Robot...",
@@ -949,32 +1116,113 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             }
         });
 
-        let nameFieldIgnore = false;
-        const nameField = this.form.addField(new core.Form.TextInput("name"));
-        nameField.addHandler("change-value", () => {
-            if (nameFieldIgnore) return;
-            this.change("data.name", null, nameField.value);
+        const fName = this.form.addField(new core.Form.TextInput("name"));
+        fName.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.name", null, (fName.value.length > 0) ? fName.value : null);
         });
-        nameField.type = "";
+        fName.type = "";
+
+        const fBumperDetect = this.form.addField(new core.Form.BooleanInput("bumper-detect"));
+        fBumperDetect.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.bumperDetect", null, fBumperDetect.value);
+        });
+
+        const fDefault = this.form.addField(new core.Form.TextInput("default-model-file-name"));
+        fDefault.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.default", null, (fDefault.value.length > 0) ? fDefault.value : null);
+        });
+        fDefault.type = "(no file extension)";
+
+        const fComponentsForm = this.form.addField(new core.Form.SubForm("components"));
+        const componentsForm = fComponentsForm.form;
+        const fComponents = {};
 
         const update = () => {
-            buttonsField.eContent.children[1].disabled = this.disabled;
-            nameField.disabled = this.disabled;
+            fButtons.eContent.children[1].disabled =
+            fButtons.eContent.children[2].disabled =
+            fName.disabled =
+            fBumperDetect.disabled =
+            fDefault.disabled = this.disabled;
+            for (let k in fComponents) {
+                fComponents[k].fRemove.disabled =
+                fComponents[k].fName.disabled = this.disabled;
+            }
         };
 
         this.addHandler("change-disabled", update);
 
         this.addHandler("apply", data => {
+            ignore = true;
+
             data = util.ensure(data, "obj");
 
-            this.formField.header = data.name || this.k;
-            this.formField.type = this.k;
+            this.fForm.header = data.name || this.k;
+            this.fForm.type = this.k;
 
-            nameFieldIgnore = true;
-            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
-            nameFieldIgnore = false;
+            if (!fName.focused) fName.value = util.ensure(data.name, "str");
+
+            fBumperDetect.value = ("bumperDetect" in data) ? !!data.bumperDetect : true;
+
+            if (!fDefault.focused) fDefault.value = data.default || "model";
+
+            const components = util.ensure(data.components, "obj");
+            for (let k in components) {
+                const component = util.ensure(components[k], "obj");
+                if (!(k in fComponents)) {
+                    fComponents[k] = {};
+                    const fForm = fComponents[k].fForm = componentsForm.addField(new core.Form.SubForm(k));
+                    fForm.form.isHorizontal = true;
+                    const fRemove = fComponents[k].fRemove = fForm.form.addField(new core.Form.Button("remove-component", "Remove", "off"));
+                    fRemove.addHandler("trigger", async e => {
+                        if (ignore) return;
+                    });
+                    const fName = fComponents[k].fName = fForm.form.addField(new core.Form.TextInput("name"));
+                    fName.addHandler("change-value", async () => {
+                        if (ignore) return;
+                        this.change("data.components."+k+".name", null, (fName.value.length > 0) ? fName.value : null);
+                    });
+                    fName.type = "";
+                    const odometry3d = fComponents[k].odometry3d = new core.Odometry3d();
+                    const fOdom3d = fComponents[k].fOdom3d = fForm.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
+                }
+                const fForm = fComponents[k].fForm;
+                fForm.header = component.name || k;
+                fForm.type = k;
+                const fName = fComponents[k].fName;
+                fName.value = util.ensure(component.name, "str");
+            }
+            for (let k in fComponents) {
+                if (k in components) continue;
+                fComponents[k].odometry3d.renderer.forceContextLoss();
+                fComponentsForm.remField(fComponents[k].fForm);
+                delete fComponents[k];
+            }
+
+            ignore = false;
 
             update();
+        });
+
+        this.addHandler("update", delta => {
+            for (let k in fComponents) {
+                if (this.fForm.isOpen && fComponents[k].fForm.isOpen) {
+                    fComponents[k].odometry3d.update(delta);
+                    if (!fComponents[k].loadLock)
+                        (async () => {
+                            fComponents[k].loadLock = true;
+                            fComponents[k].theObject = await core.Odometry3d.loadRobot(this.k, "basic", k);
+                            fComponents[k].loadLock = false;
+                        })();
+                    if (fComponents[k].object != fComponents[k].theObject) {
+                        if (fComponents[k].object) fComponents[k].odometry3d.wpilibGroup.remove(fComponents[k].object);
+                        fComponents[k].object = fComponents[k].theObject.clone();
+                        if (fComponents[k].object) fComponents[k].odometry3d.wpilibGroup.add(fComponents[k].object);
+                    }
+                } else fComponents[k].odometry3d.repositionCamera(0.1);
+            }
         });
     }
 };
@@ -989,6 +1237,10 @@ App.HolidaysForm = class AppHolidaysForm extends App.OverrideForm {
             const result = util.ensure(await App.fileOpenDialog({
                 title: "Import Holiday...",
                 buttonLabel: "Open",
+                filters: [{
+                    name: "PDHoliday",
+                    extensions: ["pdholiday"],
+                }],
                 properties: [
                     "openFile",
                 ],
@@ -1010,15 +1262,17 @@ App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item 
     constructor(...a) {
         super(...a);
 
+        let ignore = false;
+
         this.form.isHorizontal = true;
 
-        const buttonsField = this.form.addField(new core.Form.Buttons("", [
+        const fButtons = this.form.addField(new core.Form.Buttons("", [
             { text: "Export", type: "special" },
             { text: "Remove", type: "off" },
             { text: "Change Key", type: "normal" },
         ]));
-        buttonsField.showHeader = false;
-        buttonsField.addHandler("trigger", async (i, e) => {
+        fButtons.header = "";
+        fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
                 const result = util.ensure(await App.fileSaveDialog({
                     title: "Export Holiday...",
@@ -1049,30 +1303,32 @@ App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item 
             }
         });
 
-        let nameFieldIgnore = false;
-        const nameField = this.form.addField(new core.Form.TextInput("name"));
-        nameField.addHandler("change-value", () => {
-            if (nameFieldIgnore) return;
-            this.change("data.name", null, nameField.value);
+        const fName = this.form.addField(new core.Form.TextInput("name"));
+        fName.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.name", null, (fName.value.length > 0) ? fName.value : null);
         });
-        nameField.type = "";
+        fName.type = "";
 
         const update = () => {
-            buttonsField.eContent.children[1].disabled = this.disabled;
-            nameField.disabled = this.disabled;
+            fButtons.eContent.children[1].disabled =
+            fButtons.eContent.children[2].disabled =
+            fName.disabled = this.disabled;
         };
 
         this.addHandler("change-disabled", update);
 
         this.addHandler("apply", data => {
+            ignore = true;
+
             data = util.ensure(data, "obj");
 
-            this.formField.header = data.name || this.k;
-            this.formField.type = this.k;
+            this.fForm.header = data.name || this.k;
+            this.fForm.type = this.k;
 
-            nameFieldIgnore = true;
-            if (!nameField.focused) nameField.value = util.ensure(data.name, "str");
-            nameFieldIgnore = false;
+            if (!fName.focused) fName.value = util.ensure(data.name, "str");
+            
+            ignore = false;
 
             update();
         });

@@ -4151,6 +4151,7 @@ const MAIN = async () => {
                     id = lib.keyify(lib.sanitize(id));
                     return await kfs._writable(["override", "themes", id, "config.json"], k, v);
                 },
+
                 "active-template": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-template", "data");
@@ -4161,6 +4162,25 @@ const MAIN = async () => {
                     id = lib.keyify(lib.sanitize(id));
                     return await kfs._writable(["override", "templates", id, "config.json"], k, v);
                 },
+                "template-image": async (id, pth) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    await fs.promises.cp(
+                        WindowManager.makePath(pth),
+                        WindowManager.makePath(this.dataPath, "override", "templates", id, "image.png"),
+                        { force: true, recursive: true },
+                    );
+                    this.rootManager.check();
+                },
+                "template-model": async (id, pth) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    await fs.promises.cp(
+                        WindowManager.makePath(pth),
+                        WindowManager.makePath(this.dataPath, "override", "templates", id, "model.glb"),
+                        { force: true, recursive: true },
+                    );
+                    this.rootManager.check();
+                },
+
                 "active-robot": async v => {
                     v = (v == null) ? null : String(v);
                     let v2 = await this.getThis("active-robot", "data");
@@ -4171,6 +4191,30 @@ const MAIN = async () => {
                     id = lib.keyify(lib.sanitize(id));
                     return await kfs._writable(["override", "robots", id, "config.json"], k, v);
                 },
+                "robot-default": async (id, pth) => {
+                    const robot = util.ensure(await this.getThis("robot", id), "obj");
+                    id = lib.keyify(lib.sanitize(id));
+                    await fs.promises.cp(
+                        WindowManager.makePath(pth),
+                        WindowManager.makePath(this.dataPath, "override", "robots", id, lib.sanitize(robot.default || "model")+".glb"),
+                        { force: true, recursive: true },
+                    );
+                    this.rootManager.check();
+                },
+                "robot-component": async (id, k, pth) => {
+                    const robot = util.ensure(await this.getThis("robot", id), "obj");
+                    const components = util.ensure(robot.components, "obj");
+                    id = lib.keyify(lib.sanitize(id));
+                    k = String(k);
+                    if (!(k in components)) return;
+                    await fs.promises.cp(
+                        WindowManager.makePath(pth),
+                        WindowManager.makePath(this.dataPath, "override", "robots", id, lib.sanitize(k)+".glb"),
+                        { force: true, recursive: true },
+                    );
+                    this.rootManager.check();
+                },
+                
                 "holiday": async (id, k="", v=null) => {
                     id = lib.keyify(lib.sanitize(id));
                     return await kfs._writable(["override", "holidays", id, "config.json"], k, v);
@@ -4249,12 +4293,52 @@ const MAIN = async () => {
                 },
 
                 "active-theme": async () => await kfs._writable(["override", "themes", "config.json"], "active"),
-                "theme": async id => await this.dirDelete(["override", "themes", lib.keyify(lib.sanitize(id))]),
+                "theme": async (id, k=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    if (k == null) return await this.dirDelete(["override", "themes", id]);
+                    return kfs._writable(["override", "themes", id, "config.json"], k);
+                },
+
                 "active-template": async () => await kfs._writable(["override", "templates", "config.json"], "active"),
-                "template": async id => await this.dirDelete(["override", "templates", lib.keyify(lib.sanitize(id))]),
+                "template": async (id, k=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    if (k == null) return await this.dirDelete(["override", "templates", id]);
+                    return await kfs._writable(["override", "templates", id, "config.json"], k);
+                },
+                "template-image": async id => {
+                    await this.fileDelete(["override", "templates", lib.keyify(lib.sanitize(id)), "image.png"]);
+                    this.rootManager.check();
+                },
+                "template-model": async id => {
+                    await this.fileDelete(["override", "templates", lib.keyify(lib.sanitize(id)), "model.glb"]);
+                    this.rootManager.check();
+                },
+
                 "active-robot": async () => await kfs._writable(["override", "robots", "config.json"], "active"),
-                "robot": async id => await this.dirDelete(["override", "robots", lib.keyify(lib.sanitize(id))]),
-                "holiday": async id => await this.dirDelete(["override", "holidays", lib.keyify(lib.sanitize(id))]),
+                "robot": async (id, k=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    if (k == null) return await this.dirDelete(["override", "robots", id]);
+                    return await kfs._writable(["override", "robots", id, "config.json"], k);
+                },
+                "robot-default": async id => {
+                    const robot = util.ensure(await this.getThis("robot", id), "obj");
+                    await this.fileDelete(["override", "robots", lib.keyify(lib.sanitize(id)), lib.sanitize(robot.default || "model")+".glb"]);
+                    this.rootManager.check();
+                },
+                "robot-component": async (id, k) => {
+                    const robot = util.ensure(await this.getThis("robot", id), "obj");
+                    const components = util.ensure(robot.components, "obj");
+                    k = String(k);
+                    if (!(k in components)) return;
+                    await this.fileDelete(["override", "robots", lib.keyify(lib.sanitize(id)), lib.sanitize(k)+".glb"]);
+                    this.rootManager.check();
+                },
+
+                "holiday": async (id, k=null) => {
+                    id = lib.keyify(lib.sanitize(id));
+                    if (k == null) return await this.dirDelete(["override", "holidays", id]);
+                    return await kfs._writable(["override", "holidays", id, "config.json"], k);
+                },
 
                 "comp-mode": async () => await kfs._writable(["override", "config.json"], "isCompMode"),
                 "native-theme": async () => await kfs._writable(["override", "config.json"], "nativeTheme"),
@@ -4336,24 +4420,33 @@ const MAIN = async () => {
                         WindowManager.makePath(this.dataPath, "override", k, lib.keyify(lib.sanitize(idDst))),
                     );
                 },
+                "_make": async (k, id, o) => {
+                    k = lib.keyify(lib.sanitize(k));
+                    id = lib.keyify(lib.sanitize(id));
+                    await this.dirAffirm(["override", k, id]);
+                    await this.fileAffirm(["override", k, id, "config.json"], JSON.stringify(o));
+                    return id;
+                },
+
                 "theme-export": async (pthDst, id, type=null) => await kfs._export("themes", pthDst, id, type),
                 "theme-import": async pthSrc => await kfs._import("themes", pthSrc),
                 "theme-rekey": async (idSrc, idDst) => await kfs._rekey("themes", idSrc, idDst),
-                "theme-make": async (id, template) => {
-                    id = lib.keyify(lib.sanitize(id));
-                    await this.dirAffirm(["override", "themes", id]);
-                    await this.fileAffirm(["override", "themes", id, "config.json"], JSON.stringify(template));
-                    return id;
-                },
+                "theme-make": async (id, o) => await kfs._make("themes", id, o),
+
                 "template-export": async (pthDst, id, type=null) => await kfs._export("templates", pthDst, id, type),
                 "template-import": async pthSrc => await kfs._import("templates", pthSrc),
                 "template-rekey": async (idSrc, idDst) => await kfs._rekey("templates", idSrc, idDst),
+                "template-make": async (id, o) => await kfs._make("templates", id, o),
+
                 "robot-export": async (pthDst, id, type=null) => await kfs._export("robots", pthDst, id, type),
                 "robot-import": async pthSrc => await kfs._import("robots", pthSrc),
                 "robot-rekey": async (idSrc, idDst) => await kfs._rekey("robots", idSrc, idDst),
+                "robot-make": async (id, o) => await kfs._make("robots", id, o),
+
                 "holiday-export": async (pthDst, id, type=null) => await kfs._export("holidays", pthDst, id, type),
                 "holiday-import": async pthSrc => await kfs._import("holidays", pthSrc),
                 "holiday-rekey": async (idSrc, idDst) => await kfs._rekey("holidays", idSrc, idDst),
+                "holiday-make": async (id, o) => await kfs._make("holidays", id, o),
             };
             if (k in kfs) return await kfs[k](...a);
             throw new MissingError("Could not on for key: "+k);

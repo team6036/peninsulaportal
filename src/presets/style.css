@@ -181,8 +181,6 @@
     align-content: stretch;
 }
 #PAGE > .main > div .form > .item.html > .content > .odom {
-    flex-basis: auto;
-
     min-width: 450px;
     min-height: 300px;
 

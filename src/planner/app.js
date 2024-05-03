@@ -520,14 +520,14 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
         this.addHandler("refresh", async () => {
             const templates = core.GLOBALSTATE.getProperty("templates").value;
             this.eTemplates.innerHTML = "";
-            for (let name in templates) {
+            for (let k in templates) {
                 let btn = document.createElement("button");
                 this.eTemplates.appendChild(btn);
                 btn.classList.add("normal");
-                btn.textContent = name;
+                btn.textContent = templates[k].name || k;
                 btn.addEventListener("click", e => {
                     e.stopPropagation();
-                    this.app.setPage("PROJECT", { template: name });
+                    this.app.setPage("PROJECT", { template: k });
                 });
             }
             let btn = document.createElement("button");
@@ -2520,7 +2520,9 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         this.#fTemplate = form.addField(new core.Form.DropdownInput("template", [], "§null"));
         this.fTemplate.app = this.app;
         this.fTemplate.isSubHeader = false;
-        this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
+        this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates).map(k => {
+            return { value: k, name: templates[k].name || k };
+        })];
         this.fTemplate.addHandler("change-value", () => {
             if (!this.fTemplate.hasValue()) return;
             if (this.page.hasProject())
