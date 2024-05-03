@@ -4388,6 +4388,10 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                         elem.disabled = true;
                         let file = await App.fileOpenDialog({
                             title: "Choose a video",
+                            filters: [{
+                                name: "Video",
+                                extensions: ["mp4", "mov"],
+                            }],
                             properties: [
                                 "openFile",
                             ],
@@ -6137,7 +6141,6 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
 
         const hooksSubformField = form.addField(new core.Form.SubForm("hooks"));
-        hooksSubformField.isHorizontal = false;
         const hooksSubform = hooksSubformField.form;
         hooksSubform.addField(
             new core.Form.HTML("visibility-hook", this.shownHook.elem),
@@ -6515,7 +6518,9 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
     applyGlobal() {
         const templates = core.GLOBALSTATE.getProperty("templates").value;
-        this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates)];
+        this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates).map(k => {
+            return { value: k, name: templates[k].name || k };
+        })];
     }
 
     compute() {
@@ -8262,7 +8267,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     get type() { return this.#type; }
     set type(v) {
         v = (v == null) ? null : String(v);
-        if (v != null && v.startsWith("§") && !core.Odometry2d.Robot.TYPES.includes(v)) v = core.Odometry2d.Robot.TYPES[0];
+        if (v != null && v.startsWith("§") && !core.Odometry3d.Render.TYPES.includes(v)) v = core.Odometry3d.Render.TYPES[0];
         if (this.type == v) return;
         this.change("type", this.type, this.#type=v);
     }

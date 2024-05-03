@@ -3978,6 +3978,10 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 const result = util.ensure(await App.fileOpenDialog({
                     title: "Import "+this.app.getName()+" Project...",
                     buttonLabel: "Open",
+                    filters: [{
+                        name: "P"+this.app.getName()+" Project",
+                        extensions: ["p"+this.name.toLowerCase()],
+                    }],
                     properties: [
                         "openFile",
                     ],
@@ -4751,10 +4755,8 @@ export class Odometry extends util.Target {
         this.size = 0;
         this.emptySize = 10;
 
-        const templatesProperty = GLOBALSTATE.getProperty("templates");
-
         this.addHandler("update", delta => {
-            const templates = templatesProperty.value;
+            const templates = GLOBALSTATE.getProperty("templates").value;
             if (this.hasTemplate() && templates[this.template])
                 this.size = templates[this.template].size;
             else this.size = this.emptySize;
@@ -5308,20 +5310,21 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         "§2024-note",
     ];
     static getTypeName(type) {
+        type = String(type);
         let names = {
-            "§default": "Default",
-            "§node": "Node",
-            "§box": "Box",
-            "§target": "Target",
-            "§arrow": "Arrow (Centered)",
-            "§arrow-h": "Arrow (Head Centered)",
-            "§arrow-t": "Arrow (Tail Centered)",
-            "§2023-cone": "2023 Cone",
-            "§2023-cube": "2023 Cube",
-            "§2024-note": "2024 Note",
+            "default": "Default",
+            "node": "Node",
+            "box": "Box",
+            "target": "Target",
+            "arrow": "Arrow (Centered)",
+            "arrow-h": "Arrow (Head Centered)",
+            "arrow-t": "Arrow (Tail Centered)",
+            "2023-cone": "2023 Cone",
+            "2023-cube": "2023 Cube",
+            "2024-note": "2024 Note",
         };
-        if (type in names) return names[type];
-        return String(type);
+        if (type.startsWith("§") && type.slice(1) in names) return names[type.slice(1)];
+        return type;
     }
     static menuStructure = [
         "§default",
@@ -5844,6 +5847,7 @@ export class Odometry3d extends Odometry {
             if (!(component in components))
                 return null;
         }
+        const bumperDetect = ("bumperDetect" in robot) ? !!robot["bumperDetect"] : true;
         const data = (component == null) ? robot : util.ensure(components[component], "obj");
         const zero = util.ensure(data.zero, "obj");
         const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
@@ -5874,16 +5878,15 @@ export class Odometry3d extends Odometry {
             ["basic", "cinematic"].forEach(type => {
                 let obj, pobj, bbox;
                 obj = scene.clone();
-                obj._doAlliance = ("alliance-detect" in robot) ? !!robot["alliance-detect"] : true;
                 obj.traverse(obj => {
                     if (!obj.isMesh) return;
                     this.#traverseObject(obj, type);
-                    if (!obj._doAlliance) return;
+                    if (!bumperDetect) return;
                     const color = new util.Color(obj.material.color.r*255, obj.material.color.g*255, obj.material.color.b*255);
                     const h = color.h, s = color.s, thresh = 60;
                     const score = Math.min(1, Math.max(0, (1-Math.min(Math.abs(h-210)/thresh, Math.abs(h-0)/thresh, Math.abs(h-360)/thresh))));
                     if (score*s < 0.5) return;
-                    obj.material._allianceMaterial = true;
+                    obj.material._isBumper = true;
                 });
                 obj.quaternion.copy(rotations);
                 [obj, pobj] = [new THREE.Object3D(), obj];
@@ -5902,6 +5905,7 @@ export class Odometry3d extends Odometry {
                 [obj, pobj] = [new THREE.Object3D(), obj];
                 obj.add(pobj);
                 obj.name = "§§§"+(component == null ? "" : component);
+                obj._bumperDetect = bumperDetect;
                 if (component == null)
                     this.loadedRobots[name][type].default = obj;
                 else this.loadedRobots[name][type].components[component] = obj;
@@ -5995,7 +5999,7 @@ export class Odometry3d extends Odometry {
         new ResizeObserver(updateScene).observe(this.elem);
         this.addHandler("change-quality", updateScene);
 
-        const radius = 0.05;
+        const radius = 0.01;
         const length = 5;
         let axes, xAxis, yAxis, zAxis;
 
@@ -6413,12 +6417,13 @@ export class Odometry3d extends Odometry {
         this.updateControls();
         this.requestRedraw();
     }
-    repositionCamera() {
+    repositionCamera(dist=1) {
         let renderfs = {
             proj: [0, 7.5, -7.5],
             iso: [10, 10, -10],
         };
-        this.camera.position.set(...((this.renderType in renderfs) ? renderfs[this.renderType] : [0, 0, 0]));
+        dist = Math.max(0, util.ensure(dist, "num"));
+        this.camera.position.set(...new util.V3((this.renderType in renderfs) ? renderfs[this.renderType] : 0).imul(dist).xyz);
         this.camera.lookAt(0, 0, 0);
     }
     get controlType() { return this.#controlType; }
@@ -6473,7 +6478,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
             material,
         );
         this.LOADEDOBJECTS["cube"] = cube;
-        const radius = 0.05, arrowLength = 0.25, arrowRadius = 0.1;
+        const radius = 0.01, arrowLength = 0.25, arrowRadius = 0.05;
         const arrow = new THREE.Object3D();
         const tip = new THREE.Mesh(
             new THREE.ConeGeometry(arrowRadius, arrowLength, 8),
@@ -6588,24 +6593,25 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         "§2024-note",
     ];
     static getTypeName(type) {
+        type = String(type);
         let names = {
-            "§node": "Node",
-            "§cube": "Cube",
-            "§arrow+x": "Arrow (+X)",
-            "§arrow-x": "Arrow (-X)",
-            "§arrow+y": "Arrow (+Y)",
-            "§arrow-y": "Arrow (-Y)",
-            "§arrow+z": "Arrow (+Z)",
-            "§arrow-z": "Arrow (-Z)",
-            "§axes": "Axes",
-            "§2023-cone": "2023 Cone",
-            "§2023-cube": "2023 Cube",
-            "§2024-note": "2024 Note",
+            "node": "Node",
+            "cube": "Cube",
+            "arrow+x": "Arrow (+X)",
+            "arrow-x": "Arrow (-X)",
+            "arrow+y": "Arrow (+Y)",
+            "arrow-y": "Arrow (-Y)",
+            "arrow+z": "Arrow (+Z)",
+            "arrow-z": "Arrow (-Z)",
+            "axes": "Axes",
+            "2023-cone": "2023 Cone",
+            "2023-cube": "2023 Cube",
+            "2024-note": "2024 Note",
         };
-        if (type in names) return names[type];
+        if (type.startsWith("§") && type.slice(1) in names) return names[type.slice(1)];
         let robots = GLOBALSTATE.getProperty("robots").value;
         if (type in robots) return String(util.ensure(robots[type], "obj").name || type);
-        return String(type);
+        return type;
     }
     static menuStructure = [
         "§node",
@@ -6893,13 +6899,13 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
             this.theObject.quaternion.set(this.qx, this.qy, this.qz, this.qw);
             if (!this.isDefault() && this.render.defaultComponent.hasObject())
                 this.theObject.quaternion.premultiply(this.render.defaultComponent.theObject.quaternion);
-            if (this.object._doAlliance)
+            if (this.object._bumperDetect || this.render.hasBuiltinType())
                 this.theObject.traverse(obj => {
                     if (!obj.isMesh) return;
-                    if (!obj.material._allianceMaterial) {
-                        if (!this.hasType()) return;
-                        if (!this.hasBuiltinType()) return;
-                        if (this.builtinType == "axis") return;
+                    if (!obj.material._isBumper) {
+                        if (!this.render.hasType()) return;
+                        if (!this.render.hasBuiltinType()) return;
+                        if (this.render.builtinType == "axis") return;
                     }
                     obj.material.color.set(color.toHex(false));
                 });
@@ -6997,9 +7003,9 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
             this.theObject.traverse(obj => {
                 if (!obj.isMesh) return;
                 if (!(obj.material instanceof THREE.Material)) return;
-                const allianceMaterial = !!obj.material._allianceMaterial;
+                const isBumper = !!obj.material._isBumper;
                 obj.material = obj.material.clone();
-                obj.material._allianceMaterial = allianceMaterial;
+                obj.material._isBumper = isBumper;
             });
             this.theObject.visible = this.showObject;
             this.odometry.wpilibGroup.add(this.theObject);
@@ -9147,6 +9153,8 @@ Form.SubForm = class FormSubForm extends Form.Field {
 
         this.#form = new Form();
         this.eContent.appendChild(this.form.elem);
+
+        this.isHorizontal = false;
     }
 
     get isOpen() { return this.elem.classList.contains("this"); }

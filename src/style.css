@@ -2469,7 +2469,15 @@ p-loading[type="bounce"] > div > div:last-child {
     align-content: center;
 }
 .form > .item.subform.this > .content {
+    margin-left: 5px;
+
     display: flex;
+
+    border-left: 2px solid var(--v2);
+}
+.form > .item.subform.this > .content > .form {
+    padding-top: 0px;
+    padding-bottom: 0px;
 }
 .form > .item.html > .header {
     display: none;
