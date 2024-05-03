@@ -280,11 +280,13 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.#fScoutURL = this.form.addField(new core.Form.NInput("scout-url", 1, "url"));
         this.fScoutURL.type = "";
 
-        this.fSocketHost.disabled =
-        this.fAssetsOwner.disabled =
-        this.fAssetsRepo.disabled =
-        this.fAssetsTag.disabled =
-        this.fScoutURL.disabled = true;
+        [
+            this.fSocketHost,
+            this.fAssetsOwner,
+            this.fAssetsRepo,
+            this.fAssetsTag,
+            this.fScoutURL,
+        ].flatten().forEach(o => (o.disabled = true));
 
         this.addHandler("pull", async () => {
             ignore = true;
@@ -675,12 +677,13 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
         const fBases = [];
 
         const update = () => {
-            fButtons.eContent.children[1].disabled =
-            fButtons.eContent.children[2].disabled =
-            fName.disabled = this.disabled;
-            for (let k in fColors)
-                fColors[k].field.disabled = this.disabled;
-            fBases.forEach(field => (field.disabled = this.disabled));
+            [
+                fButtons.eContent.children[1],
+                fButtons.eContent.children[2],
+                fName,
+                Object.keys(fColors).map(k => [fColors[k].field]),
+                fBases.map(o => o.field),
+            ].flatten().forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disable", update);
@@ -947,13 +950,11 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
             } catch (e) { this.app.doError("Template Image Removal Error", this.k, e); }
         });
         const fOdom2d = fForm.form.addField(new core.Form.HTML("odom2d", odometry2d.elem));
-        const odom2dDropTarget = new core.DropTarget(fOdom2d.eContent, async e => {
-            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-            items = items.filter(item => item instanceof File);
-            if (items.length <= 0) return;
-            await setImage(items[0].path);
+        const odom2dDropTarget = new core.DropTarget(fOdom2d.eContent);
+        odom2dDropTarget.addHandler("files", async files => {
+            files = util.ensure(files, "arr").filter(file => file instanceof File);
+            if (files.length <= 0) return;
+            await setImage(files[0].path);
         });
 
         fForm = this.form.addField(new core.Form.SubForm("3D"));
@@ -981,13 +982,11 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
             } catch (e) { this.app.doError("Template Model Removal Error", this.k, e); }
         });
         const fOdom3d = fForm.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
-        const odom3dDropTarget = new core.DropTarget(fOdom3d.eContent, async e => {
-            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-            items = items.filter(item => item instanceof File);
-            if (items.length <= 0) return;
-            await setModel(items[0].path);
+        const odom3dDropTarget = new core.DropTarget(fOdom3d.eContent);
+        odom3dDropTarget.addHandler("files", async files => {
+            files = util.ensure(files, "arr").filter(file => file instanceof File);
+            if (files.length <= 0) return;
+            await setModel(files[0].path);
         });
 
         this.addHandler("rem", () => {
@@ -995,18 +994,14 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         });
 
         const update = () => {
-            fButtons.eContent.children[1].disabled =
-            fButtons.eContent.children[2].disabled =
-            fName.disabled =
-            fSize.disabled =
-            fRobotSize.disabled =
-            fRobotMass.disabled =
-            fOdom2dChange.disabled =
-            fOdom2dRemove.disabled =
-            odom2dDropTarget.disabled =
-            fOdom3dChange.disabled =
-            fOdom3dRemove.disabled =
-            odom3dDropTarget.disabled = this.disabled;
+            [
+                fButtons.eContent.children[1],
+                fButtons.eContent.children[2],
+                fName, fSize,
+                fRobotSize, fRobotMass,
+                fOdom2dChange, fOdom2dRemove, odom2dDropTarget,
+                fOdom3dChange, fOdom3dRemove, odom3dDropTarget,
+            ].flatten().forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disabled", update);
@@ -1063,6 +1058,18 @@ App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
             try {
                 await window.api.send("robot-import", pth);
             } catch (e) { this.app.doError("Robot Import Error", pth, e); }
+        });
+
+        this.addHandler("add", async () => {
+            let k = await this.app.doPrompt("Robot Key", "Enter a unique key identifier");
+            if (k == null) return;
+            if (await window.api.get("robot", k))
+                return this.app.doWarn("Robot Key", "This key ("+k+") already exists!");
+            await window.api.send("robot-make", k, {
+                name: util.formatText(k),
+                components: {},
+            });
+            this.update(null);
         });
     }
 
@@ -1129,22 +1136,74 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             this.change("data.bumperDetect", null, fBumperDetect.value);
         });
 
-        const fDefault = this.form.addField(new core.Form.TextInput("default-model-file-name"));
+        const fDefault = this.form.addField(new core.Form.TextInput("default-model-name"));
         fDefault.addHandler("change-value", () => {
             if (ignore) return;
             this.change("data.default", null, (fDefault.value.length > 0) ? fDefault.value : null);
         });
         fDefault.type = "(no file extension)";
 
+        const setDefaultModel = async pth => {
+            try {
+                await window.api.set("robot-default", this.k, pth);
+            } catch (e) { this.app.doError("Robot Default Model Set Error", this.k+", "+pth, e); }
+        };
+        const setComponentModel = async (k, pth) => {
+            try {
+                await window.api.set("robot-component", this.k, k, pth);
+            } catch (e) { this.app.doError("Robot Component Model Set Error", this.k+", "+k+", "+pth, e); }
+        };
+
+        const fDefaultChange = this.form.addField(new core.Form.Button("change-default-model", "Change", "special"));
+        fDefaultChange.addHandler("trigger", async e => {
+            let result = util.ensure(await App.fileOpenDialog({
+                title: "Select New Model...",
+                buttonLabel: "Use",
+                filters: [{
+                    name: "GLTF Model",
+                    extensions: ["glb"],
+                }],
+                properties: [
+                    "openFile",
+                ],
+            }));
+            if (result.canceled) return;
+            await setDefaultModel(result.filePaths[0]);
+        });
+        const fDefaultRemove = this.form.addField(new core.Form.Button("remove-default-model", "Remove", "off"));
+        fDefaultRemove.addHandler("trigger", async e => {
+            try {
+                await window.api.del("robot-default", this.k);
+            } catch (e) { this.app.doError("Robot Default Model Removal Error", this.k, e); }
+        });
         const odometry3d = new core.Odometry3d();
         const fOdom3d = this.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
-        const odom3dDropTarget = new core.DropTarget(fOdom3d.elem, async e => {
-            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-            items = items.filter(item => item instanceof File);
-            if (items.length <= 0) return;
-            await window.api.set("robot-default", this.k, k, items[0].path);
+        const odom3dDropTarget = new core.DropTarget(fOdom3d.elem);
+        odom3dDropTarget.addHandler("files", async files => {
+            files = util.ensure(files, "arr").filter(file => file instanceof File);
+            if (files.length <= 0) return;
+            await setDefaultModel(files[0].path);
+        });
+
+        const fZeroForm = this.form.addField(new core.Form.SubForm("default-model-zero"));
+        const fRotationsForm = fZeroForm.form.addField(new core.Form.SubForm("rotations"));
+        const rotationsForm = fRotationsForm.form;
+        rotationsForm.isHorizontal = true;
+        const fRotationsAdd = rotationsForm.addField(new core.Form.Button("add-rotation-transform", "Add", "special"));
+        fRotationsAdd.addHandler("trigger", e => {
+            const robots = core.GLOBALSTATE.getProperty("robots").value;
+            const robot = util.ensure(robots[this.k], "obj");
+            const zero = util.ensure(robot.zero, "obj");
+            const rotations = util.ensure(zero.rotations, "arr");
+            this.change("data.zero.rotations."+rotations.length, null, { axis: "x", angle: 0 });
+        });
+        const fRotations = [];
+        const fTranslations = fZeroForm.form.addField(new core.Form.Input3d("translation"));
+        fTranslations.types = ["m", "cm", "mm", "yd", "ft", "in"];
+        fTranslations.baseType = fTranslations.activeType = "m";
+        fTranslations.addHandler("change-value", () => {
+            if (ignore) return;
+            this.change("data.zero.translations", null, fTranslations.value.xyz);
         });
 
         const fComponentsForm = this.form.addField(new core.Form.SubForm("components"));
@@ -1165,17 +1224,29 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
         const fComponents = {};
 
         const update = () => {
-            fButtons.eContent.children[1].disabled =
-            fButtons.eContent.children[2].disabled =
-            fName.disabled =
-            fBumperDetect.disabled =
-            fDefault.disabled =
-            odom3dDropTarget.disabled = this.disabled;
-            for (let k in fComponents) {
-                fComponents[k].fRemove.disabled =
-                fComponents[k].fName.disabled =
-                fComponents[k].dropTarget.disabled = this.disabled;
-            }
+            [
+                fButtons.eContent.children[1],
+                fButtons.eContent.children[2],
+                fName,
+                fBumperDetect,
+                fDefault,
+                fDefaultChange,
+                fDefaultRemove,
+                odom3dDropTarget,
+                fRotations.map(o => [
+                    o.fRemove,
+                    o.fAxis,
+                    o.fAngle,
+                ]),
+                fTranslations,
+                Object.keys(fComponents).map(k => [
+                    fComponents[k].fRemove,
+                    fComponents[k].fName,
+                    fComponents[k].fModelChange,
+                    fComponents[k].fModelRemove,
+                    fComponents[k].dropTarget,
+                ]),
+            ].flatten().forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disabled", update);
@@ -1194,6 +1265,57 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
 
             if (!fDefault.focused) fDefault.value = data.default || "model";
 
+            const zero = util.ensure(data.zero, "obj");
+            const rotations = util.ensure(zero.rotations, "arr");
+            const translations = new util.V3(zero.translations);
+
+            while (fRotations.length < rotations.length) {
+                let i = fRotations.length;
+                const fForm = rotationsForm.addField(new core.Form.SubForm(i+1));
+                const fRemove = fForm.form.addField(new core.Form.Button("remove-rotation", "Remove", "off"));
+                fRemove.addHandler("trigger", async e => {
+                    if (ignore) return;
+                    try {
+                        await window.api.del("robot", this.k, "zero.rotations."+i);
+                    } catch (e) { this.app.doError("Robot Default Rotation Delete Error", this.k+", "+i, e); }
+                });
+                fRemove.isHorizontal = true;
+                const fAxis = fForm.form.addField(new core.Form.SelectInput("axis", ["x", "y", "z"], "x"));
+                fAxis.showHeader = false;
+                fAxis.addHandler("change-value", () => {
+                    if (ignore) return;
+                    this.change("data.zero.rotations."+i+".axis", null, fAxis.value);
+                });
+                const fAngle = fForm.form.addField(new core.Form.Input1d("angle"));
+                fAngle.isHorizontal = true;
+                fAngle.types = ["rad", "deg", "cycle"];
+                fAngle.baseType = fAngle.activeType = "deg";
+                fAngle.addHandler("change-value", () => {
+                    if (ignore) return;
+                    this.change("data.zero.rotations."+i+".angle", null, fAngle.value);
+                });
+                fRotations.push({
+                    fForm: fForm,
+                    fRemove: fRemove,
+                    fAxis: fAxis,
+                    fAngle: fAngle,
+                });
+            }
+            while (fRotations.length > rotations.length)
+                rotationsForm.remField(fRotations.pop().fForm);
+            for (let i = 0; i < rotations.length; i++) {
+                const rotation = util.ensure(rotations[i], "obj");
+                const { fForm, fAxis, fAngle } = fRotations[i];
+                let axis = String(rotation.axis).toLowerCase();
+                if (!["x", "y", "z"].includes(axis)) axis = "x";
+                fAxis.value = axis;
+                let angle = util.ensure(rotation.angle, "num");
+                fAngle.value = angle;
+                fForm.type = axis.toUpperCase()+" : "+angle;
+            }
+
+            if (!fTranslations.focused) fTranslations.value = translations;
+
             const components = util.ensure(data.components, "obj");
             for (let k in components) {
                 const component = util.ensure(components[k], "obj");
@@ -1205,7 +1327,9 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     fRemove.addHandler("trigger", async e => {
                         if (ignore) return;
                         try {
-                            await window.api.del("robot-component", this.k, k);
+                            try {
+                                await window.api.del("robot-component", this.k, k);
+                            } catch (e) {}
                             await window.api.del("robot", this.k, "components."+k);
                         } catch (e) { this.app.doError("Robot Component Removal Error", this.k+", "+k, e); }
                     });
@@ -1215,15 +1339,35 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                         this.change("data.components."+k+".name", null, (fName.value.length > 0) ? fName.value : null);
                     });
                     fName.type = "";
+                    const fModelChange = fComponents[k].fModelChange = fForm.form.addField(new core.Form.Button("change-model", "Change", "special"));
+                    fModelChange.addHandler("trigger", async e => {
+                        let result = util.ensure(await App.fileOpenDialog({
+                            title: "Select New Model...",
+                            buttonLabel: "Use",
+                            filters: [{
+                                name: "GLTF Model",
+                                extensions: ["glb"],
+                            }],
+                            properties: [
+                                "openFile",
+                            ],
+                        }));
+                        if (result.canceled) return;
+                        await setComponentModel(k, result.filePaths[0]);
+                    });
+                    const fModelRemove = fComponents[k].fModelRemove = fForm.form.addField(new core.Form.Button("remove-model", "Remove", "off"));
+                    fModelRemove.addHandler("trigger", async e => {
+                        try {
+                            await window.api.del("robot-component", this.k, k);
+                        } catch (e) { this.app.doError("Robot Component Model Removal Error", this.k+", "+k, e); }
+                    });
                     const odometry3d = fComponents[k].odometry3d = new core.Odometry3d();
                     const fOdom3d = fComponents[k].fOdom3d = fForm.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
-                    fComponents[k].dropTarget = new core.DropTarget(fOdom3d.eContent, async e => {
-                        let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-                        items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-                        if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-                        items = items.filter(item => item instanceof File);
-                        if (items.length <= 0) return;
-                        await window.api.set("robot-component", this.k, k, items[0].path);
+                    const dropTarget = fComponents[k].dropTarget = new core.DropTarget(fOdom3d.eContent);
+                    dropTarget.addHandler("files", async files => {
+                        files = util.ensure(files, "arr").filter(file => file instanceof File);
+                        if (files.length <= 0) return;
+                        await setComponentModel(k, files[0].path);
                     });
                 }
                 const fForm = fComponents[k].fForm;
@@ -1259,7 +1403,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     if (fComponents[k].object != fComponents[k].wantedObject) {
                         if (fComponents[k].theObject) fComponents[k].odometry3d.wpilibGroup.remove(fComponents[k].theObject);
                         fComponents[k].object = fComponents[k].wantedObject;
-                        fComponents[k].theObject = fComponents[k].object.clone();
+                        fComponents[k].theObject = fComponents[k].object ? fComponents[k].object.clone() : null;
                         if (fComponents[k].theObject) fComponents[k].odometry3d.wpilibGroup.add(fComponents[k].theObject);
                     }
                 } else fComponents[k].odometry3d.repositionCamera(0.1);
@@ -1275,7 +1419,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             if (object != wantedObject) {
                 if (theObject) odometry3d.wpilibGroup.remove(theObject);
                 object = wantedObject;
-                theObject = object.clone();
+                theObject = object ? object.clone() : null;
                 if (theObject) odometry3d.wpilibGroup.add(theObject);
             }
         });
@@ -1366,9 +1510,11 @@ App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item 
         fName.type = "";
 
         const update = () => {
-            fButtons.eContent.children[1].disabled =
-            fButtons.eContent.children[2].disabled =
-            fName.disabled = this.disabled;
+            [
+                fButtons.eContent.children[1],
+                fButtons.eContent.children[2],
+                fName,
+            ].flatten().forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disabled", update);

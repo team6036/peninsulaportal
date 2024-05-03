@@ -2026,13 +2026,10 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             this.page.selectedPath = null;
         });
 
-        new core.DropTarget(this.elem, async e => {
-            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-            items = items.filter(item => item instanceof File);
-            if (items.length <= 0) return;
-            const file = items[0];
+        (new core.DropTarget(this.elem)).addHandler("files", async files => {
+            files = util.ensure(files, "arr").filter(file => file instanceof File);
+            if (files.length <= 0) return;
+            const file = files[0];
             const pth = file.path;
             let content = null;
             try {
@@ -2074,7 +2071,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             const ppth = new sublib.Project.Path();
             this.page.project.addPath(ppth);
             ppth.nodes = ids;
-        });
+        })
 
         this.#generating = null;
         this.#buttons = new Set();

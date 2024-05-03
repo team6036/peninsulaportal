@@ -1154,7 +1154,15 @@ export class App extends util.Target {
             } catch (e) { await this.doError("State Error", "PagePersistentStates Set", e); }
             return true;
         });
-        this.addHandler("cmd-check", async () => await GLOBALSTATE.get());
+        this.addHandler("cmd-check", async () => {
+            const templatesPrev = GLOBALSTATE.getProperty("templates").value;
+            const robotsPrev = GLOBALSTATE.getProperty("robots").value;
+            await GLOBALSTATE.get();
+            const templatesCurr = GLOBALSTATE.getProperty("templates").value;
+            const robotsCurr = GLOBALSTATE.getProperty("robots").value;
+            if (!util.equals(templatesCurr, templatesPrev)) Odometry3d.decacheAllFields();
+            if (!util.equals(robotsCurr, robotsPrev)) Odometry3d.decacheAllRobots();
+        });
         this.addHandler("cmd-about", async () => {
             const holiday = this.holiday;
             const holidayData = util.ensure(util.ensure(await window.api.get("holidays"), "obj")[holiday], "obj");
@@ -5782,6 +5790,23 @@ export class Odometry3d extends Odometry {
         obj.material.dispose();
         obj.material = material;
     }
+    static decacheField(name) {
+        name = String(name);
+        if (!this.loadedFields[name]) return false;
+        for (let type in this.loadedFields[name])
+            this.loadedFields[name][type].traverse(obj => {
+                if (!obj.isMesh) return;
+                obj.material.dispose();
+                obj.geometry.dispose();
+            });
+        delete this.loadedFields[name];
+        return true;
+    }
+    static decacheAllFields() {
+        for (let name in this.loadedFields)
+            this.decacheField(name);
+        return true;
+    }
     static async loadField(name, type) {
         name = String(name);
         type = String(type);
@@ -5819,22 +5844,48 @@ export class Odometry3d extends Odometry {
         if (!this.loadedFields[name][type]) return null;
         return this.loadedFields[name][type];
     }
+    static decacheRobot(name, component=null) {
+        name = String(name);
+        component = (component == null) ? null : String(component);
+
+        if (!this.loadedRobots[name]) return false;
+
+        if (component == null) {
+            if (!this.loadedRobots[name].default) return false;
+            for (let type in this.loadedRobots[name].default)
+                this.loadedRobots[name].default[type].traverse(obj => {
+                    if (!obj.isMesh) return;
+                    obj.material.dispose();
+                    obj.geometry.dispose();
+                });
+            delete this.loadedRobots[name].default;
+            return true;
+        }
+        if (!this.loadedRobots[name].components) return false;
+        if (!this.loadedRobots[name].components[component]) return false;
+        for (let type in this.loadedRobots[name].components[component])
+            this.loadedRobots[name].components[component][type].traverse(obj => {
+                if (!obj.isMesh) return;
+                obj.material.dispose();
+                obj.geometry.dispose();
+            });
+        delete this.loadedRobots[name].components[component];
+        return true;
+    }
+    static decacheAllRobots() {
+        for (let name in this.loadedRobots) {
+            this.decacheRobot(name);
+            if (!this.loadedRobots[name]) continue;
+            if (!this.loadedRobots[name].components) continue;
+            for (let k in this.loadedRobots[name].components)
+                this.decacheRobot(name, k);
+        }
+        return true;
+    }
     static async loadRobot(name, type, component=null) {
         name = String(name);
         type = String(type);
         component = (component == null) ? null : String(component);
-
-        if (this.loadedRobots[name]) {
-            if (this.loadedRobots[name][type]) {
-                if (component == null) {
-                    if (this.loadedRobots[name][type].default)
-                        return this.loadedRobots[name][type].default;
-                } else {
-                    if (this.loadedRobots[name][type].components[component])
-                        return this.loadedRobots[name][type].components[component];
-                }
-            }
-        }
 
         const robots = GLOBALSTATE.getProperty("robots").value;
         const robotModels = GLOBALSTATE.getProperty("robot-models").value;
@@ -5847,11 +5898,6 @@ export class Odometry3d extends Odometry {
             if (!(component in components))
                 return null;
         }
-        const bumperDetect = ("bumperDetect" in robot) ? !!robot["bumperDetect"] : true;
-        const data = (component == null) ? robot : util.ensure(components[component], "obj");
-        const zero = util.ensure(data.zero, "obj");
-        const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
-        const translations = (zero.translations == "auto") ? "auto" : new util.V3(zero.translations);
 
         if (!(name in robotModels)) return null;
         if (component == null) {
@@ -5859,6 +5905,23 @@ export class Odometry3d extends Odometry {
         } else {
             if (!robotModels[name].components[component]) return null;
         }
+
+        if (this.loadedRobots[name]) {
+            if (component == null) {
+                if (this.loadedRobots[name].default && this.loadedRobots[name].default[type])
+                    return this.loadedRobots[name].default[type];
+            } else {
+                if (this.loadedRobots[name].components && this.loadedRobots[name].components[component] && this.loadedRobots[name].components[component][type])
+                    return this.loadedRobots[name].components[component][type];
+            }
+        }
+
+        const bumperDetect = ("bumperDetect" in robot) ? !!robot["bumperDetect"] : true;
+        const data = (component == null) ? robot : util.ensure(components[component], "obj");
+        const zero = util.ensure(data.zero, "obj");
+        const rotations = THREE.Quaternion.fromRotationSequence(zero.rotations);
+        const translations = (zero.translations == "auto") ? "auto" : new util.V3(zero.translations);
+
         const pth = (component == null) ? robotModels[name].default : robotModels[name].components[component];
 
         let t0 = util.ensure(this.loadingRobots[name], "num");
@@ -5867,10 +5930,6 @@ export class Odometry3d extends Odometry {
         this.loadingRobots[name] = t1;
 
         if (!this.loadedRobots[name]) this.loadedRobots[name] = {};
-        ["basic", "cinematic"].forEach(type => {
-            if (this.loadedRobots[name][type]) return;
-            this.loadedRobots[name][type] = { components: {} };
-        });
 
         try {
             const gltf = await LOADER.loadPromised(pth);
@@ -5906,9 +5965,14 @@ export class Odometry3d extends Odometry {
                 obj.add(pobj);
                 obj.name = "§§§"+(component == null ? "" : component);
                 obj._bumperDetect = bumperDetect;
-                if (component == null)
-                    this.loadedRobots[name][type].default = obj;
-                else this.loadedRobots[name][type].components[component] = obj;
+                if (component == null) {
+                    if (!this.loadedRobots[name].default) this.loadedRobots[name].default = {};
+                    this.loadedRobots[name].default[type] = obj;
+                } else {
+                    if (!this.loadedRobots[name].components) this.loadedRobots[name].components = {};
+                    if (!this.loadedRobots[name].components[component]) this.loadedRobots[name].components[component] = {};
+                    this.loadedRobots[name].components[component][type] = obj;
+                }
             });
             scene.traverse(obj => {
                 if (!obj.isMesh) return;
@@ -5917,14 +5981,16 @@ export class Odometry3d extends Odometry {
         } catch (e) {}
 
         if (!this.loadedRobots[name]) return null;
-        if (!this.loadedRobots[name][type]) return null;
 
         if (component == null) {
-            if (!this.loadedRobots[name][type].default) return null;
-            return this.loadedRobots[name][type].default;
+            if (!this.loadedRobots[name].default) return null;
+            if (!this.loadedRobots[name].default[type]) return null;
+            return this.loadedRobots[name].default[type];
         }
-        if (!this.loadedRobots[name][type].components[component]) return null;
-        return this.loadedRobots[name][type].components[component];
+        if (!this.loadedRobots[name].components) return null;
+        if (!this.loadedRobots[name].components[component]) return null;
+        if (!this.loadedRobots[name].components[component][type]) return null;
+        return this.loadedRobots[name].components[component][type];
     }
 
     constructor(elem) {
@@ -6465,6 +6531,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     #type;
     #builtinType;
 
+    #showObject;
+
     static LOADEDOBJECTS = {};
     static {
         const material = new THREE.MeshLambertMaterial({ color: 0xffffff });
@@ -6692,6 +6760,8 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#type = null;
         this.#builtinType = null;
 
+        this.#showObject = true;
+
         this.addHandler("rem", () => {
             this.object = null;
             this.defaultComponent.onRem();
@@ -6752,7 +6822,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     get type() { return this.#type; }
     set type(v) {
         v = (v == null) ? null : String(v);
-        if (v != null && v.startsWith("§") && !Odometry2d.Robot.TYPES.includes(v)) v = Odometry2d.Robot.TYPES[0];
+        if (v != null && v.startsWith("§") && !Odometry3d.Render.TYPES.includes(v)) v = Odometry3d.Render.TYPES[0];
         if (this.type == v) return;
         this.#builtinType = (v == null || !v.startsWith("§")) ? null : v.slice(1);
         this.change("type", this.type, this.#type=v);
@@ -6770,6 +6840,15 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     hasType() { return this.type != null; }
     hasBuiltinType() { return this.builtinType != null; }
 
+    get showObject() { return this.#showObject; }
+    set showObject(v) {
+        v = !!v;
+        if (this.showObject == v) return;
+        this.change("showObject", this.showObject, this.#showObject=v);
+    }
+    get hideObject() { return !this.showObject; }
+    set hideObject(v) { this.showObject = !v; }
+
     update(delta) { this.post("update", delta); }
 };
 Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Target {
@@ -6781,7 +6860,6 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
 
     #object;
     #theObject;
-    #showObject;
 
     constructor(render, component=null) {
         super();
@@ -6810,7 +6888,6 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
 
         this.#object = null;
         this.#theObject = null;
-        this.#showObject = true;
 
         let loadLock = false;
         let modelObject = null, theModelObject = null;
@@ -6858,6 +6935,7 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
                 this.requestRedraw();
             }
             if (!this.hasObject()) return;
+            this.theObject.visible = this.render.showObject;
             const cssObj = this.theObject._cssObj;
             if (this.theObject.isGhost != this.render.isGhost) {
                 this.theObject.isGhost = this.render.isGhost;
@@ -7007,23 +7085,12 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
                 obj.material = obj.material.clone();
                 obj.material._isBumper = isBumper;
             });
-            this.theObject.visible = this.showObject;
             this.odometry.wpilibGroup.add(this.theObject);
         }
 
         this.requestRedraw();
     }
     hasObject() { return !!this.object; }
-    get showObject() { return this.#showObject; }
-    set showObject(v) {
-        v = !!v;
-        if (this.showObject == v) return;
-        this.change("showObject", this.showObject, this.#showObject=v);
-        if (!this.hasObject()) return;
-        this.theObject.visible = this.showObject;
-    }
-    get hideObject() { return !this.showObject; }
-    set hideObject(v) { this.showObject = !v; }
 
     update(delta) { this.post("update", delta); }
 };
@@ -9196,7 +9263,8 @@ export class DropTarget extends util.Target {
 
     #disabled;
 
-    constructor(elem, drop=null) {
+    // constructor(elem, drop=null) {
+    constructor(elem) {
         super();
 
         this.#disabled = false;
@@ -9227,11 +9295,18 @@ export class DropTarget extends util.Target {
             }
             this.#eOverlay.classList.remove("this");
         };
-        this.#drop = () => {};
+        this.#drop = e => this.post("drop", e);
+        this.addHandler("drop", e => {
+            if (!e) return;
+            if (!e.dataTransfer) return;
+            let files = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
+            files = files.map(item => item.getAsFile()).filter(file => file instanceof File);
+            if (files.length <= 0) files = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
+            files = files.filter(file => file instanceof File);
+            this.post("files", files);
+        });
 
         this.elem = elem;
-
-        this.drop = drop;
     }
 
     get elem() { return this.#elem; }
@@ -9244,7 +9319,6 @@ export class DropTarget extends util.Target {
     }
     hasElem() { return !!this.elem; }
     unhook() {
-        this.unhookDrop();
         if (!this.hasElem()) return;
         this.elem.classList.remove("droptarget");
         if (this.disabled)
@@ -9253,12 +9327,12 @@ export class DropTarget extends util.Target {
         this.#observer.disconnect();
         ["dragenter", "dragover"].forEach(name => this.elem.removeEventListener(name, this.#dragIn));
         ["dragleave", "dragend", "drop"].forEach(name => this.elem.removeEventListener(name, this.#dragOut));
+        this.elem.removeEventListener("drop", this.#drop);
         this.#dragOut(null);
         this.#observed();
     }
     hook() {
         if (this.disabled) return this.unhook();
-        this.hookDrop();
         if (!this.hasElem()) return;
         this.elem.classList.add("droptarget");
         this.elem.classList.remove("disabled");
@@ -9268,26 +9342,9 @@ export class DropTarget extends util.Target {
         this.#observer.observe(this.elem);
         ["dragenter", "dragover"].forEach(name => this.elem.addEventListener(name, this.#dragIn));
         ["dragleave", "dragend", "drop"].forEach(name => this.elem.addEventListener(name, this.#dragOut));
+        this.elem.addEventListener("drop", this.#drop);
         this.#dragOut(null);
         this.#observed();
-    }
-
-    get drop() { return this.#drop; }
-    set drop(v) {
-        v = util.ensure(v, "func");
-        if (this.drop == v) return;
-        this.unhookDrop();
-        this.#drop = v;
-        this.hookDrop();
-    }
-    unhookDrop() {
-        if (!this.hasElem()) return;
-        this.elem.removeEventListener("drop", this.#drop);
-    }
-    hookDrop() {
-        if (this.disabled) return this.unhookDrop();
-        if (!this.hasElem()) return;
-        this.elem.addEventListener("drop", this.#drop);
     }
 
     get disabled() { return this.#disabled; }
