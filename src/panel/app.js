@@ -3816,13 +3816,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eLogs = document.createElement("div");
                 this.eContent.appendChild(state.eLogs);
                 state.eLogs.classList.add("logs");
-                new core.DropTarget(state.eLogs, e => {
-                    let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-                    items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-                    if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-                    items = items.filter(item => item instanceof File);
-                    if (items.length <= 0) return;
-                    items.forEach(file => state.addLog(file.path));
+                (new core.DropTarget(state.eLogs)).addHandler("files", files => {
+                    files = util.ensure(files, "arr").filter(file => file instanceof File);
+                    if (files.length <= 0) return;
+                    files.forEach(file => state.addLog(file.path));
                 });
                 state.eSubmit = document.createElement("button");
                 this.eContent.appendChild(state.eSubmit);
@@ -4095,13 +4092,11 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eLogs = document.createElement("div");
                 this.eContent.appendChild(state.eLogs);
                 state.eLogs.classList.add("logs");
-                const dropTarget = new core.DropTarget(state.eLogs, e => {
-                    let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-                    items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-                    if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-                    items = items.filter(item => item instanceof File);
-                    if (items.length <= 0) return;
-                    items.forEach(file => state.addLog(file.path));
+                const dropTarget = new core.DropTarget(state.eLogs);
+                dropTarget.addHandler("files", files => {
+                    files = util.ensure(files, "arr").filter(file => file instanceof File);
+                    if (files.length <= 0) return;
+                    files.forEach(file => state.addLog(file.path));
                 });
                 state.eSubmit = document.createElement("button");
                 this.eContent.appendChild(state.eSubmit);
@@ -7976,7 +7971,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
             this.fCameraPos.activeType = this.lengthUnits;
         });
 
-        const render = this.odometry.addRender(new core.Odometry3d.Render(this.odometry, 0, "", "§cube"));
+        const render = this.odometry.addRender(new core.Odometry3d.Render(this.odometry, 0, "", "§box"));
         render.showObject = false;
         const position = new core.THREE.Vector3();
         const quaternion = new core.THREE.Quaternion();
@@ -8008,40 +8003,40 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 pose.state.update(delta);
             });
 
-            // if (util.is(this.cameraHook.value, "arr")) {
-            //     let value = this.cameraHook.value;
-            //     const positioning = generatePositioning(value, this.lengthUnits, this.angleUnits, cameraHookLock.value ? 0.5 : 0);
-            //     render.pos = positioning.pos;
-            //     render.q = positioning.q;
-            //     if (render.theObject) {
-            //         if (cameraHookLock.value) {
-            //             this.odometry.controlType = null;
-            //             render.theObject.getWorldPosition(position);
-            //             quaternion.copy(render.theObject.quaternion);
-            //             quaternion.multiply(core.THREE2WPILIB);
-            //             quaternion.premultiply(rotationQuaternion);
-            //             this.odometry.camera.position.copy(position);
-            //             this.odometry.camera.quaternion.copy(quaternion);
-            //         } else {
-            //             let [x0, y0, z0] = [position.x, position.y, position.z];
-            //             render.theObject.getWorldPosition(position);
-            //             let [x1, y1, z1] = [position.x, position.y, position.z];
-            //             this.odometry.camera.position.set(
-            //                 this.odometry.camera.position.x + (x1-x0),
-            //                 this.odometry.camera.position.y + (y1-y0),
-            //                 this.odometry.camera.position.z + (z1-z0),
-            //             );
-            //             if (this.odometry.controlType == "orbit")
-            //                 this.odometry.controls.target.set(x1, y1, z1);
-            //             if (this.odometry.controlType == "pan")
-            //                 this.odometry.controls.target.set(
-            //                     this.odometry.controls.target.x + (x1-x0),
-            //                     this.odometry.controls.target.y + (y1-y0),
-            //                     this.odometry.controls.target.z + (z1-z0),
-            //                 );
-            //         }
-            //     }
-            // }
+            if (util.is(this.cameraHook.value, "arr")) {
+                let value = this.cameraHook.value;
+                const positioning = generatePositioning(value, this.lengthUnits, this.angleUnits, cameraHookLock.value ? 0.5 : 0);
+                render.defaultComponent.pos = positioning.pos;
+                render.defaultComponent.q = positioning.q;
+                if (render.defaultComponent.theObject) {
+                    if (cameraHookLock.value) {
+                        this.odometry.controlType = null;
+                        render.defaultComponent.theObject.getWorldPosition(position);
+                        quaternion.copy(render.defaultComponent.theObject.quaternion);
+                        quaternion.multiply(core.THREE2WPILIB);
+                        quaternion.premultiply(rotationQuaternion);
+                        this.odometry.camera.position.copy(position);
+                        this.odometry.camera.quaternion.copy(quaternion);
+                    } else {
+                        let [x0, y0, z0] = [position.x, position.y, position.z];
+                        render.defaultComponent.theObject.getWorldPosition(position);
+                        let [x1, y1, z1] = [position.x, position.y, position.z];
+                        this.odometry.camera.position.set(
+                            this.odometry.camera.position.x + (x1-x0),
+                            this.odometry.camera.position.y + (y1-y0),
+                            this.odometry.camera.position.z + (z1-z0),
+                        );
+                        if (this.odometry.controlType == "orbit")
+                            this.odometry.controls.target.set(x1, y1, z1);
+                        if (this.odometry.controlType == "pan")
+                            this.odometry.controls.target.set(
+                                this.odometry.controls.target.x + (x1-x0),
+                                this.odometry.controls.target.y + (y1-y0),
+                                this.odometry.controls.target.z + (z1-z0),
+                            );
+                    }
+                }
+            }
 
             ignore = true;
             for (let i = 0; i < 3; i++)
@@ -9569,13 +9564,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             return btn;
         }));
 
-        new core.DropTarget(this.elem, e => {
-            let items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
-            items = items.map(item => item.getAsFile()).filter(file => file instanceof File);
-            if (items.length <= 0) items = e.dataTransfer.files ? [...e.dataTransfer.files] : [];
-            items = items.filter(item => item instanceof File);
-            if (items.length <= 0) return;
-            const file = items[0];
+        (new core.DropTarget(this.elem)).addHandler("files", files => {
+            files = util.ensure(files, "arr").filter(file => file instanceof File);
+            if (files.length <= 0) return;
+            const file = files[0];
             const pth = file.path;
             if (!this.hasProject()) return;
             let type = "wpilog";

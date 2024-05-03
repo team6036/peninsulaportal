@@ -113,6 +113,29 @@ export function arrEquals(a1, a2) {
     return true;
 }
 
+export function equals(v1, v2) {
+    if (is(v1, "arr")) {
+        if (!is(v2, "arr")) return false;
+        if (v1.length != v2.length) return false;
+        for (let i = 0; i < v1.length; i++)
+            if (!equals(v1[i], v2[i])) return false;
+        return true;
+    }
+    if (is(v1, "obj")) {
+        if (!is(v2, "obj")) return false;
+        for (let k in v1) {
+            if (!(k in v2)) return false;
+            if (!equals(v1[k], v2[k])) return false;
+        }
+        for (let k in v2) {
+            if (!(k in v1)) return false;
+            if (!equals(v2[k], v1[k])) return false;
+        }
+        return true;
+    }
+    return v1 == v2;
+}
+
 export function sin(x) { return Math.sin(x * (Math.PI/180)); }
 export function cos(x) { return Math.cos(x * (Math.PI/180)); }
 
