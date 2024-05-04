@@ -171,6 +171,7 @@ export class NTWebSocket extends util.Target {
     #offset;
     #latency;
     #lengthCounter;
+    #bitrate;
 
     constructor(address) {
         super();
@@ -184,8 +185,12 @@ export class NTWebSocket extends util.Target {
         this.#offset = 0;
         this.#latency = 0;
         this.#lengthCounter = 0;
+        this.#bitrate = 0;
 
         this.addHandler("change-connection", (f, t) => {
+            this.#lengthCounter = 0;
+            this.#bitrate = 0;
+
             if (t == 0) this.post("disconnected");
             if (t == 1) this.post("connecting");
             if (t == 2) this.post("connected");
@@ -279,7 +284,6 @@ export class NTWebSocket extends util.Target {
         if (!this.disconnected) return false;
         this.#offset = 0;
         this.#latency = 0;
-        this.#lengthCounter = 0;
         const ws = this.#ws = new WebSocket(this.address, "networktables.first.wpi.edu");
         ws.binaryType = "arraybuffer";
         ws.addEventListener("open", () => {
@@ -319,6 +323,12 @@ export class NTWebSocket extends util.Target {
         this.#ws.close();
         return true;
     }
+
+    calcBitrate() {
+        this.#bitrate = ((this.#lengthCounter / 1000) * 8) / 5;
+        this.#lengthCounter = 0;
+    }
+    get bitrate() { return this.#bitrate; }
 
     sendTimestamp() {
         let ts = this.clientTime;
@@ -374,6 +384,7 @@ export class NTWebSocket extends util.Target {
 export default class NTClient extends util.Target {
     #address;
     #ws;
+    #bitrate;
 
     #autoConnect;
 
@@ -409,6 +420,7 @@ export default class NTClient extends util.Target {
             if (this.connected) {
                 if (!timer.dequeueAll(5000)) return;
                 this.#ws.sendTimestamp();
+                this.#ws.calcBitrate();
                 return;
             }
             if (!timer.dequeueAll(500)) return;
@@ -505,6 +517,8 @@ export default class NTClient extends util.Target {
         if (!this.#ws) return false;
         return this.#ws.disconnect();
     }
+
+    get bitrate() { return this.#ws.bitrate; }
 
     subscribe(patterns, prefix, all=false, periodic=0.1) {
         let subscription = new NTSubscription({
