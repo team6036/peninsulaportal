@@ -6176,13 +6176,29 @@ export class Odometry3d extends Odometry {
         this.#origin = null;
 
         let keys = new Set();
+        let times = {}, sprint = false;
         this.canvas.addEventListener("keydown", e => {
             e.stopPropagation();
             keys.add(e.code);
+            if (![
+                "KeyD", "ArrowRight",
+                "KeyA", "ArrowLeft",
+                "KeyW", "ArrowUp",
+                "KeyS", "ArrowDown",
+                "Space",
+                "ShiftLeft",
+            ].includes(e.code)) return;
+            let t0 = util.ensure(times[e.code], "num");
+            let t1 = util.getTime();
+            times[e.code] = t1;
+            if (t1-t0 > 250) return;
+            sprint = true;
         });
         this.canvas.addEventListener("keyup", e => {
             e.stopPropagation();
             keys.delete(e.code);
+            if (!(e.code in times)) return;
+            sprint = false;
         });
         let velocity = new util.V3();
 
@@ -6325,7 +6341,7 @@ export class Odometry3d extends Odometry {
                     let x = xP - xN;
                     let y = yP - yN;
                     let z = zP - zN;
-                    velocity.iadd(new util.V3(x, y, z).imul(keys.has("ShiftRight") ? 0.1 : 1).imul(delta/1000));
+                    velocity.iadd(new util.V3(x, y, z).imul(keys.has("ShiftRight") ? 0.1 : sprint ? 1 : 0.5).imul(delta/1000));
                     velocity.imul(0.9);
                     velocity.imap(v => (Math.abs(v) < util.EPSILON ? 0 : v));
                     this.controls.moveRight(velocity.x);
