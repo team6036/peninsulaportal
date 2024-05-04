@@ -59,6 +59,8 @@ export default class NTSource extends Source {
     get clientTimeSince() { return this.clientTime-this.clientStartTime; }
     get serverTimeSince() { return this.serverTime-this.serverStartTime; }
 
+    get bitrate() { return this.#client.bitrate; }
+
     get ts() { return Math.min(this.tsMax, Math.max(this.tsMin, super.ts)); }
     set ts(v) { super.ts = Math.min(this.tsMax, Math.max(this.tsMin, util.ensure(v, "num"))); }
     get tsMin() { return this.serverStartTime; }

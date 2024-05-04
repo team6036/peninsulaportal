@@ -260,11 +260,8 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
         this.showValue &&= this.canShowValue;
     }
 
-    get info() { return this.type; }
-    set info(v) {}
-
-    get type() { return super.info; }
-    hasType() { return super.info != null; }
+    get type() { return this.info; }
+    hasType() { return this.info != null; }
     get isStruct() { return this.hasType() && this.type.startsWith("struct:"); }
     get isArray() { return this.hasType() && this.type.endsWith("[]"); }
     get baseType() {
@@ -9959,23 +9956,19 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
             this.app.eProjectInfoActionBtn.disabled = false;
             this.app.eProjectInfoActionBtn.classList.remove("special");
-        } else if (
-            (this.source instanceof WPILOGSource) ||
-            (this.source instanceof CSVTimeSource) ||
-            (this.source instanceof CSVFieldSource)
-        ) {
+        } else if (this.source instanceof HistoricalSource) {
             this.app.eProjectInfoSourceInput.placeholder = "Path...";
             this.app.eProjectInfoActionBtn.classList.remove("on");
             this.app.eProjectInfoActionBtn.classList.remove("off");
             this.app.eProjectInfoActionBtn.classList.add("special");
             this.app.eProjectInfoActionBtn.textContent = "Import";
         } else {
-            this.app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.name;
+            this.app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.getName();
             this.app.eProjectInfoActionBtn.disabled = true;
             this.app.eProjectInfoActionBtn.classList.remove("on");
             this.app.eProjectInfoActionBtn.classList.remove("off");
             this.app.eProjectInfoActionBtn.classList.remove("special");
-            this.app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.name;
+            this.app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.getName();
         }
         let itm = this.app.menu.getItemById("action");
         if (!itm) return;
@@ -9986,16 +9979,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             let on = !this.source.connecting && !this.source.connected;
             itm.enabled = true;
             itm.label = on ? "Connect" : "Disconnect";
-        } else if (
-            (this.source instanceof WPILOGSource) ||
-            (this.source instanceof CSVTimeSource) ||
-            (this.source instanceof CSVFieldSource)
-        ) {
+        } else if (this.source instanceof HistoricalSource) {
             itm.enabled = true;
             itm.label = "Import";
         } else {
             itm.enabled = false;
-            itm.label = "Unknown source: "+this.source.constructor.name;
+            itm.label = "Unknown source: "+this.source.constructor.getName();
         }
     }
     hasSource() { return !!this.source; }
@@ -10011,64 +10000,69 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.source.fieldObjects.length <= 0) return "Nothing imported";
             return this.source.shortFile;
         }
-        return "Unknown source: "+this.source.constructor.name;
+        return "Unknown source: "+this.source.constructor.getName();
     }
     get sourceMetaInfo() {
         let data = { name: this.sourceInfo, children: [] };
         if (!this.hasSource()) return data;
         data.children.push({
-            name: null,
+            name: this.source.constructor.getName(),
             icon: "book",
         });
         if (this.source instanceof NTSource) {
-            data.children.at(-1).name = "NT4";
+            const state = ((!this.source.connecting && !this.source.connected) ? "Disconnected" : (this.source.connecting) ? "Connecting" : "Connected");
             data.children.push(
                 {
                     name: "IP",
+                    info: this.source.address,
                     value: this.source.address,
                     icon: "navigate",
                 },
                 {
                     name: "State",
-                    value: ((!this.source.connecting && !this.source.connected) ? "Disconnected" : (this.source.connecting) ? "Connecting" : "Connected"),
+                    info: state,
+                    value: state,
                     icon: "cube-outline",
                 },
+                {
+                    name: "Bitrate",
+                    info: this.source.bitrate+" kb/s",
+                    value: this.source.bitrate+" kb/s",
+                    icon: "wifi",
+                },
             );
-        } else if (
-            (this.source instanceof WPILOGSource) ||
-            (this.source instanceof CSVTimeSource) ||
-            (this.source instanceof CSVFieldSource)
-        ) {
-            data.children.at(-1).name = {
-                WPILOGSource: "WPILOG",
-                CSVTimeSource: "CSV-Time",
-                CSVFieldSource: "CSV-Field",
-            }[this.source.constructor.name];
+        } else if (this.source instanceof HistoricalSource) {
+            const state = (this.source.importing ? "Not imported" : (this.source.fieldObjects.length <= 0) ? "Importing" : "Imported");
             data.children.push(
                 {
                     name: "File",
+                    info: this.source.shortFile,
                     value: this.source.file,
                     icon: "document-outline",
                 },
                 {
                     name: "State",
-                    value: (this.source.importing ? "Not imported" : (this.source.fieldObjects.length <= 0) ? "Importing" : "Imported"),
+                    info: state,
+                    value: state,
                     icon: "cube-outline",
                 },
             );
         } else {
-            data.children.at(-1).name = "Unkown: "+this.source.constructor.name;
+            data.children.at(-1).name = "Unkown: "+this.source.constructor.getName();
         }
         const tMin = this.source.tsMin, tMax = this.source.tsMax;
+        const duration = ((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`);
         data.children.push(
             {
                 name: "Fields",
+                info: this.source.tree.nFields,
                 value: this.source.tree.nFields,
                 iconSrc: "./assets/icons/number.svg",
             },
             {
                 name: "Duration",
-                value: ((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`),
+                info: duration,
+                value: duration,
                 icon: "time-outline",
             },
         );

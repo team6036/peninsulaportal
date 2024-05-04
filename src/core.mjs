@@ -7580,7 +7580,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
         for (let name in nodeMap) {
             let node = nodeMap[name];
             if (name in enodeMap) continue;
-            let enode = enodeMap[node.name] = new this(node.name, node.info);
+            let enode = enodeMap[node.name] = new this(node.name);
             add.push(enode);
         }
         if (util.is(addFunc, "func")) addFunc(...add);
@@ -7603,6 +7603,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
                     dumpFunc,
                 );
             else enode.explorer.clear();
+            enode.info = node.info;
             enode.value = node.value;
             enode.tooltip = node.tooltip;
             if (util.is(node.dump, "func")) node.dump(enode);
@@ -7610,7 +7611,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
         }
     }
 
-    constructor(name, info) {
+    constructor(name) {
         super();
 
         this.#explorer = new this.constructor.EXPLORER();
@@ -7637,7 +7638,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
 
         this.#name = String(name);
         this.#isHidden = this.name.startsWith(".");
-        this.#info = (info == null) ? null : String(info);
+        this.#info = null;
         this.#value = null;
 
         this.#showValue = null;
@@ -7677,7 +7678,6 @@ Explorer.Node = class ExplorerNode extends util.Target {
         this.#eTag = document.createElement("div");
         this.eMain.appendChild(this.eTag);
         this.eTag.classList.add("tag");
-        this.eTag.textContent = util.ensure(this.info, "str");
         this.#eValueBox = document.createElement("div");
         this.eDisplay.appendChild(this.eValueBox);
         this.eValueBox.classList.add("value");
@@ -7732,6 +7732,12 @@ Explorer.Node = class ExplorerNode extends util.Target {
     get isHidden() { return this.#isHidden; }
 
     get info() { return this.#info; }
+    set info(v) {
+        v = (v == null) ? null : String(v);
+        if (this.info == v) return;
+        this.#info = v;
+        this.eTag.textContent = util.ensure(this.info, "str");
+    }
 
     get value() { return this.#value; }
     set value(v) {
