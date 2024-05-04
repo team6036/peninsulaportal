@@ -6176,9 +6176,10 @@ export class Odometry3d extends Odometry {
         this.#origin = null;
 
         let keys = new Set();
-        let times = {}, sprint = false;
+        let times = {}, sprint = false, sprintBy = null;
         this.canvas.addEventListener("keydown", e => {
             e.stopPropagation();
+            if (keys.has(e.code)) return;
             keys.add(e.code);
             if (![
                 "KeyD", "ArrowRight",
@@ -6192,12 +6193,15 @@ export class Odometry3d extends Odometry {
             let t1 = util.getTime();
             times[e.code] = t1;
             if (t1-t0 > 250) return;
+            if (t1-t0 < 50) return;
             sprint = true;
+            sprintBy = e.code;
         });
         this.canvas.addEventListener("keyup", e => {
             e.stopPropagation();
+            if (!keys.has(e.code)) return;
             keys.delete(e.code);
-            if (!(e.code in times)) return;
+            if (e.code != sprintBy) return;
             sprint = false;
         });
         let velocity = new util.V3();
