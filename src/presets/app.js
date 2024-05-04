@@ -1209,8 +1209,8 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
         const fComponentsForm = this.form.addField(new core.Form.SubForm("components"));
         const componentsForm = fComponentsForm.form;
         componentsForm.isHorizontal = true;
-        const fAddComponent = componentsForm.addField(new core.Form.Button("add-component", "Add", "special"));
-        fAddComponent.addHandler("trigger", async e => {
+        const fComponentAdd = componentsForm.addField(new core.Form.Button("add-component", "Add", "special"));
+        fComponentAdd.addHandler("trigger", async e => {
             let k = await this.app.doPrompt("Robot Component Key", "Enter a unique key identifier");
             if (k == null) return;
             const robot = util.ensure(await window.api.get("robot", k), "obj");
@@ -1233,18 +1233,27 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                 fDefaultChange,
                 fDefaultRemove,
                 odom3dDropTarget,
+                fRotationsAdd,
                 fRotations.map(o => [
                     o.fRemove,
                     o.fAxis,
                     o.fAngle,
                 ]),
                 fTranslations,
+                fComponentAdd,
                 Object.keys(fComponents).map(k => [
                     fComponents[k].fRemove,
                     fComponents[k].fName,
                     fComponents[k].fModelChange,
                     fComponents[k].fModelRemove,
                     fComponents[k].dropTarget,
+                    fComponents[k].fRotationsAdd,
+                    fComponents[k].fRotations.map(o => [
+                        o.fRemove,
+                        o.fAxis,
+                        o.fAngle,
+                    ]),
+                    fComponents[k].fTranslations,
                 ]),
             ].flatten().forEach(o => (o.disabled = this.disabled));
         };
@@ -1369,12 +1378,84 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                         if (files.length <= 0) return;
                         await setComponentModel(k, files[0].path);
                     });
+                    const fZeroForm = fComponents[k].fZeroForm = fForm.form.addField(new core.Form.SubForm("model-zero"));
+                    const fRotationsForm = fComponents[k].fRotationsForm = fZeroForm.form.addField(new core.Form.SubForm("rotations"));
+                    const rotationsForm = fComponents[k].rotationsForm = fRotationsForm.form;
+                    rotationsForm.isHorizontal = true;
+                    const fRotationsAdd = fComponents[k].fRotationsAdd = rotationsForm.addField(new core.Form.Button("add-rotation-transform", "Add", "special"));
+                    fRotationsAdd.addHandler("trigger", e => {
+                        const robots = core.GLOBALSTATE.getProperty("robots").value;
+                        const robot = util.ensure(robots[this.k], "obj");
+                        const components = util.ensure(robot.components, "obj");
+                        const component = util.ensure(components[k], "obj");
+                        const zero = util.ensure(component.zero, "obj");
+                        const rotations = util.ensure(zero.rotations, "arr");
+                        this.change("data.components."+k+".zero.rotations."+rotations.length, null, { axis: "x", angle: 0 });
+                    });
+                    const fRotations = fComponents[k].fRotations = [];
+                    const fTranslations = fComponents[k].fTranslations = fZeroForm.form.addField(new core.Form.Input3d("translation"));
+                    fTranslations.types = ["m", "cm", "mm", "yd", "ft", "in"];
+                    fTranslations.baseType = fTranslations.activeType = "m";
+                    fTranslations.addHandler("change-value", () => {
+                        if (ignore) return;
+                        this.change("data.components."+k+".zero.translations", null, fTranslations.value.xyz);
+                    });
                 }
-                const fForm = fComponents[k].fForm;
+                const { fForm, fName, rotationsForm, fRotations, fTranslations } = fComponents[k];
                 fForm.header = component.name || k;
                 fForm.type = k;
-                const fName = fComponents[k].fName;
                 fName.value = util.ensure(component.name, "str");
+
+                const zero = util.ensure(component.zero, "obj");
+                const rotations = util.ensure(zero.rotations, "arr");
+                const translations = new util.V3(zero.translations);
+
+                while (fRotations.length < rotations.length) {
+                    let i = fRotations.length;
+                    const fForm = rotationsForm.addField(new core.Form.SubForm(i+1));
+                    const fRemove = fForm.form.addField(new core.Form.Button("remove-rotation", "Remove", "off"));
+                    fRemove.addHandler("trigger", async e => {
+                        if (ignore) return;
+                        try {
+                            await window.api.del("robot", this.k, "components."+k+".zero.rotations."+i);
+                        } catch (e) { this.app.doError("Robot Component Rotation Delete Error", this.k+", "+k+", "+i, e); }
+                    });
+                    fRemove.isHorizontal = true;
+                    const fAxis = fForm.form.addField(new core.Form.SelectInput("axis", ["x", "y", "z"], "x"));
+                    fAxis.showHeader = false;
+                    fAxis.addHandler("change-value", () => {
+                        if (ignore) return;
+                        this.change("data.components."+k+".zero.rotations."+i+".axis", null, fAxis.value);
+                    });
+                    const fAngle = fForm.form.addField(new core.Form.Input1d("angle"));
+                    fAngle.isHorizontal = true;
+                    fAngle.types = ["rad", "deg", "cycle"];
+                    fAngle.baseType = fAngle.activeType = "deg";
+                    fAngle.addHandler("change-value", () => {
+                        if (ignore) return;
+                        this.change("data.components."+k+".zero.rotations."+i+".angle", null, fAngle.value);
+                    });
+                    fRotations.push({
+                        fForm: fForm,
+                        fRemove: fRemove,
+                        fAxis: fAxis,
+                        fAngle: fAngle,
+                    });
+                }
+                while (fRotations.length > rotations.length)
+                    rotationsForm.remField(fRotations.pop().fForm);
+                for (let i = 0; i < rotations.length; i++) {
+                    const rotation = util.ensure(rotations[i], "obj");
+                    const { fForm, fAxis, fAngle } = fRotations[i];
+                    let axis = String(rotation.axis).toLowerCase();
+                    if (!["x", "y", "z"].includes(axis)) axis = "x";
+                    fAxis.value = axis;
+                    let angle = util.ensure(rotation.angle, "num");
+                    fAngle.value = angle;
+                    fForm.type = axis.toUpperCase()+" : "+angle;
+                }
+
+                if (!fTranslations.focused) fTranslations.value = translations;
             }
             for (let k in fComponents) {
                 if (k in components) continue;
