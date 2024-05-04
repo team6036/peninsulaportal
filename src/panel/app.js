@@ -8721,7 +8721,7 @@ Project.Profile = class ProjectProfile extends util.Target {
     get value() { return this.#value; }
     set value(v) {
         if (util.is(this.value, "arr") && util.is(v, "arr"))
-            if (util.arrEquals(this.value, v))
+            if (util.equals(this.value, v))
                 return;
         if (this.value == v) return;
         this.change("value", this.value, this.#value=v);

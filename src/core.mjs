@@ -8224,7 +8224,7 @@ Form.NInput = class FormNInput extends Form.Field {
             if (v.getTime() == this.cast(super.value.value[i]).getTime())
                 return v;
         if (this.isFile)
-            if (util.arrEquals(v, super.value.value[i]))
+            if (util.equals(v, super.value.value[i]))
                 return v;
         super.value.value[i] = v;
         this.change("value", v0, v);
