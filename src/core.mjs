@@ -2226,6 +2226,7 @@ App.CorePopup = class AppCorePopup extends App.PopupBase {
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
     set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
         this.eIcon.setAttribute("src", v);
         this.change("iconSrc", null, this.iconSrc);
     }
@@ -3207,7 +3208,10 @@ App.Menu.Item = class AppMenuItem extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -7778,7 +7782,10 @@ Explorer.Node = class ExplorerNode extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     updateDisplay() {
         if (this.showValue) this.eValue.textContent = this.value;
     }

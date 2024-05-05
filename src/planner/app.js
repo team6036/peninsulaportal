@@ -1536,7 +1536,10 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     get btnName() { return this.eName.textContent; }
     set btnName(v) { this.eName.textContent = v; }
 
