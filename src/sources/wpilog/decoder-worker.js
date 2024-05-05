@@ -71,6 +71,8 @@ class WPILOGDecoderWorker extends WorkerBase {
                     field.update(v, ts, true);
                     updateTime(ts);
                 });
+                source.add("json-test", "json");
+                source.update("json-test", "{\"a\":1}", tsMin);
                 source.tsMin = tsMin;
                 source.tsMax = tsMax;
                 this.progress(1);

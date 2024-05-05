@@ -267,7 +267,7 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     get baseType() {
         return this.type.slice(this.isStruct ? 7 : 0, this.type.length - (this.isArray ? 2 : 0));
     }
-    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.baseType); }
+    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.baseType) && (this.type != "json"); }
     get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
 
     get value() {
@@ -358,7 +358,10 @@ class ToolButton extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -1324,7 +1327,10 @@ Panel.Tab = class PanelTab extends util.Target {
         this.eTabIcon.name = v;
     }
     get iconSrc() { return this.eTabIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eTabIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eTabIcon.removeAttribute("name");
+        this.eTabIcon.setAttribute("src", v);
+    }
     get iconColor() { return this.eTabIcon.style.color; }
     set iconColor(v) { this.eTabIcon.style.color = v; }
     get hasIcon() { return this.eTab.contains(this.eTabIcon); }
@@ -1790,7 +1796,10 @@ Panel.AddTab.Tag = class PanelAddTabTag extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.children[0].getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 };
@@ -1904,7 +1913,10 @@ Panel.AddTab.Button = class PanelAddTabButton extends Panel.AddTab.Item {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     get iconColor() { return this.eIcon.style.color; }
     set iconColor(v) { this.eIcon.style.color = v; }
 
@@ -4253,7 +4265,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
 
     get displayName() { return this.eName.textContent; }
     set displayName(v) { this.eName.textContent = v; }

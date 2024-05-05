@@ -53,7 +53,10 @@ class FeatureButton extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
     get tooltip() { return this.eTooltip.textContent; }
     set tooltip(v) {
         this.eTooltip.textContent = v;
@@ -93,7 +96,10 @@ class UpperFeatureButton extends util.Target {
         this.eIcon.name = v;
     }
     get iconSrc() { return this.eIcon.getAttribute("src"); }
-    set iconSrc(v) { this.eIcon.setAttribute("src", v); }
+    set iconSrc(v) {
+        this.eIcon.removeAttribute("name");
+        this.eIcon.setAttribute("src", v);
+    }
 }
 
 export default class App extends core.App {

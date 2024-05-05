@@ -268,6 +268,7 @@ Source.Field = class SourceField {
         "float", "float[]",
         "int", "int[]",
         "raw",
+        "json",
         "string", "string[]",
         "structschema",
     ];
@@ -280,6 +281,7 @@ Source.Field = class SourceField {
             float: "float",
             int: "int",
             string: "str",
+            json: "str",
         };
         if (t in map) return util.ensure(v, map[t]);
         if (t.startsWith("struct:")) return v;
@@ -289,6 +291,15 @@ Source.Field = class SourceField {
         }
         if (t == "structschema") return util.toUint8Array(v);
         return v;
+    }
+    static getType(v) {
+        if (util.is(v, "bool")) return "boolean";
+        if (util.is(v, "int")) return "int";
+        if (util.is(v, "num")) return "double";
+        if (util.is(v, "str")) return "string";
+        if (v instanceof Uint8Array) return "raw";
+        if (util.is(v, "arr")) return this.getType(v[0])+"[]";
+        return "raw";
     }
 
     constructor(source, pth, type) {
@@ -309,7 +320,7 @@ Source.Field = class SourceField {
         this.#isStruct = this.type.startsWith("struct:");
         this.#isArray = this.type.endsWith("[]");
         this.#baseType = this.type.slice(this.isStruct ? 7 : 0, this.type.length - (this.isArray ? 2 : 0));
-        this.#isPrimitive = Source.Field.TYPES.includes(this.baseType);
+        this.#isPrimitive = Source.Field.TYPES.includes(this.baseType) && (this.type != "json");
         this.#isJustPrimitive = this.isPrimitive && !this.isArray;
         this.#isNumerical = this.isJustPrimitive && ["double", "float", "int"].includes(this.baseType);
 
@@ -346,9 +357,10 @@ Source.Field = class SourceField {
     get isPrimitive() { return this.#isPrimitive; }
     get isJustPrimitive() { return this.#isJustPrimitive; }
     get isNumerical() { return this.#isNumerical; }
+    get useDec() { return this.isStruct || (this.type == "json"); }
 
     get logsN() {
-        if (!this.isStruct) return Math.min(this.#logsTS.length, this.#logsV.length);
+        if (!this.useDec) return Math.min(this.#logsTS.length, this.#logsV.length);
         return Math.min(this.#logsTS.length, this.#logsV.length, this.#logsDec.length);
     }
     get logsTS() { return [...this.#logsTS]; }
@@ -357,7 +369,7 @@ Source.Field = class SourceField {
     set logsV(v) { this.#logsV = util.ensure(v, "arr"); }
     get logsDec() { return [...this.#logsDec]; }
     set logsDec(v) {
-        if (!this.isStruct) return;
+        if (!this.useDec) return;
         this.#logsDec = util.ensure(v, "arr");
     }
 
@@ -401,7 +413,7 @@ Source.Field = class SourceField {
         };
     }
     getDecoded(ts=null) {
-        if (!this.isStruct) return this.get(ts);
+        if (!this.useDec) return this.get(ts);
         ts = util.ensure(ts, "num", this.source.ts);
         const n = this.logsN;
         let i = this.getIndex(ts);
@@ -409,7 +421,7 @@ Source.Field = class SourceField {
         return this.#logsDec[i];
     }
     getDecodedRange(tsStart=null, tsStop=null) {
-        if (!this.isStruct) return this.getDecodedRange(ts);
+        if (!this.useDec) return this.getDecodedRange(ts);
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart)+1;
@@ -452,6 +464,28 @@ Source.Field = class SourceField {
                     this.source.addField(new this.source.constructor.Field(this.source, pth, this.baseType)).real = false;
                 this.source.getField(pth).update(v, ts, volatile);
             });
+        } else if (this.type == "json") {
+            let vDec = null;
+            try {
+                vDec = JSON.parse(v);
+            } catch (e) {}
+            this.#logsDec.splice(i+1, 0, vDec);
+            v = vDec;
+            if (util.is(v, "arr")) {
+                v.forEach((v, i) => {
+                    let pth = this.path+"/"+i;
+                    if (!this.source.hasField(pth))
+                        this.source.addField(new this.source.constructor.Field(this.source, pth, Source.Field.getType(v))).real = false;
+                    this.source.getField(pth).update(v, ts, volatile);
+                });
+            } else if (util.is(v, "obj")) {
+                for (let k in v) {
+                    let pth = this.path+"/"+k;
+                    if (!this.source.hasField(pth))
+                        this.source.addField(new this.source.constructor.Field(this.source, pth, Source.Field.getType(v[k]))).real = false;
+                    this.source.getField(pth).update(v[k], ts, volatile);
+                }
+            }
         }
         if (n == 0)
             if (this.name.startsWith("struct:") && this.type == "structschema")
@@ -459,13 +493,15 @@ Source.Field = class SourceField {
         return v;
     }
     updateDecoded(dec, ts=null) {
-        if (!this.isStruct) return this.update(dec, ts);
+        if (!this.useDec) return this.update(dec, ts);
         dec = util.ensure(dec, "obj");
         ts = util.ensure(ts, "num", this.source.ts);
         const n = this.logsN;
         let i = this.getIndex(ts);
         if (i < 0 || i >= n) return null;
-        this.#logsDec[i].r = dec;
+        if (this.isStruct)
+            this.#logsDec[i].r = dec;
+        else this.#logsDec[i] = dec;
         return dec;
     }
 
@@ -527,7 +563,7 @@ Source.Field = class SourceField {
             metaLogsTS: this.#metaLogsTS,
             metaLogsV: this.#metaLogsV,
         };
-        if (this.isStruct) data.logsDec = this.#logsDec;
+        if (this.useDec) data.logsDec = this.#logsDec;
         return data;
     }
     static fromSerialized(source, data) {
@@ -536,7 +572,7 @@ Source.Field = class SourceField {
         field.real = data.real;
         field.logsTS = data.logsTS;
         field.logsV = data.logsV;
-        if (field.isStruct) field.logsDec = data.logsDec;
+        if (field.useDec) field.logsDec = data.logsDec;
         field.metaLogsTS = data.metaLogsTS;
         field.metaLogsV = data.metaLogsV;
         return field;

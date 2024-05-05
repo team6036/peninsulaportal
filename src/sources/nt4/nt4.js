@@ -23,7 +23,7 @@ const TYPEINDEXLOOKUP = {
     "double[]": 17,
     "int[]": 18,
     "float[]": 19,
-    "string[]": 20
+    "string[]": 20,
 };
 
 export class NTSubscription extends util.Target {
