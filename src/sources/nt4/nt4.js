@@ -1,7 +1,11 @@
 import * as util from "../../util.mjs";
 import * as lib from "../../lib.mjs";
 
-import * as msgpack from "./msgpack.js";
+import { Encoder, Decoder } from "../../../node_modules/@msgpack/msgpack/dist.es5+esm/index.mjs";
+
+
+const msgpackEncoder = new Encoder();
+const msgpackDecoder = new Decoder();
 
 
 const TYPEINDEXLOOKUP = {
@@ -232,7 +236,7 @@ export class NTWebSocket extends util.Target {
                 return;
             }
             this.#lengthCounter += data.byteLength;
-            data = util.ensure(msgpack.deserialize(data, { multiple: true }), "arr");
+            data = Array.from(msgpackDecoder.decodeMulti(data));
             data.forEach(data => {
                 data = util.ensure(data, "arr");
                 const ID = util.ensure(data[0], "num");
@@ -332,7 +336,7 @@ export class NTWebSocket extends util.Target {
 
     sendTimestamp() {
         let ts = this.clientTime;
-        let txData = msgpack.serialize([-1, 0, TYPEINDEXLOOKUP["int"], ts]);
+        let txData = msgpackEncoder.encode([-1, 0, TYPEINDEXLOOKUP["int"], ts]);
         this.sendBinary(txData);
     }
     onTimestamp(serverTS, clientTS) {
@@ -518,7 +522,7 @@ export default class NTClient extends util.Target {
         return this.#ws.disconnect();
     }
 
-    get bitrate() { return this.#ws.bitrate; }
+    get bitrate() { return this.#ws ? this.#ws.bitrate : 0; }
 
     subscribe(patterns, prefix, all=false, periodic=0.1) {
         let subscription = new NTSubscription({
@@ -599,7 +603,7 @@ export default class NTClient extends util.Target {
         ts = util.ensure(ts, "num");
         let topic = this.#publishedTopics[name];
         if (!topic) return;
-        let data = msgpack.serialize([topic.ID, ts, topic.typeIndex, v]);
+        let data = msgpackEncoder.encode([topic.ID, ts, topic.typeIndex, v]);
         if (this.connected) this.#ws.sendBinary(data);
     }
     addSample(name, v) { return this.addSampleWithTS(name, this.serverTime, v); }
