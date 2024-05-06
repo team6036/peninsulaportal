@@ -9296,7 +9296,6 @@ export class DropTarget extends util.Target {
 
     #disabled;
 
-    // constructor(elem, drop=null) {
     constructor(elem) {
         super();
 

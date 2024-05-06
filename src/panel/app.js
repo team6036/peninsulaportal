@@ -572,7 +572,7 @@ class Widget extends util.Target {
     #page;
     #app;
 
-    constructor() {
+    constructor(a) {
         super();
 
         this.#elem = document.createElement("div");
@@ -620,15 +620,15 @@ class Container extends Widget {
     #dividers;
     #axis;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.elem.classList.add("container");
         
         this.#children = [];
         this.#weights = [];
         this.#dividers = [];
-        this.#axis = null;
+        this.#axis = "x";
 
         new ResizeObserver(() => this.format()).observe(this.elem);
 
@@ -637,26 +637,13 @@ class Container extends Widget {
 
         this.addHandler("update", delta => this.children.forEach(child => child.update(delta)));
 
-        if (a.length <= 0 || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Container) a = [a.children, a.weights, a.axis];
-            else if (util.is(a, "arr")) {
-                if (a[0] instanceof Widget) a = [a, [], "x"];
-                else {
-                    a = new Container(...a);
-                    a = [a.children, a.weights, a.axis];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.children, a.weights, a.axis];
-            else a = [[], [], "x"];
-        }
-        if (a.length == 2) {
-            if (util.is(a[1], "str")) a = [a[0], [], a[1]];
-            else a = [...a, "x"];
-        }
+        if (util.is(a, "arr")) a = { children: a };
+        else if (util.is(a, "str")) a = { axis: a };
 
-        [this.children, this.weights, this.axis] = a;
+        a = util.ensure(a, "obj");
+        this.children = a.children;
+        this.weights = a.weights;
+        this.axis = a.axis;
     }
 
     compute() {
@@ -963,8 +950,8 @@ class Panel extends Widget {
         ];
     }
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.elem.classList.add("panel");
         this.elem.addEventListener("click", e => {
@@ -1039,25 +1026,13 @@ class Panel extends Widget {
                 this.change("isMaximized", isMaximized, isMaximized=this.isMaximized);
         }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
-        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel) a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
-            else if (a instanceof Panel.Tab) a = [[a], 0];
-            else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.Tab) a = [a, 0];
-                else {
-                    a = new Panel(...a);
-                    a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.tabs, a.tabIndex, a.isTitleCollapsed, a.isMaximized];
-            else a = [[], 0];
-        }
-        if (a.length == 2)
-            a = [...a, false, false];
+        if (util.is(a, "arr")) a = { tabs: a };
 
-        [this.tabs, this.tabIndex, this.isTitleCollapsed, this.isMaximized] = a;
+        a = util.ensure(a, "obj");
+        this.tabs = a.tabs;
+        this.tabIndex = a.tabIndex;
+        this.isTitleCollapsed = a.isTitleCollapsed;
+        this.isMaximized = a.isMaximized;
 
         if (this.tabs.length <= 0) this.addTab(new Panel.AddTab());
     }
@@ -1199,7 +1174,7 @@ Panel.Tab = class PanelTab extends util.Target {
     #eTabName;
     #eTabClose;
 
-    constructor() {
+    constructor(a) {
         super();
 
         this.#parent = 0;
@@ -1368,8 +1343,8 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     #eSearchClear;
     #eContent;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.elem.classList.add("add");
 
@@ -1422,19 +1397,11 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         this.addHandler("add", () => this.refresh());
         this.addHandler("rem", () => this.refresh());
 
-        if (a.length <= 0 || a.length > 1) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.AddTab) a = [a.searchPart, a.query];
-            else if (util.is(a, "arr")) {
-                a = new Panel.AddTab(...a);
-                a = [a.searchPart, a.query];
-            }
-            else if (util.is(a, "obj")) a = [a.searchPart, a.query];
-            else a = [null, a];
-        }
+        if (util.is(a, "str")) a = { query: a };
 
-        [this.searchPart, this.query] = a;
+        a = util.ensure(a, "obj");
+        this.searchPart = a.searchPart;
+        this.query = a.query;
 
         this.refresh();
     }
@@ -2062,8 +2029,8 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #eDisplay;
     #eDisplayChange;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.elem.classList.add("browser");
 
@@ -2320,20 +2287,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             displays[k].update = util.ensure(displays[k].update, "func");
         }
 
-        if (a.length <= 0 || a.length > 1) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.BrowserTab) a = [a.path, a.explorer.showHidden];
-            else if (util.is(a, "arr")) {
-                a = new Panel.BrowserTab(...a);
-                a = [a.path, a.explorer.showHidden];
-            }
-            else if (util.is(a, "obj")) a = [a.path, a.showHidden];
-            else a = [a, false];
-        }
-
-        [this.path, this.explorer.showHidden] = a;
-
         let prevNode = 0;
         let prevDType = null;
 
@@ -2393,6 +2346,12 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 if (dType in displays) displays[dType].update(node, value, display, dTypeData);
             }
         });
+
+        if (util.is(a, "str")) a = { path: a };
+        
+        a = util.ensure(a, "obj");
+        this.path = a.path;
+        this.explorer.showHidden = a.explorer ? a.explorer.showHidden : a.showHidden;
     }
 
     get path() { return this.#path; }
@@ -2490,7 +2449,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     }
 };
 Panel.ToolTab = class PanelToolTab extends Panel.Tab {
-    constructor(dname, name) {
+    constructor(a, dname, name) {
         super();
 
         this.elem.classList.add("tool");
@@ -2522,8 +2481,8 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
     static TW2 = 150;
     static TH = 30;
 
-    constructor(...a) {
-        super("Table", "table");
+    constructor(a) {
+        super(a, "Table", "table");
 
         this.elem.classList.add("table");
 
@@ -2613,23 +2572,12 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             this.vars.forEach(v => v.update(delta));
         });
 
-        if (a.length <= 0 || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.TableTab) a = [a.vars, a.tsNow, a.tsOverride];
-            else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.TableTab.Variable) a = [a, 0];
-                else {
-                    a = new Panel.TableTab(...a);
-                    a = [a.vars, a.tsNow, a.tsOverride];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.vars, a.tsNow, a.tsOverride];
-            else a = [[], 0];
-        }
-        if (a.length == 2) a = [...a, false];
+        if (util.is(a, "arr")) a = { vars: a };
 
-        [this.vars, this.tsNow, this.tsOverride] = a;
+        a = util.ensure(a, "obj");
+        this.vars = a.vars;
+        this.tsNow = a.tsNow;
+        this.tsOverride = a.tsOverride;
     }
 
     get vars() { return [...this.#vars]; }
@@ -2824,7 +2772,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
     #elem;
     #eHeader;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#tab = null;
@@ -2911,18 +2859,10 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
             this.tab.elem.scrollTop = scrollTop;
         });
 
-        if (a.length <= 0 || a.length > 1) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.TableTab.Variable) a = [a.path];
-            else if (util.is(a, "arr")) {
-                a = [new Panel.GraphTab.Variable(...a).path];
-            }
-            else if (util.is(a, "obj")) a = [a.path];
-            else a = [a];
-        }
+        if (util.is(a, "str")) a = { path: a };
 
-        [this.path] = a;
+        a = util.ensure(a, "obj");
+        this.path = a.path;
     }
 
     get tab() { return this.#tab; }
@@ -2988,8 +2928,8 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
     #eSrcInput;
     #eWebView;
 
-    constructor(...a) {
-        super("WebView", "webview");
+    constructor(a) {
+        super(a, "WebView", "webview");
 
         this.elem.classList.add("webview");
 
@@ -3055,21 +2995,15 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
             this.eWebView.loadURL(this.src);
         });
 
-        if (a.length > 1 || a.length <= 0) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.WebViewTab) a = [a.src];
-            else if (util.is(a, "arr")) a = [new Panel.WebViewTab(...a).src];
-            else if (util.is(a, "obj")) a = [a.src];
-            else a = [a];
-        }
+        if (util.is(a, "str")) a = { src: a };
 
-        [this.src] = a;
+        a = util.ensure(a, "obj");
+        this.src = a.src;
     }
 
     get src() { return this.#src; }
     set src(v) {
-        v = String(v);
+        v = util.ensure(v, "str");
         if (this.src == v) return;
         this.change("src", this.src, this.#src=v);
     }
@@ -3090,8 +3024,8 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
 Panel.ScoutTab = class PanelScoutTab extends Panel.ToolTab {
     #eWebView;
 
-    constructor() {
-        super("Scout", "scout");
+    constructor(a) {
+        super(a, "Scout", "scout");
 
         this.elem.classList.add("scout");
 
@@ -3113,8 +3047,8 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #eUploadBtn;
     #eLogs;
 
-    constructor() {
-        super("Logger", "logger");
+    constructor(a) {
+        super(a, "Logger", "logger");
 
         this.elem.classList.add("logger");
 
@@ -3506,8 +3440,8 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
 
     #eActions;
 
-    constructor(...a) {
-        super("LogWorks", "logworks");
+    constructor(a) {
+        super(a, "LogWorks", "logworks");
 
         this.elem.classList.add("logworks");
 
@@ -3525,16 +3459,10 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
 
         this.addHandler("update", delta => this.actions.forEach(action => action.update(delta)));
 
-        if (a.length <= 0 || a.length > 1) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.LogWorksTab) a = [a.actionPage];
-            else if (util.is(a, "arr")) a = [new Panel.LogWorksTab(...a).actionPage];
-            else if (util.is(a, "obj")) a = [a.actionPage];
-            else a = [a];
-        }
+        if (util.is(a, "str")) a = { actionPage: a };
 
-        [this.actionPage] = a;
+        a = util.ensure(a, "obj");
+        this.actionPage = a.actionPage;
     }
 
     compute() {
@@ -4321,8 +4249,8 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     #eTimeNavEdit;
     #eTimeNavLock;
 
-    constructor(...a) {
-        super("VideoSync", "videosync");
+    constructor(a) {
+        super(a, "VideoSync", "videosync");
 
         this.elem.classList.add("videosync");
 
@@ -4670,19 +4598,10 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             this.eVideo.src = "file://"+(await window.api.send("video-get", this.video));
         });
 
-        if (a.length <= 0 || a.length > 1) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.VideoSyncTab) a = [a.video];
-            else if (util.is(a, "arr")) {
-                a = new Panel.VideoSyncTab(...a);
-                a = [a.video];
-            }
-            else if (util.is(a, "obj")) a = [a.video];
-            else a = [a];
-        }
+        if (util.is(a, "str")) a = { video: a };
 
-        [this.video] = a;
+        a = util.ensure(a, "obj");
+        this.video = a.video;
     }
 
     get video() { return this.#video; }
@@ -4780,8 +4699,8 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
 
     static CREATECTX = true;
 
-    constructor(dname, name) {
-        super(dname, name);
+    constructor(a, dname, name) {
+        super(a, dname, name);
 
         this.elem.classList.add("canvas");
 
@@ -4867,7 +4786,10 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
         this.optionState = 1;
-        this.closeOptions();
+        this.optionState = 0;
+
+        a = util.ensure(a, "obj");
+        this.optionState = a.optionState;
     }
 
     get quality() { return this.#quality; }
@@ -4899,7 +4821,7 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
         return 0;
     }
     set optionState(v) {
-        v = [0, 0.5, 1].includes(v) ? v : 0;
+        v = [0, 0.5, 1].includes(v) ? v : 0.5;
         if (this.optionState == v) return;
         this.elem.classList.remove("open");
         this.elem.classList.remove("half-open");
@@ -5140,8 +5062,8 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #viewMode;
     #viewParams;
 
-    constructor(...a) {
-        super("Graph", "graph");
+    constructor(a) {
+        super(a, "Graph", "graph");
 
         this.elem.classList.add("graph");
 
@@ -5839,28 +5761,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             scrollX = scrollY = 0;
         });
 
-        if (a.length <= 0 || [4].includes(a.length) || a.length > 5) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.GraphTab) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.optionState];
-            else if (util.is(a, "arr")) {
-                if (a[0] instanceof Panel.GraphTab.Variable) a = [a, []];
-                else {
-                    a = new Panel.GraphTab(...a);
-                    a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.optionState];
-                }
-            }
-            else if (a instanceof Panel.GraphTab.Variable) a = [[a], []];
-            else if (util.is(a, "obj")) a = [a.lVars, a.rVars, a.viewMode, a.viewParams, a.optionState];
-            else a = [[], []];
-        }
-        if (a.length == 2) a = [...a, true];
-        if (a.length == 3) {
-            if (util.is(a[2], "str")) a = [...a, {}, 0.5];
-            else a = [a[0], a[1], "all", {}, a[2]];
-        }
+        if (util.is(a, "arr")) a = { lVars: a };
+        else if (a instanceof Panel.GraphTab.Variable) a = { lVars: [a] };
 
-        [this.lVars, this.rVars, this.viewMode, this.viewParams, this.optionState] = a;
+        a = util.ensure(a, "obj");
+        this.lVars = a.lVars;
+        this.rVars = a.rVars;
+        this.viewMode = a.viewMode || "all";
+        this.viewParams = a.viewParams;
     }
 
     compute() {
@@ -6044,7 +5952,10 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     nextColor = colors[i];
                                 });
                                 if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
-                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable(pth, "--c"+nextColor));
+                                this["add"+side.toUpperCase()+"Var"](new Panel.GraphTab.Variable({
+                                    path: pth,
+                                    color: "--c"+nextColor,
+                                }));
                             }
                             node.nodeObjects.forEach(node => addVar(node));
                         };
@@ -6124,7 +6035,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     #eColorPickerColors;
     #eGhostBtn;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#tab = null;
@@ -6258,23 +6169,16 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             this.isOpen = !this.isOpen;
         });
 
-        if (a.length <= 0 || [5].includes(a.length) || a.length > 7) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.GraphTab.Variable) a = [a.path, a.shown, a.color, a.ghost, a.shownHook.to(), a.ghostHook.to(), a.expr];
-            else if (util.is(a, "arr")) {
-                a = new Panel.GraphTab.Variable(...a);
-                a = [a.path, a.shown, a.color, a.ghost, a.shownHook.to(), a.ghostHook.to(), a.expr];
-            }
-            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost, a.shownHook, a.ghostHook, a.expr];
-            else a = [[], null];
-        }
-        if (a.length == 2) a = [a[0], true, a[1]];
-        if (a.length == 3) a = [...a, false];
-        if (a.length == 4) a = [...a, null, null];
-        if (a.length == 6) a = [...a, null];
+        if (util.is(a, "str")) a = { path: a };
 
-        [this.path, this.shown, this.color, this.ghost, this.shownHook, this.ghostHook, this.expr] = a;
+        a = util.ensure(a, "obj");
+        this.path = a.path;
+        this.shown = util.ensure(a.shown, "bool", true);
+        this.color = a.color;
+        this.ghost = a.ghost;
+        this.shownHook = a.shownHook;
+        this.ghostHook = a.ghostHook;
+        this.expr = a.expr;
     }
 
     get tab() { return this.#tab; }
@@ -6461,8 +6365,8 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
     static PATTERNS = {};
 
-    constructor(tail="") {
-        super("Odometry"+tail, "odometry"+String(tail).toLowerCase());
+    constructor(a, tail="") {
+        super(a, "Odometry"+tail, "odometry"+String(tail).toLowerCase());
 
         this.elem.classList.add("odometry");
 
@@ -6521,6 +6425,13 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                 hook.setFrom((node && node.hasField()) ? node.field.type : "*", this.getValue(node));
             });
         });
+
+        if (util.is(a, "arr")) a = { poses: a };
+        else if (util.is(a, "str")) a = { template: a };
+
+        a = util.ensure(a, "obj");
+        this.poses = a.poses;
+        this.template = a.template || core.GLOBALSTATE.getProperty("active-template").value;
     }
 
     applyGlobal() {
@@ -6684,7 +6595,10 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                                 nextColor = colors[i];
                             });
                             if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
-                            this.addPose(new this.constructor.Pose(pth, "--c"+nextColor));
+                            this.addPose(new this.constructor.Pose({
+                                path: pth,
+                                color: "--c"+nextColor,
+                            }));
                         };
                         addPose(data.path);
                     },
@@ -6744,7 +6658,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     #eColorPicker;
     #eColorPickerColors;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#path = "";
@@ -6833,21 +6747,13 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             this.state.app.placeContextMenu(e.pageX, e.pageY);
         });
 
-        if (a.length <= 0 || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.shownHook.to()];
-            else if (util.is(a, "arr")) {
-                a = new this.constructor(...a);
-                a = [a.path, a.shown, a.color, a.shownHook.to()];
-            }
-            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.shownHook];
-            else a = [[], null];
-        }
-        if (a.length == 2) a = [a[0], true, a[1]];
-        if (a.length == 3) a = [...a, null];
+        if (util.is(a, "str")) a = { path: a };
 
-        [this.path, this.shown, this.color, this.shownHook] = a;
+        a = util.ensure(a, "obj");
+        this.path = a.path;
+        this.shown = util.ensure(a.shown, "bool", true);
+        this.color = a.color;
+        this.shownHook = a.shownHook;
     }
 
     makeContextMenu() {
@@ -7088,8 +6994,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         ],
     };
 
-    constructor(...a) {
-        super("2d");
+    constructor(a) {
+        super(a, "2d");
 
         this.#odometry = new core.Odometry2d(this.eContent);
         this.addHandler("add", () => {
@@ -7312,26 +7218,12 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         this.applyGlobal();
 
-        if (a.length <= 0 || [6, 7].includes(a.length) || a.length > 8) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.Odometry2dTab) a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
-            else if (util.is(a, "arr")) {
-                if (a[0] instanceof this.constructor.Pose) a = [a, core.GLOBALSTATE.getProperty("active-template").value];
-                else {
-                    a = new Panel.Odometry2dTab(...a);
-                    a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.size, a.robotSize, a.lengthUnits, a.angleUnits, a.origin, a.optionState];
-            else a = [[], core.GLOBALSTATE.getProperty("active-template").value];
-        }
-        if (a.length == 2) a = [...a, 10];
-        if (a.length == 3) a = [...a, 1];
-        if (a.length == 4) a = [...a, 0.5];
-        if (a.length == 5) a = [...a.slice(0, 4), "m", "deg", "blue+", a[4]];
-
-        [this.poses, this.template, this.size, this.robotSize, this.lengthUnits, this.angleUnits, this.origin, this.optionState] = a;
+        a = util.ensure(a, "obj");
+        this.size = a.size || 10;
+        this.robotSize = a.robotSize || 1;
+        this.lengthUnits = util.ensure(a.lengthUnits, "str", "m");
+        this.angleUnits = util.ensure(a.angleUnits, "str", "deg");
+        this.origin = util.ensure(a.origin, "str", "blue+");
     }
 
     get odometry() { return this.#odometry; }
@@ -7406,8 +7298,8 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
 
     #eGhostBtn;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#ghost = false;
         this.#type = null;
@@ -7464,28 +7356,12 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.trail = 0;
         this.useTrail = false;
 
-        if (a.length <= 0 || [6].includes(a.length) || a.length > 9) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to(), a.trail, a.useTrail];
-            else if (util.is(a, "arr")) {
-                if (util.is(a[0], "str")) a = [a, null];
-                else {
-                    a = new this.constructor(...a);
-                    a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook.to(), a.ghostHook.to(), a.trail, a.useTrail];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost, a.type, a.shownHook, a.ghostHook, a.trail, a.useTrail];
-            else a = [[], null];
-        }
-        if (a.length == 2) a = [a[0], true, a[1]];
-        if (a.length == 3) a = [...a, false];
-        if (a.length == 4) a = [...a, "§default"];
-        if (a.length == 5) a = [...a, null, null];
-        if (a.length == 7) a = [...a, 0];
-        if (a.length == 8) a = [...a, false];
-
-        [this.path, this.shown, this.color, this.ghost, this.type, this.shownHook, this.ghostHook, this.trail, this.useTrail] = a;
+        a = util.ensure(a, "obj");
+        this.ghost = a.ghost;
+        this.type = a.type || core.Odometry2d.Robot.TYPES[0];
+        this.ghostHook = a.ghostHook;
+        this.trail = a.trail;
+        this.useTrail = a.useTrail;
     }
     
     makeContextMenu() {
@@ -7762,8 +7638,8 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         ],
     };
 
-    constructor(...a) {
-        super("3d");
+    constructor(a) {
+        super(a, "3d");
 
         this.addHandler("rem", () => {
             this.odometry.renderer.forceContextLoss();
@@ -8063,25 +7939,13 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         this.applyGlobal();
 
-        if (a.length <= 0 || [4, 5, 6, 7].includes(a.length) || a.length > 9) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Panel.Odometry3dTab) a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.cameraHook.to(), a.optionState];
-            else if (util.is(a, "arr")) {
-                if (a[0] instanceof this.constructor.Pose) a = [a, core.GLOBALSTATE.getProperty("active-template").value];
-                else {
-                    a = new Panel.Odometry3dTab(...a);
-                    a = [a.poses, a.template, a.odometry.renderType, a.odometry.controlType, a.lengthUnits, a.angleUnits, a.odometry.origin, a.cameraHook.to(), a.optionState];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.poses, a.template, a.renderType, a.controlType, a.lengthUnits, a.angleUnits, a.origin, a.cameraHook, a.optionState];
-            else a = [[], core.GLOBALSTATE.getProperty("active-template").value];
-        }
-        if (a.length == 2) a = [...a, 0.5];
-        if (a.length == 3) a = [...a.slice(0, 2), true, true, true, true, "blue+", a[2]];
-        if (a.length == 8) a = [...a.slice(0, 7), null, a[7]];
-
-        [this.poses, this.template, this.odometry.renderType, this.odometry.controlType, this.lengthUnits, this.angleUnits, this.odometry.origin, this.cameraHook, this.optionState] = a;
+        a = util.ensure(a, "obj");
+        this.odometry.renderType = a.odometry ? a.odometry.renderType : a.renderType;
+        this.odometry.controlType = a.odometry ? a.odometry.controlType : a.controlType;
+        this.lengthUnits = util.ensure(a.lengthUnits, "str", "m");
+        this.angleUnits = util.ensure(a.angleUnits, "str", "deg");
+        this.odometry.origin = util.ensure(a.origin, "str", "blue+");
+        this.cameraHook = a.cameraHook;
     }
 
     get odometry() { return this.#odometry; }
@@ -8144,8 +8008,8 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
     #eGhostBtn;
     #eSolidBtn;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#ghost = null;
         this.#solid = null;
@@ -8215,25 +8079,13 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
             }
         });
 
-        if (a.length <= 0 || [3, 4, 5, 7, 8, 9].includes(a.length) || a.length > 9) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof this.constructor) a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.to(), a.ghostHook.to(), a.solidHook.to(), a.componentHooks];
-            else if (util.is(a, "arr")) {
-                if (util.is(a[0], "str")) a = [a, null];
-                else {
-                    a = new this.constructor(...a);
-                    a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook.to(), a.ghostHook.to(), a.solidHook.to(), a.componentHooks];
-                }
-            }
-            else if (util.is(a, "obj")) a = [a.path, a.shown, a.color, a.ghost, a.solid, a.type, a.shownHook, a.ghostHook, a.solidHook, a.componentHooks];
-            else a = [null, null];
-        }
-        if (a.length == 2) a = [a[0], true, a[1], false, false];
-        if (a.length == 5) a = [...a, core.GLOBALSTATE.getProperty("active-robot").value];
-        if (a.length == 6) a = [...a, null, null, null, null];
-
-        [this.path, this.shown, this.color, this.ghost, this.solid, this.type, this.shownHook, this.ghostHook, this.solidHook, this.componentHooks] = a;
+        a = util.ensure(a, "obj");
+        this.ghost = a.ghost;
+        this.solid = a.solid;
+        this.type = a.type || core.Odometry3d.Render.TYPES[0];
+        this.ghostHook = a.ghostHook;
+        this.solidHook = a.solidHook;
+        this.componentHooks = a.componentHooks;
     }
 
     makeContextMenu() {
@@ -8429,37 +8281,19 @@ class Project extends lib.Project {
     #sidePos;
     #sideSectionPos;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#widgetData = "";
         this.#profiles = {};
         this.#sidePos = 0.15;
         this.#sideSectionPos = {};
 
-        if (a.length <= 0 || [5].includes(a.length) || a.length > 7) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project) a = [a.id, a.widgetData, a.profiles, a.sidePos, a.sideSectionPos, a.config, a.meta];
-            else if (util.is(a, "arr")) {
-                a = new Project(...a);
-                a = [a.id, a.widgetData, a.profiles, a.sidePos, a.sideSectionPos, a.config, a.meta];
-            }
-            else if (a instanceof Project.Config) a = ["", a, null];
-            else if (a instanceof Project.Meta) a = ["", null, a];
-            else if (util.is(a, "str")) a = ["", null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.widgetData, a.profiles, a.sidePos, a.sideSectionPos, a.config, a.meta];
-            else a = ["", null, null];
-        }
-        if (a.length == 2) {
-            if (a[0] instanceof Project.Config && a[1] instanceof Project.Meta) a = ["", ...a];
-            else a = ["", null, null];
-        }
-        if (a.length == 3) a = [a[0], {}, ...a.slice(1)];
-        if (a.length == 4) a = [...a.slice(0, 2), 0.15, { source: 0, browser: 1, tools: 0 }, ...a.slice(2)];
-        if (a.length == 6) a = [null, ...a];
-
-        [this.id, this.widgetData, this.profiles, this.sidePos, this.sideSectionPos, this.config, this.meta] = a;
+        a = util.ensure(a, "obj");
+        this.widgetData = a.widgetData;
+        this.profiles = a.profiles;
+        this.sidePos = a.sidePos;
+        this.sideSectionPos = a.sideSectionPos || { source: 0, browser: 1, tools: 0 };
     }
 
     get widgetData() { return this.#widgetData; }
@@ -8620,25 +8454,15 @@ Project.Config = class ProjectConfig extends Project.Config {
     #sources;
     #sourceType;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#sources = {};
         this.#sourceType = "";
 
-        if (a.length <= 0 || a.length > 2) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Config) a = [a.sources, a.sourceType];
-            else if (util.is(a, "arr")) {
-                a = new Project.Config(...a);
-                a = [a.sources, a.sourceType];
-            }
-            else if (util.is(a, "obj")) a = [a.sources, a.sourceType];
-            else a = [{}, "nt"];
-        }
-
-        [this.sources, this.sourceType] = a;
+        a = util.ensure(a, "obj");
+        this.sources = a.sources;
+        this.sourceType = a.sourceType || "wpilog";
     }
 
     get sourceTypes() { return Object.keys(this.#sources); }
