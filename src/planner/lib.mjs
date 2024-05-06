@@ -13,8 +13,8 @@ export class Project extends lib.Project {
     #sidePos;
     #maximized;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#template = null;
         this.#items = {};
@@ -42,50 +42,31 @@ export class Project extends lib.Project {
             });
         });
 
-        if (a.length <= 0 || [5, 7, 9].includes(a.length) || a.length > 11) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project) {
-                let itms = {};
-                a.items.forEach(id => {
-                    let itm = a.getItem(id);
-                    itms[id] = new itm.constructor(itm);
-                });
-                let pths = {};
-                a.paths.forEach(id => {
-                    let pth = a.getPath(id);
-                    pths[id] = new pth.constructor(pth);
-                });
-                a = [a.id, a.template, itms, pths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
-            }
-            else if (util.is(a, "arr")) {
-                a = new Project(...a);
-                let itms = {};
-                a.items.forEach(id => {
-                    let itm = a.getItem(id);
-                    itms[id] = new itm.constructor(itm);
-                });
-                let pths = {};
-                a.paths.forEach(id => {
-                    let pth = a.getPath(id);
-                    pths[id] = new pth.constructor(pth);
-                });
-                a = [a.id, a.template, itms, pths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
-            }
-            else if (a instanceof Project.Config) a = [null, {}, {}, 10, 1, 0, a, null];
-            else if (a instanceof Project.Meta) a = [null, {}, {}, 10, 1, 0, null, a];
-            else if (util.is(a, "str")) a = [null, {}, {}, 10, 1, 0, null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.template, a.items, a.paths, a.size, a.robotSize, a.robotMass, a.sidePos, a.maximized, a.config, a.meta];
-            else a = [{}, {}];
+        a = util.ensure(a, "obj");
+        this.template = a.template;
+        let items = a.items;
+        let paths = a.paths;
+        if (a instanceof Project) {
+            let items2 = {};
+            items.forEach(id => {
+                let itm = a.getItem(id);
+                items2[id] = new itm.constructor(itm);
+            });
+            items = items2;
+            let paths2 = {};
+            paths.forEach(id => {
+                let pth = a.getPath(id);
+                paths2[id] = new pth.constructor(pth);
+            });
+            paths = paths2;
         }
-        if (a.length == 2) a = [null, ...a];
-        if (a.length == 3) a = [...a, 10];
-        if (a.length == 4) a = [...a, 1, 100];
-        if (a.length == 6) a = [...a, null, false];
-        if (a.length == 8) a = [...a, null, null];
-        if (a.length == 10) a = [null, ...a];
-
-        [this.id, this.template, this.items, this.paths, this.size, this.robotSize, this.robotMass, this.sidePos, this.maximized, this.config, this.meta] = a;
+        this.items = items;
+        this.paths = paths;
+        this.size = a.size || 10;
+        this.robotSize = a.robotSize || 1;
+        this.robotMass = a.robotMass || 100;
+        this.sidePos = a.sidePos;
+        this.maximized = a.maximized;
     }
 
     get template() { return this.#template; }
@@ -266,8 +247,8 @@ Project.Config = class ProjectConfig extends Project.Config {
 
     #options;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#script = null;
         this.#scriptPython = "";
@@ -275,21 +256,13 @@ Project.Config = class ProjectConfig extends Project.Config {
 
         this.#options = {};
 
-        if (a.length <= 0 || [2].includes(a.length) || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Config) a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
-            else if (util.is(a, "arr")) {
-                a = new Project.Config(...a);
-                a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
-            }
-            else if (util.is(a, "str")) a = [a, "python3", true];
-            else if (util.is(a, "obj")) a = [a.script, a.scriptPython, a.scriptUseDefault, a.options];
-            else a = [null, "python3", true];
-        }
-        if (a.length == 3) a = [...a, null];
+        if (util.is(a, "str")) a = { script: a };
 
-        [this.script, this.scriptPython, this.scriptUseDefault, this.options] = a;
+        a = util.ensure(a, "obj");
+        this.script = a.script;
+        this.scriptPython = util.ensure(a.scriptPython, "str", "python3");
+        this.scriptUseDefault = util.ensure(a.scriptUseDefault, "bool", true);
+        this.options = a.options;
     }
 
     get script() { return this.#script; }
@@ -362,7 +335,7 @@ Project.Item = class ProjectItem extends util.Target {
 
     #pos;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#id = null;
@@ -371,19 +344,9 @@ Project.Item = class ProjectItem extends util.Target {
 
         this.pos.addHandler("change", (c, f, t) => this.change("pos."+c, f, t));
 
-        if (a.length <= 0 || a.length > 2) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Item) a = [a.id, a.pos];
-            else if (util.is(a, "arr")) {
-                a = new Project.Item(...a);
-                a = [a.id, a.pos];
-            }
-            else if (util.is(a, "obj")) a = [a.id, a.pos];
-            else a = [null, new V(a)];
-        }
-
-        [this.id, this.pos] = a;
+        a = util.ensure(a, "obj");
+        this.id = a.id;
+        this.pos = a.pos;
     }
 
     get id() { return this.#id; }
@@ -420,8 +383,8 @@ Project.Node = class ProjectNode extends Project.Item {
     #color;
     #ghost;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#heading = 0;
         this.#useHeading = false;
@@ -436,27 +399,16 @@ Project.Node = class ProjectNode extends Project.Item {
 
         this.velocity.addHandler("change", (c, f, t) => this.change("velocity."+c, f, t));
 
-        if (a.length <= 0 || [9, 10].includes(a.length) || a.length > 10) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Node) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type, a.color, a.ghost];
-            else if (a instanceof Project.Item) a = [a.id, a.pos, 0];
-            else if (util.is(a, "arr")) {
-                a = new Project.Node(...a);
-                a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type, a.color, a.ghost];
-            }
-            else if (util.is(a, "obj")) a = [a.id, a.pos, a.heading, a.useHeading, a.velocity, a.velocityRot, a.useVelocity, a.options, a.type, a.color, a.ghost];
-            else a = [a, 0];
-        }
-        if (a.length == 2) a = [...a, 100];
-        if (a.length == 3) a = [...a, true];
-        if (a.length == 4) a = [...a.slice(0, 3), 0, ...a.slice(3)];
-        if (a.length == 5) a = [...a.slice(0, 2), true, ...a.slice(2)];
-        if (a.length == 6) a = [...a, {}];
-        if (a.length == 7) a = [...a, "§default", "cb", false];
-        if (a.length == 10) a = [null, ...a];
-        
-        [this.id, this.pos, this.heading, this.useHeading, this.velocity, this.velocityRot, this.useVelocity, this.options, this.type, this.color, this.ghost] = a;
+        a = util.ensure(a, "obj");
+        this.heading = a.heading;
+        this.useHeading = util.ensure(a.useHeading, "bool", true);
+        this.velocity = a.velocity;
+        this.velocityRot = a.velocityRot;
+        this.useVelocity = util.ensure(a.useVelocity, "bool", true);
+        this.options = a.options;
+        this.type = a.type || "§default";
+        this.color = a.color || "cb";
+        this.ghost = a.ghost;
     }
 
     get heading() { return this.#heading; }
@@ -565,28 +517,14 @@ Project.Obstacle = class ProjectObstacle extends Project.Item {
     #radius;
     #disabled;
 
-    constructor(...a) {
-        super();
+    constructor(a) {
+        super(a);
 
         this.#radius = 0;
 
-        if (a.length <= 0 || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Obstacle) a = [a.id, a.pos, a.radius, a.disabled];
-            else if (a instanceof Project.Item) a = [a.id, a.pos, 100];
-            else if (util.is(a, "arr")) {
-                a = new Project.Obstacle(...a);
-                a = [a.id, a.pos, a.radius, a.disabled];
-            }
-            else if (a instanceof V) a = [a, 100];
-            else if (util.is(a, "obj")) a = [a.id, a.pos, a.radius, a.disabled];
-            else a = [0, a];
-        }
-        if (a.length == 2) a = [...a, false];
-        if (a.length == 3) a = [null, ...a];
-
-        [this.id, this.pos, this.radius, this.disabled] = a;
+        a = util.ensure(a, "obj");
+        this.radius = util.ensure(a.radius, "num", 1);
+        this.disabled = a.disabled;
     }
 
     get radius() { return this.#radius; }
@@ -626,7 +564,7 @@ Project.Path = class ProjectPath extends util.Target {
     #name;
     #nodes;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#id = null;
@@ -634,21 +572,10 @@ Project.Path = class ProjectPath extends util.Target {
         this.#name = null;
         this.#nodes = [];
 
-        if (a.length <= 0 || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Path) a = [a.name, a.nodes];
-            else if (util.is(a, "arr")) {
-                a = new Project.Path(...a);
-                a = [a.name, a.nodes];
-            }
-            else if (util.is(a, "str")) a = [a, []];
-            else if (util.is(a, "obj")) a = [a.id, a.name, a.nodes];
-            else a = ["", []];
-        }
-        if (a.length == 2) a = [null, ...a];
-
-        [this.id, this.name, this.nodes] = a;
+        a = util.ensure(a, "obj");
+        this.id = a.id;
+        this.name = a.name;
+        this.nodes = a.nodes;
     }
 
     get id() { return this.#id; }
@@ -656,7 +583,7 @@ Project.Path = class ProjectPath extends util.Target {
 
     get name() { return this.#name; }
     set name(v) {
-        v = (v == null) ? "" : String(v);
+        v = util.ensure(v, "str");
         if (this.name == v) return;
         this.change("name", this.name, this.#name=v);
     }

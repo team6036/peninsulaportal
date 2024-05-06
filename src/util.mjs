@@ -1,14 +1,11 @@
-// minimum precision necessary - not used often however 
 export const EPSILON = 0.000001;
 
-// character sets for id generation, encoding, decoding, etc
 export const NUMBERS = "0123456789";
 export const ALPHABETUPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const ALPHABETLOWER = ALPHABETUPPER.toLowerCase();
 export const ALPHABETALL = ALPHABETLOWER+ALPHABETUPPER;
 export const BASE16 = NUMBERS+ALPHABETLOWER.slice(0, 6);
 export const BASE64 = NUMBERS+ALPHABETALL+"-_";
-// base 256 isnt used rlly lol
 export const BASE256 = [
     ...BASE64.split("").map(c => c.charCodeAt(0)),
     192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,
@@ -26,16 +23,13 @@ export const BASE256 = [
 ].map(c => String.fromCharCode(c)).join("");
 export const VARIABLE = NUMBERS+ALPHABETALL+"_";
 
-// magic key which identifies pportal from other applications
 export const MAGIC = "_*[[;ƒ";
 
 
-// global text enc/dec to save mem
 export const TEXTENCODER = new TextEncoder();
 export const TEXTDECODER = new TextDecoder();
 
 
-// patch prototype
 Array.prototype.sum = function() {
     return this.reduce((sum, x) => sum+x, 0);
 };
@@ -70,9 +64,6 @@ Array.prototype.any = function(f=null) {
     return false;
 };
 
-// i kinda regret not using ts
-
-// type checker (is)
 const isfs = {
     num: o => ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o)) || (typeof(o) == "bigint"),
     int: o => ((typeof(o) == "number") && !Number.isNaN(o) && Number.isFinite(o) && (o%1 == 0)) || (typeof(o) == "bigint"),
@@ -94,13 +85,12 @@ isfs.float = isfs.num;
 export function is(o, type) {
     return isfs[type] ? isfs[type](o) : (o == type);
 }
-// type caster (ensure)
 const ensurefs = {
     num: (o, useDef, def) => (isfs.num(o) ? Number(o) : useDef ? 0 : def),
     int: (o, useDef, def) => (isfs.int(o) ? Number(o) : useDef ? 0 : def),
     obj: (o, useDef, def) => (isfs.obj(o) ? o : useDef ? {} : def),
     any_num: (o, useDef, def) => (isfs.any_num(o) ? Number(o) : useDef ? 0 : def),
-    bool: o => !!o,
+    bool: (o, useDef, def) => (isfs.bool(o) ? !!o : useDef ? false : def),
     str: (o, useDef, def) => (isfs.str(o) ? o : useDef ? "" : def),
     arr: (o, useDef, def) => (isfs.arr(o) ? Array.from(o) : useDef ? [] : def),
     func: (o, useDef, def) => (isfs.func(o) ? o : useDef ? (()=>{}) : def),
@@ -113,7 +103,6 @@ export function ensure(o, type) {
     return ensurefs[type] ? ensurefs[type](o, useDef, def) : is(o, type) ? o : useDef ? null : def;
 }
 
-// checks if two objects are equal (including mutable types)
 export function equals(v1, v2) {
     if (is(v1, "arr")) {
         if (!is(v2, "arr")) return false;
@@ -137,7 +126,6 @@ export function equals(v1, v2) {
     return v1 == v2;
 }
 
-// trig functions with degrees definition
 export function sin(x) { return Math.sin(x * (Math.PI/180)); }
 export function cos(x) { return Math.cos(x * (Math.PI/180)); }
 export function tan(x) { return Math.tan(x * (Math.PI/180)); }
@@ -145,7 +133,6 @@ export function csc(x) { return Math.csc(x * (Math.PI/180)); }
 export function sec(x) { return Math.sec(x * (Math.PI/180)); }
 export function cot(x) { return Math.cot(x * (Math.PI/180)); }
 
-// smooth lerping between a and b using p in the range 0-1 as inter
 export function lerp(a, b, p) {
     p = ensure(p, "num");
     if (is(a, "num") && is(b, "num")) return a + p*(b-a);
@@ -165,7 +152,6 @@ export function lerp(a, b, p) {
     return null;
 }
 
-// smooth lerping but when precision reaches below EPSILON, snaps to goal
 export function lerpE(a, b, p) {
     p = ensure(p, "num");
     if (is(a, "num") && is(b, "num")) {
@@ -191,19 +177,15 @@ export function lerpE(a, b, p) {
     return null;
 }
 
-// clamps angle in degrees
 export function clampAngle(x) { return ((ensure(x, "num")%360)+360)%360; }
-// clamps angle in randians
 const FULLTURN = 2*Math.PI;
 export function clamAngleRadians(x) { return ((ensure(x, "num")%FULLTURN)+FULLTURN)%FULLTURN; }
 
-// change in angle between a and b in degrees
 export function angleRel(a, b) {
     let r = clampAngle(clampAngle(b) - clampAngle(a));
     if (r > 180) r -= 360;
     return r;
 }
-// change in angle between a and b in radians
 export function angleRelRadians(a, b) {
     let r = clamAngleRadians(clamAngleRadians(b) - clamAngleRadians(a));
     if (r > FULLTURN/2) r -= FULLTURN;
@@ -211,7 +193,6 @@ export function angleRelRadians(a, b) {
 }
 
 export function getTime() { return Date.now(); }
-// generate array of time by units for better visualization
 export const UNITVALUES = {
     ms: 1,
     s: 1000,
@@ -232,7 +213,6 @@ export function splitTimeUnits(t) {
     });
     return values;
 }
-// formats that generated time
 export function formatTime(t) {
     t = ensure(t, "num");
     let negative = t < 0;
@@ -253,7 +233,6 @@ export function formatTime(t) {
     });
     return (negative?"-":"")+split.slice(1).reverse().join(":")+"."+split[0];
 }
-// formats text by splitting by certain delimiters and capitalizing when necessary
 export function formatText(s) {
     s = String(s);
     if (s.length <= 0) return s;
@@ -268,7 +247,6 @@ export function formatText(s) {
     }).join("");
 }
 
-// loads image into Image object (unused i think)
 export function loadImage(src) {
     return new Promise((res, rej) => {
         let img = new Image();
@@ -278,11 +256,9 @@ export function loadImage(src) {
     });
 }
 
-// async wait t ms
 export async function wait(t) {
     return await new Promise((res, rej) => setTimeout(() => res(), t));
 }
-// reject promise if t ms has passed
 export async function timeout(t, v) {
     return await new Promise((res, rej) => {
         (async () => {
@@ -313,11 +289,9 @@ export async function timeout(t, v) {
     });
 }
 
-// generate paths with / delimiter
 export function generateArrayPath(...pth) { return pth.flatten().join("/").split("/").filter(part => part.length > 0); }
 export function generatePath(...pth) { return generateArrayPath(...pth).join("/"); }
 
-// cast to Uint8Array
 export function toUint8Array(v) {
     if (v instanceof Uint8Array) return v;
     if (is(v, "str")) return TEXTENCODER.encode(v);
@@ -326,7 +300,6 @@ export function toUint8Array(v) {
     } catch (e) {}
     return new Uint8Array();
 }
-// encode Uint8Array to basae 256
 export function encodeUint8Array(v) {
     v = toUint8Array(v);
     return Array.from(new Array(v.length).keys()).map(i => BASE256[v[i]]).join("");
@@ -338,7 +311,6 @@ export function decodeUint8Array(v) {
     return out;
 }
 
-// json compressor and decompressor (not used, i think)
 const TYPEIDX = [
     "arr",
     "bool",
@@ -513,10 +485,6 @@ export function decodeJSON(data) {
     return _decodeJSON(data.buffer, 0).value;
 }
 
-// generate string parts for better sorting
-// for example: "num_100" < "num_5"
-// but 100 > 5, so we split by parts:
-// ["num_", 100] > ["num_", 5]
 function splitString(s) {
     let parts = [];
     for (let i = 0; i < s.length; i++) {
@@ -532,7 +500,6 @@ function splitString(s) {
     }
     return parts;
 }
-// uses splitString to compare
 export function compareStr(s1, s2) {
     s1 = String(s1).toLowerCase();
     s2 = String(s2).toLowerCase();
@@ -545,18 +512,15 @@ export function compareStr(s1, s2) {
     return s1parts.length-s2parts.length;
 }
 
-// random choice
 export function choose(source) {
     if (!is(source, "arr") && !is(source, "str")) source = [];
     return source[Math.floor(source.length*Math.random())];
 }
-// generate random string of length l from a source character set
 export function jargon(l, source) {
     l = Math.max(0, ensure(l, "int"));
     source = String(source);
     return new Array(l).fill(null).map(_ => choose(source)).join("");
 }
-// more specific random string generations
 export function jargonNumbers(l) { return jargon(l, NUMBERS); }
 export function jargonAlphabetUpper() { return jargon(l, ALPHABETUPPER); }
 export function jargonAlphabetLower() { return jargon(l, ALPHABETLOWER); }
@@ -565,7 +529,6 @@ export function jargonBase16(l) { return jargon(l, BASE16); }
 export function jargonBase64(l) { return jargon(l, BASE64); }
 export function jargonVariable(l) { return jargon(l, VARIABLE); }
 
-// generates FULL error message WITH stack UNLIKE js's stupid poopy single-line error message
 export function stringifyError(e, nl="") {
     if (typeof(ErrorEvent) != "undefined" && e instanceof ErrorEvent) {
         return [
@@ -582,18 +545,13 @@ export function stringifyError(e, nl="") {
     if (lines[0] == lines[1]) lines.shift();
     return lines.map(line => nl+line).join("\n");
 }
-// gets stack by throwing error and catching (useful for debugging only)
 export function getStack() {
     try {
         throw new Error("stack-get");
     } catch (e) { return e.stack; }
 }
 
-// easing functions
-// source: https://easings.net/
-// suffix -I means in
-// suffix -O means out
-// suffix -IO means in-out
+// https://easings.net/
 export const ease = {
     sinI: t => {
         t = Math.min(1, Math.max(0, ensure(t, "num")));
@@ -831,7 +789,6 @@ export const ease = {
     },
 };
 
-// the Target class!!! essentially an event dispatcher + some utility iterator functions
 export class Target {
     #handlers;
     #nHandlers;
@@ -841,7 +798,6 @@ export class Target {
         this.#nHandlers = 0;
     }
 
-    // flatten input array and iterate through each "item" in a potentially nested array, calling `callback` on each
     static resultingForEach(input, callback) {
         input = [input].flatten();
         if (input.length == 1) {
@@ -858,7 +814,6 @@ export class Target {
         return r;
     }
 
-    // linked handlers: linked to an object
     addLinkedHandler(o, e, f) {
         e = String(e);
         if (!is(f, "func")) return false;
@@ -904,13 +859,11 @@ export class Target {
         return fs;
     }
 
-    // unlinked handlers: object is null
     addHandler(e, f) { return this.addLinkedHandler(null, e, f); }
     remHandler(e, f) { return this.remLinkedHandler(null, e, f); }
     hasHandler(e, f) { return this.hasLinkedHandler(null, e, f); }
     getHandlers(e) { return this.getLinkedHandlers(null, e); }
     clearHandlers(e) { return this.clearLinkedHandlers(null, e); }
-    // post an event without promise
     post(e, ...a) {
         if (this.#nHandlers <= 0) return;
         e = String(e);
@@ -919,7 +872,6 @@ export class Target {
             handlers[e].forEach(f => f(...a));
         }
     }
-    // post an event with promise expecting results in an array
     async postResult(e, ...a) {
         if (this.#nHandlers <= 0) return [];
         e = String(e);
@@ -934,86 +886,16 @@ export class Target {
         }));
         return await Promise.all(fs.map(f => f()));
     }
-    // macro change event dispatcher with the attribute, previous (f_rom), and current (t_o) values
     change(attr, f, t) {
         if (this.#nHandlers <= 0) return [];
         attr = String(attr);
         this.post("change", attr, f, t);
         this.post("change-"+attr, f, t);
     }
-    // macro add and remove events
     onAdd() { return this.post("add"); }
     onRem() { return this.post("rem"); }
 }
 
-// i dont think this class is used...
-// its a result class for serializing successes, failures, outputs, and the reasons for each
-export class Result extends Target {
-    #successful;
-    #value;
-    #error;
-    #reason;
-
-    constructor(...a) {
-        super();
-
-        this.#successful = null;
-        this.#value = null;
-        this.#error = null;
-        this.#reason = null;
-
-        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Result) a = [a.successful, a.value, a.error, a.reason];
-            else if (is(a, "arr")) {
-                a = new Result(...a);
-                a = [a.successful, a.value, a.error, a.reason];
-            }
-            else if (is(a, "obj")) a = [a.successful, a.value, a.error, a.reason];
-            else if (is(a, "bool")) a = [a, a];
-            else a = [true, a];
-        }
-        if (a.length == 2) a = [...a, null, null];
-
-        [this.successful, this.value, this.error, this.reason] = a;
-    }
-
-    get successful() { return this.#successful; }
-    set successful(v) {
-        v = !!v;
-        if (this.successful == v) return;
-        this.change("successful", this.successful, this.#successful=v);
-    }
-    get value() { return this.#value; }
-    set value(v) { this.#value = v; }
-    get error() { return this.#error; }
-    set error(v) {
-        v = (v == null) ? null : String(v);
-        if (this.error == v) return;
-        this.change("error", this.error, this.#error=v);
-    }
-    hasError() { return this.error != null; }
-    get reason() { return this.#reason; }
-    set reason(v) {
-        v = (v == null) ? null : String(v);
-        if (this.reason == v) return;
-        this.change("reason", this.reason, this.#reason=v);
-    }
-    hasReason() { return this.reason != null; }
-
-    toJSON() {
-        return {
-            "%r": true,
-            successful: this.successful,
-            value: this.value,
-            error: this.error,
-            reason: this.reason,
-        };
-    }
-}
-
-// Color class - self explanatory
 export class Color extends Target {
     #r; #g; #b; #a;
     #hsv;
@@ -1136,7 +1018,6 @@ export class Color extends Target {
     get rgba() { return [this.r, this.g, this.b, this.a]; }
     set rgba(v) { this.set(v); }
 
-    // average difference between the values of this and provided parameter
     diff(...v) {
         v = this.args(...v);
         return (
@@ -1147,7 +1028,6 @@ export class Color extends Target {
         ) / 4;
     }
 
-    // hsva getter - generates hsva on the spot
     get hsva() {
         if (this.#hsv == null) {
             let r = this.r/255, g = this.g/255, b = this.b/255;
@@ -1168,7 +1048,6 @@ export class Color extends Target {
         }
         return [...this.#hsv, this.a];
     }
-    // hsva setter - generates rgba on the spot
     set hsva(hsva) {
         hsva = ensure(hsva, "arr");
         if (hsva.length != 4) hsva = [0, 0, 0, 1];
@@ -1192,7 +1071,6 @@ export class Color extends Target {
         rgb = rgb.map(v => (v+m)*255);
         this.rgba = [...rgb, a];
     }
-    // individual getters/setters for each
     get h() { return this.hsva[0]; }
     set h(v) {
         let hsva = this.hsva;
@@ -1211,7 +1089,6 @@ export class Color extends Target {
         hsva[2] = v;
         this.hsva = hsva;
     }
-    // hsv macro
     get hsv() { return this.hsva.slice(0, 3); }
     set hsv(hsv) {
         hsv = ensure(hsv, "arr");
@@ -1221,7 +1098,6 @@ export class Color extends Target {
         this.hsva = hsva;
     }
 
-    // checks if this and specified parameter are identical
     equals(...v) {
         v = this.args(...v);
         if (this.r != v[0]) return false;
@@ -1231,7 +1107,6 @@ export class Color extends Target {
         return true;
     }
 
-    // to hex string (with caching)
     toHex(a=true) {
         let v = a ? this.#hex : this.#hexNoAlpha;
         if (v == null) {
@@ -1244,12 +1119,10 @@ export class Color extends Target {
         }
         return v;
     }
-    // to rgba string (with caching)
     toRGBA() {
         if (this.#rgba == null) this.#rgba = "rgba("+this.rgba.join(",")+")";
         return this.#rgba;
     }
-    // to rgb string (with caching)
     toRGB() {
         if (this.#rgb == null) this.#rgb = "rgb("+this.rgb.join(",")+")";
         return this.#rgb;
@@ -1265,7 +1138,6 @@ export class Color extends Target {
     }
 }
 
-// class Range - basically a math interval - dont think this is used tho...
 export class Range extends Target {
     #l; #r;
     #lInclude; #rInclude;
@@ -1363,7 +1235,6 @@ export class Range extends Target {
     }
 }
 
-// class V (Vector2d) - very important and used a lot!
 export class V extends Target {
     #x; #y;
 
@@ -1413,7 +1284,6 @@ export class V extends Target {
     get xy() { return [this.x, this.y]; }
     set xy(v) { this.set(v); }
 
-    // math operators
     add(...a) {
         a = this.args(...a);
         return new V(this.x+a[0], this.y+a[1]);
@@ -1422,23 +1292,19 @@ export class V extends Target {
         a = this.args(...a);
         return new V(this.x-a[0], this.y-a[1]);
     }
-    // yes technically multiplication doesnt *really* exist for vectors, but lets just multiply the components
     mul(...a) {
         a = this.args(...a);
         return new V(this.x*a[0], this.y*a[1]);
     }
-    // same thing w division
     div(...a) {
         a = this.args(...a);
         return new V(this.x/a[0], this.y/a[1]);
     }
-    // same thing w raising to a power
     pow(...a) {
         a = this.args(...a);
         return new V(this.x**a[0], this.y**a[1]);
     }
 
-    // mapping a function to values
     map(f) {
         return new V(f(this.x), f(this.y));
     }
@@ -1447,7 +1313,6 @@ export class V extends Target {
     ceil() { return this.map(Math.ceil); }
     round() { return this.map(Math.round); }
     
-    // rotation transformations
     rotateOrigin(d) {
         d = ensure(d, "num");
         return new V(this.x*cos(d)+this.y*sin(d), this.x*cos(d-90)+this.y*sin(d-90));
@@ -1455,7 +1320,6 @@ export class V extends Target {
     rotate(d, o) { return this.sub(o).irotateOrigin(d).iadd(o); }
     normalize() { return (this.dist(0) > 0) ? this.div(this.dist(0)) : new V(this); }
 
-    // i- prefix = identity aka perform that operation in this
     iadd(...a) {
         a = this.args(...a);
         this.x += a[0]; this.y += a[1];
@@ -1499,25 +1363,20 @@ export class V extends Target {
     irotate(d, o) { return this.isub(o).irotateOrigin(d).iadd(o); }
     inormalize() { return (this.dist(0) > 0) ? this.idiv(this.dist(0)) : this[0]; }
 
-    // dist squared for quick collision checking w/o need for slow sqrt func
     distSquared(...v) {
         v = this.args(...v);
         return (this.x-v[0])**2 + (this.y-v[1])**2;
     }
-    // full distance function
     dist(...v) { return Math.sqrt(this.distSquared(...v)); }
-    // angle (w respect to +x) between this vector to another
     towards(...v) {
         v = this.args(...v);
         return (180/Math.PI)*Math.atan2(v[1]-this.y, v[0]-this.x);
     }
-    // checks if this and specified parameter are identical
     equals(...v) {
         v = this.args(...v);
         return (this.x == v[0]) && (this.y == v[1]); 
     }
 
-    // magnitude/dir vector aka given an angle and magnitude generate vector of (x, y)
     static dir(d, m=1) {
         d = ensure(d, "num");
         m = ensure(m, "num");
@@ -1533,7 +1392,6 @@ export class V extends Target {
         });
     }
 }
-// index attribute macros
 Object.defineProperty(V.prototype, "0", {
     get: function() { return this.x; },
     set: function(v) { this.x = v; },
@@ -1543,7 +1401,6 @@ Object.defineProperty(V.prototype, "1", {
     set: function(v) { this.y = v; },
 });
 
-// class V3 (Vector3d) - used sparsely but somewhat (self explanatory)
 export class V3 extends Target {
     #x; #y; #z;
 
@@ -1600,7 +1457,6 @@ export class V3 extends Target {
     get xyz() { return [this.x, this.y, this.z]; }
     set xyz(v) { this.set(v); }
 
-    // see class V
     add(...a) {
         a = this.args(...a);
         return new V3(this.x+a[0], this.y+a[1], this.z+a[2]);
@@ -1630,14 +1486,12 @@ export class V3 extends Target {
     ceil() { return this.map(Math.ceil); }
     round() { return this.map(Math.round); }
 
-    // ok this is weird - forgot what this did
     rotateOrigin(...d) {
         d = new V3(...d);
         d.iadd(new V3().towards(this));
         let m = this.dist(0);
         return V3.dir(d, m);
     }
-    // idk
     rotate(d, o) {
         return this.sub(o).rotateOrigin(d).add(o);
     }
@@ -1682,13 +1536,11 @@ export class V3 extends Target {
     irotate(d, o) { return this.set(this.rotate(d, o)); }
     inormalize() { return this.set(this.normalize()); }
 
-    // see class V
     distSquared(...v) {
         v = new V3(...v);
         return (this.x-v.x)**2 + (this.y-v.y)**2 + (this.z-v.z)**2;
     }
     dist(...v) { return Math.sqrt(this.distSquared(...v)); }
-    // generates elevation/azimuth pair, not sure what the 0 does
     towards(...v) {
         v = this.args(...v);
         let thisFlat = new V(this.x, this.z);
@@ -1697,13 +1549,11 @@ export class V3 extends Target {
         let elevation = new V().towards(thisFlat.dist(thatFlat), v.y-this.y);
         return new V3(elevation, azimuth, 0);
     }
-    // see class V
     equals(...v) {
         v = this.args(...v);
         return (this.x == v[0]) && (this.y == v[1]) && (this.z == v[2]);
     }
 
-    // uses elevation/azimuth pair to generate V3
     static dir(d, m=1) {
         d = new V3(d);
         m = ensure(m, "num");
@@ -1723,7 +1573,6 @@ export class V3 extends Target {
         });
     }
 }
-// index attribute macros
 Object.defineProperty(V3.prototype, "0", {
     get: function() { return this.x; },
     set: function(v) { this.x = v; },
@@ -1737,7 +1586,6 @@ Object.defineProperty(V3.prototype, "2", {
     set: function(v) { this.z = v; },
 });
 
-// ok this is getting repetitive, see V3 and V
 export class V4 extends Target {
     #w; #x; #y; #z;
 
@@ -1878,7 +1726,6 @@ export class V4 extends Target {
         });
     }
 }
-// index attribute macros
 Object.defineProperty(V4.prototype, "0", {
     get: function() { return this.w; },
     set: function(v) { this.w = v; },
@@ -2569,7 +2416,6 @@ export class Reviver extends Target {
     get f() {
         return (k, v) =>  {
             if (is(v, "obj")) {
-                if (v["%r"]) return new Result(v);
                 if (!("%cstm" in v)) return v;
                 let custom = v["%cstm"];
                 if (!("%o" in v)) return v;
@@ -2609,7 +2455,7 @@ export class Playback extends Target {
 
     #signal;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#ts = this.#tsMin = this.#tsMax = 0;
@@ -2627,22 +2473,11 @@ export class Playback extends Target {
             this.#restartTimer++;
         });
 
-        if (a.length <= 0 || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Playback) a = [a.ts, a.tsMin, a.tsMax, a.paused];
-            else if (is(a, "arr")) {
-                a = new Playback(...a);
-                a = [a.ts, a.tsMin, a.tsMax, a.paused];
-            }
-            else if (is(a, "num")) a = [0, a];
-            else if (is(a, "obj")) a = [a.ts, a.tsMin, a.tsMax, a.paused];
-            else a = [0, 0];
-        }
-        if (a.length == 2) a = [a[0], ...a];
-        if (a.length == 3) a = [...a, false];
-
-        [this.ts, this.tsMin, this.tsMax, this.paused] = a;
+        a = ensure(a, "obj");
+        this.ts = a.ts;
+        this.tsMin = a.tsMin;
+        this.tsMax = a.tsMax;
+        this.paused = a.paused;
     }
 
     get ts() { return this.hasSignal() ? this.signal.ts : this.#ts; }

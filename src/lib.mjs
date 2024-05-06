@@ -30,7 +30,6 @@ if (typeof(window) != "undefined") {
 export { mathjs };
 /*.lw}*/
 
-// uses fuse to search for an item in items using query and attribute keys
 export function search(items, keys, query) {
     items = util.ensure(items, "arr");
     keys = util.ensure(keys, "arr");
@@ -44,7 +43,6 @@ export function search(items, keys, query) {
     return fuse.search(query);
 }
 
-// given wanted number of steps, find the step value such that it would fit a range v BEST
 /*.lw{*/
 export function findStep(v, n=10) {
     v = Math.max(0, util.ensure(v, "num"));
@@ -68,11 +66,9 @@ export function findStep(v, n=10) {
 }
 /*.lw}*/
 
-// force all characters of string to be in base64 character set
 export function keyify(s) {
     return String(s).split("").filter(c => util.BASE64.includes(c)).join("");
 }
-// sanitize for file system dirent names
 export function sanitize(s) {
     s = String(s)
         .replaceAll(/[\/\\<>:"\|\?\*%,;=]/g, "-")
@@ -84,11 +80,9 @@ export function sanitize(s) {
     return s;
 }
 
-// feature and modal names
 export const APPFEATURES = ["PANEL", "PLANNER", "PIT", "PYTHONTK"];
 export const FEATURES = ["PORTAL", "PRESETS", ...APPFEATURES];
 export const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
-// their fancy readable names and icons
 const namefs = {
     PORTAL: "Portal",
     PRESETS: "Presets",
@@ -111,7 +105,6 @@ const iconfs = {
     PIT: "build",
     PYTHONTK: "logo-python",
 };
-// getters
 export function getName(name) {
     name = String(name);
     if (name in namefs) return namefs[name];
@@ -128,12 +121,10 @@ export function getIcon(name) {
     return null;
 }
 
-// file system operator!!!!
 let FS = null, PATH = null, FSLOGFUNC = null;
 export class FSOperator extends util.Target {
     #root;
 
-    // this system is kinda bad and i wanna fix it soon
     static get fs() { return FS; }
     static set fs(v) { FS = util.is(v, "obj") ? v : null; }
     static hasFS() { return this.fs != null; }
@@ -156,7 +147,6 @@ export class FSOperator extends util.Target {
     get root() { return this.#root; }
     set root(v) { this.#root = v; }
 
-    // static has-checkers, readers, writers, listers, etc
     static makePath(...pth) {
         if (!this.hasModules()) return null;
         return this.path.join(...pth.flatten());
@@ -277,7 +267,6 @@ export class FSOperator extends util.Target {
         return true;
     }
 
-    // non-static versions
     async fileHas(pth) { return await this.constructor.fileHas([this.root, pth]); }
     async fileRead(pth) { return await this.constructor.fileRead([this.root, pth]); }
     async fileReadRaw(pth) { return await this.constructor.fileReadRaw([this.root, pth]); }
@@ -298,8 +287,6 @@ export class FSOperator extends util.Target {
     static fsLog(...a) { return this.hasFSLogFunc() ? this.fsLogFunc(...a) : null; }
 }
 
-// unit class for representation of a numerical value AND a unit
-// not sure if this is used much tho
 /*.lw{*/
 export class Unit extends util.Target {
     #value;
@@ -350,7 +337,6 @@ export class Unit extends util.Target {
         return new Unit(this.value, to);
     }
 
-    // this func is probably used more than new Unit(...)
     static convert(v, u1, u2) {
         v = util.ensure(v, "num");
         u1 = String(u1).toLowerCase();
@@ -373,7 +359,6 @@ export class Unit extends util.Target {
 util.REVIVER.addRule(Unit);
 /*.lw}*/
 
-// not sure if this is used, and im too lazy to document it
 export class Option extends util.Target {
     #name;
     #nickname;
@@ -491,14 +476,13 @@ export class OptionList extends util.Target {
     }
 }
 
-// Project class - contains configuration and metadata objects
 export class Project extends util.Target {
     #id;
 
     #config;
     #meta;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#id = null;
@@ -506,23 +490,14 @@ export class Project extends util.Target {
         this.#config = null;
         this.#meta = null;
 
-        if (a.length <= 0 || a.length > 3) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project) a = [a.id, a.config, a.meta];
-            else if (util.is(a, "arr")) {
-                a = new Project(...a);
-                a = [a.id, a.config, a.meta];
-            }
-            else if (a instanceof this.constructor.Config) a = [a, null];
-            else if (a instanceof this.constructor.Meta) a = [null, a];
-            else if (util.is(a, "str")) a = [null, a];
-            else if (util.is(a, "obj")) a = [a.id, a.config, a.meta];
-            else a = [null, null];
-        }
-        if (a.length == 2) a = [null, ...a];
-
-        [this.id, this.config, this.meta] = a;
+        if (a instanceof this.constructor.Config) a = { config: a };
+        else if (a instanceof this.constructor.Meta) a = { meta: a };
+        else if (util.is(a, "str")) a = { meta: a };
+        
+        a = util.ensure(a, "obj");
+        this.id = a.id;
+        this.config = a.config;
+        this.meta = a.meta;
     }
 
     get id() { return this.#id; }
@@ -561,9 +536,8 @@ export class Project extends util.Target {
         });
     }
 }
-// config is empty by default
 Project.Config = class ProjectConfig extends util.Target {
-    constructor() {
+    constructor(a) {
         super();
     }
 
@@ -571,14 +545,13 @@ Project.Config = class ProjectConfig extends util.Target {
         return util.Reviver.revivable(this.constructor, {});
     }
 };
-// thumb(nail) is unused for now
 Project.Meta = class ProjectMeta extends util.Target {
     #name;
     #modified;
     #created;
     #thumb;
 
-    constructor(...a) {
+    constructor(a) {
         super();
 
         this.#name = "New Project";
@@ -586,21 +559,13 @@ Project.Meta = class ProjectMeta extends util.Target {
         this.#created = 0;
         this.#thumb = null;
 
-        if (a.length <= 0 || [3].includes(a.length) || a.length > 4) a = [null];
-        if (a.length == 1) {
-            a = a[0];
-            if (a instanceof Project.Meta) a = [a.name, a.modified, a.created, a.thumb];
-            else if (util.is(a, "arr")) {
-                a = new Project.Meta(...a);
-                a = [a.name, a.modified, a.created, a.thumb];
-            }
-            else if (util.is(a, "str")) a = [a, null];
-            else if (util.is(a, "obj")) a = [a.name, a.modified, a.created, a.thumb];
-            else a = ["New Project", null];
-        }
-        if (a.length == 2) a = [a[0], 0, 0, a[1]];
-        
-        [this.name, this.modified, this.created, this.thumb] = a;
+        if (util.is(a, "str")) a = { name: a };
+
+        a = util.ensure(a, "obj");
+        this.name = a.name;
+        this.modified = a.modified;
+        this.created = a.created;
+        this.thumb = a.thumb;
     }
 
     get name() { return this.#name; }
