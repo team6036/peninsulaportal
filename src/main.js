@@ -2402,7 +2402,7 @@ const MAIN = async () => {
 
                         let project = null;
                         try {
-                            project = JSON.parse(await this.get("project", id), sublib.REVIVER.f);
+                            project = JSON.parse(await this.get("project", id), util.REVIVER.f);
                         } catch (e) {}
                         if (!(project instanceof sublib.Project)) throw new Error("Invalid project content with id: "+id);
                         if (!project.hasPath(pthId)) throw new Error("Nonexistent path with id: "+pthId+" for project id: "+id);

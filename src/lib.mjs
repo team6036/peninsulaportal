@@ -212,7 +212,7 @@ export class FSOperator extends util.Target {
         pth = this.makePath(pth);
         this.fsLog(`fs:file-deny ${pth}`);
         if (!(await this.fileHas(pth))) return false;
-        await this.fileDelete(pth, content);
+        await this.fileDelete(pth);
         return true;
     }
 

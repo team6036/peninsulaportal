@@ -1311,6 +1311,7 @@ p-loading[type="bounce"] > div > div:last-child {
     animation: introtitle-name-shrink 0s forwards;
 }
 .introtitle:not(.noanimation) > div:first-of-type > div:last-of-type {
+    /* animation: introtitle-name-shrink 1s 5.25s forwards; */
     animation: introtitle-name-shrink 1s 0.25s forwards;
 }
 .introtitle > div:last-of-type {

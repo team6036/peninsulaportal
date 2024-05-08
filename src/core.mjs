@@ -44,6 +44,11 @@ export const WPILIB2THREE = THREE.Quaternion.fromRotationSequence(
 export const THREE2WPILIB = WPILIB2THREE.clone().invert();
 
 
+// window.f = () => {
+//     ["space-steel", "moon-steel", "blue-marine", "legacy"].forEach((theme, i) => setTimeout(() => window.api.set("active-theme", theme), 10000 + i*1000));
+// };
+
+
 class PropertyCache extends util.Target {
     #cache;
     #colorCache;
@@ -1451,6 +1456,7 @@ export class App extends util.Target {
                     this.eLoadingTo.style.visibility = "";
                 }, 250);
             }
+        // }, Math.max(0, 1250 - (util.getTime()-t) + 1000));
         }, Math.max(0, 1250 - (util.getTime()-t)));
 
         this.#setupDone = true;

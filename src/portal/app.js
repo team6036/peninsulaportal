@@ -308,6 +308,7 @@ export default class App extends core.App {
             this.#featureButtons.add(btn);
             if (this.hasENav()) this.eNav.appendChild(btn.elem);
             btn.onAdd();
+            // btn.elem.style.setProperty("--i", this.#featureButtons.size-1);
             return btn;
         });
     }

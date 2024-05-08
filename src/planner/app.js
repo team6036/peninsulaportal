@@ -221,12 +221,14 @@ class RVisualItem2d extends core.Odometry2d.Robot {
                 let j = Math.min(i+1, nodes.length-1);
                 let ni = nodes[i], nj = nodes[j];
                 p = ((nodes.length-1)*p) - i;
-                node = new sublib.Project.Node(
-                    util.lerp(ni.pos, nj.pos, p),
-                    ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
-                    util.lerp(ni.velocity, nj.velocity),
-                    0, true,
-                );
+                node = new sublib.Project.Node({
+                    pos: util.lerp(ni.pos, nj.pos, p),
+                    heading: ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p,
+                    useHeading: true,
+                    velocity: util.lerp(ni.velocity, nj.velocity),
+                    velocityRot: 0,
+                    useVelocity: true,
+                });
             } else node = nodes[0];
             this.pos = node.pos;
             this.velocity = node.velocity;
@@ -275,12 +277,14 @@ class RVisualItem3d extends core.Odometry3d.Render {
                 let j = Math.min(i+1, nodes.length-1);
                 let ni = nodes[i], nj = nodes[j];
                 p = ((nodes.length-1)*p) - i;
-                node = new sublib.Project.Node(
-                    util.lerp(ni.pos, nj.pos, p),
-                    ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p, true,
-                    util.lerp(ni.velocity, nj.velocity),
-                    0, true,
-                );
+                node = new sublib.Project.Node({
+                    pos: util.lerp(ni.pos, nj.pos, p),
+                    heading: ni.heading + util.angleRelRadians(ni.heading, nj.heading)*p,
+                    useHeading: true,
+                    velocity: util.lerp(ni.velocity, nj.velocity),
+                    velocityRot: 0,
+                    useVelocity: true,
+                });
             } else node = nodes[0];
             this.defaultComponent.pos = node.pos;
             this.defaultComponent.q = [Math.cos(node.heading/2), 0, 0, Math.sin(node.heading/2)];
@@ -598,7 +602,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             let ghostItem = null;
             let item = {
                 node: new sublib.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
-                obstacle: new sublib.Project.Obstacle({ pos: 0, radius: 100 }),
+                obstacle: new sublib.Project.Obstacle({ pos: 0, radius: 1 }),
             }[this.app.dragData];
             this.app.dragState.addHandler("move", e => {
                 let pos = new V(e.pageX, e.pageY);
@@ -1102,8 +1106,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.selected.forEach(id => {
                 if (!this.hasProject() || !this.project.hasItem(id)) return;
                 let itm = this.project.getItem(id);
-                itm.x = Math.min(this.project.w, Math.max(0, itm.x));
-                itm.y = Math.min(this.project.h, Math.max(0, itm.y));
+                itm.x = Math.min(this.odometry2d.w, Math.max(0, itm.x));
+                itm.y = Math.min(this.odometry2d.h, Math.max(0, itm.y));
             });
             if (this.selected.length > 1) {
                 if (!selectItem) selectItem = this.odometry2d.render.addRender(new RSelect(this.odometry2d.render));
@@ -2206,12 +2210,14 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     theVisual.visual.dt = data.dt*1000;
                     theVisual.visual.nodes = util.ensure(data.state, "arr").map(node => {
                         node = util.ensure(node, "obj");
-                        node = new sublib.Project.Node(
-                            [node.x, node.y],
-                            node.theta, true,
-                            [node.vx, node.vy],
-                            0, true,
-                        );
+                        node = new sublib.Project.Node({
+                            pos: [node.x, node.y],
+                            heading: node.theta,
+                            useHeading: true,
+                            velocity: [node.vx, node.vy],
+                            velocityRot: 0,
+                            useVelocity: true,
+                        });
                         return node;
                     });
                     theVisual.playback.tsMax = theVisual.visual.dt * theVisual.visual.nodes.length;

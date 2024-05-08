@@ -125,6 +125,10 @@ body {
     pointer-events: auto;
 }
 #PAGE > .main > .nav > button.item {
+    /* --i: 0;
+
+    transform: scale(75%); */
+
     width: 100px;
     aspect-ratio: 1 / 1;
 
@@ -138,8 +142,16 @@ body {
 
     border-radius: 5px;
 
+    /* opacity: 0%; */
+
     font-size: 16px;
+
+    /* animation: in 0.25s calc(0.25s * var(--i) + 15s) forwards; */
 }
+/* @keyframes in {
+    0% { transform: scale(75%); opacity: 0%; }
+    100% { transform: scale(100%); opacity: 100%; }
+} */
 #PAGE > .main > .nav > button.item > ion-icon {
     font-size: 32px;
 }
