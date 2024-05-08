@@ -7482,7 +7482,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
             const renders = this.#renders;
             const trailRenders = this.#trailRenders;
             if (this.value.length <= 0) return this.pose.disable("No data");
-            const value = this.pose.shown ? this.value : [];
+            const value = this.pose.isShown ? this.value : [];
             this.pose.enable();
             if (value.length > 0 && value.length % 3 == 0) {
                 let l = value.length / 3;
@@ -8209,7 +8209,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
             if (!this.hasPose()) return;
             const renders = this.#renders;
             if (this.value.length <= 0) return this.pose.disable("No data");
-            const value = this.pose.shown ? this.value : [];
+            const value = this.pose.isShown ? this.value : [];
             this.pose.enable();
             if (value.length > 0 && (value.length % 7 == 0 || value.length % 3 == 0)) {
                 let l = value.length;
