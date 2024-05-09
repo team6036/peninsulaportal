@@ -5157,7 +5157,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     let v = Math.max(0, input.value);
                                     this.change("viewParams.time", this.viewParams.time, this.viewParams.time=v);
                                 });
-                                let use = form.addField(new core.Form.SelectInput("use", [{ value: false, name: "Use log start" }, { value: true, name: "Use pointer" }]));
+                                let use = form.addField(new core.Form.SelectInput("use", [{ value: false, name: "Use log "+{ l: "start", r: "end" }[side] }, { value: true, name: "Use pointer" }]));
                                 use.addHandler("change-value", () => {
                                     let v = !!use.value;
                                     this.change("viewParams.use", this.viewParams.use, this.viewParams.use=v);
