@@ -21,7 +21,7 @@ Clears logs from log directory.
 
 ### Database Host
 IP or web address of database which will respond with JSON containing a Github repository to poll for assets and configurations. This schema goes as follows:
-```json
+```js
 {
     "dbHost": string, // your web address or ip here
     "assetsOwner": string, // owner of assets repo
