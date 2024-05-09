@@ -43,7 +43,9 @@ This should create a `./build` directory with the packaged apps. Check with `pac
 
 [Peninsula Planner →](./docs/planner/MAIN.md)
 
-[Peninsula Database →](./docs/database/MAIN.md)
+[Peninsula Pit →](./docs/pit/MAIN.md)
+
+[Peninsula PythonTK →](./docs/pythontk/MAIN.md)
 
 <div>
     <h1 id="resources" align="center">Resources</h1>

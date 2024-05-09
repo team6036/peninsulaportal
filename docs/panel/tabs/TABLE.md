@@ -1,7 +1,5 @@
 <a href="../MAIN.md" class="back">← Back</a>
 
-<img src="./table.png" height="300px">
-
 # Table Tab
 
 Displays any value from source. Search timestamp or follow the current playback. Drag topics in to see them.
@@ -9,12 +7,12 @@ Displays any value from source. Search timestamp or follow the current playback.
 ## Navigation
 
 ### Timestamp Navigator
-With the "follow" button activated, this timestamp matches the global project timestamp. Entering a number here will also modify the global timestamp. With the "follow" button deactivated, this timestamp can be whichever. Entering a number will jump the table to the wanted timestamp.
+Displays timestamp that the table tab is locked to. If the follow toggle is on, then the table will automatically follow the log playback. Otherwise, the table will jump to the timestamp you input.
 
 ### Topics
 
 #### Header
-Hovering over the column header will show the full topic path. Clicking the <kbd>x</kbd> will remove the topic. These topics are draggable, and can be moved to a [Graph](../tabs/GRAPH.md) or moved around within the Table.
+Hovering over the column header will show the full topic path. Clicking the <kbd>x</kbd> will remove the topic. These topics are draggable, and can be moved to a [Graph](../tabs/GRAPH.md), moved around within the Table, and even to other tabs.
 
 #### Column Data
-Shows the data within this topic. Self explanatory.
+Shows the data within each topic.

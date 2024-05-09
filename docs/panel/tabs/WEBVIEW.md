@@ -1,7 +1,5 @@
 <a href="../MAIN.md" class="back">← Back</a>
 
-<img src="./webview.png" height="300px">
-
 # WebView Tab
 
 Displays a website. Works like any browser.
