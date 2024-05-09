@@ -78,7 +78,7 @@ Changing of project settings. Options include:
 If you are writing your own Python script to generate the path, expect a file as input, generated in the same directory as your python script.
 
 `data.in`
-```json
+```js
 {
    "config": {
        "map_w": 0, "map_h": 0,
@@ -112,7 +112,7 @@ If you are writing your own Python script to generate the path, expect a file as
 For our code to properly process and generate a visual, your output path must match this schema. It must be created with the name `data.out` and in the same directory as your script.
 
 `data.out`
-```json
+```js
 {
    "dt": 0,
    "state": [
