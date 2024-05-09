@@ -53,4 +53,4 @@ It is important to note that for file exports, the exported file will automatica
 - CSV-Field `.field.csv`
 
 #### Logs
-List of logs to merge. Drag and drop them in from your OS.
+List of logs to export / convert. Drag and drop them in from your OS.

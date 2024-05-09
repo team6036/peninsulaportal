@@ -13,6 +13,9 @@
     - Graphing of numerical and discrete topics
     - Odometry 2D/3D displaying
 
+> [!IMPORTANT]
+> From this point forward, we will refer to the timestamp at the beginning of the log as `t0`, the timestamp at the end of the log as `t1`, and the current playback timestamp in the log to be `t`.
+
 ## Tabs
 
 ### Basic Tabs
@@ -57,7 +60,6 @@ Click on <kbd>Create</kbd> to create a new project. Double-clicking a project op
 > To return to the projects page at any point while this application is open, simply click on the folder icon in the top right corner. To quickly create a project, simply click the <kbd>+</kbd> icon in the top right corner.
 
 ### Project Page
-From this point forward, we will refer to the timestamp at the beginning of the log as `t0`, the timestamp at the end of the log as `t1`, and the current playback timestamp in the log to be `t`.
 
 #### Title Bar Navigation
 Clicking on the File, Edit, and View menus will open up a menu similar to the native system's file, edit, and view menus. Feel free to look at the options provided. Clicking on the project name provides more information about the project, including its name, source type, and actions relating to that source. Options listed are as follows:
