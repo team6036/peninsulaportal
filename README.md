@@ -11,27 +11,20 @@
 </div>
 
 ### Installations
-Check out the [latest release](https://github.com/team6036/peninsulaportal/releases) or browse past [releases](https://github.com/team6036/peninsulaportal/releases/latest).  
-MacOS (Darwin) requires running a few more commands to authorize the application - otherwise application will be marked as "damaged."
-1. `cd` to the directory containing the application
-2. `xattr -cr Peninsula.app`
+No active releases so far! Currently in active development!
 
 ### Development
-To set up the project
-- [Install NPM / Node](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
-- Navigate to the project directory within terminal
-```shell
-npm install
-```
-To start the application
-```shell
-npm start
-```
-To package the application
-```shell
-npm run package
-```
-This should create a `./build` directory with the packaged apps. Check with `package.js` to see the build options.
+To set up the project:
+1. [Install NPM / Node](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) if not installed already
+2. Navigate to the project directory within terminal
+3. First-time install? Don't forget to run this first:
+    ```shell
+    npm install
+    ```
+4. To start the application, simply run:
+    ```shell
+    npm start
+    ```
 
 <div>
     <h1 id="doc-and-help" align="center">Documentation & Help</h1>
