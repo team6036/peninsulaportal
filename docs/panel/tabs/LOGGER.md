@@ -1,10 +1,11 @@
 <a href="../MAIN.md" class="back">← Back</a>
 
-<img src="./logger.png" height="300px">
-
 # Logger Tab
 
 Cloud logging system for instant and community sharing of logs for nearly instantaneous debugging.
+
+> [!NOTE]
+> This tab only functions when there is a dedicated server. Currently, there is no way to set one up.
 
 ## Navigation
 
