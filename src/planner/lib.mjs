@@ -261,7 +261,7 @@ Project.Config = class ProjectConfig extends Project.Config {
         a = util.ensure(a, "obj");
         this.script = a.script;
         this.scriptPython = util.ensure(a.scriptPython, "str", "python3");
-        this.scriptUseDefault = util.ensure(a.scriptUseDefault, "bool", true);
+        this.scriptUseDefault = a.scriptUseDefault;
         this.options = a.options;
     }
 
