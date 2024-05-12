@@ -7648,7 +7648,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
 
         this.#name = String(name);
         this.#isHidden = this.name.startsWith(".");
-        this.#info = null;
+        this.#info = "";
         this.#value = null;
 
         this.#showValue = null;
@@ -7734,6 +7734,8 @@ Explorer.Node = class ExplorerNode extends util.Target {
         });
 
         this.showValue = false;
+
+        this.info = null;
     }
 
     get explorer() { return this.#explorer; }

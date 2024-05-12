@@ -24,7 +24,7 @@
 		"compare-versions": "^6.1.0",
 		"electron-fetch": "^1.9.1",
 		"fuse.js": "^7.0.0",
-		"ionicons": "^7.1.2",
+		"ionicons": "^7.4.0",
 		"mathjs": "^12.3.0",
 		"octokit": "^3.1.2",
 		"png2icons": "^2.0.1",

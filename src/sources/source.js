@@ -472,18 +472,29 @@ Source.Field = class SourceField {
             this.#logsDec.splice(i+1, 0, vDec);
             v = vDec;
             if (util.is(v, "arr")) {
-                v.forEach((v, i) => {
+                v.forEach((value, i) => {
                     let pth = this.path+"/"+i;
+                    let type = Source.Field.getType(value);
+                    if (util.is(value, "arr") || util.is(value, "obj")) {
+                        type = "json";
+                        value = JSON.stringify(value);
+                    }
                     if (!this.source.hasField(pth))
-                        this.source.addField(new this.source.constructor.Field(this.source, pth, Source.Field.getType(v))).real = false;
-                    this.source.getField(pth).update(v, ts, volatile);
+                        this.source.addField(new this.source.constructor.Field(this.source, pth, type)).real = false;
+                    this.source.getField(pth).update(value, ts, volatile);
                 });
             } else if (util.is(v, "obj")) {
                 for (let k in v) {
+                    let value = v[k];
                     let pth = this.path+"/"+k;
+                    let type = Source.Field.getType(value);
+                    if (util.is(value, "arr") || util.is(value, "obj")) {
+                        type = "json";
+                        value = JSON.stringify(value);
+                    }
                     if (!this.source.hasField(pth))
-                        this.source.addField(new this.source.constructor.Field(this.source, pth, Source.Field.getType(v[k]))).real = false;
-                    this.source.getField(pth).update(v[k], ts, volatile);
+                        this.source.addField(new this.source.constructor.Field(this.source, pth, type)).real = false;
+                    this.source.getField(pth).update(value, ts, volatile);
                 }
             }
         }

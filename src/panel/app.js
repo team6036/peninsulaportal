@@ -155,6 +155,10 @@ function getDisplay(t, v) {
     if (t == "structschema") return {
         name: "map-outline",
     };
+    if (t == "json") return {
+        src: "./assets/icons/object.svg",
+        color: "var(--co)",
+    };
     return {
         src: "./assets/icons/variable.svg",
     };
@@ -280,6 +284,8 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     }
 
     updateDisplay() {
+        this.icon = null;
+        this.iconSrc = null;
         let display = getDisplay(this.type, this.value);
         if (display != null) {
             if ("src" in display) this.iconSrc = display.src;
@@ -2297,7 +2303,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 prevNode = node;
                 this.name = node ? (node.name.length > 0) ? node.name : "/" : "?";
                 if (node) {
-                    if (!node.hasField() || node.field.isArray || node.field.isStruct) {
+                    if (!node.hasField() || (node.field.type == "json") || node.field.isArray || node.field.isStruct) {
                         this.explorer.elem.classList.add("this");
                         this.eDisplay.classList.remove("this");
                     } else {
@@ -2328,7 +2334,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 this.iconColor = "";
             }
             if (this.isClosed) return;
-            if (!node.hasField() || node.field.isArray || node.field.isStruct) {
+            if (!node.hasField() || (node.field.type == "json") || node.field.isArray || node.field.isStruct) {
                 FieldExplorer.Node.doubleTraverse(
                     node.nodeObjects,
                     this.explorer.nodeObjects,
