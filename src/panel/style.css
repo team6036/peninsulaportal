@@ -589,9 +589,6 @@
 
     padding: 0px;
 }
-#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > .divider {
-    user-select: none;
-}
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.item {
     padding: 0px;
 
@@ -605,6 +602,11 @@
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > button.item:disabled {
     color: var(--v6);
+}
+#PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .path > .divider {
+    display: block;
+    
+    user-select: none;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .explorer,
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.browser > .display {
