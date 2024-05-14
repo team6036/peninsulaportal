@@ -3024,20 +3024,16 @@ const MAIN = async () => {
                     return true;
                 }
 
+                const defaultAssets = "https://github.com/12Jeef/peninsulaportal-assets/releases/download/v0.0.1/db.json";
+
                 log("getting host");
                 this.addLoad("get-host");
-                const host = await this.get("db-host");
-                const hasHost = host != null;
+                const host = (await this.get("db-host")) || defaultAssets;
                 this.remLoad("get-host");
-                if (!hasHost) {
-                    log("got host - failed");
-                    log(`+ HOST = ${host}`);
-                    return false;
-                }
                 log("got host");
                 log(`+ HOST = ${host}`);
 
-                const theHost = hasHost ? String(new URL("./api/", host)) : null;
+                const theHost = (host == defaultAssets) ? String(host) : String(new URL("./api/", host));
                 
                 const fetchAndPipe = async (url, pth) => {
                     // log(`:: f&p(${url})`);
@@ -3062,7 +3058,7 @@ const MAIN = async () => {
                 log("polling host");
                 this.addLoad("poll-host");
                 try {
-                    if (hasHost) await fetchAndPipe(theHost, path.join(this.dataPath, "db.json"));
+                    await fetchAndPipe(theHost, path.join(this.dataPath, "db.json"));
                     log("polling host - success");
                 } catch (e) {
                     log(`polling host - error - ${e}`);
@@ -3176,6 +3172,7 @@ const MAIN = async () => {
                             await fetchAndPipe(assetURL, WindowManager.makePath(this.dataPath, "data", "config.json"));
                             this.check();
                         },
+                        "db.json": async () => {},
                     };
                     if (key in keyfs) {
                         log(`${key}`);
