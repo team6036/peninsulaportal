@@ -421,7 +421,7 @@ Source.Field = class SourceField {
         return this.#logsDec[i];
     }
     getDecodedRange(tsStart=null, tsStop=null) {
-        if (!this.useDec) return this.getDecodedRange(ts);
+        if (!this.useDec) return this.getRange(tsStart, tsStop);
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
         let start = this.getIndex(tsStart)+1;
