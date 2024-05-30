@@ -230,7 +230,7 @@ body {
     align-items: stretch;
     align-content: center;
 
-    color: var(--v2);
+    color: var(--v3);
 
     font-size: 12px;
     font-family: monospace;
@@ -253,11 +253,11 @@ body {
 #PAGE > .info > .nav > button,
 #PAGE > .info > .nav > a > button {
     --bg: transparent;
-    --fg: var(--v2);
+    --fg: var(--v3);
     --bgh: transparent;
     --fgh: var(--v8);
     --bgd: transparent;
-    --fgd: var(--v2);
+    --fgd: var(--v3);
 
     font-size: 20px;
 }
@@ -273,7 +273,7 @@ body {
     align-items: flex-start;
     align-content: center;
 
-    color: var(--v2);
+    color: var(--v3);
 
     font-size: 12px;
     font-family: monospace;
