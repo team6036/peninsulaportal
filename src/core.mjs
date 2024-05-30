@@ -3799,6 +3799,94 @@ export class AppFeature extends App {
     get eProjectInfoDeleteBtn() { return this.#eProjectInfoDeleteBtn; }
     get eSaveBtn() { return this.#eSaveBtn; }
 }
+AppFeature.Dirent = class AppFeatureDirent extends util.Target {
+    #app;
+    #parent;
+    #name;
+
+    constructor(app, parent, name) {
+        super();
+
+        if (!(app instanceof AppFeature)) throw new Error("App is not of class AppFeature");
+        this.#app = app;
+        if (!(parent instanceof AppFeature.DirentFolder)) parent = null;
+        this.#parent = parent;
+        if (this.hasParent()) this.parent.addChild(this);
+
+        this.#name = String(name);
+    }
+
+    get app() { return this.#app; }
+    get parent() { return this.#parent; }
+    hasParent() { return !!this.parent; }
+
+    get name() { return this.#name; }
+
+    get icon() { return "help-circle"; }
+};
+AppFeature.DirentFolder = class AppFeatureDirentFolder extends util.Target {
+    #children;
+
+    constructor(app, parent, name, children) {
+        super(app, parent, name);
+
+        this.#children = new Set();
+
+        this.children = children;
+    }
+
+    get children() { return [...this.#children]; }
+    set children(v) {
+        v = util.ensure(v, "arr");
+        this.clearChildren();
+        this.addChild(v);
+    }
+    clearChildren() {
+        let children = this.children;
+        this.remChild(children);
+        return children;
+    }
+    hasChild(dirent) {
+        if (!(dirent instanceof AppFeature.Dirent)) return false;
+        return this.#children.has(dirent);
+    }
+    addChild(...dirents) {
+        return util.Target.resultingForEach(dirents, dirent => {
+            if (!(dirent instanceof AppFeature.Dirent)) return false;
+            if (this.hasChild(dirent)) return false;
+            this.#children.add(dirent);
+            return dirent;
+        });
+    }
+    remChild(...dirents) {
+        return util.Target.resultingForEach(dirents, dirent => {
+            if (!(dirent instanceof AppFeature.Dirent)) return false;
+            if (!this.hasChild(dirent)) return false;
+            this.#children.delete(dirent);
+            return dirent;
+        });
+    }
+
+    get icon() { return "folder-outline"; }
+};
+AppFeature.DirentProject = class AppFeatureDirentProject extends util.Target {
+    #id;
+
+    constructor(app, parent, id) {
+        super(app, parent, "");
+
+        this.#id = String(id);
+    }
+
+    get id() { return this.#id; }
+
+    get project() { return this.app.getProject(id); }
+    hasProject() { return !!this.project; }
+
+    get name() { return this.hasProject() ? this.project.meta.name : "?"; }
+
+    get icon() { return "document-outline"; }
+};
 AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
     #eTitle;
     #eSubtitle;
