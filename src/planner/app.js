@@ -2635,8 +2635,12 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
 
         this.#fScriptUseDefault = form.addField(new core.Form.BooleanInput("default-generator-script"));
         this.fScriptUseDefault.addHandler("change-value", () => {
-            if (this.page.hasProject())
-                this.page.project.config.scriptUseDefault = this.fScriptUseDefault.value;
+            if (this.fScriptUseDefault.value) {
+                this.app.doWarn("Default Generator Script Usage Warning", "The default generator script is currently disabled as it is in active development!\nCome back soon when we are finished!");
+            } else {
+                if (this.page.hasProject())
+                    this.page.project.config.scriptUseDefault = this.fScriptUseDefault.value;
+            }
             this.page.editorRefresh();
         });
 
