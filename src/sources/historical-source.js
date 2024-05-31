@@ -91,7 +91,7 @@ export default class HistoricalSource extends Source {
     }
     static async export(source, prefix="") {
         if (!(source instanceof Source)) return null;
-        const client = new WorkerClient(this.constructor.CLIENTENCODER);
+        const client = new WorkerClient(this.CLIENTENCODER);
         return await new Promise((res, rej) => {
             client.addHandler("error", e => rej(e));
             client.addHandler("stop", data => rej("WORKER TERMINATED"));

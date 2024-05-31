@@ -87,7 +87,7 @@ export function is(o, type) {
 }
 const ensurefs = {
     num: (o, useDef, def) => (isfs.num(o) ? Number(o) : useDef ? 0 : def),
-    int: (o, useDef, def) => (isfs.int(o) ? Number(o) : useDef ? 0 : def),
+    int: (o, useDef, def) => (isfs.num(o) ? Math.round(Number(o)) : useDef ? 0 : def),
     obj: (o, useDef, def) => (isfs.obj(o) ? o : useDef ? {} : def),
     any_num: (o, useDef, def) => (isfs.any_num(o) ? Number(o) : useDef ? 0 : def),
     bool: (o, useDef, def) => (isfs.bool(o) ? !!o : useDef ? false : def),
