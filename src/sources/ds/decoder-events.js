@@ -47,7 +47,7 @@ export default class DSEventsDecoder extends util.Target {
             text = text.replaceAll("<details> ", "");
             text = text.trim();
             const record = new DSEventsDecoder.Record({
-                ts: ts-ts0,
+                ts: (ts-ts0) * 1000,
                 text: text,
             });
             callback(record, x/this.data.byteLength);
@@ -63,7 +63,7 @@ DSEventsDecoder.Record = class DSEventsDecoderRecord extends util.Target {
         super();
 
         this.#ts = util.ensure(o.ts, "num");
-        this.#text = String(text);
+        this.#text = String(o.text);
     }
     
     get ts() { return this.#ts; }

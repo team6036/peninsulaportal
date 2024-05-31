@@ -24,6 +24,27 @@ export default class HistoricalSource extends Source {
 
     get importing() { return this.#importing; }
 
+    static cast(data) {
+        data =
+            (this.WANTED == "uint8") ?
+                util.toUint8Array(data) :
+            (this.WANTED == "text") ?
+                String(data) :
+            null;
+        return data;
+    }
+    static async fetch(pth) {
+        data = await fetch(pth);
+        data =
+            (this.WANTED == "uint8") ?
+                (await data.blob()).arrayBuffer() :
+            (this.WANTED == "text") ?
+                await data.text() :
+            null;
+        data = this.cast(data);
+        return data;
+    }
+
     static async importFrom(pth) {
         const source = new this();
         await source.importFrom(pth);
@@ -32,15 +53,7 @@ export default class HistoricalSource extends Source {
     async importFrom(pth) {
         let data;
         if (window && window.api) data = await window.api.send("read", this.constructor.TYPE, pth);
-        else {
-            data = await fetch(pth);
-            data =
-                (this.constructor.WANTED == "uint8") ?
-                    (await data.blob()).arrayBuffer() :
-                (this.constructor.WANTED == "text") ?
-                    await data.text() :
-                null;
-        }
+        else data = await this.constructor.fetch(pth);
         return await this.import(data);
     }
     static async import(data) {
@@ -51,12 +64,7 @@ export default class HistoricalSource extends Source {
     async import(data) {
         this.#importing = true;
         try {
-            data =
-                (this.constructor.WANTED == "uint8") ?
-                    util.toUint8Array(data) :
-                (this.constructor.WANTED == "text") ?
-                    String(data) :
-                null;
+            data = this.constructor.cast(data);
             this.tsMin = this.tsMax = 0;
             this.clear();
             const client = new WorkerClient(this.constructor.CLIENTDECODER);

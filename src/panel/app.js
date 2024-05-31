@@ -10,6 +10,7 @@ import NTSource from "../sources/nt4/source.js";
 import WPILOGSource from "../sources/wpilog/source.js";
 import CSVTimeSource from "../sources/csv/time/source.js";
 import CSVFieldSource from "../sources/csv/field/source.js";
+import DSSource from "../sources/ds/source.js";
 
 import { WorkerClient } from "../worker.js";
 
@@ -3894,6 +3895,11 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         source: CSVFieldSource,
                         tag: "field.csv",
                     },
+                    ds: {
+                        command: "ds",
+                        decoder: "../ds/decoder-worker.js",
+                        source: DSSource,
+                    },
                 };
                 for (let type in portMap)
                     portMap[type].getName = () => {
@@ -3908,6 +3914,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     set: v => {
                         v = String(v);
                         if (!(v in portMap)) return;
+                        if (!portMap[v].decoder) return;
                         importFrom = v;
                         state.refresh();
                         state.eImportFromBtnName.textContent = portMap[state.importFrom].getName();
@@ -3924,6 +3931,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     set: v => {
                         v = String(v);
                         if (!(v in portMap)) return;
+                        if (!portMap[v].encoder) return;
                         exportTo = v;
                         state.refresh();
                         state.eExportToBtnName.textContent = portMap[state.exportTo].getName();
@@ -3983,6 +3991,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     let itm;
                     let menu = new core.App.Menu();
                     Object.keys(portMap).forEach(type => {
+                        if (!portMap[type].decoder) return;
                         itm = menu.addItem(new core.App.Menu.Item(portMap[type].getName(), (state.importFrom == type) ? "checkmark" : ""));
                         itm.addHandler("trigger", e => {
                             state.importFrom = type;
@@ -4008,6 +4017,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     let itm;
                     let menu = new core.App.Menu();
                     Object.keys(portMap).forEach(type => {
+                        if (!portMap[type].encoder) return;
                         itm = menu.addItem(new core.App.Menu.Item(portMap[type].getName(), (state.exportTo == type) ? "checkmark" : ""));
                         itm.addHandler("trigger", e => {
                             state.exportTo = type;
@@ -4052,6 +4062,10 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     if (!this.hasPage()) return;
                     const page = this.page;
                     if (state.importFrom == state.exportTo) return;
+                    if (!(state.importFrom in portMap)) return;
+                    if (!(state.exportTo in portMap)) return;
+                    if (!portMap[state.importFrom].decoder) return;
+                    if (!portMap[state.exportTo].encoder) return;
                     if (state.importFrom == "session") {
                     } else if (state.exportTo == "session") {
                         if (state.logs.length != 1) return;
@@ -4122,8 +4136,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             sum[i] = 1;
                             updateSum();
                             return data;
-                        })))
-                            .filter(data => !!data);
+                        }))).filter(data => !!data);
                         const tag = "."+portMap[state.exportTo].tag;
                         for (const data of datas) {
                             const content = data.data;
@@ -8625,7 +8638,7 @@ export default class App extends core.AppFeature {
                             { id: "action", label: "?", accelerator: "CmdOrCtrl+K" },
                             {
                                 id: "source", label: "Select Source...", click: () => {},
-                                submenu: ["nt", "wpilog", "csv-time", "csv-field"].map((name, i) => {
+                                submenu: ["nt", "wpilog", "csv-time", "csv-field", "ds"].map((name, i) => {
                                     return {
                                         id: "source:"+name,
                                         label: {
@@ -8633,6 +8646,7 @@ export default class App extends core.AppFeature {
                                             wpilog: "WPILOG",
                                             "csv-time": "CSV-Time",
                                             "csv-field": "CSV-Field",
+                                            ds: "DS",
                                         }[name],
                                         accelerator: "Ctrl+Shift+"+(i+1),
                                         type: "radio",
@@ -8683,14 +8697,15 @@ export default class App extends core.AppFeature {
             this.eProjectInfoContent.appendChild(eNav);
             eNav.classList.add("nav");
             eNav.classList.add("source");
-            ["nt", "wpilog", "csv-time", "csv-field"].forEach(name => {
+            ["nt", "wpilog", "csv-time", "csv-field", "ds"].forEach(name => {
                 let btn = document.createElement("button");
                 eNav.appendChild(this.#eProjectInfoSourceTypes[name] = btn);
                 btn.textContent = {
-                    "nt": "NT4",
-                    "wpilog": "WPILOG",
+                    nt: "NT4",
+                    wpilog: "WPILOG",
                     "csv-time": "CSV-Time",
                     "csv-field": "CSV-Field",
+                    ds: "DS",
                 }[name];
                 btn.addEventListener("click", e => {
                     e.stopPropagation();
@@ -9078,7 +9093,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.app.addHandler("cmd-source-type", type => {
             if (!this.hasProject()) return;
             type = String(type);
-            if (!["nt", "wpilog", "csv-time", "csv-field"].includes(type)) return;
+            if (!["nt", "wpilog", "csv-time", "csv-field", "ds"].includes(type)) return;
             this.project.config.sourceType = type;
             this.update(0);
             this.app.post("cmd-action");
@@ -9417,6 +9432,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             else if (pth.endsWith(".time.csv")) type = "csv-time";
             else if (pth.endsWith(".field.csv")) type = "csv-field";
             else if (pth.endsWith(".csv")) type = "csv-time";
+            else if (pth.endsWith(".dslog") || pth.endsWith(".dsevents")) type = "ds";
             this.project.config.sourceType = type;
             this.project.config.source = pth;
             this.update(0);
@@ -9462,7 +9478,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.app.eProjectInfoNameInput.value = this.hasProject() ? this.project.meta.name : "";
             this.app.eProjectInfoSourceInput.value = this.hasProject() ? this.project.config.source : "";
 
-            ["nt", "wpilog", "csv-time", "csv-field"].forEach(type => {
+            ["nt", "wpilog", "csv-time", "csv-field", "ds"].forEach(type => {
                 let itm = this.app.menu.getItemById("source:"+type);
                 if (!itm) return;
                 itm.checked = this.hasProject() ? (type == this.project.config.sourceType) : false;
@@ -9487,6 +9503,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     wpilog: WPILOGSource,
                     "csv-time": CSVTimeSource,
                     "csv-field": CSVFieldSource,
+                    ds: DSSource,
                 }[this.project.config.sourceType];
                 if (!util.is(constructor, "func")) this.source = null;
                 else if (!(this.source instanceof constructor)) {
@@ -9495,6 +9512,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         wpilog: () => new WPILOGSource(),
                         "csv-time": () => new CSVTimeSource(),
                         "csv-field": () => new CSVFieldSource(),
+                        ds: () => new DSSource(),
                     }[this.project.config.sourceType]();
                 } else {
                     let typefs = {
@@ -9893,7 +9911,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 },
             );
         } else {
-            data.children.at(-1).name = "Unkown: "+this.source.constructor.getName();
+            data.children.at(-1).name = "Unknown: "+this.source.constructor.getName();
         }
         const tMin = this.source.tsMin, tMax = this.source.tsMax;
         const duration = ((tMin == 0) ? util.formatTime(tMax) : `[${util.formatTime(tMin)} - ${util.formatTime(tMax)}]`);
