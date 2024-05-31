@@ -2142,17 +2142,7 @@ const MAIN = async () => {
                         return await WindowManager.fileRead(pth);
                     if (type == "ds") {
                         pth = WindowManager.makePath(pth);
-                        let logPth, eventsPth;
-                        if (pth.endsWith(".dslog")) {
-                            logPth = pth;
-                            eventsPth = pth.slice(0, -3)+"events";
-                        } else if (pth.endsWith(".dsevents")) {
-                            logPth = pth.slice(0, -6)+"log";
-                            eventsPth = pth;
-                        } else {
-                            logPth = pth+".dslog";
-                            eventsPth = pth+".dsevents";
-                        }
+                        let {logPth, eventsPth} = lib.getDSPaths(pth);
                         let [logData, eventsData] = await Promise.all([logPth, eventsPth].map(async pth => await WindowManager.fileReadRaw(pth)));
                         return {
                             logData: logData,

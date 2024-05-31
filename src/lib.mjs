@@ -121,6 +121,25 @@ export function getIcon(name) {
     return null;
 }
 
+export function getDSPaths(pth) {
+    pth = String(pth);
+    let logPth, eventsPth;
+    if (pth.endsWith(".dslog")) {
+        logPth = pth;
+        eventsPth = pth.slice(0, -3)+"events";
+    } else if (pth.endsWith(".dsevents")) {
+        logPth = pth.slice(0, -6)+"log";
+        eventsPth = pth;
+    } else {
+        logPth = pth+".dslog";
+        eventsPth = pth+".dsevents";
+    }
+    return {
+        logPth: logPth,
+        eventsPth: eventsPth,
+    };
+}
+
 let FS = null, PATH = null, FSLOGFUNC = null;
 export class FSOperator extends util.Target {
     #root;

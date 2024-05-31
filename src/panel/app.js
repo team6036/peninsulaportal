@@ -3882,26 +3882,27 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         decoder: "../wpilog/decoder-worker.js",
                         encoder: "../wpilog/encoder-worker.js",
                         source: WPILOGSource,
-                        tag: "wpilog",
+                        tags: ["wpilog"],
                     },
                     "csv-time": {
                         command: "csv",
                         decoder: "../csv/time/decoder-worker.js",
                         encoder: "../csv/time/encoder-worker.js",
                         source: CSVTimeSource,
-                        tag: "time.csv",
+                        tags: ["time.csv"],
                     },
                     "csv-field": {
                         command: "csv",
                         decoder: "../csv/field/decoder-worker.js",
                         encoder: "../csv/field/encoder-worker.js",
                         source: CSVFieldSource,
-                        tag: "field.csv",
+                        tags: ["field.csv"],
                     },
                     ds: {
                         command: "ds",
                         decoder: "../ds/decoder-worker.js",
                         source: DSSource,
+                        tags: ["dslog", "dsevents"],
                     },
                 };
                 for (let type in portMap)
@@ -3917,7 +3918,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     set: v => {
                         v = String(v);
                         if (!(v in portMap)) return;
-                        if (!portMap[v].decoder) return;
+                        if (v != "session" && !portMap[v].decoder) return;
                         importFrom = v;
                         state.refresh();
                         state.eImportFromBtnName.textContent = portMap[state.importFrom].getName();
@@ -3934,7 +3935,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     set: v => {
                         v = String(v);
                         if (!(v in portMap)) return;
-                        if (!portMap[v].encoder) return;
+                        if (v != "session" && !portMap[v].encoder) return;
                         exportTo = v;
                         state.refresh();
                         state.eExportToBtnName.textContent = portMap[state.exportTo].getName();
@@ -3973,6 +3974,17 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     return true;
                 };
 
+                const validSubmit = () => {
+                    if (state.importFrom == state.exportTo) return false;
+                    if (!(state.importFrom in portMap)) return false;
+                    if (!(state.exportTo in portMap)) return false;
+                    if (state.importFrom != "session" && !portMap[state.importFrom].decoder) return false;
+                    if (state.exportTo != "session" && !portMap[state.exportTo].encoder) return false;
+                    if (state.importFrom == "session") return true;
+                    if (state.exportTo == "session") return state.logs.length == 1;
+                    return state.logs.length > 0;
+                };
+
                 let eHeader;
 
                 eHeader = document.createElement("div");
@@ -3994,7 +4006,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     let itm;
                     let menu = new core.App.Menu();
                     Object.keys(portMap).forEach(type => {
-                        if (!portMap[type].decoder) return;
+                        if (type != "session" && !portMap[type].decoder) return;
                         itm = menu.addItem(new core.App.Menu.Item(portMap[type].getName(), (state.importFrom == type) ? "checkmark" : ""));
                         itm.addHandler("trigger", e => {
                             state.importFrom = type;
@@ -4020,7 +4032,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     let itm;
                     let menu = new core.App.Menu();
                     Object.keys(portMap).forEach(type => {
-                        if (!portMap[type].encoder) return;
+                        if (type != "session" && !portMap[type].encoder) return;
                         itm = menu.addItem(new core.App.Menu.Item(portMap[type].getName(), (state.exportTo == type) ? "checkmark" : ""));
                         itm.addHandler("trigger", e => {
                             state.exportTo = type;
@@ -4064,22 +4076,15 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     const app = this.app;
                     if (!this.hasPage()) return;
                     const page = this.page;
-                    if (state.importFrom == state.exportTo) return;
-                    if (!(state.importFrom in portMap)) return;
-                    if (!(state.exportTo in portMap)) return;
-                    if (!portMap[state.importFrom].decoder) return;
-                    if (!portMap[state.exportTo].encoder) return;
-                    if (state.importFrom == "session") {
-                    } else if (state.exportTo == "session") {
-                        if (state.logs.length != 1) return;
+                    if (!validSubmit()) return;
+                    if (state.exportTo == "session") {
                         if (!page.hasProject()) return;
                         const project = this.page.project;
                         project.config.sourceType = state.importFrom;
                         project.config.source = state.logs[0];
                         page.update(0);
                         app.post("cmd-action");
-                    } else {
-                        if (state.logs.length <= 0) return;
+                        return;
                     }
                     state.eSubmit.disabled = true;
                     const progress = v => {
@@ -4116,7 +4121,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 updateSum();
                                 return data;
                             }))))
-                            .filter(source => !!source);
+                            .filter(data => (!!data && !!data.source));
                         [sum, a, b] = [[], 0.5, 1];
                         const datas = (await Promise.all(sources.map(async (data, i) => {
                             const { pth, source } = data;
@@ -4139,24 +4144,28 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             sum[i] = 1;
                             updateSum();
                             return data;
-                        }))).filter(data => !!data);
-                        const tag = "."+portMap[state.exportTo].tag;
+                        }))).filter(data => (!!data && !!data.data));
+                        const importTags = util.ensure(portMap[state.importFrom].tags, "arr").map(tag => "."+tag);
+                        const exportTags = util.ensure(portMap[state.exportTo].tags, "arr").map(tag => "."+tag);
                         for (const data of datas) {
                             const content = data.data;
                             let pth = data.pth;
                             if (pth == null) {
                                 const result = util.ensure(await App.fileSaveDialog({
-                                    title: "Save exported session to...",
+                                    title: "Save exported file to...",
                                     buttonLabel: "Save",
                                 }), "obj");
                                 if (result.canceled || !result.filePath) continue;
                                 pth = String(result.filePath);
                             } else {
-                                if (pth.endsWith(tag))
+                                for (let tag of importTags) {
+                                    if (!pth.endsWith(tag)) continue;
                                     pth = pth.slice(0, -tag.length);
+                                    break;
+                                }
                             }
                             pth = String(pth);
-                            if (!pth.endsWith(tag)) pth += tag;
+                            if (!pth.endsWith(exportTags[0])) pth += exportTags[0];
                             await window.api.send("write", portMap[state.exportTo].command, pth, content);
                         }
                     } catch (e) {
@@ -4168,11 +4177,19 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
 
                 state.refresh = () => {
                     Array.from(state.eLogs.querySelectorAll(":scope > div:not(.overlay)")).forEach(elem => elem.remove());
-                    state.logs.forEach(log => {
+                    let logs = state.logs;
+                    if (state.importFrom == "ds") {
+                        logs = logs.map(pth => {
+                            let {logPth, eventsPth} = lib.getDSPaths(pth);
+                            return [logPth, eventsPth];
+                        }).collapse();
+                    }
+                    logs.forEach(log => {
                         let elem = document.createElement("div");
                         state.eLogs.appendChild(elem);
                         elem.innerHTML = "<div></div>";
                         elem.children[0].textContent = log;
+                        if (!state.logs.includes(log)) return;
                         let btn = document.createElement("button");
                         elem.appendChild(btn);
                         btn.innerHTML = "<ion-icon name='close'></ion-icon>";
@@ -4181,17 +4198,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                             state.remLog(log);
                         });
                     });
-                    if (state.importFrom == state.exportTo)
-                        state.eSubmit.disabled = true;
-                    else {
-                        if (state.importFrom == "session") {
-                            state.eSubmit.disabled = false;
-                        } else if (state.exportTo == "session") {
-                            state.eSubmit.disabled = state.logs.length != 1;
-                        } else {
-                            state.eSubmit.disabled = state.logs.length <= 0;
-                        }
-                    }
+                    state.eSubmit.disabled = !validSubmit();
                     let v = state.logs.length <= 0;
                     if (v == state.eLogs.classList.contains("empty")) return;
                     if (v) state.eLogs.classList.add("empty");

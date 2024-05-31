@@ -25,24 +25,13 @@ export default class DSSource extends HistoricalSource {
         return data;
     }
     static async fetch(pth) {
-        pth = String(pth);
-        let logPth, eventsPth;
-        if (pth.endsWith(".dslog")) {
-            logPth = pth;
-            eventsPth = pth.slice(0, -3)+"events";
-        } else if (pth.endsWith(".dsevents")) {
-            logPth = pth.slice(0, -6)+"log";
-            eventsPth = pth;
-        } else {
-            logPth = pth+".dslog";
-            eventsPth = pth+".dsevents";
-        }
+        let {logPth, eventsPth} = lib.getDSPaths(pth);
         let [logData, eventsData] = await Promise.all([logPth, eventsPth].map(async pth => await super.fetch(pth)));
         return {
             logData: logData,
             eventsData: eventsData,
         };
     }
-    
+
     static async export(source, prefix="") { throw new Error("Exporting of DSSource is not supported"); }
 }
