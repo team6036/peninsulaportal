@@ -49,13 +49,13 @@ class DSDecoderWorker extends WorkerBase {
                 logDecoder.build((record, progress) => {
                     this.progress(util.lerp(0, 0.5, progress));
                     updateTime(record.ts);
-                    for (let k in fields) fields[k].update(record.ts, record[k]);
+                    for (let k in fields) fields[k].update(record[k], record.ts);
                 });
                 const field = source.add("/DSEvents", "string");
                 eventsDecoder.build((record, progress) => {
                     this.progress(util.lerp(0.5, 1, progress));
                     updateTime(record.ts);
-                    field.update(record.ts, record.text);
+                    field.update(record.text, record.ts);
                 });
                 source.tsMin = tsMin;
                 source.tsMax = tsMax;

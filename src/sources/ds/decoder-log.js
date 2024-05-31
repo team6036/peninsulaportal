@@ -29,14 +29,14 @@ export default class DSLogDecoder extends util.Target {
         if (!this.isValid()) throw new Error("Unsupported version: "+this.version);
         let x = 4+8+8;
         let ts = 0;
-        let batteryVPrev = null;
+        let batteryVPrev = 0;
         while (true) {
             let mask = this.dataView.getUint8(x+5);
             let batteryV = this.dataView.getUint16(x+2)/(2**8);
             if (batteryV > 20) batteryV = batteryVPrev;
             batteryVPrev = batteryV;
             const data = {
-                ts: ts,
+                ts: ts*1000,
 
                 tripTime: this.dataView.getUint8(x)*0.5,
                 packetLoss: this.dataView.getInt8(x+1)*4/100,

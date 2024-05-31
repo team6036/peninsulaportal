@@ -2136,10 +2136,29 @@ const MAIN = async () => {
                     await this.setThis("project", "", JSON.stringify(data));
                 },
                 "read": async (type, pth) => {
-                    if (["wpilog", "ds", "dslog", "dsevents"].includes(type))
+                    if (["wpilog"].includes(type))
                         return await WindowManager.fileReadRaw(pth);
                     if (["csv", "csv-time", "csv-field"].includes(type))
                         return await WindowManager.fileRead(pth);
+                    if (type == "ds") {
+                        pth = WindowManager.makePath(pth);
+                        let logPth, eventsPth;
+                        if (pth.endsWith(".dslog")) {
+                            logPth = pth;
+                            eventsPth = pth.slice(0, -3)+"events";
+                        } else if (pth.endsWith(".dsevents")) {
+                            logPth = pth.slice(0, -6)+"log";
+                            eventsPth = pth;
+                        } else {
+                            logPth = pth+".dslog";
+                            eventsPth = pth+".dsevents";
+                        }
+                        let [logData, eventsData] = await Promise.all([logPth, eventsPth].map(async pth => await WindowManager.fileReadRaw(pth)));
+                        return {
+                            logData: logData,
+                            eventsData: eventsData,
+                        };
+                    }
                     return null;
                 },
                 "write": async (type, pth, content, force=true) => {
