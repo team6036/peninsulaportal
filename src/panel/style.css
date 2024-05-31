@@ -1074,7 +1074,7 @@
     align-items: stretch;
     align-content: flex-start;
 
-    background-color: var(--v1);
+    background-color: var(--v2);
     border-right: 1px solid var(--v3);
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column.side {
@@ -1095,7 +1095,10 @@
     margin-top: calc(var(--th) * var(--top));
     padding: 5px 10px;
 
+    background-color: var(--v1);
     border-bottom: 1px solid var(--v3);
+
+    white-space: nowrap;
 }
 #PROJECTPAGE > .main > .content .item.panel > .content > .item.tool.table > .column > .header {
     z-index: 2;

@@ -2827,8 +2827,8 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
             let logsN = this.node.field.logsN;
             let logsTS = this.node.field.logsTS;
             let logsV = this.node.field.logsV;
-            let start = this.node.field.getIndex(this.tab.ts[Math.min(n, Math.max(0, this.tab.scrollN))])-1;
-            let stop = this.node.field.getIndex(this.tab.ts[Math.min(n, Math.max(0, this.tab.scrollN+this.tab.visibleN))])+1;
+            let start = this.node.field.getIndex(this.tab.ts[Math.min(n, Math.max(0, this.tab.scrollN-1))])-1;
+            let stop = this.node.field.getIndex(this.tab.ts[Math.min(n, Math.max(0, this.tab.scrollN+this.tab.visibleN-1))])+1;
             start = Math.min(logsN-1, Math.max(0, start));
             stop = Math.min(logsN-1, Math.max(0, stop));
             let len = stop-start+1;
@@ -2848,6 +2848,7 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                 let entry = entries.pop();
                 this.elem.removeChild(entry.elem);
             }
+            let tw = 250;
             let its = this.tab.lookupTS();
             let scrollTop = this.tab.elem.scrollTop;
             entries[0].elem.style.setProperty("--top", this.tab.lookupTSExact(logsTS[start]));
@@ -2862,8 +2863,10 @@ Panel.TableTab.Variable = class PanelTableTabVariable extends util.Target {
                     elem.classList.add("this");
                     value.style.setProperty("--shift", its-i0);
                 } else elem.classList.remove("this");
+                tw = Math.max(tw, elem.scrollWidth+1);
             }
             this.tab.elem.scrollTop = scrollTop;
+            this.elem.style.setProperty("--tw", tw+"px");
         });
 
         if (util.is(a, "str")) a = { path: a };
