@@ -130,7 +130,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
     }
 
     getControlMetadataData() {
-        if (!this.isControlMetadata()) throw new Error("getControlMetadataData: Is not controlMetadata");
+        if (!this.isControlMeta()) throw new Error("getControlMetadataData: Is not controlMetadata");
         let entry = this.dataView.getUint32(1, true);
         let r, x = 5;
         r = this.#readStr(x);
