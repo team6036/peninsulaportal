@@ -3,6 +3,7 @@ import { V } from "../../util.mjs";
 import * as lib from "../../lib.mjs";
 
 import * as core from "../../core.mjs";
+import { PROPERTYCACHE, GLOBALSTATE } from "../../core.mjs";
 
 import AppModal from "../app.js";
 

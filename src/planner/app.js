@@ -34,7 +34,7 @@ class RLabel extends Odometry2d.Render {
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = core.PROPERTYCACHE.get("--cg-8");
+            ctx.fillStyle = PROPERTYCACHE.get("--cg-8");
             const width = ctx.measureText(this.text).width/quality;
             ctx.beginPath();
             let pth = [
@@ -54,7 +54,7 @@ class RLabel extends Odometry2d.Render {
             }
             ctx.closePath();
             ctx.fill();
-            ctx.fillStyle = core.PROPERTYCACHE.get("--v8");
+            ctx.fillStyle = PROPERTYCACHE.get("--v8");
             let p = this.odometry.worldToCanvas(this.pos).iadd(new V(0,15).iadd(offset).imul(+1,-1).imul(quality));
             ctx.fillText(this.text, ...p.xy);
         });
@@ -89,7 +89,7 @@ class RLine extends Odometry2d.Render {
             if (this.hasItemB()) b.set(this.itemB.pos);
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             if (a.distSquared(b) < this.odometry.pageLenToWorld((0.075+5)*2)**2) return;
-            ctx.strokeStyle = core.PROPERTYCACHE.get("--cg-8");
+            ctx.strokeStyle = PROPERTYCACHE.get("--cg-8");
             ctx.lineWidth = 5*quality;
             ctx.beginPath();
             let dA2B = a.towards(b);
@@ -134,9 +134,9 @@ class RVisual extends Odometry2d.Render {
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             const colors = {
-                g: core.PROPERTYCACHE.getColor("--cg"),
-                y: core.PROPERTYCACHE.getColor("--cy"),
-                r: core.PROPERTYCACHE.getColor("--cr"),
+                g: PROPERTYCACHE.getColor("--cg"),
+                y: PROPERTYCACHE.getColor("--cy"),
+                r: PROPERTYCACHE.getColor("--cr"),
             };
             const thresh1 = 0, thresh2 = 500;
             const getColor = v => {
@@ -263,7 +263,7 @@ class RVisualItem3d extends Odometry3d.Render {
     #interp;
 
     constructor(odometry, visual) {
-        super(odometry, 0, 0, core.GLOBALSTATE.getProperty("active-robot").value);
+        super(odometry, 0, 0, GLOBALSTATE.getProperty("active-robot").value);
 
         this.#visual = null;
         this.#interp = 0;
@@ -326,7 +326,7 @@ class RSelect extends Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = core.PROPERTYCACHE.get("--v8");
+            ctx.strokeStyle = PROPERTYCACHE.get("--v8");
             ctx.lineWidth = 1*quality;
             let a = this.odometry.worldToCanvas(this.a);
             let b = this.odometry.worldToCanvas(this.b);
@@ -527,7 +527,7 @@ App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
         this.eTemplates.classList.add("templates");
 
         this.addHandler("refresh", async () => {
-            const templates = core.GLOBALSTATE.getProperty("templates").value;
+            const templates = GLOBALSTATE.getProperty("templates").value;
             this.eTemplates.innerHTML = "";
             for (let k in templates) {
                 let btn = document.createElement("button");
@@ -1058,7 +1058,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!(id in itemRenders)) {
                     itemRenders[id] = {
                         d2: this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, null)),
-                        d3: this.odometry3d.addRender(new Odometry3d.Render(this.odometry3d, 0, 0, core.GLOBALSTATE.getProperty("active-robot").value)),
+                        d3: this.odometry3d.addRender(new Odometry3d.Render(this.odometry3d, 0, 0, GLOBALSTATE.getProperty("active-robot").value)),
                     };
                     itemRenders[id].d3.color = "--cb";
                 }
@@ -1186,7 +1186,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 
     async applyTemplate(project, name) {
         if (!(project instanceof sublib.Project)) return false;
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const templates = GLOBALSTATE.getProperty("templates").value;
         name = (name == null) ? null : String(name);
         if (!(name in templates)) return false;
         const globalTemplate = util.ensure(templates[name], "obj");
@@ -1834,7 +1834,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         this.fColor.addHandler("change-value", () => {
             let color = null;
             for (let c of "roygcbpm") {
-                let cc = core.PROPERTYCACHE.getColor("--c"+c);
+                let cc = PROPERTYCACHE.getColor("--c"+c);
                 let diff = cc.diff(this.fColor.value);
                 if (diff >= 1) continue;
                 color = c;
@@ -1981,7 +1981,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.fColor.disabled = !has;
             if (allNode) {
                 let v = getSameValue(itm => itm.color);
-                if (v != null) this.fColor.value = core.PROPERTYCACHE.getColor("--"+v);
+                if (v != null) this.fColor.value = PROPERTYCACHE.getColor("--"+v);
             }
 
             this.fGhost.disabled = !has;
@@ -2523,7 +2523,7 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     constructor(page) {
         super(page, "options", "settings-outline");
 
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const templates = GLOBALSTATE.getProperty("templates").value;
 
         let form = new core.Form();
         this.addItem(form.elem);

@@ -57,7 +57,7 @@ class RLine extends Odometry2d.Render {
 
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color;
+            ctx.strokeStyle = this.color.startsWith("--") ? PROPERTYCACHE.get(this.color) : this.color;
             ctx.lineWidth = this.size*quality;
             ctx.lineJoin = "round";
             ctx.lineCap = "round";
@@ -5482,19 +5482,19 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
-            ctx.fillStyle = core.PROPERTYCACHE.get("--v6");
+            ctx.fillStyle = PROPERTYCACHE.get("--v6");
             ctx.font = (12*quality)+"px monospace";
             ctx.textAlign = "center";
             ctx.textBaseline = this.axisInteriorX ? "bottom" : "top";
             for (let i = Math.ceil(graphRange[0]/timeStep); i <= Math.floor(graphRange[1]/timeStep); i++) {
                 let x = (i*timeStep - graphRange[0]) / (graphRange[1]-graphRange[0]);
                 x = util.lerp(mnx, mxx, x);
-                ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v2");
                 ctx.beginPath();
                 ctx.moveTo(x, y0);
                 ctx.lineTo(x, y1);
                 ctx.stroke();
-                ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
+                ctx.strokeStyle = PROPERTYCACHE.get("--v6");
                 ctx.beginPath();
                 ctx.moveTo(x, y1);
                 ctx.lineTo(x, y2);
@@ -5506,7 +5506,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 }
                 ctx.fillText(t+unit, x, y3);
             }
-            ctx.strokeStyle = core.PROPERTYCACHE.get("--v2");
+            ctx.strokeStyle = PROPERTYCACHE.get("--v2");
             for (let i = 0; i <= nStepsMax; i++) {
                 let y = i / nStepsMax;
                 y = util.lerp(mny, mxy, 1-y);
@@ -5526,7 +5526,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let x1 = [mnx, mxx][i];
                 let x2 = [mnx - 5*quality*v, mxx + 5*quality*v][i];
                 let x3 = [mnx - 10*quality*v, mxx + 10*quality*v][i];
-                ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--v6");
+                ctx.strokeStyle = ctx.fillStyle = PROPERTYCACHE.get("--v6");
                 ctx.lineWidth = 1*quality;
                 ctx.lineJoin = "miter";
                 ctx.lineCap = "square";
@@ -5556,12 +5556,12 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             let npts = (i+1 >= log.n) ? graphRange[1] : log.ts[i+1];
                             let x = util.lerp(mnx, mxx, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             let nx = util.lerp(mnx, mxx, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
-                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color+(odd?"2":"")) : v.color : "#fff";
+                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? PROPERTYCACHE.get(v.color+(odd?"2":"")) : v.color : "#fff";
                             ctx.fillRect(
                                 x, mnx+(10+20*nDiscrete)*quality,
                                 Math.max(0, nx-x), 15*quality,
                             );
-                            ctx.fillStyle = core.PROPERTYCACHE.get("--v"+(odd?"8":"1"));
+                            ctx.fillStyle = PROPERTYCACHE.get("--v"+(odd?"8":"1"));
                             ctx.font = (12*quality)+"px monospace";
                             ctx.textAlign = "left";
                             ctx.textBaseline = "middle";
@@ -5586,7 +5586,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         } else ranges.push({ x: x, r: [v, v], v: v });
                     }
                     // end todo
-                    ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? core.PROPERTYCACHE.get(v.color) : v.color : "#fff";
+                    ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? PROPERTYCACHE.get(v.color) : v.color : "#fff";
                     ctx.lineWidth = 1*quality;
                     ctx.lineJoin = "round";
                     ctx.lineCap = "square";
@@ -5665,7 +5665,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 hint.hValue.value = foundHint.value;
                 hint.hint.place(r.left+foundHint.x/quality, r.top+foundHint.y/quality);
             }
-            ctx.strokeStyle = core.PROPERTYCACHE.get("--v6");
+            ctx.strokeStyle = PROPERTYCACHE.get("--v6");
             ctx.lineWidth = 1*quality;
             ctx.lineJoin = "miter";
             ctx.lineCap = "square";
@@ -5692,7 +5692,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 },
             ].forEach(data => {
                 if (("show" in data) && !data.show) return;
-                ctx.fillStyle = ctx.strokeStyle = core.PROPERTYCACHE.get("--"+data.color);
+                ctx.fillStyle = ctx.strokeStyle = PROPERTYCACHE.get("--"+data.color);
                 let progress = (data.value-graphRange[0]) / (graphRange[1]-graphRange[0]);
                 if (progress < 0) return;
                 if (progress > 1) return;
@@ -5740,7 +5740,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                 let x0 = util.lerp(mnx, mxx, (t0Value-graphRange[0])/(graphRange[1]-graphRange[0]));
                 let x1 = util.lerp(mnx, mxx, (t1Value-graphRange[0])/(graphRange[1]-graphRange[0]));
                 let y = mxy-10*quality;
-                ctx.strokeStyle = ctx.fillStyle = core.PROPERTYCACHE.get("--a");
+                ctx.strokeStyle = ctx.fillStyle = PROPERTYCACHE.get("--a");
                 ctx.beginPath();
                 ctx.moveTo(x0, y);
                 ctx.lineTo(x1, y);
@@ -6253,7 +6253,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
-        let color = this.hasColor() ? this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color : "#fff";
+        let color = this.hasColor() ? this.color.startsWith("--") ? PROPERTYCACHE.get(this.color) : this.color : "#fff";
         this.eShowBox.style.setProperty("--bgc", color);
         this.eShowBox.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
@@ -6460,11 +6460,11 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
         a = util.ensure(a, "obj");
         this.poses = a.poses;
-        this.template = a.template || core.GLOBALSTATE.getProperty("active-template").value;
+        this.template = a.template || GLOBALSTATE.getProperty("active-template").value;
     }
 
     applyGlobal() {
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const templates = GLOBALSTATE.getProperty("templates").value;
         this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates).map(k => {
             return { value: k, name: templates[k].name || k };
         })];
@@ -6835,7 +6835,7 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
         v = (v == null) ? null : String(v);
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
-        let color = this.hasColor() ? this.color.startsWith("--") ? core.PROPERTYCACHE.get(this.color) : this.color : "#fff";
+        let color = this.hasColor() ? this.color.startsWith("--") ? PROPERTYCACHE.get(this.color) : this.color : "#fff";
         this.eShowBox.style.setProperty("--bgc", color);
         this.eShowBox.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
@@ -7222,7 +7222,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.addHandler("update", delta => {
             if (this.isClosed) return;
 
-            if (core.GLOBALSTATE.getting) return;
+            if (GLOBALSTATE.getting) return;
 
             this.odometry.template = this.template;
             this.odometry.emptySize = this.size;
@@ -7485,7 +7485,7 @@ Panel.Odometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends Panel
         this.#renders = [];
         this.#trailRenders = [];
 
-        const templates = core.GLOBALSTATE.getProperty("templates").value;
+        const templates = GLOBALSTATE.getProperty("templates").value;
 
         const convertPos = (...v) => {
             v = new V(...v);
@@ -8092,7 +8092,7 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         const componentsSubformField = form.addField(new core.Form.SubForm("components"));
         const componentsSubform = componentsSubformField.form;
         this.addHandler("change-type", () => {
-            const robots = core.GLOBALSTATE.getProperty("robots").value;
+            const robots = GLOBALSTATE.getProperty("robots").value;
             const robot = util.ensure(robots[this.type], "obj");
             const components = util.ensure(robot.components, "obj");
             componentsSubform.fields = [];
