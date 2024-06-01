@@ -3,9 +3,14 @@ import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
+import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
+
+import * as odometry from "../odometry.mjs";
+import { Odometry2d, Odometry3d } from "../odometry.mjs";
+import * as app from "../app.mjs";
 
 
-export default class App extends core.App {
+export default class App extends app.App {
     #eInfo;
     #eMain;
 
@@ -560,7 +565,7 @@ App.ThemesForm = class AppThemesForm extends App.OverrideForm {
         this.fAdd.header = "Create Theme";
 
         this.addHandler("import", async e => {
-            const result = util.ensure(await App.fileOpenDialog({
+            const result = util.ensure(await core.fileOpenDialog({
                 title: "Import Theme...",
                 buttonLabel: "Open",
                 filters: [{
@@ -621,7 +626,7 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
         fButtons.header = "";
         fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
-                const result = util.ensure(await App.fileSaveDialog({
+                const result = util.ensure(await core.fileSaveDialog({
                     title: "Export Theme...",
                     buttonLabel: "Save",
                 }), "obj");
@@ -771,7 +776,7 @@ App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
         this.fAdd.header = "Create Template";
 
         this.addHandler("import", async e => {
-            const result = util.ensure(await App.fileOpenDialog({
+            const result = util.ensure(await core.fileOpenDialog({
                 title: "Import Template...",
                 buttonLabel: "Open",
                 filters: [{
@@ -825,7 +830,7 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         fButtons.header = "";
         fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
-                const result = util.ensure(await App.fileSaveDialog({
+                const result = util.ensure(await core.fileSaveDialog({
                     title: "Export Template...",
                     buttonLabel: "Save",
                 }), "obj");
@@ -906,8 +911,8 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
             this.change("data.robotMass", null, fRobotMass.value);
         });
 
-        const odometry2d = new core.Odometry2d();
-        const odometry3d = new core.Odometry3d();
+        const odometry2d = new Odometry2d();
+        const odometry3d = new Odometry3d();
         odometry2d.template = odometry3d.template = this.k;
         odometry2d.imageAlpha = 0.5;
         odometry2d.drawGrid = false;
@@ -929,7 +934,7 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         fForm.form.isHorizontal = true;
         const fOdom2dChange = fForm.form.addField(new core.Form.Button("change-image", "Change", "special"));
         fOdom2dChange.addHandler("trigger", async e => {
-            let result = util.ensure(await App.fileOpenDialog({
+            let result = util.ensure(await core.fileOpenDialog({
                 title: "Select New Image...",
                 buttonLabel: "Use",
                 filters: [{
@@ -961,7 +966,7 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         fForm.form.isHorizontal = true;
         const fOdom3dChange = fForm.form.addField(new core.Form.Button("change-model", "Change", "special"));
         fOdom3dChange.addHandler("trigger", async e => {
-            let result = util.ensure(await App.fileOpenDialog({
+            let result = util.ensure(await core.fileOpenDialog({
                 title: "Select New Model...",
                 buttonLabel: "Use",
                 filters: [{
@@ -1042,7 +1047,7 @@ App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
         this.fAdd.header = "Create Robot";
 
         this.addHandler("import", async e => {
-            const result = util.ensure(await App.fileOpenDialog({
+            const result = util.ensure(await core.fileOpenDialog({
                 title: "Import Robot...",
                 buttonLabel: "Open",
                 filters: [{
@@ -1094,7 +1099,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
         fButtons.header = "";
         fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
-                const result = util.ensure(await App.fileSaveDialog({
+                const result = util.ensure(await core.fileSaveDialog({
                     title: "Export Robot...",
                     buttonLabel: "Save",
                 }), "obj");
@@ -1156,7 +1161,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
 
         const fDefaultChange = this.form.addField(new core.Form.Button("change-default-model", "Change", "special"));
         fDefaultChange.addHandler("trigger", async e => {
-            let result = util.ensure(await App.fileOpenDialog({
+            let result = util.ensure(await core.fileOpenDialog({
                 title: "Select New Model...",
                 buttonLabel: "Use",
                 filters: [{
@@ -1176,7 +1181,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                 await window.api.del("robot-default", this.k);
             } catch (e) { this.app.doError("Robot Default Model Removal Error", this.k, e); }
         });
-        const odometry3d = new core.Odometry3d();
+        const odometry3d = new Odometry3d();
         const fOdom3d = this.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
         const odom3dDropTarget = new core.DropTarget(fOdom3d.elem);
         odom3dDropTarget.addHandler("files", async files => {
@@ -1350,7 +1355,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     fName.type = "";
                     const fModelChange = fComponents[k].fModelChange = fForm.form.addField(new core.Form.Button("change-model", "Change", "special"));
                     fModelChange.addHandler("trigger", async e => {
-                        let result = util.ensure(await App.fileOpenDialog({
+                        let result = util.ensure(await core.fileOpenDialog({
                             title: "Select New Model...",
                             buttonLabel: "Use",
                             filters: [{
@@ -1370,7 +1375,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                             await window.api.del("robot-component", this.k, k);
                         } catch (e) { this.app.doError("Robot Component Model Removal Error", this.k+", "+k, e); }
                     });
-                    const odometry3d = fComponents[k].odometry3d = new core.Odometry3d();
+                    const odometry3d = fComponents[k].odometry3d = new Odometry3d();
                     const fOdom3d = fComponents[k].fOdom3d = fForm.form.addField(new core.Form.HTML("odom3d", odometry3d.elem));
                     const dropTarget = fComponents[k].dropTarget = new core.DropTarget(fOdom3d.eContent);
                     dropTarget.addHandler("files", async files => {
@@ -1478,7 +1483,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     if (!fComponents[k].loadLock)
                         (async () => {
                             fComponents[k].loadLock = true;
-                            fComponents[k].wantedObject = await core.Odometry3d.loadRobot(this.k, "basic", k);
+                            fComponents[k].wantedObject = await Odometry3d.loadRobot(this.k, "basic", k);
                             fComponents[k].loadLock = false;
                         })();
                     if (fComponents[k].object != fComponents[k].wantedObject) {
@@ -1494,7 +1499,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             if (!loadLock)
                 (async () => {
                     loadLock = true;
-                    wantedObject = await core.Odometry3d.loadRobot(this.k, "basic");
+                    wantedObject = await Odometry3d.loadRobot(this.k, "basic");
                     loadLock = false;
                 })();
             if (object != wantedObject) {
@@ -1514,7 +1519,7 @@ App.HolidaysForm = class AppHolidaysForm extends App.OverrideForm {
         this.fAdd.header = "Create Holiday";
 
         this.addHandler("import", async e => {
-            const result = util.ensure(await App.fileOpenDialog({
+            const result = util.ensure(await core.fileOpenDialog({
                 title: "Import Holiday...",
                 buttonLabel: "Open",
                 filters: [{
@@ -1554,7 +1559,7 @@ App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item 
         fButtons.header = "";
         fButtons.addHandler("trigger", async (i, e) => {
             if (i == 0) {
-                const result = util.ensure(await App.fileSaveDialog({
+                const result = util.ensure(await core.fileSaveDialog({
                     title: "Export Holiday...",
                     buttonLabel: "Save",
                 }), "obj");

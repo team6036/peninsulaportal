@@ -3,9 +3,12 @@ import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
+import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
+
+import * as app from "../app.mjs";
 
 
-export default class App extends core.App {
+export default class App extends app.App {
     #eTitlePage;
     #eDocsPage;
 
@@ -122,7 +125,7 @@ export default class App extends core.App {
             if (this.hasEInstall())
                 this.eInstall.addEventListener("click", async e => {
                     e.stopPropagation();
-                    const result = util.ensure(await App.fileOpenDialog({
+                    const result = util.ensure(await core.fileOpenDialog({
                         title: "Install PTK in...",
                         buttonLabel: "Install",
                         properties: [

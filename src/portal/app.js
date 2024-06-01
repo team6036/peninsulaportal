@@ -3,8 +3,9 @@ import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
+import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
 
-import * as THREE from "three";
+import * as app from "../app.mjs";
 
 
 class FeatureButton extends util.Target {
@@ -102,7 +103,7 @@ class UpperFeatureButton extends util.Target {
     }
 }
 
-export default class App extends core.App {
+export default class App extends app.App {
     #featureButtons;
     #upperFeatureButtons;
 
@@ -279,7 +280,7 @@ export default class App extends core.App {
                 prevLoads = loads;
                 if (this.hasELoads()) {
                     this.eLoads.innerHTML = "";
-                    loads.forEach(load => this.eLoads.appendChild(core.App.evaluateLoad(load)));
+                    loads.forEach(load => this.eLoads.appendChild(App.evaluateLoad(load)));
                 }
                 lock = false;
             });

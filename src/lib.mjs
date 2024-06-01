@@ -140,6 +140,44 @@ export function getDSPaths(pth) {
     };
 }
 
+export function simplify(s) {
+    s = String(s);
+    if (s.length > 20) s = s.slice(0, 20)+"...";
+    return s;
+}
+
+export function mergeThings(dest, src) {
+    if (util.is(dest, "arr")) {
+        dest.push(...util.ensure(src, "arr"));
+        return dest;
+    } else if (util.is(dest, "obj")) {
+        src = util.ensure(src, "obj");
+        for (let k in src) {
+            if (k in dest) dest[k] = mergeThings(dest[k], src[k]);
+            else dest[k] = src[k];
+        }
+        return dest;
+    }
+    return (src == null) ? dest : src;
+}
+export function isEmpty(o) {
+    if (util.is(o, "arr")) return o.length <= 0;
+    if (util.is(o, "obj")) return isEmpty(Object.keys(o));
+    return o == null;
+}
+export function cleanupEmpties(o) {
+    if (util.is(o, "arr"))
+        return Array.from(o).map(o => cleanupEmpties(o)).filter(o => !isEmpty(o));
+    if (util.is(o, "obj")) {
+        for (let k in o) {
+            o[k] = cleanupEmpties(o[k]);
+            if (isEmpty(o[k])) delete o[k];
+        }
+        return o;
+    }
+    return isEmpty(o) ? null : o;
+}
+
 let FS = null, PATH = null, FSLOGFUNC = null;
 export class FSOperator extends util.Target {
     #root;

@@ -7,9 +7,9 @@
 		"name": "Jeffrey Fan",
 		"email": "jeffrey.fanjf@gmail.com"
 	},
-	"main": "src/main.js",
+	"main": "src/main/main.js",
 	"scripts": {
-		"start": "electron src/main.js",
+		"start": "electron src/main/main.js",
 		"package": "electron-builder build",
 		"stats": "scc --not-match 'src/assets/modules/three-addons.*'"
 	},
